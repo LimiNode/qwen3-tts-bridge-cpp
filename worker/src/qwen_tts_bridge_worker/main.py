@@ -23,9 +23,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(str(exc))
         raise AssertionError("argparse exits before this point") from exc
 
+    protocol_output = sys.stdout.buffer
+    sys.stdout = sys.stderr
+
     server = StdioWorkerServer(
         input_stream=sys.stdin.buffer,
-        output_stream=sys.stdout.buffer,
+        output_stream=protocol_output,
         error_stream=sys.stderr,
         engine=engine,
         worker_version=config.worker_version,
