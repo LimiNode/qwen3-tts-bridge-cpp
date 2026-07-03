@@ -10,6 +10,7 @@ _TEST_PORTABLE_PYTHON_WORKER_SCRIPT = (
 _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT = (
     _REPO_ROOT / "scripts" / "test-portable-python-worker-cpp.ps1"
 )
+_README = _REPO_ROOT / "README.md"
 _PYTHON_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "python-checks.yml"
 _CPP_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "cpp-checks.yml"
 _NARROW_AUDIO_PROFILE = (
@@ -156,6 +157,16 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("Remove-EditableInstallArtifacts", script)
         self.assertIn('__editable__*', script)
 
+    def test_portable_worker_script_rejects_path_leaking_artifacts(self) -> None:
+        script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("*.egg-link", script)
+        self.assertIn("distutils-precedence.pth", script)
+        self.assertIn("Assert-PortableSitePaths", script)
+        self.assertIn("executable .pth entries", script)
+        self.assertIn("QTB_FORBIDDEN_SYS_PATH_ROOTS", script)
+        self.assertIn("portable worker sys.path leaks source paths", script)
+
     def test_portable_worker_script_writes_cmd_launcher(self) -> None:
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
@@ -171,6 +182,8 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
 
         self.assertIn("verify_packaged_worker.py", script)
         self.assertIn("worker-python/qwen_tts_worker.cmd", script)
+        self.assertIn("$PreviousPythonPath", script)
+        self.assertIn("finally", script)
 
     def test_portable_worker_cpp_smoke_uses_direct_python_executable(self) -> None:
         script = _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT.read_text(encoding="utf-8")
@@ -203,6 +216,14 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("Package portable Python worker", workflow)
         self.assertIn("Smoke-test portable worker through C++ transport", workflow)
         self.assertIn(".\\scripts\\test-portable-python-worker-cpp.ps1", workflow)
+        self.assertIn('"worker/**"', workflow)
+
+    def test_portable_worker_docs_recommend_environment_overrides(self) -> None:
+        readme = _README.read_text(encoding="utf-8")
+
+        self.assertIn("environment_overrides", readme)
+        self.assertIn("complete replacement environment", readme)
+        self.assertIn("PYTHONHOME", readme)
 
 
 if __name__ == "__main__":

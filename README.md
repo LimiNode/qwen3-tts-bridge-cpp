@@ -556,6 +556,30 @@ PYTHONPATH=dist\QwenTTSBridge\worker-python\python\Lib\site-packages
 PYTHONNOUSERSITE=1
 ```
 
+When launching through `StdIoTransportOptions`, prefer
+`environment_overrides` so the worker inherits `PATH`, `SystemRoot`, `TEMP`,
+and other parent-process values:
+
+```cpp
+StdIoTransportOptions options;
+options.arguments = {
+    R"(dist\QwenTTSBridge\worker-python\python\python.exe)",
+    "-P",
+    "-s",
+    "-m",
+    "qwen_tts_bridge_worker",
+};
+options.environment_overrides = {
+    {"PYTHONHOME", R"(dist\QwenTTSBridge\worker-python\python)"},
+    {"PYTHONPATH", R"(dist\QwenTTSBridge\worker-python\python\Lib\site-packages)"},
+    {"PYTHONNOUSERSITE", "1"},
+};
+```
+
+`StdIoTransportOptions::environment` is a complete replacement environment
+block. Do not set only the three Python variables there unless you also copy
+the parent environment first.
+
 The `.cmd` launcher sets the same environment and is meant for manual
 command-line use. The repository smoke test validates the direct `python.exe`
 path through the C++ example and `StdIoTransport`:

@@ -13,7 +13,7 @@ on:
       - "scripts/test-portable-python-worker-cpp.ps1"
       - "src/**"
       - "tests/**"
-      - "worker/src/**"
+      - "worker/**"
   push:
     branches:
       - main
@@ -28,7 +28,7 @@ on:
       - "scripts/test-portable-python-worker-cpp.ps1"
       - "src/**"
       - "tests/**"
-      - "worker/src/**"
+      - "worker/**"
 
 permissions:
   contents: read

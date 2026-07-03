@@ -81,19 +81,26 @@ if ($UseVenv) {
 
 Assert-PackagingPythonVersion
 
-$WorkerSrc = Resolve-RepoPath "worker/src"
-if ([string]::IsNullOrWhiteSpace($env:PYTHONPATH)) {
-    $env:PYTHONPATH = $WorkerSrc
-}
-else {
-    $env:PYTHONPATH = "$WorkerSrc$([IO.Path]::PathSeparator)$env:PYTHONPATH"
-}
+$PreviousPythonPath = $env:PYTHONPATH
 
-Invoke-ProjectPython @(
-    "tests/python/verify_packaged_worker.py",
-    (Resolve-RepoPath $WorkerCommand),
-    "--timeout-seconds",
-    "$TimeoutSeconds",
-    "--mock-chunks",
-    "$MockChunks"
-)
+try {
+    $WorkerSrc = Resolve-RepoPath "worker/src"
+    if ([string]::IsNullOrWhiteSpace($env:PYTHONPATH)) {
+        $env:PYTHONPATH = $WorkerSrc
+    }
+    else {
+        $env:PYTHONPATH = "$WorkerSrc$([IO.Path]::PathSeparator)$env:PYTHONPATH"
+    }
+
+    Invoke-ProjectPython @(
+        "tests/python/verify_packaged_worker.py",
+        (Resolve-RepoPath $WorkerCommand),
+        "--timeout-seconds",
+        "$TimeoutSeconds",
+        "--mock-chunks",
+        "$MockChunks"
+    )
+}
+finally {
+    $env:PYTHONPATH = $PreviousPythonPath
+}

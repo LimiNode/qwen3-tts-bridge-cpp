@@ -24,8 +24,16 @@ struct StdIoTransportOptions {
 
     /// \brief Optional complete process environment.
     ///
-    /// Leave empty to inherit the current process environment.
+    /// Leave empty to inherit the current process environment. When this map
+    /// is not empty, it replaces the inherited environment entirely.
     std::unordered_map<std::string, std::string> environment;
+
+    /// \brief Optional environment values layered over the current process.
+    ///
+    /// Prefer this for ordinary worker launches that need to set a few
+    /// variables while preserving PATH, SystemRoot, TEMP, and similar parent
+    /// process values. Ignored when environment is not empty.
+    std::unordered_map<std::string, std::string> environment_overrides;
 
     /// \brief Maximum time to wait for graceful exit before killing process.
     std::chrono::milliseconds shutdown_timeout{3000};

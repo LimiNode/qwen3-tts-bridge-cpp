@@ -991,9 +991,13 @@ maintaining a hand-trimmed Transformers runtime. Do not use the `.cmd` file as
 the canonical C++ worker executable; `StdIoTransport` should launch
 `dist\QwenTTSBridge\worker-python\python\python.exe` directly with
 `-P -s -m qwen_tts_bridge_worker`, plus `PYTHONHOME`,
-`PYTHONPATH`, and `PYTHONNOUSERSITE=1` in the worker environment. Use
-`test-portable-python-worker-cpp.ps1` to verify that path through the C++
-example and TinyProcessLib. With Qwen, run
+`PYTHONPATH`, and `PYTHONNOUSERSITE=1` in the worker environment. When launching
+through `StdIoTransportOptions`, set those values through
+`environment_overrides`, not `environment`, so `PATH`, `SystemRoot`, `TEMP`, and
+other parent-process values are preserved. `environment` is a complete
+replacement block and should only be used after explicitly copying every
+required parent variable. Use `test-portable-python-worker-cpp.ps1` to verify
+that path through the C++ example and TinyProcessLib. With Qwen, run
 `setup-python-packaging.ps1 -InstallQwenFork` first and pass
 `package-python-worker.ps1 -IncludeQwenFork` so the editable vendored
 `qwen_tts` package is copied into the portable runtime instead of depending on

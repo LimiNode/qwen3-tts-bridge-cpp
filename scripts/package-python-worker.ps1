@@ -87,6 +87,29 @@ function Assert-StrictChildPath {
     }
 }
 
+function Test-IsUnderPath {
+    param(
+        [string]$Parent,
+        [string]$Path,
+        [bool]$AllowEqual = $true
+    )
+
+    $ResolvedParent = [IO.Path]::GetFullPath($Parent).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $ResolvedPath = [IO.Path]::GetFullPath($Path).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $ParentPrefix = $ResolvedParent + [IO.Path]::DirectorySeparatorChar
+
+    return (
+        ($AllowEqual -and $ResolvedPath -eq $ResolvedParent) -or
+        $ResolvedPath.StartsWith($ParentPrefix, [StringComparison]::OrdinalIgnoreCase)
+    )
+}
+
 function Assert-RelativeDirectoryName {
     param(
         [string]$Name
@@ -183,6 +206,123 @@ function Remove-EditableInstallArtifacts {
 
     Get-ChildItem -LiteralPath $SitePackages -Filter "__editable__*" -Force |
         Remove-Item -Force
+    Get-ChildItem -LiteralPath $SitePackages -Filter "*.egg-link" -Force |
+        Remove-Item -Force
+    $DistutilsPrecedence = Join-Path $SitePackages "distutils-precedence.pth"
+    if (Test-Path -LiteralPath $DistutilsPrecedence) {
+        Remove-Item -LiteralPath $DistutilsPrecedence -Force
+    }
+    $EasyInstall = Join-Path $SitePackages "easy-install.pth"
+    if (Test-Path -LiteralPath $EasyInstall) {
+        Remove-Item -LiteralPath $EasyInstall -Force
+    }
+}
+
+function Assert-PortableSitePaths {
+    param(
+        [string]$SitePackages
+    )
+
+    foreach ($PathFile in Get-ChildItem -LiteralPath $SitePackages -Filter "*.pth" -Force) {
+        $Lines = Get-Content -LiteralPath $PathFile.FullName -ErrorAction Stop
+        foreach ($Line in $Lines) {
+            $Trimmed = $Line.Trim()
+            if ([string]::IsNullOrWhiteSpace($Trimmed) -or $Trimmed.StartsWith("#")) {
+                continue
+            }
+            if ($Trimmed -match '^import(\s|\t)') {
+                throw "Portable worker site-packages must not contain executable .pth entries: $($PathFile.FullName)"
+            }
+
+            $CandidatePath = $Trimmed
+            if (-not [IO.Path]::IsPathRooted($CandidatePath)) {
+                $CandidatePath = Join-Path $SitePackages $CandidatePath
+            }
+            $ResolvedCandidate = [IO.Path]::GetFullPath($CandidatePath)
+            if (-not (Test-IsUnderPath -Parent $SitePackages -Path $ResolvedCandidate -AllowEqual $false)) {
+                throw "Portable worker .pth entry points outside staged site-packages: $($PathFile.FullName) -> $Trimmed"
+            }
+        }
+    }
+}
+
+function Invoke-StagedPythonIsolationProbe {
+    param(
+        [string]$PythonRoot,
+        [string]$SitePackages,
+        [string[]]$ForbiddenRoots
+    )
+
+    $StagedPython = Join-Path $PythonRoot "python.exe"
+    if (-not (Test-Path -LiteralPath $StagedPython)) {
+        throw "Staged Python executable was not found: $StagedPython"
+    }
+
+    $PreviousPythonHome = $env:PYTHONHOME
+    $PreviousPythonPath = $env:PYTHONPATH
+    $PreviousPythonNoUserSite = $env:PYTHONNOUSERSITE
+    $PreviousForbiddenRoots = $env:QTB_FORBIDDEN_SYS_PATH_ROOTS
+    $ProbePath = Join-Path $PythonRoot "qtb_portable_isolation_probe.py"
+
+    try {
+        $env:PYTHONHOME = $PythonRoot
+        $env:PYTHONPATH = $SitePackages
+        $env:PYTHONNOUSERSITE = "1"
+        $env:QTB_FORBIDDEN_SYS_PATH_ROOTS = (
+            $ForbiddenRoots |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                ForEach-Object { [IO.Path]::GetFullPath($_) } |
+                Sort-Object -Unique
+        ) -join [IO.Path]::PathSeparator
+
+        $ProbeCode = @'
+import os
+import pathlib
+import sys
+
+forbidden_roots = [
+    pathlib.Path(path).resolve()
+    for path in os.environ.get("QTB_FORBIDDEN_SYS_PATH_ROOTS", "").split(os.pathsep)
+    if path
+]
+leaks = []
+for entry in sys.path:
+    if not entry:
+        continue
+    resolved = pathlib.Path(entry).resolve()
+    for root in forbidden_roots:
+        try:
+            resolved.relative_to(root)
+        except ValueError:
+            continue
+        leaks.append(str(resolved))
+        break
+
+if leaks:
+    raise SystemExit("portable worker sys.path leaks source paths: " + "; ".join(leaks))
+
+import qwen_tts_bridge_worker  # noqa: F401
+'@
+        [IO.File]::WriteAllText(
+            $ProbePath,
+            $ProbeCode,
+            [System.Text.UTF8Encoding]::new($false)
+        )
+
+        & $StagedPython -P -s $ProbePath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Portable worker staged Python isolation probe failed."
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $ProbePath) {
+            Remove-Item -LiteralPath $ProbePath -Force
+        }
+        $env:PYTHONHOME = $PreviousPythonHome
+        $env:PYTHONPATH = $PreviousPythonPath
+        $env:PYTHONNOUSERSITE = $PreviousPythonNoUserSite
+        $env:QTB_FORBIDDEN_SYS_PATH_ROOTS = $PreviousForbiddenRoots
+    }
 }
 
 function Write-WorkerLauncher {
@@ -308,6 +448,17 @@ if ($null -ne $QwenPackageSource) {
     }
     Copy-Item -LiteralPath $QwenPackageSource -Destination $QwenPackageDestination -Recurse
 }
+
+Assert-PortableSitePaths -SitePackages $SitePackagesOutput
+Invoke-StagedPythonIsolationProbe `
+    -PythonRoot $PythonOutput `
+    -SitePackages $SitePackagesOutput `
+    -ForbiddenRoots @(
+        $WorkerPackageSource,
+        $PureLib,
+        $PlatLib,
+        $QwenPackageSource
+    )
 
 Write-WorkerLauncher -LauncherPath $LauncherPath
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null
