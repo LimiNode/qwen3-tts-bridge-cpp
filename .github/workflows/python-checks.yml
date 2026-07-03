@@ -8,11 +8,13 @@ on:
       - "external/python/**"
       - "pyproject.toml"
       - "scripts/check-python.ps1"
+      - "scripts/package-python-worker.ps1"
       - "scripts/package-worker.ps1"
       - "scripts/setup-python-dev.ps1"
       - "scripts/setup-python-packaging.ps1"
       - "scripts/test-packaged-qwen-worker.ps1"
       - "scripts/test-packaged-worker.ps1"
+      - "scripts/test-portable-python-worker.ps1"
       - "tests/python/**"
       - "worker/**"
   push:
@@ -24,11 +26,13 @@ on:
       - "external/python/**"
       - "pyproject.toml"
       - "scripts/check-python.ps1"
+      - "scripts/package-python-worker.ps1"
       - "scripts/package-worker.ps1"
       - "scripts/setup-python-dev.ps1"
       - "scripts/setup-python-packaging.ps1"
       - "scripts/test-packaged-qwen-worker.ps1"
       - "scripts/test-packaged-worker.ps1"
+      - "scripts/test-portable-python-worker.ps1"
       - "tests/python/**"
       - "worker/**"
 
@@ -59,6 +63,10 @@ jobs:
       - name: Validate worker packaging command
         shell: pwsh
         run: .\scripts\package-worker.ps1 -Python python -DryRun
+
+      - name: Validate portable Python worker packaging command
+        shell: pwsh
+        run: .\scripts\package-python-worker.ps1 -Python python -DryRun
 
       - name: Validate Qwen packaging command
         shell: pwsh

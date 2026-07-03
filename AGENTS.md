@@ -958,8 +958,10 @@ Use the project packaging scripts as the canonical starting point:
 ```text
 scripts/setup-python-packaging.ps1
 scripts/package-worker.ps1
+scripts/package-python-worker.ps1
 scripts/test-packaged-worker.ps1
 scripts/test-packaged-qwen-worker.ps1
+scripts/test-portable-python-worker.ps1
 worker/requirements-packaging.lock.txt
 ```
 
@@ -980,6 +982,17 @@ the vendored Qwen streaming fork into `.venv-packaging` with
 probe is manual because it depends on local model files, CUDA/PyTorch runtime
 availability, and the selected model family. Full transitive packaging locks
 remain later packaging work.
+`package-python-worker.ps1` is the conservative portable Python worker baseline.
+It stages a private Python 3.11 runtime plus the selected environment's
+`site-packages` into `dist/QwenTTSBridge/worker-python` and writes
+`qwen_tts_worker.cmd`. Keep this path debuggable and boring: it may be much
+larger than Nuitka, but it should avoid maintaining a hand-trimmed Transformers
+runtime. With Qwen, run `setup-python-packaging.ps1 -InstallQwenFork` first and
+pass `package-python-worker.ps1 -IncludeQwenFork` so the editable vendored
+`qwen_tts` package is copied into the portable runtime instead of depending on
+the checkout path. Use `test-portable-python-worker.ps1` for the mock protocol
+smoke; for real Qwen, reuse `test-packaged-qwen-worker.ps1` with
+`-WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd`.
 `-QwenProfile CustomVoice` and `-QwenProfile VoiceDesign` mean the bridge's
 narrow Qwen runtime profile, not a broad `--include-package=qwen_tts`. Keep it
 focused on `qwen_tts.inference`, the specific `qwen_tts.core` runtime modules

@@ -529,6 +529,32 @@ The packaged-worker smoke test launches `qwen_tts_worker.exe`, speaks the real
 QTB stdin/stdout protocol, sends one mock synthesis request, verifies that at
 least one PCM frame is returned, and shuts the worker down gracefully.
 
+As a more conservative release fallback, the project also has a portable Python
+worker layout. It copies the selected Python 3.11 base runtime plus the
+packaging environment's `site-packages` into `dist/QwenTTSBridge/worker-python`
+and writes a `qwen_tts_worker.cmd` launcher:
+
+```text
+.\scripts\setup-python-packaging.ps1 -UseVenv
+.\scripts\package-python-worker.ps1 -UseVenv -Clean
+.\scripts\test-portable-python-worker.ps1 -UseVenv
+```
+
+For Qwen probes, install the vendored fork first and include its source package
+in the portable layout:
+
+```text
+.\scripts\setup-python-packaging.ps1 -UseVenv -InstallQwenFork
+.\scripts\package-python-worker.ps1 -UseVenv -Clean -IncludeQwenFork
+.\scripts\test-packaged-qwen-worker.ps1 -UseVenv -WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd -ModelPath models\<model-dir> -Speaker <speaker-name>
+```
+
+This path is intentionally less slim than Nuitka and may be large when the
+packaging environment contains PyTorch/Qwen dependencies. Its purpose is to
+provide a debuggable private Python runtime beside the C++ application while
+the narrow Nuitka runtime remains an optimization track. Models still stay
+external under `models/`.
+
 For a local packaged Qwen probe, install the vendored streaming fork into the
 packaging environment, include the Qwen runtime profile, and run the packaged
 executable against a real local model:
