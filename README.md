@@ -460,18 +460,48 @@ into the Nuitka dependency graph:
 
 `CustomVoice` and `VoiceDesign` apply the bridge's narrow Qwen runtime profile:
 they include `qwen_tts.inference`, the specific `qwen_tts.core` runtime modules
-used by model and tokenizer registration, and package data, while excluding
-`qwen_tts.cli`/demo UI paths such as Gradio, development/test-only imports,
+used by model and tokenizer registration, Qwen package data, and Torch
+distribution metadata required by Transformers, while excluding
+`qwen_tts.cli`/demo UI paths such as Gradio, external development/test tools,
 non-Torch `einops.layers` backends, and PyTorch compile/dynamo/inductor paths
-that the bridge worker does not call. The profile also applies
+that the bridge worker does not call. Internal `torch._functorch` is still
+packaged because regular eager `torch` startup imports it, and
+`torch.testing._internal` is not excluded globally because parts of eager Torch
+startup can import it through checkpoint/export utilities. Top-level
+`functorch` also remains available because it belongs to the Torch distribution
+metadata that Transformers expects. The profile also applies
 `worker/packaging/nuitka-qwen-runtime.yml`, which disables Transformers'
 debug-only model addition context, replaces Transformers' Dynamo masking
 context with a tested eager-inference shim, and replaces Qwen's
 `librosa.filters.mel` lookups with the tested
 `qwen_tts_bridge_worker.packaging` `torchaudio` mel-filter shim during
-packaging. CustomVoice and VoiceDesign also apply
+packaging. It also removes Transformers' Dynamo-only graph decorator and stubs
+the flex-attention import because the narrow profile does not package
+`torch._dynamo`, and stubs Transformers
+DTensor/tensor-parallel imports because the packaged worker runs single-process
+eager inference. It also
+stubs Transformers quantizer loading; the narrow profile targets unquantized
+Qwen checkpoints. It also stubs the encoder-decoder config import in
+Transformers' auto-tokenizer path because the Qwen narrow profile does not
+package the generic encoder-decoder model family.
+CustomVoice and VoiceDesign also apply
 `worker/packaging/nuitka-qwen-narrow-audio.yml`, which disables Qwen
-reference-audio loading helpers that belong to the VoiceClone profile. That
+reference-audio loading helpers that belong to the VoiceClone profile, keeps
+Transformers' generation runtime and distributed config helpers available for
+Qwen `GenerationMixin`/`PreTrainedModel` imports, includes Transformers'
+adapter mixin module used by `PreTrainedModel`, includes the EnCodec feature
+extractor used by Mimi/AutoFeatureExtractor without packaging the full EnCodec
+model implementation, and rewrites Qwen's root-level Transformers `Auto*`
+lookups to direct submodule imports. The packaged layout
+also creates minimal `transformers.models`, `transformers.models.auto`, and
+`transformers.models.mimi` package shells with `qtb_packaging_placeholder.py` so
+Transformers can build lazy import tables without packaging the full model zoo.
+The `auto` shell re-exports only the narrow `Auto*` classes needed by Qwen and
+Transformers startup. Compiled Transformers import sites that need these
+classes are still patched to direct submodule imports instead of depending on
+the staged shell.
+The profile permits Nuitka optional-module availability probes to observe excluded
+modules without turning those probes into fatal startup failures. That
 keeps Torch Dynamo's symbolic-shapes branch, Torch
 FakeTensor/ProxyTensor/runtime-assert `sympy` helper branches, plus the
 reference-audio `librosa` path, out of the narrow Qwen Nuitka graph unless a
@@ -508,6 +538,16 @@ executable against a real local model:
 .\scripts\package-worker.ps1 -UseVenv -Clean -AssumeYesForDownloads -QwenProfile CustomVoice -NuitkaReportPath tmp\nuitka-worker\qwen-report.xml
 .\scripts\test-packaged-qwen-worker.ps1 -UseVenv -ModelPath models\<model-dir> -Speaker <speaker-name>
 ```
+
+Current Qwen packaging checkpoint: the narrow `CustomVoice` profile has reached
+a successful local Nuitka standalone build, and the packaged smoke gets far
+enough to start Qwen/Transformers model loading. The latest known runtime
+blocker is Transformers processor loading expecting root-level lazy mappings
+such as `transformers.IMAGE_PROCESSOR_MAPPING`. Treat that as a deliberate
+follow-up for the narrow-Nuitka optimization track, not as a casual "add one
+more import" fix. The next practical release path should be a portable Python
+worker baseline with a private Python runtime and installed Qwen dependencies
+beside the C++ app, while keeping models external.
 
 Before a long real package build, the import probe can confirm that the selected
 vendored Qwen import path does not eagerly load audio-reference dependencies:

@@ -155,7 +155,13 @@ function Get-QwenBaseNuitkaOptions {
         "--include-module=qwen_tts.core.tokenizer_12hz.optimized_decoder",
         "--include-module=qwen_tts.core.tokenizer_25hz.configuration_qwen3_tts_tokenizer_v1",
         "--include-module=qwen_tts.core.tokenizer_25hz.modeling_qwen3_tts_tokenizer_v1",
+        "--include-package=transformers.distributed",
+        "--include-package=transformers.generation",
+        "--include-module=transformers.integrations.peft",
+        "--include-module=transformers.models.encodec",
+        "--include-module=transformers.models.encodec.feature_extraction_encodec",
         "--include-package-data=qwen_tts",
+        "--include-distribution-metadata=torch",
         "--nofollow-import-to=qwen_tts.cli",
         "--nofollow-import-to=gradio",
         "--nofollow-import-to=einops.layers.flax",
@@ -164,12 +170,9 @@ function Get-QwenBaseNuitkaOptions {
         "--nofollow-import-to=einops.layers.paddle",
         "--nofollow-import-to=einops.layers.tensorflow",
         "--nofollow-import-to=torch._dynamo",
-        "--nofollow-import-to=torch._functorch",
         "--nofollow-import-to=torch._inductor",
         "--nofollow-import-to=torch.fx.experimental.symbolic_shapes",
         "--nofollow-import-to=torch.utils._sympy",
-        "--nofollow-import-to=torch.testing._internal",
-        "--nofollow-import-to=functorch",
         "--noinclude-setuptools-mode=nofollow",
         "--noinclude-pytest-mode=nofollow",
         "--noinclude-IPython-mode=nofollow",
@@ -177,6 +180,7 @@ function Get-QwenBaseNuitkaOptions {
         "--noinclude-numba-mode=nofollow",
         "--module-parameter=torch-disable-jit=yes",
         "--module-parameter=numba-disable-jit=yes",
+        "--no-deployment-flag=excluded-module-usage",
         "--disable-plugins=transformers"
     )
 }
@@ -361,6 +365,67 @@ New-Item -ItemType Directory -Force -Path $WorkerOutput | Out-Null
 Copy-Item -Path (Join-Path $NuitkaDist "*") -Destination $WorkerOutput -Recurse
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "models") | Out-Null
+
+if ($QwenProfile -ne "None") {
+    # Transformers imports transformers.models as a package and also scans that
+    # package for at least one default-backend entry in its lazy import table.
+    # Qwen imports Auto/Mimi classes through direct submodules, so a tiny
+    # placeholder keeps root Transformers startup valid without packaging the
+    # whole model zoo.
+    $TransformersModels = Join-Path $WorkerOutput "transformers/models"
+    New-Item -ItemType Directory -Force -Path $TransformersModels | Out-Null
+
+    $TransformersModelsInit = Join-Path $TransformersModels "__init__.py"
+    [IO.File]::WriteAllText($TransformersModelsInit, "", [System.Text.UTF8Encoding]::new($false))
+
+    $TransformersPlaceholder = Join-Path $TransformersModels "qtb_packaging_placeholder.py"
+    [IO.File]::WriteAllText($TransformersPlaceholder, @'
+__all__ = ["QtbPackagingPlaceholder"]
+
+
+class QtbPackagingPlaceholder:
+    pass
+'@, [System.Text.UTF8Encoding]::new($false))
+
+    foreach ($PackageName in @("auto", "mimi")) {
+        $TransformersModelPackage = Join-Path $TransformersModels $PackageName
+        New-Item -ItemType Directory -Force -Path $TransformersModelPackage | Out-Null
+
+        $TransformersModelPackageInit = Join-Path $TransformersModelPackage "__init__.py"
+        if ($PackageName -eq "auto") {
+            [IO.File]::WriteAllText($TransformersModelPackageInit, @'
+from .configuration_auto import AutoConfig
+from .feature_extraction_auto import AutoFeatureExtractor
+from .modeling_auto import AutoModel
+from .processing_auto import AutoProcessor
+
+__all__ = [
+    "AutoConfig",
+    "AutoFeatureExtractor",
+    "AutoModel",
+    "AutoProcessor",
+]
+'@, [System.Text.UTF8Encoding]::new($false))
+        } else {
+            [IO.File]::WriteAllText(
+                $TransformersModelPackageInit,
+                "",
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        }
+
+        $ClassName = "Qtb" + $PackageName.Substring(0, 1).ToUpperInvariant() +
+            $PackageName.Substring(1) + "Placeholder"
+        $PlaceholderPath = Join-Path $TransformersModelPackage "qtb_packaging_placeholder.py"
+        [IO.File]::WriteAllText($PlaceholderPath, @"
+__all__ = ["$ClassName"]
+
+
+class ${ClassName}:
+    pass
+"@, [System.Text.UTF8Encoding]::new($false))
+    }
+}
 
 $WorkerExe = Join-Path $WorkerOutput "qwen_tts_worker.exe"
 if (-not (Test-Path -LiteralPath $WorkerExe)) {
