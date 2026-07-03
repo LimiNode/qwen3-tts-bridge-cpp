@@ -167,8 +167,12 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("--no-build-isolation", script)
         self.assertIn("--find-links", script)
         self.assertIn("Remove-PythonBytecode", script)
+        self.assertIn("Remove-PythonBytecode -Root $PythonOutput", script)
         self.assertIn("Remove-StagedScriptDirectory", script)
         self.assertIn("PYTHONDONTWRITEBYTECODE", script)
+        self.assertIn("QTB_PROBE_QWEN_IMPORT", script)
+        self.assertIn("qwen_tts.inference.qwen3_tts_model", script)
+        self.assertIn("-ProbeQwenImport:($null -ne $QwenPackageSource)", script)
 
     def test_packaging_requirements_include_wheel_build_tools(self) -> None:
         requirements = _PACKAGING_REQUIREMENTS.read_text(encoding="utf-8")

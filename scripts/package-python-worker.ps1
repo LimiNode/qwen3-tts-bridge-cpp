@@ -414,7 +414,8 @@ function Invoke-StagedPythonIsolationProbe {
     param(
         [string]$PythonRoot,
         [string]$SitePackages,
-        [string[]]$ForbiddenRoots
+        [string[]]$ForbiddenRoots,
+        [switch]$ProbeQwenImport
     )
 
     $StagedPython = Join-Path $PythonRoot "python.exe"
@@ -427,6 +428,7 @@ function Invoke-StagedPythonIsolationProbe {
     $PreviousPythonNoUserSite = $env:PYTHONNOUSERSITE
     $PreviousPythonDontWriteBytecode = $env:PYTHONDONTWRITEBYTECODE
     $PreviousForbiddenRoots = $env:QTB_FORBIDDEN_SYS_PATH_ROOTS
+    $PreviousProbeQwenImport = $env:QTB_PROBE_QWEN_IMPORT
     $ProbePath = Join-Path $PythonRoot "qtb_portable_isolation_probe.py"
 
     try {
@@ -440,6 +442,12 @@ function Invoke-StagedPythonIsolationProbe {
                 ForEach-Object { [IO.Path]::GetFullPath($_) } |
                 Sort-Object -Unique
         ) -join [IO.Path]::PathSeparator
+        if ($ProbeQwenImport) {
+            $env:QTB_PROBE_QWEN_IMPORT = "1"
+        }
+        else {
+            $env:QTB_PROBE_QWEN_IMPORT = ""
+        }
 
         $ProbeCode = @'
 import os
@@ -468,6 +476,9 @@ if leaks:
     raise SystemExit("portable worker sys.path leaks source paths: " + "; ".join(leaks))
 
 import qwen_tts_bridge_worker  # noqa: F401
+
+if os.environ.get("QTB_PROBE_QWEN_IMPORT") == "1":
+    import qwen_tts.inference.qwen3_tts_model  # noqa: F401
 '@
         [IO.File]::WriteAllText(
             $ProbePath,
@@ -489,6 +500,7 @@ import qwen_tts_bridge_worker  # noqa: F401
         $env:PYTHONNOUSERSITE = $PreviousPythonNoUserSite
         $env:PYTHONDONTWRITEBYTECODE = $PreviousPythonDontWriteBytecode
         $env:QTB_FORBIDDEN_SYS_PATH_ROOTS = $PreviousForbiddenRoots
+        $env:QTB_PROBE_QWEN_IMPORT = $PreviousProbeQwenImport
     }
 }
 
@@ -638,7 +650,7 @@ if (Test-Path -LiteralPath $WheelWorkRoot) {
     Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force
 }
 
-Remove-PythonBytecode -Root $SitePackagesOutput
+Remove-PythonBytecode -Root $PythonOutput
 Assert-PortableSitePaths -SitePackages $SitePackagesOutput
 Invoke-StagedPythonIsolationProbe `
     -PythonRoot $PythonOutput `
@@ -648,8 +660,9 @@ Invoke-StagedPythonIsolationProbe `
         $PureLib,
         $PlatLib,
         $QwenPackageSource
-    )
-Remove-PythonBytecode -Root $SitePackagesOutput
+    ) `
+    -ProbeQwenImport:($null -ne $QwenPackageSource)
+Remove-PythonBytecode -Root $PythonOutput
 
 Write-WorkerLauncher -LauncherPath $LauncherPath
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null
