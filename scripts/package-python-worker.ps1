@@ -16,6 +16,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 $RequiredPythonVersion = "3.11"
+$WorkerMarkerFileName = ".qtb-portable-worker-root"
 
 if (-not $PSBoundParameters.ContainsKey("PythonArgs")) {
     if ($Python -eq "py") {
@@ -110,6 +111,44 @@ function Test-IsUnderPath {
     )
 }
 
+function Assert-PortableWorkerMarker {
+    param(
+        [string]$Path
+    )
+
+    $MarkerPath = Join-Path $Path $WorkerMarkerFileName
+    if (-not (Test-Path -LiteralPath $MarkerPath)) {
+        $Message = "Refusing to modify existing portable worker output without marker: $Path. " +
+            "Delete it manually if it is safe, or choose a different OutputRoot/WorkerDirectoryName."
+        throw $Message
+    }
+}
+
+function Assert-NotUnderPath {
+    param(
+        [string]$Parent,
+        [string]$Path,
+        [string]$Description
+    )
+
+    if (Test-IsUnderPath -Parent $Parent -Path $Path -AllowEqual $true) {
+        throw "$Description must not be inside source tree: $Parent"
+    }
+}
+
+function Write-PortableWorkerMarker {
+    param(
+        [string]$Path
+    )
+
+    $MarkerPath = Join-Path $Path $WorkerMarkerFileName
+    [IO.File]::WriteAllText(
+        $MarkerPath,
+        "QwenTTSBridge portable worker output.`r`n",
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
 function Assert-RelativeDirectoryName {
     param(
         [string]$Name
@@ -199,6 +238,131 @@ function Copy-DirectoryContents {
     Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
 }
 
+function Get-ProjectRequirement {
+    param(
+        [string]$ProjectPath
+    )
+
+    $PyProjectPath = Join-Path $ProjectPath "pyproject.toml"
+    if (-not (Test-Path -LiteralPath $PyProjectPath)) {
+        throw "pyproject.toml was not found: $PyProjectPath"
+    }
+
+    $PyProject = Get-Content -Raw -LiteralPath $PyProjectPath
+    $NameMatch = [regex]::Match($PyProject, '(?m)^name\s*=\s*"([^"]+)"')
+    $VersionMatch = [regex]::Match($PyProject, '(?m)^version\s*=\s*"([^"]+)"')
+    if (-not $NameMatch.Success -or -not $VersionMatch.Success) {
+        throw "Unable to read project name/version from: $PyProjectPath"
+    }
+
+    return "$($NameMatch.Groups[1].Value)==$($VersionMatch.Groups[1].Value)"
+}
+
+function Remove-StagedPackageArtifacts {
+    param(
+        [string]$SitePackages,
+        [string[]]$PackageNames
+    )
+
+    foreach ($PackageName in $PackageNames) {
+        Get-ChildItem -LiteralPath $SitePackages -Force |
+            Where-Object {
+                $_.Name -eq $PackageName -or
+                $_.Name -like "$PackageName-*.dist-info" -or
+                $_.Name -like "$PackageName-*.egg-info" -or
+                $_.Name -like "$PackageName-*.data"
+            } |
+            Remove-Item -Recurse -Force
+    }
+}
+
+function Remove-PythonBytecode {
+    param(
+        [string]$Root
+    )
+
+    Get-ChildItem -LiteralPath $Root -Recurse -Directory -Filter "__pycache__" -Force |
+        Sort-Object -Property FullName -Descending |
+        Remove-Item -Recurse -Force
+
+    Get-ChildItem -LiteralPath $Root -Recurse -File -Filter "*.pyc" -Force |
+        Remove-Item -Force
+    Get-ChildItem -LiteralPath $Root -Recurse -File -Filter "*.pyo" -Force |
+        Remove-Item -Force
+}
+
+function Remove-StagedScriptDirectory {
+    param(
+        [string]$SitePackages
+    )
+
+    $ScriptDirectory = Join-Path $SitePackages "bin"
+    if (Test-Path -LiteralPath $ScriptDirectory) {
+        Remove-Item -LiteralPath $ScriptDirectory -Recurse -Force
+    }
+}
+
+function Install-ProjectWheelToTarget {
+    param(
+        [string]$ProjectPath,
+        [string]$SitePackages,
+        [string]$WheelWorkRoot,
+        [string]$Label
+    )
+
+    $Requirement = Get-ProjectRequirement $ProjectPath
+    $WheelDir = Join-Path $WheelWorkRoot $Label
+    if (Test-Path -LiteralPath $WheelDir) {
+        Remove-Item -LiteralPath $WheelDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Force -Path $WheelDir | Out-Null
+    $SourceCopy = Join-Path $WheelDir "source"
+    Copy-DirectoryContents -Source $ProjectPath -Destination $SourceCopy
+    foreach ($GeneratedName in @(".git", "build", "dist")) {
+        $GeneratedPath = Join-Path $SourceCopy $GeneratedName
+        if (Test-Path -LiteralPath $GeneratedPath) {
+            Remove-Item -LiteralPath $GeneratedPath -Recurse -Force
+        }
+    }
+    Get-ChildItem -LiteralPath $SourceCopy -Directory -Filter "*.egg-info" -Force |
+        Remove-Item -Recurse -Force
+    Remove-PythonBytecode -Root $SourceCopy
+
+    Invoke-ProjectPython @(
+        "-m",
+        "pip",
+        "wheel",
+        "--disable-pip-version-check",
+        "--no-build-isolation",
+        "--no-deps",
+        "--wheel-dir",
+        $WheelDir,
+        $SourceCopy
+    )
+
+    $Wheels = @(Get-ChildItem -LiteralPath $WheelDir -Filter "*.whl" -File)
+    if ($Wheels.Count -ne 1) {
+        throw "Expected one wheel for $Label under $WheelDir; found $($Wheels.Count)."
+    }
+
+    Remove-StagedScriptDirectory -SitePackages $SitePackages
+    Invoke-ProjectPython @(
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check",
+        "--no-warn-script-location",
+        "--no-index",
+        "--find-links",
+        $WheelDir,
+        "--no-deps",
+        "--target",
+        $SitePackages,
+        $Requirement
+    )
+    Remove-StagedScriptDirectory -SitePackages $SitePackages
+}
+
 function Remove-EditableInstallArtifacts {
     param(
         [string]$SitePackages
@@ -261,6 +425,7 @@ function Invoke-StagedPythonIsolationProbe {
     $PreviousPythonHome = $env:PYTHONHOME
     $PreviousPythonPath = $env:PYTHONPATH
     $PreviousPythonNoUserSite = $env:PYTHONNOUSERSITE
+    $PreviousPythonDontWriteBytecode = $env:PYTHONDONTWRITEBYTECODE
     $PreviousForbiddenRoots = $env:QTB_FORBIDDEN_SYS_PATH_ROOTS
     $ProbePath = Join-Path $PythonRoot "qtb_portable_isolation_probe.py"
 
@@ -268,6 +433,7 @@ function Invoke-StagedPythonIsolationProbe {
         $env:PYTHONHOME = $PythonRoot
         $env:PYTHONPATH = $SitePackages
         $env:PYTHONNOUSERSITE = "1"
+        $env:PYTHONDONTWRITEBYTECODE = "1"
         $env:QTB_FORBIDDEN_SYS_PATH_ROOTS = (
             $ForbiddenRoots |
                 Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
@@ -321,6 +487,7 @@ import qwen_tts_bridge_worker  # noqa: F401
         $env:PYTHONHOME = $PreviousPythonHome
         $env:PYTHONPATH = $PreviousPythonPath
         $env:PYTHONNOUSERSITE = $PreviousPythonNoUserSite
+        $env:PYTHONDONTWRITEBYTECODE = $PreviousPythonDontWriteBytecode
         $env:QTB_FORBIDDEN_SYS_PATH_ROOTS = $PreviousForbiddenRoots
     }
 }
@@ -367,14 +534,18 @@ $PackageRoot = Resolve-RepoPath $OutputRoot
 $WorkerOutput = Join-Path $PackageRoot $WorkerDirectoryName
 $PythonOutput = Join-Path $WorkerOutput "python"
 $SitePackagesOutput = Join-Path $PythonOutput "Lib/site-packages"
+$WheelWorkRoot = Join-Path $WorkerOutput ".wheel-build"
 $WorkerPackageSource = Resolve-RepoPath "worker/src/qwen_tts_bridge_worker"
+$WorkerProjectSource = Resolve-RepoPath "worker"
 $LauncherPath = Join-Path $WorkerOutput "qwen_tts_worker.cmd"
 
 Assert-UnderRepo $PackageRoot
 Assert-UnderRepo $WorkerOutput
 Assert-UnderRepo $WorkerPackageSource
+Assert-UnderRepo $WorkerProjectSource
 Assert-StrictChildPath -Parent $RepoRoot -Path $WorkerOutput -Description "WorkerOutput"
 Assert-StrictChildPath -Parent $PackageRoot -Path $WorkerOutput -Description "WorkerOutput"
+Assert-NotUnderPath -Parent $WorkerProjectSource -Path $WorkerOutput -Description "WorkerOutput"
 
 $BasePrefix = [IO.Path]::GetFullPath([string]$PythonEnvironment.base_prefix)
 $PureLib = [IO.Path]::GetFullPath([string]$PythonEnvironment.purelib)
@@ -397,6 +568,7 @@ if ($IncludeQwenFork) {
     if (-not (Test-Path -LiteralPath $QwenPackageSource)) {
         throw "Qwen package source was not found: $QwenPackageSource"
     }
+    Assert-NotUnderPath -Parent $ResolvedQwenSourcePath -Path $WorkerOutput -Description "WorkerOutput"
 }
 
 Write-Host "Portable Python worker source runtime: $BasePrefix"
@@ -411,12 +583,16 @@ if ($DryRun) {
     return
 }
 
-if ($Clean -and (Test-Path -LiteralPath $WorkerOutput)) {
+if (Test-Path -LiteralPath $WorkerOutput) {
     Assert-UnderRepo $WorkerOutput
-    Remove-Item -LiteralPath $WorkerOutput -Recurse -Force
+    Assert-PortableWorkerMarker $WorkerOutput
+    if ($Clean) {
+        Remove-Item -LiteralPath $WorkerOutput -Recurse -Force
+    }
 }
 
 New-Item -ItemType Directory -Force -Path $WorkerOutput | Out-Null
+Write-PortableWorkerMarker $WorkerOutput
 if (Test-Path -LiteralPath $PythonOutput) {
     Assert-UnderRepo $PythonOutput
     Remove-Item -LiteralPath $PythonOutput -Recurse -Force
@@ -434,21 +610,34 @@ if ($PlatLib -ne $PureLib) {
 }
 
 Remove-EditableInstallArtifacts -SitePackages $SitePackagesOutput
+Remove-StagedPackageArtifacts `
+    -SitePackages $SitePackagesOutput `
+    -PackageNames @(
+        "qwen_tts_bridge_worker",
+        "qwen-tts-bridge-worker",
+        "qwen_tts",
+        "qwen-tts"
+    )
 
-$WorkerPackageDestination = Join-Path $SitePackagesOutput "qwen_tts_bridge_worker"
-if (Test-Path -LiteralPath $WorkerPackageDestination) {
-    Remove-Item -LiteralPath $WorkerPackageDestination -Recurse -Force
-}
-Copy-Item -LiteralPath $WorkerPackageSource -Destination $WorkerPackageDestination -Recurse
+Install-ProjectWheelToTarget `
+    -ProjectPath $WorkerProjectSource `
+    -SitePackages $SitePackagesOutput `
+    -WheelWorkRoot $WheelWorkRoot `
+    -Label "worker"
 
 if ($null -ne $QwenPackageSource) {
-    $QwenPackageDestination = Join-Path $SitePackagesOutput "qwen_tts"
-    if (Test-Path -LiteralPath $QwenPackageDestination) {
-        Remove-Item -LiteralPath $QwenPackageDestination -Recurse -Force
-    }
-    Copy-Item -LiteralPath $QwenPackageSource -Destination $QwenPackageDestination -Recurse
+    Install-ProjectWheelToTarget `
+        -ProjectPath $ResolvedQwenSourcePath `
+        -SitePackages $SitePackagesOutput `
+        -WheelWorkRoot $WheelWorkRoot `
+        -Label "qwen"
 }
 
+if (Test-Path -LiteralPath $WheelWorkRoot) {
+    Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force
+}
+
+Remove-PythonBytecode -Root $SitePackagesOutput
 Assert-PortableSitePaths -SitePackages $SitePackagesOutput
 Invoke-StagedPythonIsolationProbe `
     -PythonRoot $PythonOutput `
@@ -459,6 +648,7 @@ Invoke-StagedPythonIsolationProbe `
         $PlatLib,
         $QwenPackageSource
     )
+Remove-PythonBytecode -Root $SitePackagesOutput
 
 Write-WorkerLauncher -LauncherPath $LauncherPath
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null

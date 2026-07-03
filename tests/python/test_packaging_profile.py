@@ -4,6 +4,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PACKAGE_WORKER_SCRIPT = _REPO_ROOT / "scripts" / "package-worker.ps1"
 _PACKAGE_PYTHON_WORKER_SCRIPT = _REPO_ROOT / "scripts" / "package-python-worker.ps1"
+_PACKAGING_REQUIREMENTS = _REPO_ROOT / "worker" / "requirements-packaging.lock.txt"
 _TEST_PORTABLE_PYTHON_WORKER_SCRIPT = (
     _REPO_ROOT / "scripts" / "test-portable-python-worker.ps1"
 )
@@ -143,11 +144,16 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
 
         self.assertIn("Assert-RelativeDirectoryName", script)
         self.assertIn("Assert-StrictChildPath", script)
+        self.assertIn("Assert-PortableWorkerMarker", script)
+        self.assertIn("Assert-NotUnderPath", script)
+        self.assertIn(".qtb-portable-worker-root", script)
+        self.assertIn("Refusing to modify existing portable worker output", script)
+        self.assertIn("must not be inside source tree", script)
         self.assertIn("must be a strict child", script)
         self.assertIn("must not be '.' or '..'", script)
         self.assertIn("without path separators", script)
 
-    def test_portable_worker_script_copies_real_project_packages(self) -> None:
+    def test_portable_worker_script_installs_real_project_packages(self) -> None:
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("worker/src/qwen_tts_bridge_worker", script)
@@ -156,6 +162,19 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn('"qwen_tts"', script)
         self.assertIn("Remove-EditableInstallArtifacts", script)
         self.assertIn('__editable__*', script)
+        self.assertIn("Remove-StagedPackageArtifacts", script)
+        self.assertIn("Install-ProjectWheelToTarget", script)
+        self.assertIn("--no-build-isolation", script)
+        self.assertIn("--find-links", script)
+        self.assertIn("Remove-PythonBytecode", script)
+        self.assertIn("Remove-StagedScriptDirectory", script)
+        self.assertIn("PYTHONDONTWRITEBYTECODE", script)
+
+    def test_packaging_requirements_include_wheel_build_tools(self) -> None:
+        requirements = _PACKAGING_REQUIREMENTS.read_text(encoding="utf-8")
+
+        self.assertIn("setuptools==", requirements)
+        self.assertIn("wheel==", requirements)
 
     def test_portable_worker_script_rejects_path_leaking_artifacts(self) -> None:
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
@@ -224,6 +243,8 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("environment_overrides", readme)
         self.assertIn("complete replacement environment", readme)
         self.assertIn("PYTHONHOME", readme)
+        self.assertIn(".qtb-portable-worker-root", readme)
+        self.assertIn("local wheel", readme)
 
 
 if __name__ == "__main__":

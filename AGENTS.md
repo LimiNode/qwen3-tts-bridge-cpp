@@ -777,6 +777,15 @@ larger abstraction on top of it:
   `docs/audio-and-unity-integration.md`. Keep physical playback out of the core
   bridge; add native playback only as an optional module or example, and prefer
   one active playback sink for Unity avatar scenarios.
+- TinyProcessLib's Windows environment block serialization currently iterates
+  an `unordered_map`, so the explicit environment block is not guaranteed to be
+  sorted according to the WinAPI recommendation. `StdIoTransport` must at least
+  apply `environment_overrides` case-insensitively on Windows to avoid duplicate
+  logical variables such as `Path` and `PATH`. Do not fork TinyProcessLib solely
+  for sorting unless a reproducible CreateProcess failure appears; prefer an
+  upstream issue/MR. Also keep in mind that TinyProcessLib does not expose
+  `GetLastError()` for process start failures, which may deserve a future
+  diagnostics improvement.
 
 ## Request Lifecycle
 
@@ -984,11 +993,14 @@ availability, and the selected model family. Full transitive packaging locks
 remain later packaging work.
 `package-python-worker.ps1` is the conservative portable Python worker baseline.
 It stages a private Python 3.11 runtime plus the selected environment's
-`site-packages` into `dist/QwenTTSBridge/worker-python` and writes
-`qwen_tts_worker.cmd` as a manual convenience launcher. Keep this path
-debuggable and boring: it may be much larger than Nuitka, but it should avoid
-maintaining a hand-trimmed Transformers runtime. Do not use the `.cmd` file as
-the canonical C++ worker executable; `StdIoTransport` should launch
+third-party `site-packages` into `dist/QwenTTSBridge/worker-python`, installs
+the bridge worker from a local wheel into the staged runtime, and writes
+`qwen_tts_worker.cmd` as a manual convenience launcher. The staged worker output
+must contain `.qtb-portable-worker-root`; `package-python-worker.ps1` must refuse
+to clean or overwrite an existing output directory without that marker. Keep
+this path debuggable and boring: it may be much larger than Nuitka, but it
+should avoid maintaining a hand-trimmed Transformers runtime. Do not use the
+`.cmd` file as the canonical C++ worker executable; `StdIoTransport` should launch
 `dist\QwenTTSBridge\worker-python\python\python.exe` directly with
 `-P -s -m qwen_tts_bridge_worker`, plus `PYTHONHOME`,
 `PYTHONPATH`, and `PYTHONNOUSERSITE=1` in the worker environment. When launching
@@ -999,12 +1011,14 @@ replacement block and should only be used after explicitly copying every
 required parent variable. Use `test-portable-python-worker-cpp.ps1` to verify
 that path through the C++ example and TinyProcessLib. With Qwen, run
 `setup-python-packaging.ps1 -InstallQwenFork` first and pass
-`package-python-worker.ps1 -IncludeQwenFork` so the editable vendored
-`qwen_tts` package is copied into the portable runtime instead of depending on
-the checkout path. Use `test-portable-python-worker.ps1` for the Python mock
-protocol smoke; for real Qwen, reuse `test-packaged-qwen-worker.ps1` with
-`-WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd` for manual
-launcher checks, or launch the direct Python executable from C++.
+`package-python-worker.ps1 -IncludeQwenFork` so the vendored `qwen_tts` package
+is built as a local wheel and installed into the portable runtime instead of
+depending on the checkout path. The portable packaging script should remove
+editable `.pth`/egg-link artifacts, stale source-package metadata, and copied
+bytecode before running its staged interpreter isolation probe. Use
+`test-portable-python-worker.ps1` for the Python mock protocol smoke; for real
+Qwen, reuse `test-packaged-qwen-worker.ps1` with the portable `.cmd` launcher
+path for manual checks, or launch the direct Python executable from C++.
 `-QwenProfile CustomVoice` and `-QwenProfile VoiceDesign` mean the bridge's
 narrow Qwen runtime profile, not a broad `--include-package=qwen_tts`. Keep it
 focused on `qwen_tts.inference`, the specific `qwen_tts.core` runtime modules

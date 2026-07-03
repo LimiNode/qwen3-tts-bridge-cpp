@@ -531,14 +531,21 @@ least one PCM frame is returned, and shuts the worker down gracefully.
 
 As a more conservative release fallback, the project also has a portable Python
 worker layout. It copies the selected Python 3.11 base runtime plus the
-packaging environment's `site-packages` into `dist/QwenTTSBridge/worker-python`
-and writes a `qwen_tts_worker.cmd` convenience launcher:
+packaging environment's third-party `site-packages` into
+`dist/QwenTTSBridge/worker-python`, installs the bridge worker package into the
+staged runtime from a local wheel, and writes a `qwen_tts_worker.cmd`
+convenience launcher:
 
 ```text
 .\scripts\setup-python-packaging.ps1 -UseVenv
 .\scripts\package-python-worker.ps1 -UseVenv -Clean
 .\scripts\test-portable-python-worker.ps1 -UseVenv
 ```
+
+The portable worker output contains a `.qtb-portable-worker-root` marker. The
+packaging script refuses to clean or overwrite an existing output directory
+without that marker, so accidental values such as `-OutputRoot .`
+`-WorkerDirectoryName src` cannot delete source files.
 
 For the C++ bridge path, launch the staged Python executable directly rather
 than using the `.cmd` file:
@@ -589,7 +596,9 @@ path through the C++ example and `StdIoTransport`:
 ```
 
 For Qwen probes, install the vendored fork first and include its source package
-in the portable layout:
+in the portable layout. The script builds a local wheel from the vendored source
+and installs it into the staged runtime with `--no-deps`, using the already
+installed packaging environment for third-party dependencies:
 
 ```text
 .\scripts\setup-python-packaging.ps1 -UseVenv -InstallQwenFork

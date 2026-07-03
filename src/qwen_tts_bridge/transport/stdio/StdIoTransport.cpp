@@ -13,7 +13,7 @@
 #include <thread>
 #include <utility>
 
-#if defined(_WIN32) && defined(UNICODE)
+#if defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -160,6 +160,39 @@ std::vector<TinyProcessLib::Process::string_type> to_process_arguments(
     return converted;
 }
 
+bool environment_key_equals(const std::string& left, const std::string& right) {
+#if defined(_WIN32) && defined(UNICODE)
+    const auto converted_left = to_process_string(left);
+    const auto converted_right = to_process_string(right);
+    return CompareStringOrdinal(
+        converted_left.data(),
+        static_cast<int>(converted_left.size()),
+        converted_right.data(),
+        static_cast<int>(converted_right.size()),
+        TRUE) == CSTR_EQUAL;
+#elif defined(_WIN32)
+    return _stricmp(left.c_str(), right.c_str()) == 0;
+#else
+    return left == right;
+#endif
+}
+
+void set_environment_override(
+    std::unordered_map<std::string, std::string>& environment,
+    const std::string& name,
+    const std::string& value) {
+    for (auto it = environment.begin(); it != environment.end();) {
+        if (environment_key_equals(it->first, name)) {
+            it = environment.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    environment.emplace(name, value);
+}
+
 std::unordered_map<std::string, std::string> current_process_environment() {
     std::unordered_map<std::string, std::string> environment;
 
@@ -216,7 +249,7 @@ std::unordered_map<std::string, std::string> merged_process_environment(
     const std::unordered_map<std::string, std::string>& overrides) {
     auto environment = current_process_environment();
     for (const auto& item : overrides) {
-        environment[item.first] = item.second;
+        set_environment_override(environment, item.first, item.second);
     }
     return environment;
 }
