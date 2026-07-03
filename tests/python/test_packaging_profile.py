@@ -193,7 +193,8 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("PYTHONHOME", script)
         self.assertIn("PYTHONPATH", script)
         self.assertIn("PYTHONNOUSERSITE", script)
-        self.assertIn("-P -s -m qwen_tts_bridge_worker", script)
+        self.assertIn("PYTHONDONTWRITEBYTECODE", script)
+        self.assertIn("-B -P -s -m qwen_tts_bridge_worker", script)
         self.assertIn("-m qwen_tts_bridge_worker", script)
 
     def test_portable_worker_smoke_wrapper_uses_protocol_verifier(self) -> None:
@@ -212,7 +213,9 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("$env:PYTHONHOME", script)
         self.assertIn("$env:PYTHONPATH", script)
         self.assertIn("$env:PYTHONNOUSERSITE", script)
+        self.assertIn("$env:PYTHONDONTWRITEBYTECODE", script)
         self.assertIn('"--worker-arg",', script)
+        self.assertIn('"-B"', script)
         self.assertIn('"-P"', script)
         self.assertIn('"-s"', script)
         self.assertIn('"qwen_tts_bridge_worker"', script)

@@ -551,7 +551,7 @@ For the C++ bridge path, launch the staged Python executable directly rather
 than using the `.cmd` file:
 
 ```text
-dist\QwenTTSBridge\worker-python\python\python.exe -P -s -m qwen_tts_bridge_worker
+dist\QwenTTSBridge\worker-python\python\python.exe -B -P -s -m qwen_tts_bridge_worker
 ```
 
 Set these environment variables on the worker process or on the parent process
@@ -561,6 +561,7 @@ before starting `StdIoTransport`:
 PYTHONHOME=dist\QwenTTSBridge\worker-python\python
 PYTHONPATH=dist\QwenTTSBridge\worker-python\python\Lib\site-packages
 PYTHONNOUSERSITE=1
+PYTHONDONTWRITEBYTECODE=1
 ```
 
 When launching through `StdIoTransportOptions`, prefer
@@ -571,6 +572,7 @@ and other parent-process values:
 StdIoTransportOptions options;
 options.arguments = {
     R"(dist\QwenTTSBridge\worker-python\python\python.exe)",
+    "-B",
     "-P",
     "-s",
     "-m",
@@ -580,6 +582,7 @@ options.environment_overrides = {
     {"PYTHONHOME", R"(dist\QwenTTSBridge\worker-python\python)"},
     {"PYTHONPATH", R"(dist\QwenTTSBridge\worker-python\python\Lib\site-packages)"},
     {"PYTHONNOUSERSITE", "1"},
+    {"PYTHONDONTWRITEBYTECODE", "1"},
 };
 ```
 

@@ -111,15 +111,19 @@ if (Test-Path -LiteralPath $ResolvedOutputPath) {
 $PreviousPythonHome = $env:PYTHONHOME
 $PreviousPythonPath = $env:PYTHONPATH
 $PreviousPythonNoUserSite = $env:PYTHONNOUSERSITE
+$PreviousPythonDontWriteBytecode = $env:PYTHONDONTWRITEBYTECODE
 
 try {
     $env:PYTHONHOME = Join-Path $ResolvedWorkerRoot "python"
     $env:PYTHONPATH = $WorkerSitePackages
     $env:PYTHONNOUSERSITE = "1"
+    $env:PYTHONDONTWRITEBYTECODE = "1"
 
     $ExampleArgs = @(
         "--worker",
         $WorkerPython,
+        "--worker-arg",
+        "-B",
         "--worker-arg",
         "-P",
         "--worker-arg",
@@ -155,6 +159,7 @@ finally {
     $env:PYTHONHOME = $PreviousPythonHome
     $env:PYTHONPATH = $PreviousPythonPath
     $env:PYTHONNOUSERSITE = $PreviousPythonNoUserSite
+    $env:PYTHONDONTWRITEBYTECODE = $PreviousPythonDontWriteBytecode
 }
 
 Invoke-ProjectPython @(

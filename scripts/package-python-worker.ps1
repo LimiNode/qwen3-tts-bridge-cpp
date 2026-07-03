@@ -504,7 +504,8 @@ set "WORKER_ROOT=%~dp0"
 set "PYTHONHOME=%WORKER_ROOT%python"
 set "PYTHONPATH=%WORKER_ROOT%python\Lib\site-packages"
 set "PYTHONNOUSERSITE=1"
-"%WORKER_ROOT%python\python.exe" -P -s -m qwen_tts_bridge_worker %*
+set "PYTHONDONTWRITEBYTECODE=1"
+"%WORKER_ROOT%python\python.exe" -B -P -s -m qwen_tts_bridge_worker %*
 '@
     [IO.File]::WriteAllText(
         $LauncherPath,

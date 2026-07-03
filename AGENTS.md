@@ -1002,9 +1002,10 @@ this path debuggable and boring: it may be much larger than Nuitka, but it
 should avoid maintaining a hand-trimmed Transformers runtime. Do not use the
 `.cmd` file as the canonical C++ worker executable; `StdIoTransport` should launch
 `dist\QwenTTSBridge\worker-python\python\python.exe` directly with
-`-P -s -m qwen_tts_bridge_worker`, plus `PYTHONHOME`,
-`PYTHONPATH`, and `PYTHONNOUSERSITE=1` in the worker environment. When launching
-through `StdIoTransportOptions`, set those values through
+`-B -P -s -m qwen_tts_bridge_worker`, plus `PYTHONHOME`,
+`PYTHONPATH`, `PYTHONNOUSERSITE=1`, and `PYTHONDONTWRITEBYTECODE=1` in the
+worker environment. When launching through `StdIoTransportOptions`, set those
+values through
 `environment_overrides`, not `environment`, so `PATH`, `SystemRoot`, `TEMP`, and
 other parent-process values are preserved. `environment` is a complete
 replacement block and should only be used after explicitly copying every
