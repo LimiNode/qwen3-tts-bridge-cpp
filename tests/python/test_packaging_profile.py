@@ -7,7 +7,11 @@ _PACKAGE_PYTHON_WORKER_SCRIPT = _REPO_ROOT / "scripts" / "package-python-worker.
 _TEST_PORTABLE_PYTHON_WORKER_SCRIPT = (
     _REPO_ROOT / "scripts" / "test-portable-python-worker.ps1"
 )
+_TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT = (
+    _REPO_ROOT / "scripts" / "test-portable-python-worker-cpp.ps1"
+)
 _PYTHON_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "python-checks.yml"
+_CPP_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "cpp-checks.yml"
 _NARROW_AUDIO_PROFILE = (
     _REPO_ROOT / "worker" / "packaging" / "nuitka-qwen-narrow-audio.yml"
 )
@@ -133,6 +137,15 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn('$WorkerDirectoryName = "worker-python"', script)
         self.assertIn('"Scripts/python.exe"', script)
 
+    def test_portable_worker_script_rejects_unsafe_worker_output_paths(self) -> None:
+        script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("Assert-RelativeDirectoryName", script)
+        self.assertIn("Assert-StrictChildPath", script)
+        self.assertIn("must be a strict child", script)
+        self.assertIn("must not be '.' or '..'", script)
+        self.assertIn("without path separators", script)
+
     def test_portable_worker_script_copies_real_project_packages(self) -> None:
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
@@ -149,6 +162,8 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("qwen_tts_worker.cmd", script)
         self.assertIn("PYTHONHOME", script)
         self.assertIn("PYTHONPATH", script)
+        self.assertIn("PYTHONNOUSERSITE", script)
+        self.assertIn("-P -s -m qwen_tts_bridge_worker", script)
         self.assertIn("-m qwen_tts_bridge_worker", script)
 
     def test_portable_worker_smoke_wrapper_uses_protocol_verifier(self) -> None:
@@ -156,6 +171,20 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
 
         self.assertIn("verify_packaged_worker.py", script)
         self.assertIn("worker-python/qwen_tts_worker.cmd", script)
+
+    def test_portable_worker_cpp_smoke_uses_direct_python_executable(self) -> None:
+        script = _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("qwen_tts_save_wav.exe", script)
+        self.assertIn("python/python.exe", script)
+        self.assertIn("$env:PYTHONHOME", script)
+        self.assertIn("$env:PYTHONPATH", script)
+        self.assertIn("$env:PYTHONNOUSERSITE", script)
+        self.assertIn('"--worker-arg",', script)
+        self.assertIn('"-P"', script)
+        self.assertIn('"-s"', script)
+        self.assertIn('"qwen_tts_bridge_worker"', script)
+        self.assertIn("verify_wav.py", script)
 
     def test_python_ci_validates_portable_worker_dry_run(self) -> None:
         workflow = _PYTHON_CHECKS_WORKFLOW.read_text(encoding="utf-8")
@@ -166,6 +195,14 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
             ".\\scripts\\package-python-worker.ps1 -Python python -DryRun",
             workflow,
         )
+
+    def test_cpp_ci_smokes_portable_worker_through_transport(self) -> None:
+        workflow = _CPP_CHECKS_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("scripts/test-portable-python-worker-cpp.ps1", workflow)
+        self.assertIn("Package portable Python worker", workflow)
+        self.assertIn("Smoke-test portable worker through C++ transport", workflow)
+        self.assertIn(".\\scripts\\test-portable-python-worker-cpp.ps1", workflow)
 
 
 if __name__ == "__main__":

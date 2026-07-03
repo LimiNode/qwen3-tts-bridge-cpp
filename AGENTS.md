@@ -985,14 +985,22 @@ remain later packaging work.
 `package-python-worker.ps1` is the conservative portable Python worker baseline.
 It stages a private Python 3.11 runtime plus the selected environment's
 `site-packages` into `dist/QwenTTSBridge/worker-python` and writes
-`qwen_tts_worker.cmd`. Keep this path debuggable and boring: it may be much
-larger than Nuitka, but it should avoid maintaining a hand-trimmed Transformers
-runtime. With Qwen, run `setup-python-packaging.ps1 -InstallQwenFork` first and
-pass `package-python-worker.ps1 -IncludeQwenFork` so the editable vendored
+`qwen_tts_worker.cmd` as a manual convenience launcher. Keep this path
+debuggable and boring: it may be much larger than Nuitka, but it should avoid
+maintaining a hand-trimmed Transformers runtime. Do not use the `.cmd` file as
+the canonical C++ worker executable; `StdIoTransport` should launch
+`dist\QwenTTSBridge\worker-python\python\python.exe` directly with
+`-P -s -m qwen_tts_bridge_worker`, plus `PYTHONHOME`,
+`PYTHONPATH`, and `PYTHONNOUSERSITE=1` in the worker environment. Use
+`test-portable-python-worker-cpp.ps1` to verify that path through the C++
+example and TinyProcessLib. With Qwen, run
+`setup-python-packaging.ps1 -InstallQwenFork` first and pass
+`package-python-worker.ps1 -IncludeQwenFork` so the editable vendored
 `qwen_tts` package is copied into the portable runtime instead of depending on
-the checkout path. Use `test-portable-python-worker.ps1` for the mock protocol
-smoke; for real Qwen, reuse `test-packaged-qwen-worker.ps1` with
-`-WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd`.
+the checkout path. Use `test-portable-python-worker.ps1` for the Python mock
+protocol smoke; for real Qwen, reuse `test-packaged-qwen-worker.ps1` with
+`-WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd` for manual
+launcher checks, or launch the direct Python executable from C++.
 `-QwenProfile CustomVoice` and `-QwenProfile VoiceDesign` mean the bridge's
 narrow Qwen runtime profile, not a broad `--include-package=qwen_tts`. Keep it
 focused on `qwen_tts.inference`, the specific `qwen_tts.core` runtime modules

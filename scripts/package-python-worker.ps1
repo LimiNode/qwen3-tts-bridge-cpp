@@ -60,6 +60,58 @@ function Assert-UnderRepo {
     }
 }
 
+function Assert-StrictChildPath {
+    param(
+        [string]$Parent,
+        [string]$Path,
+        [string]$Description
+    )
+
+    $ResolvedParent = [IO.Path]::GetFullPath($Parent).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $ResolvedPath = [IO.Path]::GetFullPath($Path).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $ParentPrefix = $ResolvedParent + [IO.Path]::DirectorySeparatorChar
+    if (
+        $ResolvedPath -eq $ResolvedParent -or
+        -not $ResolvedPath.StartsWith(
+            $ParentPrefix,
+            [StringComparison]::OrdinalIgnoreCase
+        )
+    ) {
+        throw "$Description must be a strict child of: $ResolvedParent"
+    }
+}
+
+function Assert-RelativeDirectoryName {
+    param(
+        [string]$Name
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        throw "WorkerDirectoryName must not be empty."
+    }
+    if ([IO.Path]::IsPathRooted($Name)) {
+        throw "WorkerDirectoryName must be a relative directory name, not an absolute path."
+    }
+    if ($Name -eq "." -or $Name -eq "..") {
+        throw "WorkerDirectoryName must not be '.' or '..'."
+    }
+    if (
+        $Name.Contains([string][IO.Path]::DirectorySeparatorChar) -or
+        $Name.Contains([string][IO.Path]::AltDirectorySeparatorChar)
+    ) {
+        throw "WorkerDirectoryName must be a single directory name without path separators."
+    }
+    if ($Name.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
+        throw "WorkerDirectoryName contains invalid path characters: $Name"
+    }
+}
+
 function Resolve-VenvPython {
     param(
         [string]$Path
@@ -144,7 +196,8 @@ setlocal
 set "WORKER_ROOT=%~dp0"
 set "PYTHONHOME=%WORKER_ROOT%python"
 set "PYTHONPATH=%WORKER_ROOT%python\Lib\site-packages"
-"%WORKER_ROOT%python\python.exe" -m qwen_tts_bridge_worker %*
+set "PYTHONNOUSERSITE=1"
+"%WORKER_ROOT%python\python.exe" -P -s -m qwen_tts_bridge_worker %*
 '@
     [IO.File]::WriteAllText(
         $LauncherPath,
@@ -168,6 +221,8 @@ if ($UseVenv) {
 Assert-PackagingPythonVersion
 $PythonEnvironment = Get-PythonEnvironmentInfo
 
+Assert-RelativeDirectoryName $WorkerDirectoryName
+
 $PackageRoot = Resolve-RepoPath $OutputRoot
 $WorkerOutput = Join-Path $PackageRoot $WorkerDirectoryName
 $PythonOutput = Join-Path $WorkerOutput "python"
@@ -178,6 +233,8 @@ $LauncherPath = Join-Path $WorkerOutput "qwen_tts_worker.cmd"
 Assert-UnderRepo $PackageRoot
 Assert-UnderRepo $WorkerOutput
 Assert-UnderRepo $WorkerPackageSource
+Assert-StrictChildPath -Parent $RepoRoot -Path $WorkerOutput -Description "WorkerOutput"
+Assert-StrictChildPath -Parent $PackageRoot -Path $WorkerOutput -Description "WorkerOutput"
 
 $BasePrefix = [IO.Path]::GetFullPath([string]$PythonEnvironment.base_prefix)
 $PureLib = [IO.Path]::GetFullPath([string]$PythonEnvironment.purelib)

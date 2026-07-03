@@ -8,6 +8,9 @@ on:
       - "CMakeLists.txt"
       - "examples/**"
       - "external/cpp/**"
+      - "scripts/package-python-worker.ps1"
+      - "scripts/setup-python-packaging.ps1"
+      - "scripts/test-portable-python-worker-cpp.ps1"
       - "src/**"
       - "tests/**"
       - "worker/src/**"
@@ -20,6 +23,9 @@ on:
       - "CMakeLists.txt"
       - "examples/**"
       - "external/cpp/**"
+      - "scripts/package-python-worker.ps1"
+      - "scripts/setup-python-packaging.ps1"
+      - "scripts/test-portable-python-worker-cpp.ps1"
       - "src/**"
       - "tests/**"
       - "worker/src/**"
@@ -74,3 +80,21 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: ctest --test-dir "${{ matrix.build-dir }}" -C Release --output-on-failure
+
+      - name: Install portable worker packaging tooling
+        if: ${{ matrix.build-examples == 'ON' }}
+        shell: pwsh
+        run: .\scripts\setup-python-packaging.ps1 -Python python
+
+      - name: Package portable Python worker
+        if: ${{ matrix.build-examples == 'ON' }}
+        shell: pwsh
+        run: .\scripts\package-python-worker.ps1 -Python python -Clean
+
+      - name: Smoke-test portable worker through C++ transport
+        if: ${{ matrix.build-examples == 'ON' }}
+        shell: pwsh
+        run: >
+          .\scripts\test-portable-python-worker-cpp.ps1
+          -Python python
+          -ExampleExe "${{ matrix.build-dir }}\Release\qwen_tts_save_wav.exe"
