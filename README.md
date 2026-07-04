@@ -653,6 +653,8 @@ one real synthesis request. CustomVoice models require `-Speaker`; VoiceDesign
 models usually need an `-Instruction` instead. This probe is intentionally
 manual for now because it depends on local model files, CUDA/PyTorch runtime
 availability, and the selected Qwen model family.
+Use `docs/qwen-gpu-validation-checklist.md` when running that validation on a
+GPU machine.
 
 GitHub Actions also provides a manual `Packaged Worker Smoke` workflow. It is
 started with `workflow_dispatch`, builds the standalone worker on

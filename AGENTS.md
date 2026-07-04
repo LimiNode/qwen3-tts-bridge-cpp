@@ -1142,6 +1142,8 @@ Current Qwen packaging checkpoint:
   next: ship a private Python runtime plus installed worker/Qwen dependencies
   next to the C++ application, keep models external, and use Nuitka slimming as
   an optimization track rather than a blocker.
+- Use `docs/qwen-gpu-validation-checklist.md` when validating real model
+  loading, PCM streaming, and WAV output on a GPU machine.
 
 Generated release layout should resemble:
 
