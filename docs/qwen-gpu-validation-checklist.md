@@ -8,6 +8,30 @@ client example.
 The checklist intentionally uses the portable Python worker baseline. Nuitka
 CustomVoice packaging remains a separate optimization track.
 
+## Start Here On A New Machine
+
+The repository state before this checklist:
+
+- the portable Python worker baseline is merged into `main`;
+- `Portable Qwen Import Probe` has passed on GitHub Actions run `28705920145`;
+- no-GPU validation already proves that the vendored Qwen package can be staged
+  and imported from the portable runtime;
+- the remaining unknown is real GPU execution: model load, first PCM, WAV
+  output, and audible quality.
+
+On the GPU machine, begin with a fresh checkout of `main`, then follow the
+steps below in order. Do not restart the Nuitka slimming track unless the
+portable Python worker path fails for a reason that also affects real usage.
+
+Record these details for the next review pass:
+
+- exact model path and model family;
+- speaker or VoiceDesign instruction;
+- GPU model, driver, PyTorch version, and CUDA version;
+- whether `ready`, `started`, first `AUDIO_PCM`, and `completed` were observed;
+- stderr/metrics from the worker;
+- generated WAV path and whether the audio content sounds correct.
+
 ## Machine Setup
 
 - Windows x64.

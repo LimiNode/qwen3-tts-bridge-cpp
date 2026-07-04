@@ -1127,6 +1127,24 @@ use `inspect-portable-python-worker.ps1` so local and Actions diagnostics report
 the same Python version, package metadata, isolation environment, and
 source-path leak checks. This is not a model load or inference smoke test.
 
+Latest handoff checkpoint:
+
+- The old stacked packaging PRs 27, 28, 29, 30, 33, 34, and 35 have been
+  merged into `main`.
+- The manual GitHub Actions run `Portable Qwen Import Probe` on `main`
+  completed successfully as run `28705920145`.
+- No-GPU packaging validation is now covered by the portable worker inspector:
+  it verifies staged Python metadata, `qwen_tts.inference.qwen3_tts_model`
+  import, source-path leaks, and module-origin leaks.
+- The next practical work should start on the GPU machine from
+  `docs/qwen-gpu-validation-checklist.md`: validate model load, first PCM,
+  WAV output, and the spoken result. Capture stderr, metrics, model path,
+  speaker, GPU/driver/PyTorch/CUDA versions, and the generated WAV path.
+- If GPU validation fails before `ready`, debug worker/model startup first.
+  If it reaches `ready` but produces no PCM, debug request handling or Qwen
+  streaming. If PCM/WAV exists but sounds wrong, preserve the WAV and metrics
+  before changing prompts, speakers, or audio conversion.
+
 Current Qwen packaging checkpoint:
 
 - `-QwenProfile CustomVoice` has reached a successful real Nuitka standalone
