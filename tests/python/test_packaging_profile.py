@@ -14,6 +14,9 @@ _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT = (
 _README = _REPO_ROOT / "README.md"
 _PYTHON_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "python-checks.yml"
 _CPP_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "cpp-checks.yml"
+_PORTABLE_QWEN_IMPORT_WORKFLOW = (
+    _REPO_ROOT / ".github" / "workflows" / "portable-qwen-import-probe.yml"
+)
 _NARROW_AUDIO_PROFILE = (
     _REPO_ROOT / "worker" / "packaging" / "nuitka-qwen-narrow-audio.yml"
 )
@@ -229,11 +232,24 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         workflow = _PYTHON_CHECKS_WORKFLOW.read_text(encoding="utf-8")
 
         self.assertIn("scripts/package-python-worker.ps1", workflow)
+        self.assertIn("portable-qwen-import-probe.yml", workflow)
         self.assertIn("scripts/test-portable-python-worker.ps1", workflow)
         self.assertIn(
             ".\\scripts\\package-python-worker.ps1 -Python python -DryRun",
             workflow,
         )
+
+    def test_manual_ci_validates_portable_qwen_import(self) -> None:
+        workflow = _PORTABLE_QWEN_IMPORT_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("workflow_dispatch", workflow)
+        self.assertIn("submodules: true", workflow)
+        self.assertIn("-InstallQwenFork", workflow)
+        self.assertIn("-IncludeQwenFork", workflow)
+        self.assertIn("package-python-worker.ps1", workflow)
+        self.assertIn("qwen_tts.inference.qwen3_tts_model", workflow)
+        self.assertIn("PYTHONNOUSERSITE", workflow)
+        self.assertNotIn("pull_request", workflow)
 
     def test_cpp_ci_smokes_portable_worker_through_transport(self) -> None:
         workflow = _CPP_CHECKS_WORKFLOW.read_text(encoding="utf-8")

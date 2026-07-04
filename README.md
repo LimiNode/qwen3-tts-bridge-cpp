@@ -660,6 +660,13 @@ started with `workflow_dispatch`, builds the standalone worker on
 `dist/QwenTTSBridge` as an artifact. It is intentionally manual because Nuitka
 compilation is slower than the normal PR checks.
 
+For a no-GPU Qwen packaging check, run the manual `Portable Qwen Import Probe`
+workflow. It installs the vendored Qwen fork, builds the portable Python worker
+with `package-python-worker.ps1 -IncludeQwenFork`, and verifies that the staged
+runtime can import `qwen_tts.inference.qwen3_tts_model`. It does not load model
+weights or run inference, so real audio validation still belongs on a machine
+with the target GPU and local model files.
+
 ## Planned Milestones
 
 ### Milestone 1: Protocol Prototype
