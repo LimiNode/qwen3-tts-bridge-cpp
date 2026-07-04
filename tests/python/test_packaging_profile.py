@@ -4,6 +4,9 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PACKAGE_WORKER_SCRIPT = _REPO_ROOT / "scripts" / "package-worker.ps1"
 _PACKAGE_PYTHON_WORKER_SCRIPT = _REPO_ROOT / "scripts" / "package-python-worker.ps1"
+_INSPECT_PORTABLE_WORKER_SCRIPT = (
+    _REPO_ROOT / "scripts" / "inspect-portable-python-worker.ps1"
+)
 _PACKAGING_REQUIREMENTS = _REPO_ROOT / "worker" / "requirements-packaging.lock.txt"
 _TEST_PORTABLE_PYTHON_WORKER_SCRIPT = (
     _REPO_ROOT / "scripts" / "test-portable-python-worker.ps1"
@@ -231,6 +234,7 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
     def test_python_ci_validates_portable_worker_dry_run(self) -> None:
         workflow = _PYTHON_CHECKS_WORKFLOW.read_text(encoding="utf-8")
 
+        self.assertIn("scripts/inspect-portable-python-worker.ps1", workflow)
         self.assertIn("scripts/package-python-worker.ps1", workflow)
         self.assertIn("portable-qwen-import-probe.yml", workflow)
         self.assertIn("scripts/test-portable-python-worker.ps1", workflow)
@@ -246,10 +250,21 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("submodules: true", workflow)
         self.assertIn("-InstallQwenFork", workflow)
         self.assertIn("-IncludeQwenFork", workflow)
+        self.assertIn("inspect-portable-python-worker.ps1", workflow)
+        self.assertIn("-ProbeQwenImport", workflow)
         self.assertIn("package-python-worker.ps1", workflow)
-        self.assertIn("qwen_tts.inference.qwen3_tts_model", workflow)
-        self.assertIn("PYTHONNOUSERSITE", workflow)
         self.assertNotIn("pull_request", workflow)
+
+    def test_portable_worker_inspector_reports_qwen_import(self) -> None:
+        script = _INSPECT_PORTABLE_WORKER_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("PYTHONHOME", script)
+        self.assertIn("PYTHONPATH", script)
+        self.assertIn("PYTHONNOUSERSITE", script)
+        self.assertIn("qwen_tts_bridge_worker", script)
+        self.assertIn("qwen_tts.inference.qwen3_tts_model", script)
+        self.assertIn("source_path_leaks", script)
+        self.assertIn("qwen_import_ok", script)
 
     def test_cpp_ci_smokes_portable_worker_through_transport(self) -> None:
         workflow = _CPP_CHECKS_WORKFLOW.read_text(encoding="utf-8")

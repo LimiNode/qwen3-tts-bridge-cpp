@@ -50,15 +50,12 @@ jobs:
           -OutputRoot tmp\portable-qwen-import-probe
           -IncludeQwenFork
 
-      - name: Verify staged Qwen import
+      - name: Inspect staged portable worker
         shell: pwsh
-        run: |
-          $PythonRoot = (Resolve-Path "tmp\portable-qwen-import-probe\worker-python\python").Path
-          $env:PYTHONHOME = $PythonRoot
-          $env:PYTHONPATH = Join-Path $PythonRoot "Lib\site-packages"
-          $env:PYTHONNOUSERSITE = "1"
-          $env:PYTHONDONTWRITEBYTECODE = "1"
-          & (Join-Path $PythonRoot "python.exe") -B -P -s -c "import qwen_tts.inference.qwen3_tts_model; print('Qwen import OK')"
+        run: >
+          .\scripts\inspect-portable-python-worker.ps1
+          -WorkerRoot tmp\portable-qwen-import-probe\worker-python
+          -ProbeQwenImport
 
       - name: Upload portable worker artifact
         if: ${{ inputs.upload_artifact }}
