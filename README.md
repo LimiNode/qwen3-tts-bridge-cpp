@@ -460,35 +460,160 @@ into the Nuitka dependency graph:
 
 `CustomVoice` and `VoiceDesign` apply the bridge's narrow Qwen runtime profile:
 they include `qwen_tts.inference`, the specific `qwen_tts.core` runtime modules
-used by model and tokenizer registration, and package data, while excluding
-`qwen_tts.cli`/demo UI paths such as Gradio, development/test-only imports,
+used by model and tokenizer registration, Qwen package data, and Torch
+distribution metadata required by Transformers, while excluding
+`qwen_tts.cli`/demo UI paths such as Gradio, external development/test tools,
 non-Torch `einops.layers` backends, and PyTorch compile/dynamo/inductor paths
-that the bridge worker does not call. The profile also applies
+that the bridge worker does not call. Internal `torch._functorch` is still
+packaged because regular eager `torch` startup imports it, and
+`torch.testing._internal` is not excluded globally because parts of eager Torch
+startup can import it through checkpoint/export utilities. Top-level
+`functorch` also remains available because it belongs to the Torch distribution
+metadata that Transformers expects. The profile also applies
 `worker/packaging/nuitka-qwen-runtime.yml`, which disables Transformers'
 debug-only model addition context, replaces Transformers' Dynamo masking
 context with a tested eager-inference shim, and replaces Qwen's
 `librosa.filters.mel` lookups with the tested
 `qwen_tts_bridge_worker.packaging` `torchaudio` mel-filter shim during
-packaging. That keeps Torch Dynamo's symbolic-shapes branch and
-`librosa`/SciPy/joblib out of the CustomVoice/VoiceDesign Nuitka graph unless a
-profile explicitly needs those paths. The profile nofollow rules intentionally
-target only Torch's symbolic-shapes helper modules, not the whole `torch.fx`
-package or all of `sympy`, because plain eager `torch` startup still uses some
-FX modules and downstream dependencies may legitimately import `sympy`.
+packaging. It also removes Transformers' Dynamo-only graph decorator and stubs
+the flex-attention import because the narrow profile does not package
+`torch._dynamo`, and stubs Transformers
+DTensor/tensor-parallel imports because the packaged worker runs single-process
+eager inference. It also
+stubs Transformers quantizer loading; the narrow profile targets unquantized
+Qwen checkpoints. It also stubs the encoder-decoder config import in
+Transformers' auto-tokenizer path because the Qwen narrow profile does not
+package the generic encoder-decoder model family.
+CustomVoice and VoiceDesign also apply
+`worker/packaging/nuitka-qwen-narrow-audio.yml`, which disables Qwen
+reference-audio loading helpers that belong to the VoiceClone profile, keeps
+Transformers' generation runtime and distributed config helpers available for
+Qwen `GenerationMixin`/`PreTrainedModel` imports, includes Transformers'
+adapter mixin module used by `PreTrainedModel`, includes the EnCodec feature
+extractor used by Mimi/AutoFeatureExtractor without packaging the full EnCodec
+model implementation, and rewrites Qwen's root-level Transformers `Auto*`
+lookups to direct submodule imports. The packaged layout
+also creates minimal `transformers.models`, `transformers.models.auto`, and
+`transformers.models.mimi` package shells with `qtb_packaging_placeholder.py` so
+Transformers can build lazy import tables without packaging the full model zoo.
+The `auto` shell re-exports only the narrow `Auto*` classes needed by Qwen and
+Transformers startup. Compiled Transformers import sites that need these
+classes are still patched to direct submodule imports instead of depending on
+the staged shell.
+The profile permits Nuitka optional-module availability probes to observe excluded
+modules without turning those probes into fatal startup failures. That
+keeps Torch Dynamo's symbolic-shapes branch, Torch
+FakeTensor/ProxyTensor/runtime-assert `sympy` helper branches, plus the
+reference-audio `librosa` path, out of the narrow Qwen Nuitka graph unless a
+profile explicitly needs those paths. SciPy may still be included through
+unrelated Transformers or Accelerate paths; reducing that graph is separate
+packaging work. The profile nofollow rules intentionally target only known
+eager-unused symbolic helper imports, not the whole `torch.fx` package or all
+of `sympy`, because plain eager `torch` startup still uses some FX modules and
+downstream dependencies may legitimately import `sympy`.
 `VoiceClone` adds audio-reference dependencies explicitly. `Full` is a
 diagnostic fallback that includes the broad `qwen_tts` package.
 `-IncludeQwenPackage` is kept as a compatibility alias for
 `-QwenProfile CustomVoice`.
 
 For diagnostics, `package-worker.ps1` also accepts `-NuitkaReportPath`,
-`-ShowNuitkaProgress`, `-ShowNuitkaMemory`, `-StrictBloatChecks`, and
-`-ExtraNuitkaOptions`.
+`-ShowNuitkaProgress`, `-ShowNuitkaMemory`, `-StrictBloatChecks`,
+`-GenerateCOnly`, and `-ExtraNuitkaOptions`. Use `-GenerateCOnly` with a report
+path when iterating on Qwen dependency graph reductions; it stops after Nuitka
+Python-level optimization and C source generation instead of expecting a staged
+worker executable.
 Full PyTorch/CUDA runtime validation, model-file layout, and transitive
 packaging locks remain follow-up packaging work.
 
 The packaged-worker smoke test launches `qwen_tts_worker.exe`, speaks the real
 QTB stdin/stdout protocol, sends one mock synthesis request, verifies that at
 least one PCM frame is returned, and shuts the worker down gracefully.
+
+As a more conservative release fallback, the project also has a portable Python
+worker layout. It copies the selected Python 3.11 base runtime plus the
+packaging environment's third-party `site-packages` into
+`dist/QwenTTSBridge/worker-python`, installs the bridge worker package into the
+staged runtime from a local wheel, and writes a `qwen_tts_worker.cmd`
+convenience launcher:
+
+```text
+.\scripts\setup-python-packaging.ps1 -UseVenv
+.\scripts\package-python-worker.ps1 -UseVenv -Clean
+.\scripts\test-portable-python-worker.ps1 -UseVenv
+```
+
+The portable worker output contains a `.qtb-portable-worker-root` marker. The
+packaging script refuses to clean or overwrite an existing output directory
+without that marker, so accidental values such as `-OutputRoot .`
+`-WorkerDirectoryName src` cannot delete source files.
+
+For the C++ bridge path, launch the staged Python executable directly rather
+than using the `.cmd` file:
+
+```text
+dist\QwenTTSBridge\worker-python\python\python.exe -B -P -s -m qwen_tts_bridge_worker
+```
+
+Set these environment variables on the worker process or on the parent process
+before starting `StdIoTransport`:
+
+```text
+PYTHONHOME=dist\QwenTTSBridge\worker-python\python
+PYTHONPATH=dist\QwenTTSBridge\worker-python\python\Lib\site-packages
+PYTHONNOUSERSITE=1
+PYTHONDONTWRITEBYTECODE=1
+```
+
+When launching through `StdIoTransportOptions`, prefer
+`environment_overrides` so the worker inherits `PATH`, `SystemRoot`, `TEMP`,
+and other parent-process values:
+
+```cpp
+StdIoTransportOptions options;
+options.arguments = {
+    R"(dist\QwenTTSBridge\worker-python\python\python.exe)",
+    "-B",
+    "-P",
+    "-s",
+    "-m",
+    "qwen_tts_bridge_worker",
+};
+options.environment_overrides = {
+    {"PYTHONHOME", R"(dist\QwenTTSBridge\worker-python\python)"},
+    {"PYTHONPATH", R"(dist\QwenTTSBridge\worker-python\python\Lib\site-packages)"},
+    {"PYTHONNOUSERSITE", "1"},
+    {"PYTHONDONTWRITEBYTECODE", "1"},
+};
+```
+
+`StdIoTransportOptions::environment` is a complete replacement environment
+block. Do not set only the three Python variables there unless you also copy
+the parent environment first.
+
+The `.cmd` launcher sets the same environment and is meant for manual
+command-line use. The repository smoke test validates the direct `python.exe`
+path through the C++ example and `StdIoTransport`:
+
+```text
+.\scripts\test-portable-python-worker-cpp.ps1 -UseVenv
+```
+
+For Qwen probes, install the vendored fork first and include its source package
+in the portable layout. The script builds a local wheel from the vendored source
+and installs it into the staged runtime with `--no-deps`, using the already
+installed packaging environment for third-party dependencies:
+
+```text
+.\scripts\setup-python-packaging.ps1 -UseVenv -InstallQwenFork
+.\scripts\package-python-worker.ps1 -UseVenv -Clean -IncludeQwenFork
+.\scripts\test-packaged-qwen-worker.ps1 -UseVenv -WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd -ModelPath models\<model-dir> -Speaker <speaker-name>
+```
+
+This path is intentionally less slim than Nuitka and may be large when the
+packaging environment contains PyTorch/Qwen dependencies. Its purpose is to
+provide a debuggable private Python runtime beside the C++ application while
+the narrow Nuitka runtime remains an optimization track. Models still stay
+external under `models/`.
 
 For a local packaged Qwen probe, install the vendored streaming fork into the
 packaging environment, include the Qwen runtime profile, and run the packaged
@@ -499,6 +624,16 @@ executable against a real local model:
 .\scripts\package-worker.ps1 -UseVenv -Clean -AssumeYesForDownloads -QwenProfile CustomVoice -NuitkaReportPath tmp\nuitka-worker\qwen-report.xml
 .\scripts\test-packaged-qwen-worker.ps1 -UseVenv -ModelPath models\<model-dir> -Speaker <speaker-name>
 ```
+
+Current Qwen packaging checkpoint: the narrow `CustomVoice` profile has reached
+a successful local Nuitka standalone build, and the packaged smoke gets far
+enough to start Qwen/Transformers model loading. The latest known runtime
+blocker is Transformers processor loading expecting root-level lazy mappings
+such as `transformers.IMAGE_PROCESSOR_MAPPING`. Treat that as a deliberate
+follow-up for the narrow-Nuitka optimization track, not as a casual "add one
+more import" fix. The next practical release path should be a portable Python
+worker baseline with a private Python runtime and installed Qwen dependencies
+beside the C++ app, while keeping models external.
 
 Before a long real package build, the import probe can confirm that the selected
 vendored Qwen import path does not eagerly load audio-reference dependencies:

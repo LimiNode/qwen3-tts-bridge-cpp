@@ -244,6 +244,19 @@ external/python/Qwen3-TTS-streaming/
     https://github.com/NewYaroslav/Qwen3-TTS-streaming
 ```
 
+Future Rust Qwen engine candidate:
+
+```text
+https://github.com/NewYaroslav/qwen3-tts-rs
+```
+
+This Rust fork is not part of the current Python worker dependency graph. Keep
+it in mind as a possible future alternative engine backend once the bridge
+supports selecting non-Python engines. It documents the official Qwen3-TTS
+model families and HuggingFace repositories, including
+`Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice`, which is a practical local smoke-test
+candidate with preset speakers such as `ryan` and `serena`.
+
 Future WebSocket dependencies:
 
 ```text
@@ -764,6 +777,15 @@ larger abstraction on top of it:
   `docs/audio-and-unity-integration.md`. Keep physical playback out of the core
   bridge; add native playback only as an optional module or example, and prefer
   one active playback sink for Unity avatar scenarios.
+- TinyProcessLib's Windows environment block serialization currently iterates
+  an `unordered_map`, so the explicit environment block is not guaranteed to be
+  sorted according to the WinAPI recommendation. `StdIoTransport` must at least
+  apply `environment_overrides` case-insensitively on Windows to avoid duplicate
+  logical variables such as `Path` and `PATH`. Do not fork TinyProcessLib solely
+  for sorting unless a reproducible CreateProcess failure appears; prefer an
+  upstream issue/MR. Also keep in mind that TinyProcessLib does not expose
+  `GetLastError()` for process start failures, which may deserve a future
+  diagnostics improvement.
 
 ## Request Lifecycle
 
@@ -945,8 +967,10 @@ Use the project packaging scripts as the canonical starting point:
 ```text
 scripts/setup-python-packaging.ps1
 scripts/package-worker.ps1
+scripts/package-python-worker.ps1
 scripts/test-packaged-worker.ps1
 scripts/test-packaged-qwen-worker.ps1
+scripts/test-portable-python-worker.ps1
 worker/requirements-packaging.lock.txt
 ```
 
@@ -967,6 +991,35 @@ the vendored Qwen streaming fork into `.venv-packaging` with
 probe is manual because it depends on local model files, CUDA/PyTorch runtime
 availability, and the selected model family. Full transitive packaging locks
 remain later packaging work.
+`package-python-worker.ps1` is the conservative portable Python worker baseline.
+It stages a private Python 3.11 runtime plus the selected environment's
+third-party `site-packages` into `dist/QwenTTSBridge/worker-python`, installs
+the bridge worker from a local wheel into the staged runtime, and writes
+`qwen_tts_worker.cmd` as a manual convenience launcher. The staged worker output
+must contain `.qtb-portable-worker-root`; `package-python-worker.ps1` must refuse
+to clean or overwrite an existing output directory without that marker. Keep
+this path debuggable and boring: it may be much larger than Nuitka, but it
+should avoid maintaining a hand-trimmed Transformers runtime. Do not use the
+`.cmd` file as the canonical C++ worker executable; `StdIoTransport` should launch
+`dist\QwenTTSBridge\worker-python\python\python.exe` directly with
+`-B -P -s -m qwen_tts_bridge_worker`, plus `PYTHONHOME`,
+`PYTHONPATH`, `PYTHONNOUSERSITE=1`, and `PYTHONDONTWRITEBYTECODE=1` in the
+worker environment. When launching through `StdIoTransportOptions`, set those
+values through
+`environment_overrides`, not `environment`, so `PATH`, `SystemRoot`, `TEMP`, and
+other parent-process values are preserved. `environment` is a complete
+replacement block and should only be used after explicitly copying every
+required parent variable. Use `test-portable-python-worker-cpp.ps1` to verify
+that path through the C++ example and TinyProcessLib. With Qwen, run
+`setup-python-packaging.ps1 -InstallQwenFork` first and pass
+`package-python-worker.ps1 -IncludeQwenFork` so the vendored `qwen_tts` package
+is built as a local wheel and installed into the portable runtime instead of
+depending on the checkout path. The portable packaging script should remove
+editable `.pth`/egg-link artifacts, stale source-package metadata, and copied
+bytecode before running its staged interpreter isolation probe. Use
+`test-portable-python-worker.ps1` for the Python mock protocol smoke; for real
+Qwen, reuse `test-packaged-qwen-worker.ps1` with the portable `.cmd` launcher
+path for manual checks, or launch the direct Python executable from C++.
 `-QwenProfile CustomVoice` and `-QwenProfile VoiceDesign` mean the bridge's
 narrow Qwen runtime profile, not a broad `--include-package=qwen_tts`. Keep it
 focused on `qwen_tts.inference`, the specific `qwen_tts.core` runtime modules
@@ -985,6 +1038,51 @@ scope, and `-QwenProfile Full` only as a diagnostic fallback.
 `worker/packaging/nuitka-qwen-runtime.yml` to disable known compile-time bloat
 entry points: Transformers' debug-only model addition context, Transformers'
 Dynamo masking context for torch >= 2.6, and Qwen `librosa.filters.mel` lookups.
+It also removes Transformers' Dynamo-only graph decorator and stubs
+Transformers' flex-attention import because the narrow CustomVoice/VoiceDesign
+profile does not package `torch._dynamo`; do not remove those replacements
+unless the profile deliberately starts supporting Torch compile/flex attention.
+It also stubs Transformers DTensor/tensor-parallel imports because the packaged
+worker runs single-process eager inference; do not pull
+`torch.distributed.tensor` into the narrow profile unless tensor parallel is
+deliberately supported.
+It also stubs Transformers quantizer loading; the narrow Qwen profile targets
+unquantized checkpoints and should not pull the quantizer zoo unless quantized
+Qwen models become a deliberate target.
+It also stubs the encoder-decoder config import in Transformers'
+auto-tokenizer path because the narrow Qwen profile does not package the
+generic encoder-decoder model family.
+The Qwen packaging script intentionally disables Nuitka's standard Transformers
+plugin for the narrow profile and instead stages a minimal
+`transformers.models` package shell, plus `transformers.models.auto` and
+`transformers.models.mimi` package shells, with `qtb_packaging_placeholder.py`
+plus direct Qwen `Auto*`/`Mimi*` imports. The staged `auto` shell may re-export
+only the narrow `Auto*` classes needed by Qwen and Transformers startup; do not
+turn it into a broad model-zoo import surface. Compiled Transformers import
+sites that need these classes should be patched to direct submodule imports
+instead of depending on the staged shell. It still includes
+`transformers.generation` and
+`transformers.distributed` because Qwen/Transformers model classes import
+`GenerationMixin` and `DistributedConfig` during startup. It also includes
+`transformers.integrations.peft` for the `PeftAdapterMixin` base used by
+`PreTrainedModel`; this does not mean the external PEFT package is required for
+the narrow profile. Keep `transformers.models.encodec.feature_extraction_encodec`
+included because Mimi's feature-extractor path resolves
+`EncodecFeatureExtractor` through `AutoFeatureExtractor`, but do not package the
+full EnCodec model implementation unless a real runtime path needs it. This
+avoids packaging the full Transformers model zoo while keeping
+`transformers.__init__` lazy import table startup happy. Do not replace this
+with broad
+`--include-package=transformers.models` unless the package-size and compile-time
+cost is deliberate.
+CustomVoice and VoiceDesign additionally apply
+`worker/packaging/nuitka-qwen-narrow-audio.yml` to disable reference-audio
+loading helpers that belong to the VoiceClone profile. Do not apply those
+narrow audio replacements to `-QwenProfile VoiceClone`.
+These narrow audio replacements are expected to remove the reference-audio
+`librosa` path from CustomVoice/VoiceDesign. SciPy may still be included
+through unrelated Transformers or Accelerate paths; treat that as separate
+packaging graph work rather than a failure of the narrow audio profile.
 Keep the Qwen mel shim covered by a numerical comparison against `librosa` in
 packaging environments where both libraries are installed, and keep the
 Transformers masking shim covered by a comparison against the upstream
@@ -994,21 +1092,50 @@ inspect the Nuitka report and add a narrow package-configuration replacement
 instead of widening the Qwen include graph or adding broad `--nofollow-import-to`
 rules.
 The default Qwen packaging profile also excludes PyTorch
-compile/dynamo/inductor/functorch paths because the bridge currently runs eager
-inference and does not call `torch.compile` or Qwen's optional streaming
-optimization setup in the packaged worker.
+compile/dynamo/inductor paths because the bridge currently runs eager inference
+and does not call `torch.compile` or Qwen's optional streaming optimization
+setup in the packaged worker. Do not exclude internal `torch._functorch`:
+regular eager `torch` startup imports it through `torch._ops`.
+Do not exclude top-level `functorch` while including Torch distribution
+metadata; Nuitka treats it as a related package of the `torch` distribution.
+Do not globally exclude `torch.testing._internal` either: parts of eager Torch
+startup can import it through checkpoint/export utilities. If it becomes a
+large graph problem, prefer a narrower package-configuration replacement over a
+global `--nofollow-import-to`.
 Torch symbolic-shapes nofollow rules must stay targeted at
 `torch.fx.experimental.symbolic_shapes` and `torch.utils._sympy`. Do not
 nofollow the whole `torch.fx` package or all of `sympy`: plain eager `torch`
 startup still loads some FX modules, and downstream dependencies may
-legitimately import `sympy`.
+legitimately import `sympy`. If Nuitka statically follows `sympy` through
+Torch FakeTensor, ProxyTensor, or runtime-assert helpers, prefer module-local
+`no-auto-follow` entries in `nuitka-qwen-runtime.yml` over a global
+`--nofollow-import-to=sympy`.
 When investigating real Qwen packaging failures, prefer
 `worker/packaging/probe_qwen_imports.py`,
 `-NuitkaReportPath tmp\nuitka-worker\qwen-report.xml`, `-StrictBloatChecks`,
-and targeted `-ExtraNuitkaOptions` over widening the include graph first.
+`-GenerateCOnly`, and targeted `-ExtraNuitkaOptions` over widening the include
+graph first. `-GenerateCOnly` is the preferred fast report-generation mode for
+Qwen dependency graph work because it avoids the long C compiler stage and does
+not stage a worker executable.
 The GitHub Actions workflow `Packaged Worker Smoke` is manual
 (`workflow_dispatch`) by design; do not move real Nuitka compilation into every
 PR check unless the build cost becomes acceptable.
+
+Current Qwen packaging checkpoint:
+
+- `-QwenProfile CustomVoice` has reached a successful real Nuitka standalone
+  build locally against the 0.6B CustomVoice model setup.
+- The packaged CustomVoice smoke then reaches model startup and currently fails
+  before `ready` because Transformers processor loading expects root-level lazy
+  mappings such as `transformers.IMAGE_PROCESSOR_MAPPING`.
+- Do not treat that as "one more import" in the narrow profile by default. It is
+  a sign that the project is maintaining a reduced Transformers runtime. Resume
+  this path only as a deliberate narrow-Nuitka optimization track, preferably
+  with a report-driven patch for processor/auto mappings.
+- For a working release path, prefer a separate portable Python worker baseline
+  next: ship a private Python runtime plus installed worker/Qwen dependencies
+  next to the C++ application, keep models external, and use Nuitka slimming as
+  an optimization track rather than a blocker.
 
 Generated release layout should resemble:
 

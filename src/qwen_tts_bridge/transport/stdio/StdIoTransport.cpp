@@ -3,6 +3,7 @@
 #include <process.hpp>
 
 #include <condition_variable>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <limits>
@@ -12,11 +13,15 @@
 #include <thread>
 #include <utility>
 
-#if defined(_WIN32) && defined(UNICODE)
+#if defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include <windows.h>
+#endif
+
+#if !defined(_WIN32)
+extern char** environ;
 #endif
 
 namespace qwen_tts_bridge {
@@ -91,6 +96,52 @@ TinyProcessLib::Process::string_type to_process_string(const std::string& value)
 #endif
 }
 
+std::string from_process_string(const TinyProcessLib::Process::string_type& value) {
+#if defined(_WIN32) && defined(UNICODE)
+    if (value.empty()) {
+        return {};
+    }
+
+    if (value.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        throw std::invalid_argument("process string is too large to convert to UTF-8");
+    }
+
+    const auto input_size = static_cast<int>(value.size());
+    const int required_size = WideCharToMultiByte(
+        CP_UTF8,
+        WC_ERR_INVALID_CHARS,
+        value.data(),
+        input_size,
+        nullptr,
+        0,
+        nullptr,
+        nullptr);
+
+    if (required_size <= 0) {
+        throw std::invalid_argument("invalid process environment string");
+    }
+
+    std::string converted(static_cast<std::size_t>(required_size), '\0');
+    const int written_size = WideCharToMultiByte(
+        CP_UTF8,
+        WC_ERR_INVALID_CHARS,
+        value.data(),
+        input_size,
+        converted.data(),
+        required_size,
+        nullptr,
+        nullptr);
+
+    if (written_size != required_size) {
+        throw std::invalid_argument("failed to convert process string to UTF-8");
+    }
+
+    return converted;
+#else
+    return value;
+#endif
+}
+
 bool is_started_process_id(TinyProcessLib::Process::id_type id) {
 #if defined(_WIN32)
     return id != 0;
@@ -107,6 +158,100 @@ std::vector<TinyProcessLib::Process::string_type> to_process_arguments(
         converted.push_back(to_process_string(argument));
     }
     return converted;
+}
+
+bool environment_key_equals(const std::string& left, const std::string& right) {
+#if defined(_WIN32) && defined(UNICODE)
+    const auto converted_left = to_process_string(left);
+    const auto converted_right = to_process_string(right);
+    return CompareStringOrdinal(
+        converted_left.data(),
+        static_cast<int>(converted_left.size()),
+        converted_right.data(),
+        static_cast<int>(converted_right.size()),
+        TRUE) == CSTR_EQUAL;
+#elif defined(_WIN32)
+    return _stricmp(left.c_str(), right.c_str()) == 0;
+#else
+    return left == right;
+#endif
+}
+
+void set_environment_override(
+    std::unordered_map<std::string, std::string>& environment,
+    const std::string& name,
+    const std::string& value) {
+    for (auto it = environment.begin(); it != environment.end();) {
+        if (environment_key_equals(it->first, name)) {
+            it = environment.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    environment.emplace(name, value);
+}
+
+std::unordered_map<std::string, std::string> current_process_environment() {
+    std::unordered_map<std::string, std::string> environment;
+
+#if defined(_WIN32)
+#if defined(UNICODE)
+    LPWCH environment_block = GetEnvironmentStringsW();
+#else
+    LPCH environment_block = GetEnvironmentStringsA();
+#endif
+    if (environment_block == nullptr) {
+        throw std::runtime_error("failed to read current process environment");
+    }
+
+    try {
+        auto* entry = environment_block;
+        while (*entry != 0) {
+            TinyProcessLib::Process::string_type item(entry);
+            entry += item.size() + 1;
+
+            const auto separator = item.find(
+                static_cast<TinyProcessLib::Process::string_type::value_type>('='),
+                1);
+            if (separator == TinyProcessLib::Process::string_type::npos) {
+                continue;
+            }
+
+            environment.emplace(
+                from_process_string(item.substr(0, separator)),
+                from_process_string(item.substr(separator + 1)));
+        }
+    }
+    catch (...) {
+        FreeEnvironmentStrings(environment_block);
+        throw;
+    }
+
+    FreeEnvironmentStrings(environment_block);
+#else
+    for (char** entry = ::environ; entry != nullptr && *entry != nullptr; ++entry) {
+        const std::string item(*entry);
+        const auto separator = item.find('=');
+        if (separator == std::string::npos) {
+            continue;
+        }
+
+        environment.emplace(item.substr(0, separator), item.substr(separator + 1));
+    }
+#endif
+
+    return environment;
+}
+
+std::unordered_map<std::string, std::string> merged_process_environment(
+    const std::unordered_map<std::string, std::string>& overrides) {
+    auto environment = current_process_environment();
+    for (const auto& item : overrides) {
+        set_environment_override(environment, item.first, item.second);
+    }
+    return environment;
 }
 
 TinyProcessLib::Process::environment_type to_process_environment(
@@ -190,7 +335,7 @@ public:
             const auto working_directory = to_process_string(options_.working_directory);
 
             std::shared_ptr<TinyProcessLib::Process> process;
-            if (options_.environment.empty()) {
+            if (options_.environment.empty() && options_.environment_overrides.empty()) {
                 process = std::make_shared<TinyProcessLib::Process>(
                     arguments,
                     working_directory,
@@ -200,7 +345,10 @@ public:
                     config);
             }
             else {
-                auto environment = to_process_environment(options_.environment);
+                const auto source_environment = options_.environment.empty()
+                    ? merged_process_environment(options_.environment_overrides)
+                    : options_.environment;
+                auto environment = to_process_environment(source_environment);
                 process = std::make_shared<TinyProcessLib::Process>(
                     arguments,
                     working_directory,

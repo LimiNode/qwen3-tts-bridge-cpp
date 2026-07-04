@@ -704,6 +704,71 @@ void test_unicode_working_directory_and_argument() {
 #endif
 }
 
+void test_environment_overrides_preserve_parent_environment() {
+    RawCollector collector;
+    StdIoTransportOptions options = make_python_options(
+        "import os, sys\n"
+        "required = 'SystemRoot' if os.name == 'nt' else 'PATH'\n"
+        "ok = (\n"
+        "    os.environ.get('QTB_STDIO_TRANSPORT_OVERRIDE') == 'override-ok'\n"
+        "    and bool(os.environ.get(required))\n"
+        ")\n"
+        "sys.stdout.buffer.write(b'env-override-ok' if ok else b'env-override-missing')\n"
+        "sys.stdout.flush()\n");
+    options.environment_overrides["QTB_STDIO_TRANSPORT_OVERRIDE"] = "override-ok";
+
+    StdIoTransport transport(options);
+    CHECK(transport.start(
+        [&](ITransport::Bytes bytes) {
+            collector.on_bytes(std::move(bytes));
+        },
+        [&](std::string message) {
+            collector.on_error(std::move(message));
+        },
+        [&](int status) {
+            collector.on_exit(status);
+        }));
+
+    collector.wait_for_text("env-override-ok");
+    collector.wait_for_exit();
+    transport.stop();
+    CHECK(!collector.has_errors());
+}
+
+void test_environment_overrides_replace_path_case_insensitively_on_windows() {
+#if defined(_WIN32)
+    RawCollector collector;
+    StdIoTransportOptions options = make_python_options(
+        "import os, sys\n"
+        "path_values = [\n"
+        "    value\n"
+        "    for name, value in os.environ.items()\n"
+        "    if name.lower() == 'path'\n"
+        "]\n"
+        "ok = len(path_values) == 1 and path_values[0] == 'qtb-path-override'\n"
+        "sys.stdout.buffer.write(b'path-override-ok' if ok else b'path-override-bad')\n"
+        "sys.stdout.flush()\n");
+    options.environment_overrides["PATH"] = "qtb-path-override";
+
+    StdIoTransport transport(options);
+    CHECK(transport.start(
+        [&](ITransport::Bytes bytes) {
+            collector.on_bytes(std::move(bytes));
+        },
+        [&](std::string message) {
+            collector.on_error(std::move(message));
+        },
+        [&](int status) {
+            collector.on_exit(status);
+        }));
+
+    collector.wait_for_text("path-override-ok");
+    collector.wait_for_exit();
+    transport.stop();
+    CHECK(!collector.has_errors());
+#endif
+}
+
 } // namespace
 
 int main() {
@@ -720,5 +785,7 @@ int main() {
     test_invalid_callback_queue_limits_reject_start();
     test_callback_queue_overflow_reports_error_and_stops_worker();
     test_unicode_working_directory_and_argument();
+    test_environment_overrides_preserve_parent_environment();
+    test_environment_overrides_replace_path_case_insensitively_on_windows();
     return 0;
 }
