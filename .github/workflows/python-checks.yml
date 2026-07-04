@@ -5,9 +5,11 @@ on:
     paths:
       - ".github/workflows/python-checks.yml"
       - ".github/workflows/packaged-worker-smoke.yml"
+      - ".github/workflows/portable-qwen-import-probe.yml"
       - "external/python/**"
       - "pyproject.toml"
       - "scripts/check-python.ps1"
+      - "scripts/inspect-portable-python-worker.ps1"
       - "scripts/package-python-worker.ps1"
       - "scripts/package-worker.ps1"
       - "scripts/setup-python-dev.ps1"
@@ -24,9 +26,11 @@ on:
     paths:
       - ".github/workflows/python-checks.yml"
       - ".github/workflows/packaged-worker-smoke.yml"
+      - ".github/workflows/portable-qwen-import-probe.yml"
       - "external/python/**"
       - "pyproject.toml"
       - "scripts/check-python.ps1"
+      - "scripts/inspect-portable-python-worker.ps1"
       - "scripts/package-python-worker.ps1"
       - "scripts/package-worker.ps1"
       - "scripts/setup-python-dev.ps1"

@@ -1,0 +1,66 @@
+name: Portable Qwen Import Probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_artifact:
+        description: Upload tmp/portable-qwen-import-probe as a workflow artifact.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-qwen-import-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows portable Qwen import
+    runs-on: windows-2022
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            worker/requirements-packaging.lock.txt
+            external/python/Qwen3-TTS-streaming/pyproject.toml
+
+      - name: Install packaging tooling and Qwen fork
+        shell: pwsh
+        run: .\scripts\setup-python-packaging.ps1 -Python python -InstallQwenFork
+
+      - name: Build portable Python worker with Qwen fork
+        shell: pwsh
+        run: >
+          .\scripts\package-python-worker.ps1
+          -Python python
+          -Clean
+          -OutputRoot tmp\portable-qwen-import-probe
+          -IncludeQwenFork
+
+      - name: Inspect staged portable worker
+        shell: pwsh
+        run: >
+          .\scripts\inspect-portable-python-worker.ps1
+          -WorkerRoot tmp\portable-qwen-import-probe\worker-python
+          -ProbeQwenImport
+
+      - name: Upload portable worker artifact
+        if: ${{ inputs.upload_artifact }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: QwenTTSBridge-portable-qwen-import-probe
+          path: tmp/portable-qwen-import-probe
+          if-no-files-found: error

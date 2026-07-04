@@ -1120,6 +1120,12 @@ not stage a worker executable.
 The GitHub Actions workflow `Packaged Worker Smoke` is manual
 (`workflow_dispatch`) by design; do not move real Nuitka compilation into every
 PR check unless the build cost becomes acceptable.
+The GitHub Actions workflow `Portable Qwen Import Probe` is also manual. Use it
+for no-GPU validation that the portable Python runtime can package the vendored
+Qwen fork and import `qwen_tts.inference.qwen3_tts_model`. The workflow should
+use `inspect-portable-python-worker.ps1` so local and Actions diagnostics report
+the same Python version, package metadata, isolation environment, and
+source-path leak checks. This is not a model load or inference smoke test.
 
 Current Qwen packaging checkpoint:
 
