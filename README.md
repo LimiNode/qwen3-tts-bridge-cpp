@@ -529,6 +529,92 @@ The packaged-worker smoke test launches `qwen_tts_worker.exe`, speaks the real
 QTB stdin/stdout protocol, sends one mock synthesis request, verifies that at
 least one PCM frame is returned, and shuts the worker down gracefully.
 
+As a more conservative release fallback, the project also has a portable Python
+worker layout. It copies the selected Python 3.11 base runtime plus the
+packaging environment's third-party `site-packages` into
+`dist/QwenTTSBridge/worker-python`, installs the bridge worker package into the
+staged runtime from a local wheel, and writes a `qwen_tts_worker.cmd`
+convenience launcher:
+
+```text
+.\scripts\setup-python-packaging.ps1 -UseVenv
+.\scripts\package-python-worker.ps1 -UseVenv -Clean
+.\scripts\test-portable-python-worker.ps1 -UseVenv
+```
+
+The portable worker output contains a `.qtb-portable-worker-root` marker. The
+packaging script refuses to clean or overwrite an existing output directory
+without that marker, so accidental values such as `-OutputRoot .`
+`-WorkerDirectoryName src` cannot delete source files.
+
+For the C++ bridge path, launch the staged Python executable directly rather
+than using the `.cmd` file:
+
+```text
+dist\QwenTTSBridge\worker-python\python\python.exe -B -P -s -m qwen_tts_bridge_worker
+```
+
+Set these environment variables on the worker process or on the parent process
+before starting `StdIoTransport`:
+
+```text
+PYTHONHOME=dist\QwenTTSBridge\worker-python\python
+PYTHONPATH=dist\QwenTTSBridge\worker-python\python\Lib\site-packages
+PYTHONNOUSERSITE=1
+PYTHONDONTWRITEBYTECODE=1
+```
+
+When launching through `StdIoTransportOptions`, prefer
+`environment_overrides` so the worker inherits `PATH`, `SystemRoot`, `TEMP`,
+and other parent-process values:
+
+```cpp
+StdIoTransportOptions options;
+options.arguments = {
+    R"(dist\QwenTTSBridge\worker-python\python\python.exe)",
+    "-B",
+    "-P",
+    "-s",
+    "-m",
+    "qwen_tts_bridge_worker",
+};
+options.environment_overrides = {
+    {"PYTHONHOME", R"(dist\QwenTTSBridge\worker-python\python)"},
+    {"PYTHONPATH", R"(dist\QwenTTSBridge\worker-python\python\Lib\site-packages)"},
+    {"PYTHONNOUSERSITE", "1"},
+    {"PYTHONDONTWRITEBYTECODE", "1"},
+};
+```
+
+`StdIoTransportOptions::environment` is a complete replacement environment
+block. Do not set only the three Python variables there unless you also copy
+the parent environment first.
+
+The `.cmd` launcher sets the same environment and is meant for manual
+command-line use. The repository smoke test validates the direct `python.exe`
+path through the C++ example and `StdIoTransport`:
+
+```text
+.\scripts\test-portable-python-worker-cpp.ps1 -UseVenv
+```
+
+For Qwen probes, install the vendored fork first and include its source package
+in the portable layout. The script builds a local wheel from the vendored source
+and installs it into the staged runtime with `--no-deps`, using the already
+installed packaging environment for third-party dependencies:
+
+```text
+.\scripts\setup-python-packaging.ps1 -UseVenv -InstallQwenFork
+.\scripts\package-python-worker.ps1 -UseVenv -Clean -IncludeQwenFork
+.\scripts\test-packaged-qwen-worker.ps1 -UseVenv -WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd -ModelPath models\<model-dir> -Speaker <speaker-name>
+```
+
+This path is intentionally less slim than Nuitka and may be large when the
+packaging environment contains PyTorch/Qwen dependencies. Its purpose is to
+provide a debuggable private Python runtime beside the C++ application while
+the narrow Nuitka runtime remains an optimization track. Models still stay
+external under `models/`.
+
 For a local packaged Qwen probe, install the vendored streaming fork into the
 packaging environment, include the Qwen runtime profile, and run the packaged
 executable against a real local model:
