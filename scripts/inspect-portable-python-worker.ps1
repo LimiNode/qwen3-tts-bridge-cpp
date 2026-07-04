@@ -37,7 +37,7 @@ if ($null -eq $ForbiddenRoots -or $ForbiddenRoots.Count -eq 0) {
     $ForbiddenRoots = @(
         "worker/src",
         ".venv-packaging/Lib/site-packages",
-        "external/python/Qwen3-TTS-streaming/qwen_tts"
+        "external/python/Qwen3-TTS-streaming"
     )
 }
 
@@ -99,18 +99,24 @@ forbidden_roots = [
     for path in os.environ.get("QTB_FORBIDDEN_SYS_PATH_ROOTS", "").split(os.pathsep)
     if path
 ]
+
+
+def is_under_forbidden_root(path: str) -> bool:
+    resolved = pathlib.Path(path).resolve()
+    resolved_key = os.path.normcase(str(resolved))
+    for root in forbidden_roots:
+        root_key = os.path.normcase(str(root))
+        if resolved_key == root_key or resolved_key.startswith(root_key + os.sep):
+            return True
+    return False
+
+
 source_path_leaks: list[str] = []
 for entry in sys.path:
     if not entry:
         continue
-    resolved = pathlib.Path(entry).resolve()
-    for root in forbidden_roots:
-        try:
-            resolved.relative_to(root)
-        except ValueError:
-            continue
-        source_path_leaks.append(str(resolved))
-        break
+    if is_under_forbidden_root(entry):
+        source_path_leaks.append(str(pathlib.Path(entry).resolve()))
 
 import qwen_tts_bridge_worker  # noqa: F401
 
@@ -120,6 +126,32 @@ if qwen_import_probed:
     import qwen_tts.inference.qwen3_tts_model  # noqa: F401
 
     qwen_import_ok = True
+
+package_reports = {
+    "qwen_tts_bridge_worker": {
+        "version": distribution_version("qwen-tts-bridge-worker"),
+        "origin": module_origin("qwen_tts_bridge_worker"),
+    },
+    "qwen_tts": {
+        "version": distribution_version("qwen-tts"),
+        "origin": module_origin("qwen_tts"),
+    },
+    "torch": {
+        "version": distribution_version("torch"),
+        "origin": module_origin("torch"),
+    },
+    "transformers": {
+        "version": distribution_version("transformers"),
+        "origin": module_origin("transformers"),
+    },
+}
+module_origin_leaks = [
+    {"module": name, "origin": str(pathlib.Path(origin).resolve())}
+    for name, package in package_reports.items()
+    if name in {"qwen_tts_bridge_worker", "qwen_tts"}
+    for origin in [package["origin"]]
+    if origin and is_under_forbidden_root(origin)
+]
 
 report = {
     "python": {
@@ -134,24 +166,8 @@ report = {
         "PYTHONNOUSERSITE": os.environ.get("PYTHONNOUSERSITE"),
         "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE"),
     },
-    "packages": {
-        "qwen_tts_bridge_worker": {
-            "version": distribution_version("qwen-tts-bridge-worker"),
-            "origin": module_origin("qwen_tts_bridge_worker"),
-        },
-        "qwen_tts": {
-            "version": distribution_version("qwen-tts"),
-            "origin": module_origin("qwen_tts"),
-        },
-        "torch": {
-            "version": distribution_version("torch"),
-            "origin": module_origin("torch"),
-        },
-        "transformers": {
-            "version": distribution_version("transformers"),
-            "origin": module_origin("transformers"),
-        },
-    },
+    "module_origin_leaks": module_origin_leaks,
+    "packages": package_reports,
     "qwen_import_probed": qwen_import_probed,
     "qwen_import_ok": qwen_import_ok,
     "source_path_leaks": source_path_leaks,
@@ -161,6 +177,8 @@ report = {
 print(json.dumps(report, indent=2, sort_keys=True))
 if source_path_leaks:
     raise SystemExit("portable worker sys.path leaks source paths")
+if module_origin_leaks:
+    raise SystemExit("portable worker module origins leak source paths")
 '@
 
     [IO.File]::WriteAllText(

@@ -263,7 +263,11 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("PYTHONNOUSERSITE", script)
         self.assertIn("qwen_tts_bridge_worker", script)
         self.assertIn("qwen_tts.inference.qwen3_tts_model", script)
+        self.assertIn("external/python/Qwen3-TTS-streaming", script)
+        self.assertNotIn("external/python/Qwen3-TTS-streaming/qwen_tts", script)
         self.assertIn("source_path_leaks", script)
+        self.assertIn("module_origin_leaks", script)
+        self.assertIn("portable worker module origins leak source paths", script)
         self.assertIn("qwen_import_ok", script)
 
     def test_cpp_ci_smokes_portable_worker_through_transport(self) -> None:
