@@ -58,11 +58,24 @@ Persistent-worker benchmark results from `tests/python/benchmark_packaged_worker
 | `enable_streaming_optimizations` | 2 | 738 ms | 23311 ms | 22557 ms | 1.03 |
 | `enable_streaming_optimizations`, warmup synthesis before `ready` | 1 | 717 ms | 4005 ms | 3997 ms | 1.00 |
 
+Streaming parameter sweep with `enable_streaming_optimizations` and warmup
+synthesis before `ready`:
+
+| `emit_every_frames` | `decode_window_frames` | First audio | Completed | Audio duration | Chunks | RTF |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4 | 80 | 389 ms | 3688 ms | 3678 ms | 12 | 1.00 |
+| 2 | 80 | 218 ms | 5091 ms | 4879 ms | 31 | 1.04 |
+| 8 | 80 | 812 ms | 5507 ms | 5118 ms | 8 | 1.08 |
+| 4 | 40 | 376 ms | 3085 ms | 3198 ms | 10 | 0.96 |
+| 4 | 120 | 390 ms | 4238 ms | 4239 ms | 14 | 1.00 |
+| 2 | 40 | 218 ms | 4264 ms | 4238 ms | 27 | 1.01 |
+
 Notes:
 
 - The worker logs warn that `flash-attn` is not installed and the model falls back to the manual PyTorch path.
 - Installing `triton-windows` removes the PyTorch `triton not found` warning in this environment, but it does not remove the Qwen `flash-attn is not installed` warning and did not make the baseline real-time.
 - Calling the Qwen fork's `enable_streaming_optimizations()` hook through the worker is the first mode observed to approach real-time after the initial compile-heavy request. With `--warmup-synthesis`, the worker pays the compile/synthetic synthesis cost before `ready`; the first user-facing request reached `first_audio_ms ~= 717` and `RTF ~= 1.00` in the best current run.
+- `emit_every_frames=4` and `decode_window_frames=40` is the best current throughput candidate. `emit_every_frames=2` gives the lowest first-audio latency, but it emits many more chunks.
 - The baseline is functionally correct on a real RTX 4090, but it is not real-time yet. Best observed RTF in this pass was about `5.31`.
 - `float16` should not be used as the default for this model/runtime combination until the CUDA assert is understood.
 - Generated models, packaged worker output, venvs, and WAV files are ignored by git.
