@@ -128,11 +128,16 @@ class StdioWorkerServer:
             )
 
             warmup_started_at = monotonic_seconds()
-            self._engine.warmup()
+            warmup_fields = self._engine.warmup()
             self._warmed_up = True
+            metric_fields: dict[str, object] = {
+                "duration_ms": elapsed_milliseconds(warmup_started_at),
+            }
+            if warmup_fields is not None:
+                metric_fields.update(warmup_fields)
             self._metrics.emit(
                 "engine_warmed_up",
-                duration_ms=elapsed_milliseconds(warmup_started_at),
+                **metric_fields,
             )
 
             self._engine_thread.start()

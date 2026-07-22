@@ -133,6 +133,7 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
     --worker-arg cuda `
     --worker-arg --dtype `
     --worker-arg auto `
+    --startup-timeout-ms 1200000 `
     --output tmp\qwen-gpu-smoke.wav `
     --text "This is a GPU validation WAV." `
     --speaker ryan `
@@ -147,6 +148,25 @@ tmp/qwen-gpu-smoke.wav
 
 The WAV proves the C++ public API, stdio transport, worker protocol, Qwen
 engine, and PCM writer all work together. It does not prove final voice quality.
+
+For the optimized warmup mode, add worker arguments such as:
+
+```powershell
+    --worker-arg --enable-streaming-optimizations `
+    --worker-arg --warmup-synthesis `
+    --worker-arg --warmup-speaker `
+    --worker-arg ryan `
+    --worker-arg --warmup-text `
+    --worker-arg "Warmup." `
+    --worker-arg --emit-every-frames `
+    --worker-arg 4 `
+    --worker-arg --decode-window-frames `
+    --worker-arg 40 `
+    --startup-timeout-ms 1200000
+```
+
+The long startup timeout is intentional: in this mode the worker compiles and
+runs a synthetic synthesis before it sends `ready`.
 
 ## 5. Benchmark Persistent Worker Latency
 

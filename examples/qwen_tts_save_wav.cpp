@@ -71,6 +71,7 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --instruction <utf8>           Natural-language style instruction.\n"
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
+        << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --request-timeout-ms <ms>      Request timeout, 0 disables it.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
         << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
@@ -173,6 +174,12 @@ ProgramOptions parse_options(int argc, char** argv) {
             options.request_timeout = std::chrono::milliseconds(parse_u32(
                 require_value(index, argc, argv, "--request-timeout-ms"),
                 "--request-timeout-ms"));
+        }
+        else if (arg == "--startup-timeout-ms" ||
+                 arg.rfind("--startup-timeout-ms=", 0) == 0) {
+            options.startup_timeout = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--startup-timeout-ms"),
+                "--startup-timeout-ms"));
         }
         else if (arg == "--mock-chunks" || arg.rfind("--mock-chunks=", 0) == 0) {
             options.mock_chunks =

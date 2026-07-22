@@ -35,6 +35,7 @@ Results:
 - Packaged mock worker smoke: passed.
 - Packaged Qwen protocol smoke: passed with CUDA worker, `dtype auto`, speaker `ryan`.
 - C++ `qwen_tts_save_wav` real Qwen smoke: passed and wrote `tmp/qwen-gpu-smoke.wav`.
+- C++ `qwen_tts_save_wav` optimized warmup smoke: passed and wrote `tmp/qwen-gpu-smoke-warmup-metrics.wav`.
 - WAV verification: `184210` PCM bytes, 24000 Hz, mono, 16-bit.
 
 Observed timings from C++ WAV smoke:
@@ -47,6 +48,7 @@ Observed timings from C++ WAV smoke:
 | `dtype bfloat16`, `attn_implementation sdpa` | `tmp/qwen-gpu-smoke-sdpa-bf16.wav` | 6636 ms | 26263 ms | 4236 ms | 6.20 | passed |
 | `dtype float16`, `attn_implementation sdpa` | `tmp/qwen-gpu-smoke-sdpa-fp16.wav` | n/a | 3123 ms | 0 ms | n/a | failed with CUDA device-side assert |
 | `dtype auto`, `enable_streaming_optimizations` | `tmp/qwen-gpu-smoke-optimized.wav` | 46611 ms | 49814 ms | 3754 ms | 13.27 | passed, but first request pays compile cost |
+| `dtype auto`, `enable_streaming_optimizations`, warmup synthesis, `emit=4`, `window=40` | `tmp/qwen-gpu-smoke-warmup-metrics.wav` | 338 ms | 3858 ms | 3997 ms | 0.97 | passed |
 
 Persistent-worker benchmark results from `tests/python/benchmark_packaged_worker.py`:
 
@@ -76,6 +78,7 @@ Notes:
 - Installing `triton-windows` removes the PyTorch `triton not found` warning in this environment, but it does not remove the Qwen `flash-attn is not installed` warning and did not make the baseline real-time.
 - Calling the Qwen fork's `enable_streaming_optimizations()` hook through the worker is the first mode observed to approach real-time after the initial compile-heavy request. With `--warmup-synthesis`, the worker pays the compile/synthetic synthesis cost before `ready`; the first user-facing request reached `first_audio_ms ~= 717` and `RTF ~= 1.00` in the best current run.
 - `emit_every_frames=4` and `decode_window_frames=40` is the best current throughput candidate. `emit_every_frames=2` gives the lowest first-audio latency, but it emits many more chunks.
+- C++ example startup timeout must be increased for warmup-before-ready mode. The optimized warmup WAV run used `--startup-timeout-ms 1200000`, reported worker `startup_ms ~= 79119`, and then completed the first user request with `first_audio_ms ~= 338` and `RTF ~= 0.965`.
 - The baseline is functionally correct on a real RTX 4090, but it is not real-time yet. Best observed RTF in this pass was about `5.31`.
 - `float16` should not be used as the default for this model/runtime combination until the CUDA assert is understood.
 - Generated models, packaged worker output, venvs, and WAV files are ignored by git.

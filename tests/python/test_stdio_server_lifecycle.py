@@ -132,6 +132,44 @@ class RequestValidationEngine:
         pass
 
 
+class WarmupMetricsEngine:
+    @property
+    def capabilities(self) -> EngineCapabilities:
+        return EngineCapabilities(
+            streaming=False,
+            cancellation=False,
+            instructions=True,
+            voice_clone=False,
+        )
+
+    def load(self) -> None:
+        pass
+
+    def warmup(self) -> dict[str, object]:
+        return {
+            "warmup_synthesis": True,
+            "warmup_audio_chunks": 2,
+            "warmup_audio_bytes": 64,
+        }
+
+    def validate_request(
+        self,
+        request: SynthesisRequest,
+    ) -> None:
+        del request
+
+    def synthesize_stream(
+        self,
+        request: SynthesisRequest,
+        cancel_event: threading.Event,
+    ) -> Iterable[bytes]:
+        del request, cancel_event
+        return ()
+
+    def close(self) -> None:
+        pass
+
+
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
     def test_load_failure_does_not_join_unstarted_engine_thread(self) -> None:
         engine = FailingLoadEngine()
@@ -209,6 +247,40 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             },
             _payload(frames[1]),
         )
+
+    def test_warmup_metrics_are_emitted(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+        )
+        output_stream = io.BytesIO()
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=output_stream,
+            error_stream=stderr,
+            engine=WarmupMetricsEngine(),
+        )
+
+        self.assertEqual(0, server.run())
+
+        warmup_metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in stderr.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+            and json.loads(line.removeprefix("qtb_metric ")).get("event")
+            == "engine_warmed_up"
+        ]
+        self.assertEqual(1, len(warmup_metrics))
+        self.assertTrue(warmup_metrics[0]["warmup_synthesis"])
+        self.assertEqual(2, warmup_metrics[0]["warmup_audio_chunks"])
+        self.assertEqual(64, warmup_metrics[0]["warmup_audio_bytes"])
 
 
 def _control_frame(request_id: int, message: dict[str, object]) -> bytes:

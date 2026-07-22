@@ -65,13 +65,14 @@ class QwenTtsEngine:
             return
         self._model = self._model_loader(self._config)
 
-    def warmup(self) -> None:
+    def warmup(self) -> dict[str, object] | None:
         """Ensure the model object exists before the worker sends ready."""
 
         if self._model is None:
             self.load()
         if self._config.warmup_synthesis_enabled:
-            self._run_warmup_synthesis()
+            return self._run_warmup_synthesis()
+        return None
 
     def validate_request(
         self,
@@ -154,7 +155,7 @@ class QwenTtsEngine:
             close()
         gc.collect()
 
-    def _run_warmup_synthesis(self) -> None:
+    def _run_warmup_synthesis(self) -> dict[str, object]:
         request = SynthesisRequest(
             request_id=0,
             text=self._config.warmup_text,
@@ -168,12 +169,27 @@ class QwenTtsEngine:
         cancel_event = threading.Event()
         stream = self.synthesize_stream(request, cancel_event)
         close_stream = getattr(stream, "close", None)
+        audio_chunks = 0
+        audio_bytes = 0
         try:
-            for _chunk in stream:
-                pass
+            for chunk in stream:
+                if not chunk:
+                    continue
+                audio_chunks += 1
+                audio_bytes += len(chunk)
         finally:
             if callable(close_stream):
                 close_stream()
+
+        audio_duration_ms = audio_bytes * 1000.0 / (
+            request.output.sample_rate * request.output.channels * 2
+        )
+        return {
+            "warmup_synthesis": True,
+            "warmup_audio_chunks": audio_chunks,
+            "warmup_audio_bytes": audio_bytes,
+            "warmup_audio_duration_ms": round(audio_duration_ms, 3),
+        }
 
     def _require_model(self) -> Any:
         if self._model is None:
