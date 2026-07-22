@@ -8,7 +8,9 @@ param(
     [switch]$Clean,
     [switch]$DryRun,
     [switch]$IncludeQwenFork,
-    [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming"
+    [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
+    [switch]$IncludeFasterQwen,
+    [string]$FasterQwenSourcePath = "external/python/faster-qwen3-tts"
 )
 
 $ErrorActionPreference = "Stop"
@@ -415,7 +417,8 @@ function Invoke-StagedPythonIsolationProbe {
         [string]$PythonRoot,
         [string]$SitePackages,
         [string[]]$ForbiddenRoots,
-        [switch]$ProbeQwenImport
+        [switch]$ProbeQwenImport,
+        [switch]$ProbeFasterQwenImport
     )
 
     $StagedPython = Join-Path $PythonRoot "python.exe"
@@ -429,6 +432,7 @@ function Invoke-StagedPythonIsolationProbe {
     $PreviousPythonDontWriteBytecode = $env:PYTHONDONTWRITEBYTECODE
     $PreviousForbiddenRoots = $env:QTB_FORBIDDEN_SYS_PATH_ROOTS
     $PreviousProbeQwenImport = $env:QTB_PROBE_QWEN_IMPORT
+    $PreviousProbeFasterQwenImport = $env:QTB_PROBE_FASTER_QWEN_IMPORT
     $ProbePath = Join-Path $PythonRoot "qtb_portable_isolation_probe.py"
 
     try {
@@ -447,6 +451,12 @@ function Invoke-StagedPythonIsolationProbe {
         }
         else {
             $env:QTB_PROBE_QWEN_IMPORT = ""
+        }
+        if ($ProbeFasterQwenImport) {
+            $env:QTB_PROBE_FASTER_QWEN_IMPORT = "1"
+        }
+        else {
+            $env:QTB_PROBE_FASTER_QWEN_IMPORT = ""
         }
 
         $ProbeCode = @'
@@ -479,6 +489,9 @@ import qwen_tts_bridge_worker  # noqa: F401
 
 if os.environ.get("QTB_PROBE_QWEN_IMPORT") == "1":
     import qwen_tts.inference.qwen3_tts_model  # noqa: F401
+
+if os.environ.get("QTB_PROBE_FASTER_QWEN_IMPORT") == "1":
+    import faster_qwen3_tts  # noqa: F401
 '@
         [IO.File]::WriteAllText(
             $ProbePath,
@@ -501,6 +514,7 @@ if os.environ.get("QTB_PROBE_QWEN_IMPORT") == "1":
         $env:PYTHONDONTWRITEBYTECODE = $PreviousPythonDontWriteBytecode
         $env:QTB_FORBIDDEN_SYS_PATH_ROOTS = $PreviousForbiddenRoots
         $env:QTB_PROBE_QWEN_IMPORT = $PreviousProbeQwenImport
+        $env:QTB_PROBE_FASTER_QWEN_IMPORT = $PreviousProbeFasterQwenImport
     }
 }
 
@@ -584,12 +598,25 @@ if ($IncludeQwenFork) {
     Assert-NotUnderPath -Parent $ResolvedQwenSourcePath -Path $WorkerOutput -Description "WorkerOutput"
 }
 
+$FasterQwenPackageSource = $null
+if ($IncludeFasterQwen) {
+    $ResolvedFasterQwenSourcePath = Resolve-RepoPath $FasterQwenSourcePath
+    $FasterQwenPackageSource = Join-Path $ResolvedFasterQwenSourcePath "faster_qwen3_tts"
+    if (-not (Test-Path -LiteralPath $FasterQwenPackageSource)) {
+        throw "faster-qwen3-tts package source was not found: $FasterQwenPackageSource"
+    }
+    Assert-NotUnderPath -Parent $ResolvedFasterQwenSourcePath -Path $WorkerOutput -Description "WorkerOutput"
+}
+
 Write-Host "Portable Python worker source runtime: $BasePrefix"
 Write-Host "Portable Python worker source site-packages: $PureLib"
 Write-Host "Portable Python worker output: $WorkerOutput"
 Write-Host "Portable Python worker launcher: $LauncherPath"
 if ($IncludeQwenFork) {
     Write-Host "Portable Python worker includes Qwen fork: $QwenPackageSource"
+}
+if ($IncludeFasterQwen) {
+    Write-Host "Portable Python worker includes faster-qwen3-tts: $FasterQwenPackageSource"
 }
 
 if ($DryRun) {
@@ -629,7 +656,9 @@ Remove-StagedPackageArtifacts `
         "qwen_tts_bridge_worker",
         "qwen-tts-bridge-worker",
         "qwen_tts",
-        "qwen-tts"
+        "qwen-tts",
+        "faster_qwen3_tts",
+        "faster-qwen3-tts"
     )
 
 Install-ProjectWheelToTarget `
@@ -646,6 +675,14 @@ if ($null -ne $QwenPackageSource) {
         -Label "qwen"
 }
 
+if ($null -ne $FasterQwenPackageSource) {
+    Install-ProjectWheelToTarget `
+        -ProjectPath $ResolvedFasterQwenSourcePath `
+        -SitePackages $SitePackagesOutput `
+        -WheelWorkRoot $WheelWorkRoot `
+        -Label "faster-qwen"
+}
+
 if (Test-Path -LiteralPath $WheelWorkRoot) {
     Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force
 }
@@ -659,9 +696,11 @@ Invoke-StagedPythonIsolationProbe `
         $WorkerPackageSource,
         $PureLib,
         $PlatLib,
-        $QwenPackageSource
+        $QwenPackageSource,
+        $FasterQwenPackageSource
     ) `
-    -ProbeQwenImport:($null -ne $QwenPackageSource)
+    -ProbeQwenImport:($null -ne $QwenPackageSource) `
+    -ProbeFasterQwenImport:($null -ne $FasterQwenPackageSource)
 Remove-PythonBytecode -Root $PythonOutput
 
 Write-WorkerLauncher -LauncherPath $LauncherPath

@@ -684,6 +684,29 @@ worker writer metrics showed the first audio frame queue/write/flush path itself
 is tiny: first frame enqueue -> write start was about 0.08-0.11 ms and write
 start -> flush was about 0.10-0.26 ms on that run.
 
+Portable packaging now has an explicit faster backend opt-in:
+
+```powershell
+.\scripts\setup-python-packaging.ps1 `
+    -UseVenv `
+    -InstallQwenFork `
+    -InstallFasterQwen `
+    -FasterQwenSourcePath C:\_repoz\faster-qwen3-tts-v032-stack112-clean
+
+.\scripts\package-python-worker.ps1 `
+    -UseVenv `
+    -IncludeQwenFork `
+    -IncludeFasterQwen `
+    -FasterQwenSourcePath C:\_repoz\faster-qwen3-tts-v032-stack112-clean
+```
+
+`package-python-worker.ps1 -DryRun -IncludeQwenFork -IncludeFasterQwen` now
+resolves both source trees and the staged isolation probe imports
+`faster_qwen3_tts` when requested. This avoids relying on editable `.pth` links
+from the packaging environment. A full packaged faster benchmark is still
+pending because it requires building a fresh portable worker distribution with
+the selected CUDA/Torch/faster-qwen environment.
+
 Updated diagnosis after profiling:
 
 ```text

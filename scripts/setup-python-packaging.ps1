@@ -4,7 +4,9 @@ param(
     [switch]$UseVenv,
     [string]$VenvPath = ".venv-packaging",
     [switch]$InstallQwenFork,
-    [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming"
+    [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
+    [switch]$InstallFasterQwen,
+    [string]$FasterQwenSourcePath = "external/python/faster-qwen3-tts"
 )
 
 $ErrorActionPreference = "Stop"
@@ -123,5 +125,24 @@ if ($InstallQwenFork) {
         "--no-warn-script-location",
         "-e",
         $ResolvedQwenSourcePath
+    )
+}
+
+if ($InstallFasterQwen) {
+    $ResolvedFasterQwenSourcePath = Resolve-RepoPath $FasterQwenSourcePath
+    $FasterQwenPyProject = Join-Path $ResolvedFasterQwenSourcePath "pyproject.toml"
+    if (-not (Test-Path -LiteralPath $FasterQwenPyProject)) {
+        throw "faster-qwen3-tts source pyproject.toml was not found: $FasterQwenPyProject"
+    }
+
+    Invoke-ProjectPython @(
+        "-m",
+        "pip",
+        "--disable-pip-version-check",
+        "install",
+        "--no-warn-script-location",
+        "--no-deps",
+        "-e",
+        $ResolvedFasterQwenSourcePath
     )
 }

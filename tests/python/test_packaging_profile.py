@@ -166,6 +166,9 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("external/python/Qwen3-TTS-streaming", script)
         self.assertIn('$IncludeQwenFork', script)
         self.assertIn('"qwen_tts"', script)
+        self.assertIn("external/python/faster-qwen3-tts", script)
+        self.assertIn('$IncludeFasterQwen', script)
+        self.assertIn('"faster_qwen3_tts"', script)
         self.assertIn("Remove-EditableInstallArtifacts", script)
         self.assertIn('__editable__*', script)
         self.assertIn("Remove-StagedPackageArtifacts", script)
@@ -178,7 +181,13 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("PYTHONDONTWRITEBYTECODE", script)
         self.assertIn("QTB_PROBE_QWEN_IMPORT", script)
         self.assertIn("qwen_tts.inference.qwen3_tts_model", script)
+        self.assertIn("QTB_PROBE_FASTER_QWEN_IMPORT", script)
+        self.assertIn("import faster_qwen3_tts", script)
         self.assertIn("-ProbeQwenImport:($null -ne $QwenPackageSource)", script)
+        self.assertIn(
+            "-ProbeFasterQwenImport:($null -ne $FasterQwenPackageSource)",
+            script,
+        )
 
     def test_packaging_requirements_include_wheel_build_tools(self) -> None:
         requirements = _PACKAGING_REQUIREMENTS.read_text(encoding="utf-8")

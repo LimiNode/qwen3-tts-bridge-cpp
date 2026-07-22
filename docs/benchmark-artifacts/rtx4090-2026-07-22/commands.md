@@ -279,3 +279,14 @@ build\default\qwen_tts_latency_benchmark.exe `
     > docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-cpp-callback-timestamps-smoke-faster-customvoice-chunk8-r2.json `
     2> docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-cpp-callback-timestamps-smoke-faster-customvoice-chunk8-r2.stderr.txt
 ```
+
+Portable worker faster packaging dry run:
+
+```powershell
+.\scripts\package-python-worker.ps1 `
+    -UseVenv `
+    -DryRun `
+    -IncludeQwenFork `
+    -IncludeFasterQwen `
+    -FasterQwenSourcePath C:\_repoz\faster-qwen3-tts-v032-stack112-clean
+```
