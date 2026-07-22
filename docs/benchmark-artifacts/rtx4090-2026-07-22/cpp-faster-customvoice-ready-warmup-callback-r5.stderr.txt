@@ -1,0 +1,73 @@
+
+"sox" не является внутренней или внешней
+командой, исполняемой программой или пакетным файлом.
+SoX could not be found!
+
+    If you do not have SoX, proceed here:
+     - - - http://sox.sourceforge.net/ - - -
+
+    If you do (or think that you should) have SoX, double-check your
+    path variables.
+    
+`torch_dtype` is deprecated! Use `dtype` instead!
+Could not infer sample rate from base model; defaulting to 24000 Hz.
+qtb_metric {"duration_ms":13935.847,"event":"engine_loaded"}
+Warming up predictor (3 runs)...
+Capturing CUDA graph for predictor...
+CUDA graph captured!
+Warming up talker graph (3 runs)...
+Capturing CUDA graph for talker decode...
+Talker CUDA graph captured!
+qtb_metric {"duration_ms":13747.546,"event":"engine_warmed_up","warmed_up":true,"warmup_audio_bytes":76800,"warmup_audio_chunks":3,"warmup_audio_duration_ms":1600.0,"warmup_synthesis":true}
+qtb_metric {"event":"worker_runtime_started","startup_ms":27684.722,"warmed_up":true}
+qtb_metric {"cancellation":true,"event":"worker_ready_sent","instructions":true,"streaming":true,"voice_clone":false,"warmed_up":true}
+qtb_metric {"event":"request_received","request_id":1}
+qtb_metric {"event":"request_queued","position":1,"request_id":1}
+qtb_metric {"event":"request_started","queue_ms":0.378,"request_id":1}
+qtb_metric {"event":"request_engine_started","queue_ms":0.378,"request_id":1}
+qtb_metric {"event":"request_first_audio","first_audio_ms":431.773,"request_id":1}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":431.773,"request_id":1}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":431.857,"request_id":1}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.065,"request_id":1}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.136,"output_queue_ms":0.065,"output_writer_ms":0.201,"request_id":1}
+qtb_metric {"audio_bytes":249600,"audio_chunks":9,"audio_duration_ms":5200.0,"event":"request_finished","first_audio_ms":431.773,"queue_ms":0.378,"real_time_factor":0.434617,"request_id":1,"synthesis_ms":2260.009,"terminal_state":"completed","total_ms":2260.386}
+qtb_metric {"event":"request_received","request_id":2}
+qtb_metric {"event":"request_queued","position":1,"request_id":2}
+qtb_metric {"event":"request_started","queue_ms":0.335,"request_id":2}
+qtb_metric {"event":"request_engine_started","queue_ms":0.335,"request_id":2}
+qtb_metric {"event":"request_first_audio","first_audio_ms":383.577,"request_id":2}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":383.577,"request_id":2}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":383.687,"request_id":2}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.079,"request_id":2}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.266,"output_queue_ms":0.079,"output_writer_ms":0.345,"request_id":2}
+qtb_metric {"audio_bytes":211200,"audio_chunks":7,"audio_duration_ms":4400.0,"event":"request_finished","first_audio_ms":383.577,"queue_ms":0.335,"real_time_factor":0.367651,"request_id":2,"synthesis_ms":1617.663,"terminal_state":"completed","total_ms":1617.998}
+qtb_metric {"event":"request_received","request_id":3}
+qtb_metric {"event":"request_queued","position":1,"request_id":3}
+qtb_metric {"event":"request_started","queue_ms":0.339,"request_id":3}
+qtb_metric {"event":"request_engine_started","queue_ms":0.339,"request_id":3}
+qtb_metric {"event":"request_first_audio","first_audio_ms":341.986,"request_id":3}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":341.986,"request_id":3}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":342.083,"request_id":3}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.093,"request_id":3}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.253,"output_queue_ms":0.093,"output_writer_ms":0.346,"request_id":3}
+qtb_metric {"audio_bytes":203520,"audio_chunks":7,"audio_duration_ms":4240.0,"event":"request_finished","first_audio_ms":341.986,"queue_ms":0.339,"real_time_factor":0.38309,"request_id":3,"synthesis_ms":1624.303,"terminal_state":"completed","total_ms":1624.641}
+qtb_metric {"event":"request_received","request_id":4}
+qtb_metric {"event":"request_queued","position":1,"request_id":4}
+qtb_metric {"event":"request_started","queue_ms":0.349,"request_id":4}
+qtb_metric {"event":"request_engine_started","queue_ms":0.349,"request_id":4}
+qtb_metric {"event":"request_first_audio","first_audio_ms":382.891,"request_id":4}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":382.891,"request_id":4}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":383.002,"request_id":4}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.061,"request_id":4}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.082,"output_queue_ms":0.061,"output_writer_ms":0.143,"request_id":4}
+qtb_metric {"audio_bytes":230400,"audio_chunks":8,"audio_duration_ms":4800.0,"event":"request_finished","first_audio_ms":382.891,"queue_ms":0.349,"real_time_factor":0.384123,"request_id":4,"synthesis_ms":1843.791,"terminal_state":"completed","total_ms":1844.14}
+qtb_metric {"event":"request_received","request_id":5}
+qtb_metric {"event":"request_queued","position":1,"request_id":5}
+qtb_metric {"event":"request_started","queue_ms":0.35,"request_id":5}
+qtb_metric {"event":"request_engine_started","queue_ms":0.35,"request_id":5}
+qtb_metric {"event":"request_first_audio","first_audio_ms":341.299,"request_id":5}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":341.299,"request_id":5}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":341.392,"request_id":5}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.054,"request_id":5}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.101,"output_queue_ms":0.054,"output_writer_ms":0.155,"request_id":5}
+qtb_metric {"audio_bytes":157440,"audio_chunks":6,"audio_duration_ms":3280.0,"event":"request_finished","first_audio_ms":341.299,"queue_ms":0.35,"real_time_factor":0.397739,"request_id":5,"synthesis_ms":1304.585,"terminal_state":"completed","total_ms":1304.935}

@@ -170,6 +170,40 @@ class WarmupMetricsEngine:
         pass
 
 
+class NoopWarmupEngine:
+    @property
+    def capabilities(self) -> EngineCapabilities:
+        return EngineCapabilities(
+            streaming=False,
+            cancellation=False,
+            instructions=True,
+            voice_clone=False,
+        )
+
+    def load(self) -> None:
+        pass
+
+    def warmup(self) -> None:
+        return None
+
+    def validate_request(
+        self,
+        request: SynthesisRequest,
+    ) -> None:
+        del request
+
+    def synthesize_stream(
+        self,
+        request: SynthesisRequest,
+        cancel_event: threading.Event,
+    ) -> Iterable[bytes]:
+        del request, cancel_event
+        return ()
+
+    def close(self) -> None:
+        pass
+
+
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
     def test_load_failure_does_not_join_unstarted_engine_thread(self) -> None:
         engine = FailingLoadEngine()
@@ -278,9 +312,47 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             == "engine_warmed_up"
         ]
         self.assertEqual(1, len(warmup_metrics))
+        self.assertTrue(warmup_metrics[0]["warmed_up"])
         self.assertTrue(warmup_metrics[0]["warmup_synthesis"])
         self.assertEqual(2, warmup_metrics[0]["warmup_audio_chunks"])
         self.assertEqual(64, warmup_metrics[0]["warmup_audio_bytes"])
+
+    def test_noop_warmup_reports_not_warmed_up(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+        )
+        output_stream = io.BytesIO()
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=output_stream,
+            error_stream=stderr,
+            engine=NoopWarmupEngine(),
+        )
+
+        self.assertEqual(0, server.run())
+
+        frames = _parse_frames(output_stream.getvalue())
+        ready = _payload(frames[0])
+        self.assertEqual("ready", ready["message_type"])
+        self.assertFalse(ready["warmed_up"])
+
+        warmup_metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in stderr.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+            and json.loads(line.removeprefix("qtb_metric ")).get("event")
+            == "engine_warmed_up"
+        ]
+        self.assertEqual(1, len(warmup_metrics))
+        self.assertFalse(warmup_metrics[0]["warmed_up"])
 
 
 def _control_frame(request_id: int, message: dict[str, object]) -> bytes:

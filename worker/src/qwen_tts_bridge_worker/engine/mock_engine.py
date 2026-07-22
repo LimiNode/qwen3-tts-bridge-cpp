@@ -53,11 +53,12 @@ class MockTtsEngine:
 
         self._loaded = True
 
-    def warmup(self) -> None:
+    def warmup(self) -> dict[str, object]:
         """Mark warmup as completed."""
 
         if not self._loaded:
             self.load()
+        return {"warmup_mock": True}
 
     def validate_request(
         self,

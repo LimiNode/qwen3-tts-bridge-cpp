@@ -661,28 +661,66 @@ Latency ladder, same CustomVoice model, `speaker=ryan`, English text
 `This is a faster backend latency benchmark.`, faster backend, fixed chunk size
 8, 5 request warmups, 30 measured requests:
 
-| Level | Boundary | First PCM median | First PCM p95 | Completed median | Completed p95 | RTF median |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Direct `QwenTtsEngine` | call `synthesize_stream()` -> first yielded PCM bytes | 344.0 ms | 349.7 ms | 1.37 s | 1.95 s | 0.369 |
-| Source worker IPC | client send -> first `AUDIO_PCM` frame | 447.6 ms | 456.1 ms | 1.44 s | 1.91 s | 0.384 |
-| C++ callback benchmark | `synthesize_async()` submit -> first `on_audio` callback | 381.0 ms | 392.6 ms | 1.41 s | 1.83 s | 0.377 |
+| Level | Boundary | First PCM median | First PCM p95 | Completed median | Completed p95 | local RTF median | inverse RTF median |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Direct `QwenTtsEngine` | call `synthesize_stream()` -> first yielded PCM bytes | 337.0 ms | 339.3 ms | 1.44 s | 1.77 s | 0.365 | 2.74 |
+| Source worker IPC | client send -> first `AUDIO_PCM` frame, block reader | 341.3 ms | 347.5 ms | 1.35 s | 1.67 s | 0.362 | 2.76 |
+| C++ callback benchmark | `synthesize_async()` submit -> first `on_audio` callback | 341.7 ms | 345.1 ms | 1.34 s | 1.62 s | 0.365 | 2.74 |
 
 Artifacts:
 
 ```text
-docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-direct-engine-faster-customvoice-chunk8-r30.json
-docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-source-worker-ipc-faster-customvoice-chunk8-r30.json
-docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-cpp-callback-faster-customvoice-chunk8-r30.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-direct-engine-faster-customvoice-chunk8-r30-v2.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-source-worker-ipc-faster-customvoice-chunk8-r30-block-reader.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-cpp-callback-faster-customvoice-chunk8-r30-paired.json
 ```
 
-The worker and C++ layers are now measured with the right external boundaries,
-but the model sampling seed is not controlled through the bridge protocol yet,
-so this ladder should be read as a reproducible product-level observation, not
-as exact per-layer overhead arithmetic. The source worker run also contains a
-single first-audio outlier at 647 ms. A short C++ timestamp smoke after adding
-worker writer metrics showed the first audio frame queue/write/flush path itself
-is tiny: first frame enqueue -> write start was about 0.08-0.11 ms and write
-start -> flush was about 0.10-0.26 ms on that run.
+The earlier source-worker IPC artifact
+`latency-ladder-source-worker-ipc-faster-customvoice-chunk8-r30.json` is
+invalidated for performance analysis: its test harness read stdout through
+`read(1)`, which inflated client-side parser overhead. The corrected block
+reader uses 64 KiB stdout reads.
+
+The paired C++ artifact joins C++ callback timing with worker telemetry by
+`request_id`. The measured `transport_dispatch_residual_ms` was:
+
+| Metric | Value |
+| --- | ---: |
+| median | 0.409 ms |
+| p90 | 0.490 ms |
+| p95 | 0.502 ms |
+| max | 0.544 ms |
+
+This is below the 5 ms threshold, so the stdio IPC / C++ dispatch track is
+closed for now. Future performance work should not subtract medians from
+separate runs; use paired request telemetry when transport cost matters.
+
+Worker readiness semantics were also corrected: a no-op warmup now reports
+`warmed_up=false`. For faster backend production startup, use
+`--warmup-synthesis` with a valid speaker/instruction so CUDA graph capture is
+paid before `ready`; otherwise the first real user request after `ready` may
+include the graph-capture cost. In these ladder runs, the first benchmark warmup
+request intentionally absorbed that lazy capture and was excluded from the 30
+measured steady-state requests.
+
+Ready warmup smoke, source worker through C++, faster CustomVoice, `speaker=ryan`,
+`--warmup-synthesis`, no benchmark warmups, 5 measured requests:
+
+| Metric | Value |
+| --- | ---: |
+| `engine_warmed_up.duration_ms` | 13.75 s |
+| `worker_runtime_started.startup_ms` | 27.68 s |
+| ready `warmed_up` | true |
+| first user request TTFA | 433.0 ms |
+| first user request completed | 2.26 s |
+| TTFA median / p95 across 5 requests | 384.0 ms / 423.4 ms |
+
+Artifact:
+
+```text
+docs/benchmark-artifacts/rtx4090-2026-07-22/cpp-faster-customvoice-ready-warmup-callback-r5.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/cpp-faster-customvoice-ready-warmup-callback-r5.stderr.txt
+```
 
 Portable packaging now has an explicit faster backend opt-in:
 
@@ -703,9 +741,43 @@ Portable packaging now has an explicit faster backend opt-in:
 `package-python-worker.ps1 -DryRun -IncludeQwenFork -IncludeFasterQwen` now
 resolves both source trees and the staged isolation probe imports
 `faster_qwen3_tts` when requested. This avoids relying on editable `.pth` links
-from the packaging environment. A full packaged faster benchmark is still
-pending because it requires building a fresh portable worker distribution with
-the selected CUDA/Torch/faster-qwen environment.
+from the packaging environment.
+
+A real non-DryRun portable worker build was also performed with
+`-Clean -IncludeQwenFork -IncludeFasterQwen`. It built and staged local wheels
+for the bridge worker, the Qwen fork, and `faster-qwen3-tts`, then passed:
+
+```text
+scripts/test-portable-python-worker.ps1 -UseVenv
+dist/QwenTTSBridge/worker-python/python/python.exe -P -s -c "import faster_qwen3_tts, qwen_tts, torch"
+```
+
+Portable runtime versions:
+
+| Package | Version |
+| --- | --- |
+| Python | 3.11.9 |
+| torch | 2.11.0+cu126 |
+| faster-qwen3-tts | 0.3.2 |
+
+Real packaged faster CustomVoice validation:
+
+| Level | Requests | TTFA median | TTFA p95 | Completed median | local RTF median | residual p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Portable worker Python harness | 5 | 407.0 ms | 450.1 ms | 1.76 s | 0.419 | N/A |
+| Portable worker C++ callback | 5 | 402.1 ms | 414.8 ms | 1.70 s | 0.419 | 0.519 ms |
+
+Artifacts:
+
+```text
+docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-portable-worker-faster-customvoice-chunk8-r5.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-portable-cpp-faster-customvoice-chunk8-r5.json
+```
+
+This validates the packaged faster backend functionally, but it is not the
+fastest runtime matrix: the portable environment currently uses torch
+`2.11.0+cu126`, while the best source-tree benchmark above used
+`.venv-faster-qwen` with torch `2.10.0+cu128`.
 
 Updated diagnosis after profiling:
 

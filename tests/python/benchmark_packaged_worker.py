@@ -188,6 +188,11 @@ def _run_request(
         if audio_duration_ms > 0
         else None
     )
+    inverse_real_time_factor = (
+        audio_duration_ms / completed_ms
+        if completed_ms > 0
+        else None
+    )
     return {
         "request_id": request_id,
         "first_audio_ms": first_audio_ms,
@@ -196,6 +201,8 @@ def _run_request(
         "audio_chunks": audio_chunks,
         "audio_duration_ms": audio_duration_ms,
         "real_time_factor": real_time_factor,
+        "local_rtf": real_time_factor,
+        "inverse_rtf": inverse_real_time_factor,
     }
 
 

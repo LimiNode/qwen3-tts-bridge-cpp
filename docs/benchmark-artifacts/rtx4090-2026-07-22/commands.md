@@ -200,6 +200,26 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
     --output docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-direct-engine-faster-customvoice-chunk8-r30.json
 ```
 
+Latency ladder, direct engine v2 with local/inverse RTF:
+
+```powershell
+$env:PYTHONPATH = "$repo\worker\src"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+& $py -B scripts\qwen-engine-latency-benchmark.py `
+    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --runtime-backend faster `
+    --device cuda `
+    --dtype auto `
+    --emit-every-frames 8 `
+    --max-seq-len 2048 `
+    --warmups 5 `
+    --requests 30 `
+    --text "This is a faster backend latency benchmark." `
+    --language English `
+    --speaker ryan `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-direct-engine-faster-customvoice-chunk8-r30-v2.json
+```
+
 Latency ladder, source worker IPC:
 
 ```powershell
@@ -221,6 +241,33 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
     --speaker ryan `
     --timeout-seconds 900 `
     > docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-source-worker-ipc-faster-customvoice-chunk8-r30.json
+```
+
+Latency ladder, source worker IPC with block stdout reader:
+
+```powershell
+$env:PYTHONPATH = "$repo\worker\src"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+$out = & $py -B tests\python\benchmark_packaged_worker.py `
+    tmp\source_faster_worker.cmd `
+    --engine qwen `
+    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --runtime-backend faster `
+    --device cuda `
+    --dtype auto `
+    --emit-every-frames 8 `
+    --max-seq-len 2048 `
+    --warmups 5 `
+    --requests 30 `
+    --text "This is a faster backend latency benchmark." `
+    --language English `
+    --speaker ryan `
+    --timeout-seconds 900
+[IO.File]::WriteAllText(
+    "docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-source-worker-ipc-faster-customvoice-chunk8-r30-block-reader.json",
+    ($out -join "`n"),
+    [System.Text.UTF8Encoding]::new($false)
+)
 ```
 
 Latency ladder, C++ callback boundary:
@@ -249,6 +296,69 @@ build\default\qwen_tts_latency_benchmark.exe `
     --language English `
     --speaker ryan `
     > docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-cpp-callback-faster-customvoice-chunk8-r30.json
+```
+
+Latency ladder, C++ callback with paired worker telemetry:
+
+```powershell
+build\default\qwen_tts_latency_benchmark.exe `
+    --worker tmp\source_faster_worker.cmd `
+    --worker-arg qwen `
+    --worker-arg --model-path `
+    --worker-arg models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --worker-arg --runtime-backend `
+    --worker-arg faster `
+    --worker-arg --device `
+    --worker-arg cuda `
+    --worker-arg --dtype `
+    --worker-arg auto `
+    --worker-arg --emit-every-frames `
+    --worker-arg 8 `
+    --worker-arg --max-seq-len `
+    --worker-arg 2048 `
+    --startup-timeout-ms 1200000 `
+    --request-timeout-ms 900000 `
+    --warmups 5 `
+    --requests 30 `
+    --text "This is a faster backend latency benchmark." `
+    --language English `
+    --speaker ryan `
+    > docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-cpp-callback-faster-customvoice-chunk8-r30-paired.json `
+    2> docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-cpp-callback-faster-customvoice-chunk8-r30-paired.stderr.txt
+```
+
+Ready warmup C++ smoke:
+
+```powershell
+build\default\qwen_tts_latency_benchmark.exe `
+    --worker tmp\source_faster_worker.cmd `
+    --worker-arg qwen `
+    --worker-arg --model-path `
+    --worker-arg models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --worker-arg --runtime-backend `
+    --worker-arg faster `
+    --worker-arg --device `
+    --worker-arg cuda `
+    --worker-arg --dtype `
+    --worker-arg auto `
+    --worker-arg --emit-every-frames `
+    --worker-arg 8 `
+    --worker-arg --max-seq-len `
+    --worker-arg 2048 `
+    --worker-arg --warmup-synthesis `
+    --worker-arg --warmup-language `
+    --worker-arg English `
+    --worker-arg --warmup-speaker `
+    --worker-arg ryan `
+    --startup-timeout-ms 1200000 `
+    --request-timeout-ms 900000 `
+    --warmups 0 `
+    --requests 5 `
+    --text "This is a faster backend latency benchmark." `
+    --language English `
+    --speaker ryan `
+    > docs\benchmark-artifacts\rtx4090-2026-07-22\cpp-faster-customvoice-ready-warmup-callback-r5.json `
+    2> docs\benchmark-artifacts\rtx4090-2026-07-22\cpp-faster-customvoice-ready-warmup-callback-r5.stderr.txt
 ```
 
 Latency ladder timestamp smoke:
@@ -289,4 +399,92 @@ Portable worker faster packaging dry run:
     -IncludeQwenFork `
     -IncludeFasterQwen `
     -FasterQwenSourcePath C:\_repoz\faster-qwen3-tts-v032-stack112-clean
+```
+
+Portable worker faster packaging real build:
+
+```powershell
+.\scripts\package-python-worker.ps1 `
+    -UseVenv `
+    -Clean `
+    -IncludeQwenFork `
+    -IncludeFasterQwen `
+    -FasterQwenSourcePath C:\_repoz\faster-qwen3-tts-v032-stack112-clean
+
+.\scripts\test-portable-python-worker.ps1 -UseVenv
+
+dist\QwenTTSBridge\worker-python\python\python.exe `
+    -P -s -c "import faster_qwen3_tts, qwen_tts, torch; print(faster_qwen3_tts.__version__); print(torch.__version__, torch.version.cuda)"
+```
+
+Portable worker real CustomVoice benchmark:
+
+```powershell
+$oldPyPath = $env:PYTHONPATH
+$oldPyHome = $env:PYTHONHOME
+try {
+    $env:PYTHONPATH = $null
+    $env:PYTHONHOME = $null
+    $out = .\.venv\Scripts\python.exe -B tests\python\benchmark_packaged_worker.py `
+        dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd `
+        --engine qwen `
+        --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+        --runtime-backend faster `
+        --device cuda `
+        --dtype auto `
+        --emit-every-frames 8 `
+        --max-seq-len 2048 `
+        --warmup-synthesis `
+        --warmup-language English `
+        --warmup-speaker ryan `
+        --warmups 0 `
+        --requests 5 `
+        --text "This is a faster backend latency benchmark." `
+        --language English `
+        --speaker ryan `
+        --timeout-seconds 1200
+    [IO.File]::WriteAllText(
+        "docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-portable-worker-faster-customvoice-chunk8-r5.json",
+        ($out -join "`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
+    $env:PYTHONHOME = $oldPyHome
+}
+```
+
+Portable C++ real CustomVoice benchmark:
+
+```powershell
+build\default\qwen_tts_latency_benchmark.exe `
+    --worker dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd `
+    --worker-arg qwen `
+    --worker-arg --model-path `
+    --worker-arg models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --worker-arg --runtime-backend `
+    --worker-arg faster `
+    --worker-arg --device `
+    --worker-arg cuda `
+    --worker-arg --dtype `
+    --worker-arg auto `
+    --worker-arg --emit-every-frames `
+    --worker-arg 8 `
+    --worker-arg --max-seq-len `
+    --worker-arg 2048 `
+    --worker-arg --warmup-synthesis `
+    --worker-arg --warmup-language `
+    --worker-arg English `
+    --worker-arg --warmup-speaker `
+    --worker-arg ryan `
+    --startup-timeout-ms 1200000 `
+    --request-timeout-ms 900000 `
+    --warmups 0 `
+    --requests 5 `
+    --text "This is a faster backend latency benchmark." `
+    --language English `
+    --speaker ryan `
+    > docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-portable-cpp-faster-customvoice-chunk8-r5.json `
+    2> docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-portable-cpp-faster-customvoice-chunk8-r5.stderr.txt
 ```

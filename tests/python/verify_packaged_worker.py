@@ -8,7 +8,7 @@ import queue
 import subprocess
 import threading
 from pathlib import Path
-from typing import Callable
+from typing import Callable, cast
 
 from qwen_tts_bridge_worker.protocol import (
     Frame,
@@ -22,6 +22,8 @@ from qwen_tts_bridge_worker.protocol.control import encode_json_payload
 
 class PackagedWorkerHarness:
     """Small protocol harness for a packaged worker executable."""
+
+    stdout_read_size = 64 * 1024
 
     def __init__(
         self,
@@ -141,9 +143,13 @@ class PackagedWorkerHarness:
             self._reader_errors.put("worker stdout is not available")
             return
 
+        read_chunk = getattr(self._process.stdout, "read1", None)
+        if not callable(read_chunk):
+            read_chunk = self._process.stdout.read
+
         parser = FrameParser()
         while True:
-            chunk = self._process.stdout.read(1)
+            chunk = cast(bytes, read_chunk(self.stdout_read_size))
             if not chunk:
                 return
             parser.append(chunk)

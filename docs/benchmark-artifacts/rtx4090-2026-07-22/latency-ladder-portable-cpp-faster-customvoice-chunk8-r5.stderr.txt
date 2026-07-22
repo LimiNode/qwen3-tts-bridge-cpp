@@ -1,0 +1,67 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+
+********
+Warning: flash-attn is not installed. Will only run the manual PyTorch version. Please install flash-attn for faster inference.
+********
+ 
+Could not infer sample rate from base model; defaulting to 24000 Hz.
+qtb_metric {"duration_ms":17908.964,"event":"engine_loaded"}
+Warming up predictor (3 runs)...
+Capturing CUDA graph for predictor...
+CUDA graph captured!
+Warming up talker graph (3 runs)...
+Capturing CUDA graph for talker decode...
+Talker CUDA graph captured!
+qtb_metric {"duration_ms":13890.25,"event":"engine_warmed_up","warmed_up":true,"warmup_audio_bytes":110250,"warmup_audio_chunks":4,"warmup_audio_duration_ms":2296.875,"warmup_synthesis":true}
+qtb_metric {"event":"worker_runtime_started","startup_ms":31800.504,"warmed_up":true}
+qtb_metric {"cancellation":true,"event":"worker_ready_sent","instructions":true,"streaming":true,"voice_clone":false,"warmed_up":true}
+qtb_metric {"event":"request_received","request_id":1}
+qtb_metric {"event":"request_queued","position":1,"request_id":1}
+qtb_metric {"event":"request_started","queue_ms":0.379,"request_id":1}
+qtb_metric {"event":"request_engine_started","queue_ms":0.379,"request_id":1}
+qtb_metric {"event":"request_first_audio","first_audio_ms":415.886,"request_id":1}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":415.886,"request_id":1}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":415.983,"request_id":1}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.092,"request_id":1}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.286,"output_queue_ms":0.092,"output_writer_ms":0.378,"request_id":1}
+qtb_metric {"audio_bytes":171206,"audio_chunks":6,"audio_duration_ms":3566.792,"event":"request_finished","first_audio_ms":415.886,"queue_ms":0.379,"real_time_factor":0.478807,"request_id":1,"synthesis_ms":1707.806,"terminal_state":"completed","total_ms":1708.185}
+qtb_metric {"event":"request_received","request_id":2}
+qtb_metric {"event":"request_queued","position":1,"request_id":2}
+qtb_metric {"event":"request_started","queue_ms":0.274,"request_id":2}
+qtb_metric {"event":"request_engine_started","queue_ms":0.274,"request_id":2}
+qtb_metric {"event":"request_first_audio","first_audio_ms":369.496,"request_id":2}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":369.496,"request_id":2}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":369.581,"request_id":2}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.128,"request_id":2}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.178,"output_queue_ms":0.128,"output_writer_ms":0.305,"request_id":2}
+qtb_metric {"audio_bytes":213204,"audio_chunks":7,"audio_duration_ms":4441.75,"event":"request_finished","first_audio_ms":369.496,"queue_ms":0.274,"real_time_factor":0.382778,"request_id":2,"synthesis_ms":1700.203,"terminal_state":"completed","total_ms":1700.477}
+qtb_metric {"event":"request_received","request_id":3}
+qtb_metric {"event":"request_queued","position":1,"request_id":3}
+qtb_metric {"event":"request_started","queue_ms":0.286,"request_id":3}
+qtb_metric {"event":"request_engine_started","queue_ms":0.286,"request_id":3}
+qtb_metric {"event":"request_first_audio","first_audio_ms":396.058,"request_id":3}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":396.058,"request_id":3}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":396.139,"request_id":3}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.058,"request_id":3}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.088,"output_queue_ms":0.058,"output_writer_ms":0.146,"request_id":3}
+qtb_metric {"audio_bytes":205524,"audio_chunks":7,"audio_duration_ms":4281.75,"event":"request_finished","first_audio_ms":396.058,"queue_ms":0.286,"real_time_factor":0.410436,"request_id":3,"synthesis_ms":1757.384,"terminal_state":"completed","total_ms":1757.67}
+qtb_metric {"event":"request_received","request_id":4}
+qtb_metric {"event":"request_queued","position":1,"request_id":4}
+qtb_metric {"event":"request_started","queue_ms":0.478,"request_id":4}
+qtb_metric {"event":"request_engine_started","queue_ms":0.478,"request_id":4}
+qtb_metric {"event":"request_first_audio","first_audio_ms":400.857,"request_id":4}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":400.857,"request_id":4}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":400.945,"request_id":4}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.056,"request_id":4}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.087,"output_queue_ms":0.056,"output_writer_ms":0.143,"request_id":4}
+qtb_metric {"audio_bytes":190164,"audio_chunks":7,"audio_duration_ms":3961.75,"event":"request_finished","first_audio_ms":400.857,"queue_ms":0.478,"real_time_factor":0.418721,"request_id":4,"synthesis_ms":1658.866,"terminal_state":"completed","total_ms":1659.345}
+qtb_metric {"event":"request_received","request_id":5}
+qtb_metric {"event":"request_queued","position":1,"request_id":5}
+qtb_metric {"event":"request_started","queue_ms":0.277,"request_id":5}
+qtb_metric {"event":"request_engine_started","queue_ms":0.277,"request_id":5}
+qtb_metric {"event":"request_first_audio","first_audio_ms":403.924,"request_id":5}
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":403.924,"request_id":5}
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":404.025,"request_id":5}
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.084,"request_id":5}
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.241,"output_queue_ms":0.084,"output_writer_ms":0.325,"request_id":5}
+qtb_metric {"audio_bytes":167366,"audio_chunks":6,"audio_duration_ms":3486.792,"event":"request_finished","first_audio_ms":403.924,"queue_ms":0.277,"real_time_factor":0.430244,"request_id":5,"synthesis_ms":1500.173,"terminal_state":"completed","total_ms":1500.45}

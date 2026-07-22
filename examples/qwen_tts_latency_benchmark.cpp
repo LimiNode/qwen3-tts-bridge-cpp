@@ -15,6 +15,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -89,9 +90,139 @@ struct RequestResult {
     std::uint64_t audio_bytes = 0;
     double audio_duration_ms = 0.0;
     std::optional<double> real_time_factor;
+    std::optional<double> inverse_real_time_factor;
+    std::optional<double> worker_queue_ms;
+    std::optional<double> worker_first_pcm_ready_ms;
+    std::optional<double> worker_first_frame_enqueue_ms;
+    std::optional<double> worker_pcm_to_enqueue_ms;
+    std::optional<double> worker_writer_queue_ms;
+    std::optional<double> worker_writer_flush_ms;
+    std::optional<double> worker_writer_total_ms;
+    std::optional<double> transport_dispatch_residual_ms;
     std::string error_category;
     std::string error_code;
     std::string error_message;
+};
+
+struct WorkerRequestMetrics {
+    std::optional<double> queue_ms;
+    std::optional<double> first_pcm_ready_ms;
+    std::optional<double> first_frame_enqueue_ms;
+    std::optional<double> writer_queue_ms;
+    std::optional<double> writer_flush_ms;
+    std::optional<double> writer_total_ms;
+};
+
+class WorkerMetricCollector {
+public:
+    void append_stderr(std::string text) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        stderr_text_ += text;
+        line_buffer_ += std::move(text);
+
+        std::size_t newline = line_buffer_.find('\n');
+        while (newline != std::string::npos) {
+            std::string line = line_buffer_.substr(0, newline);
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            line_buffer_.erase(0, newline + 1u);
+            parse_metric_line(line);
+            newline = line_buffer_.find('\n');
+        }
+    }
+
+    std::unordered_map<RequestId, WorkerRequestMetrics> request_metrics() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return request_metrics_;
+    }
+
+private:
+    void parse_metric_line(const std::string& line) {
+        const std::string prefix = "qtb_metric ";
+        const std::size_t prefix_at = line.find(prefix);
+        if (prefix_at == std::string::npos) {
+            return;
+        }
+
+        const std::string payload = line.substr(prefix_at + prefix.size());
+        const std::optional<std::string> event = json_string_field(payload, "event");
+        const std::optional<double> request_id_value =
+            json_number_field(payload, "request_id");
+        if (!event.has_value() || !request_id_value.has_value()) {
+            return;
+        }
+
+        const auto request_id = static_cast<RequestId>(request_id_value.value());
+        WorkerRequestMetrics& metrics = request_metrics_[request_id];
+        if (event.value() == "request_engine_started") {
+            metrics.queue_ms = json_number_field(payload, "queue_ms");
+        }
+        else if (event.value() == "request_first_pcm_ready") {
+            metrics.first_pcm_ready_ms =
+                json_number_field(payload, "first_pcm_ready_ms");
+        }
+        else if (event.value() == "request_first_frame_enqueued") {
+            metrics.first_frame_enqueue_ms =
+                json_number_field(payload, "first_frame_enqueue_ms");
+        }
+        else if (event.value() == "request_first_frame_flushed") {
+            metrics.writer_queue_ms = json_number_field(payload, "output_queue_ms");
+            metrics.writer_flush_ms = json_number_field(payload, "flush_ms");
+            metrics.writer_total_ms = json_number_field(payload, "output_writer_ms");
+        }
+    }
+
+    static std::optional<std::string> json_string_field(
+        const std::string& payload,
+        const std::string& name) {
+        const std::string key = "\"" + name + "\":\"";
+        const std::size_t start = payload.find(key);
+        if (start == std::string::npos) {
+            return std::nullopt;
+        }
+        const std::size_t value_start = start + key.size();
+        const std::size_t value_end = payload.find('"', value_start);
+        if (value_end == std::string::npos) {
+            return std::nullopt;
+        }
+        return payload.substr(value_start, value_end - value_start);
+    }
+
+    static std::optional<double> json_number_field(
+        const std::string& payload,
+        const std::string& name) {
+        const std::string key = "\"" + name + "\":";
+        const std::size_t start = payload.find(key);
+        if (start == std::string::npos) {
+            return std::nullopt;
+        }
+        const std::size_t value_start = start + key.size();
+        std::size_t value_end = value_start;
+        while (value_end < payload.size()) {
+            const char ch = payload[value_end];
+            if ((ch >= '0' && ch <= '9') || ch == '-' || ch == '+' ||
+                ch == '.' || ch == 'e' || ch == 'E') {
+                ++value_end;
+                continue;
+            }
+            break;
+        }
+        if (value_end == value_start) {
+            return std::nullopt;
+        }
+        try {
+            return std::stod(payload.substr(value_start, value_end - value_start));
+        }
+        catch (const std::exception&) {
+            return std::nullopt;
+        }
+    }
+
+    mutable std::mutex mutex_;
+    std::string stderr_text_;
+    std::string line_buffer_;
+    std::unordered_map<RequestId, WorkerRequestMetrics> request_metrics_;
 };
 
 void print_usage(std::ostream& out, const char* executable_name) {
@@ -282,9 +413,12 @@ void validate_options(const ProgramOptions& options) {
     }
 }
 
-StdIoTransportOptions make_transport_options(const ProgramOptions& options) {
+StdIoTransportOptions make_transport_options(
+    const ProgramOptions& options,
+    WorkerMetricCollector& metrics) {
     StdIoTransportOptions transport_options;
-    transport_options.stderr_handler = [](std::string text) {
+    transport_options.stderr_handler = [&metrics](std::string text) {
+        metrics.append_stderr(text);
         std::cerr << text;
     };
 
@@ -441,8 +575,48 @@ RequestResult run_request(
         bytes_per_ms > 0.0 ? static_cast<double>(result.audio_bytes) / bytes_per_ms : 0.0;
     if (result.completed_ms.has_value() && result.audio_duration_ms > 0.0) {
         result.real_time_factor = result.completed_ms.value() / result.audio_duration_ms;
+        result.inverse_real_time_factor =
+            result.audio_duration_ms / result.completed_ms.value();
     }
     return result;
+}
+
+void attach_worker_metrics(
+    std::vector<RequestResult>& results,
+    const std::unordered_map<RequestId, WorkerRequestMetrics>& metrics_by_request) {
+    for (RequestResult& result : results) {
+        const auto found = metrics_by_request.find(result.request_id);
+        if (found == metrics_by_request.end()) {
+            continue;
+        }
+        const WorkerRequestMetrics& metrics = found->second;
+        result.worker_queue_ms = metrics.queue_ms;
+        result.worker_first_pcm_ready_ms = metrics.first_pcm_ready_ms;
+        result.worker_first_frame_enqueue_ms = metrics.first_frame_enqueue_ms;
+        result.worker_writer_queue_ms = metrics.writer_queue_ms;
+        result.worker_writer_flush_ms = metrics.writer_flush_ms;
+        result.worker_writer_total_ms = metrics.writer_total_ms;
+
+        if (metrics.first_frame_enqueue_ms.has_value() &&
+            metrics.first_pcm_ready_ms.has_value()) {
+            result.worker_pcm_to_enqueue_ms =
+                metrics.first_frame_enqueue_ms.value() -
+                metrics.first_pcm_ready_ms.value();
+        }
+
+        if (result.first_audio_ms.has_value() &&
+            metrics.queue_ms.has_value() &&
+            metrics.first_pcm_ready_ms.has_value() &&
+            result.worker_pcm_to_enqueue_ms.has_value() &&
+            metrics.writer_total_ms.has_value()) {
+            result.transport_dispatch_residual_ms =
+                result.first_audio_ms.value() -
+                metrics.queue_ms.value() -
+                metrics.first_pcm_ready_ms.value() -
+                result.worker_pcm_to_enqueue_ms.value() -
+                metrics.writer_total_ms.value();
+        }
+    }
 }
 
 std::string json_escape(const std::string& value) {
@@ -570,6 +744,10 @@ void write_results_json(
     write_metric_summary(out, "completed_ms", collect_metric(measured, &RequestResult::completed_ms));
     out << ",";
     write_metric_summary(out, "real_time_factor", collect_metric(measured, &RequestResult::real_time_factor));
+    out << ",";
+    write_metric_summary(out, "inverse_real_time_factor", collect_metric(measured, &RequestResult::inverse_real_time_factor));
+    out << ",";
+    write_metric_summary(out, "transport_dispatch_residual_ms", collect_metric(measured, &RequestResult::transport_dispatch_residual_ms));
     out << "},";
 
     auto write_array = [&out](const char* name, const std::vector<RequestResult>& results) {
@@ -593,6 +771,26 @@ void write_results_json(
                 << ",\"audio_duration_ms\":" << result.audio_duration_ms
                 << ",\"real_time_factor\":";
             write_number_or_null(out, result.real_time_factor);
+            out << ",\"local_rtf\":";
+            write_number_or_null(out, result.real_time_factor);
+            out << ",\"inverse_rtf\":";
+            write_number_or_null(out, result.inverse_real_time_factor);
+            out << ",\"worker_queue_ms\":";
+            write_number_or_null(out, result.worker_queue_ms);
+            out << ",\"worker_first_pcm_ready_ms\":";
+            write_number_or_null(out, result.worker_first_pcm_ready_ms);
+            out << ",\"worker_first_frame_enqueue_ms\":";
+            write_number_or_null(out, result.worker_first_frame_enqueue_ms);
+            out << ",\"worker_pcm_to_enqueue_ms\":";
+            write_number_or_null(out, result.worker_pcm_to_enqueue_ms);
+            out << ",\"worker_writer_queue_ms\":";
+            write_number_or_null(out, result.worker_writer_queue_ms);
+            out << ",\"worker_writer_flush_ms\":";
+            write_number_or_null(out, result.worker_writer_flush_ms);
+            out << ",\"worker_writer_total_ms\":";
+            write_number_or_null(out, result.worker_writer_total_ms);
+            out << ",\"transport_dispatch_residual_ms\":";
+            write_number_or_null(out, result.transport_dispatch_residual_ms);
             if (!result.success) {
                 out << ",\"error_category\":\"" << json_escape(result.error_category) << "\""
                     << ",\"error_code\":\"" << json_escape(result.error_code) << "\""
@@ -625,9 +823,10 @@ int main(int argc, char** argv) {
         QwenTtsClientOptions client_options;
         client_options.session.startup_timeout = options.startup_timeout;
 
+        WorkerMetricCollector worker_metrics;
         QwenTtsClient client;
         const Clock::time_point startup_start = Clock::now();
-        if (!client.start(make_transport_options(options), client_options)) {
+        if (!client.start(make_transport_options(options, worker_metrics), client_options)) {
             throw std::runtime_error("failed to start Qwen TTS worker");
         }
         const double startup_ms = elapsed_ms(startup_start);
@@ -655,6 +854,9 @@ int main(int argc, char** argv) {
         }
 
         client.stop();
+        const auto metrics_by_request = worker_metrics.request_metrics();
+        attach_worker_metrics(warmups, metrics_by_request);
+        attach_worker_metrics(measured, metrics_by_request);
         write_results_json(std::cout, options, startup_ms, warmups, measured);
         return 0;
     }

@@ -340,12 +340,13 @@ function Install-ProjectWheelToTarget {
         "--wheel-dir",
         $WheelDir,
         $SourceCopy
-    )
+    ) | Out-Host
 
     $Wheels = @(Get-ChildItem -LiteralPath $WheelDir -Filter "*.whl" -File)
     if ($Wheels.Count -ne 1) {
         throw "Expected one wheel for $Label under $WheelDir; found $($Wheels.Count)."
     }
+    $Wheel = $Wheels[0]
 
     Remove-StagedScriptDirectory -SitePackages $SitePackages
     Invoke-ProjectPython @(
@@ -361,8 +362,81 @@ function Install-ProjectWheelToTarget {
         "--target",
         $SitePackages,
         $Requirement
-    )
+    ) | Out-Host
     Remove-StagedScriptDirectory -SitePackages $SitePackages
+
+    return [pscustomobject]@{
+        label = $Label
+        requirement = $Requirement
+        wheel = $Wheel.Name
+        wheel_sha256 = Get-FileSha256 $Wheel.FullName
+        source = Get-SourceManifest $ProjectPath
+    }
+}
+
+function Get-FileSha256 {
+    param(
+        [string]$Path
+    )
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Get-SourceManifest {
+    param(
+        [string]$ProjectPath
+    )
+
+    $ResolvedProjectPath = [IO.Path]::GetFullPath($ProjectPath)
+    $Commit = $null
+    $Dirty = $null
+    $TrackedChanges = $null
+
+    $InsideWorkTree = & git -C $ResolvedProjectPath rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -eq 0 -and (($InsideWorkTree | Select-Object -First 1) -eq "true")) {
+        $CommitOutput = & git -C $ResolvedProjectPath rev-parse HEAD 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $Commit = ($CommitOutput | Select-Object -First 1).Trim()
+        }
+
+        $StatusOutput = & git -C $ResolvedProjectPath status --porcelain 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $TrackedChanges = @($StatusOutput)
+            $Dirty = $TrackedChanges.Count -gt 0
+        }
+    }
+
+    return [pscustomobject]@{
+        path = $ResolvedProjectPath
+        git_commit = $Commit
+        git_dirty = $Dirty
+        git_status = $TrackedChanges
+    }
+}
+
+function Write-BuildManifest {
+    param(
+        [string]$Path,
+        [object[]]$Wheels,
+        [object]$PythonEnvironment
+    )
+
+    $Manifest = [ordered]@{
+        generated_at_utc = [DateTime]::UtcNow.ToString("o")
+        python = [ordered]@{
+            base_prefix = [string]$PythonEnvironment.base_prefix
+            executable = [string]$PythonEnvironment.executable
+            purelib = [string]$PythonEnvironment.purelib
+            platlib = [string]$PythonEnvironment.platlib
+        }
+        wheels = $Wheels
+    }
+    $Json = $Manifest | ConvertTo-Json -Depth 8
+    [IO.File]::WriteAllText(
+        $Path,
+        $Json,
+        [System.Text.UTF8Encoding]::new($false)
+    )
 }
 
 function Remove-EditableInstallArtifacts {
@@ -661,14 +735,16 @@ Remove-StagedPackageArtifacts `
         "faster-qwen3-tts"
     )
 
-Install-ProjectWheelToTarget `
+$WheelReports = @()
+
+$WheelReports += Install-ProjectWheelToTarget `
     -ProjectPath $WorkerProjectSource `
     -SitePackages $SitePackagesOutput `
     -WheelWorkRoot $WheelWorkRoot `
     -Label "worker"
 
 if ($null -ne $QwenPackageSource) {
-    Install-ProjectWheelToTarget `
+    $WheelReports += Install-ProjectWheelToTarget `
         -ProjectPath $ResolvedQwenSourcePath `
         -SitePackages $SitePackagesOutput `
         -WheelWorkRoot $WheelWorkRoot `
@@ -676,12 +752,17 @@ if ($null -ne $QwenPackageSource) {
 }
 
 if ($null -ne $FasterQwenPackageSource) {
-    Install-ProjectWheelToTarget `
+    $WheelReports += Install-ProjectWheelToTarget `
         -ProjectPath $ResolvedFasterQwenSourcePath `
         -SitePackages $SitePackagesOutput `
         -WheelWorkRoot $WheelWorkRoot `
         -Label "faster-qwen"
 }
+
+Write-BuildManifest `
+    -Path (Join-Path $WorkerOutput "build-manifest.json") `
+    -Wheels $WheelReports `
+    -PythonEnvironment $PythonEnvironment
 
 if (Test-Path -LiteralPath $WheelWorkRoot) {
     Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force

@@ -183,9 +183,10 @@ class StdioWorkerServer:
 
             warmup_started_at = monotonic_seconds()
             warmup_fields = self._engine.warmup()
-            self._warmed_up = True
+            self._warmed_up = warmup_fields is not None
             metric_fields: dict[str, object] = {
                 "duration_ms": elapsed_milliseconds(warmup_started_at),
+                "warmed_up": self._warmed_up,
             }
             if warmup_fields is not None:
                 metric_fields.update(warmup_fields)
