@@ -8,6 +8,7 @@ import statistics
 import time
 from pathlib import Path
 
+from benchmark_runtime import runtime_fingerprint
 from qwen_tts_bridge_worker.protocol import Frame, FrameType
 from verify_packaged_worker import (
     PackagedWorkerHarness,
@@ -76,11 +77,21 @@ def main() -> int:
                     "language": args.language,
                     "speaker": args.speaker,
                     "instruction": args.instruction,
+                    "seed": args.seed,
+                    "warmup_synthesis": args.warmup_synthesis,
+                    "warmup_synthesis_passes": args.warmup_synthesis_passes,
+                    "warmup_max_output_chunks": args.warmup_max_output_chunks,
                 },
+                "runtime": runtime_fingerprint(
+                    worker_executable=worker_executable,
+                    worker_prefix_args=args.worker_prefix_arg,
+                    args=args,
+                ),
                 "summary": {
                     "first_audio_ms": _summary(results, "first_audio_ms"),
                     "completed_ms": _summary(results, "completed_ms"),
                     "real_time_factor": _summary(results, "real_time_factor"),
+                    "inverse_rtf": _summary(results, "inverse_rtf"),
                 },
                 "warmups": warmups,
                 "requests": results,
@@ -117,8 +128,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-compile-codebook-predictor", action="store_true")
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument("--warmup-synthesis-passes", type=int, default=1)
+    parser.add_argument("--warmup-max-output-chunks", type=int, default=None)
     parser.add_argument("--warmup-text", default="Warmup.")
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-speaker", default="")

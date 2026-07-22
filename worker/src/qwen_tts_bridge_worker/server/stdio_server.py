@@ -25,11 +25,8 @@ from qwen_tts_bridge_worker.protocol.control import (
 )
 from qwen_tts_bridge_worker.protocol.data import Frame, FrameType, ParseStatus
 from qwen_tts_bridge_worker.protocol.framing import FrameParser, encode_frame
-from qwen_tts_bridge_worker.server.metrics import (
-    MetricsWriter,
-    elapsed_milliseconds,
-    monotonic_seconds,
-)
+from qwen_tts_bridge_worker.server.metrics import MetricsWriter
+from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
 
 
 @dataclass

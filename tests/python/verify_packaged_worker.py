@@ -113,6 +113,12 @@ class PackagedWorkerHarness:
 
         return exit_code
 
+    @property
+    def pid(self) -> int:
+        """Return the worker process identifier."""
+
+        return int(self._process.pid)
+
     def close(self) -> None:
         """Best-effort worker cleanup."""
 
@@ -235,12 +241,14 @@ def main() -> int:
     parser.add_argument("--no-compile-codebook-predictor", action="store_true")
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument(
         "--warmup-synthesis-passes",
         type=int,
         default=1,
     )
+    parser.add_argument("--warmup-max-output-chunks", type=int, default=None)
     parser.add_argument(
         "--expect-warmed-up",
         choices=("auto", "true", "false"),
@@ -333,9 +341,17 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.append("--no-compile-talker")
     if args.matmul_precision:
         worker_args.extend(["--matmul-precision", str(args.matmul_precision)])
+    seed = getattr(args, "seed", None)
+    if seed is not None:
+        worker_args.extend(["--seed", str(seed)])
     if args.warmup_synthesis:
         worker_args.append("--warmup-synthesis")
     worker_args.extend(["--warmup-synthesis-passes", str(args.warmup_synthesis_passes)])
+    warmup_max_output_chunks = getattr(args, "warmup_max_output_chunks", None)
+    if warmup_max_output_chunks is not None:
+        worker_args.extend(
+            ["--warmup-max-output-chunks", str(warmup_max_output_chunks)]
+        )
     worker_args.extend(["--warmup-text", str(args.warmup_text)])
     worker_args.extend(["--warmup-language", str(args.warmup_language)])
     if args.warmup_speaker:

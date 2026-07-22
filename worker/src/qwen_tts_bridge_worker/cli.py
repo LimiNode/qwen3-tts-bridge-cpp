@@ -75,8 +75,10 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 compile_codebook_predictor=not args.no_compile_codebook_predictor,
                 compile_talker=not args.no_compile_talker,
                 matmul_precision=args.matmul_precision,
+                seed=args.seed,
                 warmup_synthesis_enabled=args.warmup_synthesis,
                 warmup_synthesis_passes=args.warmup_synthesis_passes,
+                warmup_max_output_chunks=args.warmup_max_output_chunks,
                 warmup_text=args.warmup_text,
                 warmup_language=args.warmup_language,
                 warmup_speaker=args.warmup_speaker,
@@ -260,6 +262,12 @@ def _add_qwen_subcommand(
         help="Set torch float32 matmul precision before Qwen model load.",
     )
     qwen_parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed Python, NumPy, and torch RNGs for benchmark reproducibility.",
+    )
+    qwen_parser.add_argument(
         "--warmup-synthesis",
         action="store_true",
         help="Run one synthetic synthesis request before reporting ready.",
@@ -269,6 +277,12 @@ def _add_qwen_subcommand(
         type=int,
         default=1,
         help="Number of warmup synthesis passes to run before reporting ready.",
+    )
+    qwen_parser.add_argument(
+        "--warmup-max-output-chunks",
+        type=int,
+        default=None,
+        help="Stop each warmup synthesis pass after this many non-empty PCM chunks.",
     )
     qwen_parser.add_argument("--warmup-text", default="Warmup.")
     qwen_parser.add_argument("--warmup-language", default="auto")

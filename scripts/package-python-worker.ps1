@@ -11,7 +11,8 @@ param(
     [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
     [switch]$IncludeFasterQwen,
     [string]$FasterQwenSourcePath = "external/python/faster-qwen3-tts",
-    [switch]$AllowDirtySources
+    [switch]$AllowDirtySources,
+    [switch]$AllowUnversionedSources
 )
 
 $ErrorActionPreference = "Stop"
@@ -517,6 +518,19 @@ function Assert-CleanSources {
     )
     if ($DirtyLabels.Count -gt 0) {
         throw "Refusing to package dirty source trees: $($DirtyLabels -join ', '). Pass -AllowDirtySources for a local diagnostic build."
+    }
+
+    if ($AllowUnversionedSources) {
+        return
+    }
+
+    $UnversionedLabels = @(
+        $Wheels |
+            Where-Object { $null -eq $_.source.git_commit } |
+            ForEach-Object { $_.label }
+    )
+    if ($UnversionedLabels.Count -gt 0) {
+        throw "Refusing to package unversioned source trees: $($UnversionedLabels -join ', '). Pass -AllowUnversionedSources for a local diagnostic build."
     }
 }
 

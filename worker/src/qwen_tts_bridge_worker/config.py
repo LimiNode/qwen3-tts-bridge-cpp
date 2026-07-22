@@ -51,8 +51,10 @@ class QwenEngineConfig:
     compile_codebook_predictor: bool = True
     compile_talker: bool = True
     matmul_precision: str = ""
+    seed: int | None = None
     warmup_synthesis_enabled: bool = False
     warmup_synthesis_passes: int = 1
+    warmup_max_output_chunks: int | None = None
     warmup_text: str = "Warmup."
     warmup_language: str = "auto"
     warmup_speaker: str = ""
@@ -86,6 +88,11 @@ class QwenEngineConfig:
             raise ValueError("qwen.warmup_text must not be empty")
         if self.warmup_synthesis_passes <= 0:
             raise ValueError("qwen.warmup_synthesis_passes must be greater than zero")
+        if (
+            self.warmup_max_output_chunks is not None
+            and self.warmup_max_output_chunks <= 0
+        ):
+            raise ValueError("qwen.warmup_max_output_chunks must be greater than zero")
         if not self.warmup_language:
             raise ValueError("qwen.warmup_language must not be empty")
 

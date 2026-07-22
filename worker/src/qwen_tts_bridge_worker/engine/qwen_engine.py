@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import gc
 import importlib
+import random
 import threading
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any, cast
@@ -21,6 +22,7 @@ from qwen_tts_bridge_worker.engine.types import (
     SynthesisRequest,
     UnsupportedAudioFormatError,
 )
+from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
 
 QwenModelLoader = Callable[[QwenEngineConfig], Any]
 
@@ -64,6 +66,7 @@ class QwenTtsEngine:
 
         if self._model is not None:
             return
+        _seed_runtime(self._config.seed)
         self._model = self._model_loader(self._config)
 
     def warmup(self) -> dict[str, object] | None:
@@ -123,6 +126,7 @@ class QwenTtsEngine:
             return
         model = self._require_model()
         with self._synthesis_lock:
+            _seed_runtime(_request_seed(self._config.seed, request.request_id))
             audio_stream = self._generate_audio_stream(model, request)
             close_stream = getattr(audio_stream, "close", None)
             try:
@@ -201,17 +205,27 @@ class QwenTtsEngine:
         cancel_event = threading.Event()
         stream = self.synthesize_stream(request, cancel_event)
         close_stream = getattr(stream, "close", None)
+        started_at = monotonic_seconds()
+        first_audio_ms: float | None = None
         audio_chunks = 0
         audio_bytes = 0
         try:
             for chunk in stream:
                 if not chunk:
                     continue
+                if first_audio_ms is None:
+                    first_audio_ms = elapsed_milliseconds(started_at)
                 audio_chunks += 1
                 audio_bytes += len(chunk)
+                if (
+                    self._config.warmup_max_output_chunks is not None
+                    and audio_chunks >= self._config.warmup_max_output_chunks
+                ):
+                    break
         finally:
             if callable(close_stream):
                 close_stream()
+        completed_ms = elapsed_milliseconds(started_at)
 
         if audio_chunks == 0 or audio_bytes == 0:
             raise QwenEngineError(
@@ -222,11 +236,19 @@ class QwenTtsEngine:
         audio_duration_ms = audio_bytes * 1000.0 / (
             request.output.sample_rate * request.output.channels * 2
         )
+        real_time_factor = completed_ms / audio_duration_ms
+        inverse_real_time_factor = audio_duration_ms / completed_ms
         return {
             "pass_index": pass_index,
+            "first_audio_ms": first_audio_ms,
+            "completed_ms": completed_ms,
             "audio_chunks": audio_chunks,
             "audio_bytes": audio_bytes,
             "audio_duration_ms": round(audio_duration_ms, 3),
+            "local_rtf": round(real_time_factor, 6),
+            "inverse_rtf": round(inverse_real_time_factor, 6),
+            "bounded": self._config.warmup_max_output_chunks is not None,
+            "max_output_chunks": self._config.warmup_max_output_chunks,
         }
 
     def _require_model(self) -> Any:
@@ -296,6 +318,32 @@ def _qwen_model_type(model: Any) -> str:
     if model_type is None:
         model_type = getattr(model, "tts_model_type", "")
     return str(model_type)
+
+
+def _request_seed(base_seed: int | None, request_id: int) -> int | None:
+    if base_seed is None:
+        return None
+    return int(base_seed) + int(request_id)
+
+
+def _seed_runtime(seed: int | None) -> None:
+    if seed is None:
+        return
+    random.seed(seed)
+    try:
+        numpy = importlib.import_module("numpy")
+        numpy.random.seed(seed % (2**32))
+    except Exception:
+        pass
+    try:
+        torch = importlib.import_module("torch")
+        torch.manual_seed(seed)
+        cuda = getattr(torch, "cuda", None)
+        manual_seed_all = getattr(cuda, "manual_seed_all", None)
+        if callable(manual_seed_all):
+            manual_seed_all(seed)
+    except Exception:
+        pass
 
 
 def _nested_attr(obj: Any, path: tuple[str, ...]) -> Any | None:

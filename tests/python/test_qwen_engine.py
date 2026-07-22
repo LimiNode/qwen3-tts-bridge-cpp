@@ -386,6 +386,31 @@ class QwenEngineTests(unittest.TestCase):
         with self.assertRaisesRegex(QwenEngineError, "produced no audio"):
             engine.warmup()
 
+    def test_warmup_synthesis_can_stop_after_bounded_chunks(self) -> None:
+        fake_model = _StreamingWrapperModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                warmup_synthesis_enabled=True,
+                warmup_max_output_chunks=1,
+                warmup_text="Prime.",
+                warmup_speaker="Alice",
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+
+        warmup_fields = engine.warmup()
+
+        self.assertIsNotNone(warmup_fields)
+        assert warmup_fields is not None
+        self.assertEqual(1, warmup_fields["warmup_audio_chunks"])
+        warmup_passes = cast(list[dict[str, object]], warmup_fields["warmup_passes"])
+        self.assertTrue(warmup_passes[0]["bounded"])
+        self.assertEqual(1, warmup_passes[0]["max_output_chunks"])
+
     def test_custom_voice_rejects_unsupported_speaker(self) -> None:
         engine = QwenTtsEngine(
             QwenEngineConfig(model_path="models/qwen-custom"),
