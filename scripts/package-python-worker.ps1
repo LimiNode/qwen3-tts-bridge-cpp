@@ -261,7 +261,20 @@ function Get-TorchCudaAvailable {
 }
 
 function Get-PipFreeze {
-    $Output = & $Python @PythonArgs -m pip --disable-pip-version-check freeze
+    param(
+        [string]$Path
+    )
+
+    $Arguments = @(
+        "-m",
+        "pip",
+        "--disable-pip-version-check",
+        "freeze"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($Path)) {
+        $Arguments += @("--path", $Path)
+    }
+    $Output = & $Python @PythonArgs @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw "pip freeze failed."
     }
@@ -519,12 +532,12 @@ function Write-BuildManifest {
     $Manifest = [ordered]@{
         generated_at_utc = [DateTime]::UtcNow.ToString("o")
         python = [ordered]@{
-            base_prefix = [string]$PythonEnvironment.base_prefix
+            base_prefix = Get-PortableSourcePath ([string]$PythonEnvironment.base_prefix)
             implementation = [string]$PythonEnvironment.implementation
             version = [string]$PythonEnvironment.version
             version_info = $PythonEnvironment.version_info
-            purelib = [string]$PythonEnvironment.purelib
-            platlib = [string]$PythonEnvironment.platlib
+            purelib = Get-PortableSourcePath ([string]$PythonEnvironment.purelib)
+            platlib = Get-PortableSourcePath ([string]$PythonEnvironment.platlib)
         }
         python_tools = $ToolVersions
         pip_freeze = $PipFreeze
@@ -728,7 +741,6 @@ if ($UseVenv) {
 Assert-PackagingPythonVersion
 $PythonEnvironment = Get-PythonEnvironmentInfo
 $PythonToolVersions = Get-PythonToolVersions
-$PythonPipFreeze = Get-PipFreeze
 
 Assert-RelativeDirectoryName $WorkerDirectoryName
 
@@ -865,6 +877,7 @@ if ($null -ne $FasterQwenPackageSource) {
 }
 
 Assert-CleanSources -Wheels $WheelReports
+$PythonPipFreeze = Get-PipFreeze -Path $SitePackagesOutput
 
 Write-BuildManifest `
     -Path (Join-Path $WorkerOutput "build-manifest.json") `
