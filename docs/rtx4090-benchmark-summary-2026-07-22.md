@@ -24,6 +24,9 @@ where higher is better. Convert before comparing tables.
 - Faster Qwen experiment runtime: Python 3.12.10,
   `faster-qwen3-tts==0.3.2`, `qwen-tts==0.1.1`, PyTorch
   `2.11.0+cu130`, Torchaudio `2.11.0+cu130`.
+- Faster Qwen torch/CUDA control runtime: Python 3.12.10,
+  `faster-qwen3-tts==0.3.2`, `qwen-tts==0.1.1`, PyTorch
+  `2.10.0+cu128`, Torchaudio `2.10.0+cu128`.
 
 ## CustomVoice Bridge Path
 
@@ -392,13 +395,77 @@ The best current diagnosis is:
 official benchmark/config mismatch: unlikely
 PR #112 hot-path fixes missing: only a partial cause
 native Windows/WDDM or runtime launch overhead: now the leading hypothesis
-torch/cu runtime difference: still untested
+torch/cu runtime difference: unlikely after 2.10/cu128 control
 GPU clocks under load: still unrecorded
 ```
 
-The next decisive experiment is a clean `torch 2.10.0+cu128` run of the same
-official v0.3.2 benchmark. If that remains near inverse RTF `2.5`, compare
-native Windows against WSL2/Linux before spending time on bridge integration.
+The next decisive experiment is now an OS comparison: native Windows/WDDM
+against WSL2/Linux with the same official benchmark.
+
+### Official Torch 2.10/cu128 Control
+
+The same `.venv-faster-qwen` environment was switched from `torch 2.11.0+cu130`
+to:
+
+```text
+torch 2.10.0+cu128
+torchaudio 2.10.0+cu128
+CUDA runtime 12.8
+```
+
+The benchmark code stayed unchanged.
+
+Official v0.3.2, `torch 2.10.0+cu128`:
+
+| Metric | Value |
+| --- | ---: |
+| Warmup | 16.71 s |
+| TTFA, chunk 4 | 350 ms +/- 40 |
+| TTFA, chunk 8 primary | 417 ms +/- 15 |
+| TTFA, chunk 12 | 499 ms +/- 14 |
+| Dynamic-cache baseline TTFA | 4499 ms +/- 138 |
+| Dynamic-cache baseline inverse RTF | 0.150 +/- 0.002 |
+| Fast path TTFA | 417 ms +/- 13 |
+| Fast path inverse RTF | 2.485 +/- 0.075 |
+| Fast path local RTF | 0.402 |
+
+Official PR #112 stack, `torch 2.10.0+cu128`:
+
+| Metric | Value |
+| --- | ---: |
+| Warmup | 16.57 s |
+| TTFA, chunk 4 | 310 ms +/- 36 |
+| TTFA, chunk 8 primary | 378 ms +/- 15 |
+| TTFA, chunk 12 | 459 ms +/- 14 |
+| Dynamic-cache baseline TTFA | 4426 ms +/- 59 |
+| Dynamic-cache baseline inverse RTF | 0.152 +/- 0.002 |
+| Fast path TTFA | 372 ms +/- 3 |
+| Fast path inverse RTF | 2.633 +/- 0.047 |
+| Fast path local RTF | 0.380 |
+
+Torch/CUDA comparison:
+
+| Code | Torch/CUDA | Primary TTFA | Fast TTFA | Fast inverse RTF | Fast local RTF |
+| --- | --- | ---: | ---: | ---: | ---: |
+| v0.3.2 | 2.11/cu130 | 424 ms | 439 ms | 2.507 | 0.399 |
+| v0.3.2 | 2.10/cu128 | 417 ms | 417 ms | 2.485 | 0.402 |
+| PR #112 | 2.11/cu130 | 375 ms | 398 ms | 2.589 | 0.386 |
+| PR #112 | 2.10/cu128 | 378 ms | 372 ms | 2.633 | 0.380 |
+
+`torch 2.10/cu128` does not explain the gap to the published RTX 4090 result.
+It is roughly equivalent to `torch 2.11/cu130` in these native Windows runs.
+PR #112 remains modestly helpful in both runtimes.
+
+WSL status:
+
+```text
+wsl -l -v
+Windows Subsystem for Linux has no installed distributions.
+```
+
+Native Windows/WDDM remains the leading unresolved hypothesis. Verifying it
+requires installing a WSL2 distribution or running the same official benchmark
+on Linux with the same GPU.
 
 ## External Research
 
@@ -453,10 +520,9 @@ faster-qwen3-tts
 ```
 
 That means the next meaningful experiment is not another flash-attn matrix and
-not bridge integration yet. First reproduce the official benchmark under the
-published torch/CUDA runtime, then compare native Windows with WSL2/Linux if
-the gap remains. Only after direct inference is understood should the bridge
-worker grow a `faster-qwen3-tts` backend.
+not bridge integration yet. Compare native Windows/WDDM with WSL2/Linux using
+the same official benchmark. Only after direct inference is understood should
+the bridge worker grow a `faster-qwen3-tts` backend.
 
 ## Sources
 
