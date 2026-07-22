@@ -15,6 +15,7 @@
 # Python local environments and caches
 /.venv/
 /.venv-packaging/
+/.venv-qwen-flash/
 /venv/
 /env/
 __pycache__/
