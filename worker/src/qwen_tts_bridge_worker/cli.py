@@ -78,6 +78,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 seed=args.seed,
                 warmup_synthesis_enabled=args.warmup_synthesis,
                 warmup_synthesis_passes=args.warmup_synthesis_passes,
+                warmup_unbounded_passes=args.warmup_unbounded_passes,
                 warmup_max_output_chunks=args.warmup_max_output_chunks,
                 warmup_text=args.warmup_text,
                 warmup_language=args.warmup_language,
@@ -283,6 +284,13 @@ def _add_qwen_subcommand(
         type=int,
         default=None,
         help="Stop each warmup synthesis pass after this many non-empty PCM chunks.",
+    )
+    qwen_parser.add_argument(
+        "--warmup-unbounded-passes",
+        type=int,
+        default=0,
+        help="Leave this many initial warmup passes unbounded before applying "
+        "--warmup-max-output-chunks.",
     )
     qwen_parser.add_argument("--warmup-text", default="Warmup.")
     qwen_parser.add_argument("--warmup-language", default="auto")

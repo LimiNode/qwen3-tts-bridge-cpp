@@ -111,6 +111,7 @@ def main() -> int:
                     "instruction": args.instruction,
                     "warmup_synthesis": args.warmup_synthesis,
                     "warmup_synthesis_passes": args.warmup_synthesis_passes,
+                    "warmup_unbounded_passes": args.warmup_unbounded_passes,
                     "warmup_max_output_chunks": args.warmup_max_output_chunks,
                     "warmup_text": args.warmup_text,
                     "warmup_language": args.warmup_language,
@@ -195,6 +196,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument("--warmup-synthesis-passes", type=int, default=1)
+    parser.add_argument("--warmup-unbounded-passes", type=int, default=0)
     parser.add_argument("--warmup-max-output-chunks", type=int, default=None)
     parser.add_argument("--warmup-text", default="Warmup.")
     parser.add_argument("--warmup-language", default="auto")

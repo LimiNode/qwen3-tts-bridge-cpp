@@ -249,6 +249,7 @@ def main() -> int:
         default=1,
     )
     parser.add_argument("--warmup-max-output-chunks", type=int, default=None)
+    parser.add_argument("--warmup-unbounded-passes", type=int, default=0)
     parser.add_argument(
         "--expect-warmed-up",
         choices=("auto", "true", "false"),
@@ -347,6 +348,7 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
     if args.warmup_synthesis:
         worker_args.append("--warmup-synthesis")
     worker_args.extend(["--warmup-synthesis-passes", str(args.warmup_synthesis_passes)])
+    worker_args.extend(["--warmup-unbounded-passes", str(args.warmup_unbounded_passes)])
     warmup_max_output_chunks = getattr(args, "warmup_max_output_chunks", None)
     if warmup_max_output_chunks is not None:
         worker_args.extend(

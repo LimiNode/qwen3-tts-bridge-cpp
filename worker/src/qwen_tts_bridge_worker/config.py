@@ -54,6 +54,7 @@ class QwenEngineConfig:
     seed: int | None = None
     warmup_synthesis_enabled: bool = False
     warmup_synthesis_passes: int = 1
+    warmup_unbounded_passes: int = 0
     warmup_max_output_chunks: int | None = None
     warmup_text: str = "Warmup."
     warmup_language: str = "auto"
@@ -93,6 +94,8 @@ class QwenEngineConfig:
             and self.warmup_max_output_chunks <= 0
         ):
             raise ValueError("qwen.warmup_max_output_chunks must be greater than zero")
+        if self.warmup_unbounded_passes < 0:
+            raise ValueError("qwen.warmup_unbounded_passes must be non-negative")
         if not self.warmup_language:
             raise ValueError("qwen.warmup_language must not be empty")
 

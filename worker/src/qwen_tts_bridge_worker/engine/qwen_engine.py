@@ -207,6 +207,10 @@ class QwenTtsEngine:
         close_stream = getattr(stream, "close", None)
         started_at = monotonic_seconds()
         first_audio_ms: float | None = None
+        max_output_chunks = _warmup_pass_max_output_chunks(
+            self._config,
+            pass_index,
+        )
         audio_chunks = 0
         audio_bytes = 0
         try:
@@ -217,10 +221,7 @@ class QwenTtsEngine:
                     first_audio_ms = elapsed_milliseconds(started_at)
                 audio_chunks += 1
                 audio_bytes += len(chunk)
-                if (
-                    self._config.warmup_max_output_chunks is not None
-                    and audio_chunks >= self._config.warmup_max_output_chunks
-                ):
+                if max_output_chunks is not None and audio_chunks >= max_output_chunks:
                     break
         finally:
             if callable(close_stream):
@@ -247,8 +248,8 @@ class QwenTtsEngine:
             "audio_duration_ms": round(audio_duration_ms, 3),
             "local_rtf": round(real_time_factor, 6),
             "inverse_rtf": round(inverse_real_time_factor, 6),
-            "bounded": self._config.warmup_max_output_chunks is not None,
-            "max_output_chunks": self._config.warmup_max_output_chunks,
+            "bounded": max_output_chunks is not None,
+            "max_output_chunks": max_output_chunks,
         }
 
     def _require_model(self) -> Any:
@@ -324,6 +325,15 @@ def _request_seed(base_seed: int | None, request_id: int) -> int | None:
     if base_seed is None:
         return None
     return int(base_seed) + int(request_id)
+
+
+def _warmup_pass_max_output_chunks(
+    config: QwenEngineConfig,
+    pass_index: int,
+) -> int | None:
+    if pass_index <= config.warmup_unbounded_passes:
+        return None
+    return config.warmup_max_output_chunks
 
 
 def _seed_runtime(seed: int | None) -> None:
