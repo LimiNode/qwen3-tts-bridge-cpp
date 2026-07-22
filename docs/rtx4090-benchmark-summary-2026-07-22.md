@@ -636,6 +636,19 @@ This smoke confirms the fixed faster backend can serve a mode that the current
 bridge protocol already supports. It is not yet a full worker or C++ bridge
 benchmark; those remain the next validation levels.
 
+Follow-up validation levels:
+
+| Level | Requests | First PCM | Completed / synthesis | Audio | Chunks | RTF / inverse RTF |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Direct `QwenTtsEngine` | 1 | 330 ms | 1.58 s | 3.92 s | 7 | inverse `2.48` |
+| Source worker IPC | 2 | 457 ms / 453 ms | 1.85 s / 1.84 s | 4.24 s / 4.72 s | 7 / 8 | RTF `0.44` / `0.39` |
+| C++ example -> source worker | 1 | 390 ms | 2.16 s | 5.28 s | 9 | RTF `0.41` |
+
+The worker/C++ runs used a source-tree worker launcher, not the packaged
+portable worker. The packaged benchmark still requires rebuilding the worker
+distribution with the new source and ensuring `faster-qwen3-tts` is included in
+the runtime environment.
+
 Updated diagnosis after profiling:
 
 ```text

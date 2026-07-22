@@ -203,9 +203,15 @@ def main() -> int:
     parser.add_argument("worker_executable", type=Path)
     parser.add_argument("--engine", choices=("mock", "qwen"), default="mock")
     parser.add_argument("--model-path")
+    parser.add_argument(
+        "--runtime-backend",
+        choices=("upstream", "faster"),
+        default="upstream",
+    )
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="auto")
     parser.add_argument("--attn-implementation", default="")
+    parser.add_argument("--max-seq-len", type=int, default=2048)
     parser.add_argument("--emit-every-frames", type=int, default=8)
     parser.add_argument("--decode-window-frames", type=int, default=80)
     parser.add_argument("--overlap-samples", type=int, default=0)
@@ -269,10 +275,14 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         "qwen",
         "--model-path",
         model_path,
+        "--runtime-backend",
+        str(args.runtime_backend),
         "--device",
         str(args.device),
         "--dtype",
         str(args.dtype),
+        "--max-seq-len",
+        str(args.max_seq_len),
         "--emit-every-frames",
         str(args.emit_every_frames),
         "--decode-window-frames",

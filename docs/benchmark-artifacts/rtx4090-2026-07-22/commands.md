@@ -117,3 +117,65 @@ list(engine.synthesize_stream(
 engine.close()
 '@ | & $py -
 ```
+
+Source worker IPC benchmark:
+
+```powershell
+$sourceWorker = "$repo\tmp\source_faster_worker.cmd"
+
+@"
+@echo off
+setlocal
+set "PYTHONPATH=$repo\worker\src"
+set "PYTHONDONTWRITEBYTECODE=1"
+"$repo\.venv-faster-qwen\Scripts\python.exe" -B -m qwen_tts_bridge_worker %*
+"@ | Set-Content -Path $sourceWorker -Encoding ASCII
+
+$env:PYTHONPATH = "$repo\worker\src"
+& $py "$repo\tests\python\benchmark_packaged_worker.py" `
+    $sourceWorker `
+    --engine qwen `
+    --model-path "$repo\models\Qwen3-TTS-12Hz-0.6B-CustomVoice" `
+    --runtime-backend faster `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --emit-every-frames 8 `
+    --warmup-synthesis `
+    --warmup-language English `
+    --warmup-speaker ryan `
+    --requests 2 `
+    --text "This is a faster backend worker IPC benchmark." `
+    --language English `
+    --speaker ryan `
+    --timeout-seconds 1200
+```
+
+C++ source-worker smoke:
+
+```powershell
+build\default\qwen_tts_save_wav.exe `
+    --worker tmp\source_faster_worker.cmd `
+    --cwd $repo `
+    --output tmp\cpp-faster-customvoice-smoke.wav `
+    --text "This is a faster backend C plus plus bridge smoke test." `
+    --language English `
+    --speaker ryan `
+    --startup-timeout-ms 1200000 `
+    --request-timeout-ms 1200000 `
+    --worker-arg qwen `
+    --worker-arg --model-path `
+    --worker-arg models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --worker-arg --runtime-backend `
+    --worker-arg faster `
+    --worker-arg --dtype `
+    --worker-arg bfloat16 `
+    --worker-arg --attn-implementation `
+    --worker-arg eager `
+    --worker-arg --emit-every-frames `
+    --worker-arg 8 `
+    --worker-arg --warmup-synthesis `
+    --worker-arg --warmup-language `
+    --worker-arg English `
+    --worker-arg --warmup-speaker `
+    --worker-arg ryan
+```
