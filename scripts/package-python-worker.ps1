@@ -10,7 +10,8 @@ param(
     [switch]$IncludeQwenFork,
     [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
     [switch]$IncludeFasterQwen,
-    [string]$FasterQwenSourcePath = "external/python/faster-qwen3-tts"
+    [string]$FasterQwenSourcePath = "external/python/faster-qwen3-tts",
+    [switch]$AllowDirtySources
 )
 
 $ErrorActionPreference = "Stop"
@@ -221,9 +222,50 @@ function Assert-PackagingPythonVersion {
 function Get-PythonEnvironmentInfo {
     $EnvironmentJson = Invoke-PythonText @(
         "-c",
-        "import json, sys, sysconfig; print(json.dumps({'base_prefix': sys.base_prefix, 'executable': sys.executable, 'purelib': sysconfig.get_paths()['purelib'], 'platlib': sysconfig.get_paths()['platlib']}))"
+        "import json, platform, sys, sysconfig; print(json.dumps({'base_prefix': sys.base_prefix, 'executable': sys.executable, 'implementation': platform.python_implementation(), 'version': sys.version, 'version_info': list(sys.version_info[:3]), 'purelib': sysconfig.get_paths()['purelib'], 'platlib': sysconfig.get_paths()['platlib']}))"
     )
     return $EnvironmentJson | ConvertFrom-Json
+}
+
+function Get-PythonPackageVersion {
+    param(
+        [string]$PackageName
+    )
+
+    $Code = "import importlib.metadata as m; " +
+        "name = '$PackageName'; " +
+        "print(m.version(name) if name in {dist.metadata['Name'] for dist in m.distributions()} else '')"
+    return Invoke-PythonText @("-c", $Code)
+}
+
+function Get-PythonToolVersions {
+    return [ordered]@{
+        pip = Get-PythonPackageVersion "pip"
+        setuptools = Get-PythonPackageVersion "setuptools"
+        wheel = Get-PythonPackageVersion "wheel"
+        torch = Get-PythonPackageVersion "torch"
+        transformers = Get-PythonPackageVersion "transformers"
+        torch_cuda = Get-TorchCudaVersion
+        torch_cuda_available = Get-TorchCudaAvailable
+    }
+}
+
+function Get-TorchCudaVersion {
+    $Code = "try:`n import torch; print(torch.version.cuda or '')`nexcept Exception:`n print('')"
+    return Invoke-PythonText @("-c", $Code)
+}
+
+function Get-TorchCudaAvailable {
+    $Code = "try:`n import torch; print('true' if torch.cuda.is_available() else 'false')`nexcept Exception:`n print('')"
+    return Invoke-PythonText @("-c", $Code)
+}
+
+function Get-PipFreeze {
+    $Output = & $Python @PythonArgs -m pip --disable-pip-version-check freeze
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip freeze failed."
+    }
+    return @($Output)
 }
 
 function Copy-DirectoryContents {
@@ -309,6 +351,7 @@ function Install-ProjectWheelToTarget {
         [string]$ProjectPath,
         [string]$SitePackages,
         [string]$WheelWorkRoot,
+        [string]$WheelArtifactRoot,
         [string]$Label
     )
 
@@ -347,6 +390,9 @@ function Install-ProjectWheelToTarget {
         throw "Expected one wheel for $Label under $WheelDir; found $($Wheels.Count)."
     }
     $Wheel = $Wheels[0]
+    New-Item -ItemType Directory -Force -Path $WheelArtifactRoot | Out-Null
+    $ArtifactPath = Join-Path $WheelArtifactRoot $Wheel.Name
+    Copy-Item -LiteralPath $Wheel.FullName -Destination $ArtifactPath -Force
 
     Remove-StagedScriptDirectory -SitePackages $SitePackages
     Invoke-ProjectPython @(
@@ -370,6 +416,7 @@ function Install-ProjectWheelToTarget {
         requirement = $Requirement
         wheel = $Wheel.Name
         wheel_sha256 = Get-FileSha256 $Wheel.FullName
+        wheel_artifact = "wheels/$($Wheel.Name)"
         source = Get-SourceManifest $ProjectPath
     }
 }
@@ -388,6 +435,7 @@ function Get-SourceManifest {
     )
 
     $ResolvedProjectPath = [IO.Path]::GetFullPath($ProjectPath)
+    $PortablePath = Get-PortableSourcePath $ResolvedProjectPath
     $Commit = $null
     $Dirty = $null
     $TrackedChanges = $null
@@ -407,10 +455,55 @@ function Get-SourceManifest {
     }
 
     return [pscustomobject]@{
-        path = $ResolvedProjectPath
+        path = $PortablePath.path
+        path_kind = $PortablePath.kind
         git_commit = $Commit
         git_dirty = $Dirty
         git_status = $TrackedChanges
+    }
+}
+
+function Get-PortableSourcePath {
+    param(
+        [string]$Path
+    )
+
+    $ResolvedRepoRoot = [IO.Path]::GetFullPath($RepoRoot).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $ResolvedPath = [IO.Path]::GetFullPath($Path)
+    $RepoPrefix = $ResolvedRepoRoot + [IO.Path]::DirectorySeparatorChar
+    if ($ResolvedPath.StartsWith($RepoPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        $Relative = $ResolvedPath.Substring($RepoPrefix.Length).Replace("\", "/")
+        return [pscustomobject]@{
+            kind = "repo_relative"
+            path = $Relative
+        }
+    }
+
+    return [pscustomobject]@{
+        kind = "external_name"
+        path = Split-Path -Leaf $ResolvedPath
+    }
+}
+
+function Assert-CleanSources {
+    param(
+        [object[]]$Wheels
+    )
+
+    if ($AllowDirtySources) {
+        return
+    }
+
+    $DirtyLabels = @(
+        $Wheels |
+            Where-Object { $null -ne $_.source.git_dirty -and $_.source.git_dirty } |
+            ForEach-Object { $_.label }
+    )
+    if ($DirtyLabels.Count -gt 0) {
+        throw "Refusing to package dirty source trees: $($DirtyLabels -join ', '). Pass -AllowDirtySources for a local diagnostic build."
     }
 }
 
@@ -418,17 +511,23 @@ function Write-BuildManifest {
     param(
         [string]$Path,
         [object[]]$Wheels,
-        [object]$PythonEnvironment
+        [object]$PythonEnvironment,
+        [object]$ToolVersions,
+        [string[]]$PipFreeze
     )
 
     $Manifest = [ordered]@{
         generated_at_utc = [DateTime]::UtcNow.ToString("o")
         python = [ordered]@{
             base_prefix = [string]$PythonEnvironment.base_prefix
-            executable = [string]$PythonEnvironment.executable
+            implementation = [string]$PythonEnvironment.implementation
+            version = [string]$PythonEnvironment.version
+            version_info = $PythonEnvironment.version_info
             purelib = [string]$PythonEnvironment.purelib
             platlib = [string]$PythonEnvironment.platlib
         }
+        python_tools = $ToolVersions
+        pip_freeze = $PipFreeze
         wheels = $Wheels
     }
     $Json = $Manifest | ConvertTo-Json -Depth 8
@@ -628,6 +727,8 @@ if ($UseVenv) {
 
 Assert-PackagingPythonVersion
 $PythonEnvironment = Get-PythonEnvironmentInfo
+$PythonToolVersions = Get-PythonToolVersions
+$PythonPipFreeze = Get-PipFreeze
 
 Assert-RelativeDirectoryName $WorkerDirectoryName
 
@@ -636,6 +737,7 @@ $WorkerOutput = Join-Path $PackageRoot $WorkerDirectoryName
 $PythonOutput = Join-Path $WorkerOutput "python"
 $SitePackagesOutput = Join-Path $PythonOutput "Lib/site-packages"
 $WheelWorkRoot = Join-Path $WorkerOutput ".wheel-build"
+$WheelArtifactRoot = Join-Path $WorkerOutput "wheels"
 $WorkerPackageSource = Resolve-RepoPath "worker/src/qwen_tts_bridge_worker"
 $WorkerProjectSource = Resolve-RepoPath "worker"
 $LauncherPath = Join-Path $WorkerOutput "qwen_tts_worker.cmd"
@@ -741,6 +843,7 @@ $WheelReports += Install-ProjectWheelToTarget `
     -ProjectPath $WorkerProjectSource `
     -SitePackages $SitePackagesOutput `
     -WheelWorkRoot $WheelWorkRoot `
+    -WheelArtifactRoot $WheelArtifactRoot `
     -Label "worker"
 
 if ($null -ne $QwenPackageSource) {
@@ -748,6 +851,7 @@ if ($null -ne $QwenPackageSource) {
         -ProjectPath $ResolvedQwenSourcePath `
         -SitePackages $SitePackagesOutput `
         -WheelWorkRoot $WheelWorkRoot `
+        -WheelArtifactRoot $WheelArtifactRoot `
         -Label "qwen"
 }
 
@@ -756,13 +860,18 @@ if ($null -ne $FasterQwenPackageSource) {
         -ProjectPath $ResolvedFasterQwenSourcePath `
         -SitePackages $SitePackagesOutput `
         -WheelWorkRoot $WheelWorkRoot `
+        -WheelArtifactRoot $WheelArtifactRoot `
         -Label "faster-qwen"
 }
+
+Assert-CleanSources -Wheels $WheelReports
 
 Write-BuildManifest `
     -Path (Join-Path $WorkerOutput "build-manifest.json") `
     -Wheels $WheelReports `
-    -PythonEnvironment $PythonEnvironment
+    -PythonEnvironment $PythonEnvironment `
+    -ToolVersions $PythonToolVersions `
+    -PipFreeze $PythonPipFreeze
 
 if (Test-Path -LiteralPath $WheelWorkRoot) {
     Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force
