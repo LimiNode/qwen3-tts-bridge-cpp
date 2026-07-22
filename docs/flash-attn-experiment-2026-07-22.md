@@ -168,3 +168,83 @@ The remaining large gap to the author's `0.08 s` first chunk and `0.20-0.25`
 RTF is likely not just flash-attn. The main unresolved differences are the
 model family/API path (`1.7B-Base` voice clone vs `0.6B-CustomVoice`), warmup
 strategy, and RTX 5090 vs RTX 4090 hardware.
+
+## Direct Base Voice-Clone Probe
+
+A direct Python benchmark was added at:
+
+```text
+scripts/qwen-voice-clone-direct-benchmark.py
+```
+
+This bypasses the bridge and worker protocol. It loads the upstream
+`Qwen/Qwen3-TTS-12Hz-1.7B-Base` model, downloads the public Qwen reference voice
+sample `clone_2.wav`, builds a voice-clone prompt, and calls
+`stream_generate_voice_clone()` directly.
+
+Short Russian target text:
+
+```powershell
+.\.venv-qwen-flash\Scripts\python.exe scripts\qwen-voice-clone-direct-benchmark.py `
+    --text "Я твой робот. Я твой работник." `
+    --language Russian `
+    --warmup-text "Тест один два три четыре пять." `
+    --warmup-text "Привет, как дела? Это второй прогрев системы." `
+    --warmup-text "Третий тестовый запуск для полного прогрева компонентов модели." `
+    --use-fast-codebook `
+    --no-cuda-graphs `
+    --optimized-runs 2
+```
+
+Results:
+
+| Method | First chunk | Total | Audio | RTF | Chunks |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| standard | N/A | 20.97 s | 3.03 s | 6.91 | 0 |
+| streaming_baseline | 2.06 s | 13.37 s | 2.24 s | 5.97 | 7 |
+| warmup_1 | 231.16 s | 233.18 s | 2.88 s | 80.96 | 9 |
+| warmup_2 | 0.28 s | 2.39 s | 2.96 s | 0.81 | 10 |
+| warmup_3 | 0.28 s | 3.66 s | 4.64 s | 0.79 | 15 |
+| optimized_1 | 0.28 s | 1.78 s | 2.16 s | 0.82 | 7 |
+| optimized_2 | 0.29 s | 2.03 s | 2.48 s | 0.82 | 8 |
+
+Longer Russian target text:
+
+```powershell
+.\.venv-qwen-flash\Scripts\python.exe scripts\qwen-voice-clone-direct-benchmark.py `
+    --skip-standard `
+    --text "Я твой робот. Я твой работник. Мы запрограммированы делать всё, что ты захочешь. Мы твои слуги, мы твои работники." `
+    --language Russian `
+    --warmup-text "Тест один два три четыре пять." `
+    --warmup-text "Привет, как дела? Это второй прогрев системы." `
+    --warmup-text "Третий тестовый запуск для полного прогрева компонентов модели." `
+    --use-fast-codebook `
+    --no-cuda-graphs `
+    --optimized-runs 2 `
+    --output-dir tmp\qwen-voice-clone-direct-long
+```
+
+Results:
+
+| Method | First chunk | Total | Audio | RTF | Chunks |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| streaming_baseline | 3.45 s | 46.77 s | 7.76 s | 6.03 | 25 |
+| warmup_1 | 47.70 s | 49.42 s | 2.32 s | 21.30 | 8 |
+| warmup_2 | 0.29 s | 2.88 s | 3.60 s | 0.80 | 12 |
+| warmup_3 | 0.28 s | 3.49 s | 4.48 s | 0.78 | 14 |
+| optimized_1 | 0.28 s | 6.53 s | 8.40 s | 0.78 | 27 |
+| optimized_2 | 0.27 s | 5.92 s | 7.76 s | 0.76 | 25 |
+
+Outputs:
+
+- `tmp/qwen-voice-clone-direct/summary.json`
+- `tmp/qwen-voice-clone-direct/*.wav`
+- `tmp/qwen-voice-clone-direct-long/summary.json`
+- `tmp/qwen-voice-clone-direct-long/*.wav`
+
+Direct upstream voice-clone generation works, but it still does not reproduce
+the author's RTX 5090 numbers on this RTX 4090 machine. The direct optimized
+path reaches about `0.27-0.29 s` first chunk and `0.76-0.82` RTF after warmup.
+That is faster than the bridge CustomVoice path in the Python harness, but the
+remaining gap to `0.08 s` first chunk and `0.20-0.25` RTF is outside the bridge
+protocol/C++ layers.
