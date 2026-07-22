@@ -23,6 +23,7 @@ py install -y 3.11
 .\.venv-packaging\Scripts\python.exe -m pip install triton-windows==3.7.1.post27
 .\scripts\package-python-worker.ps1 -UseVenv -Clean -IncludeQwenFork
 .\scripts\test-portable-python-worker.ps1
+.\scripts\benchmark-packaged-qwen-worker.ps1 -UseVenv -ModelPath models\Qwen3-TTS-12Hz-0.6B-CustomVoice -Speaker ryan -Requests 2
 cmake -S . -B build\default -DCMAKE_BUILD_TYPE=Release
 cmake --build build\default --config Release
 ctest --test-dir build\default --output-on-failure
@@ -55,12 +56,13 @@ Persistent-worker benchmark results from `tests/python/benchmark_packaged_worker
 | baseline | 2 | 3126 ms | 28431 ms | 5917 ms | 4.80 |
 | `enable_streaming_optimizations` | 1 | 46961 ms | 50164 ms | 3595 ms | 13.95 |
 | `enable_streaming_optimizations` | 2 | 738 ms | 23311 ms | 22557 ms | 1.03 |
+| `enable_streaming_optimizations`, warmup synthesis before `ready` | 1 | 717 ms | 4005 ms | 3997 ms | 1.00 |
 
 Notes:
 
 - The worker logs warn that `flash-attn` is not installed and the model falls back to the manual PyTorch path.
 - Installing `triton-windows` removes the PyTorch `triton not found` warning in this environment, but it does not remove the Qwen `flash-attn is not installed` warning and did not make the baseline real-time.
-- Calling the Qwen fork's `enable_streaming_optimizations()` hook through the worker is the first mode observed to approach real-time after the initial compile-heavy request. The worker should remain persistent and should run a warmup synthesis before user-facing requests if this mode is enabled.
+- Calling the Qwen fork's `enable_streaming_optimizations()` hook through the worker is the first mode observed to approach real-time after the initial compile-heavy request. With `--warmup-synthesis`, the worker pays the compile/synthetic synthesis cost before `ready`; the first user-facing request reached `first_audio_ms ~= 717` and `RTF ~= 1.00` in the best current run.
 - The baseline is functionally correct on a real RTX 4090, but it is not real-time yet. Best observed RTF in this pass was about `5.31`.
 - `float16` should not be used as the default for this model/runtime combination until the CUDA assert is understood.
 - Generated models, packaged worker output, venvs, and WAV files are ignored by git.

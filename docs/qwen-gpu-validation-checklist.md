@@ -148,7 +148,59 @@ tmp/qwen-gpu-smoke.wav
 The WAV proves the C++ public API, stdio transport, worker protocol, Qwen
 engine, and PCM writer all work together. It does not prove final voice quality.
 
-## 5. Record Diagnostics
+## 5. Benchmark Persistent Worker Latency
+
+Run at least one baseline benchmark and one optimized benchmark. These keep the
+worker alive across requests and report per-request JSON metrics:
+
+```powershell
+.\scripts\benchmark-packaged-qwen-worker.ps1 `
+    -UseVenv `
+    -WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd `
+    -ModelPath models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    -Speaker ryan `
+    -Text "This is a GPU validation WAV." `
+    -Requests 2 `
+    -TimeoutSeconds 1200
+```
+
+Then run the optimized path:
+
+```powershell
+.\scripts\benchmark-packaged-qwen-worker.ps1 `
+    -UseVenv `
+    -WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd `
+    -ModelPath models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    -Speaker ryan `
+    -Text "This is a GPU validation WAV." `
+    -Requests 2 `
+    -TimeoutSeconds 1200 `
+    -EnableStreamingOptimizations
+```
+
+Finally run the user-facing warmup mode. This intentionally moves compile and
+first-synthesis cost before `ready`, so the first request after `ready` should
+be much faster:
+
+```powershell
+.\scripts\benchmark-packaged-qwen-worker.ps1 `
+    -UseVenv `
+    -WorkerExe dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd `
+    -ModelPath models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    -Speaker ryan `
+    -Text "This is a GPU validation WAV." `
+    -Requests 1 `
+    -TimeoutSeconds 1200 `
+    -EnableStreamingOptimizations `
+    -WarmupSynthesis `
+    -WarmupSpeaker ryan `
+    -WarmupText "Warmup."
+```
+
+Record `first_audio_ms`, `completed_ms`, `audio_duration_ms`, and
+`real_time_factor` for every request.
+
+## 6. Record Diagnostics
 
 For every GPU validation run, record:
 
