@@ -270,6 +270,91 @@ $out = & $py -B tests\python\benchmark_packaged_worker.py `
 )
 ```
 
+Restart-based first-user-after-ready benchmark:
+
+```powershell
+$env:PYTHONPATH = "$repo\worker\src"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+$out = & $py -B tests\python\benchmark_packaged_worker_restart.py `
+    $py `
+    --worker-prefix-arg=-B `
+    --worker-prefix-arg=-P `
+    --worker-prefix-arg=-s `
+    --worker-prefix-arg=-m `
+    --worker-prefix-arg=qwen_tts_bridge_worker `
+    --engine qwen `
+    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --runtime-backend faster `
+    --device cuda `
+    --dtype auto `
+    --emit-every-frames 8 `
+    --max-seq-len 2048 `
+    --warmup-synthesis `
+    --warmup-synthesis-passes 2 `
+    --warmup-text "This is a faster backend latency benchmark." `
+    --warmup-language English `
+    --warmup-speaker ryan `
+    --runs 20 `
+    --text "This is a faster backend latency benchmark." `
+    --language English `
+    --speaker ryan `
+    --timeout-seconds 1200
+[IO.File]::WriteAllText(
+    "docs\benchmark-artifacts\rtx4090-2026-07-22\restart-first-user-source-worker-faster-customvoice-chunk8-r20.json",
+    ($out -join "`n"),
+    [System.Text.UTF8Encoding]::new($false)
+)
+```
+
+Source-vs-portable parity benchmark shape:
+
+```powershell
+$common = @(
+    "--engine", "qwen",
+    "--model-path", "models\Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "--runtime-backend", "faster",
+    "--device", "cuda",
+    "--dtype", "auto",
+    "--emit-every-frames", "8",
+    "--max-seq-len", "2048",
+    "--warmup-synthesis",
+    "--warmup-synthesis-passes", "2",
+    "--warmup-text", "This is a faster backend latency benchmark.",
+    "--warmup-language", "English",
+    "--warmup-speaker", "ryan",
+    "--warmups", "5",
+    "--requests", "30",
+    "--text", "This is a faster backend latency benchmark.",
+    "--language", "English",
+    "--speaker", "ryan",
+    "--timeout-seconds", "1200"
+)
+
+$sourceOut = & $py -B tests\python\benchmark_packaged_worker.py `
+    $py `
+    --worker-prefix-arg=-B `
+    --worker-prefix-arg=-P `
+    --worker-prefix-arg=-s `
+    --worker-prefix-arg=-m `
+    --worker-prefix-arg=qwen_tts_bridge_worker `
+    @common
+
+$portableOut = & $py -B tests\python\benchmark_packaged_worker.py `
+    dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd `
+    @common
+
+[IO.File]::WriteAllText(
+    "docs\benchmark-artifacts\rtx4090-2026-07-22\parity-source-worker-faster-customvoice-chunk8-r30.json",
+    ($sourceOut -join "`n"),
+    [System.Text.UTF8Encoding]::new($false)
+)
+[IO.File]::WriteAllText(
+    "docs\benchmark-artifacts\rtx4090-2026-07-22\parity-portable-worker-faster-customvoice-chunk8-r30.json",
+    ($portableOut -join "`n"),
+    [System.Text.UTF8Encoding]::new($false)
+)
+```
+
 Latency ladder, C++ callback boundary:
 
 ```powershell

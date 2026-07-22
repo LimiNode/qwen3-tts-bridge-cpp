@@ -168,6 +168,36 @@ class QwenTtsEngine:
         )
         self.validate_request(request)
 
+        passes: list[dict[str, object]] = []
+        total_chunks = 0
+        total_bytes = 0
+        for pass_index in range(self._config.warmup_synthesis_passes):
+            pass_fields = self._run_warmup_synthesis_pass(
+                request,
+                pass_index=pass_index + 1,
+            )
+            total_chunks += cast(int, pass_fields["audio_chunks"])
+            total_bytes += cast(int, pass_fields["audio_bytes"])
+            passes.append(pass_fields)
+
+        audio_duration_ms = total_bytes * 1000.0 / (
+            request.output.sample_rate * request.output.channels * 2
+        )
+        return {
+            "warmup_synthesis": True,
+            "warmup_synthesis_passes": len(passes),
+            "warmup_audio_chunks": total_chunks,
+            "warmup_audio_bytes": total_bytes,
+            "warmup_audio_duration_ms": round(audio_duration_ms, 3),
+            "warmup_passes": passes,
+        }
+
+    def _run_warmup_synthesis_pass(
+        self,
+        request: SynthesisRequest,
+        *,
+        pass_index: int,
+    ) -> dict[str, object]:
         cancel_event = threading.Event()
         stream = self.synthesize_stream(request, cancel_event)
         close_stream = getattr(stream, "close", None)
@@ -183,14 +213,20 @@ class QwenTtsEngine:
             if callable(close_stream):
                 close_stream()
 
+        if audio_chunks == 0 or audio_bytes == 0:
+            raise QwenEngineError(
+                "warmup synthesis produced no audio "
+                f"(pass={pass_index}, chunks={audio_chunks}, bytes={audio_bytes})"
+            )
+
         audio_duration_ms = audio_bytes * 1000.0 / (
             request.output.sample_rate * request.output.channels * 2
         )
         return {
-            "warmup_synthesis": True,
-            "warmup_audio_chunks": audio_chunks,
-            "warmup_audio_bytes": audio_bytes,
-            "warmup_audio_duration_ms": round(audio_duration_ms, 3),
+            "pass_index": pass_index,
+            "audio_chunks": audio_chunks,
+            "audio_bytes": audio_bytes,
+            "audio_duration_ms": round(audio_duration_ms, 3),
         }
 
     def _require_model(self) -> Any:

@@ -194,6 +194,16 @@ class StdioWorkerServer:
                 "engine_warmed_up",
                 **metric_fields,
             )
+            if warmup_fields is not None:
+                warmup_passes = cast(
+                    list[dict[str, object]],
+                    warmup_fields.get("warmup_passes", []),
+                )
+                for warmup_pass in warmup_passes:
+                    self._metrics.emit(
+                        "engine_warmup_pass",
+                        **warmup_pass,
+                    )
 
             self._engine_thread.start()
             engine_thread_started = True

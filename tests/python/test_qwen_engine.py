@@ -1,12 +1,13 @@
 import struct
 import threading
 import unittest
-from typing import Any
+from typing import Any, cast
 
 from qwen_tts_bridge_worker.config import QwenEngineConfig
 from qwen_tts_bridge_worker.engine import (
     AudioFormat,
     EngineRequestValidationError,
+    QwenEngineError,
     QwenTtsEngine,
     SynthesisRequest,
     UnsupportedAudioFormatError,
@@ -106,6 +107,21 @@ class _StreamingWrapperModel:
 
     def generate_voice_design(self, *args: Any, **kwargs: Any) -> object:
         raise AssertionError("streaming path must not call generate_voice_design")
+
+
+class _EmptyStreamingWrapperModel(_StreamingWrapperModel):
+    def __init__(self) -> None:
+        super().__init__("custom_voice", supported_speakers=["Alice"])
+
+        class _EmptyInnerModel(_InnerModel):
+            def __init__(self) -> None:
+                super().__init__("custom_voice")
+
+            def stream_generate_pcm(self, **kwargs: object) -> object:
+                if False:
+                    yield [], 24000
+
+        self.model = _EmptyInnerModel()
 
 
 class _FasterStreamingModel:
@@ -332,6 +348,7 @@ class QwenEngineTests(unittest.TestCase):
             QwenEngineConfig(
                 model_path="models/qwen-custom",
                 warmup_synthesis_enabled=True,
+                warmup_synthesis_passes=2,
                 warmup_text="Prime.",
                 warmup_language="English",
                 warmup_speaker="Alice",
@@ -340,14 +357,34 @@ class QwenEngineTests(unittest.TestCase):
             model_loader=lambda _config: fake_model,
         )
 
-        engine.warmup()
+        warmup_fields = engine.warmup()
 
-        self.assertEqual(1, len(fake_model.model.stream_calls))
+        self.assertIsNotNone(warmup_fields)
+        assert warmup_fields is not None
+        self.assertEqual(2, warmup_fields["warmup_synthesis_passes"])
+        self.assertEqual(4, warmup_fields["warmup_audio_chunks"])
+        self.assertGreater(cast(int, warmup_fields["warmup_audio_bytes"]), 0)
+        self.assertEqual(2, len(cast(list[object], warmup_fields["warmup_passes"])))
+        self.assertEqual(2, len(fake_model.model.stream_calls))
         stream_call = fake_model.model.stream_calls[0]
         self.assertEqual(["English"], stream_call["languages"])
         self.assertEqual(["Alice"], stream_call["speakers"])
         self.assertIn("assistant:Prime.", fake_model.tokenized_texts)
         self.assertIn("instruct:Speak neutrally.", fake_model.tokenized_texts)
+
+    def test_warmup_synthesis_rejects_zero_audio(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                warmup_synthesis_enabled=True,
+                warmup_text="Prime.",
+                warmup_speaker="Alice",
+            ),
+            model_loader=lambda _config: _EmptyStreamingWrapperModel(),
+        )
+
+        with self.assertRaisesRegex(QwenEngineError, "produced no audio"):
+            engine.warmup()
 
     def test_custom_voice_rejects_unsupported_speaker(self) -> None:
         engine = QwenTtsEngine(

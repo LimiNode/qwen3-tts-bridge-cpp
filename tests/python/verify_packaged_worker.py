@@ -207,6 +207,12 @@ def main() -> int:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("worker_executable", type=Path)
+    parser.add_argument(
+        "--worker-prefix-arg",
+        action="append",
+        default=[],
+        help="Argument inserted before the worker engine command.",
+    )
     parser.add_argument("--engine", choices=("mock", "qwen"), default="mock")
     parser.add_argument("--model-path")
     parser.add_argument(
@@ -230,6 +236,16 @@ def main() -> int:
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--warmup-synthesis", action="store_true")
+    parser.add_argument(
+        "--warmup-synthesis-passes",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--expect-warmed-up",
+        choices=("auto", "true", "false"),
+        default="auto",
+    )
     parser.add_argument("--warmup-text", default="Warmup.")
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-speaker", default="")
@@ -250,7 +266,7 @@ def main() -> int:
 
     harness = PackagedWorkerHarness(
         worker_executable=worker_executable,
-        args=_worker_args(args),
+        args=_worker_process_args(args),
         timeout_seconds=args.timeout_seconds,
     )
     try:
@@ -260,6 +276,7 @@ def main() -> int:
             language=args.language,
             speaker=args.speaker,
             instruction=args.instruction,
+            expect_warmed_up=_expected_warmed_up(args),
         )
     finally:
         harness.close()
@@ -318,6 +335,7 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.extend(["--matmul-precision", str(args.matmul_precision)])
     if args.warmup_synthesis:
         worker_args.append("--warmup-synthesis")
+    worker_args.extend(["--warmup-synthesis-passes", str(args.warmup_synthesis_passes)])
     worker_args.extend(["--warmup-text", str(args.warmup_text)])
     worker_args.extend(["--warmup-language", str(args.warmup_language)])
     if args.warmup_speaker:
@@ -327,12 +345,17 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
     return worker_args
 
 
+def _worker_process_args(args: argparse.Namespace) -> list[str]:
+    return [*getattr(args, "worker_prefix_arg", []), *_worker_args(args)]
+
+
 def _exercise_worker(
     harness: PackagedWorkerHarness,
     text: str,
     language: str,
     speaker: str,
     instruction: str,
+    expect_warmed_up: bool,
 ) -> None:
     harness.send_control(
         0,
@@ -345,7 +368,11 @@ def _exercise_worker(
     ready = _control_payload(
         harness.read_frame(lambda frame: _is_control_message(frame, "ready", 0))
     )
-    _expect(ready.get("warmed_up") is True, "worker did not report warmed_up")
+    _expect(
+        ready.get("warmed_up") is expect_warmed_up,
+        "worker reported warmed_up="
+        f"{ready.get('warmed_up')!r}, expected {expect_warmed_up!r}",
+    )
 
     harness.send_control(
         1,
@@ -393,6 +420,17 @@ def _synthesize_payload(
     if instruction:
         payload["instruction"] = instruction
     return payload
+
+
+def _expected_warmed_up(args: argparse.Namespace) -> bool:
+    expectation = str(args.expect_warmed_up)
+    if expectation == "true":
+        return True
+    if expectation == "false":
+        return False
+    if str(args.engine) == "mock":
+        return True
+    return bool(args.warmup_synthesis)
 
 
 def _is_control_message(

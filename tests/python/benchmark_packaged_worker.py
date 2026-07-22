@@ -13,7 +13,7 @@ from verify_packaged_worker import (
     PackagedWorkerHarness,
     _control_payload,
     _is_control_message,
-    _worker_args,
+    _worker_process_args,
 )
 
 
@@ -31,7 +31,7 @@ def main() -> int:
 
     harness = PackagedWorkerHarness(
         worker_executable=worker_executable,
-        args=_worker_args(args),
+        args=_worker_process_args(args),
         timeout_seconds=args.timeout_seconds,
     )
     try:
@@ -94,6 +94,7 @@ def main() -> int:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("worker_executable", type=Path)
+    parser.add_argument("--worker-prefix-arg", action="append", default=[])
     parser.add_argument("--engine", choices=("mock", "qwen"), default="mock")
     parser.add_argument("--model-path")
     parser.add_argument(
@@ -117,6 +118,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--warmup-synthesis", action="store_true")
+    parser.add_argument("--warmup-synthesis-passes", type=int, default=1)
     parser.add_argument("--warmup-text", default="Warmup.")
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-speaker", default="")

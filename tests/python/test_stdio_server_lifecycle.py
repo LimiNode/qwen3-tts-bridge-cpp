@@ -150,6 +150,14 @@ class WarmupMetricsEngine:
             "warmup_synthesis": True,
             "warmup_audio_chunks": 2,
             "warmup_audio_bytes": 64,
+            "warmup_passes": [
+                {
+                    "pass_index": 1,
+                    "audio_chunks": 2,
+                    "audio_bytes": 64,
+                    "audio_duration_ms": 1.333,
+                },
+            ],
         }
 
     def validate_request(
@@ -316,6 +324,17 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertTrue(warmup_metrics[0]["warmup_synthesis"])
         self.assertEqual(2, warmup_metrics[0]["warmup_audio_chunks"])
         self.assertEqual(64, warmup_metrics[0]["warmup_audio_bytes"])
+
+        pass_metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in stderr.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+            and json.loads(line.removeprefix("qtb_metric ")).get("event")
+            == "engine_warmup_pass"
+        ]
+        self.assertEqual(1, len(pass_metrics))
+        self.assertEqual(1, pass_metrics[0]["pass_index"])
+        self.assertEqual(64, pass_metrics[0]["audio_bytes"])
 
     def test_noop_warmup_reports_not_warmed_up(self) -> None:
         input_stream = io.BytesIO(
