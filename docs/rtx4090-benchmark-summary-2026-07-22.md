@@ -21,6 +21,9 @@ where higher is better. Convert before comparing tables.
 - Flash-attn experiment runtime: Python 3.12.10, PyTorch `2.10.0+cu130`,
   Torchaudio `2.10.0+cu130`, `triton-windows==3.6.0.post26`,
   `flash-attn==2.8.3+cu130torch2.10`.
+- Faster Qwen experiment runtime: Python 3.12.10,
+  `faster-qwen3-tts==0.3.2`, `qwen-tts==0.1.1`, PyTorch
+  `2.11.0+cu130`, Torchaudio `2.11.0+cu130`.
 
 ## CustomVoice Bridge Path
 
@@ -155,6 +158,120 @@ The direct Base voice-clone path works, and it is slightly faster than the
 bridge CustomVoice Python harness after warmup. It still does not reproduce the
 upstream screenshot's `0.08 s` first chunk and `0.20-0.25` local RTF.
 
+## Direct Faster-Qwen3-TTS Path
+
+Script:
+
+```text
+scripts/faster-qwen-direct-benchmark.py
+```
+
+This bypasses the bridge and the upstream streaming fork. It uses
+`faster-qwen3-tts`, which replaces the dynamic-cache decode path with static
+buffers and manual CUDA Graph replay.
+
+The temporary environment is ignored by git:
+
+```text
+.venv-faster-qwen
+```
+
+Initial `pip install faster-qwen3-tts` pulled CPU-only `torch 2.13.0+cpu` on
+Windows. The environment was then corrected to:
+
+```powershell
+.\.venv-faster-qwen\Scripts\python.exe -m pip install --force-reinstall `
+    --index-url https://download.pytorch.org/whl/cu130 `
+    torch==2.11.0+cu130 `
+    torchaudio==2.11.0+cu130
+```
+
+CUDA check after reinstall:
+
+```text
+torch 2.11.0+cu130
+CUDA 13.0
+NVIDIA GeForce RTX 4090
+```
+
+### Short Base Voice Clone
+
+Command:
+
+```powershell
+.\.venv-faster-qwen\Scripts\python.exe scripts\faster-qwen-direct-benchmark.py `
+    --runs 3 `
+    --text "Я твой робот. Я твой работник." `
+    --language Russian `
+    --output-dir tmp\faster-qwen-direct-short
+```
+
+| Method | First chunk | Total | Audio | Local RTF | Inverse RTF | Chunks |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| run_1 | 9.49 s | 10.55 s | 2.64 s | 4.00 | 0.25 | 5 |
+| run_2 | 0.42 s | 1.16 s | 2.56 s | 0.45 | 2.20 | 4 |
+| run_3 | 0.42 s | 1.19 s | 2.48 s | 0.48 | 2.08 | 4 |
+
+### Longer Base Voice Clone, `chunk_size=4`
+
+Command:
+
+```powershell
+.\.venv-faster-qwen\Scripts\python.exe scripts\faster-qwen-direct-benchmark.py `
+    --runs 3 `
+    --chunk-size 4 `
+    --text "Я твой робот. Я твой работник. Мы запрограммированы делать всё, что ты захочешь. Мы твои слуги, мы твои работники." `
+    --language Russian `
+    --output-dir tmp\faster-qwen-direct-long-chunk4
+```
+
+| Method | First chunk | Total | Audio | Local RTF | Inverse RTF | Chunks |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| run_1 | 9.13 s | 13.41 s | 8.24 s | 1.63 | 0.61 | 26 |
+| run_2 | 0.34 s | 4.34 s | 8.40 s | 0.52 | 1.93 | 27 |
+| run_3 | 0.34 s | 4.33 s | 8.56 s | 0.51 | 1.98 | 27 |
+
+### Longer Base Voice Clone, `x_vector_only`
+
+Command:
+
+```powershell
+.\.venv-faster-qwen\Scripts\python.exe scripts\faster-qwen-direct-benchmark.py `
+    --runs 3 `
+    --chunk-size 8 `
+    --x-vector-only `
+    --text "Я твой робот. Я твой работник. Мы запрограммированы делать всё, что ты захочешь. Мы твои слуги, мы твои работники." `
+    --language Russian `
+    --output-dir tmp\faster-qwen-direct-long-xvec
+```
+
+| Method | First chunk | Total | Audio | Local RTF | Inverse RTF | Chunks |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| run_1 | 27.28 s | 31.10 s | 9.84 s | 3.16 | 0.32 | 16 |
+| run_2 | 0.51 s | 3.85 s | 9.04 s | 0.43 | 2.35 | 15 |
+| run_3 | 0.41 s | 3.62 s | 9.04 s | 0.40 | 2.50 | 15 |
+
+### Faster-Qwen Interpretation
+
+`faster-qwen3-tts` is the best lead so far:
+
+- It makes the model load and graph warmup cheap after the HuggingFace cache is
+  populated: about `17-24 s` model load and `4.2 s` explicit graph warmup in
+  these runs.
+- After the first synthesis request, it improves Base voice-clone throughput
+  from the upstream direct path's local RTF `0.76-0.82` to about `0.40-0.52`.
+- `chunk_size=4` lowers TTFA from about `0.42 s` to about `0.34 s`, but costs
+  throughput.
+- `x_vector_only` improves longer-text throughput to local RTF `0.40-0.43`, but
+  TTFA stays around `0.41-0.51 s` in this direct setup.
+
+It still does not match its README's reported RTX 4090 class of about
+`156-174 ms` TTFA and inverse RTF `4.22-4.78`. The current local best observed
+with this package is about `337 ms` first chunk and inverse RTF about `2.50`.
+The remaining difference may involve exact package version, torch version,
+model family, generation settings, cached speaker embeddings, or benchmark
+methodology.
+
 ## External Research
 
 The most relevant new lead is `andimarafioti/faster-qwen3-tts`.
@@ -210,10 +327,15 @@ faster-qwen3-tts
 That means the next meaningful experiment is not another flash-attn matrix. It
 is either:
 
-- run `faster-qwen3-tts` directly on this RTX 4090 and compare apples to apples;
 - evaluate whether the bridge worker can support a `faster-qwen3-tts` backend;
 - or port only the static-cache/manual-graph idea into our current Qwen worker,
   which is likely more work than adopting the package as an optional backend.
+
+The direct `faster-qwen3-tts` probe is now complete enough to justify a backend
+spike. The next backend spike should start with CustomVoice `0.6B` because that
+matches the bridge's current protocol shape (`text`, `language`, `speaker`,
+`instruction`) and avoids adding reference-audio protocol fields before the
+engine choice is settled.
 
 ## Sources
 

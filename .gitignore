@@ -16,6 +16,7 @@
 /.venv/
 /.venv-packaging/
 /.venv-qwen-flash/
+/.venv-faster-qwen/
 /venv/
 /env/
 __pycache__/
