@@ -74,12 +74,27 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         examples/qwen_tts_save_wav.cpp
     )
 
+    add_executable(qwen_tts_latency_benchmark
+        examples/qwen_tts_latency_benchmark.cpp
+    )
+
     target_link_libraries(qwen_tts_save_wav
         PRIVATE
             QwenTTSBridge::qwen_tts_bridge
     )
 
+    target_link_libraries(qwen_tts_latency_benchmark
+        PRIVATE
+            QwenTTSBridge::qwen_tts_bridge
+    )
+
     target_compile_definitions(qwen_tts_save_wav
+        PRIVATE
+            QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
+            QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+    )
+
+    target_compile_definitions(qwen_tts_latency_benchmark
         PRIVATE
             QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
             QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
@@ -205,6 +220,16 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             set_tests_properties(qwen_tts_save_wav_mock_verify
                 PROPERTIES
                     DEPENDS qwen_tts_save_wav_mock_example
+            )
+            add_test(
+                NAME qwen_tts_latency_benchmark_mock_example
+                COMMAND qwen_tts_latency_benchmark
+                    --mock
+                    --text "Benchmark synthesis request"
+                    --mock-chunks 2
+                    --warmups 1
+                    --requests 2
+                    --request-timeout-ms 10000
             )
         endif()
     else()

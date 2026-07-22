@@ -1,0 +1,666 @@
+#include <qwen_tts_bridge/client.hpp>
+#include <qwen_tts_bridge/transport.hpp>
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <condition_variable>
+#include <cstdint>
+#include <exception>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <mutex>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#ifndef QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE
+#define QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE ""
+#endif
+
+#ifndef QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR
+#define QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR ""
+#endif
+
+namespace {
+
+using Clock = std::chrono::steady_clock;
+
+using qwen_tts_bridge::AudioFormat;
+using qwen_tts_bridge::PcmChunk;
+using qwen_tts_bridge::QwenTtsClient;
+using qwen_tts_bridge::QwenTtsClientOptions;
+using qwen_tts_bridge::RequestId;
+using qwen_tts_bridge::StdIoTransportOptions;
+using qwen_tts_bridge::TtsCallbacks;
+using qwen_tts_bridge::TtsError;
+using qwen_tts_bridge::TtsRequest;
+
+struct ProgramOptions {
+    bool help = false;
+    bool use_mock_worker = false;
+    std::string worker_executable;
+    std::vector<std::string> worker_arguments;
+    std::string working_directory;
+    std::string text = "Latency benchmark request.";
+    std::string language = "auto";
+    std::string speaker;
+    std::string instruction;
+    std::uint32_t sample_rate = 24000;
+    std::uint32_t channels = 1;
+    int warmups = 5;
+    int requests = 30;
+    int mock_chunks = 3;
+    int mock_chunk_ms = 100;
+    double mock_chunk_delay = 0.0;
+    std::chrono::milliseconds startup_timeout{30000};
+    std::chrono::milliseconds request_timeout{60000};
+};
+
+struct RequestProbe {
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool terminal = false;
+    bool success = false;
+    std::string error_category;
+    std::string error_code;
+    std::string error_message;
+    std::optional<double> first_audio_ms;
+    std::optional<double> completed_ms;
+    double enqueue_ms = 0.0;
+    std::size_t audio_chunks = 0;
+    std::uint64_t audio_bytes = 0;
+    Clock::time_point start;
+};
+
+struct RequestResult {
+    int index = 0;
+    RequestId request_id = 0;
+    bool warmup = false;
+    bool success = false;
+    std::optional<double> first_audio_ms;
+    std::optional<double> completed_ms;
+    double enqueue_ms = 0.0;
+    std::size_t audio_chunks = 0;
+    std::uint64_t audio_bytes = 0;
+    double audio_duration_ms = 0.0;
+    std::optional<double> real_time_factor;
+    std::string error_category;
+    std::string error_code;
+    std::string error_message;
+};
+
+void print_usage(std::ostream& out, const char* executable_name) {
+    out << "Usage:\n"
+        << "  " << executable_name << " --mock --text \"Hello\"\n"
+        << "  " << executable_name << " --worker qwen_tts_worker.exe --text \"Hello\"\n\n"
+        << "Options:\n"
+        << "  --help                         Show this help.\n"
+        << "  --mock                         Run the bundled Python mock worker.\n"
+        << "  --worker <path>                Worker executable path.\n"
+        << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
+        << "  --cwd <path>                   Worker working directory.\n"
+        << "  --text <utf8>                  Text to synthesize.\n"
+        << "  --language <name>              Request language, default: auto.\n"
+        << "  --speaker <name>               Optional request speaker or voice name.\n"
+        << "  --instruction <utf8>           Natural-language style instruction.\n"
+        << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
+        << "  --channels <count>             Requested channel count, default: 1.\n"
+        << "  --warmups <count>              Warmup requests, default: 5.\n"
+        << "  --requests <count>             Measured requests, default: 30.\n"
+        << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
+        << "  --request-timeout-ms <ms>      Per-request timeout, default: 60000.\n"
+        << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
+        << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
+        << "  --mock-chunk-delay <seconds>   Mock delay between chunks, default: 0.\n";
+}
+
+std::string require_value(
+    int& index,
+    int argc,
+    char** argv,
+    const std::string& option) {
+    const std::string prefix = option + '=';
+    const std::string current = argv[index];
+    if (current.rfind(prefix, 0) == 0) {
+        return current.substr(prefix.size());
+    }
+    if (index + 1 >= argc) {
+        throw std::runtime_error("missing value for " + option);
+    }
+    ++index;
+    return argv[index];
+}
+
+std::uint32_t parse_u32(const std::string& value, const std::string& option) {
+    std::size_t parsed = 0;
+    const unsigned long result = std::stoul(value, &parsed, 10);
+    if (parsed != value.size() ||
+        result > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::runtime_error("invalid integer for " + option + ": " + value);
+    }
+    return static_cast<std::uint32_t>(result);
+}
+
+int parse_int(const std::string& value, const std::string& option) {
+    std::size_t parsed = 0;
+    const long result = std::stol(value, &parsed, 10);
+    if (parsed != value.size() ||
+        result < std::numeric_limits<int>::min() ||
+        result > std::numeric_limits<int>::max()) {
+        throw std::runtime_error("invalid integer for " + option + ": " + value);
+    }
+    return static_cast<int>(result);
+}
+
+double parse_double(const std::string& value, const std::string& option) {
+    std::size_t parsed = 0;
+    const double result = std::stod(value, &parsed);
+    if (parsed != value.size() || !std::isfinite(result)) {
+        throw std::runtime_error("invalid number for " + option + ": " + value);
+    }
+    return result;
+}
+
+ProgramOptions parse_options(int argc, char** argv) {
+    ProgramOptions options;
+    for (int index = 1; index < argc; ++index) {
+        const std::string arg = argv[index];
+
+        if (arg == "--help" || arg == "-h") {
+            options.help = true;
+        }
+        else if (arg == "--mock") {
+            options.use_mock_worker = true;
+        }
+        else if (arg == "--worker" || arg.rfind("--worker=", 0) == 0) {
+            options.worker_executable = require_value(index, argc, argv, "--worker");
+        }
+        else if (arg == "--worker-arg" || arg.rfind("--worker-arg=", 0) == 0) {
+            options.worker_arguments.push_back(
+                require_value(index, argc, argv, "--worker-arg"));
+        }
+        else if (arg == "--cwd" || arg.rfind("--cwd=", 0) == 0) {
+            options.working_directory = require_value(index, argc, argv, "--cwd");
+        }
+        else if (arg == "--text" || arg.rfind("--text=", 0) == 0) {
+            options.text = require_value(index, argc, argv, "--text");
+        }
+        else if (arg == "--language" || arg.rfind("--language=", 0) == 0) {
+            options.language = require_value(index, argc, argv, "--language");
+        }
+        else if (arg == "--speaker" || arg.rfind("--speaker=", 0) == 0) {
+            options.speaker = require_value(index, argc, argv, "--speaker");
+        }
+        else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
+            options.instruction = require_value(index, argc, argv, "--instruction");
+        }
+        else if (arg == "--sample-rate" || arg.rfind("--sample-rate=", 0) == 0) {
+            options.sample_rate =
+                parse_u32(require_value(index, argc, argv, "--sample-rate"), "--sample-rate");
+        }
+        else if (arg == "--channels" || arg.rfind("--channels=", 0) == 0) {
+            options.channels =
+                parse_u32(require_value(index, argc, argv, "--channels"), "--channels");
+        }
+        else if (arg == "--warmups" || arg.rfind("--warmups=", 0) == 0) {
+            options.warmups = parse_int(require_value(index, argc, argv, "--warmups"), "--warmups");
+        }
+        else if (arg == "--requests" || arg.rfind("--requests=", 0) == 0) {
+            options.requests = parse_int(require_value(index, argc, argv, "--requests"), "--requests");
+        }
+        else if (arg == "--request-timeout-ms" ||
+                 arg.rfind("--request-timeout-ms=", 0) == 0) {
+            options.request_timeout = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--request-timeout-ms"),
+                "--request-timeout-ms"));
+        }
+        else if (arg == "--startup-timeout-ms" ||
+                 arg.rfind("--startup-timeout-ms=", 0) == 0) {
+            options.startup_timeout = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--startup-timeout-ms"),
+                "--startup-timeout-ms"));
+        }
+        else if (arg == "--mock-chunks" || arg.rfind("--mock-chunks=", 0) == 0) {
+            options.mock_chunks =
+                parse_int(require_value(index, argc, argv, "--mock-chunks"), "--mock-chunks");
+        }
+        else if (arg == "--mock-chunk-ms" || arg.rfind("--mock-chunk-ms=", 0) == 0) {
+            options.mock_chunk_ms = parse_int(
+                require_value(index, argc, argv, "--mock-chunk-ms"),
+                "--mock-chunk-ms");
+        }
+        else if (arg == "--mock-chunk-delay" ||
+                 arg.rfind("--mock-chunk-delay=", 0) == 0) {
+            options.mock_chunk_delay = parse_double(
+                require_value(index, argc, argv, "--mock-chunk-delay"),
+                "--mock-chunk-delay");
+        }
+        else {
+            throw std::runtime_error("unknown option: " + arg);
+        }
+    }
+
+    return options;
+}
+
+void validate_options(const ProgramOptions& options) {
+    if (options.help) {
+        return;
+    }
+    if (!options.use_mock_worker && options.worker_executable.empty()) {
+        throw std::runtime_error("--worker is required unless --mock is used");
+    }
+    if (options.text.empty()) {
+        throw std::runtime_error("--text must not be empty");
+    }
+    if (options.sample_rate == 0) {
+        throw std::runtime_error("--sample-rate must be greater than zero");
+    }
+    if (options.channels == 0 ||
+        options.channels > std::numeric_limits<std::uint16_t>::max()) {
+        throw std::runtime_error("--channels must fit into uint16 and be greater than zero");
+    }
+    if (options.warmups < 0) {
+        throw std::runtime_error("--warmups must be non-negative");
+    }
+    if (options.requests <= 0) {
+        throw std::runtime_error("--requests must be greater than zero");
+    }
+    if (options.mock_chunks <= 0) {
+        throw std::runtime_error("--mock-chunks must be greater than zero");
+    }
+    if (options.mock_chunk_ms <= 0) {
+        throw std::runtime_error("--mock-chunk-ms must be greater than zero");
+    }
+    if (options.mock_chunk_delay < 0.0) {
+        throw std::runtime_error("--mock-chunk-delay must be non-negative");
+    }
+}
+
+StdIoTransportOptions make_transport_options(const ProgramOptions& options) {
+    StdIoTransportOptions transport_options;
+    transport_options.stderr_handler = [](std::string text) {
+        std::cerr << text;
+    };
+
+    if (options.use_mock_worker) {
+        const std::string python_executable = QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE;
+        const std::string worker_dir = QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR;
+        if (python_executable.empty() || worker_dir.empty()) {
+            throw std::runtime_error(
+                "--mock is unavailable because the example was built without Python discovery");
+        }
+
+        transport_options.arguments = {
+            python_executable,
+            "-m",
+            "qwen_tts_bridge_worker.main",
+            "--mock",
+            "--mock-chunks",
+            std::to_string(options.mock_chunks),
+            "--mock-chunk-ms",
+            std::to_string(options.mock_chunk_ms),
+            "--mock-chunk-delay",
+            std::to_string(options.mock_chunk_delay)
+        };
+        transport_options.working_directory = worker_dir;
+        return transport_options;
+    }
+
+    transport_options.arguments.push_back(options.worker_executable);
+    transport_options.arguments.insert(
+        transport_options.arguments.end(),
+        options.worker_arguments.begin(),
+        options.worker_arguments.end());
+    transport_options.working_directory = options.working_directory;
+    return transport_options;
+}
+
+AudioFormat requested_audio_format(const ProgramOptions& options) {
+    AudioFormat format;
+    format.sample_format = "s16le";
+    format.sample_rate = options.sample_rate;
+    format.channels = options.channels;
+    return format;
+}
+
+double elapsed_ms(Clock::time_point start) {
+    return std::chrono::duration<double, std::milli>(Clock::now() - start).count();
+}
+
+TtsCallbacks make_latency_callbacks(RequestProbe& probe) {
+    TtsCallbacks callbacks;
+    callbacks.on_audio = [&probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        if (!probe.first_audio_ms.has_value()) {
+            probe.first_audio_ms = elapsed_ms(probe.start);
+        }
+        probe.audio_chunks += 1;
+        probe.audio_bytes += chunk.bytes.size();
+    };
+    callbacks.on_completed = [&probe]() {
+        {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            probe.completed_ms = elapsed_ms(probe.start);
+            probe.success = true;
+            probe.terminal = true;
+        }
+        probe.condition.notify_all();
+    };
+    callbacks.on_cancelled = [&probe]() {
+        {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            probe.completed_ms = elapsed_ms(probe.start);
+            probe.error_category = "request";
+            probe.error_code = "cancelled";
+            probe.error_message = "request was cancelled";
+            probe.terminal = true;
+        }
+        probe.condition.notify_all();
+    };
+    callbacks.on_error = [&probe](const TtsError& error) {
+        {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            probe.completed_ms = elapsed_ms(probe.start);
+            probe.error_category = error.category;
+            probe.error_code = error.code;
+            probe.error_message = error.message;
+            probe.terminal = true;
+        }
+        probe.condition.notify_all();
+    };
+    return callbacks;
+}
+
+TtsRequest make_request(const ProgramOptions& options, const AudioFormat& audio_format) {
+    TtsRequest request;
+    request.text = options.text;
+    request.language = options.language;
+    request.speaker = options.speaker;
+    request.instruction = options.instruction;
+    request.output = audio_format;
+    return request;
+}
+
+RequestResult run_request(
+    QwenTtsClient& client,
+    const ProgramOptions& options,
+    const AudioFormat& audio_format,
+    int index,
+    bool warmup) {
+    RequestProbe probe;
+    probe.start = Clock::now();
+    const RequestId request_id = client.synthesize_async(
+        make_request(options, audio_format),
+        make_latency_callbacks(probe));
+    probe.enqueue_ms = elapsed_ms(probe.start);
+
+    if (request_id == 0) {
+        throw std::runtime_error("failed to enqueue synthesis request");
+    }
+
+    {
+        std::unique_lock<std::mutex> lock(probe.mutex);
+        if (!probe.condition.wait_for(
+                lock,
+                options.request_timeout,
+                [&probe]() { return probe.terminal; })) {
+            lock.unlock();
+            client.cancel(request_id);
+            throw std::runtime_error("synthesis request timed out");
+        }
+    }
+
+    RequestResult result;
+    {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        result.index = index;
+        result.request_id = request_id;
+        result.warmup = warmup;
+        result.success = probe.success;
+        result.first_audio_ms = probe.first_audio_ms;
+        result.completed_ms = probe.completed_ms;
+        result.enqueue_ms = probe.enqueue_ms;
+        result.audio_chunks = probe.audio_chunks;
+        result.audio_bytes = probe.audio_bytes;
+        result.error_category = probe.error_category;
+        result.error_code = probe.error_code;
+        result.error_message = probe.error_message;
+    }
+
+    const double bytes_per_ms =
+        static_cast<double>(audio_format.sample_rate) *
+        static_cast<double>(audio_format.channels) *
+        2.0 / 1000.0;
+    result.audio_duration_ms =
+        bytes_per_ms > 0.0 ? static_cast<double>(result.audio_bytes) / bytes_per_ms : 0.0;
+    if (result.completed_ms.has_value() && result.audio_duration_ms > 0.0) {
+        result.real_time_factor = result.completed_ms.value() / result.audio_duration_ms;
+    }
+    return result;
+}
+
+std::string json_escape(const std::string& value) {
+    std::ostringstream out;
+    for (const char ch : value) {
+        switch (ch) {
+        case '\\':
+            out << "\\\\";
+            break;
+        case '"':
+            out << "\\\"";
+            break;
+        case '\b':
+            out << "\\b";
+            break;
+        case '\f':
+            out << "\\f";
+            break;
+        case '\n':
+            out << "\\n";
+            break;
+        case '\r':
+            out << "\\r";
+            break;
+        case '\t':
+            out << "\\t";
+            break;
+        default:
+            if (static_cast<unsigned char>(ch) < 0x20u) {
+                out << "\\u"
+                    << std::hex << std::setw(4) << std::setfill('0')
+                    << static_cast<int>(static_cast<unsigned char>(ch))
+                    << std::dec << std::setfill(' ');
+            }
+            else {
+                out << ch;
+            }
+            break;
+        }
+    }
+    return out.str();
+}
+
+void write_number_or_null(std::ostream& out, const std::optional<double>& value) {
+    if (value.has_value()) {
+        out << std::fixed << std::setprecision(3) << value.value();
+    }
+    else {
+        out << "null";
+    }
+}
+
+std::vector<double> collect_metric(
+    const std::vector<RequestResult>& results,
+    std::optional<double> RequestResult::*field) {
+    std::vector<double> values;
+    for (const RequestResult& result : results) {
+        if (!result.success) {
+            continue;
+        }
+        const std::optional<double>& value = result.*field;
+        if (value.has_value()) {
+            values.push_back(value.value());
+        }
+    }
+    std::sort(values.begin(), values.end());
+    return values;
+}
+
+double percentile(const std::vector<double>& values, double percentile_value) {
+    if (values.empty()) {
+        return 0.0;
+    }
+    const double rank =
+        percentile_value / 100.0 * static_cast<double>(values.size() - 1u);
+    const auto low = static_cast<std::size_t>(std::floor(rank));
+    const auto high = static_cast<std::size_t>(std::ceil(rank));
+    if (low == high) {
+        return values[low];
+    }
+    const double fraction = rank - static_cast<double>(low);
+    return values[low] * (1.0 - fraction) + values[high] * fraction;
+}
+
+void write_metric_summary(
+    std::ostream& out,
+    const char* name,
+    const std::vector<double>& values) {
+    out << "\"" << name << "\":";
+    if (values.empty()) {
+        out << "null";
+        return;
+    }
+    out << "{"
+        << "\"min\":" << std::fixed << std::setprecision(3) << values.front()
+        << ",\"median\":" << percentile(values, 50.0)
+        << ",\"p90\":" << percentile(values, 90.0)
+        << ",\"p95\":" << percentile(values, 95.0)
+        << ",\"max\":" << values.back()
+        << "}";
+}
+
+void write_results_json(
+    std::ostream& out,
+    const ProgramOptions& options,
+    double startup_ms,
+    const std::vector<RequestResult>& warmups,
+    const std::vector<RequestResult>& measured) {
+    out << "{";
+    out << "\"config\":{"
+        << "\"text\":\"" << json_escape(options.text) << "\","
+        << "\"language\":\"" << json_escape(options.language) << "\","
+        << "\"speaker\":\"" << json_escape(options.speaker) << "\","
+        << "\"instruction\":\"" << json_escape(options.instruction) << "\","
+        << "\"sample_rate\":" << options.sample_rate << ","
+        << "\"channels\":" << options.channels << ","
+        << "\"warmups\":" << options.warmups << ","
+        << "\"requests\":" << options.requests
+        << "},";
+    out << "\"startup_ms\":" << std::fixed << std::setprecision(3) << startup_ms << ",";
+
+    out << "\"summary\":{";
+    write_metric_summary(out, "first_audio_ms", collect_metric(measured, &RequestResult::first_audio_ms));
+    out << ",";
+    write_metric_summary(out, "completed_ms", collect_metric(measured, &RequestResult::completed_ms));
+    out << ",";
+    write_metric_summary(out, "real_time_factor", collect_metric(measured, &RequestResult::real_time_factor));
+    out << "},";
+
+    auto write_array = [&out](const char* name, const std::vector<RequestResult>& results) {
+        out << "\"" << name << "\":[";
+        for (std::size_t index = 0; index < results.size(); ++index) {
+            const RequestResult& result = results[index];
+            if (index != 0u) {
+                out << ",";
+            }
+            out << "{"
+                << "\"index\":" << result.index << ","
+                << "\"request_id\":" << result.request_id << ","
+                << "\"success\":" << (result.success ? "true" : "false") << ","
+                << "\"enqueue_ms\":" << std::fixed << std::setprecision(3) << result.enqueue_ms
+                << ",\"first_audio_ms\":";
+            write_number_or_null(out, result.first_audio_ms);
+            out << ",\"completed_ms\":";
+            write_number_or_null(out, result.completed_ms);
+            out << ",\"audio_bytes\":" << result.audio_bytes
+                << ",\"audio_chunks\":" << result.audio_chunks
+                << ",\"audio_duration_ms\":" << result.audio_duration_ms
+                << ",\"real_time_factor\":";
+            write_number_or_null(out, result.real_time_factor);
+            if (!result.success) {
+                out << ",\"error_category\":\"" << json_escape(result.error_category) << "\""
+                    << ",\"error_code\":\"" << json_escape(result.error_code) << "\""
+                    << ",\"error_message\":\"" << json_escape(result.error_message) << "\"";
+            }
+            out << "}";
+        }
+        out << "]";
+    };
+    write_array("warmups", warmups);
+    out << ",";
+    write_array("requests", measured);
+    out << "}\n";
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    try {
+        ProgramOptions options = parse_options(argc, argv);
+        validate_options(options);
+
+        if (options.help) {
+            print_usage(std::cout, argv[0]);
+            return 0;
+        }
+
+        const AudioFormat audio_format = requested_audio_format(options);
+
+        QwenTtsClientOptions client_options;
+        client_options.session.startup_timeout = options.startup_timeout;
+
+        QwenTtsClient client;
+        const Clock::time_point startup_start = Clock::now();
+        if (!client.start(make_transport_options(options), client_options)) {
+            throw std::runtime_error("failed to start Qwen TTS worker");
+        }
+        const double startup_ms = elapsed_ms(startup_start);
+
+        std::vector<RequestResult> warmups;
+        std::vector<RequestResult> measured;
+        warmups.reserve(static_cast<std::size_t>(options.warmups));
+        measured.reserve(static_cast<std::size_t>(options.requests));
+
+        for (int index = 0; index < options.warmups; ++index) {
+            warmups.push_back(run_request(
+                client,
+                options,
+                audio_format,
+                index + 1,
+                true));
+        }
+        for (int index = 0; index < options.requests; ++index) {
+            measured.push_back(run_request(
+                client,
+                options,
+                audio_format,
+                index + 1,
+                false));
+        }
+
+        client.stop();
+        write_results_json(std::cout, options, startup_ms, warmups, measured);
+        return 0;
+    }
+    catch (const std::exception& exc) {
+        std::cerr << "qwen_tts_latency_benchmark: " << exc.what() << '\n';
+        std::cerr << "Run with --help for usage.\n";
+        return 1;
+    }
+}
