@@ -14,6 +14,13 @@ from typing import Any
 import numpy as np
 import torch
 from faster_qwen3_tts import FasterQwen3TTS
+from faster_qwen_benchmark_accounting import (
+    PlaybackChunk,
+    simulate_playback,
+    validate_emitted_steps,
+    validate_pending_steps,
+    validate_reported_steps,
+)
 
 
 TEXT = (
@@ -66,7 +73,7 @@ def main() -> int:
         "runtime": _runtime_info(),
         "settings": vars(args),
         "warmup_s": warmup_s,
-        "summary": _summarize_positions(rows),
+        "summary": _summarize_positions(rows, transport_reserve_ms=args.transport_reserve_ms),
         "rows": rows,
     }
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -86,6 +93,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--producer-chunk-size", type=int, default=4)
     parser.add_argument("--first-output-steps", type=int, default=4)
     parser.add_argument("--steady-output-steps", type=int, default=8)
+    parser.add_argument(
+        "--output-schedule",
+        help=(
+            "Comma-separated output chunk schedule. The last value repeats. "
+            "For example: 4,8,12."
+        ),
+    )
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--text", default=TEXT)
     parser.add_argument("--language", default="English")
@@ -94,6 +108,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-text-chars", type=int, default=50)
     parser.add_argument("--warmup-max-new-tokens", type=int, default=20)
     parser.add_argument("--seed", type=int)
+    parser.add_argument("--hash-codecs", action="store_true")
+    parser.add_argument("--transport-reserve-ms", type=float, default=50.0)
     parser.add_argument("--x-vector-only", action="store_true")
     parser.add_argument("--parity-mode", action="store_true")
     parser.add_argument("--non-streaming-mode", action="store_true")
@@ -152,16 +168,21 @@ def _run_once(model: FasterQwen3TTS, args: argparse.Namespace, *, run_index: int
     pending_prefill_ms = 0.0
     pending_started = request_started
     output_index = 0
-    target_steps = args.first_output_steps
+    output_schedule = _output_schedule(args)
+    target_steps = output_schedule[0]
     generated_steps = 0
     emitted_steps = 0
-    codec_digest = hashlib.sha256()
+    codec_chunks_for_hash: list[torch.Tensor] = []
 
     for codec_chunk, timing in stream_fn(**stream_kwargs):
+        actual_steps = int(codec_chunk.shape[0])
+        reported_steps = int(timing.get("chunk_steps", actual_steps))
+        validate_reported_steps(reported_steps=reported_steps, actual_steps=actual_steps)
         pending.append(codec_chunk)
-        codec_digest.update(codec_chunk.detach().cpu().contiguous().numpy().tobytes())
-        pending_steps += int(timing.get("chunk_steps", codec_chunk.shape[0]))
-        generated_steps += int(timing.get("chunk_steps", codec_chunk.shape[0]))
+        if args.hash_codecs:
+            codec_chunks_for_hash.append(codec_chunk.detach())
+        pending_steps += actual_steps
+        generated_steps += actual_steps
         pending_ar_ms += float(timing.get("decode_ms", 0.0))
         pending_prefill_ms += float(timing.get("prefill_ms", 0.0))
         is_final = bool(timing.get("is_final", False))
@@ -182,13 +203,12 @@ def _run_once(model: FasterQwen3TTS, args: argparse.Namespace, *, run_index: int
             is_final=is_final,
             generated_steps=generated_steps,
             emitted_steps=emitted_steps,
-            codec_sha256=codec_digest.hexdigest(),
         )
         pending = []
         pending_steps = 0
         pending_ar_ms = 0.0
         pending_prefill_ms = 0.0
-        target_steps = args.steady_output_steps
+        target_steps = _target_for_output(output_schedule, output_index)
 
     if pending_steps:
         output_index, emitted_steps, pending_started = _flush_pending(
@@ -205,20 +225,16 @@ def _run_once(model: FasterQwen3TTS, args: argparse.Namespace, *, run_index: int
             is_final=True,
             generated_steps=generated_steps,
             emitted_steps=emitted_steps,
-            codec_sha256=codec_digest.hexdigest(),
         )
     elif rows and not bool(rows[-1]["is_final"]):
         rows[-1]["is_final"] = True
 
-    if generated_steps != emitted_steps:
-        raise RuntimeError(
-            f"adaptive chunk accounting mismatch: generated={generated_steps}, "
-            f"emitted={emitted_steps}"
-        )
+    validate_emitted_steps(generated_steps=generated_steps, emitted_steps=emitted_steps)
+    codec_sha256 = _codec_sha256(codec_chunks_for_hash) if args.hash_codecs else ""
     for row in rows:
         row["run_generated_steps"] = generated_steps
         row["run_emitted_steps"] = emitted_steps
-        row["run_codec_sha256"] = codec_digest.hexdigest()
+        row["run_codec_sha256"] = codec_sha256
     return rows
 
 
@@ -237,9 +253,9 @@ def _flush_pending(
     is_final: bool,
     generated_steps: int,
     emitted_steps: int,
-    codec_sha256: str,
 ) -> tuple[int, int, float]:
     combined = torch.cat(pending, dim=0)
+    validate_pending_steps(pending_steps=pending_steps, combined_steps=int(combined.shape[0]))
     decoded = decoder.decode_next(combined)
     _sync_cuda()
     ended = time.perf_counter()
@@ -261,11 +277,27 @@ def _flush_pending(
             "decode_wall_ms": decoded["decode_wall_ms"],
             "audio_ms": decoded["audio_ms"],
             "audio_samples": decoded["audio_samples"],
-            "codec_sha256_so_far": codec_sha256,
             "is_final": is_final,
         }
     )
     return output_index + 1, emitted_steps, time.perf_counter()
+
+
+def _output_schedule(args: argparse.Namespace) -> list[int]:
+    if args.output_schedule:
+        schedule = [int(part.strip()) for part in args.output_schedule.split(",") if part.strip()]
+        if not schedule:
+            raise ValueError("--output-schedule must contain at least one positive integer")
+        if any(value <= 0 for value in schedule):
+            raise ValueError("--output-schedule values must be positive")
+        return schedule
+    return [args.first_output_steps, args.steady_output_steps]
+
+
+def _target_for_output(schedule: list[int], output_index: int) -> int:
+    if output_index < len(schedule):
+        return schedule[output_index]
+    return schedule[-1]
 
 
 class _AdaptiveDecoder:
@@ -341,12 +373,16 @@ def _to_numpy(audio: Any) -> np.ndarray:
     return np.asarray(audio).flatten()
 
 
-def _summarize_positions(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def _summarize_positions(
+    rows: list[dict[str, Any]],
+    *,
+    transport_reserve_ms: float,
+) -> dict[str, Any]:
     first = [row for row in rows if row["chunk"] == 0]
     second = [row for row in rows if row["chunk"] == 1]
     steady = [row for row in rows if row["chunk"] >= 1 and not row["is_final"]]
     final = [row for row in rows if row["is_final"]]
-    totals = _summarize_runs(rows)
+    totals = _summarize_runs(rows, transport_reserve_ms=transport_reserve_ms)
     return {
         "first": _summary_stats(first),
         "second": _summary_stats(second),
@@ -356,7 +392,11 @@ def _summarize_positions(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _summarize_runs(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def _summarize_runs(
+    rows: list[dict[str, Any]],
+    *,
+    transport_reserve_ms: float,
+) -> dict[str, Any]:
     by_run: dict[int, list[dict[str, Any]]] = {}
     for row in rows:
         by_run.setdefault(int(row["run"]), []).append(row)
@@ -371,6 +411,10 @@ def _summarize_runs(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "inverse_rtf": audio_ms / wall_ms if wall_ms > 0 else 0.0,
                 "local_rtf": wall_ms / audio_ms if audio_ms > 0 else 0.0,
                 "chunks": len(run_rows),
+                **_playback_for_run(
+                    run_rows,
+                    transport_reserve_ms=transport_reserve_ms,
+                ),
             }
         )
     return {
@@ -379,6 +423,54 @@ def _summarize_runs(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "inverse_rtf": _stats([row["inverse_rtf"] for row in totals]),
         "local_rtf": _stats([row["local_rtf"] for row in totals]),
         "chunks": _stats([row["chunks"] for row in totals]),
+        "minimum_buffer_ms": _stats([row["minimum_buffer_ms"] for row in totals]),
+        "minimum_reserve_margin_ms": _stats(
+            [row["minimum_reserve_margin_ms"] for row in totals]
+        ),
+        "underrun_count": _stats([row["underrun_count"] for row in totals]),
+        "reserve_violation_count": _stats(
+            [row["reserve_violation_count"] for row in totals]
+        ),
+        "second_arrival_margin_ms": _stats(
+            [
+                row["second_arrival_margin_ms"]
+                for row in totals
+                if row["second_arrival_margin_ms"] is not None
+            ]
+        ),
+        "second_arrival_reserve_margin_ms": _stats(
+            [
+                row["second_arrival_reserve_margin_ms"]
+                for row in totals
+                if row["second_arrival_reserve_margin_ms"] is not None
+            ]
+        ),
+    }
+
+
+def _playback_for_run(
+    run_rows: list[dict[str, Any]],
+    *,
+    transport_reserve_ms: float,
+) -> dict[str, float | None]:
+    arrival_ms = 0.0
+    chunks: list[PlaybackChunk] = []
+    for row in run_rows:
+        arrival_ms += float(row["wall_ms"])
+        chunks.append(
+            PlaybackChunk(
+                arrival_ms=arrival_ms,
+                audio_ms=float(row["audio_ms"]),
+            )
+        )
+    simulation = simulate_playback(chunks, transport_reserve_ms=transport_reserve_ms)
+    return {
+        "minimum_buffer_ms": simulation.minimum_buffer_ms,
+        "minimum_reserve_margin_ms": simulation.minimum_reserve_margin_ms,
+        "underrun_count": float(simulation.underrun_count),
+        "reserve_violation_count": float(simulation.reserve_violation_count),
+        "second_arrival_margin_ms": simulation.second_arrival_margin_ms,
+        "second_arrival_reserve_margin_ms": simulation.second_arrival_reserve_margin_ms,
     }
 
 
@@ -403,10 +495,23 @@ def _summary_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _stats(values: list[float]) -> dict[str, float]:
+    if not values:
+        return {"min": 0.0, "p05": 0.0, "median": 0.0, "p95": 0.0, "max": 0.0}
     return {
+        "min": min(values),
+        "p05": _percentile(values, 5.0),
         "median": statistics.median(values),
         "p95": _percentile(values, 95.0),
+        "max": max(values),
     }
+
+
+def _codec_sha256(codec_chunks: list[torch.Tensor]) -> str:
+    digest = hashlib.sha256()
+    for chunk in codec_chunks:
+        array = chunk.detach().cpu().contiguous().numpy()
+        digest.update(array.tobytes())
+    return digest.hexdigest()
 
 
 def _percentile(values: list[float], percentile: float) -> float:

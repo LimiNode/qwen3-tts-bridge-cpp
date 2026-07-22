@@ -13,6 +13,7 @@ from typing import Any
 import numpy as np
 import torch
 from faster_qwen3_tts import FasterQwen3TTS
+from faster_qwen_benchmark_accounting import PlaybackChunk, simulate_playback
 
 
 TEXT = (
@@ -60,23 +61,25 @@ def main() -> int:
     warmup_audio_s = len(audio_list[0]) / sample_rate if audio_list else 0.0
 
     rows: list[dict[str, Any]] = []
+    run_summaries: list[dict[str, Any]] = []
     for run_index in range(args.runs):
         if args.seed is not None:
             _seed_everything(args.seed + run_index)
-        rows.extend(
-            _profile_stream(
-                model,
-                run_index=run_index,
-                text=args.text,
-                language=args.language,
-                ref_audio=args.ref_audio,
-                ref_text=args.ref_text,
-                chunk_size=args.chunk_size,
-                xvec_only=args.x_vector_only,
+        result = _profile_stream(
+            model,
+            run_index=run_index,
+            text=args.text,
+            language=args.language,
+            ref_audio=args.ref_audio,
+            ref_text=args.ref_text,
+            chunk_size=args.chunk_size,
+            xvec_only=args.x_vector_only,
                 parity_mode=args.parity_mode,
                 non_streaming_mode=args.non_streaming_mode,
+                transport_reserve_ms=args.transport_reserve_ms,
             )
-        )
+        rows.extend(result["rows"])
+        run_summaries.append(result["run_summary"])
 
     report = {
         "model": args.model,
@@ -87,6 +90,8 @@ def main() -> int:
         "warmup_audio_s": warmup_audio_s,
         "chunk_summary": _summarize_by_chunk(rows),
         "position_summary": _summarize_positions(rows),
+        "run_summary": _summarize_run_totals(run_summaries),
+        "run_rows": run_summaries,
         "rows": rows,
     }
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -113,6 +118,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-text-chars", type=int, default=50)
     parser.add_argument("--warmup-max-new-tokens", type=int, default=20)
     parser.add_argument("--seed", type=int)
+    parser.add_argument("--transport-reserve-ms", type=float, default=50.0)
     parser.add_argument("--x-vector-only", action="store_true")
     parser.add_argument("--parity-mode", action="store_true")
     parser.add_argument("--non-streaming-mode", action="store_true")
@@ -136,8 +142,10 @@ def _profile_stream(
     xvec_only: bool,
     parity_mode: bool,
     non_streaming_mode: bool,
-) -> list[dict[str, Any]]:
+    transport_reserve_ms: float,
+) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
+    request_started = time.perf_counter()
     generator = model.generate_voice_clone_streaming(
         text=text,
         language=language,
@@ -148,7 +156,8 @@ def _profile_stream(
         parity_mode=parity_mode,
         non_streaming_mode=non_streaming_mode,
     )
-    previous_end = time.perf_counter()
+    previous_end = request_started
+    sample_rate = 24000
 
     try:
         chunk_index = 0
@@ -189,7 +198,22 @@ def _profile_stream(
     finally:
         generator.close()
 
-    return rows
+    _sync_cuda()
+    request_wall_ms = (time.perf_counter() - request_started) * 1000.0
+    audio_ms = sum(float(row["audio_ms"]) for row in rows)
+    playback = _playback_for_run(rows, transport_reserve_ms=transport_reserve_ms)
+    return {
+        "rows": rows,
+        "run_summary": {
+            "run": run_index,
+            "request_wall_ms": request_wall_ms,
+            "audio_ms": audio_ms,
+            "chunks": len(rows),
+            "inverse_rtf": audio_ms / request_wall_ms if request_wall_ms > 0 else 0.0,
+            "local_rtf": request_wall_ms / audio_ms if audio_ms > 0 else 0.0,
+            **playback,
+        },
+    }
 
 
 def _summarize_by_chunk(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -207,6 +231,49 @@ def _summarize_positions(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "second": _summary_stats(second),
         "steady": _summary_stats(steady),
         "final": _summary_stats(final),
+    }
+
+
+def _summarize_run_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    keys = (
+        "request_wall_ms",
+        "audio_ms",
+        "chunks",
+        "inverse_rtf",
+        "local_rtf",
+        "minimum_buffer_ms",
+        "minimum_reserve_margin_ms",
+        "underrun_count",
+        "reserve_violation_count",
+        "second_arrival_margin_ms",
+        "second_arrival_reserve_margin_ms",
+    )
+    return {key: _stats([float(row[key]) for row in rows]) for key in keys}
+
+
+def _playback_for_run(
+    run_rows: list[dict[str, Any]],
+    *,
+    transport_reserve_ms: float,
+) -> dict[str, float | None]:
+    arrival_ms = 0.0
+    chunks: list[PlaybackChunk] = []
+    for row in run_rows:
+        arrival_ms += float(row["wall_ms"])
+        chunks.append(
+            PlaybackChunk(
+                arrival_ms=arrival_ms,
+                audio_ms=float(row["audio_ms"]),
+            )
+        )
+    simulation = simulate_playback(chunks, transport_reserve_ms=transport_reserve_ms)
+    return {
+        "minimum_buffer_ms": simulation.minimum_buffer_ms,
+        "minimum_reserve_margin_ms": simulation.minimum_reserve_margin_ms,
+        "underrun_count": float(simulation.underrun_count),
+        "reserve_violation_count": float(simulation.reserve_violation_count),
+        "second_arrival_margin_ms": simulation.second_arrival_margin_ms,
+        "second_arrival_reserve_margin_ms": simulation.second_arrival_reserve_margin_ms,
     }
 
 
@@ -231,6 +298,16 @@ def _summary_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
         out[f"{key}_median"] = statistics.median(values)
         out[f"{key}_p95"] = _percentile(values, 95.0)
     return out
+
+
+def _stats(values: list[float]) -> dict[str, float]:
+    return {
+        "min": min(values),
+        "p05": _percentile(values, 5.0),
+        "median": statistics.median(values),
+        "p95": _percentile(values, 95.0),
+        "max": max(values),
+    }
 
 
 def _percentile(values: list[float], percentile: float) -> float:

@@ -582,6 +582,27 @@ guards, `4 -> 12` still improves TTFA and throughput together, which makes an
 adaptive worker chunking policy worth prototyping behind an experimental flag
 if this backend is integrated.
 
+Unified schedule benchmark, same harness, same seed series, no codec hashing in
+the timed performance path:
+
+| Schedule | First median | First p95 | Inverse RTF | Min reserve margin | p05 reserve margin | Median reserve margin | Reserve violations |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Fixed 8 | 367 ms | 375 ms | 2.62 | 317 ms | 350 ms | 354 ms | 0 |
+| Fixed 12 | 451 ms | 458 ms | 2.87 | 553 ms | 585 ms | 591 ms | 0 |
+| `4 -> 12` | 293 ms | 300 ms | 2.82 | -82 ms | -52 ms | -46 ms | 1/run |
+| `4 -> 8 -> 12` | 291 ms | 344 ms | 2.80 | -3 ms | 25 ms | 33 ms | 1 worst-case run |
+
+The reserve margin uses a 50 ms transport/playback safety reserve. Negative
+values mean the next chunk may arrive too late for a live bridge even though the
+mean throughput is faster than real-time. `4 -> 12` is therefore not suitable as
+a production schedule. `4 -> 8 -> 12` is the better next adaptive candidate, but
+it still needs a true low-level variable scheduler and boundary-quality checks.
+
+A separate 5-run correctness pass with `--hash-codecs` enabled produced
+matching codec SHA-256 streams for fixed 8, fixed 12, `4 -> 12`, and
+`4 -> 8 -> 12` under the same seed series. That confirms the schedule
+comparison above is not comparing different sampled speech.
+
 Updated diagnosis after profiling:
 
 ```text
@@ -593,6 +614,8 @@ codec decode and wrapper synchronization: confirmed meaningful overhead
 prefill/setup and raw AR still need separate work to reach author's end-to-end
 native Windows/WDDM plus older CPU launch overhead: still plausible for raw AR gap
 GPU clocks under sustained benchmark load: still not recorded cleanly
+adaptive 4->12 playback reserve: failed, keep experimental only
+adaptive 4->8->12 playback reserve: promising but not production-safe yet
 ```
 
 WSL status:
@@ -664,9 +687,9 @@ There are now two separate tracks:
 
 - Product track: prototype a fixed `faster-qwen3-tts` worker backend behind a
   feature flag, while keeping the existing Qwen backend available. Keep
-  adaptive chunking (`4 -> 12` is the current best local tradeoff) behind a
-  separate experimental flag until playback-buffer and boundary-quality checks
-  pass.
+  adaptive chunking behind a separate experimental flag. `4 -> 12` failed the
+  50 ms playback-reserve check; `4 -> 8 -> 12` is the next candidate to test
+  with a true low-level scheduler and boundary-quality checks.
 - Root-cause track: compare native Windows/WDDM with WSL2/Linux using the same
   official benchmark to find whether CPU launch overhead and driver model
   explain the remaining raw-code gap to the author's RTX 4090 numbers.

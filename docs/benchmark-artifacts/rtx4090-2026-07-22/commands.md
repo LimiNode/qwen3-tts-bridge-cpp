@@ -38,3 +38,45 @@ $py = "$repo\.venv-faster-qwen\Scripts\python.exe"
     --seed 4242 `
     --output "$repo\tmp\faster-adaptive-4to12-stack112-clean-torch210-cu128-seed4242-r20-fixed.json"
 ```
+
+Unified schedule performance pass:
+
+```powershell
+$modes = @(
+    @('fixed8', '8', '8'),
+    @('fixed12', '12', '12'),
+    @('4to12', '4', '4,12'),
+    @('4to8to12', '4', '4,8,12')
+)
+
+foreach ($mode in $modes) {
+    $name = $mode[0]
+    $producer = $mode[1]
+    $schedule = $mode[2]
+    & $py "$repo\scripts\faster-qwen-profile-adaptive-chunks.py" `
+        --runs 20 `
+        --producer-chunk-size $producer `
+        --output-schedule $schedule `
+        --seed 4242 `
+        --transport-reserve-ms 50 `
+        --output "$repo\tmp\faster-schedule-$name-stack112-clean-torch210-cu128-seed4242-r20-v3.json"
+}
+```
+
+Schedule correctness pass with codec hashing enabled outside the timed path:
+
+```powershell
+foreach ($mode in $modes) {
+    $name = $mode[0]
+    $producer = $mode[1]
+    $schedule = $mode[2]
+    & $py "$repo\scripts\faster-qwen-profile-adaptive-chunks.py" `
+        --runs 5 `
+        --producer-chunk-size $producer `
+        --output-schedule $schedule `
+        --seed 7777 `
+        --transport-reserve-ms 50 `
+        --hash-codecs `
+        --output "$repo\tmp\faster-schedule-$name-stack112-clean-torch210-cu128-seed7777-r5-hash.json"
+}
+```
