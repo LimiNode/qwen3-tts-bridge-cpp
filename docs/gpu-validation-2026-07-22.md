@@ -72,6 +72,18 @@ synthesis before `ready`:
 | 4 | 120 | 390 ms | 4238 ms | 4239 ms | 14 | 1.00 |
 | 2 | 40 | 218 ms | 4264 ms | 4238 ms | 27 | 1.01 |
 
+Six-request stability run with `enable_streaming_optimizations`, warmup
+synthesis, `emit_every_frames=4`, and `decode_window_frames=40`:
+
+| Request | First audio | Completed | Audio duration | Chunks | RTF |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 400 ms | 3487 ms | 3116 ms | 10 | 1.12 |
+| 2 | 402 ms | 5775 ms | 5356 ms | 17 | 1.08 |
+| 3 | 437 ms | 4396 ms | 3997 ms | 13 | 1.10 |
+| 4 | 474 ms | 4443 ms | 3997 ms | 13 | 1.11 |
+| 5 | 473 ms | 6822 ms | 6316 ms | 20 | 1.08 |
+| 6 | 474 ms | 3486 ms | 2957 ms | 10 | 1.18 |
+
 Notes:
 
 - The worker logs warn that `flash-attn` is not installed and the model falls back to the manual PyTorch path.
@@ -79,6 +91,7 @@ Notes:
 - Calling the Qwen fork's `enable_streaming_optimizations()` hook through the worker is the first mode observed to approach real-time after the initial compile-heavy request. With `--warmup-synthesis`, the worker pays the compile/synthetic synthesis cost before `ready`; the first user-facing request reached `first_audio_ms ~= 717` and `RTF ~= 1.00` in the best current run.
 - `emit_every_frames=4` and `decode_window_frames=40` is the best current throughput candidate. `emit_every_frames=2` gives the lowest first-audio latency, but it emits many more chunks.
 - C++ example startup timeout must be increased for warmup-before-ready mode. The optimized warmup WAV run used `--startup-timeout-ms 1200000`, reported worker `startup_ms ~= 79119`, and then completed the first user request with `first_audio_ms ~= 338` and `RTF ~= 0.965`.
+- A six-request persistent-worker run did not show progressive latency degradation. After shutdown, no Python worker process remained and `nvidia-smi` reported about `1074 MiB` used VRAM with low GPU utilization.
 - The baseline is functionally correct on a real RTX 4090, but it is not real-time yet. Best observed RTF in this pass was about `5.31`.
 - `float16` should not be used as the default for this model/runtime combination until the CUDA assert is understood.
 - Generated models, packaged worker output, venvs, and WAV files are ignored by git.
