@@ -779,6 +779,78 @@ fastest runtime matrix: the portable environment currently uses torch
 `2.11.0+cu126`, while the best source-tree benchmark above used
 `.venv-faster-qwen` with torch `2.10.0+cu128`.
 
+2026-07-23 follow-up hardening:
+
+- `verify_packaged_worker.py` now accepts `--expect-warmed-up auto|true|false`.
+  In `auto`, mock expects `true`, Qwen without `--warmup-synthesis` expects
+  `false`, and Qwen with real synthesis warmup expects `true`.
+- Qwen synthesis warmup now fails startup if a warmup pass produces zero chunks
+  or zero bytes.
+- `--warmup-synthesis-passes` allows representative multi-pass startup warmup.
+  The worker emits both aggregate `engine_warmed_up` and per-pass
+  `engine_warmup_pass` metrics.
+- `benchmark_packaged_worker_restart.py` measures first user request latency
+  across fresh worker processes.
+- Portable packaging now refuses dirty source trees by default, supports
+  `-AllowDirtySources` for local diagnostic builds, retains exact wheels under
+  `worker-python/wheels`, and writes a richer `build-manifest.json` with
+  Python/tool versions, torch CUDA metadata, staged `pip freeze`, wheel hashes,
+  source commits, and sanitized source path labels.
+
+A fresh portable worker build at bridge commit
+`891ac444c843ee20ad46b72ed3d63d02db1a26e2` produced retained wheels:
+
+| Wheel | SHA-256 |
+| --- | --- |
+| `qwen_tts_bridge_worker-0.2.0-py3-none-any.whl` | `5d230825e2007d4dabbeea55e71647b1fbba1cb6f3ba8f08e828e58303e049cc` |
+| `qwen_tts-0.0.4-py3-none-any.whl` | `6e93be5ea8e5284cd8e5a7d65f1361561abf281814aaf538aaf1a01c3b3980b3` |
+| `faster_qwen3_tts-0.3.2-py3-none-any.whl` | `b7429f3e15a0c2e43b9f769f2552bb5cb95cd90f3db106fb218bf252a3c7a31c` |
+
+The rebuilt packaged worker passed the mock packaged smoke and imported
+`faster_qwen3_tts`, `qwen_tts`, and torch from the staged runtime:
+
+```text
+faster=0.3.2; torch=2.11.0+cu126; cuda=12.6
+```
+
+Restart-based first-user-after-ready benchmark, source worker on the same
+torch `2.11.0+cu126` runtime, fixed chunk size 8, two synthesis warmup passes,
+20 fresh worker processes:
+
+| Metric | Median | p95 | Max |
+| --- | ---: | ---: | ---: |
+| first PCM | 425.7 ms | 485.2 ms | 486.2 ms |
+| completed | 1.85 s | 2.26 s | 2.35 s |
+| local RTF | 0.475 | 0.499 | 0.505 |
+| inverse RTF | 2.105 | 2.246 | 2.359 |
+
+This does **not** meet the tentative acceptance target of first-user p95 within
+20 ms of steady-state p95. The same-runtime steady-state source worker run
+below measured first PCM p95 `422.5 ms`, so restart p95 is about `+62.6 ms`.
+Two-pass warmup improves honesty and reproducibility, but it still does not
+fully guarantee steady-state first-user latency.
+
+Source-vs-portable parity, same torch `2.11.0+cu126` runtime shape, two startup
+warmup synthesis passes, 5 request warmups, 30 measured requests:
+
+| Level | TTFA median | TTFA p95 | Completed median | Completed p95 | local RTF median |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Source worker | 404.2 ms | 422.5 ms | 1.54 s | 1.96 s | 0.409 |
+| Portable worker | 408.5 ms | 431.5 ms | 1.52 s | 2.07 s | 0.410 |
+
+Portable TTFA and median local RTF are within the 5% parity target. Packaging is
+not a meaningful performance bottleneck in this controlled comparison.
+
+Artifacts:
+
+```text
+docs/benchmark-artifacts/rtx4090-2026-07-22/restart-first-user-source-worker-faster-customvoice-chunk8-r20.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/parity-source-worker-faster-customvoice-chunk8-r30.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/parity-portable-worker-faster-customvoice-chunk8-r30.json
+dist/QwenTTSBridge/worker-python/build-manifest.json
+dist/QwenTTSBridge/worker-python/wheels/
+```
+
 Updated diagnosis after profiling:
 
 ```text
