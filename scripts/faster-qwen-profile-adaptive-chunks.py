@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import random
 import statistics
 import time
 from pathlib import Path
@@ -55,6 +57,8 @@ def main() -> int:
 
     rows: list[dict[str, Any]] = []
     for run_index in range(args.runs):
+        if args.seed is not None:
+            _seed_everything(args.seed + run_index)
         rows.extend(_run_once(model, args, run_index=run_index))
 
     report = {
@@ -89,6 +93,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ref-text", default=REF_TEXT)
     parser.add_argument("--warmup-text-chars", type=int, default=50)
     parser.add_argument("--warmup-max-new-tokens", type=int, default=20)
+    parser.add_argument("--seed", type=int)
     parser.add_argument("--x-vector-only", action="store_true")
     parser.add_argument("--parity-mode", action="store_true")
     parser.add_argument("--non-streaming-mode", action="store_true")
@@ -100,6 +105,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def _run_once(model: FasterQwen3TTS, args: argparse.Namespace, *, run_index: int) -> list[dict[str, Any]]:
     from faster_qwen3_tts.streaming import fast_generate_streaming, parity_generate_streaming
 
+    request_started = time.perf_counter()
     (
         wrapped_model,
         talker,
@@ -117,6 +123,8 @@ def _run_once(model: FasterQwen3TTS, args: argparse.Namespace, *, run_index: int
         xvec_only=args.x_vector_only,
         non_streaming_mode=args.non_streaming_mode,
     )
+    _sync_cuda()
+    prepare_ms = (time.perf_counter() - request_started) * 1000.0
 
     stream_fn = parity_generate_streaming if args.parity_mode else fast_generate_streaming
     stream_kwargs = {
@@ -142,49 +150,122 @@ def _run_once(model: FasterQwen3TTS, args: argparse.Namespace, *, run_index: int
     pending_steps = 0
     pending_ar_ms = 0.0
     pending_prefill_ms = 0.0
-    pending_started = time.perf_counter()
+    pending_started = request_started
     output_index = 0
     target_steps = args.first_output_steps
+    generated_steps = 0
+    emitted_steps = 0
+    codec_digest = hashlib.sha256()
 
     for codec_chunk, timing in stream_fn(**stream_kwargs):
         pending.append(codec_chunk)
+        codec_digest.update(codec_chunk.detach().cpu().contiguous().numpy().tobytes())
         pending_steps += int(timing.get("chunk_steps", codec_chunk.shape[0]))
+        generated_steps += int(timing.get("chunk_steps", codec_chunk.shape[0]))
         pending_ar_ms += float(timing.get("decode_ms", 0.0))
         pending_prefill_ms += float(timing.get("prefill_ms", 0.0))
         is_final = bool(timing.get("is_final", False))
         if pending_steps < target_steps and not is_final:
             continue
 
-        combined = torch.cat(pending, dim=0)
-        decoded = decoder.decode_next(combined)
-        _sync_cuda()
-        ended = time.perf_counter()
-        wall_ms = (ended - pending_started) * 1000.0
-        rows.append(
-            {
-                "run": run_index,
-                "chunk": output_index,
-                "wall_ms": wall_ms,
-                "prefill_ms": pending_prefill_ms,
-                "ar_decode_ms": pending_ar_ms,
-                "chunk_steps": pending_steps,
-                "ar_ms_per_step": pending_ar_ms / pending_steps if pending_steps else 0.0,
-                "outside_ms": wall_ms - pending_prefill_ms - pending_ar_ms,
-                "decode_wall_ms": decoded["decode_wall_ms"],
-                "audio_ms": decoded["audio_ms"],
-                "audio_samples": decoded["audio_samples"],
-                "is_final": is_final,
-            }
+        output_index, emitted_steps, pending_started = _flush_pending(
+            decoder=decoder,
+            rows=rows,
+            pending=pending,
+            pending_started=pending_started,
+            run_index=run_index,
+            output_index=output_index,
+            pending_steps=pending_steps,
+            pending_prefill_ms=pending_prefill_ms,
+            pending_ar_ms=pending_ar_ms,
+            prepare_ms=prepare_ms if output_index == 0 else 0.0,
+            is_final=is_final,
+            generated_steps=generated_steps,
+            emitted_steps=emitted_steps,
+            codec_sha256=codec_digest.hexdigest(),
         )
         pending = []
         pending_steps = 0
         pending_ar_ms = 0.0
         pending_prefill_ms = 0.0
-        pending_started = time.perf_counter()
-        output_index += 1
         target_steps = args.steady_output_steps
 
+    if pending_steps:
+        output_index, emitted_steps, pending_started = _flush_pending(
+            decoder=decoder,
+            rows=rows,
+            pending=pending,
+            pending_started=pending_started,
+            run_index=run_index,
+            output_index=output_index,
+            pending_steps=pending_steps,
+            pending_prefill_ms=pending_prefill_ms,
+            pending_ar_ms=pending_ar_ms,
+            prepare_ms=prepare_ms if output_index == 0 else 0.0,
+            is_final=True,
+            generated_steps=generated_steps,
+            emitted_steps=emitted_steps,
+            codec_sha256=codec_digest.hexdigest(),
+        )
+    elif rows and not bool(rows[-1]["is_final"]):
+        rows[-1]["is_final"] = True
+
+    if generated_steps != emitted_steps:
+        raise RuntimeError(
+            f"adaptive chunk accounting mismatch: generated={generated_steps}, "
+            f"emitted={emitted_steps}"
+        )
+    for row in rows:
+        row["run_generated_steps"] = generated_steps
+        row["run_emitted_steps"] = emitted_steps
+        row["run_codec_sha256"] = codec_digest.hexdigest()
     return rows
+
+
+def _flush_pending(
+    *,
+    decoder: "_AdaptiveDecoder",
+    rows: list[dict[str, Any]],
+    pending: list[torch.Tensor],
+    pending_started: float,
+    run_index: int,
+    output_index: int,
+    pending_steps: int,
+    pending_prefill_ms: float,
+    pending_ar_ms: float,
+    prepare_ms: float,
+    is_final: bool,
+    generated_steps: int,
+    emitted_steps: int,
+    codec_sha256: str,
+) -> tuple[int, int, float]:
+    combined = torch.cat(pending, dim=0)
+    decoded = decoder.decode_next(combined)
+    _sync_cuda()
+    ended = time.perf_counter()
+    wall_ms = (ended - pending_started) * 1000.0
+    emitted_steps += pending_steps
+    rows.append(
+        {
+            "run": run_index,
+            "chunk": output_index,
+            "wall_ms": wall_ms,
+            "prepare_ms": prepare_ms,
+            "prefill_ms": pending_prefill_ms,
+            "ar_decode_ms": pending_ar_ms,
+            "chunk_steps": pending_steps,
+            "generated_steps_so_far": generated_steps,
+            "emitted_steps_so_far": emitted_steps,
+            "ar_ms_per_step": pending_ar_ms / pending_steps if pending_steps else 0.0,
+            "outside_ms": wall_ms - pending_prefill_ms - pending_ar_ms,
+            "decode_wall_ms": decoded["decode_wall_ms"],
+            "audio_ms": decoded["audio_ms"],
+            "audio_samples": decoded["audio_samples"],
+            "codec_sha256_so_far": codec_sha256,
+            "is_final": is_final,
+        }
+    )
+    return output_index + 1, emitted_steps, time.perf_counter()
 
 
 class _AdaptiveDecoder:
@@ -306,6 +387,7 @@ def _summary_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
         return {"count": 0}
     keys = (
         "wall_ms",
+        "prepare_ms",
         "prefill_ms",
         "ar_decode_ms",
         "ar_ms_per_step",
@@ -354,6 +436,14 @@ def _torch_dtype(name: str) -> Any:
 def _sync_cuda() -> None:
     if torch.cuda.is_available():
         torch.cuda.synchronize()
+
+
+def _seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def _runtime_info() -> dict[str, Any]:

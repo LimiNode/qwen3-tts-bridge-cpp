@@ -512,13 +512,19 @@ All profiling below used the clean stack, upstream benchmark text and
 reference audio, `attn_implementation=eager`, `dtype=bfloat16`,
 `max_seq_len=2048` unless noted, and `torch 2.10.0+cu128`.
 
+Raw JSON artifacts for the corrected seed-controlled pass are committed under:
+
+```text
+docs/benchmark-artifacts/rtx4090-2026-07-22/
+```
+
 Per-`next(generator)` profile, wrapper streaming path, `chunk_size=8`:
 
 | Position | Count | Wall median | Prefill median | AR median | Outside median | Audio |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| First | 10 | 362 ms | 133 ms | 151 ms | 78 ms | 640 ms |
-| Steady | 89 | 220 ms | 0 ms | 156 ms | 66 ms | 640 ms |
-| Final | 7 | 160 ms | 0 ms | 59 ms | 107 ms | 240 ms |
+| First | 20 | 369 ms | 125 ms | 160 ms | 84 ms | 640 ms |
+| Steady | 174 | 222 ms | 0 ms | 157 ms | 66 ms | 640 ms |
+| Final | 17 | 104 ms | 0 ms | 31 ms | 70 ms | 160 ms |
 
 `outside_ms` is the wall time not accounted for by prefill or AR decode timing.
 It is mostly wrapper and codec work, plus any synchronization not included in
@@ -528,17 +534,24 @@ Raw-code versus codec split:
 
 | Phase | Median |
 | --- | ---: |
-| Prepare generation | 6.7 ms |
-| Raw code generation wall | 1969 ms |
-| Raw code AR decode | 1841 ms |
-| Raw code inverse RTF | 3.98 |
-| Codec decode wall | 882 ms |
-| Codec decode inverse RTF | 8.53 |
+| Prepare generation | 6.2 ms |
+| Raw code generation wall | 1854 ms |
+| Raw code AR decode | 1719 ms |
+| Raw code inverse RTF, waveform duration | 3.78 |
+| Raw code inverse RTF, 12.5 Hz step estimate | 3.78 |
+| Codec decode wall | 829 ms |
+| Codec decode inverse RTF | 8.40 |
 
-The raw code generator is already close to the README's reported inverse RTF
-`4.22` for the 1.7B RTX 4090 case. The practical end-to-end loss to about
-`2.6` inverse RTF is largely after raw code generation, in codec decode,
-wrapper work, and synchronization around chunk delivery.
+The earlier `3.98` raw-code inverse RTF used `steps / 12.0`, which is not
+directly comparable to the upstream waveform-based benchmark. The corrected
+metric uses actual decoded waveform samples, with a 12.5 Hz step estimate kept
+only as a diagnostic cross-check.
+
+The local AR decode-only path is numerically close to the README's reported
+end-to-end inverse RTF `4.22`, but the local raw-code wall metric is still about
+`3.78`. Codec decode, wrapper work, and synchronization explain a large
+additional loss from raw code to the official end-to-end `2.60-2.63` class, but
+they are not the only remaining gap to the author's result.
 
 `max_seq_len` sweep with the same `chunk_size=8` profile:
 
@@ -556,15 +569,18 @@ Adaptive decode experiment:
 
 | Mode | First wall | First audio | Total inverse RTF | Total local RTF | Chunks |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Fixed wrapper `chunk_size=8` | 362 ms | 640 ms | 2.60 | 0.38 | about 10-12 |
-| Adaptive `4 -> 8` | 284 ms | 320 ms | 2.57 | 0.39 | 12 |
-| Adaptive `4 -> 12` | 284 ms | 320 ms | 2.80 | 0.36 | 8 |
+| Fixed wrapper `chunk_size=8` | 369 ms | 640 ms | 2.60 | 0.38 | about 10-12 |
+| Adaptive `4 -> 12` corrected | 293 ms | 320 ms | 2.82 | 0.35 | 8.5 |
 
 The adaptive script still asks the low-level generator to produce internal
 4-step chunks, then combines them before codec decode. It is therefore an
-experiment, not a production implementation. Even with that limitation,
-`4 -> 12` improves TTFA and throughput together, which makes an adaptive worker
-chunking policy worth prototyping if this backend is integrated.
+experiment, not a production implementation. The corrected pass includes
+`_prepare_generation()` in the first-chunk timer, flushes any remaining pending
+frames after producer completion, marks the terminal output chunk after
+`StopIteration`, and asserts `generated_steps == emitted_steps`. With those
+guards, `4 -> 12` still improves TTFA and throughput together, which makes an
+adaptive worker chunking policy worth prototyping behind an experimental flag
+if this backend is integrated.
 
 Updated diagnosis after profiling:
 
@@ -574,7 +590,8 @@ PR #112 hot-path fixes missing: ruled out as main cause
 torch/cu runtime difference: unlikely after 2.10/cu128 control
 max_seq_len/cache size: unlikely for this workload
 codec decode and wrapper synchronization: confirmed meaningful overhead
-native Windows/WDDM plus older CPU launch overhead: still likely for raw AR gap
+prefill/setup and raw AR still need separate work to reach author's end-to-end
+native Windows/WDDM plus older CPU launch overhead: still plausible for raw AR gap
 GPU clocks under sustained benchmark load: still not recorded cleanly
 ```
 
@@ -585,9 +602,10 @@ wsl -l -v
 Windows Subsystem for Linux has no installed distributions.
 ```
 
-Native Windows/WDDM remains the leading unresolved hypothesis. Verifying it
-requires installing a WSL2 distribution or running the same official benchmark
-on Linux with the same GPU.
+Native Windows/WDDM remains a useful control hypothesis for the remaining raw
+AR gap. It is no longer the first product blocker: fixed faster backend
+integration, codec scheduling, and prefill measurement can proceed on Windows
+while a WSL2/Linux A/B is prepared separately.
 
 ## External Research
 
@@ -644,9 +662,11 @@ faster-qwen3-tts
 That means the next meaningful experiment is not another flash-attn matrix.
 There are now two separate tracks:
 
-- Product track: prototype a `faster-qwen3-tts` worker backend with adaptive
-  chunking (`4 -> 12` is the current best local tradeoff), while keeping the
-  existing Qwen backend available.
+- Product track: prototype a fixed `faster-qwen3-tts` worker backend behind a
+  feature flag, while keeping the existing Qwen backend available. Keep
+  adaptive chunking (`4 -> 12` is the current best local tradeoff) behind a
+  separate experimental flag until playback-buffer and boundary-quality checks
+  pass.
 - Root-cause track: compare native Windows/WDDM with WSL2/Linux using the same
   official benchmark to find whether CPU launch overhead and driver model
   explain the remaining raw-code gap to the author's RTX 4090 numbers.

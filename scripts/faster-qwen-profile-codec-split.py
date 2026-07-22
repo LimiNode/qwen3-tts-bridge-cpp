@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import random
 import statistics
 import time
 from pathlib import Path
@@ -55,6 +57,8 @@ def main() -> int:
 
     rows: list[dict[str, Any]] = []
     for run_index in range(args.runs):
+        if args.seed is not None:
+            _seed_everything(args.seed + run_index)
         rows.append(_run_once(model, args, run_index=run_index))
 
     report = {
@@ -87,6 +91,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ref-text", default=REF_TEXT)
     parser.add_argument("--warmup-text-chars", type=int, default=50)
     parser.add_argument("--warmup-max-new-tokens", type=int, default=20)
+    parser.add_argument("--seed", type=int)
     parser.add_argument("--x-vector-only", action="store_true")
     parser.add_argument("--parity-mode", action="store_true")
     parser.add_argument("--non-streaming-mode", action="store_true")
@@ -160,7 +165,9 @@ def _run_once(model: FasterQwen3TTS, args: argparse.Namespace, *, run_index: int
     )
 
     total_steps = sum(row["chunk_steps"] for row in raw_rows)
-    audio_s_from_steps = total_steps / 12.0
+    audio_s_from_steps_12hz = total_steps / 12.0
+    audio_s_from_steps_12_5hz = total_steps / 12.5
+    waveform_audio_s = float(decode_result["codec_audio_s"])
     return {
         "run": run_index,
         "prepare_ms": prepare_ms,
@@ -169,11 +176,20 @@ def _run_once(model: FasterQwen3TTS, args: argparse.Namespace, *, run_index: int
         "raw_ar_decode_ms": sum(row["ar_decode_ms"] for row in raw_rows),
         "raw_chunks": len(codec_chunks),
         "raw_steps": total_steps,
-        "raw_inverse_rtf": audio_s_from_steps / (raw_wall_ms / 1000.0)
+        "codec_sha256": _codec_sha256(codec_chunks),
+        "step_estimated_audio_s_12hz": audio_s_from_steps_12hz,
+        "step_estimated_audio_s_12_5hz": audio_s_from_steps_12_5hz,
+        "raw_inverse_rtf_waveform": waveform_audio_s / (raw_wall_ms / 1000.0)
         if raw_wall_ms > 0
         else 0.0,
-        "raw_local_rtf": (raw_wall_ms / 1000.0) / audio_s_from_steps
-        if audio_s_from_steps > 0
+        "raw_local_rtf_waveform": (raw_wall_ms / 1000.0) / waveform_audio_s
+        if waveform_audio_s > 0
+        else 0.0,
+        "raw_inverse_rtf_steps_12_5hz": audio_s_from_steps_12_5hz / (raw_wall_ms / 1000.0)
+        if raw_wall_ms > 0
+        else 0.0,
+        "raw_local_rtf_steps_12_5hz": (raw_wall_ms / 1000.0) / audio_s_from_steps_12_5hz
+        if audio_s_from_steps_12_5hz > 0
         else 0.0,
         **decode_result,
         "chunk_rows": raw_rows,
@@ -279,11 +295,20 @@ def _summarize_runs(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "prepare_ms",
         "raw_wall_ms",
         "raw_ar_decode_ms",
-        "raw_inverse_rtf",
+        "raw_inverse_rtf_waveform",
+        "raw_inverse_rtf_steps_12_5hz",
         "codec_decode_wall_ms",
         "codec_inverse_rtf",
     )
     return {key: _stats([float(row[key]) for row in rows]) for key in keys}
+
+
+def _codec_sha256(codec_chunks: list[torch.Tensor]) -> str:
+    digest = hashlib.sha256()
+    for chunk in codec_chunks:
+        array = chunk.detach().cpu().contiguous().numpy()
+        digest.update(array.tobytes())
+    return digest.hexdigest()
 
 
 def _stats(values: list[float]) -> dict[str, float]:
@@ -320,6 +345,14 @@ def _torch_dtype(name: str) -> Any:
 def _sync_cuda() -> None:
     if torch.cuda.is_available():
         torch.cuda.synchronize()
+
+
+def _seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def _runtime_info() -> dict[str, Any]:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import statistics
 import time
 from pathlib import Path
@@ -60,6 +61,8 @@ def main() -> int:
 
     rows: list[dict[str, Any]] = []
     for run_index in range(args.runs):
+        if args.seed is not None:
+            _seed_everything(args.seed + run_index)
         rows.extend(
             _profile_stream(
                 model,
@@ -109,6 +112,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ref-text", default=REF_TEXT)
     parser.add_argument("--warmup-text-chars", type=int, default=50)
     parser.add_argument("--warmup-max-new-tokens", type=int, default=20)
+    parser.add_argument("--seed", type=int)
     parser.add_argument("--x-vector-only", action="store_true")
     parser.add_argument("--parity-mode", action="store_true")
     parser.add_argument("--non-streaming-mode", action="store_true")
@@ -256,6 +260,14 @@ def _torch_dtype(name: str) -> Any:
 def _sync_cuda() -> None:
     if torch.cuda.is_available():
         torch.cuda.synchronize()
+
+
+def _seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def _runtime_info() -> dict[str, Any]:
