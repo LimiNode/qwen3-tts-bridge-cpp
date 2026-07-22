@@ -17,8 +17,10 @@ param(
     [switch]$NoCompile,
     [switch]$NoCudaGraphs,
     [string]$CompileMode = "reduce-overhead",
+    [switch]$UseFastCodebook,
     [switch]$NoCompileCodebookPredictor,
     [switch]$NoCompileTalker,
+    [string]$MatmulPrecision = "",
     [switch]$WarmupSynthesis,
     [string]$WarmupText = "Warmup.",
     [string]$WarmupLanguage = "auto",
@@ -153,11 +155,17 @@ if ($NoCudaGraphs) {
 if (-not [string]::IsNullOrWhiteSpace($CompileMode)) {
     $Arguments += @("--compile-mode", $CompileMode)
 }
+if ($UseFastCodebook) {
+    $Arguments += @("--use-fast-codebook")
+}
 if ($NoCompileCodebookPredictor) {
     $Arguments += @("--no-compile-codebook-predictor")
 }
 if ($NoCompileTalker) {
     $Arguments += @("--no-compile-talker")
+}
+if (-not [string]::IsNullOrWhiteSpace($MatmulPrecision)) {
+    $Arguments += @("--matmul-precision", $MatmulPrecision)
 }
 if ($WarmupSynthesis) {
     $Arguments += @("--warmup-synthesis")

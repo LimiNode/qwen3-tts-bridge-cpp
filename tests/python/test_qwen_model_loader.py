@@ -92,6 +92,7 @@ class QwenModelLoaderTests(unittest.TestCase):
                     use_compile=False,
                     use_cuda_graphs=False,
                     compile_mode="default",
+                    use_fast_codebook=True,
                     compile_codebook_predictor=False,
                     compile_talker=False,
                 )
@@ -105,12 +106,36 @@ class QwenModelLoaderTests(unittest.TestCase):
                     "use_compile": False,
                     "use_cuda_graphs": False,
                     "compile_mode": "default",
+                    "use_fast_codebook": True,
                     "compile_codebook_predictor": False,
                     "compile_talker": False,
                 }
             ],
             model.optimization_calls,
         )
+
+    def test_matmul_precision_is_configured_before_load(self) -> None:
+        model = _FakeQwenWrapper()
+        auto_model = _FakeAutoModel(model)
+        fake_torch = _FakeTorchModule()
+
+        def import_module(name: str) -> object:
+            if name == "torch":
+                return fake_torch
+            return _fake_import_module(auto_model)(name)
+
+        with patch(
+            "qwen_tts_bridge_worker.engine.qwen.model_loader.importlib.import_module",
+            side_effect=import_module,
+        ):
+            load_qwen_model(
+                QwenEngineConfig(
+                    model_path="models/qwen",
+                    matmul_precision="high",
+                )
+            )
+
+        self.assertEqual(["high"], fake_torch.matmul_precision_calls)
 
 
 def _fake_import_module(auto_model: _FakeAutoModel):
@@ -135,6 +160,14 @@ class _FakeTransformers:
 
 class _FakeProcessorModule:
     Qwen3TTSProcessor = _FakeProcessor
+
+
+class _FakeTorchModule:
+    def __init__(self) -> None:
+        self.matmul_precision_calls: list[str] = []
+
+    def set_float32_matmul_precision(self, value: str) -> None:
+        self.matmul_precision_calls.append(value)
 
 
 if __name__ == "__main__":

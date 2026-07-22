@@ -58,7 +58,10 @@ class EngineFactoryTests(unittest.TestCase):
                 "--no-cuda-graphs",
                 "--compile-mode",
                 "default",
+                "--use-fast-codebook",
                 "--no-compile-talker",
+                "--matmul-precision",
+                "high",
                 "--warmup-synthesis",
                 "--warmup-text",
                 "Prime the engine.",
@@ -86,8 +89,10 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertTrue(config.use_compile)
         self.assertFalse(config.use_cuda_graphs)
         self.assertEqual("default", config.compile_mode)
+        self.assertTrue(config.use_fast_codebook)
         self.assertTrue(config.compile_codebook_predictor)
         self.assertFalse(config.compile_talker)
+        self.assertEqual("high", config.matmul_precision)
         self.assertTrue(config.warmup_synthesis_enabled)
         self.assertEqual("Prime the engine.", config.warmup_text)
         self.assertEqual("English", config.warmup_language)
@@ -215,6 +220,7 @@ class EngineFactoryTests(unittest.TestCase):
             {"model_path": "models/qwen", "decode_window_frames": 0},
             {"model_path": "models/qwen", "overlap_samples": -1},
             {"model_path": "models/qwen", "compile_mode": ""},
+            {"model_path": "models/qwen", "matmul_precision": "fastest"},
             {
                 "model_path": "models/qwen",
                 "warmup_synthesis_enabled": True,

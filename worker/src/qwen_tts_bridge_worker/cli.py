@@ -69,8 +69,10 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 use_compile=not args.no_compile,
                 use_cuda_graphs=not args.no_cuda_graphs,
                 compile_mode=args.compile_mode,
+                use_fast_codebook=args.use_fast_codebook,
                 compile_codebook_predictor=not args.no_compile_codebook_predictor,
                 compile_talker=not args.no_compile_talker,
+                matmul_precision=args.matmul_precision,
                 warmup_synthesis_enabled=args.warmup_synthesis,
                 warmup_text=args.warmup_text,
                 warmup_language=args.warmup_language,
@@ -227,6 +229,11 @@ def _add_qwen_subcommand(
     )
     qwen_parser.add_argument("--compile-mode", default="reduce-overhead")
     qwen_parser.add_argument(
+        "--use-fast-codebook",
+        action="store_true",
+        help="Enable the Qwen fork's fast codebook generation path.",
+    )
+    qwen_parser.add_argument(
         "--no-compile-codebook-predictor",
         action="store_true",
         help="Do not compile the codebook predictor.",
@@ -235,6 +242,12 @@ def _add_qwen_subcommand(
         "--no-compile-talker",
         action="store_true",
         help="Do not compile the talker model.",
+    )
+    qwen_parser.add_argument(
+        "--matmul-precision",
+        choices=("highest", "high", "medium"),
+        default="",
+        help="Set torch float32 matmul precision before Qwen model load.",
     )
     qwen_parser.add_argument(
         "--warmup-synthesis",

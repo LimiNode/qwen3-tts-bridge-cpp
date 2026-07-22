@@ -18,6 +18,7 @@ def load_qwen_model(config: QwenEngineConfig) -> Any:
     """Load the Qwen model wrapper from the vendored or installed runtime."""
 
     add_default_qwen_package_path()
+    _set_matmul_precision(config)
 
     try:
         qwen_model = importlib.import_module("qwen_tts.inference.qwen3_tts_model")
@@ -86,6 +87,7 @@ def _enable_streaming_optimizations(
             use_compile=config.use_compile,
             use_cuda_graphs=config.use_cuda_graphs,
             compile_mode=config.compile_mode,
+            use_fast_codebook=config.use_fast_codebook,
             compile_codebook_predictor=config.compile_codebook_predictor,
             compile_talker=config.compile_talker,
         )
@@ -117,3 +119,22 @@ def _torch_dtype(dtype_name: str) -> Any | None:
     if attr is None:
         raise QwenModelLoadError(f"unsupported qwen dtype: {dtype_name}")
     return getattr(torch, attr)
+
+
+def _set_matmul_precision(config: QwenEngineConfig) -> None:
+    if not config.matmul_precision:
+        return
+
+    try:
+        torch = importlib.import_module("torch")
+    except Exception as exc:
+        raise QwenModelLoadError(
+            "torch is required for qwen matmul precision configuration"
+        ) from exc
+
+    set_precision = getattr(torch, "set_float32_matmul_precision", None)
+    if not callable(set_precision):
+        raise QwenModelLoadError(
+            "selected torch does not expose set_float32_matmul_precision"
+        )
+    set_precision(config.matmul_precision)

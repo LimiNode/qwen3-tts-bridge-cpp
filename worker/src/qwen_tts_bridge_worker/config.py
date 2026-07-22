@@ -45,8 +45,10 @@ class QwenEngineConfig:
     use_compile: bool = True
     use_cuda_graphs: bool = True
     compile_mode: str = "reduce-overhead"
+    use_fast_codebook: bool = False
     compile_codebook_predictor: bool = True
     compile_talker: bool = True
+    matmul_precision: str = ""
     warmup_synthesis_enabled: bool = False
     warmup_text: str = "Warmup."
     warmup_language: str = "auto"
@@ -71,6 +73,8 @@ class QwenEngineConfig:
             raise ValueError("qwen.overlap_samples must be non-negative")
         if not self.compile_mode:
             raise ValueError("qwen.compile_mode must not be empty")
+        if self.matmul_precision not in {"", "highest", "high", "medium"}:
+            raise ValueError("qwen.matmul_precision must be highest, high, or medium")
         if self.warmup_synthesis_enabled and not self.warmup_text:
             raise ValueError("qwen.warmup_text must not be empty")
         if not self.warmup_language:

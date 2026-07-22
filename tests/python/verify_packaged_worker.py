@@ -213,8 +213,10 @@ def main() -> int:
     parser.add_argument("--no-compile", action="store_true")
     parser.add_argument("--no-cuda-graphs", action="store_true")
     parser.add_argument("--compile-mode", default="reduce-overhead")
+    parser.add_argument("--use-fast-codebook", action="store_true")
     parser.add_argument("--no-compile-codebook-predictor", action="store_true")
     parser.add_argument("--no-compile-talker", action="store_true")
+    parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument("--warmup-text", default="Warmup.")
     parser.add_argument("--warmup-language", default="auto")
@@ -290,10 +292,14 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
     compile_mode = str(args.compile_mode)
     if compile_mode:
         worker_args.extend(["--compile-mode", compile_mode])
+    if args.use_fast_codebook:
+        worker_args.append("--use-fast-codebook")
     if args.no_compile_codebook_predictor:
         worker_args.append("--no-compile-codebook-predictor")
     if args.no_compile_talker:
         worker_args.append("--no-compile-talker")
+    if args.matmul_precision:
+        worker_args.extend(["--matmul-precision", str(args.matmul_precision)])
     if args.warmup_synthesis:
         worker_args.append("--warmup-synthesis")
     worker_args.extend(["--warmup-text", str(args.warmup_text)])
