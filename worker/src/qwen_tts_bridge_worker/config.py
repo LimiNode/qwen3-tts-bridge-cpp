@@ -47,6 +47,11 @@ class QwenEngineConfig:
     compile_mode: str = "reduce-overhead"
     compile_codebook_predictor: bool = True
     compile_talker: bool = True
+    warmup_synthesis_enabled: bool = False
+    warmup_text: str = "Warmup."
+    warmup_language: str = "auto"
+    warmup_speaker: str = ""
+    warmup_instruction: str = ""
     kind: Literal["qwen"] = field(default="qwen", init=False)
 
     def __post_init__(self) -> None:
@@ -66,6 +71,10 @@ class QwenEngineConfig:
             raise ValueError("qwen.overlap_samples must be non-negative")
         if not self.compile_mode:
             raise ValueError("qwen.compile_mode must not be empty")
+        if self.warmup_synthesis_enabled and not self.warmup_text:
+            raise ValueError("qwen.warmup_text must not be empty")
+        if not self.warmup_language:
+            raise ValueError("qwen.warmup_language must not be empty")
 
 
 EngineConfig: TypeAlias = MockEngineConfig | QwenEngineConfig

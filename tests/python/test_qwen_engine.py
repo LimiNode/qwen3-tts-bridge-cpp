@@ -275,6 +275,32 @@ class QwenEngineTests(unittest.TestCase):
         self.assertIn("assistant:Hello", fake_model.tokenized_texts)
         self.assertIn("instruct:Speak warmly.", fake_model.tokenized_texts)
 
+    def test_warmup_synthesis_consumes_stream(self) -> None:
+        fake_model = _StreamingWrapperModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                warmup_synthesis_enabled=True,
+                warmup_text="Prime.",
+                warmup_language="English",
+                warmup_speaker="Alice",
+                warmup_instruction="Speak neutrally.",
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+
+        engine.warmup()
+
+        self.assertEqual(1, len(fake_model.model.stream_calls))
+        stream_call = fake_model.model.stream_calls[0]
+        self.assertEqual(["English"], stream_call["languages"])
+        self.assertEqual(["Alice"], stream_call["speakers"])
+        self.assertIn("assistant:Prime.", fake_model.tokenized_texts)
+        self.assertIn("instruct:Speak neutrally.", fake_model.tokenized_texts)
+
     def test_custom_voice_rejects_unsupported_speaker(self) -> None:
         engine = QwenTtsEngine(
             QwenEngineConfig(model_path="models/qwen-custom"),

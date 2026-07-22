@@ -70,6 +70,8 @@ class QwenTtsEngine:
 
         if self._model is None:
             self.load()
+        if self._config.warmup_synthesis_enabled:
+            self._run_warmup_synthesis()
 
     def validate_request(
         self,
@@ -151,6 +153,27 @@ class QwenTtsEngine:
         if callable(close):
             close()
         gc.collect()
+
+    def _run_warmup_synthesis(self) -> None:
+        request = SynthesisRequest(
+            request_id=0,
+            text=self._config.warmup_text,
+            language=self._config.warmup_language,
+            speaker=self._config.warmup_speaker,
+            instruction=self._config.warmup_instruction,
+            output=AudioFormat.default(),
+        )
+        self.validate_request(request)
+
+        cancel_event = threading.Event()
+        stream = self.synthesize_stream(request, cancel_event)
+        close_stream = getattr(stream, "close", None)
+        try:
+            for _chunk in stream:
+                pass
+        finally:
+            if callable(close_stream):
+                close_stream()
 
     def _require_model(self) -> Any:
         if self._model is None:

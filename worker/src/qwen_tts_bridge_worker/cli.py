@@ -71,6 +71,11 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 compile_mode=args.compile_mode,
                 compile_codebook_predictor=not args.no_compile_codebook_predictor,
                 compile_talker=not args.no_compile_talker,
+                warmup_synthesis_enabled=args.warmup_synthesis,
+                warmup_text=args.warmup_text,
+                warmup_language=args.warmup_language,
+                warmup_speaker=args.warmup_speaker,
+                warmup_instruction=args.warmup_instruction,
             )
         raise ValueError(f"unsupported engine command: {engine_command}")
 
@@ -231,6 +236,15 @@ def _add_qwen_subcommand(
         action="store_true",
         help="Do not compile the talker model.",
     )
+    qwen_parser.add_argument(
+        "--warmup-synthesis",
+        action="store_true",
+        help="Run one synthetic synthesis request before reporting ready.",
+    )
+    qwen_parser.add_argument("--warmup-text", default="Warmup.")
+    qwen_parser.add_argument("--warmup-language", default="auto")
+    qwen_parser.add_argument("--warmup-speaker", default="")
+    qwen_parser.add_argument("--warmup-instruction", default="")
 
 
 def _reject_mixed_legacy_engine_flags(args: argparse.Namespace) -> None:

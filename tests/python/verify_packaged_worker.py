@@ -215,6 +215,11 @@ def main() -> int:
     parser.add_argument("--compile-mode", default="reduce-overhead")
     parser.add_argument("--no-compile-codebook-predictor", action="store_true")
     parser.add_argument("--no-compile-talker", action="store_true")
+    parser.add_argument("--warmup-synthesis", action="store_true")
+    parser.add_argument("--warmup-text", default="Warmup.")
+    parser.add_argument("--warmup-language", default="auto")
+    parser.add_argument("--warmup-speaker", default="")
+    parser.add_argument("--warmup-instruction", default="")
     parser.add_argument("--timeout-seconds", type=float, default=20.0)
     parser.add_argument("--mock-chunks", type=int, default=1)
     parser.add_argument("--text", default="Packaged worker smoke test.")
@@ -289,6 +294,14 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.append("--no-compile-codebook-predictor")
     if args.no_compile_talker:
         worker_args.append("--no-compile-talker")
+    if args.warmup_synthesis:
+        worker_args.append("--warmup-synthesis")
+    worker_args.extend(["--warmup-text", str(args.warmup_text)])
+    worker_args.extend(["--warmup-language", str(args.warmup_language)])
+    if args.warmup_speaker:
+        worker_args.extend(["--warmup-speaker", str(args.warmup_speaker)])
+    if args.warmup_instruction:
+        worker_args.extend(["--warmup-instruction", str(args.warmup_instruction)])
     return worker_args
 
 

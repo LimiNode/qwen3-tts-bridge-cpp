@@ -19,6 +19,11 @@ param(
     [string]$CompileMode = "reduce-overhead",
     [switch]$NoCompileCodebookPredictor,
     [switch]$NoCompileTalker,
+    [switch]$WarmupSynthesis,
+    [string]$WarmupText = "Warmup.",
+    [string]$WarmupLanguage = "auto",
+    [string]$WarmupSpeaker = "",
+    [string]$WarmupInstruction = "",
     [string]$Text = "Packaged Qwen worker smoke test.",
     [string]$Language = "auto",
     [string]$Speaker = "",
@@ -153,6 +158,21 @@ if ($NoCompileCodebookPredictor) {
 }
 if ($NoCompileTalker) {
     $Arguments += @("--no-compile-talker")
+}
+if ($WarmupSynthesis) {
+    $Arguments += @("--warmup-synthesis")
+}
+if (-not [string]::IsNullOrWhiteSpace($WarmupText)) {
+    $Arguments += @("--warmup-text", $WarmupText)
+}
+if (-not [string]::IsNullOrWhiteSpace($WarmupLanguage)) {
+    $Arguments += @("--warmup-language", $WarmupLanguage)
+}
+if (-not [string]::IsNullOrWhiteSpace($WarmupSpeaker)) {
+    $Arguments += @("--warmup-speaker", $WarmupSpeaker)
+}
+if (-not [string]::IsNullOrWhiteSpace($WarmupInstruction)) {
+    $Arguments += @("--warmup-instruction", $WarmupInstruction)
 }
 if (-not [string]::IsNullOrWhiteSpace($Speaker)) {
     $Arguments += @("--speaker", $Speaker)

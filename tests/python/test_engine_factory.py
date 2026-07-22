@@ -59,6 +59,15 @@ class EngineFactoryTests(unittest.TestCase):
                 "--compile-mode",
                 "default",
                 "--no-compile-talker",
+                "--warmup-synthesis",
+                "--warmup-text",
+                "Prime the engine.",
+                "--warmup-language",
+                "English",
+                "--warmup-speaker",
+                "ryan",
+                "--warmup-instruction",
+                "Speak neutrally.",
             ]
         )
 
@@ -79,6 +88,11 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("default", config.compile_mode)
         self.assertTrue(config.compile_codebook_predictor)
         self.assertFalse(config.compile_talker)
+        self.assertTrue(config.warmup_synthesis_enabled)
+        self.assertEqual("Prime the engine.", config.warmup_text)
+        self.assertEqual("English", config.warmup_language)
+        self.assertEqual("ryan", config.warmup_speaker)
+        self.assertEqual("Speak neutrally.", config.warmup_instruction)
 
     def test_qwen_subcommand_requires_model_path(self) -> None:
         parser = build_parser()
@@ -201,6 +215,12 @@ class EngineFactoryTests(unittest.TestCase):
             {"model_path": "models/qwen", "decode_window_frames": 0},
             {"model_path": "models/qwen", "overlap_samples": -1},
             {"model_path": "models/qwen", "compile_mode": ""},
+            {
+                "model_path": "models/qwen",
+                "warmup_synthesis_enabled": True,
+                "warmup_text": "",
+            },
+            {"model_path": "models/qwen", "warmup_language": ""},
         )
         for qwen_config in qwen_configs:
             with self.subTest(qwen_config=qwen_config):
