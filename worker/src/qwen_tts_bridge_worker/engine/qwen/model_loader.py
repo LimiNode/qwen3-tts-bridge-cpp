@@ -17,6 +17,9 @@ class QwenModelLoadError(RuntimeError):
 def load_qwen_model(config: QwenEngineConfig) -> Any:
     """Load the Qwen model wrapper from the vendored or installed runtime."""
 
+    if config.runtime_backend == "faster":
+        return load_faster_qwen_model(config)
+
     add_default_qwen_package_path()
     _set_matmul_precision(config)
 
@@ -37,6 +40,31 @@ def load_qwen_model(config: QwenEngineConfig) -> Any:
         raise QwenModelLoadError(f"failed to load Qwen model: {exc}") from exc
     _enable_streaming_optimizations(model, config)
     return model
+
+
+def load_faster_qwen_model(config: QwenEngineConfig) -> Any:
+    """Load the faster-qwen3-tts model wrapper."""
+
+    _set_matmul_precision(config)
+    try:
+        faster_qwen = importlib.import_module("faster_qwen3_tts")
+        model_cls = faster_qwen.FasterQwen3TTS
+    except Exception as exc:
+        raise QwenModelLoadError(
+            "failed to import faster_qwen3_tts; install faster-qwen3-tts or "
+            "select --runtime-backend upstream"
+        ) from exc
+
+    try:
+        return model_cls.from_pretrained(
+            config.model_path,
+            device=config.device,
+            dtype=_faster_dtype(config),
+            attn_implementation=config.attn_implementation or "eager",
+            max_seq_len=config.max_seq_len,
+        )
+    except Exception as exc:
+        raise QwenModelLoadError(f"failed to load faster Qwen model: {exc}") from exc
 
 
 def add_default_qwen_package_path() -> None:
@@ -119,6 +147,12 @@ def _torch_dtype(dtype_name: str) -> Any | None:
     if attr is None:
         raise QwenModelLoadError(f"unsupported qwen dtype: {dtype_name}")
     return getattr(torch, attr)
+
+
+def _faster_dtype(config: QwenEngineConfig) -> str:
+    if config.dtype == "auto":
+        return "bfloat16"
+    return config.dtype
 
 
 def _set_matmul_precision(config: QwenEngineConfig) -> None:

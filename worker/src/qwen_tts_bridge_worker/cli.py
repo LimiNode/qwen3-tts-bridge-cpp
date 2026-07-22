@@ -59,9 +59,11 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
         if engine_command == "qwen":
             return QwenEngineConfig(
                 model_path=args.model_path,
+                runtime_backend=args.runtime_backend,
                 device=args.device,
                 dtype=args.dtype,
                 attn_implementation=args.attn_implementation,
+                max_seq_len=args.max_seq_len,
                 emit_every_frames=args.emit_every_frames,
                 decode_window_frames=args.decode_window_frames,
                 overlap_samples=args.overlap_samples,
@@ -206,9 +208,16 @@ def _add_qwen_subcommand(
         help="Run the Qwen3-TTS engine.",
     )
     qwen_parser.add_argument("--model-path", required=True)
+    qwen_parser.add_argument(
+        "--runtime-backend",
+        choices=("upstream", "faster"),
+        default="upstream",
+        help="Select the Qwen inference implementation.",
+    )
     qwen_parser.add_argument("--device", default="cuda")
     qwen_parser.add_argument("--dtype", default="auto")
     qwen_parser.add_argument("--attn-implementation", default="")
+    qwen_parser.add_argument("--max-seq-len", type=int, default=2048)
     qwen_parser.add_argument("--emit-every-frames", type=int, default=8)
     qwen_parser.add_argument("--decode-window-frames", type=int, default=80)
     qwen_parser.add_argument("--overlap-samples", type=int, default=0)

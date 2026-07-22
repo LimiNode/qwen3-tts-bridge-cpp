@@ -108,6 +108,49 @@ class _StreamingWrapperModel:
         raise AssertionError("streaming path must not call generate_voice_design")
 
 
+class _FasterStreamingModel:
+    def __init__(
+        self,
+        model_type: str,
+        supported_speakers: list[str] | None = None,
+    ) -> None:
+        self.model = _InnerModel(model_type)
+        self._supported_speakers = supported_speakers
+        self.custom_stream_calls: list[dict[str, object]] = []
+        self.design_stream_calls: list[dict[str, object]] = []
+        self.closed_streams = 0
+
+    def get_supported_speakers(self) -> list[str] | None:
+        return self._supported_speakers
+
+    def generate_custom_voice_streaming(self, **kwargs: object) -> object:
+        self.custom_stream_calls.append(dict(kwargs))
+        return self._stream()
+
+    def generate_voice_design_streaming(self, **kwargs: object) -> object:
+        self.design_stream_calls.append(dict(kwargs))
+        return self._stream()
+
+    def _stream(self) -> object:
+        model = self
+
+        class _Stream:
+            def __iter__(self) -> "_Stream":
+                self._index = 0
+                return self
+
+            def __next__(self) -> tuple[list[float], int]:
+                if self._index >= 2:
+                    raise StopIteration
+                self._index += 1
+                return [0.5], 24000
+
+            def close(self) -> None:
+                model.closed_streams += 1
+
+        return _Stream()
+
+
 class QwenEngineTests(unittest.TestCase):
     def test_capabilities_are_conservative_before_load(self) -> None:
         engine = QwenTtsEngine(QwenEngineConfig(model_path="models/qwen-custom"))
@@ -378,6 +421,113 @@ class QwenEngineTests(unittest.TestCase):
         self.assertIsNotNone(stream_call["instruct_ids"])
         self.assertIn("assistant:Hello", fake_model.tokenized_texts)
         self.assertIn("instruct:Low calm voice.", fake_model.tokenized_texts)
+
+    def test_faster_custom_voice_uses_fixed_chunk_streaming(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+                emit_every_frames=8,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        chunks = list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    language="auto",
+                    speaker="Alice",
+                    instruction="Speak warmly.",
+                ),
+                threading.Event(),
+            )
+        )
+
+        self.assertEqual([struct.pack("<h", 16383), struct.pack("<h", 16383)], chunks)
+        self.assertEqual(1, len(fake_model.custom_stream_calls))
+        self.assertEqual(
+            {
+                "text": "Hello",
+                "language": "Auto",
+                "speaker": "Alice",
+                "instruct": "Speak warmly.",
+                "chunk_size": 8,
+            },
+            fake_model.custom_stream_calls[0],
+        )
+        self.assertEqual(1, fake_model.closed_streams)
+
+    def test_faster_voice_design_uses_fixed_chunk_streaming(self) -> None:
+        fake_model = _FasterStreamingModel("voice_design")
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-design",
+                runtime_backend="faster",
+                emit_every_frames=12,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    language="English",
+                    instruction="Low calm voice.",
+                ),
+                threading.Event(),
+            )
+        )
+
+        self.assertEqual(
+            {
+                "text": "Hello",
+                "language": "English",
+                "instruct": "Low calm voice.",
+                "chunk_size": 12,
+            },
+            fake_model.design_stream_calls[0],
+        )
+
+    def test_faster_stream_is_closed_on_cancel(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+        cancel_event = threading.Event()
+
+        stream = engine.synthesize_stream(
+            SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                speaker="Alice",
+            ),
+            cancel_event,
+        )
+        iterator = iter(stream)
+        next(iterator)
+        cancel_event.set()
+
+        with self.assertRaises(StopIteration):
+            next(iterator)
+        self.assertEqual(1, fake_model.closed_streams)
 
     def test_voice_design_requires_instruction(self) -> None:
         engine = QwenTtsEngine(

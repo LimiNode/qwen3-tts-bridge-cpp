@@ -35,9 +35,11 @@ class QwenEngineConfig:
     """Configuration for the Qwen3-TTS engine adapter."""
 
     model_path: str
+    runtime_backend: Literal["upstream", "faster"] = "upstream"
     device: str = "cuda"
     dtype: str = "auto"
     attn_implementation: str = ""
+    max_seq_len: int = 2048
     emit_every_frames: int = 8
     decode_window_frames: int = 80
     overlap_samples: int = 0
@@ -61,6 +63,8 @@ class QwenEngineConfig:
 
         if not self.model_path:
             raise ValueError("qwen.model_path must not be empty")
+        if self.runtime_backend not in {"upstream", "faster"}:
+            raise ValueError("qwen.runtime_backend must be upstream or faster")
         if not self.device:
             raise ValueError("qwen.device must not be empty")
         if not self.dtype:
@@ -69,6 +73,8 @@ class QwenEngineConfig:
             raise ValueError("qwen.emit_every_frames must be greater than zero")
         if self.decode_window_frames <= 0:
             raise ValueError("qwen.decode_window_frames must be greater than zero")
+        if self.max_seq_len <= 0:
+            raise ValueError("qwen.max_seq_len must be greater than zero")
         if self.overlap_samples < 0:
             raise ValueError("qwen.overlap_samples must be non-negative")
         if not self.compile_mode:

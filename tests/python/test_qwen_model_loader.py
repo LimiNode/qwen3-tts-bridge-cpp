@@ -54,6 +54,15 @@ class _FakeQwenModelModule:
         self.Qwen3TTSModel = _FakeWrapperClass(auto_model)
 
 
+class _FakeFasterQwen:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, object]]] = []
+
+    def from_pretrained(self, model_path: str, **kwargs: object) -> object:
+        self.calls.append((model_path, dict(kwargs)))
+        return _FakeQwenWrapper()
+
+
 class _FakeWrapperClass:
     def __init__(self, auto_model: _FakeAutoModel) -> None:
         self.auto_model = auto_model
@@ -137,6 +146,41 @@ class QwenModelLoaderTests(unittest.TestCase):
 
         self.assertEqual(["high"], fake_torch.matmul_precision_calls)
 
+    def test_faster_backend_uses_faster_loader(self) -> None:
+        fake_faster = _FakeFasterQwen()
+
+        def import_module(name: str) -> object:
+            if name == "faster_qwen3_tts":
+                return _FakeFasterModule(fake_faster)
+            raise AssertionError(f"unexpected import: {name}")
+
+        with patch(
+            "qwen_tts_bridge_worker.engine.qwen.model_loader.importlib.import_module",
+            side_effect=import_module,
+        ):
+            load_qwen_model(
+                QwenEngineConfig(
+                    model_path="models/qwen",
+                    runtime_backend="faster",
+                    device="cuda:0",
+                    dtype="auto",
+                    attn_implementation="",
+                    max_seq_len=1024,
+                )
+            )
+
+        self.assertEqual(1, len(fake_faster.calls))
+        self.assertEqual("models/qwen", fake_faster.calls[0][0])
+        self.assertEqual(
+            {
+                "device": "cuda:0",
+                "dtype": "bfloat16",
+                "attn_implementation": "eager",
+                "max_seq_len": 1024,
+            },
+            fake_faster.calls[0][1],
+        )
+
 
 def _fake_import_module(auto_model: _FakeAutoModel):
     def import_module(name: str) -> object:
@@ -160,6 +204,11 @@ class _FakeTransformers:
 
 class _FakeProcessorModule:
     Qwen3TTSProcessor = _FakeProcessor
+
+
+class _FakeFasterModule:
+    def __init__(self, faster_qwen: _FakeFasterQwen) -> None:
+        self.FasterQwen3TTS = faster_qwen
 
 
 class _FakeTorchModule:

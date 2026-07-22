@@ -42,6 +42,7 @@ class QwenTtsEngine:
         self._config = config
         self._model_loader = model_loader or _default_model_loader
         self._model: Any | None = None
+        self._synthesis_lock = threading.Lock()
 
     @property
     def capabilities(self) -> EngineCapabilities:
@@ -121,29 +122,30 @@ class QwenTtsEngine:
         if cancel_event.is_set():
             return
         model = self._require_model()
-        audio_stream = self._generate_audio_stream(model, request)
-        close_stream = getattr(audio_stream, "close", None)
-        try:
-            iterator = iter(audio_stream)
-            while not cancel_event.is_set():
-                try:
-                    wav, sample_rate = next(iterator)
-                except StopIteration:
-                    break
+        with self._synthesis_lock:
+            audio_stream = self._generate_audio_stream(model, request)
+            close_stream = getattr(audio_stream, "close", None)
+            try:
+                iterator = iter(audio_stream)
+                while not cancel_event.is_set():
+                    try:
+                        wav, sample_rate = next(iterator)
+                    except StopIteration:
+                        break
 
-                if cancel_event.is_set():
-                    return
-                if sample_rate != request.output.sample_rate:
-                    raise QwenEngineError(
-                        "qwen model returned unsupported sample rate "
-                        f"{sample_rate}, expected {request.output.sample_rate}"
-                    )
-                pcm = _float_audio_to_s16le(wav)
-                if pcm:
-                    yield pcm
-        finally:
-            if callable(close_stream):
-                close_stream()
+                    if cancel_event.is_set():
+                        return
+                    if sample_rate != request.output.sample_rate:
+                        raise QwenEngineError(
+                            "qwen model returned unsupported sample rate "
+                            f"{sample_rate}, expected {request.output.sample_rate}"
+                        )
+                    pcm = _float_audio_to_s16le(wav)
+                    if pcm:
+                        yield pcm
+            finally:
+                if callable(close_stream):
+                    close_stream()
 
     def close(self) -> None:
         """Release the loaded model reference."""
@@ -202,12 +204,11 @@ class QwenTtsEngine:
         request: SynthesisRequest,
     ) -> tuple[Iterable[Any], int]:
         model_type = _qwen_model_type(model)
-        language = _qwen_language(request.language)
 
         if model_type == "custom_voice":
             return model.generate_custom_voice(
                 text=request.text,
-                language=language,
+                language=_model_call_language(self._config, request.language),
                 speaker=request.speaker,
                 instruct=request.instruction or None,
             )
@@ -215,7 +216,7 @@ class QwenTtsEngine:
         if model_type == "voice_design":
             return model.generate_voice_design(
                 text=request.text,
-                language=language,
+                language=_model_call_language(self._config, request.language),
                 instruct=request.instruction,
             )
 
@@ -265,14 +266,30 @@ def _qwen_language(language: str) -> str | None:
     return language
 
 
+def _qwen_runtime_language(language: str) -> str:
+    if language.lower() == "auto":
+        return "Auto"
+    return language
+
+
+def _model_call_language(config: QwenEngineConfig, language: str) -> str | None:
+    if config.runtime_backend == "faster":
+        return _qwen_runtime_language(language)
+    return _qwen_language(language)
+
+
 def _supports_qwen_streaming(model: Any) -> bool:
     model_type = _qwen_model_type(model)
     if model_type == "custom_voice":
+        if callable(getattr(model, "generate_custom_voice_streaming", None)):
+            return True
         if callable(getattr(model, "stream_generate_custom_voice", None)):
             return True
         return _supports_qwen_stream_generate_pcm(model)
 
     if model_type == "voice_design":
+        if callable(getattr(model, "generate_voice_design_streaming", None)):
+            return True
         if callable(getattr(model, "stream_generate_voice_design", None)):
             return True
         return _supports_qwen_stream_generate_pcm(model)
@@ -297,6 +314,21 @@ def _qwen_stream_generate_audio(
     language = _qwen_language(request.language)
 
     if model_type == "custom_voice":
+        if config.runtime_backend == "faster":
+            public_stream = getattr(model, "generate_custom_voice_streaming", None)
+            if callable(public_stream):
+                return cast(
+                    Iterable[tuple[Any, int]],
+                    public_stream(
+                        text=request.text,
+                        language=_qwen_runtime_language(request.language),
+                        speaker=request.speaker,
+                        instruct=request.instruction or None,
+                        chunk_size=config.emit_every_frames,
+                    ),
+                )
+            return None
+
         public_stream = getattr(model, "stream_generate_custom_voice", None)
         if callable(public_stream):
             return cast(
@@ -321,6 +353,20 @@ def _qwen_stream_generate_audio(
         )
 
     if model_type == "voice_design":
+        if config.runtime_backend == "faster":
+            public_stream = getattr(model, "generate_voice_design_streaming", None)
+            if callable(public_stream):
+                return cast(
+                    Iterable[tuple[Any, int]],
+                    public_stream(
+                        text=request.text,
+                        language=_qwen_runtime_language(request.language),
+                        instruct=request.instruction,
+                        chunk_size=config.emit_every_frames,
+                    ),
+                )
+            return None
+
         public_stream = getattr(model, "stream_generate_voice_design", None)
         if callable(public_stream):
             return cast(

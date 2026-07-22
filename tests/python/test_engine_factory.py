@@ -42,12 +42,16 @@ class EngineFactoryTests(unittest.TestCase):
                 "qwen",
                 "--model-path",
                 "models/qwen",
+                "--runtime-backend",
+                "faster",
                 "--device",
                 "cuda:0",
                 "--dtype",
                 "bfloat16",
                 "--attn-implementation",
                 "flash_attention_2",
+                "--max-seq-len",
+                "1024",
                 "--emit-every-frames",
                 "4",
                 "--decode-window-frames",
@@ -79,9 +83,11 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertIsInstance(config, QwenEngineConfig)
         assert isinstance(config, QwenEngineConfig)
         self.assertEqual("models/qwen", config.model_path)
+        self.assertEqual("faster", config.runtime_backend)
         self.assertEqual("cuda:0", config.device)
         self.assertEqual("bfloat16", config.dtype)
         self.assertEqual("flash_attention_2", config.attn_implementation)
+        self.assertEqual(1024, config.max_seq_len)
         self.assertEqual(4, config.emit_every_frames)
         self.assertEqual(96, config.decode_window_frames)
         self.assertEqual(32, config.overlap_samples)
@@ -214,10 +220,12 @@ class EngineFactoryTests(unittest.TestCase):
     def test_qwen_config_rejects_empty_device_and_dtype(self) -> None:
         qwen_configs: tuple[dict[str, Any], ...] = (
             {"model_path": ""},
+            {"model_path": "models/qwen", "runtime_backend": "bad"},
             {"model_path": "models/qwen", "device": ""},
             {"model_path": "models/qwen", "dtype": ""},
             {"model_path": "models/qwen", "emit_every_frames": 0},
             {"model_path": "models/qwen", "decode_window_frames": 0},
+            {"model_path": "models/qwen", "max_seq_len": 0},
             {"model_path": "models/qwen", "overlap_samples": -1},
             {"model_path": "models/qwen", "compile_mode": ""},
             {"model_path": "models/qwen", "matmul_precision": "fastest"},
