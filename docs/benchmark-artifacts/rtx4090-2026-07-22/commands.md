@@ -80,3 +80,40 @@ foreach ($mode in $modes) {
         --output "$repo\tmp\faster-schedule-$name-stack112-clean-torch210-cu128-seed7777-r5-hash.json"
 }
 ```
+
+Worker engine CustomVoice smoke:
+
+```powershell
+$env:PYTHONPATH = "$repo\worker\src"
+
+@'
+import threading
+from qwen_tts_bridge_worker.config import QwenEngineConfig
+from qwen_tts_bridge_worker.engine.qwen_engine import QwenTtsEngine
+from qwen_tts_bridge_worker.engine.types import SynthesisRequest
+
+engine = QwenTtsEngine(QwenEngineConfig(
+    model_path='models/Qwen3-TTS-12Hz-0.6B-CustomVoice',
+    runtime_backend='faster',
+    dtype='bfloat16',
+    attn_implementation='eager',
+    emit_every_frames=8,
+    warmup_synthesis_enabled=True,
+    warmup_text='Warmup.',
+    warmup_language='English',
+    warmup_speaker='ryan',
+))
+engine.load()
+engine.warmup()
+list(engine.synthesize_stream(
+    SynthesisRequest(
+        request_id=1,
+        text='This is a faster backend bridge smoke test.',
+        language='English',
+        speaker='ryan',
+    ),
+    threading.Event(),
+))
+engine.close()
+'@ | & $py -
+```

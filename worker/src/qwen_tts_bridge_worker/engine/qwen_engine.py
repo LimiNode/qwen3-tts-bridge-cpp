@@ -129,7 +129,7 @@ class QwenTtsEngine:
                 iterator = iter(audio_stream)
                 while not cancel_event.is_set():
                     try:
-                        wav, sample_rate = next(iterator)
+                        wav, sample_rate = _unpack_audio_chunk(next(iterator))
                     except StopIteration:
                         break
 
@@ -254,10 +254,21 @@ def _default_model_loader(config: QwenEngineConfig) -> Any:
 
 def _qwen_model_type(model: Any) -> str:
     inner_model = getattr(model, "model", None)
-    model_type = getattr(inner_model, "tts_model_type", None)
+    model_type = _nested_attr(inner_model, ("tts_model_type",))
+    if model_type is None:
+        model_type = _nested_attr(inner_model, ("model", "tts_model_type"))
     if model_type is None:
         model_type = getattr(model, "tts_model_type", "")
     return str(model_type)
+
+
+def _nested_attr(obj: Any, path: tuple[str, ...]) -> Any | None:
+    current = obj
+    for name in path:
+        if current is None:
+            return None
+        current = getattr(current, name, None)
+    return current
 
 
 def _qwen_language(language: str) -> str | None:
@@ -430,6 +441,12 @@ def _qwen_stream_generate_pcm(
         kwargs["speakers"] = [speaker]
 
     return cast(Iterable[tuple[Any, int]], stream_generate_pcm(**kwargs))
+
+
+def _unpack_audio_chunk(chunk: Any) -> tuple[Any, int]:
+    if not isinstance(chunk, tuple) or len(chunk) < 2:
+        raise QwenEngineError("qwen model returned an invalid audio chunk")
+    return chunk[0], int(chunk[1])
 
 
 def _has_qwen_stream_helpers(model: Any) -> bool:

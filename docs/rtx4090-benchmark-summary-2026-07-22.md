@@ -603,6 +603,39 @@ matching codec SHA-256 streams for fixed 8, fixed 12, `4 -> 12`, and
 `4 -> 8 -> 12` under the same seed series. That confirms the schedule
 comparison above is not comparing different sampled speech.
 
+### Faster Backend Worker Smoke
+
+The worker engine now has an explicit `runtime_backend` selector:
+
+```text
+upstream
+faster
+```
+
+The `faster` path is wired for the bridge-supported CustomVoice and VoiceDesign
+model families with fixed `chunk_size=config.emit_every_frames`. Adaptive
+chunking remains disabled and experimental.
+
+CustomVoice smoke through `QwenTtsEngine`, not the standalone benchmark:
+
+| Metric | Value |
+| --- | ---: |
+| Model | `models/Qwen3-TTS-12Hz-0.6B-CustomVoice` |
+| Speaker | `ryan` |
+| Backend | `faster` |
+| Chunk size | 8 |
+| Load | 12.74 s |
+| Warmup synthesis | 13.57 s |
+| First PCM | 330 ms |
+| Completed | 1.58 s |
+| Audio | 3.92 s |
+| Chunks | 7 |
+| Inverse RTF | 2.48 |
+
+This smoke confirms the fixed faster backend can serve a mode that the current
+bridge protocol already supports. It is not yet a full worker or C++ bridge
+benchmark; those remain the next validation levels.
+
 Updated diagnosis after profiling:
 
 ```text

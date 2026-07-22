@@ -114,7 +114,7 @@ class _FasterStreamingModel:
         model_type: str,
         supported_speakers: list[str] | None = None,
     ) -> None:
-        self.model = _InnerModel(model_type)
+        self.model = _NestedWrapper(model_type)
         self._supported_speakers = supported_speakers
         self.custom_stream_calls: list[dict[str, object]] = []
         self.design_stream_calls: list[dict[str, object]] = []
@@ -139,16 +139,21 @@ class _FasterStreamingModel:
                 self._index = 0
                 return self
 
-            def __next__(self) -> tuple[list[float], int]:
+            def __next__(self) -> tuple[list[float], int, dict[str, object]]:
                 if self._index >= 2:
                     raise StopIteration
                 self._index += 1
-                return [0.5], 24000
+                return [0.5], 24000, {"chunk_steps": 8}
 
             def close(self) -> None:
                 model.closed_streams += 1
 
         return _Stream()
+
+
+class _NestedWrapper:
+    def __init__(self, model_type: str) -> None:
+        self.model = _InnerModel(model_type)
 
 
 class QwenEngineTests(unittest.TestCase):
