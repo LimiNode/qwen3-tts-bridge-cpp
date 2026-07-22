@@ -31,9 +31,11 @@ def load_qwen_model(config: QwenEngineConfig) -> Any:
 
     kwargs = _model_load_kwargs(config)
     try:
-        return model_cls.from_pretrained(config.model_path, **kwargs)
+        model = model_cls.from_pretrained(config.model_path, **kwargs)
     except Exception as exc:
         raise QwenModelLoadError(f"failed to load Qwen model: {exc}") from exc
+    _enable_streaming_optimizations(model, config)
+    return model
 
 
 def add_default_qwen_package_path() -> None:
@@ -63,6 +65,34 @@ def _model_load_kwargs(config: QwenEngineConfig) -> dict[str, Any]:
         kwargs["attn_implementation"] = config.attn_implementation
 
     return kwargs
+
+
+def _enable_streaming_optimizations(
+    model: Any,
+    config: QwenEngineConfig,
+) -> None:
+    if not config.enable_streaming_optimizations:
+        return
+
+    enable = getattr(model, "enable_streaming_optimizations", None)
+    if not callable(enable):
+        raise QwenModelLoadError(
+            "qwen model does not expose enable_streaming_optimizations"
+        )
+
+    try:
+        enable(
+            decode_window_frames=config.decode_window_frames,
+            use_compile=config.use_compile,
+            use_cuda_graphs=config.use_cuda_graphs,
+            compile_mode=config.compile_mode,
+            compile_codebook_predictor=config.compile_codebook_predictor,
+            compile_talker=config.compile_talker,
+        )
+    except Exception as exc:
+        raise QwenModelLoadError(
+            f"failed to enable Qwen streaming optimizations: {exc}"
+        ) from exc
 
 
 def _torch_dtype(dtype_name: str) -> Any | None:

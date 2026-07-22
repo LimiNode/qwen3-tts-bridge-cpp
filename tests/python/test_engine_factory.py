@@ -2,6 +2,7 @@ import contextlib
 import io
 import math
 import unittest
+from typing import Any
 
 from qwen_tts_bridge_worker.cli import (
     build_engine_config,
@@ -47,6 +48,17 @@ class EngineFactoryTests(unittest.TestCase):
                 "bfloat16",
                 "--attn-implementation",
                 "flash_attention_2",
+                "--emit-every-frames",
+                "4",
+                "--decode-window-frames",
+                "96",
+                "--overlap-samples",
+                "32",
+                "--enable-streaming-optimizations",
+                "--no-cuda-graphs",
+                "--compile-mode",
+                "default",
+                "--no-compile-talker",
             ]
         )
 
@@ -58,6 +70,15 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("cuda:0", config.device)
         self.assertEqual("bfloat16", config.dtype)
         self.assertEqual("flash_attention_2", config.attn_implementation)
+        self.assertEqual(4, config.emit_every_frames)
+        self.assertEqual(96, config.decode_window_frames)
+        self.assertEqual(32, config.overlap_samples)
+        self.assertTrue(config.enable_streaming_optimizations)
+        self.assertTrue(config.use_compile)
+        self.assertFalse(config.use_cuda_graphs)
+        self.assertEqual("default", config.compile_mode)
+        self.assertTrue(config.compile_codebook_predictor)
+        self.assertFalse(config.compile_talker)
 
     def test_qwen_subcommand_requires_model_path(self) -> None:
         parser = build_parser()
@@ -172,11 +193,16 @@ class EngineFactoryTests(unittest.TestCase):
             WorkerConfig(engine=object())  # type: ignore[arg-type]
 
     def test_qwen_config_rejects_empty_device_and_dtype(self) -> None:
-        for qwen_config in (
+        qwen_configs: tuple[dict[str, Any], ...] = (
             {"model_path": ""},
             {"model_path": "models/qwen", "device": ""},
             {"model_path": "models/qwen", "dtype": ""},
-        ):
+            {"model_path": "models/qwen", "emit_every_frames": 0},
+            {"model_path": "models/qwen", "decode_window_frames": 0},
+            {"model_path": "models/qwen", "overlap_samples": -1},
+            {"model_path": "models/qwen", "compile_mode": ""},
+        )
+        for qwen_config in qwen_configs:
             with self.subTest(qwen_config=qwen_config):
                 with self.assertRaises(ValueError):
                     QwenEngineConfig(**qwen_config)

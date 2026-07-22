@@ -119,7 +119,12 @@ class QwenEngineTests(unittest.TestCase):
     def test_custom_voice_generation_is_mapped_to_pcm(self) -> None:
         fake_model = _CustomVoiceModel()
         engine = QwenTtsEngine(
-            QwenEngineConfig(model_path="models/qwen-custom"),
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                emit_every_frames=4,
+                decode_window_frames=96,
+                overlap_samples=32,
+            ),
             model_loader=lambda _config: fake_model,
         )
         engine.load()
@@ -232,7 +237,12 @@ class QwenEngineTests(unittest.TestCase):
             supported_speakers=["Alice"],
         )
         engine = QwenTtsEngine(
-            QwenEngineConfig(model_path="models/qwen-custom"),
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                emit_every_frames=4,
+                decode_window_frames=96,
+                overlap_samples=32,
+            ),
             model_loader=lambda _config: fake_model,
         )
         engine.load()
@@ -258,6 +268,9 @@ class QwenEngineTests(unittest.TestCase):
         stream_call = fake_model.model.stream_calls[0]
         self.assertEqual(["English"], stream_call["languages"])
         self.assertEqual(["Alice"], stream_call["speakers"])
+        self.assertEqual(4, stream_call["emit_every_frames"])
+        self.assertEqual(96, stream_call["decode_window_frames"])
+        self.assertEqual(32, stream_call["overlap_samples"])
         self.assertIsNotNone(stream_call["instruct_ids"])
         self.assertIn("assistant:Hello", fake_model.tokenized_texts)
         self.assertIn("instruct:Speak warmly.", fake_model.tokenized_texts)

@@ -24,9 +24,6 @@ from qwen_tts_bridge_worker.engine.types import (
 
 QwenModelLoader = Callable[[QwenEngineConfig], Any]
 
-_STREAM_EMIT_EVERY_FRAMES = 8
-_STREAM_DECODE_WINDOW_FRAMES = 80
-_STREAM_OVERLAP_SAMPLES = 0
 _STREAM_MAX_FRAMES = 10000
 
 
@@ -199,7 +196,7 @@ class QwenTtsEngine:
         model: Any,
         request: SynthesisRequest,
     ) -> Iterable[tuple[Any, int]]:
-        stream = _qwen_stream_generate_audio(model, request)
+        stream = _qwen_stream_generate_audio(model, self._config, request)
         if stream is not None:
             return stream
 
@@ -254,6 +251,7 @@ def _supports_qwen_stream_generate_pcm(model: Any) -> bool:
 
 def _qwen_stream_generate_audio(
     model: Any,
+    config: QwenEngineConfig,
     request: SynthesisRequest,
 ) -> Iterable[tuple[Any, int]] | None:
     model_type = _qwen_model_type(model)
@@ -269,13 +267,14 @@ def _qwen_stream_generate_audio(
                     language=language,
                     speaker=request.speaker,
                     instruct=request.instruction or None,
-                    emit_every_frames=_STREAM_EMIT_EVERY_FRAMES,
-                    decode_window_frames=_STREAM_DECODE_WINDOW_FRAMES,
-                    overlap_samples=_STREAM_OVERLAP_SAMPLES,
+                    emit_every_frames=config.emit_every_frames,
+                    decode_window_frames=config.decode_window_frames,
+                    overlap_samples=config.overlap_samples,
                 ),
             )
         return _qwen_stream_generate_pcm(
             model,
+            config,
             text=request.text,
             language=language,
             speaker=request.speaker,
@@ -291,13 +290,14 @@ def _qwen_stream_generate_audio(
                     text=request.text,
                     language=language,
                     instruct=request.instruction,
-                    emit_every_frames=_STREAM_EMIT_EVERY_FRAMES,
-                    decode_window_frames=_STREAM_DECODE_WINDOW_FRAMES,
-                    overlap_samples=_STREAM_OVERLAP_SAMPLES,
+                    emit_every_frames=config.emit_every_frames,
+                    decode_window_frames=config.decode_window_frames,
+                    overlap_samples=config.overlap_samples,
                 ),
             )
         return _qwen_stream_generate_pcm(
             model,
+            config,
             text=request.text,
             language=language,
             instruction=request.instruction,
@@ -308,6 +308,7 @@ def _qwen_stream_generate_audio(
 
 def _qwen_stream_generate_pcm(
     model: Any,
+    config: QwenEngineConfig,
     *,
     text: str,
     language: str | None,
@@ -335,9 +336,9 @@ def _qwen_stream_generate_pcm(
         "instruct_ids": instruct_ids,
         "languages": languages,
         "non_streaming_mode": False,
-        "emit_every_frames": _STREAM_EMIT_EVERY_FRAMES,
-        "decode_window_frames": _STREAM_DECODE_WINDOW_FRAMES,
-        "overlap_samples": _STREAM_OVERLAP_SAMPLES,
+        "emit_every_frames": config.emit_every_frames,
+        "decode_window_frames": config.decode_window_frames,
+        "overlap_samples": config.overlap_samples,
         "max_frames": _STREAM_MAX_FRAMES,
     }
     if speaker is not None:

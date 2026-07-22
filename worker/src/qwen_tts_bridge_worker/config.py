@@ -38,6 +38,15 @@ class QwenEngineConfig:
     device: str = "cuda"
     dtype: str = "auto"
     attn_implementation: str = ""
+    emit_every_frames: int = 8
+    decode_window_frames: int = 80
+    overlap_samples: int = 0
+    enable_streaming_optimizations: bool = False
+    use_compile: bool = True
+    use_cuda_graphs: bool = True
+    compile_mode: str = "reduce-overhead"
+    compile_codebook_predictor: bool = True
+    compile_talker: bool = True
     kind: Literal["qwen"] = field(default="qwen", init=False)
 
     def __post_init__(self) -> None:
@@ -49,6 +58,14 @@ class QwenEngineConfig:
             raise ValueError("qwen.device must not be empty")
         if not self.dtype:
             raise ValueError("qwen.dtype must not be empty")
+        if self.emit_every_frames <= 0:
+            raise ValueError("qwen.emit_every_frames must be greater than zero")
+        if self.decode_window_frames <= 0:
+            raise ValueError("qwen.decode_window_frames must be greater than zero")
+        if self.overlap_samples < 0:
+            raise ValueError("qwen.overlap_samples must be non-negative")
+        if not self.compile_mode:
+            raise ValueError("qwen.compile_mode must not be empty")
 
 
 EngineConfig: TypeAlias = MockEngineConfig | QwenEngineConfig

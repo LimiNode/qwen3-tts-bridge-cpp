@@ -206,6 +206,15 @@ def main() -> int:
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="auto")
     parser.add_argument("--attn-implementation", default="")
+    parser.add_argument("--emit-every-frames", type=int, default=8)
+    parser.add_argument("--decode-window-frames", type=int, default=80)
+    parser.add_argument("--overlap-samples", type=int, default=0)
+    parser.add_argument("--enable-streaming-optimizations", action="store_true")
+    parser.add_argument("--no-compile", action="store_true")
+    parser.add_argument("--no-cuda-graphs", action="store_true")
+    parser.add_argument("--compile-mode", default="reduce-overhead")
+    parser.add_argument("--no-compile-codebook-predictor", action="store_true")
+    parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--timeout-seconds", type=float, default=20.0)
     parser.add_argument("--mock-chunks", type=int, default=1)
     parser.add_argument("--text", default="Packaged worker smoke test.")
@@ -257,10 +266,29 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         str(args.device),
         "--dtype",
         str(args.dtype),
+        "--emit-every-frames",
+        str(args.emit_every_frames),
+        "--decode-window-frames",
+        str(args.decode_window_frames),
+        "--overlap-samples",
+        str(args.overlap_samples),
     ]
     attn_implementation = str(args.attn_implementation)
     if attn_implementation:
         worker_args.extend(["--attn-implementation", attn_implementation])
+    if args.enable_streaming_optimizations:
+        worker_args.append("--enable-streaming-optimizations")
+    if args.no_compile:
+        worker_args.append("--no-compile")
+    if args.no_cuda_graphs:
+        worker_args.append("--no-cuda-graphs")
+    compile_mode = str(args.compile_mode)
+    if compile_mode:
+        worker_args.extend(["--compile-mode", compile_mode])
+    if args.no_compile_codebook_predictor:
+        worker_args.append("--no-compile-codebook-predictor")
+    if args.no_compile_talker:
+        worker_args.append("--no-compile-talker")
     return worker_args
 
 

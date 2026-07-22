@@ -62,6 +62,15 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 device=args.device,
                 dtype=args.dtype,
                 attn_implementation=args.attn_implementation,
+                emit_every_frames=args.emit_every_frames,
+                decode_window_frames=args.decode_window_frames,
+                overlap_samples=args.overlap_samples,
+                enable_streaming_optimizations=args.enable_streaming_optimizations,
+                use_compile=not args.no_compile,
+                use_cuda_graphs=not args.no_cuda_graphs,
+                compile_mode=args.compile_mode,
+                compile_codebook_predictor=not args.no_compile_codebook_predictor,
+                compile_talker=not args.no_compile_talker,
             )
         raise ValueError(f"unsupported engine command: {engine_command}")
 
@@ -193,6 +202,35 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--device", default="cuda")
     qwen_parser.add_argument("--dtype", default="auto")
     qwen_parser.add_argument("--attn-implementation", default="")
+    qwen_parser.add_argument("--emit-every-frames", type=int, default=8)
+    qwen_parser.add_argument("--decode-window-frames", type=int, default=80)
+    qwen_parser.add_argument("--overlap-samples", type=int, default=0)
+    qwen_parser.add_argument(
+        "--enable-streaming-optimizations",
+        action="store_true",
+        help="Call the Qwen fork's torch.compile/CUDA graph optimization hook.",
+    )
+    qwen_parser.add_argument(
+        "--no-compile",
+        action="store_true",
+        help="Disable torch.compile when streaming optimizations are enabled.",
+    )
+    qwen_parser.add_argument(
+        "--no-cuda-graphs",
+        action="store_true",
+        help="Disable CUDA graph capture when streaming optimizations are enabled.",
+    )
+    qwen_parser.add_argument("--compile-mode", default="reduce-overhead")
+    qwen_parser.add_argument(
+        "--no-compile-codebook-predictor",
+        action="store_true",
+        help="Do not compile the codebook predictor.",
+    )
+    qwen_parser.add_argument(
+        "--no-compile-talker",
+        action="store_true",
+        help="Do not compile the talker model.",
+    )
 
 
 def _reject_mixed_legacy_engine_flags(args: argparse.Namespace) -> None:

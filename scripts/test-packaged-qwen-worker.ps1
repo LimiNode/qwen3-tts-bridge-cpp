@@ -10,6 +10,15 @@ param(
     [string]$Device = "cuda",
     [string]$Dtype = "auto",
     [string]$AttnImplementation = "",
+    [int]$EmitEveryFrames = 8,
+    [int]$DecodeWindowFrames = 80,
+    [int]$OverlapSamples = 0,
+    [switch]$EnableStreamingOptimizations,
+    [switch]$NoCompile,
+    [switch]$NoCudaGraphs,
+    [string]$CompileMode = "reduce-overhead",
+    [switch]$NoCompileCodebookPredictor,
+    [switch]$NoCompileTalker,
     [string]$Text = "Packaged Qwen worker smoke test.",
     [string]$Language = "auto",
     [string]$Speaker = "",
@@ -118,6 +127,32 @@ $Arguments = @(
 
 if (-not [string]::IsNullOrWhiteSpace($AttnImplementation)) {
     $Arguments += @("--attn-implementation", $AttnImplementation)
+}
+$Arguments += @(
+    "--emit-every-frames",
+    "$EmitEveryFrames",
+    "--decode-window-frames",
+    "$DecodeWindowFrames",
+    "--overlap-samples",
+    "$OverlapSamples"
+)
+if ($EnableStreamingOptimizations) {
+    $Arguments += @("--enable-streaming-optimizations")
+}
+if ($NoCompile) {
+    $Arguments += @("--no-compile")
+}
+if ($NoCudaGraphs) {
+    $Arguments += @("--no-cuda-graphs")
+}
+if (-not [string]::IsNullOrWhiteSpace($CompileMode)) {
+    $Arguments += @("--compile-mode", $CompileMode)
+}
+if ($NoCompileCodebookPredictor) {
+    $Arguments += @("--no-compile-codebook-predictor")
+}
+if ($NoCompileTalker) {
+    $Arguments += @("--no-compile-talker")
 }
 if (-not [string]::IsNullOrWhiteSpace($Speaker)) {
     $Arguments += @("--speaker", $Speaker)
