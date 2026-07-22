@@ -15,6 +15,11 @@ where higher is better. Convert before comparing tables.
 
 - GPU: NVIDIA GeForce RTX 4090, 49140 MiB VRAM.
 - NVIDIA driver: 591.86.
+- Driver model: WDDM.
+- CPU: 2 x Intel Xeon E5-2696 v4, 22 cores / 44 threads each,
+  2.20 GHz nominal max clock.
+- Windows power plan: `Maximum Performance`.
+- HAGS registry override: `HwSchMode` not set.
 - OS: Windows.
 - Main bridge runtime: Python 3.11.9, PyTorch `2.11.0+cu126`,
   Torchaudio `2.11.0+cu126`, `triton-windows==3.7.1.post27`.
@@ -27,6 +32,9 @@ where higher is better. Convert before comparing tables.
 - Faster Qwen torch/CUDA control runtime: Python 3.12.10,
   `faster-qwen3-tts==0.3.2`, `qwen-tts==0.1.1`, PyTorch
   `2.10.0+cu128`, Torchaudio `2.10.0+cu128`.
+- Faster Qwen clean PR stack runtime: Python 3.12.10,
+  `faster-qwen3-tts==0.3.2` from `v0.3.2` plus PR #108-#112
+  cherry-picks, PyTorch `2.10.0+cu128`, CUDA runtime `12.8`.
 
 ## CustomVoice Bridge Path
 
@@ -389,18 +397,19 @@ The PR #112 stack helps, especially TTFA:
 That is useful but not enough to reach the README's reported RTX 4090 class
 of roughly `174 ms` TTFA and inverse RTF `4.22`.
 
-The best current diagnosis is:
+At this stage, before the deeper profiling below, the working diagnosis was:
 
 ```text
 official benchmark/config mismatch: unlikely
 PR #112 hot-path fixes missing: only a partial cause
-native Windows/WDDM or runtime launch overhead: now the leading hypothesis
+native Windows/WDDM or runtime launch overhead: leading hypothesis
 torch/cu runtime difference: unlikely after 2.10/cu128 control
 GPU clocks under load: still unrecorded
 ```
 
-The next decisive experiment is now an OS comparison: native Windows/WDDM
-against WSL2/Linux with the same official benchmark.
+The later profiling below keeps that OS/launch-overhead hypothesis alive, but
+also isolates codec decode and wrapper synchronization as a separate end-to-end
+throughput loss.
 
 ### Official Torch 2.10/cu128 Control
 
@@ -455,6 +464,119 @@ Torch/CUDA comparison:
 `torch 2.10/cu128` does not explain the gap to the published RTX 4090 result.
 It is roughly equivalent to `torch 2.11/cu130` in these native Windows runs.
 PR #112 remains modestly helpful in both runtimes.
+
+### Clean v0.3.2 + PR #108-#112 Stack
+
+The PR worktree used above reported package metadata `0.2.6`, so a clean
+control stack was created from `v0.3.2` and the five upstream PR commits were
+cherry-picked onto it:
+
+```text
+C:/_repoz/faster-qwen3-tts-v032-stack112-clean
+base v0.3.2 a70afc0
+PR commits: fc17e88, 7a843c2, 94e2219, 3653924, 2004275
+local stack tip: afa6120
+```
+
+The clean stack reports `faster_qwen3_tts.__version__ == 0.3.2` and was
+installed into `.venv-faster-qwen` with `pip install --no-deps -e`.
+
+Official upstream benchmark, clean stack, `torch 2.10.0+cu128`:
+
+| Metric | Value |
+| --- | ---: |
+| Warmup | 16.11 s |
+| TTFA, chunk 4 | 299 ms +/- 26 |
+| TTFA, chunk 8 primary | 373 ms +/- 14 |
+| TTFA, chunk 12 | 451 ms +/- 14 |
+| Dynamic-cache baseline TTFA | 4243 ms +/- 56 |
+| Dynamic-cache baseline inverse RTF | 0.160 +/- 0.001 |
+| Fast path TTFA | 397 ms +/- 57 |
+| Fast path inverse RTF | 2.604 +/- 0.097 |
+| Fast path local RTF | 0.384 |
+
+This confirms that the PR stack is useful and reproducible, but still not
+enough to reach the README's reported RTX 4090 result.
+
+### Faster-Qwen Profiling
+
+New diagnostic scripts:
+
+```text
+scripts/faster-qwen-profile-next.py
+scripts/faster-qwen-profile-codec-split.py
+scripts/faster-qwen-profile-adaptive-chunks.py
+```
+
+All profiling below used the clean stack, upstream benchmark text and
+reference audio, `attn_implementation=eager`, `dtype=bfloat16`,
+`max_seq_len=2048` unless noted, and `torch 2.10.0+cu128`.
+
+Per-`next(generator)` profile, wrapper streaming path, `chunk_size=8`:
+
+| Position | Count | Wall median | Prefill median | AR median | Outside median | Audio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| First | 10 | 362 ms | 133 ms | 151 ms | 78 ms | 640 ms |
+| Steady | 89 | 220 ms | 0 ms | 156 ms | 66 ms | 640 ms |
+| Final | 7 | 160 ms | 0 ms | 59 ms | 107 ms | 240 ms |
+
+`outside_ms` is the wall time not accounted for by prefill or AR decode timing.
+It is mostly wrapper and codec work, plus any synchronization not included in
+the internal timing dict.
+
+Raw-code versus codec split:
+
+| Phase | Median |
+| --- | ---: |
+| Prepare generation | 6.7 ms |
+| Raw code generation wall | 1969 ms |
+| Raw code AR decode | 1841 ms |
+| Raw code inverse RTF | 3.98 |
+| Codec decode wall | 882 ms |
+| Codec decode inverse RTF | 8.53 |
+
+The raw code generator is already close to the README's reported inverse RTF
+`4.22` for the 1.7B RTX 4090 case. The practical end-to-end loss to about
+`2.6` inverse RTF is largely after raw code generation, in codec decode,
+wrapper work, and synchronization around chunk delivery.
+
+`max_seq_len` sweep with the same `chunk_size=8` profile:
+
+| max_seq_len | First wall | First prefill | First AR | Steady wall | Steady AR |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2048 | 362 ms | 133 ms | 151 ms | 220 ms | 156 ms |
+| 1024 | 365 ms | 138 ms | 148 ms | 219 ms | 156 ms |
+| 768 | 370 ms | 128 ms | 151 ms | 221 ms | 157 ms |
+| 512 | 365 ms | 125 ms | 152 ms | 217 ms | 156 ms |
+
+Reducing `max_seq_len` does not materially improve this workload. Static cache
+size is not the next obvious lever for the tested text length.
+
+Adaptive decode experiment:
+
+| Mode | First wall | First audio | Total inverse RTF | Total local RTF | Chunks |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fixed wrapper `chunk_size=8` | 362 ms | 640 ms | 2.60 | 0.38 | about 10-12 |
+| Adaptive `4 -> 8` | 284 ms | 320 ms | 2.57 | 0.39 | 12 |
+| Adaptive `4 -> 12` | 284 ms | 320 ms | 2.80 | 0.36 | 8 |
+
+The adaptive script still asks the low-level generator to produce internal
+4-step chunks, then combines them before codec decode. It is therefore an
+experiment, not a production implementation. Even with that limitation,
+`4 -> 12` improves TTFA and throughput together, which makes an adaptive worker
+chunking policy worth prototyping if this backend is integrated.
+
+Updated diagnosis after profiling:
+
+```text
+official benchmark/config mismatch: unlikely
+PR #112 hot-path fixes missing: ruled out as main cause
+torch/cu runtime difference: unlikely after 2.10/cu128 control
+max_seq_len/cache size: unlikely for this workload
+codec decode and wrapper synchronization: confirmed meaningful overhead
+native Windows/WDDM plus older CPU launch overhead: still likely for raw AR gap
+GPU clocks under sustained benchmark load: still not recorded cleanly
+```
 
 WSL status:
 
@@ -519,10 +641,15 @@ faster-qwen3-tts
     StaticCache + fixed-shape buffers + manual CUDA Graph replay
 ```
 
-That means the next meaningful experiment is not another flash-attn matrix and
-not bridge integration yet. Compare native Windows/WDDM with WSL2/Linux using
-the same official benchmark. Only after direct inference is understood should
-the bridge worker grow a `faster-qwen3-tts` backend.
+That means the next meaningful experiment is not another flash-attn matrix.
+There are now two separate tracks:
+
+- Product track: prototype a `faster-qwen3-tts` worker backend with adaptive
+  chunking (`4 -> 12` is the current best local tradeoff), while keeping the
+  existing Qwen backend available.
+- Root-cause track: compare native Windows/WDDM with WSL2/Linux using the same
+  official benchmark to find whether CPU launch overhead and driver model
+  explain the remaining raw-code gap to the author's RTX 4090 numbers.
 
 ## Sources
 
