@@ -272,6 +272,134 @@ The remaining difference may involve exact package version, torch version,
 model family, generation settings, cached speaker embeddings, or benchmark
 methodology.
 
+## Official Faster-Qwen3-TTS Benchmark
+
+The current experiment branch was pushed successfully:
+
+```text
+origin/development-flash-attn-experiment
+6c1e2cfd7e622977d29f6533dc620297bc9dde95
+```
+
+Clean external worktrees were created outside this repository:
+
+```text
+C:/_repoz/faster-qwen3-tts-v032   v0.3.2, commit a70afc0
+C:/_repoz/faster-qwen3-tts-pr112  PR #112 stack, commit 2004275
+```
+
+Both runs used the unmodified upstream `benchmarks/throughput.py` with:
+
+```text
+MODEL_SIZE=1.7B
+attn_implementation=eager
+max_seq_len=2048
+primary chunk_size=8
+upstream ref_audio.wav and ref_text
+upstream text
+upstream warmup flow
+```
+
+Runtime:
+
+```text
+Python 3.12.10
+torch 2.11.0+cu130
+CUDA runtime 13.0
+transformers 4.57.3
+qwen-tts 0.1.1
+GPU NVIDIA GeForce RTX 4090
+NVIDIA driver 591.86
+Driver model WDDM
+```
+
+The initial `v0.3.2` run imported from
+`C:/_repoz/faster-qwen3-tts-v032/faster_qwen3_tts`. The PR #112 run imported
+from `C:/_repoz/faster-qwen3-tts-pr112/faster_qwen3_tts`; its package metadata
+reports version `0.2.6`, but the source path confirms the PR worktree.
+
+PowerShell reported exit code 1 because the Python process wrote the external
+`sox` warning to stderr, but both benchmark scripts reached completion, wrote
+sample WAV files, and wrote JSON result files.
+
+### Official v0.3.2
+
+Raw output:
+
+```text
+tmp/faster-v032-throughput-1.7B.txt
+C:/_repoz/faster-qwen3-tts-v032/bench_results_NVIDIA_GeForce_RTX_4090.json
+```
+
+Summary:
+
+| Metric | Value |
+| --- | ---: |
+| Warmup | 17.32 s |
+| TTFA, chunk 4 | 357 ms +/- 47 |
+| TTFA, chunk 8 primary | 424 ms +/- 19 |
+| TTFA, chunk 12 | 506 ms +/- 17 |
+| Dynamic-cache baseline TTFA | 4523 ms +/- 154 |
+| Dynamic-cache baseline inverse RTF | 0.150 +/- 0.003 |
+| Fast path TTFA | 439 ms +/- 47 |
+| Fast path inverse RTF | 2.507 +/- 0.053 |
+| Fast path local RTF | 0.399 |
+
+### Official PR #112 Stack
+
+Raw output:
+
+```text
+tmp/faster-pr112-throughput-1.7B.txt
+C:/_repoz/faster-qwen3-tts-pr112/bench_results_NVIDIA_GeForce_RTX_4090.json
+```
+
+Summary:
+
+| Metric | Value |
+| --- | ---: |
+| Warmup | 16.48 s |
+| TTFA, chunk 4 | 302 ms +/- 25 |
+| TTFA, chunk 8 primary | 375 ms +/- 17 |
+| TTFA, chunk 12 | 455 ms +/- 16 |
+| Dynamic-cache baseline TTFA | 4338 ms +/- 58 |
+| Dynamic-cache baseline inverse RTF | 0.154 +/- 0.001 |
+| Fast path TTFA | 398 ms +/- 49 |
+| Fast path inverse RTF | 2.589 +/- 0.056 |
+| Fast path local RTF | 0.386 |
+
+### Official Benchmark Interpretation
+
+The official v0.3.2 benchmark reproduces the same class of result as the local
+direct harness. This rules out the local harness as the main reason for the
+gap.
+
+The PR #112 stack helps, especially TTFA:
+
+| Comparison | v0.3.2 | PR #112 | Delta |
+| --- | ---: | ---: | ---: |
+| Primary TTFA, chunk 8 | 424 ms | 375 ms | -49 ms |
+| Fast path TTFA | 439 ms | 398 ms | -41 ms |
+| Fast path inverse RTF | 2.507 | 2.589 | +3.3% |
+| Fast path local RTF | 0.399 | 0.386 | -3.3% |
+
+That is useful but not enough to reach the README's reported RTX 4090 class
+of roughly `174 ms` TTFA and inverse RTF `4.22`.
+
+The best current diagnosis is:
+
+```text
+official benchmark/config mismatch: unlikely
+PR #112 hot-path fixes missing: only a partial cause
+native Windows/WDDM or runtime launch overhead: now the leading hypothesis
+torch/cu runtime difference: still untested
+GPU clocks under load: still unrecorded
+```
+
+The next decisive experiment is a clean `torch 2.10.0+cu128` run of the same
+official v0.3.2 benchmark. If that remains near inverse RTF `2.5`, compare
+native Windows against WSL2/Linux before spending time on bridge integration.
+
 ## External Research
 
 The most relevant new lead is `andimarafioti/faster-qwen3-tts`.
@@ -324,18 +452,11 @@ faster-qwen3-tts
     StaticCache + fixed-shape buffers + manual CUDA Graph replay
 ```
 
-That means the next meaningful experiment is not another flash-attn matrix. It
-is either:
-
-- evaluate whether the bridge worker can support a `faster-qwen3-tts` backend;
-- or port only the static-cache/manual-graph idea into our current Qwen worker,
-  which is likely more work than adopting the package as an optional backend.
-
-The direct `faster-qwen3-tts` probe is now complete enough to justify a backend
-spike. The next backend spike should start with CustomVoice `0.6B` because that
-matches the bridge's current protocol shape (`text`, `language`, `speaker`,
-`instruction`) and avoids adding reference-audio protocol fields before the
-engine choice is settled.
+That means the next meaningful experiment is not another flash-attn matrix and
+not bridge integration yet. First reproduce the official benchmark under the
+published torch/CUDA runtime, then compare native Windows with WSL2/Linux if
+the gap remains. Only after direct inference is understood should the bridge
+worker grow a `faster-qwen3-tts` backend.
 
 ## Sources
 
