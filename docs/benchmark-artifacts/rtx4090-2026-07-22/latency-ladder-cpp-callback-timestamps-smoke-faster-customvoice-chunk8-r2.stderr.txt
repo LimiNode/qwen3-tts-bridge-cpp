@@ -1,0 +1,123 @@
+﻿build\default\qwen_tts_latency_benchmark.exe : 
+At line:2 char:1
++ build\default\qwen_tts_latency_benchmark.exe --worker tmp\source_fast ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+"sox" �� ���� ����७��� ��� ���譥�
+
+��������, �ᯮ��塞�� �ணࠬ��� ��� ������ 䠩���.
+
+SoX could not be found!
+
+
+
+    If you do not have SoX, proceed here:
+
+     - - - http://sox.sourceforge.net/ - - -
+
+
+
+    If you do (or think that you should) have SoX, double-check your
+
+    path variables.
+
+    
+
+`torch_dtype` is deprecated! Use `dtype` instead!
+
+Could not infer sample rate from base model; defaulting to 24000 Hz.
+
+qtb_metric {"duration_ms":13559.265,"event":"engine_loaded"}
+
+qtb_metric {"duration_ms":0.005,"event":"engine_warmed_up"}
+
+qtb_metric {"event":"worker_runtime_started","startup_ms":13560.393,"warmed_up":true}
+
+qtb_metric {"cancellation":true,"event":"worker_ready_sent","instructions":true,"streaming":true,"voice_clone":false,"w
+armed_up":true}
+
+qtb_metric {"event":"request_received","request_id":1}
+
+qtb_metric {"event":"request_queued","position":1,"request_id":1}
+
+qtb_metric {"event":"request_started","queue_ms":0.272,"request_id":1}
+
+qtb_metric {"event":"request_engine_started","queue_ms":0.272,"request_id":1}
+
+Warming up predictor (3 runs)...
+
+Capturing CUDA graph for predictor...
+
+CUDA graph captured!
+
+Warming up talker graph (3 runs)...
+
+Capturing CUDA graph for talker decode...
+
+Talker CUDA graph captured!
+
+qtb_metric {"event":"request_first_audio","first_audio_ms":13465.331,"request_id":1}
+
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":13465.331,"request_id":1}
+
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":13465.466,"request_id":1}
+
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.107,"request_id":1}
+
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.257,"output_queue_ms":0.107,"output_writer_ms":0.363,"re
+quest_id":1}
+
+qtb_metric {"audio_bytes":188160,"audio_chunks":7,"audio_duration_ms":3920.0,"event":"request_finished","first_audio_ms
+":13465.331,"queue_ms":0.272,"real_time_factor":3.783185,"request_id":1,"synthesis_ms":14830.085,"terminal_state":"comp
+leted","total_ms":14830.357}
+
+qtb_metric {"event":"request_received","request_id":2}
+
+qtb_metric {"event":"request_queued","position":1,"request_id":2}
+
+qtb_metric {"event":"request_started","queue_ms":0.351,"request_id":2}
+
+qtb_metric {"event":"request_engine_started","queue_ms":0.351,"request_id":2}
+
+qtb_metric {"event":"request_first_audio","first_audio_ms":347.932,"request_id":2}
+
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":347.932,"request_id":2}
+
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":348.051,"request_id":2}
+
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.113,"request_id":2}
+
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.102,"output_queue_ms":0.113,"output_writer_ms":0.215,"re
+quest_id":2}
+
+qtb_metric {"audio_bytes":161280,"audio_chunks":6,"audio_duration_ms":3360.0,"event":"request_finished","first_audio_ms
+":347.932,"queue_ms":0.351,"real_time_factor":0.392707,"request_id":2,"synthesis_ms":1319.495,"terminal_state":"complet
+ed","total_ms":1319.846}
+
+qtb_metric {"event":"request_received","request_id":3}
+
+qtb_metric {"event":"request_queued","position":1,"request_id":3}
+
+qtb_metric {"event":"request_started","queue_ms":0.331,"request_id":3}
+
+qtb_metric {"event":"request_engine_started","queue_ms":0.331,"request_id":3}
+
+qtb_metric {"event":"request_first_audio","first_audio_ms":343.055,"request_id":3}
+
+qtb_metric {"event":"request_first_pcm_ready","first_pcm_ready_ms":343.055,"request_id":3}
+
+qtb_metric {"event":"request_first_frame_enqueued","first_frame_enqueue_ms":343.141,"request_id":3}
+
+qtb_metric {"event":"request_first_frame_write_started","output_queue_ms":0.076,"request_id":3}
+
+qtb_metric {"event":"request_first_frame_flushed","flush_ms":0.151,"output_queue_ms":0.076,"output_writer_ms":0.227,"re
+quest_id":3}
+
+qtb_metric {"audio_bytes":188160,"audio_chunks":7,"audio_duration_ms":3920.0,"event":"request_finished","first_audio_ms
+":343.055,"queue_ms":0.331,"real_time_factor":0.369779,"request_id":3,"synthesis_ms":1449.532,"terminal_state":"complet
+ed","total_ms":1449.863}
+
+

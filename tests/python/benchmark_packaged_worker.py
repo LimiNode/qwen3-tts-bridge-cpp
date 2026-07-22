@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import statistics
 import time
 from pathlib import Path
 
@@ -35,9 +36,22 @@ def main() -> int:
     )
     try:
         _hello(harness)
+        warmups = []
+        for index in range(args.warmups):
+            request_id = index + 1
+            warmups.append(
+                _run_request(
+                    harness,
+                    request_id=request_id,
+                    text=args.text,
+                    language=args.language,
+                    speaker=args.speaker,
+                    instruction=args.instruction,
+                )
+            )
         results = []
         for index in range(args.requests):
-            request_id = index + 1
+            request_id = args.warmups + index + 1
             results.append(
                 _run_request(
                     harness,
@@ -52,7 +66,28 @@ def main() -> int:
     finally:
         harness.close()
 
-    print(json.dumps({"requests": results}, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "config": {
+                    "warmups": args.warmups,
+                    "requests": args.requests,
+                    "text": args.text,
+                    "language": args.language,
+                    "speaker": args.speaker,
+                    "instruction": args.instruction,
+                },
+                "summary": {
+                    "first_audio_ms": _summary(results, "first_audio_ms"),
+                    "completed_ms": _summary(results, "completed_ms"),
+                    "real_time_factor": _summary(results, "real_time_factor"),
+                },
+                "warmups": warmups,
+                "requests": results,
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 
@@ -88,6 +123,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-instruction", default="")
     parser.add_argument("--timeout-seconds", type=float, default=600.0)
     parser.add_argument("--mock-chunks", type=int, default=1)
+    parser.add_argument("--warmups", type=int, default=0)
     parser.add_argument("--requests", type=int, default=2)
     parser.add_argument("--text", default="Packaged worker benchmark request.")
     parser.add_argument("--language", default="auto")
@@ -161,6 +197,37 @@ def _run_request(
         "audio_duration_ms": audio_duration_ms,
         "real_time_factor": real_time_factor,
     }
+
+
+def _summary(
+    results: list[dict[str, object]],
+    key: str,
+) -> dict[str, float] | None:
+    values: list[float] = []
+    for result in results:
+        value = result.get(key)
+        if isinstance(value, (int, float)):
+            values.append(float(value))
+    values.sort()
+    if not values:
+        return None
+    return {
+        "min": values[0],
+        "median": statistics.median(values),
+        "p90": _percentile(values, 90.0),
+        "p95": _percentile(values, 95.0),
+        "max": values[-1],
+    }
+
+
+def _percentile(values: list[float], percentile: float) -> float:
+    if len(values) == 1:
+        return values[0]
+    rank = percentile / 100.0 * (len(values) - 1)
+    low = int(rank)
+    high = min(low + 1, len(values) - 1)
+    fraction = rank - low
+    return values[low] * (1.0 - fraction) + values[high] * fraction
 
 
 def _synthesize_payload(

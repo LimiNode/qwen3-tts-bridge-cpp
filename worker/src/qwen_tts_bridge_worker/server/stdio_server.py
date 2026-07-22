@@ -44,19 +44,48 @@ class _RequestSlot:
     audio_bytes: int = 0
 
 
+@dataclass(frozen=True, slots=True)
+class _OutputFrame:
+    payload: bytes
+    enqueued_at: float
+    request_id: int | None = None
+    first_audio_frame: bool = False
+
+
 class _OutputWriter:
     """Single writer thread that serializes all worker stdout frames."""
 
-    def __init__(self, output: BinaryIO, max_queue_size: int) -> None:
+    def __init__(
+        self,
+        output: BinaryIO,
+        max_queue_size: int,
+        metrics: MetricsWriter,
+    ) -> None:
         self._output = output
-        self._queue: queue.Queue[Optional[bytes]] = queue.Queue(maxsize=max_queue_size)
+        self._metrics = metrics
+        self._queue: queue.Queue[Optional[_OutputFrame]] = queue.Queue(
+            maxsize=max_queue_size
+        )
         self._thread = threading.Thread(target=self._run, name="qtb-stdout-writer")
 
     def start(self) -> None:
         self._thread.start()
 
-    def send(self, frame: bytes) -> None:
-        self._queue.put(frame)
+    def send(
+        self,
+        frame: bytes,
+        *,
+        request_id: int | None = None,
+        first_audio_frame: bool = False,
+    ) -> None:
+        self._queue.put(
+            _OutputFrame(
+                payload=frame,
+                enqueued_at=monotonic_seconds(),
+                request_id=request_id,
+                first_audio_frame=first_audio_frame,
+            )
+        )
 
     def stop_when_drained(self) -> None:
         self._queue.put(None)
@@ -64,11 +93,36 @@ class _OutputWriter:
 
     def _run(self) -> None:
         while True:
-            frame = self._queue.get()
-            if frame is None:
+            output_frame = self._queue.get()
+            if output_frame is None:
                 return
-            self._output.write(frame)
+            write_started_at = monotonic_seconds()
+            if output_frame.first_audio_frame and output_frame.request_id is not None:
+                self._metrics.emit(
+                    "request_first_frame_write_started",
+                    request_id=output_frame.request_id,
+                    output_queue_ms=elapsed_milliseconds(
+                        output_frame.enqueued_at,
+                        write_started_at,
+                    ),
+                )
+            self._output.write(output_frame.payload)
             self._output.flush()
+            flushed_at = monotonic_seconds()
+            if output_frame.first_audio_frame and output_frame.request_id is not None:
+                self._metrics.emit(
+                    "request_first_frame_flushed",
+                    request_id=output_frame.request_id,
+                    output_queue_ms=elapsed_milliseconds(
+                        output_frame.enqueued_at,
+                        write_started_at,
+                    ),
+                    flush_ms=elapsed_milliseconds(write_started_at, flushed_at),
+                    output_writer_ms=elapsed_milliseconds(
+                        output_frame.enqueued_at,
+                        flushed_at,
+                    ),
+                )
 
 
 class StdioWorkerServer:
@@ -91,7 +145,7 @@ class StdioWorkerServer:
         self._read_chunk_size = read_chunk_size
         self._metrics = MetricsWriter(error_stream)
 
-        self._writer = _OutputWriter(output_stream, output_queue_size)
+        self._writer = _OutputWriter(output_stream, output_queue_size, self._metrics)
         self._parser = FrameParser()
         self._session_id = uuid.uuid4().hex
 
@@ -293,6 +347,8 @@ class StdioWorkerServer:
         self._writer.send(control_frame(0, response))
 
     def _handle_synthesize(self, request_id: int, message: dict[str, Any]) -> None:
+        received_at = monotonic_seconds()
+        self._metrics.emit("request_received", request_id=request_id)
         if self._shutdown_requested:
             self._send_error(
                 request_id,
@@ -323,6 +379,7 @@ class StdioWorkerServer:
                 self._active[request_id] = _RequestSlot(
                     request=request,
                     cancel_event=threading.Event(),
+                    queued_at=received_at,
                 )
                 self._pending.append(request_id)
                 position = len(self._pending)
@@ -573,6 +630,11 @@ class StdioWorkerServer:
             request_id=request_id,
             queue_ms=elapsed_milliseconds(slot.queued_at, slot.started_at),
         )
+        self._metrics.emit(
+            "request_engine_started",
+            request_id=request_id,
+            queue_ms=elapsed_milliseconds(slot.queued_at, slot.started_at),
+        )
 
         self._writer.send(
             control_frame(
@@ -607,10 +669,32 @@ class StdioWorkerServer:
                             chunk_time,
                         ),
                     )
+                    self._metrics.emit(
+                        "request_first_pcm_ready",
+                        request_id=request_id,
+                        first_pcm_ready_ms=elapsed_milliseconds(
+                            started_at,
+                            chunk_time,
+                        ),
+                    )
+                first_audio_frame = slot.audio_chunks == 0
+                if first_audio_frame:
+                    started_at = slot.started_at
+                    if started_at is not None:
+                        self._metrics.emit(
+                            "request_first_frame_enqueued",
+                            request_id=request_id,
+                            first_frame_enqueue_ms=elapsed_milliseconds(
+                                started_at,
+                                monotonic_seconds(),
+                            ),
+                        )
                 slot.audio_chunks += 1
                 slot.audio_bytes += len(pcm_chunk)
                 self._writer.send(
-                    encode_frame(FrameType.AUDIO_PCM, request_id, pcm_chunk)
+                    encode_frame(FrameType.AUDIO_PCM, request_id, pcm_chunk),
+                    request_id=request_id,
+                    first_audio_frame=first_audio_frame,
                 )
         except Exception as exc:
             with self._condition:

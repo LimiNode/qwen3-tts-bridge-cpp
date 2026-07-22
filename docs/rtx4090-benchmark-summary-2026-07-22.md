@@ -657,6 +657,33 @@ or C++ callback overhead from the 330 ms, 453-457 ms, and 390 ms values until a
 single-request latency ladder is run with identical text, speaker, warmups, and
 measurement boundaries.
 
+Latency ladder, same CustomVoice model, `speaker=ryan`, English text
+`This is a faster backend latency benchmark.`, faster backend, fixed chunk size
+8, 5 request warmups, 30 measured requests:
+
+| Level | Boundary | First PCM median | First PCM p95 | Completed median | Completed p95 | RTF median |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Direct `QwenTtsEngine` | call `synthesize_stream()` -> first yielded PCM bytes | 344.0 ms | 349.7 ms | 1.37 s | 1.95 s | 0.369 |
+| Source worker IPC | client send -> first `AUDIO_PCM` frame | 447.6 ms | 456.1 ms | 1.44 s | 1.91 s | 0.384 |
+| C++ callback benchmark | `synthesize_async()` submit -> first `on_audio` callback | 381.0 ms | 392.6 ms | 1.41 s | 1.83 s | 0.377 |
+
+Artifacts:
+
+```text
+docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-direct-engine-faster-customvoice-chunk8-r30.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-source-worker-ipc-faster-customvoice-chunk8-r30.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/latency-ladder-cpp-callback-faster-customvoice-chunk8-r30.json
+```
+
+The worker and C++ layers are now measured with the right external boundaries,
+but the model sampling seed is not controlled through the bridge protocol yet,
+so this ladder should be read as a reproducible product-level observation, not
+as exact per-layer overhead arithmetic. The source worker run also contains a
+single first-audio outlier at 647 ms. A short C++ timestamp smoke after adding
+worker writer metrics showed the first audio frame queue/write/flush path itself
+is tiny: first frame enqueue -> write start was about 0.08-0.11 ms and write
+start -> flush was about 0.10-0.26 ms on that run.
+
 Updated diagnosis after profiling:
 
 ```text
