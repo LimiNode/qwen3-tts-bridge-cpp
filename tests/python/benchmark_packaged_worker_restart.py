@@ -65,7 +65,7 @@ def main() -> int:
     for index in range(args.runs):
         harness = PackagedWorkerHarness(
             worker_executable=worker_executable,
-            args=_worker_process_args(args),
+            args=_worker_process_args_for_run(args, index + 1),
             timeout_seconds=args.timeout_seconds,
         )
         try:
@@ -184,6 +184,8 @@ def _build_report(
             "seed": args.seed,
             "seed_mode": args.seed_mode,
             "warmup_seed": args.warmup_seed,
+            "run_seed_step": args.run_seed_step,
+            "run_warmup_seed_step": args.run_warmup_seed_step,
             "requests_per_run": args.requests_per_run,
             "cpu_affinity": args.cpu_affinity,
         },
@@ -258,6 +260,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default="request_id",
     )
     parser.add_argument("--warmup-seed", type=int, default=None)
+    parser.add_argument(
+        "--run-seed-step",
+        type=int,
+        default=0,
+        help="Add this offset per fresh-worker run when --seed is set.",
+    )
+    parser.add_argument(
+        "--run-warmup-seed-step",
+        type=int,
+        default=0,
+        help="Add this offset per fresh-worker run when --warmup-seed is set.",
+    )
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument("--warmup-synthesis-passes", type=int, default=1)
     parser.add_argument("--warmup-unbounded-passes", type=int, default=0)
@@ -303,6 +317,31 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--speaker", default="")
     parser.add_argument("--instruction", default="")
     return parser
+
+
+def _worker_process_args_for_run(
+    args: argparse.Namespace,
+    run_index: int,
+) -> list[str]:
+    if (
+        args.seed is None
+        and args.warmup_seed is None
+    ) or (
+        args.run_seed_step == 0
+        and args.run_warmup_seed_step == 0
+    ):
+        return _worker_process_args(args)
+
+    run_args = argparse.Namespace(**vars(args))
+    if run_args.seed is not None:
+        run_args.seed = int(run_args.seed) + (run_index - 1) * int(
+            args.run_seed_step
+        )
+    if run_args.warmup_seed is not None:
+        run_args.warmup_seed = int(run_args.warmup_seed) + (run_index - 1) * int(
+            args.run_warmup_seed_step
+        )
+    return _worker_process_args(run_args)
 
 
 def _write_json_file(path: Path, report: dict[str, object]) -> None:

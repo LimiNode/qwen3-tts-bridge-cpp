@@ -1,3 +1,4 @@
+import argparse
 import json
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from benchmark_packaged_worker_restart import (
     _phase_delta,
     _progress_line,
     _with_request_pipeline_metrics,
+    _worker_process_args_for_run,
     _write_json_file,
 )
 
@@ -150,6 +152,67 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             _append_line(path, "progress 2/2")
 
             self.assertEqual("progress 1/2\nprogress 2/2\n", path.read_text())
+
+    def test_worker_process_args_for_run_offsets_qwen_seeds(self) -> None:
+        worker_args = _worker_process_args_for_run(
+            _qwen_args(
+                seed=4242,
+                warmup_seed=9001,
+                run_seed_step=100,
+                run_warmup_seed_step=7,
+            ),
+            run_index=3,
+        )
+
+        self.assertEqual("4442", _value_after(worker_args, "--seed"))
+        self.assertEqual("9015", _value_after(worker_args, "--warmup-seed"))
+
+def _qwen_args(
+    *,
+    seed: int | None,
+    warmup_seed: int | None,
+    run_seed_step: int,
+    run_warmup_seed_step: int,
+) -> argparse.Namespace:
+    return argparse.Namespace(
+        worker_prefix_arg=["-B"],
+        engine="qwen",
+        model_path="models/qwen",
+        runtime_backend="faster",
+        device="cuda",
+        dtype="auto",
+        max_seq_len=2048,
+        emit_every_frames=8,
+        decode_window_frames=80,
+        overlap_samples=0,
+        attn_implementation="",
+        enable_streaming_optimizations=False,
+        no_compile=False,
+        no_cuda_graphs=False,
+        compile_mode="reduce-overhead",
+        use_fast_codebook=False,
+        no_compile_codebook_predictor=False,
+        no_compile_talker=False,
+        matmul_precision="",
+        seed=seed,
+        seed_mode="request_id",
+        warmup_seed=warmup_seed,
+        run_seed_step=run_seed_step,
+        run_warmup_seed_step=run_warmup_seed_step,
+        warmup_synthesis=True,
+        warmup_synthesis_passes=1,
+        warmup_unbounded_passes=0,
+        warmup_max_output_chunks=None,
+        warmup_text="Warmup.",
+        warmup_language="English",
+        warmup_speaker="ryan",
+        warmup_instruction="",
+        engine_startup_mode="auto",
+    )
+
+
+def _value_after(args: list[str], key: str) -> str:
+    return args[args.index(key) + 1]
 
 
 if __name__ == "__main__":
