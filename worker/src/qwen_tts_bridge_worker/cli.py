@@ -37,11 +37,12 @@ def build_parser() -> argparse.ArgumentParser:
 def build_worker_config(args: argparse.Namespace) -> WorkerConfig:
     """Build a validated worker configuration from parsed arguments."""
 
+    engine = build_engine_config(args)
     return WorkerConfig(
         worker_version=_selected_worker_version(args),
         output_queue_size=_selected_output_queue_size(args),
-        engine_startup_mode=_selected_engine_startup_mode(args),
-        engine=build_engine_config(args),
+        engine_startup_mode=_selected_engine_startup_mode(args, engine),
+        engine=engine,
     )
 
 
@@ -313,8 +314,8 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--warmup-instruction", default="")
     qwen_parser.add_argument(
         "--engine-startup-mode",
-        choices=("main", "engine_warmup", "engine_load_warmup"),
-        default="main",
+        choices=("auto", "main", "engine_warmup", "engine_load_warmup"),
+        default="auto",
         help="Select which thread runs Qwen load and synthesis warmup.",
     )
 
@@ -357,10 +358,16 @@ def _selected_output_queue_size(args: argparse.Namespace) -> int:
 
 def _selected_engine_startup_mode(
     args: argparse.Namespace,
+    engine: EngineConfig,
 ) -> Literal["main", "engine_warmup", "engine_load_warmup"]:
+    selected = str(getattr(args, "engine_startup_mode", "auto"))
+    if selected == "auto":
+        if isinstance(engine, QwenEngineConfig):
+            return "engine_warmup"
+        return "main"
     return cast(
         Literal["main", "engine_warmup", "engine_load_warmup"],
-        getattr(args, "engine_startup_mode", "main"),
+        selected,
     )
 
 

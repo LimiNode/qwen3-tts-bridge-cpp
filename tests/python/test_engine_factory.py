@@ -168,6 +168,38 @@ class EngineFactoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "output-queue-size"):
             build_worker_config(args)
 
+    def test_auto_startup_mode_uses_main_for_mock(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["mock"])
+
+        config = build_worker_config(args)
+
+        self.assertEqual("main", config.engine_startup_mode)
+
+    def test_auto_startup_mode_uses_engine_warmup_for_qwen(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["qwen", "--model-path", "models/qwen"])
+
+        config = build_worker_config(args)
+
+        self.assertEqual("engine_warmup", config.engine_startup_mode)
+
+    def test_explicit_qwen_startup_mode_is_kept_as_rollback(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--engine-startup-mode",
+                "main",
+            ]
+        )
+
+        config = build_worker_config(args)
+
+        self.assertEqual("main", config.engine_startup_mode)
+
     def test_create_mock_engine_from_config(self) -> None:
         config = MockEngineConfig(
             chunk_count=2,

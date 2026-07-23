@@ -267,8 +267,8 @@ def main() -> int:
     parser.add_argument("--warmup-instruction", default="")
     parser.add_argument(
         "--engine-startup-mode",
-        choices=("main", "engine_warmup", "engine_load_warmup"),
-        default="main",
+        choices=("auto", "main", "engine_warmup", "engine_load_warmup"),
+        default="auto",
     )
     parser.add_argument("--timeout-seconds", type=float, default=20.0)
     parser.add_argument("--mock-chunks", type=int, default=1)
@@ -376,7 +376,7 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
     if args.warmup_instruction:
         worker_args.extend(["--warmup-instruction", str(args.warmup_instruction)])
     worker_args.extend(
-        ["--engine-startup-mode", str(getattr(args, "engine_startup_mode", "main"))]
+        ["--engine-startup-mode", str(getattr(args, "engine_startup_mode", "auto"))]
     )
     return worker_args
 

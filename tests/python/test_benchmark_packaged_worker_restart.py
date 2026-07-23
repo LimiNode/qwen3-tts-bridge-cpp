@@ -2,6 +2,7 @@ import unittest
 
 from benchmark_packaged_worker_restart import (
     _median_request,
+    _phase_delta,
     _with_request_pipeline_metrics,
 )
 
@@ -92,6 +93,21 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(15.0, median["first_audio_ms"])
         self.assertEqual(4.0, median["transport_and_dispatch_residual_ms"])
         self.assertEqual(4.0, median["client_minus_worker_first_pcm_ready_ms"])
+
+    def test_phase_delta_compares_first_request_to_steady_median(self) -> None:
+        delta = _phase_delta(
+            {
+                "transport_and_dispatch_residual_ms": 5.0,
+                "first_chunk_prefill_ms": 120.0,
+            },
+            {
+                "transport_and_dispatch_residual_ms": 3.0,
+                "first_chunk_prefill_ms": 100.0,
+            },
+        )
+
+        self.assertEqual(2.0, delta["transport_and_dispatch_residual_ms"])
+        self.assertEqual(20.0, delta["first_chunk_prefill_ms"])
 
 
 if __name__ == "__main__":

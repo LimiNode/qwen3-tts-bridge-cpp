@@ -23,6 +23,7 @@ from qwen_tts_bridge_worker.server import StdioWorkerServer
 class FailingLoadEngine:
     def __init__(self) -> None:
         self.close_called = False
+        self.load_thread_name = ""
 
     @property
     def capabilities(self) -> EngineCapabilities:
@@ -34,6 +35,7 @@ class FailingLoadEngine:
         )
 
     def load(self) -> None:
+        self.load_thread_name = threading.current_thread().name
         raise RuntimeError("load failed")
 
     def warmup(self) -> None:
@@ -60,6 +62,8 @@ class FailingLoadEngine:
 class FailingWarmupEngine:
     def __init__(self) -> None:
         self.close_called = False
+        self.load_thread_name = ""
+        self.warmup_thread_name = ""
 
     @property
     def capabilities(self) -> EngineCapabilities:
@@ -71,9 +75,10 @@ class FailingWarmupEngine:
         )
 
     def load(self) -> None:
-        pass
+        self.load_thread_name = threading.current_thread().name
 
     def warmup(self) -> None:
+        self.warmup_thread_name = threading.current_thread().name
         raise RuntimeError("warmup failed")
 
     def validate_request(
@@ -412,6 +417,100 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         )
         self.assertEqual("engine_warmup", warmup_metric["startup_mode"])
         self.assertEqual("qtb-engine", warmup_metric["python_thread_name"])
+
+    def test_engine_load_warmup_mode_runs_lifecycle_on_engine_thread(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+        )
+        engine = WarmupMetricsEngine()
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=io.BytesIO(),
+            error_stream=stderr,
+            engine=engine,
+            engine_startup_mode="engine_load_warmup",
+        )
+
+        self.assertEqual(0, server.run())
+
+        self.assertEqual("qtb-engine", engine.load_thread_name)
+        self.assertEqual("qtb-engine", engine.warmup_thread_name)
+        load_metric = next(
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in stderr.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+            and json.loads(line.removeprefix("qtb_metric ")).get("event")
+            == "engine_loaded"
+        )
+        self.assertEqual("engine_load_warmup", load_metric["startup_mode"])
+        self.assertEqual("qtb-engine", load_metric["python_thread_name"])
+
+    def test_engine_thread_load_failure_exits_without_ready(self) -> None:
+        engine = FailingLoadEngine()
+        output_stream = io.BytesIO()
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(
+                _control_frame(
+                    0,
+                    {
+                        "message_type": "hello",
+                        "client_name": "test-client",
+                        "client_version": "0.2.0",
+                    },
+                )
+            ),
+            output_stream=output_stream,
+            error_stream=stderr,
+            engine=engine,
+            engine_startup_mode="engine_load_warmup",
+        )
+
+        exit_code = server.run()
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("qtb-engine", engine.load_thread_name)
+        self.assertTrue(engine.close_called)
+        self.assertEqual([], _parse_frames(output_stream.getvalue()))
+        self.assertIn("load failed", stderr.getvalue())
+
+    def test_engine_thread_warmup_failure_exits_without_ready(self) -> None:
+        engine = FailingWarmupEngine()
+        output_stream = io.BytesIO()
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(
+                _control_frame(
+                    0,
+                    {
+                        "message_type": "hello",
+                        "client_name": "test-client",
+                        "client_version": "0.2.0",
+                    },
+                )
+            ),
+            output_stream=output_stream,
+            error_stream=stderr,
+            engine=engine,
+            engine_startup_mode="engine_warmup",
+        )
+
+        exit_code = server.run()
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("MainThread", engine.load_thread_name)
+        self.assertEqual("qtb-engine", engine.warmup_thread_name)
+        self.assertTrue(engine.close_called)
+        self.assertEqual([], _parse_frames(output_stream.getvalue()))
+        self.assertIn("warmup failed", stderr.getvalue())
 
 
 def _control_frame(request_id: int, message: dict[str, object]) -> bytes:

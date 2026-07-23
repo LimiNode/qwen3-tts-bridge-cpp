@@ -22,6 +22,20 @@ from verify_packaged_worker import (
     _worker_process_args,
 )
 
+_PHASE_KEYS = (
+    "transport_and_dispatch_residual_ms",
+    "client_minus_worker_first_pcm_ready_ms",
+    "client_minus_worker_frame_enqueued_ms",
+    "client_minus_worker_frame_flushed_estimated_ms",
+    "first_frame_output_writer_ms",
+    "first_chunk_prefill_ms",
+    "first_chunk_ar_decode_ms",
+    "first_chunk_ar_ms_per_step",
+    "first_chunk_codec_wrapper_residual_ms",
+    "first_chunk_pcm_convert_ms",
+    "first_chunk_next_wall_ms",
+)
+
 
 def main() -> int:
     """Run a restart-based packaged worker benchmark."""
@@ -104,6 +118,11 @@ def main() -> int:
         for run in run_summaries
         if isinstance(run.get("paired_delta_first_audio_ms"), (int, float))
     ]
+    paired_phase_deltas = [
+        cast(dict[str, object], run["paired_phase_delta"])
+        for run in run_summaries
+        if isinstance(run.get("paired_phase_delta"), dict)
+    ]
 
     print(
         json.dumps(
@@ -165,48 +184,12 @@ def main() -> int:
                             "paired_delta_first_audio_ms",
                         ),
                     },
-                    "pipeline": {
-                        "transport_and_dispatch_residual_ms": _summary(
-                            pipeline_requests,
-                            "transport_and_dispatch_residual_ms",
-                        ),
-                        "client_minus_worker_first_pcm_ready_ms": _summary(
-                            pipeline_requests,
-                            "client_minus_worker_first_pcm_ready_ms",
-                        ),
-                        "client_minus_worker_frame_enqueued_ms": _summary(
-                            pipeline_requests,
-                            "client_minus_worker_frame_enqueued_ms",
-                        ),
-                        "client_minus_worker_frame_flushed_estimated_ms": _summary(
-                            pipeline_requests,
-                            "client_minus_worker_frame_flushed_estimated_ms",
-                        ),
-                        "first_frame_output_writer_ms": _summary(
-                            pipeline_requests,
-                            "first_frame_output_writer_ms",
-                        ),
-                        "first_chunk_prefill_ms": _summary(
-                            pipeline_requests,
-                            "first_chunk_prefill_ms",
-                        ),
-                        "first_chunk_ar_decode_ms": _summary(
-                            pipeline_requests,
-                            "first_chunk_ar_decode_ms",
-                        ),
-                        "first_chunk_ar_ms_per_step": _summary(
-                            pipeline_requests,
-                            "first_chunk_ar_ms_per_step",
-                        ),
-                        "first_chunk_codec_wrapper_residual_ms": _summary(
-                            pipeline_requests,
-                            "first_chunk_codec_wrapper_residual_ms",
-                        ),
-                        "first_chunk_pcm_convert_ms": _summary(
-                            pipeline_requests,
-                            "first_chunk_pcm_convert_ms",
-                        ),
-                    },
+                    "pipeline": _phase_summary(pipeline_requests),
+                    "first_request_pipeline": _phase_summary(first_requests),
+                    "steady_request_median_pipeline": _phase_summary(
+                        steady_requests,
+                    ),
+                    "paired_phase_delta": _phase_summary(paired_phase_deltas),
                 },
                 "runs": run_summaries,
                 "requests": results,
@@ -260,8 +243,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-instruction", default="")
     parser.add_argument(
         "--engine-startup-mode",
-        choices=("main", "engine_warmup", "engine_load_warmup"),
-        default="main",
+        choices=("auto", "main", "engine_warmup", "engine_load_warmup"),
+        default="auto",
     )
     parser.add_argument("--timeout-seconds", type=float, default=600.0)
     parser.add_argument("--mock-chunks", type=int, default=1)
@@ -315,6 +298,7 @@ def _run_summary(
     steady_requests = enriched_requests[1:]
     steady_median = _median_request(steady_requests)
     paired_delta: float | None = None
+    paired_phase_delta = _phase_delta(first_request, steady_median)
     first_audio = first_request.get("first_audio_ms")
     if isinstance(first_audio, (int, float)) and steady_median is not None:
         steady_first_audio = steady_median.get("first_audio_ms")
@@ -339,8 +323,31 @@ def _run_summary(
         "steady_requests": steady_requests,
         "steady_request_median": steady_median,
         "paired_delta_first_audio_ms": paired_delta,
+        "paired_phase_delta": paired_phase_delta,
         "requests": enriched_requests,
     }
+
+
+def _phase_summary(results: list[dict[str, object]]) -> dict[str, object]:
+    return {key: _summary(results, key) for key in _PHASE_KEYS}
+
+
+def _phase_delta(
+    first_request: dict[str, object],
+    steady_median: dict[str, object] | None,
+) -> dict[str, object]:
+    if steady_median is None:
+        return {}
+    result: dict[str, object] = {}
+    for key in _PHASE_KEYS:
+        first_value = first_request.get(key)
+        steady_value = steady_median.get(key)
+        if isinstance(first_value, (int, float)) and isinstance(
+            steady_value,
+            (int, float),
+        ):
+            result[key] = float(first_value) - float(steady_value)
+    return result
 
 
 def _with_request_pipeline_metrics(
@@ -516,20 +523,10 @@ def _median_request(requests: list[dict[str, object]]) -> dict[str, object] | No
         "worker_first_pcm_ready_ms",
         "worker_first_frame_enqueued_ms",
         "worker_first_frame_flushed_estimated_ms",
-        "transport_and_dispatch_residual_ms",
-        "client_minus_worker_first_pcm_ready_ms",
-        "client_minus_worker_frame_enqueued_ms",
-        "client_minus_worker_frame_flushed_estimated_ms",
-        "first_frame_output_writer_ms",
         "first_frame_flush_ms",
         "first_frame_output_queue_ms",
-        "first_chunk_prefill_ms",
-        "first_chunk_ar_decode_ms",
         "first_chunk_steps",
-        "first_chunk_ar_ms_per_step",
-        "first_chunk_codec_wrapper_residual_ms",
-        "first_chunk_pcm_convert_ms",
-        "first_chunk_next_wall_ms",
+        *_PHASE_KEYS,
     ):
         values = [
             float(cast(int | float, request[key]))

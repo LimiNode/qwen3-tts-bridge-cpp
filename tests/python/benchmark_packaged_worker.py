@@ -149,8 +149,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-instruction", default="")
     parser.add_argument(
         "--engine-startup-mode",
-        choices=("main", "engine_warmup", "engine_load_warmup"),
-        default="main",
+        choices=("auto", "main", "engine_warmup", "engine_load_warmup"),
+        default="auto",
     )
     parser.add_argument("--timeout-seconds", type=float, default=600.0)
     parser.add_argument("--mock-chunks", type=int, default=1)
