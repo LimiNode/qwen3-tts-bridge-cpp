@@ -903,6 +903,40 @@ present when the worker sees the first PCM chunk as ready, so the next useful
 optimization target is inside the engine path before first PCM, not the
 worker-to-client transport.
 
+2026-07-23 startup-thread A/B:
+
+The first-user penalty was traced to startup warmup running on a different host
+thread than production inference. The benchmark used `30` fresh worker
+processes, `4` requests per process, `--seed-mode fixed`, `--warmup-seed 4242`,
+and the retained `faster_qwen3_tts-0.3.2` wheel installed in
+`.venv-packaging`.
+
+| Startup mode | Load thread | Warmup thread | Request thread | First TTFA median | First TTFA p95 | Steady TTFA median | Steady TTFA p95 | First-minus-steady median | First-minus-steady p95 |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `main` | main | main | `qtb-engine` | 425.1 ms | 475.1 ms | 378.1 ms | 419.4 ms | 52.5 ms | 65.5 ms |
+| `engine_warmup` | main | `qtb-engine` | `qtb-engine` | 378.5 ms | 420.3 ms | 396.0 ms | 414.6 ms | 3.0 ms | 17.8 ms |
+| `engine_load_warmup` | `qtb-engine` | `qtb-engine` | `qtb-engine` | 370.0 ms | 421.4 ms | 382.8 ms | 417.5 ms | 1.4 ms | 15.1 ms |
+
+Both engine-thread startup variants meet the acceptance target of
+first-user-minus-steady p95 `<= 20 ms`. The most important change is moving
+synthesis warmup into the same `qtb-engine` thread that handles user requests.
+Moving model load there as well is slightly better in this sample, but the
+large effect is already present in `engine_warmup`.
+
+First-chunk phase metrics also improved the diagnosis. The non-engine
+transport/dispatch residual stayed around `1 ms`, while the old `main` startup
+mode had a much larger first-chunk codec/wrapper residual tail:
+
+| Startup mode | Transport/dispatch residual median | First prefill median | First AR decode median | First codec/wrapper residual median |
+| --- | ---: | ---: | ---: | ---: |
+| `main` | 1.04 ms | 140.6 ms | 156.3 ms | 74.8 ms |
+| `engine_warmup` | 1.05 ms | 140.7 ms | 156.0 ms | 71.5 ms |
+| `engine_load_warmup` | 1.05 ms | 142.1 ms | 156.3 ms | 72.0 ms |
+
+The phase medians are close; the paired distribution is the decisive signal.
+The production default should move Qwen synthesis warmup to the engine thread
+before spending effort on codec rewrites for first-user latency.
+
 Artifacts:
 
 ```text
@@ -912,6 +946,9 @@ docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-affinity-22-43.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-torch210-cu128.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r5x4-seed4242-pipeline.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-seed4242-fixed-main-startup.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-seed4242-fixed-engine-warmup.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-seed4242-fixed-engine-load-warmup.json
 ```
 
 Updated diagnosis after profiling:
@@ -923,7 +960,8 @@ torch/cu runtime difference: unlikely after 2.10/cu128 control
 max_seq_len/cache size: unlikely for this workload
 codec decode and wrapper synchronization: confirmed meaningful overhead
 first-frame stdio/framing delivery: ruled out as main first-user TTFA cause
-first-user-after-ready latency: confirmed roughly +50 ms after paired restart probes
+first-user-after-ready latency: caused primarily by main-thread warmup mismatch
+engine-thread synthesis warmup: accepted; p95 first-minus-steady <= 20 ms
 bounded two-chunk second warmup: rejected as a latency default
 CPU affinity: helps steady-state tails but is not a complete fix
 prefill/setup and raw AR still need separate work to reach author's end-to-end
