@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.metadata
 import importlib.util
 import json
@@ -11,6 +12,15 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+_DISTRIBUTION_BY_MODULE = {
+    "torch": "torch",
+    "faster_qwen3_tts": "faster-qwen3-tts",
+    "qwen_tts": "qwen-tts",
+    "qwen_tts_bridge_worker": "qwen-tts-bridge-worker",
+}
 
 
 def runtime_fingerprint(
@@ -42,7 +52,7 @@ def runtime_fingerprint(
             ]
         ),
         "torch": _torch_info(),
-        "git": _git_info(Path(__file__).resolve().parents[2]),
+        "git": _git_info(_REPO_ROOT),
         "worker": _worker_info(worker_executable, worker_prefix_args),
         "qwen": _qwen_config(args),
         "gpu": gpu_snapshot(),
@@ -174,8 +184,18 @@ def _module_provenance(name: str) -> dict[str, object]:
         "origin": origin,
         "submodule_search_locations": locations,
     }
+    distribution_name = _DISTRIBUTION_BY_MODULE.get(name)
+    if distribution_name is not None:
+        provenance["distribution"] = _distribution_provenance(distribution_name)
     if path is not None:
-        provenance["source_git"] = _git_info(path)
+        source_git = _source_git_info(path)
+        if source_git is not None:
+            provenance["source_git"] = source_git
+        elif _is_inside_virtual_environment(path):
+            provenance["source_git"] = None
+            provenance["source_git_note"] = (
+                "suppressed for installed package inside venv"
+            )
     return provenance
 
 
@@ -203,6 +223,91 @@ def _torch_info() -> dict[str, object]:
         }
     except Exception as exc:
         return {"available": False, "error": str(exc)}
+
+
+def _distribution_provenance(name: str) -> dict[str, object] | None:
+    try:
+        distribution = importlib.metadata.distribution(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+    direct_url = None
+    direct_url_text = distribution.read_text("direct_url.json")
+    if direct_url_text:
+        try:
+            direct_url = json.loads(direct_url_text)
+        except json.JSONDecodeError:
+            direct_url = {"raw": direct_url_text}
+    try:
+        package_name = distribution.metadata["Name"]
+    except KeyError:
+        package_name = name
+
+    return {
+        "name": package_name,
+        "version": distribution.version,
+        "location": str(distribution.locate_file("")),
+        "installer": distribution.read_text("INSTALLER"),
+        "direct_url": direct_url,
+        "matching_retained_wheels": _matching_retained_wheels(
+            name,
+            distribution.version,
+        ),
+    }
+
+
+def _matching_retained_wheels(name: str, version: str) -> list[dict[str, object]]:
+    wheels_dir = _REPO_ROOT / "dist" / "QwenTTSBridge" / "worker-python" / "wheels"
+    if not wheels_dir.is_dir():
+        return []
+
+    normalized_prefix = f"{_wheel_normalize(name)}-{version}-"
+    matches = []
+    for wheel in sorted(wheels_dir.glob("*.whl")):
+        if not wheel.name.lower().startswith(normalized_prefix):
+            continue
+        matches.append(
+            {
+                "file": str(wheel),
+                "sha256": _sha256_file(wheel),
+                "size_bytes": wheel.stat().st_size,
+            }
+        )
+    return matches
+
+
+def _wheel_normalize(name: str) -> str:
+    return name.replace("-", "_").replace(".", "_").lower()
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _source_git_info(path: Path) -> dict[str, object] | None:
+    if _is_inside_virtual_environment(path):
+        return None
+    git_path = path if path.is_dir() else path.parent
+    root = _git_output(git_path, "rev-parse", "--show-toplevel")
+    if not root:
+        return None
+    info = _git_info(Path(root))
+    info["root"] = root
+    return info
+
+
+def _is_inside_virtual_environment(path: Path) -> bool:
+    current = path.resolve()
+    if current.is_file():
+        current = current.parent
+    for parent in [current, *current.parents]:
+        if (parent / "pyvenv.cfg").is_file():
+            return True
+    return False
 
 
 def _git_info(path: Path) -> dict[str, object]:
