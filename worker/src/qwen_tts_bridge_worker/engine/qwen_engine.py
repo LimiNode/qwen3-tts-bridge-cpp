@@ -45,6 +45,7 @@ class QwenTtsEngine:
         self._model_loader = model_loader or _default_model_loader
         self._model: Any | None = None
         self._synthesis_lock = threading.Lock()
+        self._last_chunk_metrics: dict[str, object] | None = None
 
     @property
     def capabilities(self) -> EngineCapabilities:
@@ -126,16 +127,20 @@ class QwenTtsEngine:
             return
         model = self._require_model()
         with self._synthesis_lock:
-            _seed_runtime(_request_seed(self._config.seed, request.request_id))
+            _seed_runtime(_request_seed(self._config, request.request_id))
             audio_stream = self._generate_audio_stream(model, request)
             close_stream = getattr(audio_stream, "close", None)
             try:
                 iterator = iter(audio_stream)
                 while not cancel_event.is_set():
+                    next_started_at = monotonic_seconds()
                     try:
-                        wav, sample_rate = _unpack_audio_chunk(next(iterator))
+                        wav, sample_rate, chunk_timing = _unpack_audio_chunk(
+                            next(iterator)
+                        )
                     except StopIteration:
                         break
+                    next_wall_ms = elapsed_milliseconds(next_started_at)
 
                     if cancel_event.is_set():
                         return
@@ -144,12 +149,26 @@ class QwenTtsEngine:
                             "qwen model returned unsupported sample rate "
                             f"{sample_rate}, expected {request.output.sample_rate}"
                         )
+                    convert_started_at = monotonic_seconds()
                     pcm = _float_audio_to_s16le(wav)
+                    pcm_convert_ms = elapsed_milliseconds(convert_started_at)
                     if pcm:
+                        self._last_chunk_metrics = _first_chunk_timing_fields(
+                            chunk_timing,
+                            next_wall_ms=next_wall_ms,
+                            pcm_convert_ms=pcm_convert_ms,
+                        )
                         yield pcm
             finally:
                 if callable(close_stream):
                     close_stream()
+
+    def pop_last_chunk_metrics(self) -> dict[str, object] | None:
+        """Return timing metadata for the last yielded PCM chunk, if available."""
+
+        metrics = self._last_chunk_metrics
+        self._last_chunk_metrics = None
+        return metrics
 
     def close(self) -> None:
         """Release the loaded model reference."""
@@ -321,9 +340,14 @@ def _qwen_model_type(model: Any) -> str:
     return str(model_type)
 
 
-def _request_seed(base_seed: int | None, request_id: int) -> int | None:
+def _request_seed(config: QwenEngineConfig, request_id: int) -> int | None:
+    base_seed = config.seed
+    if request_id == 0 and config.warmup_seed is not None:
+        return int(config.warmup_seed)
     if base_seed is None:
         return None
+    if config.seed_mode == "fixed":
+        return int(base_seed)
     return int(base_seed) + int(request_id)
 
 
@@ -537,10 +561,55 @@ def _qwen_stream_generate_pcm(
     return cast(Iterable[tuple[Any, int]], stream_generate_pcm(**kwargs))
 
 
-def _unpack_audio_chunk(chunk: Any) -> tuple[Any, int]:
+def _unpack_audio_chunk(chunk: Any) -> tuple[Any, int, dict[str, object]]:
     if not isinstance(chunk, tuple) or len(chunk) < 2:
         raise QwenEngineError("qwen model returned an invalid audio chunk")
-    return chunk[0], int(chunk[1])
+    timing: dict[str, object] = {}
+    if len(chunk) >= 3 and isinstance(chunk[2], dict):
+        timing = {str(key): value for key, value in chunk[2].items()}
+    return chunk[0], int(chunk[1]), timing
+
+
+def _first_chunk_timing_fields(
+    chunk_timing: dict[str, object],
+    *,
+    next_wall_ms: float,
+    pcm_convert_ms: float,
+) -> dict[str, object]:
+    fields: dict[str, object] = {
+        "next_wall_ms": next_wall_ms,
+        "pcm_convert_ms": pcm_convert_ms,
+    }
+    prefill_ms = _number_field(chunk_timing, "prefill_ms")
+    decode_ms = (
+        _number_field(chunk_timing, "ar_decode_ms")
+        or _number_field(chunk_timing, "decode_ms")
+    )
+    chunk_steps = _number_field(chunk_timing, "chunk_steps")
+
+    if prefill_ms is not None:
+        fields["prefill_ms"] = prefill_ms
+    if decode_ms is not None:
+        fields["ar_decode_ms"] = decode_ms
+    if chunk_steps is not None:
+        fields["chunk_steps"] = int(chunk_steps)
+        if decode_ms is not None and chunk_steps > 0:
+            fields["ar_ms_per_step"] = decode_ms / chunk_steps
+
+    residual_ms = next_wall_ms
+    if prefill_ms is not None:
+        residual_ms -= prefill_ms
+    if decode_ms is not None:
+        residual_ms -= decode_ms
+    fields["codec_wrapper_residual_ms"] = residual_ms
+    return fields
+
+
+def _number_field(fields: dict[str, object], name: str) -> float | None:
+    value = fields.get(name)
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
 
 
 def _has_qwen_stream_helpers(model: Any) -> bool:

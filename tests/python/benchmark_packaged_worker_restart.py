@@ -123,6 +123,8 @@ def main() -> int:
                     "warmup_speaker": args.warmup_speaker,
                     "warmup_instruction": args.warmup_instruction,
                     "seed": args.seed,
+                    "seed_mode": args.seed_mode,
+                    "warmup_seed": args.warmup_seed,
                     "requests_per_run": args.requests_per_run,
                     "cpu_affinity": args.cpu_affinity,
                 },
@@ -163,6 +165,10 @@ def main() -> int:
                         ),
                     },
                     "pipeline": {
+                        "transport_and_dispatch_residual_ms": _summary(
+                            pipeline_requests,
+                            "transport_and_dispatch_residual_ms",
+                        ),
                         "client_minus_worker_first_pcm_ready_ms": _summary(
                             pipeline_requests,
                             "client_minus_worker_first_pcm_ready_ms",
@@ -178,6 +184,26 @@ def main() -> int:
                         "first_frame_output_writer_ms": _summary(
                             pipeline_requests,
                             "first_frame_output_writer_ms",
+                        ),
+                        "first_chunk_prefill_ms": _summary(
+                            pipeline_requests,
+                            "first_chunk_prefill_ms",
+                        ),
+                        "first_chunk_ar_decode_ms": _summary(
+                            pipeline_requests,
+                            "first_chunk_ar_decode_ms",
+                        ),
+                        "first_chunk_ar_ms_per_step": _summary(
+                            pipeline_requests,
+                            "first_chunk_ar_ms_per_step",
+                        ),
+                        "first_chunk_codec_wrapper_residual_ms": _summary(
+                            pipeline_requests,
+                            "first_chunk_codec_wrapper_residual_ms",
+                        ),
+                        "first_chunk_pcm_convert_ms": _summary(
+                            pipeline_requests,
+                            "first_chunk_pcm_convert_ms",
                         ),
                     },
                 },
@@ -217,6 +243,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument(
+        "--seed-mode",
+        choices=("request_id", "fixed"),
+        default="request_id",
+    )
+    parser.add_argument("--warmup-seed", type=int, default=None)
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument("--warmup-synthesis-passes", type=int, default=1)
     parser.add_argument("--warmup-unbounded-passes", type=int, default=0)
@@ -340,6 +372,7 @@ def _with_request_pipeline_metrics(
         "request_first_frame_flushed",
         "output_queue_ms",
     )
+    first_chunk_phases = metrics.get("request_first_chunk_engine_phases", {})
 
     _set_if_number(enriched, "worker_first_pcm_ready_ms", first_pcm_ready_ms)
     _set_if_number(enriched, "worker_first_frame_enqueued_ms", first_frame_enqueued_ms)
@@ -350,6 +383,48 @@ def _with_request_pipeline_metrics(
     )
     _set_if_number(enriched, "first_frame_flush_ms", first_frame_flush_ms)
     _set_if_number(enriched, "first_frame_output_queue_ms", first_frame_queue_ms)
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "prefill_ms",
+        "first_chunk_prefill_ms",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "ar_decode_ms",
+        "first_chunk_ar_decode_ms",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "chunk_steps",
+        "first_chunk_steps",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "ar_ms_per_step",
+        "first_chunk_ar_ms_per_step",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "codec_wrapper_residual_ms",
+        "first_chunk_codec_wrapper_residual_ms",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "pcm_convert_ms",
+        "first_chunk_pcm_convert_ms",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "next_wall_ms",
+        "first_chunk_next_wall_ms",
+    )
 
     if first_frame_enqueued_ms is not None and first_frame_output_writer_ms is not None:
         enriched["worker_first_frame_flushed_estimated_ms"] = (
@@ -359,9 +434,11 @@ def _with_request_pipeline_metrics(
     client_first_audio_ms = request.get("first_audio_ms")
     if isinstance(client_first_audio_ms, (int, float)):
         if first_pcm_ready_ms is not None:
-            enriched["client_minus_worker_first_pcm_ready_ms"] = (
+            residual_ms = (
                 float(client_first_audio_ms) - first_pcm_ready_ms
             )
+            enriched["transport_and_dispatch_residual_ms"] = residual_ms
+            enriched["client_minus_worker_first_pcm_ready_ms"] = residual_ms
         if first_frame_enqueued_ms is not None:
             enriched["client_minus_worker_frame_enqueued_ms"] = (
                 float(client_first_audio_ms) - first_frame_enqueued_ms
@@ -409,6 +486,17 @@ def _set_if_number(
         target[key] = value
 
 
+def _copy_metric_number(
+    target: dict[str, object],
+    source: dict[str, object],
+    source_key: str,
+    target_key: str,
+) -> None:
+    value = source.get(source_key)
+    if isinstance(value, (int, float)):
+        target[target_key] = float(value)
+
+
 def _median_request(requests: list[dict[str, object]]) -> dict[str, object] | None:
     if not requests:
         return None
@@ -422,12 +510,20 @@ def _median_request(requests: list[dict[str, object]]) -> dict[str, object] | No
         "worker_first_pcm_ready_ms",
         "worker_first_frame_enqueued_ms",
         "worker_first_frame_flushed_estimated_ms",
+        "transport_and_dispatch_residual_ms",
         "client_minus_worker_first_pcm_ready_ms",
         "client_minus_worker_frame_enqueued_ms",
         "client_minus_worker_frame_flushed_estimated_ms",
         "first_frame_output_writer_ms",
         "first_frame_flush_ms",
         "first_frame_output_queue_ms",
+        "first_chunk_prefill_ms",
+        "first_chunk_ar_decode_ms",
+        "first_chunk_steps",
+        "first_chunk_ar_ms_per_step",
+        "first_chunk_codec_wrapper_residual_ms",
+        "first_chunk_pcm_convert_ms",
+        "first_chunk_next_wall_ms",
     ):
         values = [
             float(cast(int | float, request[key]))

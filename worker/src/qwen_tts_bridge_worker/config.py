@@ -52,6 +52,8 @@ class QwenEngineConfig:
     compile_talker: bool = True
     matmul_precision: str = ""
     seed: int | None = None
+    seed_mode: Literal["request_id", "fixed"] = "request_id"
+    warmup_seed: int | None = None
     warmup_synthesis_enabled: bool = False
     warmup_synthesis_passes: int = 1
     warmup_unbounded_passes: int = 0
@@ -85,6 +87,8 @@ class QwenEngineConfig:
             raise ValueError("qwen.compile_mode must not be empty")
         if self.matmul_precision not in {"", "highest", "high", "medium"}:
             raise ValueError("qwen.matmul_precision must be highest, high, or medium")
+        if self.seed_mode not in {"request_id", "fixed"}:
+            raise ValueError("qwen.seed_mode must be request_id or fixed")
         if self.warmup_synthesis_enabled and not self.warmup_text:
             raise ValueError("qwen.warmup_text must not be empty")
         if self.warmup_synthesis_passes <= 0:

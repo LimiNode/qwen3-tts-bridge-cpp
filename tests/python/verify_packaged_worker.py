@@ -242,6 +242,12 @@ def main() -> int:
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument(
+        "--seed-mode",
+        choices=("request_id", "fixed"),
+        default="request_id",
+    )
+    parser.add_argument("--warmup-seed", type=int, default=None)
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument(
         "--warmup-synthesis-passes",
@@ -345,6 +351,10 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
     seed = getattr(args, "seed", None)
     if seed is not None:
         worker_args.extend(["--seed", str(seed)])
+    worker_args.extend(["--seed-mode", str(getattr(args, "seed_mode", "request_id"))])
+    warmup_seed = getattr(args, "warmup_seed", None)
+    if warmup_seed is not None:
+        worker_args.extend(["--warmup-seed", str(warmup_seed)])
     if args.warmup_synthesis:
         worker_args.append("--warmup-synthesis")
     worker_args.extend(["--warmup-synthesis-passes", str(args.warmup_synthesis_passes)])

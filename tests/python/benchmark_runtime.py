@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import importlib.util
 import json
 import os
 import platform
@@ -30,6 +31,14 @@ def runtime_fingerprint(
                 "faster-qwen3-tts",
                 "qwen-tts",
                 "qwen-tts-bridge-worker",
+            ]
+        ),
+        "imports": _import_provenance(
+            [
+                "torch",
+                "faster_qwen3_tts",
+                "qwen_tts",
+                "qwen_tts_bridge_worker",
             ]
         ),
         "torch": _torch_info(),
@@ -145,6 +154,44 @@ def _package_versions(names: list[str]) -> dict[str, object]:
     return versions
 
 
+def _import_provenance(names: list[str]) -> dict[str, object]:
+    return {name: _module_provenance(name) for name in names}
+
+
+def _module_provenance(name: str) -> dict[str, object]:
+    spec = importlib.util.find_spec(name)
+    if spec is None:
+        return {"available": False}
+
+    origin = spec.origin
+    locations = [
+        str(location)
+        for location in (spec.submodule_search_locations or [])
+    ]
+    path = _provenance_path(origin, locations)
+    provenance: dict[str, object] = {
+        "available": True,
+        "origin": origin,
+        "submodule_search_locations": locations,
+    }
+    if path is not None:
+        provenance["source_git"] = _git_info(path)
+    return provenance
+
+
+def _provenance_path(
+    origin: str | None,
+    locations: list[str],
+) -> Path | None:
+    if locations:
+        return Path(locations[0])
+    if origin is None:
+        return None
+    if origin in {"built-in", "frozen"}:
+        return None
+    return Path(origin)
+
+
 def _torch_info() -> dict[str, object]:
     try:
         import torch  # type: ignore[import-not-found]
@@ -159,9 +206,10 @@ def _torch_info() -> dict[str, object]:
 
 
 def _git_info(path: Path) -> dict[str, object]:
+    git_path = path if path.is_dir() else path.parent
     return {
-        "commit": _git_output(path, "rev-parse", "HEAD"),
-        "dirty": bool(_git_output(path, "status", "--porcelain")),
+        "commit": _git_output(git_path, "rev-parse", "HEAD"),
+        "dirty": bool(_git_output(git_path, "status", "--porcelain")),
     }
 
 
@@ -214,4 +262,6 @@ def _qwen_config(args: Any) -> dict[str, object]:
         "overlap_samples": getattr(args, "overlap_samples", None),
         "max_seq_len": getattr(args, "max_seq_len", None),
         "seed": getattr(args, "seed", None),
+        "seed_mode": getattr(args, "seed_mode", None),
+        "warmup_seed": getattr(args, "warmup_seed", None),
     }

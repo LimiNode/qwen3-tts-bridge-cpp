@@ -45,6 +45,47 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
             _worker_process_args(args),
         )
 
+    def test_qwen_seed_mode_args_are_forwarded(self) -> None:
+        args = argparse.Namespace(
+            worker_prefix_arg=[],
+            engine="qwen",
+            model_path="models/qwen",
+            runtime_backend="faster",
+            device="cuda",
+            dtype="auto",
+            attn_implementation="",
+            max_seq_len=2048,
+            emit_every_frames=8,
+            decode_window_frames=80,
+            overlap_samples=0,
+            enable_streaming_optimizations=False,
+            no_compile=False,
+            no_cuda_graphs=False,
+            compile_mode="reduce-overhead",
+            use_fast_codebook=False,
+            no_compile_codebook_predictor=False,
+            no_compile_talker=False,
+            matmul_precision="",
+            seed=4242,
+            seed_mode="fixed",
+            warmup_seed=9001,
+            warmup_synthesis=False,
+            warmup_synthesis_passes=1,
+            warmup_unbounded_passes=0,
+            warmup_max_output_chunks=None,
+            warmup_text="Warmup.",
+            warmup_language="English",
+            warmup_speaker="ryan",
+            warmup_instruction="",
+        )
+
+        worker_args = _worker_process_args(args)
+
+        self.assertIn("--seed-mode", worker_args)
+        self.assertIn("fixed", worker_args)
+        self.assertIn("--warmup-seed", worker_args)
+        self.assertIn("9001", worker_args)
+
 
 if __name__ == "__main__":
     unittest.main()

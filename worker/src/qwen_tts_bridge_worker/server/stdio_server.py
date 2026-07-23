@@ -697,6 +697,13 @@ class StdioWorkerServer:
                                 monotonic_seconds(),
                             ),
                         )
+                    chunk_metrics = _pop_engine_chunk_metrics(self._engine)
+                    if chunk_metrics:
+                        self._metrics.emit(
+                            "request_first_chunk_engine_phases",
+                            request_id=request_id,
+                            **chunk_metrics,
+                        )
                 slot.audio_chunks += 1
                 slot.audio_bytes += len(pcm_chunk)
                 self._writer.send(
@@ -809,3 +816,13 @@ def _bytes_per_sample(sample_format: str) -> int | None:
     if sample_format == "s16le":
         return 2
     return None
+
+
+def _pop_engine_chunk_metrics(engine: TtsEngine) -> dict[str, object] | None:
+    pop_metrics = getattr(engine, "pop_last_chunk_metrics", None)
+    if not callable(pop_metrics):
+        return None
+    metrics = pop_metrics()
+    if not isinstance(metrics, dict):
+        return None
+    return {str(key): value for key, value in metrics.items()}

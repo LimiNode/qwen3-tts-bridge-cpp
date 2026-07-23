@@ -159,7 +159,13 @@ class _FasterStreamingModel:
                 if self._index >= 2:
                     raise StopIteration
                 self._index += 1
-                return [0.5], 24000, {"chunk_steps": 8}
+                return [
+                    0.5
+                ], 24000, {
+                    "prefill_ms": 12.0,
+                    "decode_ms": 80.0,
+                    "chunk_steps": 8,
+                }
 
             def close(self) -> None:
                 model.closed_streams += 1
@@ -530,6 +536,14 @@ class QwenEngineTests(unittest.TestCase):
             fake_model.custom_stream_calls[0],
         )
         self.assertEqual(1, fake_model.closed_streams)
+        metrics = engine.pop_last_chunk_metrics()
+        self.assertIsNotNone(metrics)
+        assert metrics is not None
+        self.assertEqual(12.0, metrics["prefill_ms"])
+        self.assertEqual(80.0, metrics["ar_decode_ms"])
+        self.assertEqual(8, metrics["chunk_steps"])
+        self.assertEqual(10.0, metrics["ar_ms_per_step"])
+        self.assertIn("codec_wrapper_residual_ms", metrics)
 
     def test_faster_voice_design_uses_fixed_chunk_streaming(self) -> None:
         fake_model = _FasterStreamingModel("voice_design")

@@ -78,6 +78,8 @@ def main() -> int:
                     "speaker": args.speaker,
                     "instruction": args.instruction,
                     "seed": args.seed,
+                    "seed_mode": args.seed_mode,
+                    "warmup_seed": args.warmup_seed,
                     "warmup_synthesis": args.warmup_synthesis,
                     "warmup_synthesis_passes": args.warmup_synthesis_passes,
                     "warmup_unbounded_passes": args.warmup_unbounded_passes,
@@ -130,6 +132,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument(
+        "--seed-mode",
+        choices=("request_id", "fixed"),
+        default="request_id",
+    )
+    parser.add_argument("--warmup-seed", type=int, default=None)
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument("--warmup-synthesis-passes", type=int, default=1)
     parser.add_argument("--warmup-unbounded-passes", type=int, default=0)

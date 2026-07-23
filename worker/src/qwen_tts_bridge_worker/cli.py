@@ -76,6 +76,8 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 compile_talker=not args.no_compile_talker,
                 matmul_precision=args.matmul_precision,
                 seed=args.seed,
+                seed_mode=args.seed_mode,
+                warmup_seed=args.warmup_seed,
                 warmup_synthesis_enabled=args.warmup_synthesis,
                 warmup_synthesis_passes=args.warmup_synthesis_passes,
                 warmup_unbounded_passes=args.warmup_unbounded_passes,
@@ -267,6 +269,18 @@ def _add_qwen_subcommand(
         type=int,
         default=None,
         help="Seed Python, NumPy, and torch RNGs for benchmark reproducibility.",
+    )
+    qwen_parser.add_argument(
+        "--seed-mode",
+        choices=("request_id", "fixed"),
+        default="request_id",
+        help="Select how per-request RNG seeds are derived from --seed.",
+    )
+    qwen_parser.add_argument(
+        "--warmup-seed",
+        type=int,
+        default=None,
+        help="Override the RNG seed used for synthesis warmup requests.",
     )
     qwen_parser.add_argument(
         "--warmup-synthesis",
