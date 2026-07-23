@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import queue
 import threading
 import traceback
@@ -134,12 +135,14 @@ class StdioWorkerServer:
         worker_version: str = "0.2.0",
         output_queue_size: int = 128,
         read_chunk_size: int = 4096,
+        engine_startup_mode: str = "main",
     ) -> None:
         self._input = input_stream
         self._error = error_stream
         self._engine = engine
         self._worker_version = worker_version
         self._read_chunk_size = read_chunk_size
+        self._engine_startup_mode = engine_startup_mode
         self._metrics = MetricsWriter(error_stream)
 
         self._writer = _OutputWriter(output_stream, output_queue_size, self._metrics)
@@ -158,6 +161,9 @@ class StdioWorkerServer:
         self._shutdown_ack_needed = False
         self._shutdown_terminal_events_enqueued = False
         self._fatal_error = False
+        self._engine_startup_completed = False
+        self._engine_startup_success = False
+        self._server_started_at = 0.0
 
         self._engine_thread = threading.Thread(
             target=self._run_engine_loop,
@@ -170,45 +176,22 @@ class StdioWorkerServer:
         self._writer.start()
         engine_thread_started = False
         started_at = monotonic_seconds()
+        self._server_started_at = started_at
         try:
-            load_started_at = monotonic_seconds()
-            self._engine.load()
-            self._metrics.emit(
-                "engine_loaded",
-                duration_ms=elapsed_milliseconds(load_started_at),
-            )
-
-            warmup_started_at = monotonic_seconds()
-            warmup_fields = self._engine.warmup()
-            self._warmed_up = warmup_fields is not None
-            metric_fields: dict[str, object] = {
-                "duration_ms": elapsed_milliseconds(warmup_started_at),
-                "warmed_up": self._warmed_up,
-            }
-            if warmup_fields is not None:
-                metric_fields.update(warmup_fields)
-            self._metrics.emit(
-                "engine_warmed_up",
-                **metric_fields,
-            )
-            if warmup_fields is not None:
-                warmup_passes = cast(
-                    list[dict[str, object]],
-                    warmup_fields.get("warmup_passes", []),
-                )
-                for warmup_pass in warmup_passes:
-                    self._metrics.emit(
-                        "engine_warmup_pass",
-                        **warmup_pass,
-                    )
-
-            self._engine_thread.start()
-            engine_thread_started = True
-            self._metrics.emit(
-                "worker_runtime_started",
-                startup_ms=elapsed_milliseconds(started_at),
-                warmed_up=self._warmed_up,
-            )
+            if self._engine_startup_mode == "main":
+                self._load_engine()
+                self._warmup_engine()
+                self._engine_thread.start()
+                engine_thread_started = True
+                self._emit_runtime_started(started_at)
+            else:
+                if self._engine_startup_mode == "engine_warmup":
+                    self._load_engine()
+                self._engine_thread.start()
+                engine_thread_started = True
+                if not self._wait_for_engine_startup():
+                    self._fatal_error = True
+                    return 1
             self._read_loop()
         except Exception:
             self._fatal_error = True
@@ -602,6 +585,24 @@ class StdioWorkerServer:
             self._condition.notify_all()
 
     def _run_engine_loop(self) -> None:
+        if self._engine_startup_mode != "main":
+            try:
+                if self._engine_startup_mode == "engine_load_warmup":
+                    self._load_engine()
+                self._warmup_engine()
+                self._emit_runtime_started(self._server_started_at)
+                startup_success = True
+            except Exception:
+                self._fatal_error = True
+                traceback.print_exc(file=self._error)
+                startup_success = False
+            with self._condition:
+                self._engine_startup_completed = True
+                self._engine_startup_success = startup_success
+                self._condition.notify_all()
+            if not startup_success:
+                return
+
         while True:
             slot = self._take_next_request()
             if slot is None:
@@ -625,6 +626,60 @@ class StdioWorkerServer:
             slot.state = "running"
             return slot
 
+    def _load_engine(self) -> None:
+        load_started_at = monotonic_seconds()
+        self._engine.load()
+        self._metrics.emit(
+            "engine_loaded",
+            duration_ms=elapsed_milliseconds(load_started_at),
+            startup_mode=self._engine_startup_mode,
+            **_thread_context_fields(),
+        )
+
+    def _warmup_engine(self) -> None:
+        warmup_started_at = monotonic_seconds()
+        warmup_fields = self._engine.warmup()
+        self._warmed_up = warmup_fields is not None
+        metric_fields: dict[str, object] = {
+            "duration_ms": elapsed_milliseconds(warmup_started_at),
+            "warmed_up": self._warmed_up,
+            "startup_mode": self._engine_startup_mode,
+            **_thread_context_fields(),
+        }
+        if warmup_fields is not None:
+            metric_fields.update(warmup_fields)
+        self._metrics.emit(
+            "engine_warmed_up",
+            **metric_fields,
+        )
+        if warmup_fields is not None:
+            warmup_passes = cast(
+                list[dict[str, object]],
+                warmup_fields.get("warmup_passes", []),
+            )
+            for warmup_pass in warmup_passes:
+                self._metrics.emit(
+                    "engine_warmup_pass",
+                    startup_mode=self._engine_startup_mode,
+                    **_thread_context_fields(),
+                    **warmup_pass,
+                )
+
+    def _emit_runtime_started(self, started_at: float) -> None:
+        self._metrics.emit(
+            "worker_runtime_started",
+            startup_ms=elapsed_milliseconds(started_at),
+            warmed_up=self._warmed_up,
+            startup_mode=self._engine_startup_mode,
+            **_thread_context_fields(),
+        )
+
+    def _wait_for_engine_startup(self) -> bool:
+        with self._condition:
+            while not self._engine_startup_completed:
+                self._condition.wait()
+            return self._engine_startup_success
+
     def _run_one_request(self, slot: _RequestSlot) -> None:
         request_id = slot.request.request_id
 
@@ -642,6 +697,8 @@ class StdioWorkerServer:
             "request_engine_started",
             request_id=request_id,
             queue_ms=elapsed_milliseconds(slot.queued_at, slot.started_at),
+            startup_mode=self._engine_startup_mode,
+            **_thread_context_fields(),
         )
 
         self._writer.send(
@@ -826,3 +883,29 @@ def _pop_engine_chunk_metrics(engine: TtsEngine) -> dict[str, object] | None:
     if not isinstance(metrics, dict):
         return None
     return {str(key): value for key, value in metrics.items()}
+
+
+def _thread_context_fields() -> dict[str, object]:
+    fields: dict[str, object] = {
+        "python_thread_name": threading.current_thread().name,
+        "native_thread_id": threading.get_native_id(),
+    }
+    try:
+        torch = importlib.import_module("torch")
+        cuda = getattr(torch, "cuda", None)
+        is_available = getattr(cuda, "is_available", None)
+        if callable(is_available) and is_available():
+            current_device = getattr(cuda, "current_device", None)
+            current_stream = getattr(cuda, "current_stream", None)
+            if callable(current_device):
+                device = current_device()
+                if isinstance(device, (int, float)):
+                    fields["cuda_device"] = int(device)
+            if callable(current_stream):
+                stream = current_stream()
+                stream_id = getattr(stream, "cuda_stream", 0)
+                if isinstance(stream_id, (int, float)):
+                    fields["cuda_current_stream"] = int(stream_id)
+    except Exception:
+        pass
+    return fields

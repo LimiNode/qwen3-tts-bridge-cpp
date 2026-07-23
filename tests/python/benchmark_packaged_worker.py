@@ -84,6 +84,7 @@ def main() -> int:
                     "warmup_synthesis_passes": args.warmup_synthesis_passes,
                     "warmup_unbounded_passes": args.warmup_unbounded_passes,
                     "warmup_max_output_chunks": args.warmup_max_output_chunks,
+                    "engine_startup_mode": args.engine_startup_mode,
                 },
                 "runtime": runtime_fingerprint(
                     worker_executable=worker_executable,
@@ -146,6 +147,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-speaker", default="")
     parser.add_argument("--warmup-instruction", default="")
+    parser.add_argument(
+        "--engine-startup-mode",
+        choices=("main", "engine_warmup", "engine_load_warmup"),
+        default="main",
+    )
     parser.add_argument("--timeout-seconds", type=float, default=600.0)
     parser.add_argument("--mock-chunks", type=int, default=1)
     parser.add_argument("--warmups", type=int, default=0)

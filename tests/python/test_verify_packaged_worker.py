@@ -77,6 +77,7 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
             warmup_language="English",
             warmup_speaker="ryan",
             warmup_instruction="",
+            engine_startup_mode="engine_warmup",
         )
 
         worker_args = _worker_process_args(args)
@@ -85,6 +86,8 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
         self.assertIn("fixed", worker_args)
         self.assertIn("--warmup-seed", worker_args)
         self.assertIn("9001", worker_args)
+        self.assertIn("--engine-startup-mode", worker_args)
+        self.assertIn("engine_warmup", worker_args)
 
 
 if __name__ == "__main__":

@@ -30,10 +30,12 @@ class _CapturingServer:
         engine: object,
         worker_version: str,
         output_queue_size: int,
+        engine_startup_mode: str,
     ) -> None:
         self.input_stream = input_stream
         self.output_stream = output_stream
         self.error_stream = error_stream
+        self.engine_startup_mode = engine_startup_mode
         self.stdout_during_run: object | None = None
         _CapturingServer.instances.append(self)
 

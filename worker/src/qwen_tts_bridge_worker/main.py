@@ -33,6 +33,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         engine=engine,
         worker_version=config.worker_version,
         output_queue_size=config.output_queue_size,
+        engine_startup_mode=config.engine_startup_mode,
     )
     return server.run()
 

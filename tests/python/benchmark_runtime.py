@@ -264,4 +264,5 @@ def _qwen_config(args: Any) -> dict[str, object]:
         "seed": getattr(args, "seed", None),
         "seed_mode": getattr(args, "seed_mode", None),
         "warmup_seed": getattr(args, "warmup_seed", None),
+        "engine_startup_mode": getattr(args, "engine_startup_mode", None),
     }

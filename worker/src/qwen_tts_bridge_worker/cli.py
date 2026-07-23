@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from typing import TypeVar
+from typing import Literal, TypeVar, cast
 
 from qwen_tts_bridge_worker.config import (
     EngineConfig,
@@ -40,6 +40,7 @@ def build_worker_config(args: argparse.Namespace) -> WorkerConfig:
     return WorkerConfig(
         worker_version=_selected_worker_version(args),
         output_queue_size=_selected_output_queue_size(args),
+        engine_startup_mode=_selected_engine_startup_mode(args),
         engine=build_engine_config(args),
     )
 
@@ -310,6 +311,12 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--warmup-language", default="auto")
     qwen_parser.add_argument("--warmup-speaker", default="")
     qwen_parser.add_argument("--warmup-instruction", default="")
+    qwen_parser.add_argument(
+        "--engine-startup-mode",
+        choices=("main", "engine_warmup", "engine_load_warmup"),
+        default="main",
+        help="Select which thread runs Qwen load and synthesis warmup.",
+    )
 
 
 def _reject_mixed_legacy_engine_flags(args: argparse.Namespace) -> None:
@@ -345,6 +352,15 @@ def _selected_output_queue_size(args: argparse.Namespace) -> int:
         getattr(args, "command_output_queue_size", None),
         "output-queue-size",
         128,
+    )
+
+
+def _selected_engine_startup_mode(
+    args: argparse.Namespace,
+) -> Literal["main", "engine_warmup", "engine_load_warmup"]:
+    return cast(
+        Literal["main", "engine_warmup", "engine_load_warmup"],
+        getattr(args, "engine_startup_mode", "main"),
     )
 
 

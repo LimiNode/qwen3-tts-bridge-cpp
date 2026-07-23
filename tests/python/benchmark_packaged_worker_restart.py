@@ -122,6 +122,7 @@ def main() -> int:
                     "warmup_language": args.warmup_language,
                     "warmup_speaker": args.warmup_speaker,
                     "warmup_instruction": args.warmup_instruction,
+                    "engine_startup_mode": args.engine_startup_mode,
                     "seed": args.seed,
                     "seed_mode": args.seed_mode,
                     "warmup_seed": args.warmup_seed,
@@ -257,6 +258,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-speaker", default="")
     parser.add_argument("--warmup-instruction", default="")
+    parser.add_argument(
+        "--engine-startup-mode",
+        choices=("main", "engine_warmup", "engine_load_warmup"),
+        default="main",
+    )
     parser.add_argument("--timeout-seconds", type=float, default=600.0)
     parser.add_argument("--mock-chunks", type=int, default=1)
     parser.add_argument("--runs", type=int, default=20)

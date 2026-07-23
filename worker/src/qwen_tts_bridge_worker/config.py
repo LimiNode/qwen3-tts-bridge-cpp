@@ -113,6 +113,9 @@ class WorkerConfig:
 
     worker_version: str = "0.2.0"
     output_queue_size: int = 128
+    engine_startup_mode: Literal["main", "engine_warmup", "engine_load_warmup"] = (
+        "main"
+    )
     engine: EngineConfig = field(default_factory=MockEngineConfig)
 
     def __post_init__(self) -> None:
@@ -122,5 +125,11 @@ class WorkerConfig:
             raise ValueError("worker_version must not be empty")
         if self.output_queue_size <= 0:
             raise ValueError("output_queue_size must be greater than zero")
+        if self.engine_startup_mode not in {
+            "main",
+            "engine_warmup",
+            "engine_load_warmup",
+        }:
+            raise ValueError("engine_startup_mode must be a supported value")
         if not isinstance(self.engine, (MockEngineConfig, QwenEngineConfig)):
             raise TypeError("engine must be a known engine configuration")

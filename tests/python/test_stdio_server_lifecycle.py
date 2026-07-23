@@ -133,6 +133,10 @@ class RequestValidationEngine:
 
 
 class WarmupMetricsEngine:
+    def __init__(self) -> None:
+        self.load_thread_name = ""
+        self.warmup_thread_name = ""
+
     @property
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
@@ -143,9 +147,10 @@ class WarmupMetricsEngine:
         )
 
     def load(self) -> None:
-        pass
+        self.load_thread_name = threading.current_thread().name
 
     def warmup(self) -> dict[str, object]:
+        self.warmup_thread_name = threading.current_thread().name
         return {
             "warmup_synthesis": True,
             "warmup_audio_chunks": 2,
@@ -372,6 +377,41 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         ]
         self.assertEqual(1, len(warmup_metrics))
         self.assertFalse(warmup_metrics[0]["warmed_up"])
+
+    def test_engine_warmup_mode_runs_warmup_on_engine_thread(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+        )
+        engine = WarmupMetricsEngine()
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=io.BytesIO(),
+            error_stream=stderr,
+            engine=engine,
+            engine_startup_mode="engine_warmup",
+        )
+
+        self.assertEqual(0, server.run())
+
+        self.assertEqual("MainThread", engine.load_thread_name)
+        self.assertEqual("qtb-engine", engine.warmup_thread_name)
+        warmup_metric = next(
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in stderr.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+            and json.loads(line.removeprefix("qtb_metric ")).get("event")
+            == "engine_warmed_up"
+        )
+        self.assertEqual("engine_warmup", warmup_metric["startup_mode"])
+        self.assertEqual("qtb-engine", warmup_metric["python_thread_name"])
 
 
 def _control_frame(request_id: int, message: dict[str, object]) -> bytes:
