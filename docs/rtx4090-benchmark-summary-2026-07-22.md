@@ -851,6 +851,38 @@ dist/QwenTTSBridge/worker-python/build-manifest.json
 dist/QwenTTSBridge/worker-python/wheels/
 ```
 
+Paired restart probes, same source worker and torch `2.11.0+cu126`, fixed
+seed `4242`, four user requests per fresh worker process:
+
+| Run | Processes | First TTFA median | First TTFA p95 | Steady TTFA median | Steady TTFA p95 | First-minus-steady median | First-minus-steady p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| unrestricted | 50 | 414.3 ms | 467.3 ms | 363.1 ms | 412.4 ms | 51.8 ms | 86.2 ms |
+| bounded warmup pass 2 to 2 chunks | 20 | 443.3 ms | 478.3 ms | 398.2 ms | 415.6 ms | 54.7 ms | 75.9 ms |
+| affinity CPUs 0-21 | 20 | 415.2 ms | 464.7 ms | 362.1 ms | 404.4 ms | 53.6 ms | 71.2 ms |
+| affinity CPUs 22-43 | 20 | 428.3 ms | 449.6 ms | 374.0 ms | 392.8 ms | 54.9 ms | 57.8 ms |
+
+The paired result confirms two effects rather than a single vague "cold
+process" penalty:
+
+- The first user request after two synthesis warmup passes still costs roughly
+  `+50 ms` over the median of requests 2-4 in the same worker process.
+- Steady requests also have placement-sensitive tails. CPU affinity reduces
+  the worst steady-state tail in this sample, especially on CPUs `22-43`, but
+  it does not remove the first-request delta.
+- Bounding the second synthesis warmup to only two chunks saves about one
+  second of startup work, but worsens first-user TTFA. Keep bounded warmup
+  experimental; two full warmup passes remain the safer default for latency
+  measurements.
+
+Artifacts:
+
+```text
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r50x4-seed4242.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-capture-full-bounded2.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-affinity-0-21.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-affinity-22-43.json
+```
+
 Updated diagnosis after profiling:
 
 ```text
@@ -859,6 +891,9 @@ PR #112 hot-path fixes missing: ruled out as main cause
 torch/cu runtime difference: unlikely after 2.10/cu128 control
 max_seq_len/cache size: unlikely for this workload
 codec decode and wrapper synchronization: confirmed meaningful overhead
+first-user-after-ready latency: confirmed roughly +50 ms after paired restart probes
+bounded two-chunk second warmup: rejected as a latency default
+CPU affinity: helps steady-state tails but is not a complete fix
 prefill/setup and raw AR still need separate work to reach author's end-to-end
 native Windows/WDDM plus older CPU launch overhead: still plausible for raw AR gap
 GPU clocks under sustained benchmark load: still not recorded cleanly

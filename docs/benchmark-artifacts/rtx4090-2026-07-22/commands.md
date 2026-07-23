@@ -573,3 +573,119 @@ build\default\qwen_tts_latency_benchmark.exe `
     > docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-portable-cpp-faster-customvoice-chunk8-r5.json `
     2> docs\benchmark-artifacts\rtx4090-2026-07-22\latency-ladder-portable-cpp-faster-customvoice-chunk8-r5.stderr.txt
 ```
+
+Paired restart source-worker benchmark with runtime fingerprint:
+
+```powershell
+$out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+    .\.venv-packaging\Scripts\python.exe `
+    --worker-prefix-arg=-B `
+    --worker-prefix-arg=-P `
+    --worker-prefix-arg=-s `
+    --worker-prefix-arg=-m `
+    --worker-prefix-arg=qwen_tts_bridge_worker `
+    --engine qwen `
+    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --runtime-backend faster `
+    --device cuda `
+    --dtype auto `
+    --emit-every-frames 8 `
+    --max-seq-len 2048 `
+    --warmup-synthesis `
+    --warmup-synthesis-passes 2 `
+    --warmup-text "This is a faster backend latency benchmark." `
+    --warmup-language English `
+    --warmup-speaker ryan `
+    --runs 50 `
+    --requests-per-run 4 `
+    --seed 4242 `
+    --text "This is a faster backend latency benchmark." `
+    --language English `
+    --speaker ryan `
+    --timeout-seconds 1200
+[IO.File]::WriteAllText(
+    "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r50x4-seed4242.json",
+    ($out -join "`n"),
+    [System.Text.UTF8Encoding]::new($false)
+)
+```
+
+Bounded second warmup pass probe:
+
+```powershell
+$out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+    .\.venv-packaging\Scripts\python.exe `
+    --worker-prefix-arg=-B `
+    --worker-prefix-arg=-P `
+    --worker-prefix-arg=-s `
+    --worker-prefix-arg=-m `
+    --worker-prefix-arg=qwen_tts_bridge_worker `
+    --engine qwen `
+    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --runtime-backend faster `
+    --device cuda `
+    --dtype auto `
+    --emit-every-frames 8 `
+    --max-seq-len 2048 `
+    --warmup-synthesis `
+    --warmup-synthesis-passes 2 `
+    --warmup-unbounded-passes 1 `
+    --warmup-max-output-chunks 2 `
+    --warmup-text "This is a faster backend latency benchmark." `
+    --warmup-language English `
+    --warmup-speaker ryan `
+    --runs 20 `
+    --requests-per-run 4 `
+    --seed 4242 `
+    --text "This is a faster backend latency benchmark." `
+    --language English `
+    --speaker ryan `
+    --timeout-seconds 1200
+[IO.File]::WriteAllText(
+    "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-capture-full-bounded2.json",
+    ($out -join "`n"),
+    [System.Text.UTF8Encoding]::new($false)
+)
+```
+
+CPU-affinity paired restart probes:
+
+```powershell
+foreach ($entry in @(
+    @{ Affinity = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21"; Suffix = "affinity-0-21" },
+    @{ Affinity = "22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43"; Suffix = "affinity-22-43" }
+)) {
+    $out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+        .\.venv-packaging\Scripts\python.exe `
+        --worker-prefix-arg=-B `
+        --worker-prefix-arg=-P `
+        --worker-prefix-arg=-s `
+        --worker-prefix-arg=-m `
+        --worker-prefix-arg=qwen_tts_bridge_worker `
+        --engine qwen `
+        --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+        --runtime-backend faster `
+        --device cuda `
+        --dtype auto `
+        --emit-every-frames 8 `
+        --max-seq-len 2048 `
+        --warmup-synthesis `
+        --warmup-synthesis-passes 2 `
+        --warmup-text "This is a faster backend latency benchmark." `
+        --warmup-language English `
+        --warmup-speaker ryan `
+        --runs 20 `
+        --requests-per-run 4 `
+        --seed 4242 `
+        --cpu-affinity $entry.Affinity `
+        --text "This is a faster backend latency benchmark." `
+        --language English `
+        --speaker ryan `
+        --timeout-seconds 1200
+    [IO.File]::WriteAllText(
+        "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-$($entry.Suffix).json",
+        ($out -join "`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+```
