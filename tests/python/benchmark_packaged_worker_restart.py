@@ -94,6 +94,11 @@ def main() -> int:
         for run in run_summaries
         if isinstance(run.get("steady_request_median"), dict)
     ]
+    pipeline_requests = [
+        request
+        for run in run_summaries
+        for request in cast(list[dict[str, object]], run["requests"])
+    ]
     paired_deltas = [
         {"paired_delta_first_audio_ms": run["paired_delta_first_audio_ms"]}
         for run in run_summaries
@@ -155,6 +160,24 @@ def main() -> int:
                         "first_audio_ms": _summary(
                             paired_deltas,
                             "paired_delta_first_audio_ms",
+                        ),
+                    },
+                    "pipeline": {
+                        "client_minus_worker_first_pcm_ready_ms": _summary(
+                            pipeline_requests,
+                            "client_minus_worker_first_pcm_ready_ms",
+                        ),
+                        "client_minus_worker_frame_enqueued_ms": _summary(
+                            pipeline_requests,
+                            "client_minus_worker_frame_enqueued_ms",
+                        ),
+                        "client_minus_worker_frame_flushed_estimated_ms": _summary(
+                            pipeline_requests,
+                            "client_minus_worker_frame_flushed_estimated_ms",
+                        ),
+                        "first_frame_output_writer_ms": _summary(
+                            pipeline_requests,
+                            "first_frame_output_writer_ms",
                         ),
                     },
                 },
@@ -246,8 +269,12 @@ def _run_summary(
     after_ready_gpu: dict[str, object],
     after_requests_gpu: dict[str, object],
 ) -> dict[str, object]:
-    first_request = requests[0] if requests else {}
-    steady_requests = requests[1:]
+    enriched_requests = [
+        _with_request_pipeline_metrics(request, worker_metrics)
+        for request in requests
+    ]
+    first_request = enriched_requests[0] if enriched_requests else {}
+    steady_requests = enriched_requests[1:]
     steady_median = _median_request(steady_requests)
     paired_delta: float | None = None
     first_audio = first_request.get("first_audio_ms")
@@ -274,8 +301,112 @@ def _run_summary(
         "steady_requests": steady_requests,
         "steady_request_median": steady_median,
         "paired_delta_first_audio_ms": paired_delta,
-        "requests": requests,
+        "requests": enriched_requests,
     }
+
+
+def _with_request_pipeline_metrics(
+    request: dict[str, object],
+    worker_metrics: list[dict[str, object]],
+) -> dict[str, object]:
+    request_id = request.get("request_id")
+    if not isinstance(request_id, int):
+        return dict(request)
+
+    metrics = _metrics_by_event(worker_metrics, request_id)
+    enriched = dict(request)
+    first_pcm_ready_ms = _metric_number(
+        metrics,
+        "request_first_pcm_ready",
+        "first_pcm_ready_ms",
+    )
+    first_frame_enqueued_ms = _metric_number(
+        metrics,
+        "request_first_frame_enqueued",
+        "first_frame_enqueue_ms",
+    )
+    first_frame_output_writer_ms = _metric_number(
+        metrics,
+        "request_first_frame_flushed",
+        "output_writer_ms",
+    )
+    first_frame_flush_ms = _metric_number(
+        metrics,
+        "request_first_frame_flushed",
+        "flush_ms",
+    )
+    first_frame_queue_ms = _metric_number(
+        metrics,
+        "request_first_frame_flushed",
+        "output_queue_ms",
+    )
+
+    _set_if_number(enriched, "worker_first_pcm_ready_ms", first_pcm_ready_ms)
+    _set_if_number(enriched, "worker_first_frame_enqueued_ms", first_frame_enqueued_ms)
+    _set_if_number(
+        enriched,
+        "first_frame_output_writer_ms",
+        first_frame_output_writer_ms,
+    )
+    _set_if_number(enriched, "first_frame_flush_ms", first_frame_flush_ms)
+    _set_if_number(enriched, "first_frame_output_queue_ms", first_frame_queue_ms)
+
+    if first_frame_enqueued_ms is not None and first_frame_output_writer_ms is not None:
+        enriched["worker_first_frame_flushed_estimated_ms"] = (
+            first_frame_enqueued_ms + first_frame_output_writer_ms
+        )
+
+    client_first_audio_ms = request.get("first_audio_ms")
+    if isinstance(client_first_audio_ms, (int, float)):
+        if first_pcm_ready_ms is not None:
+            enriched["client_minus_worker_first_pcm_ready_ms"] = (
+                float(client_first_audio_ms) - first_pcm_ready_ms
+            )
+        if first_frame_enqueued_ms is not None:
+            enriched["client_minus_worker_frame_enqueued_ms"] = (
+                float(client_first_audio_ms) - first_frame_enqueued_ms
+            )
+        flushed_estimate = enriched.get("worker_first_frame_flushed_estimated_ms")
+        if isinstance(flushed_estimate, (int, float)):
+            enriched["client_minus_worker_frame_flushed_estimated_ms"] = (
+                float(client_first_audio_ms) - float(flushed_estimate)
+            )
+
+    return enriched
+
+
+def _metrics_by_event(
+    worker_metrics: list[dict[str, object]],
+    request_id: int,
+) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    for metric in worker_metrics:
+        if metric.get("request_id") != request_id:
+            continue
+        event = metric.get("event")
+        if isinstance(event, str) and event not in result:
+            result[event] = metric
+    return result
+
+
+def _metric_number(
+    metrics: dict[str, dict[str, object]],
+    event: str,
+    field: str,
+) -> float | None:
+    value = metrics.get(event, {}).get(field)
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _set_if_number(
+    target: dict[str, object],
+    key: str,
+    value: float | None,
+) -> None:
+    if value is not None:
+        target[key] = value
 
 
 def _median_request(requests: list[dict[str, object]]) -> dict[str, object] | None:
@@ -288,6 +419,15 @@ def _median_request(requests: list[dict[str, object]]) -> dict[str, object] | No
         "audio_duration_ms",
         "real_time_factor",
         "inverse_rtf",
+        "worker_first_pcm_ready_ms",
+        "worker_first_frame_enqueued_ms",
+        "worker_first_frame_flushed_estimated_ms",
+        "client_minus_worker_first_pcm_ready_ms",
+        "client_minus_worker_frame_enqueued_ms",
+        "client_minus_worker_frame_flushed_estimated_ms",
+        "first_frame_output_writer_ms",
+        "first_frame_flush_ms",
+        "first_frame_output_queue_ms",
     ):
         values = [
             float(cast(int | float, request[key]))
