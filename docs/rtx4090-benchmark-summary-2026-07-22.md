@@ -978,6 +978,8 @@ sha256 b7429f3e15a0c2e43b9f769f2552bb5cb95cd90f3db106fb218bf252a3c7a31c
 | 1 full synthesis, fixed seed | 30 | 28.78 s | 360.2 ms | 413.9 ms | 357.4 ms | 411.4 ms | 2.1 ms | 5.8 ms | 20.6 ms | 2 / 30 |
 | 1 full synthesis, fixed seed | 100 | 28.57 s | 362.8 ms | 386.3 ms | 361.3 ms | 374.5 ms | 1.2 ms | 12.7 ms | 22.4 ms | 6 / 100 |
 | 1 full synthesis, varied seed step 1009 | 30 | 28.15 s | 362.2 ms | 393.5 ms | 358.0 ms | 377.7 ms | 2.7 ms | 13.4 ms | 30.2 ms | 3 / 30 |
+| 1 full synthesis, fixed per-run seed step 1009, warmup seed steps too | 100 | 28.50 s | 367.3 ms | 420.8 ms | 363.2 ms | 414.0 ms | 3.3 ms | 32.4 ms | 46.8 ms | 15 / 100 |
+| 1 full synthesis, fixed per-run seed step 1009, warmup seed fixed | 100 | 28.96 s | 365.2 ms | 423.5 ms | 364.4 ms | 412.9 ms | 1.6 ms | 41.6 ms | 45.5 ms | 21 / 100 |
 
 The `r100` result confirms the direction but not the strict acceptance target.
 Moving warmup to the engine thread removes the old systematic `+50 ms` first
@@ -988,6 +990,17 @@ one-pass `engine_warmup` as the best current product default, not as the end of
 the latency investigation. The varied-seed control makes that conclusion
 stronger: different reproducible per-run seeds raised the first-minus-steady
 p95 to `30.2 ms`, again with the largest paired tail in prefill/setup.
+
+The later clean varied-seed `r100` controls used `--seed-mode fixed` so each
+worker process kept one seed across warmup and all four user requests, while
+the process seed advanced by `1009`. Whether the warmup seed advanced with the
+process or stayed fixed at `4242`, the first-minus-steady p95 landed around
+`45-47 ms`. The new provenance guard confirmed the installed
+`faster_qwen3_tts` archive hash matched the retained wheel hash. The paired
+correlation between total first-minus-steady delta and prefill delta was strong
+in both runs (`r=0.87` and `r=0.89`), while transport/dispatch p95 stayed under
+`0.3 ms`. That makes seed-dependent prefill/setup variance the next target; a
+warmup-seed mismatch is not enough to explain the remaining tail.
 
 Input-shape sanity matrix, one full synthesis warmup, fixed seed `4242`,
 `10` fresh worker processes per shape:
@@ -1023,6 +1036,8 @@ docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-seed4242-auto-warmup2full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r100x4-seed4242-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-varseed4242-step1009-auto-warmup1full.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r100x4-seed4242-step1009-fixed-auto-warmup1full.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r100x4-seed4242-step1009-warmupseed4242-fixed-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-short-seed4242-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-medium-seed4242-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-long-seed4242-auto-warmup1full.json
@@ -1043,7 +1058,8 @@ engine-thread one-pass synthesis warmup: best current default, but p95 target
 extra bounded/full warmup passes: rejected as latency defaults
 CPU affinity: helps steady-state tails but is not a complete fix
 prefill/setup variance: next first-user latency target after startup-thread fix,
-  especially under varied seeds
+  especially under varied seeds; clean r100 controls show p95 around 45-47 ms
+  and strong total-delta vs prefill-delta correlation
 long prompt shape: can still produce rare large first-user outliers
 prefill/setup and raw AR still need separate work to reach author's end-to-end
 native Windows/WDDM plus older CPU launch overhead: still plausible for raw AR gap

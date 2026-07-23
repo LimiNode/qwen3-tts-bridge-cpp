@@ -972,6 +972,72 @@ finally {
 }
 ```
 
+Clean varied-seed controls, Qwen `auto -> engine_warmup`, one full synthesis
+warmup, fixed seed within each process:
+
+```powershell
+$oldPyPath = $env:PYTHONPATH
+try {
+    $env:PYTHONPATH = "worker/src;tests/python"
+    foreach ($entry in @(
+        @{
+            Suffix = "seed4242-step1009-fixed-auto-warmup1full"
+            Partial = "tmp\seedA-r100-partial.json"
+            Progress = "tmp\seedA-r100-progress.txt"
+            RunWarmupSeedStep = 1009
+        },
+        @{
+            Suffix = "seed4242-step1009-warmupseed4242-fixed-auto-warmup1full"
+            Partial = "tmp\seedB-r100-partial.json"
+            Progress = "tmp\seedB-r100-progress.txt"
+            RunWarmupSeedStep = 0
+        }
+    )) {
+        $out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+            .\.venv-packaging\Scripts\python.exe `
+            --worker-prefix-arg=-B `
+            --worker-prefix-arg=-P `
+            --worker-prefix-arg=-s `
+            --worker-prefix-arg=-m `
+            --worker-prefix-arg=qwen_tts_bridge_worker `
+            --engine qwen `
+            --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+            --runtime-backend faster `
+            --device cuda `
+            --dtype auto `
+            --emit-every-frames 8 `
+            --max-seq-len 2048 `
+            --warmup-synthesis `
+            --warmup-synthesis-passes 1 `
+            --warmup-text "This is a faster backend latency benchmark." `
+            --warmup-language English `
+            --warmup-speaker ryan `
+            --runs 100 `
+            --requests-per-run 4 `
+            --partial-output $entry.Partial `
+            --progress-every-runs 1 `
+            --progress-output $entry.Progress `
+            --seed 4242 `
+            --seed-mode fixed `
+            --run-seed-step 1009 `
+            --warmup-seed 4242 `
+            --run-warmup-seed-step $entry.RunWarmupSeedStep `
+            --text "This is a faster backend latency benchmark." `
+            --language English `
+            --speaker ryan `
+            --timeout-seconds 1200
+        [IO.File]::WriteAllText(
+            "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r100x4-$($entry.Suffix).json",
+            ($out -join "`n"),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+    }
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
+}
+```
+
 Input-shape matrix, Qwen `auto -> engine_warmup`, one full synthesis warmup:
 
 ```powershell
