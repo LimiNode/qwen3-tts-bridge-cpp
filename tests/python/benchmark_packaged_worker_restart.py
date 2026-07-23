@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 import sys
 import time
@@ -53,6 +54,9 @@ def main() -> int:
         parser.error("--runs must be greater than zero")
     if args.requests_per_run <= 0:
         parser.error("--requests-per-run must be greater than zero")
+    run_shapes = _load_run_shapes(args.run_shapes_jsonl)
+    if run_shapes and len(run_shapes) < args.runs:
+        parser.error("--run-shapes-jsonl must contain at least --runs rows")
 
     results = []
     run_summaries = []
@@ -63,6 +67,7 @@ def main() -> int:
     )
     started_at = time.perf_counter()
     for index in range(args.runs):
+        run_shape = _run_shape_for_index(args, run_shapes, index + 1)
         harness = PackagedWorkerHarness(
             worker_executable=worker_executable,
             args=_worker_process_args_for_run(args, index + 1),
@@ -81,13 +86,15 @@ def main() -> int:
                 request_result = _run_request(
                     harness,
                     request_id=request_index + 1,
-                    text=args.text,
-                    language=args.language,
-                    speaker=args.speaker,
-                    instruction=args.instruction,
+                    text=str(run_shape["text"]),
+                    language=str(run_shape["language"]),
+                    speaker=str(run_shape["speaker"]),
+                    instruction=str(run_shape["instruction"]),
                 )
                 request_result["run_index"] = index + 1
                 request_result["request_index"] = request_index + 1
+                request_result["shape_label"] = run_shape["label"]
+                request_result["text_characters"] = run_shape["text_characters"]
                 request_result["ready_warmed_up"] = ready.get("warmed_up")
                 request_result["startup_ms"] = ready.get("startup_ms")
                 run_requests.append(request_result)
@@ -96,6 +103,7 @@ def main() -> int:
             after_requests_gpu = gpu_snapshot()
             run_summary = _run_summary(
                 run_index=index + 1,
+                run_shape=run_shape,
                 ready=ready,
                 requests=run_requests,
                 worker_metrics=_worker_metrics(harness.stderr_text()),
@@ -188,6 +196,10 @@ def _build_report(
             "run_warmup_seed_step": args.run_warmup_seed_step,
             "requests_per_run": args.requests_per_run,
             "cpu_affinity": args.cpu_affinity,
+            "run_shapes_jsonl": str(args.run_shapes_jsonl)
+            if args.run_shapes_jsonl
+            else None,
+            "outlier_delta_threshold_ms": args.outlier_delta_threshold_ms,
         },
         "runtime": runtime,
         "summary": {
@@ -221,6 +233,12 @@ def _build_report(
                 steady_requests,
             ),
             "paired_phase_delta": _phase_summary(paired_phase_deltas),
+            "by_shape": _shape_summary(run_summaries),
+            "correlations": _correlations(run_summaries),
+            "outliers": _outlier_records(
+                run_summaries,
+                threshold_ms=args.outlier_delta_threshold_ms,
+            ),
         },
         "runs": run_summaries,
         "requests": results,
@@ -316,6 +334,18 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--language", default="auto")
     parser.add_argument("--speaker", default="")
     parser.add_argument("--instruction", default="")
+    parser.add_argument(
+        "--run-shapes-jsonl",
+        type=Path,
+        default=None,
+        help="Optional JSONL schedule with per-run label/text/language/speaker.",
+    )
+    parser.add_argument(
+        "--outlier-delta-threshold-ms",
+        type=float,
+        default=20.0,
+        help="Paired first-audio delta threshold for outlier records.",
+    )
     return parser
 
 
@@ -352,6 +382,59 @@ def _write_json_file(path: Path, report: dict[str, object]) -> None:
         encoding="utf-8",
     )
     temp_path.replace(path)
+
+
+def _load_run_shapes(path: Path | None) -> list[dict[str, object]]:
+    if path is None:
+        return []
+    shapes = []
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
+    for line_number, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError as exc:
+            message = f"invalid shape JSONL at line {line_number}: {exc}"
+            raise ValueError(message) from exc
+        if not isinstance(item, dict):
+            raise ValueError(f"shape JSONL line {line_number} must be an object")
+        text = item.get("text")
+        if not isinstance(text, str) or not text:
+            raise ValueError(f"shape JSONL line {line_number} must contain text")
+        label = item.get("label", f"shape_{line_number}")
+        if not isinstance(label, str) or not label:
+            raise ValueError(f"shape JSONL line {line_number} has invalid label")
+        shapes.append(
+            {
+                "label": label,
+                "text": text,
+                "language": item.get("language", "auto"),
+                "speaker": item.get("speaker", ""),
+                "instruction": item.get("instruction", ""),
+            }
+        )
+    return shapes
+
+
+def _run_shape_for_index(
+    args: argparse.Namespace,
+    run_shapes: list[dict[str, object]],
+    run_index: int,
+) -> dict[str, object]:
+    if run_shapes:
+        shape = dict(run_shapes[run_index - 1])
+    else:
+        shape = {
+            "label": "default",
+            "text": args.text,
+            "language": args.language,
+            "speaker": args.speaker,
+            "instruction": args.instruction,
+        }
+    text = str(shape["text"])
+    shape["text_characters"] = len(text)
+    return shape
 
 
 def _append_line(path: Path, line: str) -> None:
@@ -410,6 +493,7 @@ def _hello(harness: PackagedWorkerHarness) -> dict[str, object]:
 def _run_summary(
     *,
     run_index: int,
+    run_shape: dict[str, object],
     ready: dict[str, object],
     requests: list[dict[str, object]],
     worker_metrics: list[dict[str, object]],
@@ -434,6 +518,7 @@ def _run_summary(
             paired_delta = float(first_audio) - float(steady_first_audio)
     return {
         "run_index": run_index,
+        "shape": run_shape,
         "ready": ready,
         "affinity": affinity,
         "gpu": {
@@ -454,6 +539,179 @@ def _run_summary(
         "paired_phase_delta": paired_phase_delta,
         "requests": enriched_requests,
     }
+
+
+def _shape_summary(run_summaries: list[dict[str, object]]) -> dict[str, object]:
+    by_shape: dict[str, list[dict[str, object]]] = {}
+    for run in run_summaries:
+        shape = run.get("shape")
+        if not isinstance(shape, dict):
+            continue
+        label = shape.get("label")
+        if not isinstance(label, str):
+            continue
+        by_shape.setdefault(label, []).append(run)
+
+    summary: dict[str, object] = {}
+    for label, runs in sorted(by_shape.items()):
+        first_requests = [
+            cast(dict[str, object], run["first_request"])
+            for run in runs
+            if isinstance(run.get("first_request"), dict)
+        ]
+        steady_requests = [
+            cast(dict[str, object], run["steady_request_median"])
+            for run in runs
+            if isinstance(run.get("steady_request_median"), dict)
+        ]
+        paired_deltas = [
+            {"paired_delta_first_audio_ms": run["paired_delta_first_audio_ms"]}
+            for run in runs
+            if isinstance(run.get("paired_delta_first_audio_ms"), (int, float))
+        ]
+        summary[label] = {
+            "runs": len(runs),
+            "text_characters": _summary(
+                [cast(dict[str, object], run["shape"]) for run in runs],
+                "text_characters",
+            ),
+            "first_request": {
+                "first_audio_ms": _summary(first_requests, "first_audio_ms"),
+            },
+            "steady_request_median": {
+                "first_audio_ms": _summary(steady_requests, "first_audio_ms"),
+            },
+            "paired_delta": {
+                "first_audio_ms": _summary(
+                    paired_deltas,
+                    "paired_delta_first_audio_ms",
+                ),
+            },
+            "slow_delta_count": sum(1 for run in runs if _is_slow_delta(run)),
+        }
+    return summary
+
+
+def _is_slow_delta(run: dict[str, object], threshold_ms: float = 20.0) -> bool:
+    delta = _number(run.get("paired_delta_first_audio_ms"))
+    return delta is not None and delta > threshold_ms
+
+
+def _outlier_records(
+    run_summaries: list[dict[str, object]],
+    *,
+    threshold_ms: float,
+) -> list[dict[str, object]]:
+    outliers = []
+    for run in run_summaries:
+        delta = _number(run.get("paired_delta_first_audio_ms"))
+        if delta is None or delta <= threshold_ms:
+            continue
+        phase_delta = run.get("paired_phase_delta")
+        first_request = run.get("first_request")
+        steady_request = run.get("steady_request_median")
+        outliers.append(
+            {
+                "run_index": run.get("run_index"),
+                "shape": run.get("shape"),
+                "paired_delta_first_audio_ms": delta,
+                "paired_phase_delta": phase_delta
+                if isinstance(phase_delta, dict)
+                else {},
+                "first_request": first_request
+                if isinstance(first_request, dict)
+                else {},
+                "steady_request_median": steady_request
+                if isinstance(steady_request, dict)
+                else {},
+                "gpu": run.get("gpu") if isinstance(run.get("gpu"), dict) else {},
+                "affinity": run.get("affinity")
+                if isinstance(run.get("affinity"), dict)
+                else {},
+            }
+        )
+    return outliers
+
+
+def _correlations(run_summaries: list[dict[str, object]]) -> dict[str, object]:
+    x_key = "paired_delta_first_audio_ms"
+    result: dict[str, object] = {
+        "total_delta_vs_prefill_delta": _pearson_for_runs(
+            run_summaries,
+            x_key,
+            "first_chunk_prefill_ms",
+        ),
+        "total_delta_vs_ar_delta": _pearson_for_runs(
+            run_summaries,
+            x_key,
+            "first_chunk_ar_decode_ms",
+        ),
+        "total_delta_vs_codec_residual_delta": _pearson_for_runs(
+            run_summaries,
+            x_key,
+            "first_chunk_codec_wrapper_residual_ms",
+        ),
+        "total_delta_vs_text_characters": _pearson_for_shape(
+            run_summaries,
+            x_key,
+            "text_characters",
+        ),
+    }
+    return result
+
+
+def _pearson_for_runs(
+    runs: list[dict[str, object]],
+    x_key: str,
+    phase_key: str,
+) -> dict[str, object]:
+    pairs = []
+    for run in runs:
+        x = _number(run.get(x_key))
+        phase_delta = run.get("paired_phase_delta")
+        if isinstance(phase_delta, dict):
+            y = _number(phase_delta.get(phase_key))
+        else:
+            y = None
+        if x is not None and y is not None:
+            pairs.append((x, y))
+    return _pearson_summary(pairs)
+
+
+def _pearson_for_shape(
+    runs: list[dict[str, object]],
+    x_key: str,
+    shape_key: str,
+) -> dict[str, object]:
+    pairs = []
+    for run in runs:
+        x = _number(run.get(x_key))
+        shape = run.get("shape")
+        y = _number(shape.get(shape_key)) if isinstance(shape, dict) else None
+        if x is not None and y is not None:
+            pairs.append((x, y))
+    return _pearson_summary(pairs)
+
+
+def _pearson_summary(pairs: list[tuple[float, float]]) -> dict[str, object]:
+    if len(pairs) < 2:
+        return {"count": len(pairs), "pearson_r": None}
+    xs = [pair[0] for pair in pairs]
+    ys = [pair[1] for pair in pairs]
+    mean_x = statistics.mean(xs)
+    mean_y = statistics.mean(ys)
+    numerator = sum((x - mean_x) * (y - mean_y) for x, y in pairs)
+    denominator_x = math.sqrt(sum((x - mean_x) ** 2 for x in xs))
+    denominator_y = math.sqrt(sum((y - mean_y) ** 2 for y in ys))
+    if denominator_x == 0.0 or denominator_y == 0.0:
+        return {"count": len(pairs), "pearson_r": None}
+    return {"count": len(pairs), "pearson_r": numerator / denominator_x / denominator_y}
+
+
+def _number(value: object) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
 
 
 def _phase_summary(results: list[dict[str, object]]) -> dict[str, object]:

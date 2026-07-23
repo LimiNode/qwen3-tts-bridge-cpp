@@ -43,6 +43,42 @@ class BenchmarkRuntimeTests(unittest.TestCase):
             matches[0]["sha256"],
         )
 
+    def test_direct_url_archive_sha256_prefers_hashes_field(self) -> None:
+        self.assertEqual(
+            "abc",
+            br._direct_url_archive_sha256(
+                {
+                    "archive_info": {
+                        "hash": "sha256=old",
+                        "hashes": {"sha256": "abc"},
+                    }
+                }
+            ),
+        )
+
+    def test_direct_url_archive_sha256_accepts_legacy_hash_field(self) -> None:
+        self.assertEqual(
+            "abc",
+            br._direct_url_archive_sha256({"archive_info": {"hash": "sha256=abc"}}),
+        )
+
+    def test_verify_retained_wheel_match_rejects_mismatch(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "does not match retained wheel"):
+            br._verify_retained_wheel_match(
+                package_name="faster-qwen3-tts",
+                installed_archive_sha256="installed",
+                retained_wheel_sha256="retained",
+            )
+
+    def test_verify_retained_wheel_match_accepts_match(self) -> None:
+        self.assertTrue(
+            br._verify_retained_wheel_match(
+                package_name="faster-qwen3-tts",
+                installed_archive_sha256="same",
+                retained_wheel_sha256="same",
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -243,17 +243,71 @@ def _distribution_provenance(name: str) -> dict[str, object] | None:
     except KeyError:
         package_name = name
 
+    retained_wheels = _matching_retained_wheels(
+        name,
+        distribution.version,
+    )
+    installed_archive_sha256 = _direct_url_archive_sha256(direct_url)
+    retained_wheel_sha256 = _single_retained_wheel_sha256(retained_wheels)
+    match_verified = _verify_retained_wheel_match(
+        package_name=name,
+        installed_archive_sha256=installed_archive_sha256,
+        retained_wheel_sha256=retained_wheel_sha256,
+    )
+
     return {
         "name": package_name,
         "version": distribution.version,
         "location": str(distribution.locate_file("")),
         "installer": distribution.read_text("INSTALLER"),
         "direct_url": direct_url,
-        "matching_retained_wheels": _matching_retained_wheels(
-            name,
-            distribution.version,
-        ),
+        "installed_archive_sha256": installed_archive_sha256,
+        "retained_wheel_sha256": retained_wheel_sha256,
+        "retained_wheel_match_verified": match_verified,
+        "matching_retained_wheels": retained_wheels,
     }
+
+
+def _direct_url_archive_sha256(direct_url: object) -> str | None:
+    if not isinstance(direct_url, dict):
+        return None
+    archive_info = direct_url.get("archive_info")
+    if not isinstance(archive_info, dict):
+        return None
+    hashes = archive_info.get("hashes")
+    if isinstance(hashes, dict):
+        sha256 = hashes.get("sha256")
+        if isinstance(sha256, str) and sha256:
+            return sha256
+    archive_hash = archive_info.get("hash")
+    if isinstance(archive_hash, str) and archive_hash.startswith("sha256="):
+        return archive_hash.removeprefix("sha256=")
+    return None
+
+
+def _single_retained_wheel_sha256(wheels: list[dict[str, object]]) -> str | None:
+    if len(wheels) != 1:
+        return None
+    sha256 = wheels[0].get("sha256")
+    if isinstance(sha256, str) and sha256:
+        return sha256
+    return None
+
+
+def _verify_retained_wheel_match(
+    *,
+    package_name: str,
+    installed_archive_sha256: str | None,
+    retained_wheel_sha256: str | None,
+) -> bool | None:
+    if installed_archive_sha256 is None or retained_wheel_sha256 is None:
+        return None
+    if installed_archive_sha256 == retained_wheel_sha256:
+        return True
+    raise RuntimeError(
+        f"{package_name} installed archive sha256 does not match retained wheel: "
+        f"{installed_archive_sha256} != {retained_wheel_sha256}"
+    )
 
 
 def _matching_retained_wheels(name: str, version: str) -> list[dict[str, object]]:

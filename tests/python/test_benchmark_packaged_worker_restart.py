@@ -3,12 +3,18 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 from benchmark_packaged_worker_restart import (
     _append_line,
+    _correlations,
+    _load_run_shapes,
     _median_request,
+    _outlier_records,
     _phase_delta,
     _progress_line,
+    _run_shape_for_index,
+    _shape_summary,
     _with_request_pipeline_metrics,
     _worker_process_args_for_run,
     _write_json_file,
@@ -167,6 +173,107 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual("4442", _value_after(worker_args, "--seed"))
         self.assertEqual("9015", _value_after(worker_args, "--warmup-seed"))
 
+    def test_load_run_shapes_reads_jsonl_schedule(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "shapes.jsonl"
+            path.write_text(
+                '{"label":"short","text":"Short.","language":"English"}\n'
+                '{"label":"long","text":"Long text.","speaker":"ryan"}\n',
+                encoding="utf-8",
+            )
+
+            shapes = _load_run_shapes(path)
+
+        self.assertEqual("short", shapes[0]["label"])
+        self.assertEqual("English", shapes[0]["language"])
+        self.assertEqual("", shapes[0]["speaker"])
+        self.assertEqual("long", shapes[1]["label"])
+        self.assertEqual("ryan", shapes[1]["speaker"])
+
+    def test_load_run_shapes_accepts_utf8_bom(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "shapes.jsonl"
+            path.write_text(
+                '\ufeff{"label":"short","text":"Short."}\n',
+                encoding="utf-8",
+            )
+
+            shapes = _load_run_shapes(path)
+
+        self.assertEqual("short", shapes[0]["label"])
+
+    def test_run_shape_for_index_uses_schedule_and_counts_characters(self) -> None:
+        shape = _run_shape_for_index(
+            argparse.Namespace(
+                text="default",
+                language="auto",
+                speaker="",
+                instruction="",
+            ),
+            [{"label": "short", "text": "abcd", "language": "English"}],
+            1,
+        )
+
+        self.assertEqual("short", shape["label"])
+        self.assertEqual(4, shape["text_characters"])
+
+    def test_shape_summary_groups_runs(self) -> None:
+        summary = _shape_summary(
+            [
+                _summary_run("short", delta=1.0, first_audio=10.0),
+                _summary_run("short", delta=3.0, first_audio=12.0),
+                _summary_run("long", delta=25.0, first_audio=20.0),
+            ]
+        )
+
+        short = cast(dict[str, object], summary["short"])
+        long = cast(dict[str, object], summary["long"])
+        short_first = cast(dict[str, object], short["first_request"])
+        short_first_audio = cast(dict[str, object], short_first["first_audio_ms"])
+
+        self.assertEqual(2, short["runs"])
+        self.assertEqual(1, long["slow_delta_count"])
+        self.assertEqual(
+            11.0,
+            short_first_audio["median"],
+        )
+
+    def test_outlier_records_include_phase_and_shape_context(self) -> None:
+        outliers = _outlier_records(
+            [_summary_run("long", delta=25.0, first_audio=20.0)],
+            threshold_ms=20.0,
+        )
+
+        self.assertEqual(1, len(outliers))
+        outlier = outliers[0]
+        shape = cast(dict[str, object], outlier["shape"])
+        phase_delta = cast(dict[str, object], outlier["paired_phase_delta"])
+
+        self.assertEqual("long", shape["label"])
+        self.assertEqual(
+            5.0,
+            phase_delta["first_chunk_prefill_ms"],
+        )
+
+    def test_correlations_report_pearson_for_phase_delta(self) -> None:
+        correlations = _correlations(
+            [
+                _summary_run("short", delta=1.0, first_audio=10.0),
+                _summary_run("medium", delta=2.0, first_audio=20.0),
+                _summary_run("long", delta=3.0, first_audio=30.0),
+            ]
+        )
+
+        prefill = cast(
+            dict[str, object],
+            correlations["total_delta_vs_prefill_delta"],
+        )
+        self.assertAlmostEqual(
+            1.0,
+            cast(float, prefill["pearson_r"]),
+        )
+
+
 def _qwen_args(
     *,
     seed: int | None,
@@ -213,6 +320,30 @@ def _qwen_args(
 
 def _value_after(args: list[str], key: str) -> str:
     return args[args.index(key) + 1]
+
+
+def _summary_run(label: str, *, delta: float, first_audio: float) -> dict[str, object]:
+    return {
+        "run_index": 1,
+        "shape": {
+            "label": label,
+            "text": f"{label} text",
+            "language": "English",
+            "speaker": "ryan",
+            "instruction": "",
+            "text_characters": len(label),
+        },
+        "first_request": {"first_audio_ms": first_audio},
+        "steady_request_median": {"first_audio_ms": first_audio - delta},
+        "paired_delta_first_audio_ms": delta,
+        "paired_phase_delta": {
+            "first_chunk_prefill_ms": delta / 5.0,
+            "first_chunk_ar_decode_ms": delta / 10.0,
+            "first_chunk_codec_wrapper_residual_ms": delta / 20.0,
+        },
+        "gpu": {},
+        "affinity": {},
+    }
 
 
 if __name__ == "__main__":
