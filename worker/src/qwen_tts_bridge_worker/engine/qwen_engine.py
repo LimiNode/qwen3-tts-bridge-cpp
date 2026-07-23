@@ -558,7 +558,82 @@ def _qwen_stream_generate_pcm(
     if speaker is not None:
         kwargs["speakers"] = [speaker]
 
-    return cast(Iterable[tuple[Any, int]], stream_generate_pcm(**kwargs))
+    return _with_input_metadata(
+        cast(Iterable[tuple[Any, int]], stream_generate_pcm(**kwargs)),
+        _qwen_input_metadata_from_ids(input_ids, instruct_ids),
+    )
+
+
+def _with_input_metadata(
+    stream: Iterable[tuple[Any, int]],
+    metadata: dict[str, object],
+) -> Iterable[tuple[Any, int]]:
+    if not metadata:
+        return stream
+    return cast(Iterable[tuple[Any, int]], _InputMetadataStream(stream, metadata))
+
+
+class _InputMetadataStream:
+    def __init__(
+        self,
+        stream: Iterable[tuple[Any, int]],
+        metadata: dict[str, object],
+    ) -> None:
+        self._stream = stream
+        self._metadata = metadata
+        self._iterator: Iterator[tuple[Any, int]] | None = None
+
+    def __iter__(self) -> "_InputMetadataStream":
+        self._iterator = iter(self._stream)
+        return self
+
+    def __next__(self) -> tuple[Any, int, dict[str, object]]:
+        if self._iterator is None:
+            self._iterator = iter(self._stream)
+        chunk = next(self._iterator)
+        wav, sample_rate, timing = _unpack_audio_chunk(chunk)
+        enriched_timing = dict(timing)
+        for key, value in self._metadata.items():
+            enriched_timing.setdefault(key, value)
+        return wav, sample_rate, enriched_timing
+
+    def close(self) -> None:
+        close = getattr(self._stream, "close", None)
+        if callable(close):
+            close()
+
+
+def _qwen_input_metadata_from_ids(
+    input_ids: list[Any],
+    instruct_ids: list[Any] | None,
+) -> dict[str, object]:
+    text_token_count = _sequence_length(input_ids[0]) if input_ids else None
+    instruction_token_count = (
+        _sequence_length(instruct_ids[0]) if instruct_ids else 0
+    )
+    metadata: dict[str, object] = {}
+    if text_token_count is not None:
+        metadata["text_token_count"] = text_token_count
+    if instruction_token_count is not None:
+        metadata["instruction_token_count"] = instruction_token_count
+    if text_token_count is not None and instruction_token_count is not None:
+        metadata["prefill_sequence_length"] = (
+            text_token_count + instruction_token_count
+        )
+    return metadata
+
+
+def _sequence_length(value: Any) -> int | None:
+    shape = getattr(value, "shape", None)
+    if shape is not None:
+        try:
+            return int(shape[-1])
+        except (IndexError, TypeError, ValueError):
+            pass
+    try:
+        return len(value)
+    except TypeError:
+        return None
 
 
 def _unpack_audio_chunk(chunk: Any) -> tuple[Any, int, dict[str, object]]:
@@ -595,6 +670,15 @@ def _first_chunk_timing_fields(
         fields["chunk_steps"] = int(chunk_steps)
         if decode_ms is not None and chunk_steps > 0:
             fields["ar_ms_per_step"] = decode_ms / chunk_steps
+
+    for key in (
+        "text_token_count",
+        "instruction_token_count",
+        "prefill_sequence_length",
+    ):
+        value = _number_field(chunk_timing, key)
+        if value is not None:
+            fields[key] = int(value)
 
     residual_ms = next_wall_ms
     if prefill_ms is not None:

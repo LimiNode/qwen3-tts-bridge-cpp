@@ -36,6 +36,9 @@ _PHASE_KEYS = (
     "first_chunk_codec_wrapper_residual_ms",
     "first_chunk_pcm_convert_ms",
     "first_chunk_next_wall_ms",
+    "first_chunk_text_token_count",
+    "first_chunk_instruction_token_count",
+    "first_chunk_prefill_sequence_length",
 )
 
 
@@ -577,6 +580,18 @@ def _shape_summary(run_summaries: list[dict[str, object]]) -> dict[str, object]:
             ),
             "first_request": {
                 "first_audio_ms": _summary(first_requests, "first_audio_ms"),
+                "first_chunk_text_token_count": _summary(
+                    first_requests,
+                    "first_chunk_text_token_count",
+                ),
+                "first_chunk_instruction_token_count": _summary(
+                    first_requests,
+                    "first_chunk_instruction_token_count",
+                ),
+                "first_chunk_prefill_sequence_length": _summary(
+                    first_requests,
+                    "first_chunk_prefill_sequence_length",
+                ),
             },
             "steady_request_median": {
                 "first_audio_ms": _summary(steady_requests, "first_audio_ms"),
@@ -656,6 +671,16 @@ def _correlations(run_summaries: list[dict[str, object]]) -> dict[str, object]:
             x_key,
             "text_characters",
         ),
+        "total_delta_vs_text_token_count": _pearson_for_first_request(
+            run_summaries,
+            x_key,
+            "first_chunk_text_token_count",
+        ),
+        "total_delta_vs_prefill_sequence_length": _pearson_for_first_request(
+            run_summaries,
+            x_key,
+            "first_chunk_prefill_sequence_length",
+        ),
     }
     return result
 
@@ -688,6 +713,25 @@ def _pearson_for_shape(
         x = _number(run.get(x_key))
         shape = run.get("shape")
         y = _number(shape.get(shape_key)) if isinstance(shape, dict) else None
+        if x is not None and y is not None:
+            pairs.append((x, y))
+    return _pearson_summary(pairs)
+
+
+def _pearson_for_first_request(
+    runs: list[dict[str, object]],
+    x_key: str,
+    request_key: str,
+) -> dict[str, object]:
+    pairs = []
+    for run in runs:
+        x = _number(run.get(x_key))
+        first_request = run.get("first_request")
+        y = (
+            _number(first_request.get(request_key))
+            if isinstance(first_request, dict)
+            else None
+        )
         if x is not None and y is not None:
             pairs.append((x, y))
     return _pearson_summary(pairs)
@@ -823,6 +867,24 @@ def _with_request_pipeline_metrics(
         first_chunk_phases,
         "next_wall_ms",
         "first_chunk_next_wall_ms",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "text_token_count",
+        "first_chunk_text_token_count",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "instruction_token_count",
+        "first_chunk_instruction_token_count",
+    )
+    _copy_metric_number(
+        enriched,
+        first_chunk_phases,
+        "prefill_sequence_length",
+        "first_chunk_prefill_sequence_length",
     )
 
     if first_frame_enqueued_ms is not None and first_frame_output_writer_ms is not None:

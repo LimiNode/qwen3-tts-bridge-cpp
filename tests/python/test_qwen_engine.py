@@ -344,6 +344,18 @@ class QwenEngineTests(unittest.TestCase):
         self.assertIsNotNone(stream_call["instruct_ids"])
         self.assertIn("assistant:Hello", fake_model.tokenized_texts)
         self.assertIn("instruct:Speak warmly.", fake_model.tokenized_texts)
+        metrics = engine.pop_last_chunk_metrics()
+        self.assertIsNotNone(metrics)
+        assert metrics is not None
+        self.assertEqual(len("ids:assistant:Hello"), metrics["text_token_count"])
+        self.assertEqual(
+            len("ids:instruct:Speak warmly."),
+            metrics["instruction_token_count"],
+        )
+        self.assertEqual(
+            len("ids:assistant:Hello") + len("ids:instruct:Speak warmly."),
+            metrics["prefill_sequence_length"],
+        )
 
     def test_warmup_synthesis_consumes_stream(self) -> None:
         fake_model = _StreamingWrapperModel(
@@ -544,6 +556,36 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(8, metrics["chunk_steps"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])
         self.assertIn("codec_wrapper_residual_ms", metrics)
+
+    def test_faster_stream_preserves_timing_input_metadata(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                ),
+                threading.Event(),
+            )
+        )
+
+        metrics = engine.pop_last_chunk_metrics()
+        self.assertIsNotNone(metrics)
+        assert metrics is not None
+        self.assertEqual(12.0, metrics["prefill_ms"])
 
     def test_faster_voice_design_uses_fixed_chunk_streaming(self) -> None:
         fake_model = _FasterStreamingModel("voice_design")

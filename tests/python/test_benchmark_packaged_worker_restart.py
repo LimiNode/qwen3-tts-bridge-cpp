@@ -56,6 +56,9 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "codec_wrapper_residual_ms": 4.5,
                 "pcm_convert_ms": 0.25,
                 "next_wall_ms": 96.5,
+                "text_token_count": 21,
+                "instruction_token_count": 9,
+                "prefill_sequence_length": 30,
             },
             {
                 "event": "request_first_pcm_ready",
@@ -85,6 +88,9 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(10.0, enriched["first_chunk_ar_ms_per_step"])
         self.assertEqual(4.5, enriched["first_chunk_codec_wrapper_residual_ms"])
         self.assertEqual(0.25, enriched["first_chunk_pcm_convert_ms"])
+        self.assertEqual(21.0, enriched["first_chunk_text_token_count"])
+        self.assertEqual(9.0, enriched["first_chunk_instruction_token_count"])
+        self.assertEqual(30.0, enriched["first_chunk_prefill_sequence_length"])
 
     def test_median_request_includes_pipeline_fields(self) -> None:
         median = _median_request(
@@ -272,6 +278,11 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             1.0,
             cast(float, prefill["pearson_r"]),
         )
+        token_count = cast(
+            dict[str, object],
+            correlations["total_delta_vs_text_token_count"],
+        )
+        self.assertEqual(3, token_count["count"])
 
 
 def _qwen_args(
@@ -333,13 +344,17 @@ def _summary_run(label: str, *, delta: float, first_audio: float) -> dict[str, o
             "instruction": "",
             "text_characters": len(label),
         },
-        "first_request": {"first_audio_ms": first_audio},
         "steady_request_median": {"first_audio_ms": first_audio - delta},
         "paired_delta_first_audio_ms": delta,
         "paired_phase_delta": {
             "first_chunk_prefill_ms": delta / 5.0,
             "first_chunk_ar_decode_ms": delta / 10.0,
             "first_chunk_codec_wrapper_residual_ms": delta / 20.0,
+        },
+        "first_request": {
+            "first_audio_ms": first_audio,
+            "first_chunk_text_token_count": len(label) * 2,
+            "first_chunk_prefill_sequence_length": len(label) * 2 + 10,
         },
         "gpu": {},
         "affinity": {},
