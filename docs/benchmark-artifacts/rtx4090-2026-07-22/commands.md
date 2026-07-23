@@ -972,6 +972,64 @@ finally {
 }
 ```
 
+Input-shape matrix, Qwen `auto -> engine_warmup`, one full synthesis warmup:
+
+```powershell
+$oldPyPath = $env:PYTHONPATH
+$shapes = @(
+    @{ Name = "short"; Text = "Short latency probe." },
+    @{ Name = "medium"; Text = "This is a faster backend latency benchmark." },
+    @{
+        Name = "long"
+        Text = "This is a faster backend latency benchmark. The bridge keeps the worker process warm between requests. We are measuring first audio latency after startup warmup."
+    }
+)
+try {
+    $env:PYTHONPATH = "worker/src;tests/python"
+    foreach ($shape in $shapes) {
+        $out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+            .\.venv-packaging\Scripts\python.exe `
+            --worker-prefix-arg=-B `
+            --worker-prefix-arg=-P `
+            --worker-prefix-arg=-s `
+            --worker-prefix-arg=-m `
+            --worker-prefix-arg=qwen_tts_bridge_worker `
+            --engine qwen `
+            --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+            --runtime-backend faster `
+            --device cuda `
+            --dtype auto `
+            --emit-every-frames 8 `
+            --max-seq-len 2048 `
+            --warmup-synthesis `
+            --warmup-synthesis-passes 1 `
+            --warmup-text $shape.Text `
+            --warmup-language English `
+            --warmup-speaker ryan `
+            --runs 10 `
+            --requests-per-run 4 `
+            --partial-output "tmp\shape-$($shape.Name)-r10-partial.json" `
+            --progress-every-runs 1 `
+            --progress-output "tmp\shape-$($shape.Name)-r10-progress.txt" `
+            --seed 4242 `
+            --seed-mode fixed `
+            --warmup-seed 4242 `
+            --text $shape.Text `
+            --language English `
+            --speaker ryan `
+            --timeout-seconds 1200
+        [IO.File]::WriteAllText(
+            "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-$($shape.Name)-seed4242-auto-warmup1full.json",
+            ($out -join "`n"),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+    }
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
+}
+```
+
 Torch `2.10.0+cu128` source-worker paired restart control:
 
 ```powershell

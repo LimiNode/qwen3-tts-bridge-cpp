@@ -989,6 +989,22 @@ the latency investigation. The varied-seed control makes that conclusion
 stronger: different reproducible per-run seeds raised the first-minus-steady
 p95 to `30.2 ms`, again with the largest paired tail in prefill/setup.
 
+Input-shape sanity matrix, one full synthesis warmup, fixed seed `4242`,
+`10` fresh worker processes per shape:
+
+| Shape | Text | Startup median | First TTFA median | First TTFA p95 | Steady TTFA median | Steady TTFA p95 | First-minus-steady median | First-minus-steady p95 | Slow deltas `>20 ms` |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| short | `Short latency probe.` | 26.98 s | 350.4 ms | 389.3 ms | 348.4 ms | 386.3 ms | 1.3 ms | 7.5 ms | 0 / 10 |
+| medium | benchmark sentence | 26.90 s | 350.0 ms | 361.1 ms | 348.2 ms | 389.6 ms | 0.1 ms | 2.4 ms | 0 / 10 |
+| long | 3 sentences | 30.70 s | 364.6 ms | 520.7 ms | 365.3 ms | 383.9 ms | 2.2 ms | 147.9 ms | 1 / 10 |
+
+Short and medium prompts did not reproduce the first-user tail in this small
+matrix. The long prompt produced one large first-user outlier (`+256.7 ms`),
+with paired prefill/setup delta max `+133.7 ms` and codec/wrapper residual max
+`+51.4 ms`. Treat this as a signal to run a larger long-text matrix before
+changing defaults; it does not contradict the startup-thread fix, but it shows
+that text shape can still expose first-user tails after warmup.
+
 Artifacts:
 
 ```text
@@ -1007,6 +1023,9 @@ docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-seed4242-auto-warmup2full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r100x4-seed4242-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-varseed4242-step1009-auto-warmup1full.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-short-seed4242-auto-warmup1full.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-medium-seed4242-auto-warmup1full.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-long-seed4242-auto-warmup1full.json
 ```
 
 Updated diagnosis after profiling:
@@ -1025,6 +1044,7 @@ extra bounded/full warmup passes: rejected as latency defaults
 CPU affinity: helps steady-state tails but is not a complete fix
 prefill/setup variance: next first-user latency target after startup-thread fix,
   especially under varied seeds
+long prompt shape: can still produce rare large first-user outliers
 prefill/setup and raw AR still need separate work to reach author's end-to-end
 native Windows/WDDM plus older CPU launch overhead: still plausible for raw AR gap
 GPU clocks under sustained benchmark load: still not recorded cleanly
