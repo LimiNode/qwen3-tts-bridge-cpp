@@ -689,3 +689,46 @@ foreach ($entry in @(
     )
 }
 ```
+
+Torch `2.10.0+cu128` source-worker paired restart control:
+
+```powershell
+$oldPyPath = $env:PYTHONPATH
+try {
+    $env:PYTHONPATH = "worker/src;tests/python;external/python/Qwen3-TTS-streaming;C:\_repoz\faster-qwen3-tts-v032-stack112-clean"
+    $out = .\.venv-faster-qwen\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+        .\.venv-faster-qwen\Scripts\python.exe `
+        --worker-prefix-arg=-B `
+        --worker-prefix-arg=-P `
+        --worker-prefix-arg=-s `
+        --worker-prefix-arg=-m `
+        --worker-prefix-arg=qwen_tts_bridge_worker `
+        --engine qwen `
+        --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+        --runtime-backend faster `
+        --device cuda `
+        --dtype auto `
+        --emit-every-frames 8 `
+        --max-seq-len 2048 `
+        --warmup-synthesis `
+        --warmup-synthesis-passes 2 `
+        --warmup-text "This is a faster backend latency benchmark." `
+        --warmup-language English `
+        --warmup-speaker ryan `
+        --runs 20 `
+        --requests-per-run 4 `
+        --seed 4242 `
+        --text "This is a faster backend latency benchmark." `
+        --language English `
+        --speaker ryan `
+        --timeout-seconds 1200
+    [IO.File]::WriteAllText(
+        "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-torch210-cu128.json",
+        ($out -join "`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
+}
+```

@@ -874,6 +874,18 @@ process" penalty:
   experimental; two full warmup passes remain the safer default for latency
   measurements.
 
+Runtime A/B on the same paired restart shape did not find a `torch 2.10/cu128`
+win for CustomVoice:
+
+| Runtime | Python | Processes | First TTFA median | First TTFA p95 | Steady TTFA median | Steady TTFA p95 | First-minus-steady median |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| torch `2.11.0+cu126` | 3.11.9 | 50 | 414.3 ms | 467.3 ms | 363.1 ms | 412.4 ms | 51.8 ms |
+| torch `2.10.0+cu128` | 3.12.10 | 20 | 432.5 ms | 478.2 ms | 378.7 ms | 418.5 ms | 55.5 ms |
+
+The earlier direct benchmark control already made the runtime gap unlikely.
+This paired worker control reinforces that conclusion: switching the product
+worker from `2.11/cu126` to `2.10/cu128` is not an obvious latency fix.
+
 Artifacts:
 
 ```text
@@ -881,6 +893,7 @@ docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-capture-full-bounded2.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-affinity-0-21.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-affinity-22-43.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-torch210-cu128.json
 ```
 
 Updated diagnosis after profiling:
