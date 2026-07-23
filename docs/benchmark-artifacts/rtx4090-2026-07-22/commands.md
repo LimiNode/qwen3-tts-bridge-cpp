@@ -776,6 +776,9 @@ try {
             --engine-startup-mode $entry.Mode `
             --runs 30 `
             --requests-per-run 4 `
+            --partial-output "tmp\paired-restart-$($entry.Suffix)-partial.json" `
+            --progress-every-runs 1 `
+            --progress-output "tmp\paired-restart-$($entry.Suffix)-progress.txt" `
             --seed 4242 `
             --seed-mode fixed `
             --warmup-seed 4242 `
@@ -841,6 +844,9 @@ try {
             --warmup-speaker ryan `
             --runs 30 `
             --requests-per-run 4 `
+            --partial-output "tmp\paired-restart-auto-$($entry.Suffix)-partial.json" `
+            --progress-every-runs 1 `
+            --progress-output "tmp\paired-restart-auto-$($entry.Suffix)-progress.txt" `
             --seed 4242 `
             --seed-mode fixed `
             --warmup-seed 4242 `

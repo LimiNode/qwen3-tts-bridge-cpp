@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import statistics
+import sys
 import time
 from pathlib import Path
 from typing import cast
@@ -55,6 +56,12 @@ def main() -> int:
 
     results = []
     run_summaries = []
+    runtime = runtime_fingerprint(
+        worker_executable=worker_executable,
+        worker_prefix_args=args.worker_prefix_arg,
+        args=args,
+    )
+    started_at = time.perf_counter()
     for index in range(args.runs):
         harness = PackagedWorkerHarness(
             worker_executable=worker_executable,
@@ -87,24 +94,58 @@ def main() -> int:
                 results.append(request_result)
             _shutdown(harness)
             after_requests_gpu = gpu_snapshot()
-            run_summaries.append(
-                _run_summary(
-                    run_index=index + 1,
-                    ready=ready,
-                    requests=run_requests,
-                    worker_metrics=_worker_metrics(harness.stderr_text()),
-                    affinity=affinity_result,
-                    process_started_gpu=process_started_gpu,
-                    after_ready_gpu=after_ready_gpu,
-                    after_requests_gpu=after_requests_gpu,
-                )
+            run_summary = _run_summary(
+                run_index=index + 1,
+                ready=ready,
+                requests=run_requests,
+                worker_metrics=_worker_metrics(harness.stderr_text()),
+                affinity=affinity_result,
+                process_started_gpu=process_started_gpu,
+                after_ready_gpu=after_ready_gpu,
+                after_requests_gpu=after_requests_gpu,
             )
+            run_summaries.append(run_summary)
+            if args.partial_output:
+                _write_json_file(
+                    args.partial_output,
+                    _build_report(args, runtime, results, run_summaries),
+                )
+            if args.progress_every_runs and (index + 1) % args.progress_every_runs == 0:
+                progress_line = _progress_line(
+                    done=index + 1,
+                    total=args.runs,
+                    started_at=started_at,
+                    run_summary=run_summary,
+                )
+                if args.progress_output:
+                    _append_line(args.progress_output, progress_line)
+                else:
+                    print(progress_line, file=sys.stderr, flush=True)
         finally:
             harness.close()
 
-    first_requests = [run["first_request"] for run in run_summaries]
+    print(
+        json.dumps(
+            _build_report(args, runtime, results, run_summaries),
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _build_report(
+    args: argparse.Namespace,
+    runtime: dict[str, object],
+    results: list[dict[str, object]],
+    run_summaries: list[dict[str, object]],
+) -> dict[str, object]:
+    first_requests = [
+        cast(dict[str, object], run["first_request"])
+        for run in run_summaries
+        if isinstance(run.get("first_request"), dict)
+    ]
     steady_requests = [
-        run["steady_request_median"]
+        cast(dict[str, object], run["steady_request_median"])
         for run in run_summaries
         if isinstance(run.get("steady_request_median"), dict)
     ]
@@ -124,80 +165,64 @@ def main() -> int:
         if isinstance(run.get("paired_phase_delta"), dict)
     ]
 
-    print(
-        json.dumps(
-            {
-                "config": {
-                    "runs": args.runs,
-                    "text": args.text,
-                    "language": args.language,
-                    "speaker": args.speaker,
-                    "instruction": args.instruction,
-                    "warmup_synthesis": args.warmup_synthesis,
-                    "warmup_synthesis_passes": args.warmup_synthesis_passes,
-                    "warmup_unbounded_passes": args.warmup_unbounded_passes,
-                    "warmup_max_output_chunks": args.warmup_max_output_chunks,
-                    "warmup_text": args.warmup_text,
-                    "warmup_language": args.warmup_language,
-                    "warmup_speaker": args.warmup_speaker,
-                    "warmup_instruction": args.warmup_instruction,
-                    "engine_startup_mode": args.engine_startup_mode,
-                    "seed": args.seed,
-                    "seed_mode": args.seed_mode,
-                    "warmup_seed": args.warmup_seed,
-                    "requests_per_run": args.requests_per_run,
-                    "cpu_affinity": args.cpu_affinity,
-                },
-                "runtime": runtime_fingerprint(
-                    worker_executable=worker_executable,
-                    worker_prefix_args=args.worker_prefix_arg,
-                    args=args,
-                ),
-                "summary": {
-                    "all_requests": {
-                        "first_audio_ms": _summary(results, "first_audio_ms"),
-                        "completed_ms": _summary(results, "completed_ms"),
-                        "real_time_factor": _summary(results, "real_time_factor"),
-                        "inverse_rtf": _summary(results, "inverse_rtf"),
-                    },
-                    "first_request": {
-                        "first_audio_ms": _summary(first_requests, "first_audio_ms"),
-                        "completed_ms": _summary(first_requests, "completed_ms"),
-                        "real_time_factor": _summary(
-                            first_requests,
-                            "real_time_factor",
-                        ),
-                        "inverse_rtf": _summary(first_requests, "inverse_rtf"),
-                    },
-                    "steady_request_median": {
-                        "first_audio_ms": _summary(steady_requests, "first_audio_ms"),
-                        "completed_ms": _summary(steady_requests, "completed_ms"),
-                        "real_time_factor": _summary(
-                            steady_requests,
-                            "real_time_factor",
-                        ),
-                        "inverse_rtf": _summary(steady_requests, "inverse_rtf"),
-                    },
-                    "paired_delta": {
-                        "first_audio_ms": _summary(
-                            paired_deltas,
-                            "paired_delta_first_audio_ms",
-                        ),
-                    },
-                    "pipeline": _phase_summary(pipeline_requests),
-                    "first_request_pipeline": _phase_summary(first_requests),
-                    "steady_request_median_pipeline": _phase_summary(
-                        steady_requests,
-                    ),
-                    "paired_phase_delta": _phase_summary(paired_phase_deltas),
-                },
-                "runs": run_summaries,
-                "requests": results,
+    return {
+        "config": {
+            "runs": args.runs,
+            "text": args.text,
+            "language": args.language,
+            "speaker": args.speaker,
+            "instruction": args.instruction,
+            "warmup_synthesis": args.warmup_synthesis,
+            "warmup_synthesis_passes": args.warmup_synthesis_passes,
+            "warmup_unbounded_passes": args.warmup_unbounded_passes,
+            "warmup_max_output_chunks": args.warmup_max_output_chunks,
+            "warmup_text": args.warmup_text,
+            "warmup_language": args.warmup_language,
+            "warmup_speaker": args.warmup_speaker,
+            "warmup_instruction": args.warmup_instruction,
+            "engine_startup_mode": args.engine_startup_mode,
+            "seed": args.seed,
+            "seed_mode": args.seed_mode,
+            "warmup_seed": args.warmup_seed,
+            "requests_per_run": args.requests_per_run,
+            "cpu_affinity": args.cpu_affinity,
+        },
+        "runtime": runtime,
+        "summary": {
+            "all_requests": {
+                "first_audio_ms": _summary(results, "first_audio_ms"),
+                "completed_ms": _summary(results, "completed_ms"),
+                "real_time_factor": _summary(results, "real_time_factor"),
+                "inverse_rtf": _summary(results, "inverse_rtf"),
             },
-            sort_keys=True,
-        )
-    )
-    return 0
+            "first_request": {
+                "first_audio_ms": _summary(first_requests, "first_audio_ms"),
+                "completed_ms": _summary(first_requests, "completed_ms"),
+                "real_time_factor": _summary(first_requests, "real_time_factor"),
+                "inverse_rtf": _summary(first_requests, "inverse_rtf"),
+            },
+            "steady_request_median": {
+                "first_audio_ms": _summary(steady_requests, "first_audio_ms"),
+                "completed_ms": _summary(steady_requests, "completed_ms"),
+                "real_time_factor": _summary(steady_requests, "real_time_factor"),
+                "inverse_rtf": _summary(steady_requests, "inverse_rtf"),
+            },
+            "paired_delta": {
+                "first_audio_ms": _summary(
+                    paired_deltas,
+                    "paired_delta_first_audio_ms",
+                ),
+            },
+            "pipeline": _phase_summary(pipeline_requests),
+            "first_request_pipeline": _phase_summary(first_requests),
+            "steady_request_median_pipeline": _phase_summary(
+                steady_requests,
+            ),
+            "paired_phase_delta": _phase_summary(paired_phase_deltas),
+        },
+        "runs": run_summaries,
+        "requests": results,
+    }
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -251,6 +276,24 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runs", type=int, default=20)
     parser.add_argument("--requests-per-run", type=int, default=1)
     parser.add_argument(
+        "--partial-output",
+        type=Path,
+        default=None,
+        help="Optional JSON file updated after each completed fresh-worker run.",
+    )
+    parser.add_argument(
+        "--progress-every-runs",
+        type=int,
+        default=0,
+        help="Write a compact progress line to stderr every N completed runs.",
+    )
+    parser.add_argument(
+        "--progress-output",
+        type=Path,
+        default=None,
+        help="Optional file for progress lines; avoids PowerShell stderr wrapping.",
+    )
+    parser.add_argument(
         "--cpu-affinity",
         default="",
         help="Comma-separated CPU indices to apply to each worker process.",
@@ -260,6 +303,52 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--speaker", default="")
     parser.add_argument("--instruction", default="")
     return parser
+
+
+def _write_json_file(path: Path, report: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(f"{path.name}.tmp")
+    temp_path.write_text(
+        json.dumps(report, sort_keys=True),
+        encoding="utf-8",
+    )
+    temp_path.replace(path)
+
+
+def _append_line(path: Path, line: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(line)
+        handle.write("\n")
+
+
+def _progress_line(
+    *,
+    done: int,
+    total: int,
+    started_at: float,
+    run_summary: dict[str, object],
+) -> str:
+    elapsed_s = time.perf_counter() - started_at
+    first = cast(dict[str, object], run_summary.get("first_request", {}))
+    steady = run_summary.get("steady_request_median")
+    steady_dict = steady if isinstance(steady, dict) else {}
+    return (
+        "progress "
+        f"{done}/{total} "
+        f"elapsed_s={elapsed_s:.1f} "
+        f"last_first_audio_ms={_format_optional_number(first.get('first_audio_ms'))} "
+        "last_steady_first_audio_ms="
+        f"{_format_optional_number(steady_dict.get('first_audio_ms'))} "
+        "last_delta_first_audio_ms="
+        f"{_format_optional_number(run_summary.get('paired_delta_first_audio_ms'))}"
+    )
+
+
+def _format_optional_number(value: object) -> str:
+    if isinstance(value, (int, float)):
+        return f"{float(value):.1f}"
+    return "n/a"
 
 
 def _hello(harness: PackagedWorkerHarness) -> dict[str, object]:

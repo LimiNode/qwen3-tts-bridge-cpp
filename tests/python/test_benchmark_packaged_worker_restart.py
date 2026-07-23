@@ -1,9 +1,15 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from benchmark_packaged_worker_restart import (
+    _append_line,
     _median_request,
     _phase_delta,
+    _progress_line,
     _with_request_pipeline_metrics,
+    _write_json_file,
 )
 
 
@@ -108,6 +114,42 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
 
         self.assertEqual(2.0, delta["transport_and_dispatch_residual_ms"])
         self.assertEqual(20.0, delta["first_chunk_prefill_ms"])
+
+    def test_progress_line_reports_last_run_numbers(self) -> None:
+        line = _progress_line(
+            done=2,
+            total=10,
+            started_at=0.0,
+            run_summary={
+                "first_request": {"first_audio_ms": 400.25},
+                "steady_request_median": {"first_audio_ms": 380.0},
+                "paired_delta_first_audio_ms": 20.25,
+            },
+        )
+
+        self.assertIn("progress 2/10", line)
+        self.assertIn("last_first_audio_ms=400.2", line)
+        self.assertIn("last_steady_first_audio_ms=380.0", line)
+        self.assertIn("last_delta_first_audio_ms=20.2", line)
+
+    def test_write_json_file_replaces_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "partial.json"
+
+            _write_json_file(path, {"runs": [{"run_index": 1}]})
+            _write_json_file(path, {"runs": [{"run_index": 2}]})
+
+            self.assertEqual({"runs": [{"run_index": 2}]}, json.loads(path.read_text()))
+            self.assertFalse(path.with_name("partial.json.tmp").exists())
+
+    def test_append_line_writes_plain_progress_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "progress.txt"
+
+            _append_line(path, "progress 1/2")
+            _append_line(path, "progress 2/2")
+
+            self.assertEqual("progress 1/2\nprogress 2/2\n", path.read_text())
 
 
 if __name__ == "__main__":
