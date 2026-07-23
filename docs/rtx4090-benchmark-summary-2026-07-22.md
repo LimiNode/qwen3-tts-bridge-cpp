@@ -886,6 +886,23 @@ The earlier direct benchmark control already made the runtime gap unlikely.
 This paired worker control reinforces that conclusion: switching the product
 worker from `2.11/cu126` to `2.10/cu128` is not an obvious latency fix.
 
+First-frame pipeline instrumentation was added to the restart benchmark after
+commit `5177566`. A 5-process / 4-requests source-worker probe on
+`torch 2.11.0+cu126` measured:
+
+| Pipeline metric | Median | p95 | Max |
+| --- | ---: | ---: | ---: |
+| client first-audio minus worker first PCM ready | 1.04 ms | 1.23 ms | 1.27 ms |
+| client first-audio minus worker first frame enqueued | 0.94 ms | 1.14 ms | 1.17 ms |
+| client first-audio minus worker first frame flushed estimate | 0.66 ms | 0.77 ms | 0.92 ms |
+| first frame output writer | 0.23 ms | 0.41 ms | 0.56 ms |
+
+This rules out first-frame stdio/framing delivery as the main source of the
+`+50 ms` first-user-after-ready penalty. The remaining latency is already
+present when the worker sees the first PCM chunk as ready, so the next useful
+optimization target is inside the engine path before first PCM, not the
+worker-to-client transport.
+
 Artifacts:
 
 ```text
@@ -894,6 +911,7 @@ docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-affinity-0-21.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-affinity-22-43.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r20x4-seed4242-torch210-cu128.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r5x4-seed4242-pipeline.json
 ```
 
 Updated diagnosis after profiling:
@@ -904,6 +922,7 @@ PR #112 hot-path fixes missing: ruled out as main cause
 torch/cu runtime difference: unlikely after 2.10/cu128 control
 max_seq_len/cache size: unlikely for this workload
 codec decode and wrapper synchronization: confirmed meaningful overhead
+first-frame stdio/framing delivery: ruled out as main first-user TTFA cause
 first-user-after-ready latency: confirmed roughly +50 ms after paired restart probes
 bounded two-chunk second warmup: rejected as a latency default
 CPU affinity: helps steady-state tails but is not a complete fix

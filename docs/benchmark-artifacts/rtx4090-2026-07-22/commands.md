@@ -576,6 +576,13 @@ build\default\qwen_tts_latency_benchmark.exe `
 
 Paired restart source-worker benchmark with runtime fingerprint:
 
+Source-worker faster backend runs require the local faster source on
+`PYTHONPATH` unless it has been installed into the selected environment:
+
+```powershell
+$env:PYTHONPATH = "worker/src;tests/python;external/python/Qwen3-TTS-streaming;C:\_repoz\faster-qwen3-tts-v032-stack112-clean"
+```
+
 ```powershell
 $out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
     .\.venv-packaging\Scripts\python.exe `
@@ -687,6 +694,49 @@ foreach ($entry in @(
         ($out -join "`n"),
         [System.Text.UTF8Encoding]::new($false)
     )
+}
+```
+
+First-frame pipeline probe:
+
+```powershell
+$oldPyPath = $env:PYTHONPATH
+try {
+    $env:PYTHONPATH = "worker/src;tests/python;external/python/Qwen3-TTS-streaming;C:\_repoz\faster-qwen3-tts-v032-stack112-clean"
+    $out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+        .\.venv-packaging\Scripts\python.exe `
+        --worker-prefix-arg=-B `
+        --worker-prefix-arg=-P `
+        --worker-prefix-arg=-s `
+        --worker-prefix-arg=-m `
+        --worker-prefix-arg=qwen_tts_bridge_worker `
+        --engine qwen `
+        --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+        --runtime-backend faster `
+        --device cuda `
+        --dtype auto `
+        --emit-every-frames 8 `
+        --max-seq-len 2048 `
+        --warmup-synthesis `
+        --warmup-synthesis-passes 2 `
+        --warmup-text "This is a faster backend latency benchmark." `
+        --warmup-language English `
+        --warmup-speaker ryan `
+        --runs 5 `
+        --requests-per-run 4 `
+        --seed 4242 `
+        --text "This is a faster backend latency benchmark." `
+        --language English `
+        --speaker ryan `
+        --timeout-seconds 1200
+    [IO.File]::WriteAllText(
+        "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r5x4-seed4242-pipeline.json",
+        ($out -join "`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
 }
 ```
 
