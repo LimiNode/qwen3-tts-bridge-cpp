@@ -962,6 +962,30 @@ sample, while additional passes made the tail worse. Keep multi-pass and
 bounded warmup as experimental controls until a larger randomized confirmatory
 run says otherwise.
 
+The follow-up `100`-process confirmation kept the same one-full-synthesis
+`auto -> engine_warmup` shape and added observable partial/progress artifacts
+outside git while running. Runtime provenance was clean at bridge commit
+`95aef9f`, and the installed `faster_qwen3_tts` package was correctly reported
+as a retained wheel rather than as a bridge source checkout:
+
+```text
+faster_qwen3_tts-0.3.2-py3-none-any.whl
+sha256 b7429f3e15a0c2e43b9f769f2552bb5cb95cd90f3db106fb218bf252a3c7a31c
+```
+
+| Run shape | Processes | Startup median | First TTFA median | First TTFA p95 | Steady TTFA median | Steady TTFA p95 | First-minus-steady median | First-minus-steady p90 | First-minus-steady p95 | Slow deltas `>20 ms` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 full synthesis, fixed seed | 30 | 28.78 s | 360.2 ms | 413.9 ms | 357.4 ms | 411.4 ms | 2.1 ms | 5.8 ms | 20.6 ms | 2 / 30 |
+| 1 full synthesis, fixed seed | 100 | 28.57 s | 362.8 ms | 386.3 ms | 361.3 ms | 374.5 ms | 1.2 ms | 12.7 ms | 22.4 ms | 6 / 100 |
+
+The `r100` result confirms the direction but not the strict acceptance target.
+Moving warmup to the engine thread removes the old systematic `+50 ms` first
+request penalty, but rare first-user tails remain. The paired phase deltas
+point mostly at prefill/setup variance (`p95 +22.4 ms`) with codec/wrapper
+residual still a smaller but persistent median cost (`+4.6 ms`). Treat
+one-pass `engine_warmup` as the best current product default, not as the end of
+the latency investigation.
+
 Artifacts:
 
 ```text
@@ -978,6 +1002,7 @@ docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-seed4242-auto-warmup1full-plus1chunk.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-seed4242-auto-warmup1full-plus2chunks.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-seed4242-auto-warmup2full.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r100x4-seed4242-auto-warmup1full.json
 ```
 
 Updated diagnosis after profiling:
@@ -990,9 +1015,11 @@ max_seq_len/cache size: unlikely for this workload
 codec decode and wrapper synchronization: confirmed meaningful overhead
 first-frame stdio/framing delivery: ruled out as main first-user TTFA cause
 first-user-after-ready latency: caused primarily by main-thread warmup mismatch
-engine-thread one-pass synthesis warmup: accepted as the current default
+engine-thread one-pass synthesis warmup: best current default, but p95 target
+  still misses slightly in r100
 extra bounded/full warmup passes: rejected as latency defaults
 CPU affinity: helps steady-state tails but is not a complete fix
+prefill/setup variance: next first-user latency target after startup-thread fix
 prefill/setup and raw AR still need separate work to reach author's end-to-end
 native Windows/WDDM plus older CPU launch overhead: still plausible for raw AR gap
 GPU clocks under sustained benchmark load: still not recorded cleanly

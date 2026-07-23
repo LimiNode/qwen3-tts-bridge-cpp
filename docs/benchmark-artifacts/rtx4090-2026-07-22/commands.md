@@ -866,6 +866,58 @@ finally {
 }
 ```
 
+Warmup-depth r100 confirmation, Qwen `auto -> engine_warmup`, one full
+synthesis warmup:
+
+```powershell
+.\.venv-packaging\Scripts\python.exe -m pip install --force-reinstall --no-deps `
+    dist\QwenTTSBridge\worker-python\wheels\faster_qwen3_tts-0.3.2-py3-none-any.whl
+
+$oldPyPath = $env:PYTHONPATH
+try {
+    $env:PYTHONPATH = "worker/src;tests/python"
+    $out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+        .\.venv-packaging\Scripts\python.exe `
+        --worker-prefix-arg=-B `
+        --worker-prefix-arg=-P `
+        --worker-prefix-arg=-s `
+        --worker-prefix-arg=-m `
+        --worker-prefix-arg=qwen_tts_bridge_worker `
+        --engine qwen `
+        --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+        --runtime-backend faster `
+        --device cuda `
+        --dtype auto `
+        --emit-every-frames 8 `
+        --max-seq-len 2048 `
+        --warmup-synthesis `
+        --warmup-synthesis-passes 1 `
+        --warmup-text "This is a faster backend latency benchmark." `
+        --warmup-language English `
+        --warmup-speaker ryan `
+        --runs 100 `
+        --requests-per-run 4 `
+        --partial-output tmp\warmup1full-r100-partial.json `
+        --progress-every-runs 1 `
+        --progress-output tmp\warmup1full-r100-progress.txt `
+        --seed 4242 `
+        --seed-mode fixed `
+        --warmup-seed 4242 `
+        --text "This is a faster backend latency benchmark." `
+        --language English `
+        --speaker ryan `
+        --timeout-seconds 1200
+    [IO.File]::WriteAllText(
+        "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r100x4-seed4242-auto-warmup1full.json",
+        ($out -join "`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
+}
+```
+
 Torch `2.10.0+cu128` source-worker paired restart control:
 
 ```powershell
