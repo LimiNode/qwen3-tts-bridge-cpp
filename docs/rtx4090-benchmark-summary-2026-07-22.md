@@ -1199,6 +1199,30 @@ transport/dispatch overhead is around 1 ms for the first chunk in this setup.
 The coarse `prefill_ms` bucket is now split enough to show that talker forward
 dominates the prefill subphase for this prompt.
 
+### Shape Warmup Matrix
+
+A small 8-run shape matrix was added to compare a fixed medium warmup against
+per-shape warmup:
+
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/input-shape-prefill-profile-r2-each-seed20260724.jsonl`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/shape-prefill-profile-source-worker-faster-customvoice-chunk8-r8x2-sampling-mediumwarmup.json`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/shape-prefill-profile-source-worker-faster-customvoice-chunk8-r8x2-sampling-shapewarmup.json`
+
+Both runs used sampling, `--profile-prefill`, `seed=4242`, one synthesis warmup,
+and two measured requests per fresh worker. The per-shape warmup run used the
+new benchmark flag `--warmup-from-run-shape`.
+
+| Matrix | slow positive deltas over 20 ms | first-audio range, request 1 | steady first-audio range | bridge/dispatch residual |
+| --- | ---: | ---: | ---: | ---: |
+| fixed medium warmup | 4 / 8 | 352.2-424.4 ms | 344.7-613.2 ms | 1.04-1.26 ms |
+| per-shape warmup | 2 / 8 | 360.9-420.9 ms | 359.3-412.6 ms | 1.14-1.39 ms |
+
+This suggests that shape-matched warmup may reduce some cold first-request
+variance, but the sample is intentionally small and one fixed-warmup steady
+request was itself an outlier (`very_long_b`, 613.2 ms). Treat this as a
+directional diagnostic. A larger shuffled matrix with request-time GPU polling
+is still needed before changing product defaults.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
