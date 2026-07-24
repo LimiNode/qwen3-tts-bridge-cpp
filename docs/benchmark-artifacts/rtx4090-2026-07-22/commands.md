@@ -1316,6 +1316,16 @@ Add `--warmup-from-run-shape` when comparing bucket-specific prefill behavior.
 It keeps the same fresh-worker structure, but passes each JSONL row's
 text/language/speaker/instruction into that worker's synthesis warmup.
 
+Current faster telemetry provenance:
+
+```text
+faster-qwen3-tts local commit: 7658795
+retained wheel SHA256: fc9526de5e97c55757f2c2463557980d9448f2e76e4465edd4f2a4208deb5b39
+patch series SHA256: e3952fc1393e665af607d339987d4c248b9a72428c8be384585ffa958a60fc4b
+schema patch SHA256: 05e0e799bcf766b9e7ad8e32273c07c1093c00277710cb97f7f086b27efe7d47
+source archive SHA256: e84f44032d3397f4452c25b90626f006d5af3abe7e6a28594a59d3a441d08c9a
+```
+
 ```powershell
 $oldPyPath = $env:PYTHONPATH
 try {

@@ -1153,10 +1153,14 @@ There are now two separate tracks:
 
 ## 2026-07-24 Faster Prefill Profiling Smoke
 
-The retained local `faster_qwen3_tts-0.3.2` wheel was rebuilt from
-`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` commit `48555aa` with extra
-first-chunk timing. The rebuilt retained wheel SHA256 is
-`033f921124a4e5ebbc3e403eb911eff8c3a12b03eaa4eb2ae0050de444f710d3`.
+The retained local `faster_qwen3_tts-0.3.2` wheel is now rebuilt from
+`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` commit `7658795`. That commit
+contains the original telemetry patch plus schema stabilization:
+`profile_schema_version=2`, `profile_complete`, `prefill_total_gpu_ms`, stream
+IDs, and GPU component accounting. The rebuilt retained wheel SHA256 is
+`fc9526de5e97c55757f2c2463557980d9448f2e76e4465edd4f2a4208deb5b39`.
+The faster source patch series and source archive are saved under
+`docs/benchmark-artifacts/rtx4090-2026-07-22/faster-qwen3-tts-telemetry-patch/`.
 The bridge now fails restart benchmarks if the installed faster distribution
 does not match the retained wheel, so these numbers are tied to the wheel kept
 in `dist/QwenTTSBridge/worker-python/wheels/`.
@@ -1179,6 +1183,7 @@ Saved artifacts:
 
 - `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-source-worker-faster-customvoice-chunk8-sampling-r1x2.json`
 - `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-source-worker-faster-customvoice-chunk8-greedy-r1x2.json`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-v2-source-worker-faster-customvoice-chunk8-sampling-r1x2.json`
 
 Results:
 
@@ -1200,6 +1205,10 @@ faster path instead of fallback retokenization, and that request-to-client
 transport/dispatch overhead is around 1 ms for the first chunk in this setup.
 The coarse `prefill_ms` bucket is now split enough to show that talker forward
 dominates the prefill subphase for this prompt.
+
+The v2 smoke confirms the updated profiler schema on the real faster path:
+`profile_complete=true`, `profile_schema_version=2`, `prefill_total_gpu_ms`
+`147.868`, component sum `147.868`, and accounting error approximately `0 ms`.
 
 ### Shape Warmup Matrix
 
