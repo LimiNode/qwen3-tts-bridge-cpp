@@ -292,6 +292,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 _summary_run("short", delta=1.0, first_audio=10.0),
                 _summary_run("short", delta=3.0, first_audio=12.0),
                 _summary_run("long", delta=25.0, first_audio=20.0),
+                _summary_run("long", delta=-30.0, first_audio=20.0),
             ]
         )
 
@@ -302,6 +303,9 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
 
         self.assertEqual(2, short["runs"])
         self.assertEqual(1, long["slow_delta_count"])
+        self.assertEqual(1, long["positive_tail_count"])
+        self.assertEqual(1, long["negative_tail_count"])
+        self.assertEqual(2, long["unstable_count"])
         self.assertEqual(
             11.0,
             short_first_audio["median"],

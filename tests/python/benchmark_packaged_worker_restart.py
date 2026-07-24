@@ -743,13 +743,42 @@ def _shape_summary(
                 for run in runs
                 if _is_slow_delta(run, threshold_ms=threshold_ms)
             ),
+            "positive_tail_count": sum(
+                1
+                for run in runs
+                if _is_positive_tail(run, threshold_ms=threshold_ms)
+            ),
+            "negative_tail_count": sum(
+                1
+                for run in runs
+                if _is_negative_tail(run, threshold_ms=threshold_ms)
+            ),
+            "unstable_count": sum(
+                1
+                for run in runs
+                if _is_unstable_delta(run, threshold_ms=threshold_ms)
+            ),
         }
     return summary
 
 
 def _is_slow_delta(run: dict[str, object], threshold_ms: float = 20.0) -> bool:
+    return _is_positive_tail(run, threshold_ms=threshold_ms)
+
+
+def _is_positive_tail(run: dict[str, object], threshold_ms: float = 20.0) -> bool:
     delta = _number(run.get("paired_delta_first_audio_ms"))
     return delta is not None and delta > threshold_ms
+
+
+def _is_negative_tail(run: dict[str, object], threshold_ms: float = 20.0) -> bool:
+    delta = _number(run.get("paired_delta_first_audio_ms"))
+    return delta is not None and delta < -threshold_ms
+
+
+def _is_unstable_delta(run: dict[str, object], threshold_ms: float = 20.0) -> bool:
+    delta = _number(run.get("paired_delta_first_audio_ms"))
+    return delta is not None and abs(delta) > threshold_ms
 
 
 def _outlier_records(
