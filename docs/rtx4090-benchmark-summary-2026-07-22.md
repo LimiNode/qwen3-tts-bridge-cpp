@@ -1002,21 +1002,25 @@ in both runs (`r=0.87` and `r=0.89`), while transport/dispatch p95 stayed under
 `0.3 ms`. That makes seed-dependent prefill/setup variance the next target; a
 warmup-seed mismatch is not enough to explain the remaining tail.
 
-Input-shape sanity matrix, one full synthesis warmup, fixed seed `4242`,
-`10` fresh worker processes per shape:
+Input-shape matrix, one fixed medium full synthesis warmup, fixed seed within
+each process, per-process seed step `1009`, and deterministic shuffled schedule
+`input-shape-r50-each-seed20260723.jsonl`:
 
-| Shape | Text | Startup median | First TTFA median | First TTFA p95 | Steady TTFA median | Steady TTFA p95 | First-minus-steady median | First-minus-steady p95 | Slow deltas `>20 ms` |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| short | `Short latency probe.` | 26.98 s | 350.4 ms | 389.3 ms | 348.4 ms | 386.3 ms | 1.3 ms | 7.5 ms | 0 / 10 |
-| medium | benchmark sentence | 26.90 s | 350.0 ms | 361.1 ms | 348.2 ms | 389.6 ms | 0.1 ms | 2.4 ms | 0 / 10 |
-| long | 3 sentences | 30.70 s | 364.6 ms | 520.7 ms | 365.3 ms | 383.9 ms | 2.2 ms | 147.9 ms | 1 / 10 |
+| Shape | Text chars | Processes | Startup median | First TTFA median | First TTFA p95 | Steady TTFA median | Steady TTFA p95 | First-minus-steady median | First-minus-steady p90 | First-minus-steady p95 | Slow deltas `>20 ms` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| short | 20 | 50 | 28.79 s | 360.3 ms | 409.6 ms | 355.0 ms | 403.5 ms | 4.7 ms | 11.5 ms | 19.2 ms | 3 / 50 |
+| medium | 43 | 50 | 28.79 s | 403.3 ms | 424.1 ms | 392.3 ms | 412.3 ms | 2.5 ms | 24.7 ms | 39.2 ms | 7 / 50 |
+| long | 161 | 50 | 28.79 s | 400.8 ms | 431.5 ms | 372.2 ms | 412.0 ms | 18.3 ms | 51.8 ms | 53.1 ms | 17 / 50 |
+| very_long | 391 | 50 | 28.79 s | 378.2 ms | 422.1 ms | 365.3 ms | 410.2 ms | 5.3 ms | 24.1 ms | 43.3 ms | 8 / 50 |
 
-Short and medium prompts did not reproduce the first-user tail in this small
-matrix. The long prompt produced one large first-user outlier (`+256.7 ms`),
-with paired prefill/setup delta max `+133.7 ms` and codec/wrapper residual max
-`+51.4 ms`. Treat this as a signal to run a larger long-text matrix before
-changing defaults; it does not contradict the startup-thread fix, but it shows
-that text shape can still expose first-user tails after warmup.
+The larger shuffled matrix confirms that prompt shape can expose first-user
+tails, but not as a simple monotonic function of character count. The overall
+correlation between total first-minus-steady delta and text characters was only
+`r=0.05`, while total delta vs prefill delta stayed high at `r=0.85`.
+The `long` shape was the worst case here (`17 / 50` slow deltas, p95
+`53.1 ms`), even though `very_long` had more characters. That points again to
+the model/backend prefill path and generated prompt/cache behavior rather than
+to C++ transport, Python framing, or raw text length alone.
 
 Artifacts:
 
@@ -1038,6 +1042,8 @@ docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r30x4-varseed4242-step1009-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r100x4-seed4242-step1009-fixed-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r100x4-seed4242-step1009-warmupseed4242-fixed-auto-warmup1full.json
+docs/benchmark-artifacts/rtx4090-2026-07-22/input-shape-r50-each-seed20260723.jsonl
+docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r50each-shuffled-shapes-seed20260723-fixed-auto-warmup1medium.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-short-seed4242-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-medium-seed4242-auto-warmup1full.json
 docs/benchmark-artifacts/rtx4090-2026-07-22/paired-restart-source-worker-faster-customvoice-chunk8-r10x4-shape-long-seed4242-auto-warmup1full.json
@@ -1060,7 +1066,8 @@ CPU affinity: helps steady-state tails but is not a complete fix
 prefill/setup variance: next first-user latency target after startup-thread fix,
   especially under varied seeds; clean r100 controls show p95 around 45-47 ms
   and strong total-delta vs prefill-delta correlation
-long prompt shape: can still produce rare large first-user outliers
+long prompt shape: confirmed worst of the shuffled r50-per-shape matrix, but
+  total delta does not correlate strongly with raw character count
 prefill/setup and raw AR still need separate work to reach author's end-to-end
 native Windows/WDDM plus older CPU launch overhead: still plausible for raw AR gap
 GPU clocks under sustained benchmark load: still not recorded cleanly

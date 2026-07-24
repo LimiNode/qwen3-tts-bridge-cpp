@@ -1096,6 +1096,99 @@ finally {
 }
 ```
 
+Shuffled input-shape matrix, 50 fresh worker processes per shape, one fixed
+medium synthesis warmup:
+
+```powershell
+@'
+import json, random
+from pathlib import Path
+
+out = Path(
+    "docs/benchmark-artifacts/rtx4090-2026-07-22/"
+    "input-shape-r50-each-seed20260723.jsonl"
+)
+shapes = {
+    "short": "Short latency probe.",
+    "medium": "This is a faster backend latency benchmark.",
+    "long": (
+        "This is a faster backend latency benchmark. The bridge keeps the worker "
+        "process warm between requests. We are measuring first audio latency "
+        "after startup warmup."
+    ),
+    "very_long": (
+        "This is a faster backend latency benchmark. The bridge keeps the worker "
+        "process warm between requests. We are measuring first audio latency "
+        "after startup warmup. This longer prompt adds enough text to stress "
+        "prefill behavior while keeping the spoken content practical for repeated "
+        "local validation on the RTX 4090. The output should remain plain English "
+        "and use the same Ryan speaker preset."
+    ),
+}
+rows = []
+for label, text in shapes.items():
+    for index in range(50):
+        rows.append({
+            "label": label,
+            "text": text,
+            "language": "English",
+            "speaker": "ryan",
+            "instruction": "",
+            "replicate": index + 1,
+        })
+random.Random(20260723).shuffle(rows)
+out.write_text(
+    "\n".join(json.dumps(row, ensure_ascii=False, sort_keys=True) for row in rows)
+    + "\n",
+    encoding="utf-8",
+)
+'@ | .\.venv\Scripts\python.exe -
+
+$oldPyPath = $env:PYTHONPATH
+try {
+    $env:PYTHONPATH = "worker/src;tests/python"
+    $out = .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+        .\.venv-packaging\Scripts\python.exe `
+        --worker-prefix-arg=-B `
+        --worker-prefix-arg=-P `
+        --worker-prefix-arg=-s `
+        --worker-prefix-arg=-m `
+        --worker-prefix-arg=qwen_tts_bridge_worker `
+        --engine qwen `
+        --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+        --runtime-backend faster `
+        --device cuda `
+        --dtype auto `
+        --emit-every-frames 8 `
+        --max-seq-len 2048 `
+        --warmup-synthesis `
+        --warmup-synthesis-passes 1 `
+        --warmup-text "This is a faster backend latency benchmark." `
+        --warmup-language English `
+        --warmup-speaker ryan `
+        --runs 200 `
+        --requests-per-run 4 `
+        --run-shapes-jsonl docs\benchmark-artifacts\rtx4090-2026-07-22\input-shape-r50-each-seed20260723.jsonl `
+        --partial-output tmp\shape-r50x4-clean-partial.json `
+        --progress-every-runs 1 `
+        --progress-output tmp\shape-r50x4-clean-progress.txt `
+        --seed 4242 `
+        --seed-mode fixed `
+        --run-seed-step 1009 `
+        --warmup-seed 4242 `
+        --run-warmup-seed-step 0 `
+        --timeout-seconds 1200
+    [IO.File]::WriteAllText(
+        "docs\benchmark-artifacts\rtx4090-2026-07-22\paired-restart-source-worker-faster-customvoice-chunk8-r50each-shuffled-shapes-seed20260723-fixed-auto-warmup1medium.json",
+        ($out -join "`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
+}
+```
+
 Torch `2.10.0+cu128` source-worker paired restart control:
 
 ```powershell
