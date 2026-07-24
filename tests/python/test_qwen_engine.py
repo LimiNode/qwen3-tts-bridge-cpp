@@ -165,6 +165,18 @@ class _FasterStreamingModel:
                     "prefill_ms": 12.0,
                     "decode_ms": 80.0,
                     "chunk_steps": 8,
+                    "profile_schema_version": 2,
+                    "profile_prefill_enabled": True,
+                    "profile_complete": True,
+                    "prefill_total_gpu_ms": 11.0,
+                    "talker_forward_gpu_ms": 6.0,
+                    "first_sample_gpu_ms": 1.0,
+                    "prefill_kv_gpu_ms": 2.0,
+                    "generation_state_gpu_ms": 1.5,
+                    "prefill_to_sync_gpu_ms": 0.5,
+                    "prefill_gpu_component_sum_ms": 11.0,
+                    "prefill_gpu_accounting_error_ms": 0.0,
+                    "talker_forward_gpu_stream_id": 1234,
                 }
 
             def close(self) -> None:
@@ -553,6 +565,13 @@ class QwenEngineTests(unittest.TestCase):
         self.assertIsNotNone(metrics)
         assert metrics is not None
         self.assertEqual(12.0, metrics["prefill_ms"])
+        self.assertEqual(2, metrics["profile_schema_version"])
+        self.assertTrue(metrics["profile_prefill_enabled"])
+        self.assertTrue(metrics["profile_complete"])
+        self.assertEqual(11.0, metrics["prefill_total_gpu_ms"])
+        self.assertEqual(6.0, metrics["talker_forward_gpu_ms"])
+        self.assertEqual(0.0, metrics["prefill_gpu_accounting_error_ms"])
+        self.assertEqual(1234, metrics["talker_forward_gpu_stream_id"])
         self.assertEqual(80.0, metrics["ar_decode_ms"])
         self.assertEqual(8, metrics["chunk_steps"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])

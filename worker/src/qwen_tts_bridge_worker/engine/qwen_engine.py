@@ -684,13 +684,28 @@ def _first_chunk_timing_fields(
         "instruction_token_count",
         "prefill_sequence_length",
         "talker_prefill_length",
+        "profile_schema_version",
+        "prefill_total_gpu_stream_id",
+        "talker_forward_gpu_stream_id",
+        "first_sample_gpu_stream_id",
+        "prefill_kv_gpu_stream_id",
+        "generation_state_gpu_stream_id",
+        "prefill_to_sync_gpu_stream_id",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:
             fields[key] = int(value)
     for key in (
+        "profile_prefill_enabled",
+        "profile_complete",
+    ):
+        value = chunk_timing.get(key)
+        if isinstance(value, bool):
+            fields[key] = value
+    for key in (
         "tokenize_wall_ms",
         "build_talker_inputs_wall_ms",
+        "prefill_total_gpu_ms",
         "talker_forward_launch_wall_ms",
         "talker_forward_gpu_ms",
         "first_sample_launch_wall_ms",
@@ -701,6 +716,8 @@ def _first_chunk_timing_fields(
         "generation_state_gpu_ms",
         "prefill_to_sync_gpu_ms",
         "prefill_sync_wait_ms",
+        "prefill_gpu_component_sum_ms",
+        "prefill_gpu_accounting_error_ms",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:

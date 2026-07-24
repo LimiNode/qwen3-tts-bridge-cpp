@@ -65,9 +65,19 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "instruction_token_count": 9,
                 "prefill_sequence_length": 30,
                 "talker_prefill_length": 42,
+                "profile_schema_version": 2,
+                "profile_prefill_enabled": True,
+                "profile_complete": True,
+                "prefill_total_gpu_ms": 11.0,
+                "talker_forward_gpu_ms": 1.0,
                 "first_sample_gpu_ms": 6.0,
                 "prefill_kv_gpu_ms": 3.0,
+                "generation_state_gpu_ms": 1.0,
+                "prefill_to_sync_gpu_ms": 0.0,
                 "prefill_sync_wait_ms": 1.5,
+                "prefill_gpu_component_sum_ms": 11.0,
+                "prefill_gpu_accounting_error_ms": 0.0,
+                "talker_forward_gpu_stream_id": 1234,
             },
             {
                 "event": "request_first_pcm_ready",
@@ -101,9 +111,18 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(9.0, enriched["first_chunk_instruction_token_count"])
         self.assertEqual(30.0, enriched["first_chunk_prefill_sequence_length"])
         self.assertEqual(42.0, enriched["first_chunk_talker_prefill_length"])
+        self.assertEqual(2, enriched["first_chunk_profile_schema_version"])
+        self.assertTrue(enriched["first_chunk_profile_prefill_enabled"])
+        self.assertTrue(enriched["first_chunk_profile_complete"])
+        self.assertEqual(11.0, enriched["first_chunk_prefill_total_gpu_ms"])
+        self.assertEqual(1.0, enriched["first_chunk_talker_forward_gpu_ms"])
         self.assertEqual(6.0, enriched["first_chunk_first_sample_gpu_ms"])
         self.assertEqual(3.0, enriched["first_chunk_prefill_kv_gpu_ms"])
+        self.assertEqual(1.0, enriched["first_chunk_generation_state_gpu_ms"])
         self.assertEqual(1.5, enriched["first_chunk_prefill_sync_wait_ms"])
+        self.assertEqual(11.0, enriched["first_chunk_prefill_gpu_component_sum_ms"])
+        self.assertEqual(0.0, enriched["first_chunk_prefill_gpu_accounting_error_ms"])
+        self.assertEqual(1234, enriched["first_chunk_talker_forward_gpu_stream_id"])
 
     def test_median_request_includes_pipeline_fields(self) -> None:
         median = _median_request(
@@ -345,6 +364,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             {
                 "first_chunk_prefill_ms": 7.0,
                 "first_chunk_first_sample_gpu_ms": 4.0,
+                "first_chunk_talker_forward_gpu_ms": 9.0,
                 "first_chunk_prefill_kv_gpu_ms": 2.0,
                 "first_chunk_next_wall_ms": 23.0,
                 "transport_and_dispatch_residual_ms": 1.5,
@@ -353,6 +373,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
 
         self.assertEqual(18.0, residuals["delta_without_prefill_ms"])
         self.assertEqual(21.0, residuals["delta_without_first_sample_ms"])
+        self.assertEqual(16.0, residuals["delta_without_talker_forward_ms"])
         self.assertEqual(23.0, residuals["delta_without_prefill_kv_ms"])
         self.assertEqual(24.5, residuals["phase_accounted_delta_ms"])
         self.assertEqual(0.5, residuals["phase_accounting_error_ms"])

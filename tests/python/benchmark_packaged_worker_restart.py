@@ -44,6 +44,7 @@ _PHASE_KEYS = (
     "first_chunk_talker_prefill_length",
     "first_chunk_tokenize_wall_ms",
     "first_chunk_build_talker_inputs_wall_ms",
+    "first_chunk_prefill_total_gpu_ms",
     "first_chunk_talker_forward_launch_wall_ms",
     "first_chunk_talker_forward_gpu_ms",
     "first_chunk_first_sample_launch_wall_ms",
@@ -54,6 +55,8 @@ _PHASE_KEYS = (
     "first_chunk_generation_state_gpu_ms",
     "first_chunk_prefill_to_sync_gpu_ms",
     "first_chunk_prefill_sync_wait_ms",
+    "first_chunk_prefill_gpu_component_sum_ms",
+    "first_chunk_prefill_gpu_accounting_error_ms",
 )
 
 
@@ -806,6 +809,13 @@ def _paired_delta_residuals(
         residuals["delta_without_first_sample_ms"] = (
             paired_delta - first_sample_delta
         )
+    talker_forward_delta = _number(
+        paired_phase_delta.get("first_chunk_talker_forward_gpu_ms")
+    )
+    if talker_forward_delta is not None:
+        residuals["delta_without_talker_forward_ms"] = (
+            paired_delta - talker_forward_delta
+        )
     prefill_kv_delta = _number(paired_phase_delta.get("first_chunk_prefill_kv_gpu_ms"))
     if prefill_kv_delta is not None:
         residuals["delta_without_prefill_kv_ms"] = paired_delta - prefill_kv_delta
@@ -844,6 +854,10 @@ def _paired_delta_residual_summary(
         "delta_without_first_sample_ms": _summary(
             residuals,
             "delta_without_first_sample_ms",
+        ),
+        "delta_without_talker_forward_ms": _summary(
+            residuals,
+            "delta_without_talker_forward_ms",
         ),
         "delta_without_prefill_kv_ms": _summary(
             residuals,
@@ -1154,6 +1168,7 @@ def _with_request_pipeline_metrics(
         ("talker_prefill_length", "first_chunk_talker_prefill_length"),
         ("tokenize_wall_ms", "first_chunk_tokenize_wall_ms"),
         ("build_talker_inputs_wall_ms", "first_chunk_build_talker_inputs_wall_ms"),
+        ("prefill_total_gpu_ms", "first_chunk_prefill_total_gpu_ms"),
         (
             "talker_forward_launch_wall_ms",
             "first_chunk_talker_forward_launch_wall_ms",
@@ -1170,8 +1185,37 @@ def _with_request_pipeline_metrics(
         ("generation_state_gpu_ms", "first_chunk_generation_state_gpu_ms"),
         ("prefill_to_sync_gpu_ms", "first_chunk_prefill_to_sync_gpu_ms"),
         ("prefill_sync_wait_ms", "first_chunk_prefill_sync_wait_ms"),
+        (
+            "prefill_gpu_component_sum_ms",
+            "first_chunk_prefill_gpu_component_sum_ms",
+        ),
+        (
+            "prefill_gpu_accounting_error_ms",
+            "first_chunk_prefill_gpu_accounting_error_ms",
+        ),
     ):
         _copy_metric_number(enriched, first_chunk_phases, source_key, target_key)
+    for source_key, target_key in (
+        ("profile_schema_version", "first_chunk_profile_schema_version"),
+        ("prefill_total_gpu_stream_id", "first_chunk_prefill_total_gpu_stream_id"),
+        ("talker_forward_gpu_stream_id", "first_chunk_talker_forward_gpu_stream_id"),
+        ("first_sample_gpu_stream_id", "first_chunk_first_sample_gpu_stream_id"),
+        ("prefill_kv_gpu_stream_id", "first_chunk_prefill_kv_gpu_stream_id"),
+        (
+            "generation_state_gpu_stream_id",
+            "first_chunk_generation_state_gpu_stream_id",
+        ),
+        (
+            "prefill_to_sync_gpu_stream_id",
+            "first_chunk_prefill_to_sync_gpu_stream_id",
+        ),
+    ):
+        _copy_metric_int(enriched, first_chunk_phases, source_key, target_key)
+    for source_key, target_key in (
+        ("profile_prefill_enabled", "first_chunk_profile_prefill_enabled"),
+        ("profile_complete", "first_chunk_profile_complete"),
+    ):
+        _copy_metric_bool(enriched, first_chunk_phases, source_key, target_key)
 
     if first_frame_enqueued_ms is not None and first_frame_output_writer_ms is not None:
         enriched["worker_first_frame_flushed_estimated_ms"] = (
@@ -1242,6 +1286,28 @@ def _copy_metric_number(
     value = source.get(source_key)
     if isinstance(value, (int, float)):
         target[target_key] = float(value)
+
+
+def _copy_metric_int(
+    target: dict[str, object],
+    source: dict[str, object],
+    source_key: str,
+    target_key: str,
+) -> None:
+    value = source.get(source_key)
+    if isinstance(value, (int, float)):
+        target[target_key] = int(value)
+
+
+def _copy_metric_bool(
+    target: dict[str, object],
+    source: dict[str, object],
+    source_key: str,
+    target_key: str,
+) -> None:
+    value = source.get(source_key)
+    if isinstance(value, bool):
+        target[target_key] = value
 
 
 def _median_request(requests: list[dict[str, object]]) -> dict[str, object] | None:
