@@ -192,6 +192,37 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual("4442", _value_after(worker_args, "--seed"))
         self.assertEqual("9015", _value_after(worker_args, "--warmup-seed"))
 
+    def test_worker_process_args_for_run_can_warm_up_from_shape(self) -> None:
+        args = _qwen_args(
+            seed=None,
+            warmup_seed=None,
+            run_seed_step=0,
+            run_warmup_seed_step=0,
+        )
+        args.warmup_from_run_shape = True
+
+        worker_args = _worker_process_args_for_run(
+            args,
+            run_index=1,
+            run_shape={
+                "text": "Bucket warmup prompt.",
+                "language": "English",
+                "speaker": "ryan",
+                "instruction": "Speak warmly.",
+            },
+        )
+
+        self.assertEqual(
+            "Bucket warmup prompt.",
+            _value_after(worker_args, "--warmup-text"),
+        )
+        self.assertEqual("English", _value_after(worker_args, "--warmup-language"))
+        self.assertEqual("ryan", _value_after(worker_args, "--warmup-speaker"))
+        self.assertEqual(
+            "Speak warmly.",
+            _value_after(worker_args, "--warmup-instruction"),
+        )
+
     def test_load_run_shapes_reads_jsonl_schedule(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "shapes.jsonl"
@@ -469,6 +500,7 @@ def _qwen_args(
         warmup_language="English",
         warmup_speaker="ryan",
         warmup_instruction="",
+        warmup_from_run_shape=False,
         engine_startup_mode="auto",
         request_gpu_poll_interval_ms=0.0,
     )

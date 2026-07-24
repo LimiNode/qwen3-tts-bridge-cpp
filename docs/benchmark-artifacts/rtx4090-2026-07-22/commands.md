@@ -1238,6 +1238,10 @@ Add `--request-gpu-poll-interval-ms 25` to collect per-request `nvidia-smi`
 snapshots in `request.gpu_poll`; this is intended for outlier reruns because
 polling itself adds a little measurement noise.
 
+Add `--warmup-from-run-shape` when comparing bucket-specific prefill behavior.
+It keeps the same fresh-worker structure, but passes each JSONL row's
+text/language/speaker/instruction into that worker's synthesis warmup.
+
 ```powershell
 $oldPyPath = $env:PYTHONPATH
 try {

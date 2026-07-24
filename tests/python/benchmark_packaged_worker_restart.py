@@ -89,7 +89,7 @@ def main() -> int:
         run_shape = _run_shape_for_index(args, run_shapes, index + 1)
         harness = PackagedWorkerHarness(
             worker_executable=worker_executable,
-            args=_worker_process_args_for_run(args, index + 1),
+            args=_worker_process_args_for_run(args, index + 1, run_shape),
             timeout_seconds=args.timeout_seconds,
         )
         try:
@@ -225,6 +225,7 @@ def _build_report(
             "profile_prefill": args.profile_prefill,
             "do_sample": not args.no_sample,
             "request_gpu_poll_interval_ms": args.request_gpu_poll_interval_ms,
+            "warmup_from_run_shape": args.warmup_from_run_shape,
             "run_shapes_jsonl": str(args.run_shapes_jsonl)
             if args.run_shapes_jsonl
             else None,
@@ -339,6 +340,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-speaker", default="")
     parser.add_argument("--warmup-instruction", default="")
+    parser.add_argument(
+        "--warmup-from-run-shape",
+        action="store_true",
+        help="Use each run shape as that fresh worker's synthesis warmup prompt.",
+    )
     parser.add_argument(
         "--engine-startup-mode",
         choices=("auto", "main", "engine_warmup", "engine_load_warmup"),
@@ -464,14 +470,14 @@ class _RequestGpuPoller:
 def _worker_process_args_for_run(
     args: argparse.Namespace,
     run_index: int,
+    run_shape: dict[str, object] | None = None,
 ) -> list[str]:
-    if (
-        args.seed is None
-        and args.warmup_seed is None
-    ) or (
-        args.run_seed_step == 0
-        and args.run_warmup_seed_step == 0
-    ):
+    needs_run_args = (
+        (args.seed is not None and args.run_seed_step != 0)
+        or (args.warmup_seed is not None and args.run_warmup_seed_step != 0)
+        or (args.warmup_from_run_shape and run_shape is not None)
+    )
+    if not needs_run_args:
         return _worker_process_args(args)
 
     run_args = argparse.Namespace(**vars(args))
@@ -483,6 +489,11 @@ def _worker_process_args_for_run(
         run_args.warmup_seed = int(run_args.warmup_seed) + (run_index - 1) * int(
             args.run_warmup_seed_step
         )
+    if args.warmup_from_run_shape and run_shape is not None:
+        run_args.warmup_text = str(run_shape["text"])
+        run_args.warmup_language = str(run_shape["language"])
+        run_args.warmup_speaker = str(run_shape["speaker"])
+        run_args.warmup_instruction = str(run_shape["instruction"])
     return _worker_process_args(run_args)
 
 
