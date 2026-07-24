@@ -1210,6 +1210,24 @@ The v2 smoke confirms the updated profiler schema on the real faster path:
 `profile_complete=true`, `profile_schema_version=2`, `prefill_total_gpu_ms`
 `147.868`, component sum `147.868`, and accounting error approximately `0 ms`.
 
+A small profile overhead control was also recorded:
+
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/profile-overhead-off-source-worker-faster-customvoice-chunk8-r5x4.json`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/profile-overhead-on-source-worker-faster-customvoice-chunk8-r5x4.json`
+
+Both runs used 5 fresh workers x 4 measured requests, sampling, fixed seed
+4242, one full synthesis warmup, and no GPU polling.
+
+| Mode | first TTFA p50 | first TTFA p95 | steady TTFA p50 | steady TTFA p95 | paired delta p50 | paired delta p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| profile off | 356.059 ms | 405.552 ms | 352.811 ms | 406.624 ms | 4.121 ms | 8.329 ms |
+| profile on | 356.495 ms | 409.418 ms | 354.174 ms | 402.557 ms | 5.052 ms | 9.438 ms |
+
+This small control does not show a large profiling overhead. The paired-delta
+p95 difference is about `1.1 ms`; first TTFA p95 differs by about `3.9 ms` on
+only five fresh workers, so a larger shuffled run is still needed before using
+it as a hard acceptance result.
+
 ### Shape Warmup Matrix
 
 A small 8-run shape matrix was added to compare a fixed medium warmup against

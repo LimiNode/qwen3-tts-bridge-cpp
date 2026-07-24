@@ -740,6 +740,59 @@ finally {
 }
 ```
 
+2026-07-24 profile-on/off overhead control:
+
+```powershell
+$oldPyPath = $env:PYTHONPATH
+try {
+    $env:PYTHONPATH = "worker/src;tests/python"
+    foreach ($profile in @($false, $true)) {
+        $name = if ($profile) { "on" } else { "off" }
+        $args = @(
+            "-B", "tests\python\benchmark_packaged_worker_restart.py",
+            ".\.venv-packaging\Scripts\python.exe",
+            "--worker-prefix-arg=-B",
+            "--worker-prefix-arg=-P",
+            "--worker-prefix-arg=-s",
+            "--worker-prefix-arg=-m",
+            "--worker-prefix-arg=qwen_tts_bridge_worker",
+            "--engine", "qwen",
+            "--model-path", "models\Qwen3-TTS-12Hz-0.6B-CustomVoice",
+            "--runtime-backend", "faster",
+            "--device", "cuda",
+            "--dtype", "auto",
+            "--emit-every-frames", "8",
+            "--max-seq-len", "2048",
+            "--warmup-synthesis",
+            "--warmup-synthesis-passes", "1",
+            "--warmup-text", "I am your robot. I am your worker.",
+            "--warmup-language", "English",
+            "--warmup-speaker", "ryan",
+            "--runs", "5",
+            "--requests-per-run", "4",
+            "--seed", "4242",
+            "--seed-mode", "fixed",
+            "--warmup-seed", "4242",
+            "--text", "I am your robot. I am your worker.",
+            "--language", "English",
+            "--speaker", "ryan",
+            "--partial-output",
+            "docs\benchmark-artifacts\rtx4090-2026-07-22\profile-overhead-$name-source-worker-faster-customvoice-chunk8-r5x4.json",
+            "--progress-every-runs", "1",
+            "--progress-output", "tmp\profile-overhead-$name-progress.txt",
+            "--timeout-seconds", "1200"
+        )
+        if ($profile) {
+            $args += "--profile-prefill"
+        }
+        .\.venv-packaging\Scripts\python.exe @args > "tmp\profile-overhead-$name-stdout.json"
+    }
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
+}
+```
+
 2026-07-24 small shape matrix, fixed medium warmup vs per-shape warmup:
 
 ```powershell
