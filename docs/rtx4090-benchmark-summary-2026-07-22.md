@@ -1154,7 +1154,9 @@ There are now two separate tracks:
 ## 2026-07-24 Faster Prefill Profiling Smoke
 
 The retained local `faster_qwen3_tts-0.3.2` wheel was rebuilt from
-`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` with extra first-chunk timing.
+`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` commit `48555aa` with extra
+first-chunk timing. The rebuilt retained wheel SHA256 is
+`033f921124a4e5ebbc3e403eb911eff8c3a12b03eaa4eb2ae0050de444f710d3`.
 The bridge now fails restart benchmarks if the installed faster distribution
 does not match the retained wheel, so these numbers are tied to the wheel kept
 in `dist/QwenTTSBridge/worker-python/wheels/`.
