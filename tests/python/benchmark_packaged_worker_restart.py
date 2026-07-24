@@ -7,7 +7,9 @@ import json
 import math
 import statistics
 import sys
+import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
@@ -100,20 +102,27 @@ def main() -> int:
             after_ready_gpu = gpu_snapshot()
             run_requests = []
             for request_index in range(args.requests_per_run):
-                request_result = _run_request(
-                    harness,
-                    request_id=request_index + 1,
-                    text=str(run_shape["text"]),
-                    language=str(run_shape["language"]),
-                    speaker=str(run_shape["speaker"]),
-                    instruction=str(run_shape["instruction"]),
-                )
+                gpu_poller = _RequestGpuPoller(args.request_gpu_poll_interval_ms)
+                gpu_poller.start()
+                try:
+                    request_result = _run_request(
+                        harness,
+                        request_id=request_index + 1,
+                        text=str(run_shape["text"]),
+                        language=str(run_shape["language"]),
+                        speaker=str(run_shape["speaker"]),
+                        instruction=str(run_shape["instruction"]),
+                    )
+                finally:
+                    request_gpu_poll = gpu_poller.stop()
                 request_result["run_index"] = index + 1
                 request_result["request_index"] = request_index + 1
                 request_result["shape_label"] = run_shape["label"]
                 request_result["text_characters"] = run_shape["text_characters"]
                 request_result["ready_warmed_up"] = ready.get("warmed_up")
                 request_result["startup_ms"] = ready.get("startup_ms")
+                if request_gpu_poll is not None:
+                    request_result["gpu_poll"] = request_gpu_poll
                 run_requests.append(request_result)
                 results.append(request_result)
             _shutdown(harness)
@@ -215,6 +224,7 @@ def _build_report(
             "cpu_affinity": args.cpu_affinity,
             "profile_prefill": args.profile_prefill,
             "do_sample": not args.no_sample,
+            "request_gpu_poll_interval_ms": args.request_gpu_poll_interval_ms,
             "run_shapes_jsonl": str(args.run_shapes_jsonl)
             if args.run_shapes_jsonl
             else None,
@@ -296,6 +306,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--profile-prefill", action="store_true")
     parser.add_argument("--no-sample", action="store_true")
+    parser.add_argument(
+        "--request-gpu-poll-interval-ms",
+        type=float,
+        default=0.0,
+        help="Poll nvidia-smi during each request when greater than zero.",
+    )
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--seed-mode",
@@ -393,6 +409,56 @@ def _validate_runtime_provenance(
         raise RuntimeError(
             "faster_qwen3_tts retained wheel provenance was not verified"
         )
+
+
+class _RequestGpuPoller:
+    def __init__(
+        self,
+        interval_ms: float,
+        *,
+        snapshot_fn: Callable[[], dict[str, object]] = gpu_snapshot,
+    ) -> None:
+        self._interval_seconds = max(float(interval_ms), 0.0) / 1000.0
+        self._snapshot_fn = snapshot_fn
+        self._stop = threading.Event()
+        self._samples: list[dict[str, object]] = []
+        self._thread: threading.Thread | None = None
+        self._started_at = 0.0
+
+    def start(self) -> None:
+        if self._interval_seconds <= 0.0:
+            return
+        self._started_at = time.perf_counter()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="benchmark-gpu-poller",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def stop(self) -> dict[str, object] | None:
+        if self._thread is None:
+            return None
+        self._stop.set()
+        self._thread.join(timeout=max(self._interval_seconds * 2.0, 1.0))
+        samples = list(self._samples)
+        return {
+            "interval_ms": self._interval_seconds * 1000.0,
+            "sample_count": len(samples),
+            "samples": samples,
+            "summary": _gpu_poll_summary(samples),
+        }
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            snapshot = self._snapshot_fn()
+            self._samples.append(
+                {
+                    "t_ms": (time.perf_counter() - self._started_at) * 1000.0,
+                    "snapshot": snapshot,
+                }
+            )
+            self._stop.wait(self._interval_seconds)
 
 
 def _worker_process_args_for_run(
@@ -892,6 +958,57 @@ def _number(value: object) -> float | None:
     if isinstance(value, (int, float)):
         return float(value)
     return None
+
+
+def _gpu_poll_summary(samples: list[dict[str, object]]) -> dict[str, object]:
+    keys = (
+        "utilization.gpu",
+        "power.draw",
+        "clocks.sm",
+        "clocks.mem",
+        "temperature.gpu",
+    )
+    values: dict[str, list[float]] = {key: [] for key in keys}
+    available_count = 0
+    for sample in samples:
+        snapshot = sample.get("snapshot")
+        if not isinstance(snapshot, dict) or snapshot.get("available") is not True:
+            continue
+        gpus = snapshot.get("gpus")
+        if not isinstance(gpus, list) or not gpus:
+            continue
+        first_gpu = gpus[0]
+        if not isinstance(first_gpu, dict):
+            continue
+        available_count += 1
+        for key in keys:
+            value = _number_from_text(first_gpu.get(key))
+            if value is not None:
+                values[key].append(value)
+
+    return {
+        "available_sample_count": available_count,
+        "max_utilization_gpu": _max_or_none(values["utilization.gpu"]),
+        "max_power_draw": _max_or_none(values["power.draw"]),
+        "max_clocks_sm": _max_or_none(values["clocks.sm"]),
+        "max_clocks_mem": _max_or_none(values["clocks.mem"]),
+        "max_temperature_gpu": _max_or_none(values["temperature.gpu"]),
+    }
+
+
+def _number_from_text(value: object) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not isinstance(value, str):
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def _max_or_none(values: list[float]) -> float | None:
+    return max(values) if values else None
 
 
 def _phase_summary(results: list[dict[str, object]]) -> dict[str, object]:

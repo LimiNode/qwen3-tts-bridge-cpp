@@ -1234,6 +1234,10 @@ finally {
 
 2026-07-24 faster prefill profiling smoke:
 
+Add `--request-gpu-poll-interval-ms 25` to collect per-request `nvidia-smi`
+snapshots in `request.gpu_poll`; this is intended for outlier reruns because
+polling itself adds a little measurement noise.
+
 ```powershell
 $oldPyPath = $env:PYTHONPATH
 try {

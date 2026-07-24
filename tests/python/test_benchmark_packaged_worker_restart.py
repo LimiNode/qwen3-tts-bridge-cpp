@@ -8,6 +8,7 @@ from typing import cast
 from benchmark_packaged_worker_restart import (
     _append_line,
     _correlations,
+    _gpu_poll_summary,
     _load_run_shapes,
     _median_request,
     _outlier_records,
@@ -15,6 +16,7 @@ from benchmark_packaged_worker_restart import (
     _paired_delta_residuals,
     _phase_delta,
     _progress_line,
+    _RequestGpuPoller,
     _run_shape_for_index,
     _shape_summary,
     _validate_runtime_provenance,
@@ -347,6 +349,53 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(4.0, without_prefill["median"])
         self.assertEqual(0.0, accounting_error["median"])
 
+    def test_gpu_poll_summary_extracts_first_gpu_maxima(self) -> None:
+        summary = _gpu_poll_summary(
+            [
+                {
+                    "snapshot": {
+                        "available": True,
+                        "gpus": [
+                            {
+                                "utilization.gpu": "10",
+                                "power.draw": "120.5",
+                                "clocks.sm": "2700",
+                                "clocks.mem": "10501",
+                                "temperature.gpu": "42",
+                            }
+                        ],
+                    }
+                },
+                {
+                    "snapshot": {
+                        "available": True,
+                        "gpus": [
+                            {
+                                "utilization.gpu": "87",
+                                "power.draw": "301.25",
+                                "clocks.sm": "2715",
+                                "clocks.mem": "10501",
+                                "temperature.gpu": "48",
+                            }
+                        ],
+                    }
+                },
+            ]
+        )
+
+        self.assertEqual(2, summary["available_sample_count"])
+        self.assertEqual(87.0, summary["max_utilization_gpu"])
+        self.assertEqual(301.25, summary["max_power_draw"])
+        self.assertEqual(2715.0, summary["max_clocks_sm"])
+        self.assertEqual(48.0, summary["max_temperature_gpu"])
+
+    def test_gpu_poller_returns_none_when_disabled(self) -> None:
+        poller = _RequestGpuPoller(0.0)
+
+        poller.start()
+
+        self.assertIsNone(poller.stop())
+
     def test_validate_runtime_provenance_requires_verified_faster_wheel(self) -> None:
         args = argparse.Namespace(engine="qwen", runtime_backend="faster")
 
@@ -406,6 +455,7 @@ def _qwen_args(
         no_compile_codebook_predictor=False,
         no_compile_talker=False,
         matmul_precision="",
+        no_sample=False,
         seed=seed,
         seed_mode="request_id",
         warmup_seed=warmup_seed,
@@ -420,6 +470,7 @@ def _qwen_args(
         warmup_speaker="ryan",
         warmup_instruction="",
         engine_startup_mode="auto",
+        request_gpu_poll_interval_ms=0.0,
     )
 
 
