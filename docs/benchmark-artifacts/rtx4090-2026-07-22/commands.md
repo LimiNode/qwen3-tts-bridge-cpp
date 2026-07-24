@@ -1372,11 +1372,13 @@ text/language/speaker/instruction into that worker's synthesis warmup.
 Current faster telemetry provenance:
 
 ```text
-faster-qwen3-tts local commit: 7658795
-retained wheel SHA256: fc9526de5e97c55757f2c2463557980d9448f2e76e4465edd4f2a4208deb5b39
-patch series SHA256: e3952fc1393e665af607d339987d4c248b9a72428c8be384585ffa958a60fc4b
+faster-qwen3-tts local commit: 8152612
+retained wheel SHA256: 3f81c8cd1eca91d203913d6befb4ee11d2aa8e38e8c593206bedc8df8db63b03
+patch series SHA256: 911794fd1997be1e4642e36fe6cd570552cd6c7afa99ee35ef451fe8aca8915e
 schema patch SHA256: 05e0e799bcf766b9e7ad8e32273c07c1093c00277710cb97f7f086b27efe7d47
-source archive SHA256: e84f44032d3397f4452c25b90626f006d5af3abe7e6a28594a59d3a441d08c9a
+NVTX patch SHA256: 6025418c7617bcbcb70178f130dd5c272afddfdad5fca4382fc8b4796fd1ef37
+source archive SHA256: a6a7e46336b49d30b100543aa2921460bbc917faa0d7d113da5995b73a9539c5
+Nsight status: nsys/ncu not found in PATH during this pass
 ```
 
 ```powershell

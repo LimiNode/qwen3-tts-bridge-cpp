@@ -1154,11 +1154,12 @@ There are now two separate tracks:
 ## 2026-07-24 Faster Prefill Profiling Smoke
 
 The retained local `faster_qwen3_tts-0.3.2` wheel is now rebuilt from
-`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` commit `7658795`. That commit
-contains the original telemetry patch plus schema stabilization:
+`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` commit `8152612`. That commit
+contains the original telemetry patch, schema stabilization, and NVTX ranges
+for future Nsight traces:
 `profile_schema_version=2`, `profile_complete`, `prefill_total_gpu_ms`, stream
 IDs, and GPU component accounting. The rebuilt retained wheel SHA256 is
-`fc9526de5e97c55757f2c2463557980d9448f2e76e4465edd4f2a4208deb5b39`.
+`3f81c8cd1eca91d203913d6befb4ee11d2aa8e38e8c593206bedc8df8db63b03`.
 The faster source patch series and source archive are saved under
 `docs/benchmark-artifacts/rtx4090-2026-07-22/faster-qwen3-tts-telemetry-patch/`.
 The bridge now fails restart benchmarks if the installed faster distribution
@@ -1184,6 +1185,7 @@ Saved artifacts:
 - `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-source-worker-faster-customvoice-chunk8-sampling-r1x2.json`
 - `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-source-worker-faster-customvoice-chunk8-greedy-r1x2.json`
 - `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-v2-source-worker-faster-customvoice-chunk8-sampling-r1x2.json`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-v2-nvtx-source-worker-faster-customvoice-chunk8-sampling-r1x1.json`
 
 Results:
 
@@ -1209,6 +1211,9 @@ dominates the prefill subphase for this prompt.
 The v2 smoke confirms the updated profiler schema on the real faster path:
 `profile_complete=true`, `profile_schema_version=2`, `prefill_total_gpu_ms`
 `147.868`, component sum `147.868`, and accounting error approximately `0 ms`.
+The NVTX-enabled wheel also passed a real `r1x1` smoke with `--profile-prefill`.
+`nsys` and `ncu` were not available in `PATH` on this machine during this pass,
+so an actual Nsight trace is still pending.
 
 A small profile overhead control was also recorded:
 

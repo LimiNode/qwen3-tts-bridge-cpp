@@ -1,7 +1,125 @@
-﻿From afa61203399c48ef43c7d8e354c5dbf36e96d423 Mon Sep 17 00:00:00 2001
+﻿From 52d3376967fd54bb604f7a10c9b2dc19dc8f2cc6 Mon Sep 17 00:00:00 2001
+From: Andres Marafioti <andimarafioti@gmail.com>
+Date: Wed, 10 Jun 2026 08:35:23 +0200
+Subject: [PATCH 1/3] Use a preallocated history buffer for repetition penalty
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Both fast decode loops rebuilt the first-codebook history every step with
+torch.stack over a growing Python list of GPU scalars — O(n) kernel
+launches per step, O(n^2) over a generation, plus a list append per step.
+Write each consumed token into a preallocated [max_new_tokens] device
+buffer instead and pass a slice view to apply_repetition_penalty.
+
+The streaming loop's all_first_tokens list existed only for this and for
+the min_new_tokens count, which is now derived from step_idx; the list is
+gone. parity_generate_streaming (dynamic-cache reference) is unchanged.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ faster_qwen3_tts/generate.py  | 18 +++++++++++++-----
+ faster_qwen3_tts/streaming.py | 18 ++++++++++++------
+ 2 files changed, 25 insertions(+), 11 deletions(-)
+
+diff --git a/faster_qwen3_tts/generate.py b/faster_qwen3_tts/generate.py
+index e7fe70d..40513b8 100644
+--- a/faster_qwen3_tts/generate.py
++++ b/faster_qwen3_tts/generate.py
+@@ -176,6 +176,11 @@ def fast_generate(
+     t_decode_start = time.time()
+     all_codec_ids = []
+     eos_found = False
++    # Preallocated first-codebook history for repetition penalty; rebuilding it
++    # with torch.stack over a growing list is O(n) launches per step.
++    rep_history = None
++    if repetition_penalty != 1.0:
++        rep_history = torch.empty(max_new_tokens, dtype=torch.long, device=device)
+ 
+     for step_idx in range(max_new_tokens):
+         if step_idx > 0:
+@@ -197,11 +202,13 @@ def fast_generate(
+         last_id_hidden = talker_codec_embed(token.unsqueeze(1))  # [1, 1, H]
+         pred_input = torch.cat((past_hidden, last_id_hidden), dim=1)  # [1, 2, H]
+         codebook_token_ids = predictor_graph.run(pred_input)  # [15] long tensor
+-        
++
+         # Build full codec: [first_cb, cb1, ..., cb15]
+         all_cb = torch.cat([token.view(1), codebook_token_ids])  # [16]
+         all_codec_ids.append(all_cb.detach())
+-        
++        if rep_history is not None:
++            rep_history[step_idx:step_idx + 1] = token
++
+         # --- Build input embedding for talker ---
+         codec_hiddens = [last_id_hidden]
+         for i in range(num_code_groups - 1):
+@@ -224,9 +231,10 @@ def fast_generate(
+         
+         logits = talker_codec_head(hidden_states[:, -1, :]).unsqueeze(0)
+         
+-        if repetition_penalty != 1.0 and len(all_codec_ids) > 0:
+-            history = torch.stack([c[0] for c in all_codec_ids])
+-            logits = apply_repetition_penalty(logits, history, repetition_penalty)
++        if rep_history is not None:
++            logits = apply_repetition_penalty(
++                logits, rep_history[:step_idx + 1], repetition_penalty
++            )
+ 
+         suppress_eos = len(all_codec_ids) < min_new_tokens
+         token = sample_logits(
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 02b586c..5297878 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -105,7 +105,11 @@ def fast_generate_streaming(
+ 
+     # === DECODE LOOP — yield chunks ===
+     chunk_buffer = []
+-    all_first_tokens = []  # for repetition penalty across chunks
++    # Preallocated first-codebook history for repetition penalty across chunks;
++    # rebuilding it with torch.stack over a growing list is O(n) launches per step.
++    rep_history = None
++    if repetition_penalty != 1.0:
++        rep_history = torch.empty(max_new_tokens, dtype=torch.long, device=device)
+     total_steps = 0
+     chunk_count = 0
+     eos_found = False
+@@ -136,7 +140,8 @@ def fast_generate_streaming(
+ 
+         all_cb = torch.cat([token.view(1), codebook_token_ids])
+         chunk_buffer.append(all_cb.detach())
+-        all_first_tokens.append(token.detach())
++        if rep_history is not None:
++            rep_history[step_idx:step_idx + 1] = token
+ 
+         # --- Build input embedding for talker ---
+         codec_hiddens = [last_id_hidden]
+@@ -158,11 +163,12 @@ def fast_generate_streaming(
+ 
+         logits = talker_codec_head(hidden_states[:, -1, :]).unsqueeze(0)
+ 
+-        if repetition_penalty != 1.0 and all_first_tokens:
+-            history = torch.stack(all_first_tokens)
+-            logits = apply_repetition_penalty(logits, history, repetition_penalty)
++        if rep_history is not None:
++            logits = apply_repetition_penalty(
++                logits, rep_history[:step_idx + 1], repetition_penalty
++            )
+ 
+-        suppress_eos = len(all_first_tokens) < min_new_tokens
++        suppress_eos = step_idx + 1 < min_new_tokens
+         token = sample_logits(
+             logits.squeeze(0),
+             temperature=temperature,
+-- 
+2.53.0.windows.1
+
+
+From afa61203399c48ef43c7d8e354c5dbf36e96d423 Mon Sep 17 00:00:00 2001
 From: Andres Marafioti <andimarafioti@gmail.com>
 Date: Wed, 10 Jun 2026 08:35:39 +0200
-Subject: [PATCH 1/2] Fuse the 15 predictor codebook embedding lookups into one
+Subject: [PATCH 2/3] Fuse the 15 predictor codebook embedding lookups into one
  gather
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -148,7 +266,7 @@ index 5297878..e857932 100644
 From 48555aa783080f9118846db775a141b45ce99acc Mon Sep 17 00:00:00 2001
 From: Aster Seker <git.electroyar@gmail.com>
 Date: Fri, 24 Jul 2026 15:03:58 +0300
-Subject: [PATCH 2/2] Add streaming prefill profile telemetry
+Subject: [PATCH 3/3] Add streaming prefill profile telemetry
 
 ---
  faster_qwen3_tts/model.py     | 336 ++++++++++++++++++++++++----------
