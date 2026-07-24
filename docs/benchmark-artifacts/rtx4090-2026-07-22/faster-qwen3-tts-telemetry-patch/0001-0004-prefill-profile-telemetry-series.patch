@@ -1,272 +1,7 @@
-﻿From 52d3376967fd54bb604f7a10c9b2dc19dc8f2cc6 Mon Sep 17 00:00:00 2001
-From: Andres Marafioti <andimarafioti@gmail.com>
-Date: Wed, 10 Jun 2026 08:35:23 +0200
-Subject: [PATCH 1/3] Use a preallocated history buffer for repetition penalty
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-
-Both fast decode loops rebuilt the first-codebook history every step with
-torch.stack over a growing Python list of GPU scalars — O(n) kernel
-launches per step, O(n^2) over a generation, plus a list append per step.
-Write each consumed token into a preallocated [max_new_tokens] device
-buffer instead and pass a slice view to apply_repetition_penalty.
-
-The streaming loop's all_first_tokens list existed only for this and for
-the min_new_tokens count, which is now derived from step_idx; the list is
-gone. parity_generate_streaming (dynamic-cache reference) is unchanged.
-
-Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
----
- faster_qwen3_tts/generate.py  | 18 +++++++++++++-----
- faster_qwen3_tts/streaming.py | 18 ++++++++++++------
- 2 files changed, 25 insertions(+), 11 deletions(-)
-
-diff --git a/faster_qwen3_tts/generate.py b/faster_qwen3_tts/generate.py
-index e7fe70d..40513b8 100644
---- a/faster_qwen3_tts/generate.py
-+++ b/faster_qwen3_tts/generate.py
-@@ -176,6 +176,11 @@ def fast_generate(
-     t_decode_start = time.time()
-     all_codec_ids = []
-     eos_found = False
-+    # Preallocated first-codebook history for repetition penalty; rebuilding it
-+    # with torch.stack over a growing list is O(n) launches per step.
-+    rep_history = None
-+    if repetition_penalty != 1.0:
-+        rep_history = torch.empty(max_new_tokens, dtype=torch.long, device=device)
- 
-     for step_idx in range(max_new_tokens):
-         if step_idx > 0:
-@@ -197,11 +202,13 @@ def fast_generate(
-         last_id_hidden = talker_codec_embed(token.unsqueeze(1))  # [1, 1, H]
-         pred_input = torch.cat((past_hidden, last_id_hidden), dim=1)  # [1, 2, H]
-         codebook_token_ids = predictor_graph.run(pred_input)  # [15] long tensor
--        
-+
-         # Build full codec: [first_cb, cb1, ..., cb15]
-         all_cb = torch.cat([token.view(1), codebook_token_ids])  # [16]
-         all_codec_ids.append(all_cb.detach())
--        
-+        if rep_history is not None:
-+            rep_history[step_idx:step_idx + 1] = token
-+
-         # --- Build input embedding for talker ---
-         codec_hiddens = [last_id_hidden]
-         for i in range(num_code_groups - 1):
-@@ -224,9 +231,10 @@ def fast_generate(
-         
-         logits = talker_codec_head(hidden_states[:, -1, :]).unsqueeze(0)
-         
--        if repetition_penalty != 1.0 and len(all_codec_ids) > 0:
--            history = torch.stack([c[0] for c in all_codec_ids])
--            logits = apply_repetition_penalty(logits, history, repetition_penalty)
-+        if rep_history is not None:
-+            logits = apply_repetition_penalty(
-+                logits, rep_history[:step_idx + 1], repetition_penalty
-+            )
- 
-         suppress_eos = len(all_codec_ids) < min_new_tokens
-         token = sample_logits(
-diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
-index 02b586c..5297878 100644
---- a/faster_qwen3_tts/streaming.py
-+++ b/faster_qwen3_tts/streaming.py
-@@ -105,7 +105,11 @@ def fast_generate_streaming(
- 
-     # === DECODE LOOP — yield chunks ===
-     chunk_buffer = []
--    all_first_tokens = []  # for repetition penalty across chunks
-+    # Preallocated first-codebook history for repetition penalty across chunks;
-+    # rebuilding it with torch.stack over a growing list is O(n) launches per step.
-+    rep_history = None
-+    if repetition_penalty != 1.0:
-+        rep_history = torch.empty(max_new_tokens, dtype=torch.long, device=device)
-     total_steps = 0
-     chunk_count = 0
-     eos_found = False
-@@ -136,7 +140,8 @@ def fast_generate_streaming(
- 
-         all_cb = torch.cat([token.view(1), codebook_token_ids])
-         chunk_buffer.append(all_cb.detach())
--        all_first_tokens.append(token.detach())
-+        if rep_history is not None:
-+            rep_history[step_idx:step_idx + 1] = token
- 
-         # --- Build input embedding for talker ---
-         codec_hiddens = [last_id_hidden]
-@@ -158,11 +163,12 @@ def fast_generate_streaming(
- 
-         logits = talker_codec_head(hidden_states[:, -1, :]).unsqueeze(0)
- 
--        if repetition_penalty != 1.0 and all_first_tokens:
--            history = torch.stack(all_first_tokens)
--            logits = apply_repetition_penalty(logits, history, repetition_penalty)
-+        if rep_history is not None:
-+            logits = apply_repetition_penalty(
-+                logits, rep_history[:step_idx + 1], repetition_penalty
-+            )
- 
--        suppress_eos = len(all_first_tokens) < min_new_tokens
-+        suppress_eos = step_idx + 1 < min_new_tokens
-         token = sample_logits(
-             logits.squeeze(0),
-             temperature=temperature,
--- 
-2.53.0.windows.1
-
-
-From afa61203399c48ef43c7d8e354c5dbf36e96d423 Mon Sep 17 00:00:00 2001
-From: Andres Marafioti <andimarafioti@gmail.com>
-Date: Wed, 10 Jun 2026 08:35:39 +0200
-Subject: [PATCH 2/3] Fuse the 15 predictor codebook embedding lookups into one
- gather
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-
-Building the talker input embedding looked up one row from each of the 15
-per-codebook embedding tables in a Python loop — 15 kernel launches plus a
-cat per decode step. Concatenate the tables once (cached on the predictor
-module; costs one duplicated copy in VRAM) and gather all 15 rows with a
-single F.embedding using per-codebook offsets. The cat+sum reduction shape
-is kept identical to the previous code so outputs stay bit-exact.
-
-Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
----
- faster_qwen3_tts/generate.py  | 40 ++++++++++++++++++++++++++++-------
- faster_qwen3_tts/streaming.py | 16 ++++++++------
- 2 files changed, 41 insertions(+), 15 deletions(-)
-
-diff --git a/faster_qwen3_tts/generate.py b/faster_qwen3_tts/generate.py
-index 40513b8..b3234d9 100644
---- a/faster_qwen3_tts/generate.py
-+++ b/faster_qwen3_tts/generate.py
-@@ -6,6 +6,7 @@ import time
- from typing import Optional, Tuple
- 
- import torch
-+import torch.nn.functional as F
- 
- from .predictor_graph import PredictorGraph
- from .sampling import apply_repetition_penalty, build_suppress_mask, sample_logits
-@@ -31,6 +32,28 @@ def get_eos_tracker(device) -> tuple:
-     return tracker
- 
- 
-+def get_fused_codec_embeddings(predictor) -> Tuple[torch.Tensor, torch.Tensor]:
-+    """Return (weights, offsets) for a single fused lookup over the predictor's
-+    15 per-codebook embedding tables.
-+
-+    The decode loop needs one embedding row from each of the 15 tables every
-+    step; looking them up table-by-table costs 15 kernel launches plus a cat.
-+    Concatenating the tables once lets a single F.embedding gather all 15 rows:
-+    row i of codebook cb lives at offsets[cb] + i. Cached on the predictor
-+    module (costs one duplicated copy of the tables in VRAM).
-+    """
-+    cached = getattr(predictor, "_fqt_fused_codec_embed", None)
-+    if cached is None:
-+        embeds = list(predictor.get_input_embeddings())
-+        weights = torch.cat([e.weight for e in embeds], dim=0)
-+        sizes = torch.tensor([e.weight.shape[0] for e in embeds])
-+        offsets = torch.zeros(len(embeds), dtype=torch.long, device=weights.device)
-+        offsets[1:] = sizes[:-1].cumsum(0).to(weights.device)
-+        cached = (weights, offsets)
-+        predictor._fqt_fused_codec_embed = cached
-+    return cached
-+
-+
- @torch.inference_mode()
- def fast_generate(
-     talker,
-@@ -58,7 +81,6 @@ def fast_generate(
-     Fast autoregressive generation with CUDA-graphed predictor and talker.
-     """
-     eos_id = config.codec_eos_token_id
--    num_code_groups = config.num_code_groups
-     vocab_size = config.vocab_size
-     device = talker_input_embeds.device
-     
-@@ -116,8 +138,8 @@ def fast_generate(
-     predictor = talker.code_predictor
-     talker_codec_embed = talker.get_input_embeddings()
-     talker_codec_head = talker.codec_head
--    predictor_codec_embeds = predictor.get_input_embeddings()
--    
-+    fused_codec_weights, fused_codec_offsets = get_fused_codec_embeddings(predictor)
-+
-     # === PREFILL (still uses HF forward for variable-length prefill) ===
-     t_start = time.time()
-     
-@@ -210,11 +232,13 @@ def fast_generate(
-             rep_history[step_idx:step_idx + 1] = token
- 
-         # --- Build input embedding for talker ---
--        codec_hiddens = [last_id_hidden]
--        for i in range(num_code_groups - 1):
--            codec_hiddens.append(predictor_codec_embeds[i](codebook_token_ids[i].unsqueeze(0).unsqueeze(0)))
--        inputs_embeds = torch.cat(codec_hiddens, dim=1).sum(1, keepdim=True)
--        
-+        # One fused gather over all 15 codebook tables; the cat+sum keeps the
-+        # exact reduction order of the previous per-table loop for parity.
-+        codebook_embeds = F.embedding(
-+            codebook_token_ids + fused_codec_offsets, fused_codec_weights
-+        ).unsqueeze(0)  # [1, 15, H]
-+        inputs_embeds = torch.cat((last_id_hidden, codebook_embeds), dim=1).sum(1, keepdim=True)
-+
-         if gen_step < trailing_text_hiddens.shape[1]:
-             inputs_embeds = inputs_embeds + trailing_text_hiddens[:, gen_step].unsqueeze(1)
-         else:
-diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
-index 5297878..e857932 100644
---- a/faster_qwen3_tts/streaming.py
-+++ b/faster_qwen3_tts/streaming.py
-@@ -9,8 +9,9 @@ import time
- from typing import Generator, Tuple
- 
- import torch
-+import torch.nn.functional as F
- 
--from .generate import get_eos_tracker
-+from .generate import get_eos_tracker, get_fused_codec_embeddings
- from .predictor_graph import PredictorGraph
- from .sampling import apply_repetition_penalty, build_suppress_mask, sample_logits
- from .talker_graph import TalkerGraph
-@@ -52,8 +53,7 @@ def fast_generate_streaming(
-     predictor = talker.code_predictor
-     talker_codec_embed = talker.get_input_embeddings()
-     talker_codec_head = talker.codec_head
--    predictor_codec_embeds = predictor.get_input_embeddings()
--    num_code_groups = config.num_code_groups
-+    fused_codec_weights, fused_codec_offsets = get_fused_codec_embeddings(predictor)
- 
-     # === PREFILL (still uses HF forward for variable-length prefill) ===
-     t_start = time.time()
-@@ -144,10 +144,12 @@ def fast_generate_streaming(
-             rep_history[step_idx:step_idx + 1] = token
- 
-         # --- Build input embedding for talker ---
--        codec_hiddens = [last_id_hidden]
--        for i in range(num_code_groups - 1):
--            codec_hiddens.append(predictor_codec_embeds[i](codebook_token_ids[i].unsqueeze(0).unsqueeze(0)))
--        inputs_embeds = torch.cat(codec_hiddens, dim=1).sum(1, keepdim=True)
-+        # One fused gather over all 15 codebook tables; the cat+sum keeps the
-+        # exact reduction order of the previous per-table loop for parity.
-+        codebook_embeds = F.embedding(
-+            codebook_token_ids + fused_codec_offsets, fused_codec_weights
-+        ).unsqueeze(0)  # [1, 15, H]
-+        inputs_embeds = torch.cat((last_id_hidden, codebook_embeds), dim=1).sum(1, keepdim=True)
- 
-         if gen_step < trailing_text_hiddens.shape[1]:
-             inputs_embeds = inputs_embeds + trailing_text_hiddens[:, gen_step].unsqueeze(1)
--- 
-2.53.0.windows.1
-
-
-From 48555aa783080f9118846db775a141b45ce99acc Mon Sep 17 00:00:00 2001
+﻿From 48555aa783080f9118846db775a141b45ce99acc Mon Sep 17 00:00:00 2001
 From: Aster Seker <git.electroyar@gmail.com>
 Date: Fri, 24 Jul 2026 15:03:58 +0300
-Subject: [PATCH 3/3] Add streaming prefill profile telemetry
+Subject: [PATCH 1/4] Add streaming prefill profile telemetry
 
 ---
  faster_qwen3_tts/model.py     | 336 ++++++++++++++++++++++++----------
@@ -1423,6 +1158,885 @@ index e857932..27f450b 100644
 +                prefill_profile=prefill_profile if chunk_count == 0 else None,
 +            ),
 +        )
+-- 
+2.53.0.windows.1
+
+
+From 76587951676db27ca1a7ff3da8be999b3d04fafe Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Fri, 24 Jul 2026 19:48:54 +0300
+Subject: [PATCH 2/4] Stabilize streaming prefill profile schema
+
+---
+ faster_qwen3_tts/model.py     |   8 +--
+ faster_qwen3_tts/streaming.py | 113 ++++++++++++++++++++++++++--------
+ 2 files changed, 90 insertions(+), 31 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 7f06844..7bc5263 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -571,7 +571,7 @@ class FasterQwen3TTS:
+         non_streaming_mode: bool = True,
+         return_metadata: bool = False,
+     ):
+-        tokenize_started = time.time()
++        tokenize_started = time.perf_counter()
+         input_texts = [self.model._build_assistant_text(text)]
+         input_ids = self.model._tokenize_texts(input_texts)
+ 
+@@ -584,10 +584,10 @@ class FasterQwen3TTS:
+                     0
+                 ]
+             )
+-        tokenize_wall_ms = (time.time() - tokenize_started) * 1000
++        tokenize_wall_ms = (time.perf_counter() - tokenize_started) * 1000
+ 
+         m = self.model.model
+-        build_started = time.time()
++        build_started = time.perf_counter()
+         tie, tam, tth, tpe = self._build_talker_inputs_local(
+             m=m,
+             input_ids=input_ids,
+@@ -598,7 +598,7 @@ class FasterQwen3TTS:
+             non_streaming_mode=non_streaming_mode,
+             instruct_ids=instruct_ids,
+         )
+-        build_talker_inputs_wall_ms = (time.time() - build_started) * 1000
++        build_talker_inputs_wall_ms = (time.perf_counter() - build_started) * 1000
+ 
+         if not self._warmed_up:
+             self.warmup(tie.shape[1])
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 27f450b..3620e59 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -59,12 +59,12 @@ def fast_generate_streaming(
+     fused_codec_weights, fused_codec_offsets = get_fused_codec_embeddings(predictor)
+ 
+     # === PREFILL (still uses HF forward for variable-length prefill) ===
+-    t_start = time.time()
++    t_start = time.perf_counter()
+     prefill_profile = {}
+     prefill_events = _PrefillEvents(device, profile_prefill)
+     prefill_events.record("start")
+ 
+-    forward_started = time.time()
++    forward_started = time.perf_counter()
+     out = talker.forward(
+         inputs_embeds=talker_input_embeds,
+         attention_mask=attention_mask,
+@@ -78,7 +78,7 @@ def fast_generate_streaming(
+         past_key_values=None,
+     )
+     prefill_profile["talker_forward_launch_wall_ms"] = (
+-        time.time() - forward_started
++        time.perf_counter() - forward_started
+     ) * 1000
+     prefill_events.record("after_forward")
+ 
+@@ -86,7 +86,7 @@ def fast_generate_streaming(
+     past_hidden = out.past_hidden
+     gen_step = out.generation_step
+ 
+-    sample_started = time.time()
++    sample_started = time.perf_counter()
+     logits = out.logits[:, -1, :]
+     suppress_eos = min_new_tokens > 0
+     token = sample_logits(
+@@ -99,22 +99,22 @@ def fast_generate_streaming(
+         suppress_tokens=eos_suppress_ids if suppress_eos else None,
+     )
+     prefill_profile["first_sample_launch_wall_ms"] = (
+-        time.time() - sample_started
++        time.perf_counter() - sample_started
+     ) * 1000
+     prefill_events.record("after_sample")
+ 
+-    prefill_kv_started = time.time()
++    prefill_kv_started = time.perf_counter()
+     prefill_len = talker_graph.prefill_kv(talker_past_kv)
+     prefill_profile["prefill_kv_launch_wall_ms"] = (
+-        time.time() - prefill_kv_started
++        time.perf_counter() - prefill_kv_started
+     ) * 1000
+     prefill_events.record("after_prefill_kv")
+ 
+-    generation_state_started = time.time()
++    generation_state_started = time.perf_counter()
+     rope_deltas = getattr(talker, "rope_deltas", None)
+     talker_graph.set_generation_state(attention_mask, rope_deltas)
+     prefill_profile["generation_state_wall_ms"] = (
+-        time.time() - generation_state_started
++        time.perf_counter() - generation_state_started
+     ) * 1000
+     prefill_events.record("after_generation_state")
+ 
+@@ -128,11 +128,15 @@ def fast_generate_streaming(
+     token_events[0].record()
+     prefill_events.record("before_sync")
+ 
+-    sync_started = time.time()
++    sync_started = time.perf_counter()
+     torch.cuda.synchronize()
+-    prefill_profile["prefill_sync_wait_ms"] = (time.time() - sync_started) * 1000
+-    t_prefill = time.time() - t_start
+-    prefill_profile.update(prefill_events.elapsed_ms())
++    prefill_profile["prefill_sync_wait_ms"] = (
++        time.perf_counter() - sync_started
++    ) * 1000
++    t_prefill = time.perf_counter() - t_start
++    prefill_profile.update(
++        _finalize_prefill_profile(prefill_events.elapsed_ms(), profile_prefill)
++    )
+ 
+     # === DECODE LOOP — yield chunks ===
+     chunk_buffer = []
+@@ -291,18 +295,22 @@ class _PrefillEvents:
+     def __init__(self, device, enabled: bool):
+         self._enabled = enabled and device.type == "cuda"
+         self._events = {}
++        self._stream_ids = {}
+ 
+     def record(self, name: str) -> None:
+         if not self._enabled:
+             return
++        stream = torch.cuda.current_stream()
+         event = torch.cuda.Event(enable_timing=True)
+-        event.record()
++        event.record(stream)
+         self._events[name] = event
++        self._stream_ids[name] = int(stream.cuda_stream)
+ 
+     def elapsed_ms(self) -> dict:
+         if not self._enabled:
+             return {}
+         return {
++            "prefill_total_gpu_ms": self._elapsed("start", "before_sync"),
+             "talker_forward_gpu_ms": self._elapsed("start", "after_forward"),
+             "first_sample_gpu_ms": self._elapsed("after_forward", "after_sample"),
+             "prefill_kv_gpu_ms": self._elapsed("after_sample", "after_prefill_kv"),
+@@ -314,15 +322,62 @@ class _PrefillEvents:
+                 "after_generation_state",
+                 "before_sync",
+             ),
++            "prefill_total_gpu_stream_id": self._stream_id("start"),
++            "talker_forward_gpu_stream_id": self._stream_id("start"),
++            "first_sample_gpu_stream_id": self._stream_id("after_forward"),
++            "prefill_kv_gpu_stream_id": self._stream_id("after_sample"),
++            "generation_state_gpu_stream_id": self._stream_id("after_prefill_kv"),
++            "prefill_to_sync_gpu_stream_id": self._stream_id(
++                "after_generation_state"
++            ),
+         }
+ 
+-    def _elapsed(self, start_name: str, end_name: str) -> float:
++    def _elapsed(self, start_name: str, end_name: str) -> float | None:
+         start = self._events.get(start_name)
+         end = self._events.get(end_name)
+         if start is None or end is None:
+-            return 0.0
++            return None
+         return float(start.elapsed_time(end))
+ 
++    def _stream_id(self, name: str) -> int | None:
++        return self._stream_ids.get(name)
++
++
++def _finalize_prefill_profile(event_profile: dict, profile_prefill: bool) -> dict:
++    profile = {
++        "profile_schema_version": 2,
++        "profile_prefill_enabled": bool(profile_prefill),
++    }
++    profile.update(event_profile)
++
++    component_keys = (
++        "talker_forward_gpu_ms",
++        "first_sample_gpu_ms",
++        "prefill_kv_gpu_ms",
++        "generation_state_gpu_ms",
++        "prefill_to_sync_gpu_ms",
++    )
++    component_values = [profile.get(key) for key in component_keys]
++    components_complete = all(
++        isinstance(value, (int, float)) for value in component_values
++    )
++    total = profile.get("prefill_total_gpu_ms")
++    if components_complete:
++        component_sum = float(sum(component_values))
++        profile["prefill_gpu_component_sum_ms"] = component_sum
++        profile["prefill_gpu_accounting_error_ms"] = (
++            float(total) - component_sum if isinstance(total, (int, float)) else None
++        )
++    else:
++        profile["prefill_gpu_component_sum_ms"] = None
++        profile["prefill_gpu_accounting_error_ms"] = None
++
++    required_keys = ("prefill_total_gpu_ms", *component_keys)
++    profile["profile_complete"] = all(
++        isinstance(profile.get(key), (int, float)) for key in required_keys
++    )
++    return profile
++
+ 
+ def _chunk_timing(
+     timing: dict,
+@@ -373,12 +428,12 @@ def parity_generate_streaming(
+     eos_suppress_ids = torch.tensor([eos_id], dtype=torch.long, device=device)
+ 
+     # === PREFILL ===
+-    t_start = time.time()
++    t_start = time.perf_counter()
+     prefill_profile = {}
+     prefill_events = _PrefillEvents(device, profile_prefill)
+     prefill_events.record("start")
+ 
+-    forward_started = time.time()
++    forward_started = time.perf_counter()
+     out = talker.forward(
+         inputs_embeds=talker_input_embeds,
+         attention_mask=attention_mask,
+@@ -392,7 +447,7 @@ def parity_generate_streaming(
+         past_key_values=None,
+     )
+     prefill_profile["talker_forward_launch_wall_ms"] = (
+-        time.time() - forward_started
++        time.perf_counter() - forward_started
+     ) * 1000
+     prefill_events.record("after_forward")
+ 
+@@ -400,7 +455,7 @@ def parity_generate_streaming(
+     past_hidden = out.past_hidden
+     gen_step = out.generation_step
+ 
+-    sample_started = time.time()
++    sample_started = time.perf_counter()
+     logits = out.logits[:, -1, :]
+     suppress_eos = min_new_tokens > 0
+     token = sample_logits(
+@@ -413,23 +468,27 @@ def parity_generate_streaming(
+         suppress_tokens=eos_suppress_ids if suppress_eos else None,
+     )
+     prefill_profile["first_sample_launch_wall_ms"] = (
+-        time.time() - sample_started
++        time.perf_counter() - sample_started
+     ) * 1000
+     prefill_events.record("after_sample")
+ 
+-    generation_state_started = time.time()
++    generation_state_started = time.perf_counter()
+     if attention_mask is not None:
+         attention_mask = attention_mask.clone()
+     prefill_profile["generation_state_wall_ms"] = (
+-        time.time() - generation_state_started
++        time.perf_counter() - generation_state_started
+     ) * 1000
+     prefill_events.record("after_generation_state")
+ 
+-    sync_started = time.time()
++    sync_started = time.perf_counter()
+     torch.cuda.synchronize()
+-    prefill_profile["prefill_sync_wait_ms"] = (time.time() - sync_started) * 1000
+-    t_prefill = time.time() - t_start
+-    prefill_profile.update(prefill_events.elapsed_ms())
++    prefill_profile["prefill_sync_wait_ms"] = (
++        time.perf_counter() - sync_started
++    ) * 1000
++    t_prefill = time.perf_counter() - t_start
++    prefill_profile.update(
++        _finalize_prefill_profile(prefill_events.elapsed_ms(), profile_prefill)
++    )
+ 
+     # === DECODE LOOP — yield chunks ===
+     chunk_buffer = []
+-- 
+2.53.0.windows.1
+
+
+From 8152612f153dcc5570bc0fd8b03cc00d81b93cba Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Fri, 24 Jul 2026 20:01:59 +0300
+Subject: [PATCH 3/4] Add NVTX ranges for prefill profiling
+
+---
+ faster_qwen3_tts/streaming.py | 133 ++++++++++++++++++++--------------
+ 1 file changed, 80 insertions(+), 53 deletions(-)
+
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 3620e59..cc1f468 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -18,6 +18,22 @@ from .sampling import apply_repetition_penalty, build_suppress_mask, sample_logi
+ from .talker_graph import TalkerGraph
+ 
+ 
++class _CudaNvtxRange:
++    def __init__(self, name: str, enabled: bool):
++        self._name = name
++        self._enabled = enabled
++
++    def __enter__(self):
++        if self._enabled:
++            torch.cuda.nvtx.range_push(self._name)
++        return self
++
++    def __exit__(self, exc_type, exc_value, traceback):
++        if self._enabled:
++            torch.cuda.nvtx.range_pop()
++        return False
++
++
+ @torch.inference_mode()
+ def fast_generate_streaming(
+     talker,
+@@ -62,21 +78,23 @@ def fast_generate_streaming(
+     t_start = time.perf_counter()
+     prefill_profile = {}
+     prefill_events = _PrefillEvents(device, profile_prefill)
++    nvtx_enabled = profile_prefill and device.type == "cuda"
+     prefill_events.record("start")
+ 
+     forward_started = time.perf_counter()
+-    out = talker.forward(
+-        inputs_embeds=talker_input_embeds,
+-        attention_mask=attention_mask,
+-        use_cache=True,
+-        output_hidden_states=True,
+-        return_dict=True,
+-        trailing_text_hidden=trailing_text_hiddens,
+-        tts_pad_embed=tts_pad_embed,
+-        generation_step=None,
+-        past_hidden=None,
+-        past_key_values=None,
+-    )
++    with _CudaNvtxRange("qtb_prefill_talker_forward", nvtx_enabled):
++        out = talker.forward(
++            inputs_embeds=talker_input_embeds,
++            attention_mask=attention_mask,
++            use_cache=True,
++            output_hidden_states=True,
++            return_dict=True,
++            trailing_text_hidden=trailing_text_hiddens,
++            tts_pad_embed=tts_pad_embed,
++            generation_step=None,
++            past_hidden=None,
++            past_key_values=None,
++        )
+     prefill_profile["talker_forward_launch_wall_ms"] = (
+         time.perf_counter() - forward_started
+     ) * 1000
+@@ -87,32 +105,35 @@ def fast_generate_streaming(
+     gen_step = out.generation_step
+ 
+     sample_started = time.perf_counter()
+-    logits = out.logits[:, -1, :]
+-    suppress_eos = min_new_tokens > 0
+-    token = sample_logits(
+-        logits,
+-        temperature=temperature,
+-        top_k=top_k,
+-        top_p=top_p,
+-        do_sample=do_sample,
+-        suppress_mask=suppress_mask,
+-        suppress_tokens=eos_suppress_ids if suppress_eos else None,
+-    )
++    with _CudaNvtxRange("qtb_prefill_first_sample", nvtx_enabled):
++        logits = out.logits[:, -1, :]
++        suppress_eos = min_new_tokens > 0
++        token = sample_logits(
++            logits,
++            temperature=temperature,
++            top_k=top_k,
++            top_p=top_p,
++            do_sample=do_sample,
++            suppress_mask=suppress_mask,
++            suppress_tokens=eos_suppress_ids if suppress_eos else None,
++        )
+     prefill_profile["first_sample_launch_wall_ms"] = (
+         time.perf_counter() - sample_started
+     ) * 1000
+     prefill_events.record("after_sample")
+ 
+     prefill_kv_started = time.perf_counter()
+-    prefill_len = talker_graph.prefill_kv(talker_past_kv)
++    with _CudaNvtxRange("qtb_prefill_static_cache", nvtx_enabled):
++        prefill_len = talker_graph.prefill_kv(talker_past_kv)
+     prefill_profile["prefill_kv_launch_wall_ms"] = (
+         time.perf_counter() - prefill_kv_started
+     ) * 1000
+     prefill_events.record("after_prefill_kv")
+ 
+     generation_state_started = time.perf_counter()
+-    rope_deltas = getattr(talker, "rope_deltas", None)
+-    talker_graph.set_generation_state(attention_mask, rope_deltas)
++    with _CudaNvtxRange("qtb_prefill_generation_state", nvtx_enabled):
++        rope_deltas = getattr(talker, "rope_deltas", None)
++        talker_graph.set_generation_state(attention_mask, rope_deltas)
+     prefill_profile["generation_state_wall_ms"] = (
+         time.perf_counter() - generation_state_started
+     ) * 1000
+@@ -129,7 +150,8 @@ def fast_generate_streaming(
+     prefill_events.record("before_sync")
+ 
+     sync_started = time.perf_counter()
+-    torch.cuda.synchronize()
++    with _CudaNvtxRange("qtb_prefill_final_sync", nvtx_enabled):
++        torch.cuda.synchronize()
+     prefill_profile["prefill_sync_wait_ms"] = (
+         time.perf_counter() - sync_started
+     ) * 1000
+@@ -431,21 +453,23 @@ def parity_generate_streaming(
+     t_start = time.perf_counter()
+     prefill_profile = {}
+     prefill_events = _PrefillEvents(device, profile_prefill)
++    nvtx_enabled = profile_prefill and device.type == "cuda"
+     prefill_events.record("start")
+ 
+     forward_started = time.perf_counter()
+-    out = talker.forward(
+-        inputs_embeds=talker_input_embeds,
+-        attention_mask=attention_mask,
+-        use_cache=True,
+-        output_hidden_states=True,
+-        return_dict=True,
+-        trailing_text_hidden=trailing_text_hiddens,
+-        tts_pad_embed=tts_pad_embed,
+-        generation_step=None,
+-        past_hidden=None,
+-        past_key_values=None,
+-    )
++    with _CudaNvtxRange("qtb_prefill_talker_forward", nvtx_enabled):
++        out = talker.forward(
++            inputs_embeds=talker_input_embeds,
++            attention_mask=attention_mask,
++            use_cache=True,
++            output_hidden_states=True,
++            return_dict=True,
++            trailing_text_hidden=trailing_text_hiddens,
++            tts_pad_embed=tts_pad_embed,
++            generation_step=None,
++            past_hidden=None,
++            past_key_values=None,
++        )
+     prefill_profile["talker_forward_launch_wall_ms"] = (
+         time.perf_counter() - forward_started
+     ) * 1000
+@@ -456,32 +480,35 @@ def parity_generate_streaming(
+     gen_step = out.generation_step
+ 
+     sample_started = time.perf_counter()
+-    logits = out.logits[:, -1, :]
+-    suppress_eos = min_new_tokens > 0
+-    token = sample_logits(
+-        logits,
+-        temperature=temperature,
+-        top_k=top_k,
+-        top_p=top_p,
+-        do_sample=do_sample,
+-        suppress_mask=suppress_mask,
+-        suppress_tokens=eos_suppress_ids if suppress_eos else None,
+-    )
++    with _CudaNvtxRange("qtb_prefill_first_sample", nvtx_enabled):
++        logits = out.logits[:, -1, :]
++        suppress_eos = min_new_tokens > 0
++        token = sample_logits(
++            logits,
++            temperature=temperature,
++            top_k=top_k,
++            top_p=top_p,
++            do_sample=do_sample,
++            suppress_mask=suppress_mask,
++            suppress_tokens=eos_suppress_ids if suppress_eos else None,
++        )
+     prefill_profile["first_sample_launch_wall_ms"] = (
+         time.perf_counter() - sample_started
+     ) * 1000
+     prefill_events.record("after_sample")
+ 
+     generation_state_started = time.perf_counter()
+-    if attention_mask is not None:
+-        attention_mask = attention_mask.clone()
++    with _CudaNvtxRange("qtb_prefill_generation_state", nvtx_enabled):
++        if attention_mask is not None:
++            attention_mask = attention_mask.clone()
+     prefill_profile["generation_state_wall_ms"] = (
+         time.perf_counter() - generation_state_started
+     ) * 1000
+     prefill_events.record("after_generation_state")
+ 
+     sync_started = time.perf_counter()
+-    torch.cuda.synchronize()
++    with _CudaNvtxRange("qtb_prefill_final_sync", nvtx_enabled):
++        torch.cuda.synchronize()
+     prefill_profile["prefill_sync_wait_ms"] = (
+         time.perf_counter() - sync_started
+     ) * 1000
+-- 
+2.53.0.windows.1
+
+
+From f98242e5e1baea493aff6b285e6138fb8feab37b Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Fri, 24 Jul 2026 22:21:36 +0300
+Subject: [PATCH 4/4] Add schema v3 prefill profiling validation
+
+---
+ faster_qwen3_tts/model.py     |   6 +
+ faster_qwen3_tts/streaming.py | 205 +++++++++++++++++++++++++++++-----
+ 2 files changed, 186 insertions(+), 25 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 7bc5263..7c51bec 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -1349,6 +1349,7 @@ class FasterQwen3TTS:
+         repetition_penalty: float = 1.05,
+         chunk_size: int = 12,
+         profile_prefill: bool = False,
++        profile_request_role: Optional[str] = None,
+     ) -> Generator[Tuple[np.ndarray, int, dict], None, None]:
+         if self.model.model.tts_model_type != "custom_voice":
+             raise ValueError("Loaded model does not support custom voice generation")
+@@ -1376,6 +1377,8 @@ class FasterQwen3TTS:
+                 return_metadata=True,
+             )
+         )
++        if profile_request_role:
++            input_metadata["profile_request_role"] = profile_request_role
+ 
+         speech_tokenizer = m.speech_tokenizer
+ 
+@@ -1544,6 +1547,7 @@ class FasterQwen3TTS:
+         repetition_penalty: float = 1.05,
+         chunk_size: int = 12,
+         profile_prefill: bool = False,
++        profile_request_role: Optional[str] = None,
+     ) -> Generator[Tuple[np.ndarray, int, dict], None, None]:
+         if self.model.model.tts_model_type != "voice_design":
+             raise ValueError("Loaded model does not support voice design generation")
+@@ -1567,6 +1571,8 @@ class FasterQwen3TTS:
+                 return_metadata=True,
+             )
+         )
++        if profile_request_role:
++            input_metadata["profile_request_role"] = profile_request_role
+ 
+         speech_tokenizer = m.speech_tokenizer
+ 
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index cc1f468..d27d5ab 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -6,6 +6,7 @@ Yields codec ID chunks during generation instead of collecting all at once.
+ CUDA graph usage is identical to non-streaming — same per-step performance.
+ """
+ 
++import math
+ import time
+ from typing import Generator, Optional, Tuple
+ 
+@@ -79,7 +80,13 @@ def fast_generate_streaming(
+     prefill_profile = {}
+     prefill_events = _PrefillEvents(device, profile_prefill)
+     nvtx_enabled = profile_prefill and device.type == "cuda"
++    outer_nvtx_name = _profile_outer_nvtx_name(input_metadata)
+     prefill_events.record("start")
++    outer_nvtx_range = _CudaNvtxRange(
++        outer_nvtx_name,
++        nvtx_enabled and outer_nvtx_name is not None,
++    )
++    outer_nvtx_range.__enter__()
+ 
+     forward_started = time.perf_counter()
+     with _CudaNvtxRange("qtb_prefill_talker_forward", nvtx_enabled):
+@@ -152,12 +159,17 @@ def fast_generate_streaming(
+     sync_started = time.perf_counter()
+     with _CudaNvtxRange("qtb_prefill_final_sync", nvtx_enabled):
+         torch.cuda.synchronize()
++    outer_nvtx_range.__exit__(None, None, None)
+     prefill_profile["prefill_sync_wait_ms"] = (
+         time.perf_counter() - sync_started
+     ) * 1000
+     t_prefill = time.perf_counter() - t_start
+     prefill_profile.update(
+-        _finalize_prefill_profile(prefill_events.elapsed_ms(), profile_prefill)
++        _finalize_prefill_profile(
++            prefill_events.elapsed_ms(profile_path="fast"),
++            profile_prefill,
++            profile_path="fast",
++        )
+     )
+ 
+     # === DECODE LOOP — yield chunks ===
+@@ -313,6 +325,17 @@ def fast_generate_streaming(
+         )
+ 
+ 
++def _profile_outer_nvtx_name(input_metadata: Optional[dict]) -> Optional[str]:
++    if not input_metadata:
++        return None
++    request_role = input_metadata.get("profile_request_role")
++    if request_role == "first_user":
++        return "qtb_profile_first_user_request"
++    if request_role == "steady":
++        return "qtb_profile_steady_request"
++    return None
++
++
+ class _PrefillEvents:
+     def __init__(self, device, enabled: bool):
+         self._enabled = enabled and device.type == "cuda"
+@@ -328,31 +351,56 @@ class _PrefillEvents:
+         self._events[name] = event
+         self._stream_ids[name] = int(stream.cuda_stream)
+ 
+-    def elapsed_ms(self) -> dict:
++    def elapsed_ms(self, *, profile_path: str) -> dict:
+         if not self._enabled:
+             return {}
+-        return {
++        event_profile = {
+             "prefill_total_gpu_ms": self._elapsed("start", "before_sync"),
+             "talker_forward_gpu_ms": self._elapsed("start", "after_forward"),
+             "first_sample_gpu_ms": self._elapsed("after_forward", "after_sample"),
+-            "prefill_kv_gpu_ms": self._elapsed("after_sample", "after_prefill_kv"),
+-            "generation_state_gpu_ms": self._elapsed(
+-                "after_prefill_kv",
+-                "after_generation_state",
+-            ),
+-            "prefill_to_sync_gpu_ms": self._elapsed(
+-                "after_generation_state",
+-                "before_sync",
+-            ),
+             "prefill_total_gpu_stream_id": self._stream_id("start"),
+             "talker_forward_gpu_stream_id": self._stream_id("start"),
+             "first_sample_gpu_stream_id": self._stream_id("after_forward"),
+-            "prefill_kv_gpu_stream_id": self._stream_id("after_sample"),
+-            "generation_state_gpu_stream_id": self._stream_id("after_prefill_kv"),
++            "generation_state_gpu_stream_id": self._stream_id("after_sample"),
+             "prefill_to_sync_gpu_stream_id": self._stream_id(
+                 "after_generation_state"
+             ),
+         }
++        if profile_path == "fast":
++            event_profile.update(
++                {
++                    "prefill_kv_gpu_ms": self._elapsed(
++                        "after_sample",
++                        "after_prefill_kv",
++                    ),
++                    "generation_state_gpu_ms": self._elapsed(
++                        "after_prefill_kv",
++                        "after_generation_state",
++                    ),
++                    "prefill_kv_gpu_stream_id": self._stream_id("after_sample"),
++                    "generation_state_gpu_stream_id": self._stream_id(
++                        "after_prefill_kv"
++                    ),
++                }
++            )
++        else:
++            event_profile.update(
++                {
++                    "prefill_kv_gpu_ms": None,
++                    "prefill_kv_gpu_stream_id": None,
++                    "generation_state_gpu_ms": self._elapsed(
++                        "after_sample",
++                        "after_generation_state",
++                    ),
++                }
++            )
++        event_profile["prefill_to_sync_gpu_ms"] = self._elapsed(
++            "after_generation_state",
++            "before_sync",
++        )
++        for name in self._events:
++            event_profile[f"{name}_event_recorded"] = True
++        return event_profile
+ 
+     def _elapsed(self, start_name: str, end_name: str) -> float | None:
+         start = self._events.get(start_name)
+@@ -365,38 +413,133 @@ class _PrefillEvents:
+         return self._stream_ids.get(name)
+ 
+ 
+-def _finalize_prefill_profile(event_profile: dict, profile_prefill: bool) -> dict:
++def _finalize_prefill_profile(
++    event_profile: dict,
++    profile_prefill: bool,
++    *,
++    profile_path: str,
++) -> dict:
+     profile = {
+-        "profile_schema_version": 2,
++        "profile_schema_version": 3,
+         "profile_prefill_enabled": bool(profile_prefill),
++        "profile_path": profile_path,
+     }
+     profile.update(event_profile)
+ 
+-    component_keys = (
++    if profile_path == "fast":
++        component_keys = (
++            "talker_forward_gpu_ms",
++            "first_sample_gpu_ms",
++            "prefill_kv_gpu_ms",
++            "generation_state_gpu_ms",
++            "prefill_to_sync_gpu_ms",
++        )
++        required_event_names = (
++            "start",
++            "after_forward",
++            "after_sample",
++            "after_prefill_kv",
++            "after_generation_state",
++            "before_sync",
++        )
++        stream_id_keys = (
++            "prefill_total_gpu_stream_id",
++            "talker_forward_gpu_stream_id",
++            "first_sample_gpu_stream_id",
++            "prefill_kv_gpu_stream_id",
++            "generation_state_gpu_stream_id",
++            "prefill_to_sync_gpu_stream_id",
++        )
++    elif profile_path == "parity":
++        component_keys = (
++            "talker_forward_gpu_ms",
++            "first_sample_gpu_ms",
++            "generation_state_gpu_ms",
++            "prefill_to_sync_gpu_ms",
++        )
++        required_event_names = (
++            "start",
++            "after_forward",
++            "after_sample",
++            "after_generation_state",
++            "before_sync",
++        )
++        stream_id_keys = (
++            "prefill_total_gpu_stream_id",
++            "talker_forward_gpu_stream_id",
++            "first_sample_gpu_stream_id",
++            "generation_state_gpu_stream_id",
++            "prefill_to_sync_gpu_stream_id",
++        )
++    else:
++        component_keys = ()
++        required_event_names = ()
++        stream_id_keys = ()
++
++    for key in (
++        "prefill_total_gpu_ms",
+         "talker_forward_gpu_ms",
+         "first_sample_gpu_ms",
+         "prefill_kv_gpu_ms",
+         "generation_state_gpu_ms",
+         "prefill_to_sync_gpu_ms",
++        "prefill_total_gpu_stream_id",
++        "talker_forward_gpu_stream_id",
++        "first_sample_gpu_stream_id",
++        "prefill_kv_gpu_stream_id",
++        "generation_state_gpu_stream_id",
++        "prefill_to_sync_gpu_stream_id",
++    ):
++        profile.setdefault(key, None)
++    for name in required_event_names:
++        profile.setdefault(f"{name}_event_recorded", False)
++
++    profile["events_complete"] = all(
++        profile.get(f"{name}_event_recorded") is True
++        for name in required_event_names
+     )
+     component_values = [profile.get(key) for key in component_keys]
+     components_complete = all(
+         isinstance(value, (int, float)) for value in component_values
+     )
++    profile["components_finite"] = components_complete and all(
++        math.isfinite(float(value)) for value in component_values
++    )
++    profile["components_nonnegative"] = components_complete and all(
++        float(value) >= 0.0 for value in component_values
++    )
++    stream_ids = [profile.get(key) for key in stream_id_keys]
++    present_stream_ids = [
++        int(value) for value in stream_ids if isinstance(value, int)
++    ]
++    profile["all_component_streams_equal"] = (
++        len(present_stream_ids) == len(stream_id_keys)
++        and len(set(present_stream_ids)) == 1
++    )
+     total = profile.get("prefill_total_gpu_ms")
+-    if components_complete:
++    if components_complete and isinstance(total, (int, float)):
+         component_sum = float(sum(component_values))
+         profile["prefill_gpu_component_sum_ms"] = component_sum
+-        profile["prefill_gpu_accounting_error_ms"] = (
+-            float(total) - component_sum if isinstance(total, (int, float)) else None
+-        )
++        partition_error = float(total) - component_sum
++        profile["prefill_gpu_partition_error_ms"] = partition_error
++        profile["prefill_gpu_accounting_error_ms"] = partition_error
+     else:
+         profile["prefill_gpu_component_sum_ms"] = None
++        profile["prefill_gpu_partition_error_ms"] = None
+         profile["prefill_gpu_accounting_error_ms"] = None
+ 
+-    required_keys = ("prefill_total_gpu_ms", *component_keys)
+-    profile["profile_complete"] = all(
+-        isinstance(profile.get(key), (int, float)) for key in required_keys
++    total_complete = (
++        isinstance(total, (int, float))
++        and math.isfinite(float(total))
++        and float(total) >= 0.0
++    )
++    profile["profile_complete"] = bool(
++        profile_prefill
++        and profile["events_complete"]
++        and total_complete
++        and profile["components_finite"]
++        and profile["components_nonnegative"]
++        and profile["all_component_streams_equal"]
+     )
+     return profile
+ 
+@@ -454,7 +597,13 @@ def parity_generate_streaming(
+     prefill_profile = {}
+     prefill_events = _PrefillEvents(device, profile_prefill)
+     nvtx_enabled = profile_prefill and device.type == "cuda"
++    outer_nvtx_name = _profile_outer_nvtx_name(input_metadata)
+     prefill_events.record("start")
++    outer_nvtx_range = _CudaNvtxRange(
++        outer_nvtx_name,
++        nvtx_enabled and outer_nvtx_name is not None,
++    )
++    outer_nvtx_range.__enter__()
+ 
+     forward_started = time.perf_counter()
+     with _CudaNvtxRange("qtb_prefill_talker_forward", nvtx_enabled):
+@@ -506,15 +655,21 @@ def parity_generate_streaming(
+     ) * 1000
+     prefill_events.record("after_generation_state")
+ 
++    prefill_events.record("before_sync")
+     sync_started = time.perf_counter()
+     with _CudaNvtxRange("qtb_prefill_final_sync", nvtx_enabled):
+         torch.cuda.synchronize()
++    outer_nvtx_range.__exit__(None, None, None)
+     prefill_profile["prefill_sync_wait_ms"] = (
+         time.perf_counter() - sync_started
+     ) * 1000
+     t_prefill = time.perf_counter() - t_start
+     prefill_profile.update(
+-        _finalize_prefill_profile(prefill_events.elapsed_ms(), profile_prefill)
++        _finalize_prefill_profile(
++            prefill_events.elapsed_ms(profile_path="parity"),
++            profile_prefill,
++            profile_path="parity",
++        )
+     )
+ 
+     # === DECODE LOOP — yield chunks ===
 -- 
 2.53.0.windows.1
 

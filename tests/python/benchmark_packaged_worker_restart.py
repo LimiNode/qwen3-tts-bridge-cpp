@@ -56,6 +56,7 @@ _PHASE_KEYS = (
     "first_chunk_prefill_to_sync_gpu_ms",
     "first_chunk_prefill_sync_wait_ms",
     "first_chunk_prefill_gpu_component_sum_ms",
+    "first_chunk_prefill_gpu_partition_error_ms",
     "first_chunk_prefill_gpu_accounting_error_ms",
 )
 
@@ -265,8 +266,15 @@ def _build_report(
             "steady_request_median_pipeline": _phase_summary(
                 steady_requests,
             ),
+            "profile_validation": _profile_validation_summary(pipeline_requests),
             "paired_phase_delta": _phase_summary(paired_phase_deltas),
             "paired_delta_residuals": _paired_delta_residual_summary(run_summaries),
+            "talker_forward_explained_outliers": (
+                _talker_forward_explained_outlier_summary(
+                    run_summaries,
+                    threshold_ms=args.outlier_delta_threshold_ms,
+                )
+            ),
             "by_shape": _shape_summary(
                 run_summaries,
                 threshold_ms=args.outlier_delta_threshold_ms,
@@ -789,8 +797,9 @@ def _outlier_records(
     outliers = []
     for run in run_summaries:
         delta = _number(run.get("paired_delta_first_audio_ms"))
-        if delta is None or delta <= threshold_ms:
+        if delta is None or abs(delta) <= threshold_ms:
             continue
+        tail_kind = "positive" if delta > 0 else "negative"
         phase_delta = run.get("paired_phase_delta")
         residuals = run.get("paired_delta_residuals")
         first_request = run.get("first_request")
@@ -799,6 +808,7 @@ def _outlier_records(
             {
                 "run_index": run.get("run_index"),
                 "shape": run.get("shape"),
+                "tail_kind": tail_kind,
                 "paired_delta_first_audio_ms": delta,
                 "paired_phase_delta": phase_delta
                 if isinstance(phase_delta, dict)
@@ -842,8 +852,22 @@ def _paired_delta_residuals(
         paired_phase_delta.get("first_chunk_talker_forward_gpu_ms")
     )
     if talker_forward_delta is not None:
-        residuals["delta_without_talker_forward_ms"] = (
-            paired_delta - talker_forward_delta
+        signed_residual = paired_delta - talker_forward_delta
+        residuals["delta_without_talker_forward_ms"] = signed_residual
+        residuals["absolute_delta_without_talker_forward_ms"] = abs(signed_residual)
+        positive_total_delta = max(paired_delta, 0.0)
+        talker_explained = min(
+            max(talker_forward_delta, 0.0),
+            positive_total_delta,
+        )
+        residuals["talker_explained_ms"] = talker_explained
+        residuals["positive_unexplained_without_talker_ms"] = (
+            positive_total_delta - talker_explained
+        )
+        residuals["talker_explained_fraction"] = (
+            talker_explained / positive_total_delta
+            if positive_total_delta > 0.0
+            else None
         )
     prefill_kv_delta = _number(paired_phase_delta.get("first_chunk_prefill_kv_gpu_ms"))
     if prefill_kv_delta is not None:
@@ -888,6 +912,22 @@ def _paired_delta_residual_summary(
             residuals,
             "delta_without_talker_forward_ms",
         ),
+        "absolute_delta_without_talker_forward_ms": _summary(
+            residuals,
+            "absolute_delta_without_talker_forward_ms",
+        ),
+        "positive_unexplained_without_talker_ms": _summary(
+            residuals,
+            "positive_unexplained_without_talker_ms",
+        ),
+        "talker_explained_ms": _summary(
+            residuals,
+            "talker_explained_ms",
+        ),
+        "talker_explained_fraction": _summary(
+            residuals,
+            "talker_explained_fraction",
+        ),
         "delta_without_prefill_kv_ms": _summary(
             residuals,
             "delta_without_prefill_kv_ms",
@@ -895,6 +935,102 @@ def _paired_delta_residual_summary(
         "phase_accounting_error_ms": _summary(
             residuals,
             "phase_accounting_error_ms",
+        ),
+    }
+
+
+def _profile_validation_summary(requests: list[dict[str, object]]) -> dict[str, object]:
+    profiled = [
+        request
+        for request in requests
+        if request.get("first_chunk_profile_prefill_enabled") is True
+    ]
+    profile_count = len(profiled)
+    return {
+        "profiled_first_chunk_count": profile_count,
+        "profile_complete_count": _count_true(
+            profiled,
+            "first_chunk_profile_complete",
+        ),
+        "events_complete_count": _count_true(
+            profiled,
+            "first_chunk_events_complete",
+        ),
+        "components_finite_count": _count_true(
+            profiled,
+            "first_chunk_components_finite",
+        ),
+        "components_nonnegative_count": _count_true(
+            profiled,
+            "first_chunk_components_nonnegative",
+        ),
+        "all_component_streams_equal_count": _count_true(
+            profiled,
+            "first_chunk_all_component_streams_equal",
+        ),
+        "profile_complete_fraction": _fraction_true(
+            profiled,
+            "first_chunk_profile_complete",
+        ),
+        "all_component_streams_equal_fraction": _fraction_true(
+            profiled,
+            "first_chunk_all_component_streams_equal",
+        ),
+        "profile_paths": _string_counts(profiled, "first_chunk_profile_path"),
+        "profile_request_roles": _string_counts(
+            profiled,
+            "first_chunk_profile_request_role",
+        ),
+    }
+
+
+def _count_true(rows: list[dict[str, object]], key: str) -> int:
+    return sum(1 for row in rows if row.get(key) is True)
+
+
+def _fraction_true(rows: list[dict[str, object]], key: str) -> float | None:
+    if not rows:
+        return None
+    return _count_true(rows, key) / len(rows)
+
+
+def _string_counts(rows: list[dict[str, object]], key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        value = row.get(key)
+        if isinstance(value, str):
+            counts[value] = counts.get(value, 0) + 1
+    return counts
+
+
+def _talker_forward_explained_outlier_summary(
+    run_summaries: list[dict[str, object]],
+    *,
+    threshold_ms: float,
+) -> dict[str, object]:
+    positive_outliers = []
+    explained = []
+    for run in run_summaries:
+        delta = _number(run.get("paired_delta_first_audio_ms"))
+        if delta is None or delta <= threshold_ms:
+            continue
+        positive_outliers.append(run)
+        residuals = run.get("paired_delta_residuals")
+        unexplained = (
+            _number(residuals.get("positive_unexplained_without_talker_ms"))
+            if isinstance(residuals, dict)
+            else None
+        )
+        if unexplained is not None and unexplained <= threshold_ms:
+            explained.append(run)
+    count = len(positive_outliers)
+    explained_count = len(explained)
+    return {
+        "threshold_ms": threshold_ms,
+        "positive_outlier_count": count,
+        "explained_by_talker_forward_count": explained_count,
+        "explained_by_talker_forward_fraction": (
+            explained_count / count if count else None
         ),
     }
 
@@ -911,6 +1047,11 @@ def _correlations(run_summaries: list[dict[str, object]]) -> dict[str, object]:
             run_summaries,
             x_key,
             "first_chunk_ar_decode_ms",
+        ),
+        "total_delta_vs_talker_forward_delta": _pearson_for_runs(
+            run_summaries,
+            x_key,
+            "first_chunk_talker_forward_gpu_ms",
         ),
         "total_delta_vs_codec_residual_delta": _pearson_for_runs(
             run_summaries,
@@ -1219,11 +1360,20 @@ def _with_request_pipeline_metrics(
             "first_chunk_prefill_gpu_component_sum_ms",
         ),
         (
+            "prefill_gpu_partition_error_ms",
+            "first_chunk_prefill_gpu_partition_error_ms",
+        ),
+        (
             "prefill_gpu_accounting_error_ms",
             "first_chunk_prefill_gpu_accounting_error_ms",
         ),
     ):
         _copy_metric_number(enriched, first_chunk_phases, source_key, target_key)
+    for source_key, target_key in (
+        ("profile_path", "first_chunk_profile_path"),
+        ("profile_request_role", "first_chunk_profile_request_role"),
+    ):
+        _copy_metric_string(enriched, first_chunk_phases, source_key, target_key)
     for source_key, target_key in (
         ("profile_schema_version", "first_chunk_profile_schema_version"),
         ("prefill_total_gpu_stream_id", "first_chunk_prefill_total_gpu_stream_id"),
@@ -1243,6 +1393,13 @@ def _with_request_pipeline_metrics(
     for source_key, target_key in (
         ("profile_prefill_enabled", "first_chunk_profile_prefill_enabled"),
         ("profile_complete", "first_chunk_profile_complete"),
+        ("events_complete", "first_chunk_events_complete"),
+        ("components_finite", "first_chunk_components_finite"),
+        ("components_nonnegative", "first_chunk_components_nonnegative"),
+        (
+            "all_component_streams_equal",
+            "first_chunk_all_component_streams_equal",
+        ),
     ):
         _copy_metric_bool(enriched, first_chunk_phases, source_key, target_key)
 
@@ -1336,6 +1493,17 @@ def _copy_metric_bool(
 ) -> None:
     value = source.get(source_key)
     if isinstance(value, bool):
+        target[target_key] = value
+
+
+def _copy_metric_string(
+    target: dict[str, object],
+    source: dict[str, object],
+    source_key: str,
+    target_key: str,
+) -> None:
+    value = source.get(source_key)
+    if isinstance(value, str):
         target[target_key] = value
 
 

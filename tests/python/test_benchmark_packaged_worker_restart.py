@@ -15,10 +15,12 @@ from benchmark_packaged_worker_restart import (
     _paired_delta_residual_summary,
     _paired_delta_residuals,
     _phase_delta,
+    _profile_validation_summary,
     _progress_line,
     _RequestGpuPoller,
     _run_shape_for_index,
     _shape_summary,
+    _talker_forward_explained_outlier_summary,
     _validate_runtime_provenance,
     _with_request_pipeline_metrics,
     _worker_process_args_for_run,
@@ -65,9 +67,15 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "instruction_token_count": 9,
                 "prefill_sequence_length": 30,
                 "talker_prefill_length": 42,
-                "profile_schema_version": 2,
+                "profile_schema_version": 3,
+                "profile_path": "fast",
+                "profile_request_role": "first_user",
                 "profile_prefill_enabled": True,
                 "profile_complete": True,
+                "events_complete": True,
+                "components_finite": True,
+                "components_nonnegative": True,
+                "all_component_streams_equal": True,
                 "prefill_total_gpu_ms": 11.0,
                 "talker_forward_gpu_ms": 1.0,
                 "first_sample_gpu_ms": 6.0,
@@ -76,6 +84,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "prefill_to_sync_gpu_ms": 0.0,
                 "prefill_sync_wait_ms": 1.5,
                 "prefill_gpu_component_sum_ms": 11.0,
+                "prefill_gpu_partition_error_ms": 0.0,
                 "prefill_gpu_accounting_error_ms": 0.0,
                 "talker_forward_gpu_stream_id": 1234,
             },
@@ -111,9 +120,15 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(9.0, enriched["first_chunk_instruction_token_count"])
         self.assertEqual(30.0, enriched["first_chunk_prefill_sequence_length"])
         self.assertEqual(42.0, enriched["first_chunk_talker_prefill_length"])
-        self.assertEqual(2, enriched["first_chunk_profile_schema_version"])
+        self.assertEqual(3, enriched["first_chunk_profile_schema_version"])
+        self.assertEqual("fast", enriched["first_chunk_profile_path"])
+        self.assertEqual("first_user", enriched["first_chunk_profile_request_role"])
         self.assertTrue(enriched["first_chunk_profile_prefill_enabled"])
         self.assertTrue(enriched["first_chunk_profile_complete"])
+        self.assertTrue(enriched["first_chunk_events_complete"])
+        self.assertTrue(enriched["first_chunk_components_finite"])
+        self.assertTrue(enriched["first_chunk_components_nonnegative"])
+        self.assertTrue(enriched["first_chunk_all_component_streams_equal"])
         self.assertEqual(11.0, enriched["first_chunk_prefill_total_gpu_ms"])
         self.assertEqual(1.0, enriched["first_chunk_talker_forward_gpu_ms"])
         self.assertEqual(6.0, enriched["first_chunk_first_sample_gpu_ms"])
@@ -121,6 +136,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(1.0, enriched["first_chunk_generation_state_gpu_ms"])
         self.assertEqual(1.5, enriched["first_chunk_prefill_sync_wait_ms"])
         self.assertEqual(11.0, enriched["first_chunk_prefill_gpu_component_sum_ms"])
+        self.assertEqual(0.0, enriched["first_chunk_prefill_gpu_partition_error_ms"])
         self.assertEqual(0.0, enriched["first_chunk_prefill_gpu_accounting_error_ms"])
         self.assertEqual(1234, enriched["first_chunk_talker_forward_gpu_stream_id"])
 
@@ -332,10 +348,21 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         phase_delta = cast(dict[str, object], outlier["paired_phase_delta"])
 
         self.assertEqual("long", shape["label"])
+        self.assertEqual("positive", outlier["tail_kind"])
         self.assertEqual(
             5.0,
             phase_delta["first_chunk_prefill_ms"],
         )
+
+    def test_outlier_records_include_negative_tail(self) -> None:
+        outliers = _outlier_records(
+            [_summary_run("long", delta=-25.0, first_audio=20.0)],
+            threshold_ms=20.0,
+        )
+
+        self.assertEqual(1, len(outliers))
+        self.assertEqual("negative", outliers[0]["tail_kind"])
+        self.assertEqual(-25.0, outliers[0]["paired_delta_first_audio_ms"])
 
     def test_correlations_report_pearson_for_phase_delta(self) -> None:
         correlations = _correlations(
@@ -378,6 +405,10 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(18.0, residuals["delta_without_prefill_ms"])
         self.assertEqual(21.0, residuals["delta_without_first_sample_ms"])
         self.assertEqual(16.0, residuals["delta_without_talker_forward_ms"])
+        self.assertEqual(16.0, residuals["absolute_delta_without_talker_forward_ms"])
+        self.assertEqual(9.0, residuals["talker_explained_ms"])
+        self.assertEqual(16.0, residuals["positive_unexplained_without_talker_ms"])
+        self.assertEqual(0.36, residuals["talker_explained_fraction"])
         self.assertEqual(23.0, residuals["delta_without_prefill_kv_ms"])
         self.assertEqual(24.5, residuals["phase_accounted_delta_ms"])
         self.assertEqual(0.5, residuals["phase_accounting_error_ms"])
@@ -404,6 +435,76 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         accounting_error = cast(dict[str, object], summary["phase_accounting_error_ms"])
         self.assertEqual(4.0, without_prefill["median"])
         self.assertEqual(0.0, accounting_error["median"])
+
+    def test_profile_validation_summary_reports_completeness(self) -> None:
+        summary = _profile_validation_summary(
+            [
+                {
+                    "first_chunk_profile_prefill_enabled": True,
+                    "first_chunk_profile_complete": True,
+                    "first_chunk_events_complete": True,
+                    "first_chunk_components_finite": True,
+                    "first_chunk_components_nonnegative": True,
+                    "first_chunk_all_component_streams_equal": True,
+                    "first_chunk_profile_path": "fast",
+                    "first_chunk_profile_request_role": "first_user",
+                },
+                {
+                    "first_chunk_profile_prefill_enabled": True,
+                    "first_chunk_profile_complete": False,
+                    "first_chunk_events_complete": False,
+                    "first_chunk_components_finite": True,
+                    "first_chunk_components_nonnegative": True,
+                    "first_chunk_all_component_streams_equal": False,
+                    "first_chunk_profile_path": "parity",
+                    "first_chunk_profile_request_role": "steady",
+                },
+                {
+                    "first_chunk_profile_prefill_enabled": False,
+                },
+            ]
+        )
+
+        self.assertEqual(2, summary["profiled_first_chunk_count"])
+        self.assertEqual(1, summary["profile_complete_count"])
+        self.assertEqual(0.5, summary["profile_complete_fraction"])
+        self.assertEqual(1, summary["all_component_streams_equal_count"])
+        self.assertEqual({"fast": 1, "parity": 1}, summary["profile_paths"])
+        self.assertEqual(
+            {"first_user": 1, "steady": 1},
+            summary["profile_request_roles"],
+        )
+
+    def test_talker_forward_explained_outlier_summary_counts_positive_tails(
+        self,
+    ) -> None:
+        summary = _talker_forward_explained_outlier_summary(
+            [
+                {
+                    "paired_delta_first_audio_ms": 25.0,
+                    "paired_delta_residuals": {
+                        "positive_unexplained_without_talker_ms": 10.0,
+                    },
+                },
+                {
+                    "paired_delta_first_audio_ms": 30.0,
+                    "paired_delta_residuals": {
+                        "positive_unexplained_without_talker_ms": 25.0,
+                    },
+                },
+                {
+                    "paired_delta_first_audio_ms": -30.0,
+                    "paired_delta_residuals": {
+                        "positive_unexplained_without_talker_ms": 0.0,
+                    },
+                },
+            ],
+            threshold_ms=20.0,
+        )
+
+        self.assertEqual(2, summary["positive_outlier_count"])
+        self.assertEqual(1, summary["explained_by_talker_forward_count"])
+        self.assertEqual(0.5, summary["explained_by_talker_forward_fraction"])
 
     def test_gpu_poll_summary_extracts_first_gpu_maxima(self) -> None:
         summary = _gpu_poll_summary(
@@ -551,6 +652,7 @@ def _summary_run(label: str, *, delta: float, first_audio: float) -> dict[str, o
         "paired_phase_delta": {
             "first_chunk_prefill_ms": delta / 5.0,
             "first_chunk_ar_decode_ms": delta / 10.0,
+            "first_chunk_talker_forward_gpu_ms": delta / 2.0,
             "first_chunk_codec_wrapper_residual_ms": delta / 20.0,
         },
         "first_request": {

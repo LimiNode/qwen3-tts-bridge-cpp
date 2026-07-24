@@ -1372,13 +1372,17 @@ text/language/speaker/instruction into that worker's synthesis warmup.
 Current faster telemetry provenance:
 
 ```text
-faster-qwen3-tts local commit: 8152612
-retained wheel SHA256: 3f81c8cd1eca91d203913d6befb4ee11d2aa8e38e8c593206bedc8df8db63b03
-patch series SHA256: 911794fd1997be1e4642e36fe6cd570552cd6c7afa99ee35ef451fe8aca8915e
-schema patch SHA256: 05e0e799bcf766b9e7ad8e32273c07c1093c00277710cb97f7f086b27efe7d47
-NVTX patch SHA256: 6025418c7617bcbcb70178f130dd5c272afddfdad5fca4382fc8b4796fd1ef37
-source archive SHA256: a6a7e46336b49d30b100543aa2921460bbc917faa0d7d113da5995b73a9539c5
-Nsight status: nsys/ncu not found in PATH during this pass
+faster-qwen3-tts v2 smoke commit: 8152612
+retained v2 wheel SHA256: 3f81c8cd1eca91d203913d6befb4ee11d2aa8e38e8c593206bedc8df8db63b03
+faster-qwen3-tts current local telemetry commit: f98242e
+retained v3 wheel SHA256: b45c21193cad723456fdcb12d8cdad7afb3eeec0bf04c124e5406f6183d43696
+upstream prerequisite/base commit: afa6120
+v3 patch series: faster-qwen3-tts-telemetry-patch/0001-0004-prefill-profile-telemetry-series.patch
+v3 patch series SHA256: 14e40c8fdb6fd0d46c5a3b2becb85d9abd4af3d1e76bda53d4b9a8e5dbc17d49
+v3 git bundle: faster-qwen3-tts-telemetry-patch/faster-qwen3-tts-afa6120-to-f98242e.bundle
+v3 git bundle SHA256: 2f95f76c382db9fe4addee55551fc9e414832fb63d1ea54f27e001c2b47eb3f6
+source archive policy: no repeated full source ZIPs after the one-off v2 snapshot
+Nsight status: nsys/ncu not found in PATH during the v2 pass
 ```
 
 ```powershell

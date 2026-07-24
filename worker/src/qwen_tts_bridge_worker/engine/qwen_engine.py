@@ -401,6 +401,14 @@ def _qwen_runtime_language(language: str) -> str:
     return language
 
 
+def _profile_request_role(request_id: int) -> str | None:
+    if request_id == 1:
+        return "first_user"
+    if request_id > 1:
+        return "steady"
+    return None
+
+
 def _model_call_language(config: QwenEngineConfig, language: str) -> str | None:
     if config.runtime_backend == "faster":
         return _qwen_runtime_language(language)
@@ -456,6 +464,9 @@ def _qwen_stream_generate_audio(
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
+                    profile_request_role = _profile_request_role(request.request_id)
+                    if profile_request_role is not None:
+                        stream_kwargs["profile_request_role"] = profile_request_role
                 return cast(
                     Iterable[tuple[Any, int]],
                     public_stream(**stream_kwargs),
@@ -498,6 +509,9 @@ def _qwen_stream_generate_audio(
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
+                    profile_request_role = _profile_request_role(request.request_id)
+                    if profile_request_role is not None:
+                        stream_kwargs["profile_request_role"] = profile_request_role
                 return cast(
                     Iterable[tuple[Any, int]],
                     public_stream(**stream_kwargs),
@@ -696,8 +710,19 @@ def _first_chunk_timing_fields(
         if value is not None:
             fields[key] = int(value)
     for key in (
+        "profile_path",
+        "profile_request_role",
+    ):
+        value = chunk_timing.get(key)
+        if isinstance(value, str):
+            fields[key] = value
+    for key in (
         "profile_prefill_enabled",
         "profile_complete",
+        "events_complete",
+        "components_finite",
+        "components_nonnegative",
+        "all_component_streams_equal",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
@@ -717,6 +742,7 @@ def _first_chunk_timing_fields(
         "prefill_to_sync_gpu_ms",
         "prefill_sync_wait_ms",
         "prefill_gpu_component_sum_ms",
+        "prefill_gpu_partition_error_ms",
         "prefill_gpu_accounting_error_ms",
     ):
         value = _number_field(chunk_timing, key)

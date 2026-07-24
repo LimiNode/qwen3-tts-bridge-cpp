@@ -1153,15 +1153,23 @@ There are now two separate tracks:
 
 ## 2026-07-24 Faster Prefill Profiling Smoke
 
-The retained local `faster_qwen3_tts-0.3.2` wheel is now rebuilt from
-`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` commit `8152612`. That commit
-contains the original telemetry patch, schema stabilization, and NVTX ranges
-for future Nsight traces:
-`profile_schema_version=2`, `profile_complete`, `prefill_total_gpu_ms`, stream
-IDs, and GPU component accounting. The rebuilt retained wheel SHA256 is
+The retained local `faster_qwen3_tts-0.3.2` wheel was rebuilt from
+`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` commit `8152612` for the v2
+smoke below. A later local faster commit, `f98242e`, updates the profiler
+contract to schema v3 with `profile_path=fast|parity`, path-specific
+`profile_complete`, explicit missing values as `null`, finite/nonnegative
+validation flags, stream-consistency reporting, `prefill_gpu_partition_error_ms`,
+and outer NVTX ranges named `qtb_profile_first_user_request` and
+`qtb_profile_steady_request`. `prefill_gpu_accounting_error_ms` remains a
+temporary compatibility alias for `prefill_gpu_partition_error_ms`.
+The faster patch series and a small git bundle from upstream base `afa6120` to
+`f98242e` are saved under
+`docs/benchmark-artifacts/rtx4090-2026-07-22/faster-qwen3-tts-telemetry-patch/`;
+no new full source ZIP is added for v3.
+The previous retained wheel SHA256 was
 `3f81c8cd1eca91d203913d6befb4ee11d2aa8e38e8c593206bedc8df8db63b03`.
-The faster source patch series and source archive are saved under
-`docs/benchmark-artifacts/rtx4090-2026-07-22/faster-qwen3-tts-telemetry-patch/`.
+The v3 retained wheel SHA256 is
+`b45c21193cad723456fdcb12d8cdad7afb3eeec0bf04c124e5406f6183d43696`.
 The bridge now fails restart benchmarks if the installed faster distribution
 does not match the retained wheel, so these numbers are tied to the wheel kept
 in `dist/QwenTTSBridge/worker-python/wheels/`.
@@ -1186,6 +1194,7 @@ Saved artifacts:
 - `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-source-worker-faster-customvoice-chunk8-greedy-r1x2.json`
 - `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-v2-source-worker-faster-customvoice-chunk8-sampling-r1x2.json`
 - `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-v2-nvtx-source-worker-faster-customvoice-chunk8-sampling-r1x1.json`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-v3-source-worker-faster-customvoice-chunk8-sampling-r1x2.json`
 
 Results:
 
@@ -1208,12 +1217,21 @@ transport/dispatch overhead is around 1 ms for the first chunk in this setup.
 The coarse `prefill_ms` bucket is now split enough to show that talker forward
 dominates the prefill subphase for this prompt.
 
-The v2 smoke confirms the updated profiler schema on the real faster path:
+The v2 smoke confirms the previously updated profiler schema on the real faster path:
 `profile_complete=true`, `profile_schema_version=2`, `prefill_total_gpu_ms`
 `147.868`, component sum `147.868`, and accounting error approximately `0 ms`.
 The NVTX-enabled wheel also passed a real `r1x1` smoke with `--profile-prefill`.
-`nsys` and `ncu` were not available in `PATH` on this machine during this pass,
-so an actual Nsight trace is still pending.
+The v3 smoke confirms the path-specific schema on the real faster path:
+`profile_schema_version=3`, `profile_path=fast`, `profile_complete=true`,
+`events_complete=true`, `components_finite=true`,
+`components_nonnegative=true`, `all_component_streams_equal=true`, request role
+`first_user` for request 1, request role `steady` for request 2, and
+`prefill_gpu_partition_error_ms` approximately `0 ms`. The saved v3 smoke has
+2/2 profiled first chunks complete and stream-consistent; first TTFA was
+`427.732 ms`, steady TTFA was `373.957 ms`. This is still a smoke, not a
+performance distribution.
+`nsys` and `ncu` were not available in `PATH` during the earlier v2 pass, so an
+actual Nsight trace is still pending.
 
 A small profile overhead control was also recorded:
 
