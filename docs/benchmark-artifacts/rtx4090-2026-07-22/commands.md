@@ -1412,6 +1412,23 @@ C - B median: +4.974 ms
 C - B p95: -7.606 ms
 ```
 
+Nsight Systems install attempt:
+
+```text
+official page checked: https://developer.nvidia.com/nsight-systems/get-started
+official download data endpoint: https://developer.nvidia.com/tools-downloads.json
+version found: 2026.4.1
+Windows MSI URL: https://developer.nvidia.com/downloads/assets/tools/secure/nsight-systems/2026_4/NsightSystems-2026.4.1.174-3856861.msi
+server Content-Length: 560553984 bytes
+download path: tmp/NsightSystems-2026.4.1.174-3856861.msi
+install log: tmp/nsight-systems-install.log
+extract log: tmp/nsight-systems-extract.log
+install result: msiexec /i failed with 1603 because Administrator privileges are required
+administrative extract result: msiexec /a also failed with 1603
+7-Zip extraction: succeeded into tmp/nsight-systems-cabs, but flattened nsys.exe scratch copy was not runnable
+trace status: blocked until Nsight Systems is installed by an administrator or a valid portable CLI layout is supplied
+```
+
 ```powershell
 $oldPyPath = $env:PYTHONPATH
 try {

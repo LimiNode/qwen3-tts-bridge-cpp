@@ -1277,6 +1277,26 @@ next production r100 baseline should not be treated as an acceptance baseline
 until either the profiling cost is accepted as small enough for diagnostics or
 the v3 profiler is trimmed further.
 
+Nsight Systems was checked after the r50 control. NVIDIA's official download
+page listed Nsight Systems `2026.4.1` for Windows x86_64, with local CLI/GUI
+support on Windows 10+ hosts. The official MSI URL from
+`https://developer.nvidia.com/tools-downloads.json` was:
+
+```text
+https://developer.nvidia.com/downloads/assets/tools/secure/nsight-systems/2026_4/NsightSystems-2026.4.1.174-3856861.msi
+```
+
+The first `Invoke-WebRequest` attempt timed out after writing a partial
+`451,986,258` byte file; the server-reported `Content-Length` was
+`560,553,984` bytes. `curl.exe -C -` resumed the download to the expected
+size. Silent MSI installation then failed with exit code `1603`; the MSI log
+reported: `Setup requires Administrator privileges to install.` Administrative
+extract with `msiexec /a` also failed with `1603`. A 7-Zip extraction exposed
+MSI payload files including `nsys.exe`, but a flattened scratch copy did not
+produce a runnable CLI. Actual Nsight traces are therefore blocked until Nsight
+Systems is installed with administrator privileges or a working CLI-only
+portable layout is provided.
+
 ### Shape Warmup Matrix
 
 A small 8-run shape matrix was added to compare a fixed medium warmup against
