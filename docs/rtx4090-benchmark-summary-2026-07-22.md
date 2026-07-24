@@ -1293,9 +1293,37 @@ size. Silent MSI installation then failed with exit code `1603`; the MSI log
 reported: `Setup requires Administrator privileges to install.` Administrative
 extract with `msiexec /a` also failed with `1603`. A 7-Zip extraction exposed
 MSI payload files including `nsys.exe`, but a flattened scratch copy did not
-produce a runnable CLI. Actual Nsight traces are therefore blocked until Nsight
-Systems is installed with administrator privileges or a working CLI-only
-portable layout is provided.
+produce a runnable CLI.
+
+Nsight Systems was later installed manually with administrator privileges.
+`nsys --version` reported `2026.4.1.174-264138568610v0`. Two NVTX-bounded
+traces were captured with `--trace=cuda,nvtx,wddm --sample=none`; WDDM and CPU
+context-switch traces were disabled by Nsight because administrator or
+Performance Log Users privileges are still required for those providers in the
+profiling process. CUDA+NVTX traces were captured successfully:
+
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/nsight-systems-v3/first-user-prefill.nsys-rep`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/nsight-systems-v3/steady-prefill.nsys-rep`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/nsight-systems-v3/summary.json`
+
+The traces were intentionally captured only around the prefill NVTX ranges, not
+the whole benchmark process. `--capture-range-end=stop-shutdown` stops the
+target after the captured range, so the redirected stdout files contain Nsight
+capture logs rather than complete benchmark JSON reports.
+
+| Trace | outer NVTX range | talker-forward NVTX | CUDA runtime API | CUDA API calls | CUDA GPU kernels+mem | non-GPU/gap bucket |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| first user | 183.198 ms | 173.882 ms | 85.069 ms | 2,982 | 5.966 ms | 177.232 ms |
+| steady | 172.315 ms | 163.435 ms | 81.048 ms | 2,982 | 6.014 ms | 166.300 ms |
+| first - steady | +10.884 ms | +10.448 ms | +4.021 ms | 0 | -0.048 ms | +10.932 ms |
+
+Interpretation: the first-vs-steady prefill delta is not explained by more GPU
+kernel execution. Kernel+mem time is about `6 ms` in both traces. The delta is
+inside the host/API/queue/gap region around `talker.forward`: CUDA runtime API
+time increases by about `4 ms`, while the broader non-GPU/gap bucket increases
+by about `10.9 ms`. This makes a low-level scheduler or graph/compiled prefill
+track more plausible than tuning individual CUDA kernels for this particular
+first-user tail.
 
 ### Shape Warmup Matrix
 

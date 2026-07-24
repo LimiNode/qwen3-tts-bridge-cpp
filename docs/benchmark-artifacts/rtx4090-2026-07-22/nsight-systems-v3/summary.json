@@ -1,0 +1,272 @@
+{
+  "artifact_schema_version": 1,
+  "comparisons": {
+    "cuda_gpu_total_delta_ms": -0.048038000000000025,
+    "cuda_runtime_api_calls_delta": 0,
+    "cuda_runtime_api_total_delta_ms": 4.021446999999995,
+    "non_gpu_or_gap_delta_ms": 10.931564999999978,
+    "outer_range_delta_ms": 10.883526999999987,
+    "talker_forward_range_delta_ms": 10.447606000000007
+  },
+  "nsight_systems_version": "2026.4.1.174-264138568610v0",
+  "reports": {
+    "first_user": {
+      "cuda_gpu_total_ms": 5.966431999999999,
+      "cuda_gpu_total_share_of_outer": 0.032568130655713574,
+      "cuda_kernel": {
+        "instances": 2748,
+        "total_ms": 5.935712
+      },
+      "cuda_memcpy": {
+        "instances": 8,
+        "total_ms": 0.008544
+      },
+      "cuda_memset": {
+        "instances": 57,
+        "total_ms": 0.022176
+      },
+      "cuda_runtime_api": {
+        "calls": 2982,
+        "top_by_time": [
+          {
+            "avg_us": 29.96295320291523,
+            "calls": 2607,
+            "name": "cudaLaunchKernel_v7000",
+            "total_ms": 78.113419
+          },
+          {
+            "avg_us": 30.686191489361704,
+            "calls": 141,
+            "name": "cuLaunchKernel",
+            "total_ms": 4.326753
+          },
+          {
+            "avg_us": 30.605280701754385,
+            "calls": 57,
+            "name": "cudaMemsetAsync_v3020",
+            "total_ms": 1.744501
+          },
+          {
+            "avg_us": 45.487,
+            "calls": 8,
+            "name": "cudaMemcpyAsync_v3020",
+            "total_ms": 0.363896
+          },
+          {
+            "avg_us": 1.6374468085106382,
+            "calls": 141,
+            "name": "cuKernelGetFunction",
+            "total_ms": 0.23088
+          },
+          {
+            "avg_us": 25.211166666666667,
+            "calls": 6,
+            "name": "cudaEventRecordWithFlags_v11010",
+            "total_ms": 0.151267
+          },
+          {
+            "avg_us": 18.31325,
+            "calls": 4,
+            "name": "cudaStreamSynchronize_v3020",
+            "total_ms": 0.073253
+          },
+          {
+            "avg_us": 28.076,
+            "calls": 1,
+            "name": "cudaDeviceSynchronize_v3020",
+            "total_ms": 0.028076
+          },
+          {
+            "avg_us": 4.1226,
+            "calls": 5,
+            "name": "cudaEventCreateWithFlags_v3020",
+            "total_ms": 0.020613
+          },
+          {
+            "avg_us": 1.3985833333333333,
+            "calls": 12,
+            "name": "cudaStreamIsCapturing_v10000",
+            "total_ms": 0.016783
+          }
+        ],
+        "total_ms": 85.069441
+      },
+      "non_gpu_or_gap_ms": 177.232047,
+      "nvtx_ranges": {
+        "qtb_prefill_final_sync": {
+          "instances": 1,
+          "max_ms": 0.058773,
+          "min_ms": 0.058773,
+          "total_ms": 0.058773
+        },
+        "qtb_prefill_first_sample": {
+          "instances": 1,
+          "max_ms": 1.494421,
+          "min_ms": 1.494421,
+          "total_ms": 1.494421
+        },
+        "qtb_prefill_generation_state": {
+          "instances": 1,
+          "max_ms": 0.631417,
+          "min_ms": 0.631417,
+          "total_ms": 0.631417
+        },
+        "qtb_prefill_static_cache": {
+          "instances": 1,
+          "max_ms": 6.470607,
+          "min_ms": 6.470607,
+          "total_ms": 6.470607
+        },
+        "qtb_prefill_talker_forward": {
+          "instances": 1,
+          "max_ms": 173.882459,
+          "min_ms": 173.882459,
+          "total_ms": 173.882459
+        },
+        "qtb_profile_first_user_request": {
+          "instances": 1,
+          "max_ms": 183.198479,
+          "min_ms": 183.198479,
+          "total_ms": 183.198479
+        }
+      },
+      "outer_range_ms": 183.198479,
+      "report": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-v3\\first-user-prefill.nsys-rep",
+      "sqlite": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-v3\\first-user-prefill.sqlite",
+      "talker_forward_range_ms": 173.882459,
+      "talker_forward_share_of_outer": 0.9491479402511853
+    },
+    "steady": {
+      "cuda_gpu_total_ms": 6.014469999999999,
+      "cuda_gpu_total_share_of_outer": 0.03490393567239597,
+      "cuda_kernel": {
+        "instances": 2748,
+        "total_ms": 5.984036
+      },
+      "cuda_memcpy": {
+        "instances": 8,
+        "total_ms": 0.008321
+      },
+      "cuda_memset": {
+        "instances": 57,
+        "total_ms": 0.022113
+      },
+      "cuda_runtime_api": {
+        "calls": 2982,
+        "top_by_time": [
+          {
+            "avg_us": 28.67547794399693,
+            "calls": 2607,
+            "name": "cudaLaunchKernel_v7000",
+            "total_ms": 74.756971
+          },
+          {
+            "avg_us": 28.174609929078017,
+            "calls": 141,
+            "name": "cuLaunchKernel",
+            "total_ms": 3.97262
+          },
+          {
+            "avg_us": 27.740614035087717,
+            "calls": 57,
+            "name": "cudaMemsetAsync_v3020",
+            "total_ms": 1.581215
+          },
+          {
+            "avg_us": 35.620125,
+            "calls": 8,
+            "name": "cudaMemcpyAsync_v3020",
+            "total_ms": 0.284961
+          },
+          {
+            "avg_us": 1.5074255319148935,
+            "calls": 141,
+            "name": "cuKernelGetFunction",
+            "total_ms": 0.212547
+          },
+          {
+            "avg_us": 21.127333333333333,
+            "calls": 6,
+            "name": "cudaEventRecordWithFlags_v11010",
+            "total_ms": 0.126764
+          },
+          {
+            "avg_us": 14.7715,
+            "calls": 4,
+            "name": "cudaStreamSynchronize_v3020",
+            "total_ms": 0.059086
+          },
+          {
+            "avg_us": 4.0134,
+            "calls": 5,
+            "name": "cudaEventCreateWithFlags_v3020",
+            "total_ms": 0.020067
+          },
+          {
+            "avg_us": 18.476,
+            "calls": 1,
+            "name": "cudaDeviceSynchronize_v3020",
+            "total_ms": 0.018476
+          },
+          {
+            "avg_us": 1.2739166666666668,
+            "calls": 12,
+            "name": "cudaStreamIsCapturing_v10000",
+            "total_ms": 0.015287
+          }
+        ],
+        "total_ms": 81.047994
+      },
+      "non_gpu_or_gap_ms": 166.30048200000002,
+      "nvtx_ranges": {
+        "qtb_prefill_final_sync": {
+          "instances": 1,
+          "max_ms": 0.042979,
+          "min_ms": 0.042979,
+          "total_ms": 0.042979
+        },
+        "qtb_prefill_first_sample": {
+          "instances": 1,
+          "max_ms": 1.612066,
+          "min_ms": 1.612066,
+          "total_ms": 1.612066
+        },
+        "qtb_prefill_generation_state": {
+          "instances": 1,
+          "max_ms": 0.504241,
+          "min_ms": 0.504241,
+          "total_ms": 0.504241
+        },
+        "qtb_prefill_static_cache": {
+          "instances": 1,
+          "max_ms": 6.171075,
+          "min_ms": 6.171075,
+          "total_ms": 6.171075
+        },
+        "qtb_prefill_talker_forward": {
+          "instances": 1,
+          "max_ms": 163.434853,
+          "min_ms": 163.434853,
+          "total_ms": 163.434853
+        },
+        "qtb_profile_steady_request": {
+          "instances": 1,
+          "max_ms": 172.314952,
+          "min_ms": 172.314952,
+          "total_ms": 172.314952
+        }
+      },
+      "outer_range_ms": 172.314952,
+      "report": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-v3\\steady-prefill.nsys-rep",
+      "sqlite": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-v3\\steady-prefill.sqlite",
+      "talker_forward_range_ms": 163.434853,
+      "talker_forward_share_of_outer": 0.9484658824035189
+    }
+  },
+  "trace_flags_requested": "cuda,nvtx,wddm; sample=none; capture-range=nvtx",
+  "trace_limitations": [
+    "WDDM trace disabled because administrator or Performance Log Users privileges are required.",
+    "CPU context switches trace disabled because administrator privileges are required.",
+    "Captured ranges are NVTX-bounded prefill ranges, not complete benchmark process timelines."
+  ]
+}

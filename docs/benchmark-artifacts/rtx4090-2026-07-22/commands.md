@@ -1429,6 +1429,99 @@ administrative extract result: msiexec /a also failed with 1603
 trace status: blocked until Nsight Systems is installed by an administrator or a valid portable CLI layout is supplied
 ```
 
+Nsight Systems trace capture after manual installation:
+
+```text
+nsys path: C:/Program Files/NVIDIA Corporation/Nsight Systems 2026.4.1/target-windows-x64/nsys.exe
+nsys version: 2026.4.1.174-264138568610v0
+requested trace flags: --trace=cuda,nvtx,wddm --sample=none
+capture range mode: --capture-range=nvtx
+capture range end: --capture-range-end=stop-shutdown
+environment: NSYS_NVTX_PROFILER_REGISTER_ONLY=0
+limitation: WDDM trace disabled by Nsight because Administrator or Performance Log Users privileges are required
+limitation: CPU context switch trace disabled by Nsight because Administrator privileges are required
+```
+
+First-user capture:
+
+```powershell
+$env:NSYS_NVTX_PROFILER_REGISTER_ONLY = "0"
+
+& "C:\Program Files\NVIDIA Corporation\Nsight Systems 2026.4.1\target-windows-x64\nsys.exe" profile `
+    --trace=cuda,nvtx,wddm `
+    --sample=none `
+    --capture-range=nvtx `
+    --nvtx-capture=qtb_profile_first_user_request `
+    --capture-range-end=stop-shutdown `
+    --force-overwrite=true `
+    -o docs\benchmark-artifacts\rtx4090-2026-07-22\nsight-systems-v3\first-user-prefill `
+    .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+    .\.venv-packaging\Scripts\python.exe `
+    --worker-prefix-arg=-B `
+    --worker-prefix-arg=-P `
+    --worker-prefix-arg=-s `
+    --worker-prefix-arg=-m `
+    --worker-prefix-arg=qwen_tts_bridge_worker `
+    --engine qwen `
+    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --runtime-backend faster `
+    --device cuda `
+    --dtype auto `
+    --emit-every-frames 8 `
+    --max-seq-len 2048 `
+    --warmup-synthesis `
+    --warmup-synthesis-passes 1 `
+    --warmup-text "I am your robot. I am your worker." `
+    --warmup-language English `
+    --warmup-speaker ryan `
+    --runs 1 `
+    --requests-per-run 2 `
+    --seed 4242 `
+    --seed-mode fixed `
+    --warmup-seed 4242 `
+    --text "I am your robot. I am your worker." `
+    --language English `
+    --speaker ryan `
+    --profile-prefill `
+    --timeout-seconds 1200
+```
+
+Steady capture uses the same command with:
+
+```text
+--nvtx-capture=qtb_profile_steady_request
+-o docs\benchmark-artifacts\rtx4090-2026-07-22\nsight-systems-v3\steady-prefill
+```
+
+Nsight artifact hashes:
+
+```text
+first-user-prefill.nsys-rep SHA256: ba355b53659b454da68f9187049cb9fbad16684acee6cb5203bfa1f1ff3760b5
+first-user-prefill.sqlite SHA256: 536e28e3c02c02e6ac5b279b7b03f053a4b3ea6c734c5336f639ec45715a3452
+first-user-stats.txt SHA256: 04097ad16f2b3be9bb7a758ce8819c1d3306a0e1c4b34e7ffe69b5090f70f506
+first-user-nsys-stdout.txt SHA256: 8b7c80f0d0b504601c423e5e8f43255352f979ae020790133b2861a3aad63d2b
+steady-prefill.nsys-rep SHA256: 871d33105735a665a7f213354d9c6f0736515cdc42bd590b5de588ca723d8c51
+steady-prefill.sqlite SHA256: c6f165c802f1c76b731529d52dc7980eccc7515072e87e68768bd053424860ac
+steady-stats.txt SHA256: 0e10935a448ebbd799f77b985548ea7b6abafd4865b4e9d3c6a60f31c18ba1db
+steady-nsys-stdout.txt SHA256: 5838aec7e1ff796b3c231babb40d8669eb5aa9f8a61f6d55ddb956c300610643
+summary.json SHA256: 63edcc786aef75b9277ed67a3bed6701dbf2f70fdbfce98358253d3348a1dbd3
+```
+
+Nsight summary:
+
+```text
+first-user outer range: 183.198 ms
+steady outer range: 172.315 ms
+first-steady outer delta: +10.884 ms
+first-user talker-forward range: 173.882 ms
+steady talker-forward range: 163.435 ms
+first-steady talker-forward delta: +10.448 ms
+first-user CUDA runtime API: 85.069 ms across 2982 calls
+steady CUDA runtime API: 81.048 ms across 2982 calls
+first-user CUDA GPU kernels+mem: 5.966 ms
+steady CUDA GPU kernels+mem: 6.014 ms
+```
+
 ```powershell
 $oldPyPath = $env:PYTHONPATH
 try {
