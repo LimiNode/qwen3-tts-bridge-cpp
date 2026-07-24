@@ -584,6 +584,26 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             },
         )
 
+    def test_validate_runtime_provenance_allows_explicit_control_mismatch(
+        self,
+    ) -> None:
+        _validate_runtime_provenance(
+            argparse.Namespace(
+                engine="qwen",
+                runtime_backend="faster",
+                allow_unverified_faster_wheel=True,
+            ),
+            {
+                "imports": {
+                    "faster_qwen3_tts": {
+                        "distribution": {
+                            "retained_wheel_match_verified": False,
+                        }
+                    }
+                }
+            },
+        )
+
 
 def _qwen_args(
     *,
@@ -612,6 +632,7 @@ def _qwen_args(
         no_compile_codebook_predictor=False,
         no_compile_talker=False,
         matmul_precision="",
+        allow_unverified_faster_wheel=False,
         no_sample=False,
         seed=seed,
         seed_mode="request_id",

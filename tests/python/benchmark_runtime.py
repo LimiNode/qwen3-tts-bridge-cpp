@@ -249,7 +249,7 @@ def _distribution_provenance(name: str) -> dict[str, object] | None:
     )
     installed_archive_sha256 = _direct_url_archive_sha256(direct_url)
     retained_wheel_sha256 = _single_retained_wheel_sha256(retained_wheels)
-    match_verified = _verify_retained_wheel_match(
+    match_verified, match_error = _verify_retained_wheel_match(
         package_name=name,
         installed_archive_sha256=installed_archive_sha256,
         retained_wheel_sha256=retained_wheel_sha256,
@@ -264,6 +264,7 @@ def _distribution_provenance(name: str) -> dict[str, object] | None:
         "installed_archive_sha256": installed_archive_sha256,
         "retained_wheel_sha256": retained_wheel_sha256,
         "retained_wheel_match_verified": match_verified,
+        "retained_wheel_match_error": match_error,
         "matching_retained_wheels": retained_wheels,
     }
 
@@ -299,14 +300,15 @@ def _verify_retained_wheel_match(
     package_name: str,
     installed_archive_sha256: str | None,
     retained_wheel_sha256: str | None,
-) -> bool | None:
+) -> tuple[bool | None, str | None]:
     if installed_archive_sha256 is None or retained_wheel_sha256 is None:
-        return None
+        return None, None
     if installed_archive_sha256 == retained_wheel_sha256:
-        return True
-    raise RuntimeError(
+        return True, None
+    return (
+        False,
         f"{package_name} installed archive sha256 does not match retained wheel: "
-        f"{installed_archive_sha256} != {retained_wheel_sha256}"
+        f"{installed_archive_sha256} != {retained_wheel_sha256}",
     )
 
 

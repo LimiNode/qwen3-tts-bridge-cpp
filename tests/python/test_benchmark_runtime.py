@@ -63,21 +63,24 @@ class BenchmarkRuntimeTests(unittest.TestCase):
         )
 
     def test_verify_retained_wheel_match_rejects_mismatch(self) -> None:
-        with self.assertRaisesRegex(RuntimeError, "does not match retained wheel"):
-            br._verify_retained_wheel_match(
-                package_name="faster-qwen3-tts",
-                installed_archive_sha256="installed",
-                retained_wheel_sha256="retained",
-            )
+        match, error = br._verify_retained_wheel_match(
+            package_name="faster-qwen3-tts",
+            installed_archive_sha256="installed",
+            retained_wheel_sha256="retained",
+        )
+
+        self.assertFalse(match)
+        self.assertIn("does not match retained wheel", str(error))
 
     def test_verify_retained_wheel_match_accepts_match(self) -> None:
-        self.assertTrue(
-            br._verify_retained_wheel_match(
-                package_name="faster-qwen3-tts",
-                installed_archive_sha256="same",
-                retained_wheel_sha256="same",
-            )
+        match, error = br._verify_retained_wheel_match(
+            package_name="faster-qwen3-tts",
+            installed_archive_sha256="same",
+            retained_wheel_sha256="same",
         )
+
+        self.assertTrue(match)
+        self.assertIsNone(error)
 
 
 if __name__ == "__main__":

@@ -1251,6 +1251,32 @@ p95 difference is about `1.1 ms`; first TTFA p95 differs by about `3.9 ms` on
 only five fresh workers, so a larger shuffled run is still needed before using
 it as a hard acceptance result.
 
+A randomized three-way overhead control was then run with 50 fresh workers per
+condition and 4 requests per worker:
+
+- `A_pristine`: upstream faster commit `afa6120`, profile off
+- `B_telemetry_profile_off`: telemetry faster commit `f98242e`,
+  `profile_prefill=false`
+- `C_telemetry_profile_on`: telemetry faster commit `f98242e`,
+  `profile_prefill=true`
+
+Saved artifact directory:
+
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/profile-overhead-control-v3-r50x4-randomized-runs/summary.json`
+
+| Comparison | first TTFA median delta | first TTFA p95 delta | steady TTFA median delta | steady TTFA p95 delta | paired delta median delta | paired delta p95 delta |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| B - A | -2.952 ms | +5.295 ms | -2.956 ms | +0.357 ms | +0.360 ms | +3.616 ms |
+| C - B | +4.974 ms | -7.606 ms | +2.015 ms | +0.274 ms | -0.796 ms | -12.176 ms |
+
+This r50 control does not show a large overhead, but it does not pass the
+strict preliminary thresholds either: B-A first TTFA p95 is `+5.295 ms` versus a
+`<=5 ms` target, and C-B first TTFA median is `+4.974 ms` versus a `<=2 ms`
+target. Because the profile-on cost is visible in the first-request median, the
+next production r100 baseline should not be treated as an acceptance baseline
+until either the profiling cost is accepted as small enough for diagnostics or
+the v3 profiler is trimmed further.
+
 ### Shape Warmup Matrix
 
 A small 8-run shape matrix was added to compare a fixed medium warmup against

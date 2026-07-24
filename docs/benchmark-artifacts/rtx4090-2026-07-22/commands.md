@@ -1385,6 +1385,33 @@ source archive policy: no repeated full source ZIPs after the one-off v2 snapsho
 Nsight status: nsys/ncu not found in PATH during the v2 pass
 ```
 
+Randomized three-way overhead control:
+
+```text
+artifact directory: profile-overhead-control-v3-r50x4-randomized-runs/
+summary artifact: profile-overhead-control-v3-r50x4-randomized-runs/summary.json
+summary SHA256: 022141b5782dfaec742a2518fceb5f392fe81d178399475a7cff8cfe5205b547
+schedule SHA256: 9b066f8bdb0b89762683037756f68ac55db76ed5c2f3f1cd7d81558e32ff43c8
+raw run JSON archive: profile-overhead-control-v3-r50x4-randomized-runs/raw-run-json.zip
+raw run JSON archive SHA256: c5e716ce54897eaff14134f4b77043eb501c8f22ebdfff1f9a3abdd7cdf4f3e0
+schedule seeds: 20260724 for first 30/condition, 20260725 for extension to 50/condition
+runs per condition: 50
+requests per run: 4
+A_pristine wheel SHA256: 91e5b434a4caee3153ebd2a7e3637fa6a940e716de7af6c7f4791c3ad84422ff
+B/C telemetry wheel SHA256: b45c21193cad723456fdcb12d8cdad7afb3eeec0bf04c124e5406f6183d43696
+benchmark flag: --allow-unverified-faster-wheel
+reason for flag: A and B/C intentionally install different local wheels with the same distribution version
+```
+
+Directional first TTFA overhead checks from `summary.json`:
+
+```text
+B - A median: -2.952 ms
+B - A p95: +5.295 ms
+C - B median: +4.974 ms
+C - B p95: -7.606 ms
+```
+
 ```powershell
 $oldPyPath = $env:PYTHONPATH
 try {

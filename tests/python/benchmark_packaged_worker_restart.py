@@ -227,6 +227,7 @@ def _build_report(
             "requests_per_run": args.requests_per_run,
             "cpu_affinity": args.cpu_affinity,
             "profile_prefill": args.profile_prefill,
+            "allow_unverified_faster_wheel": args.allow_unverified_faster_wheel,
             "do_sample": not args.no_sample,
             "request_gpu_poll_interval_ms": args.request_gpu_poll_interval_ms,
             "warmup_from_run_shape": args.warmup_from_run_shape,
@@ -317,6 +318,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--profile-prefill", action="store_true")
+    parser.add_argument(
+        "--allow-unverified-faster-wheel",
+        action="store_true",
+        help=(
+            "Allow faster backend runs when the installed wheel does not match "
+            "the single retained wheel. Use only for controlled A/B/C wheel "
+            "experiments that record wheel provenance separately."
+        ),
+    )
     parser.add_argument("--no-sample", action="store_true")
     parser.add_argument(
         "--request-gpu-poll-interval-ms",
@@ -422,6 +432,8 @@ def _validate_runtime_provenance(
     distribution = faster.get("distribution")
     if not isinstance(distribution, dict):
         raise RuntimeError("faster_qwen3_tts distribution provenance is missing")
+    if getattr(args, "allow_unverified_faster_wheel", False):
+        return
     if distribution.get("retained_wheel_match_verified") is not True:
         raise RuntimeError(
             "faster_qwen3_tts retained wheel provenance was not verified"
