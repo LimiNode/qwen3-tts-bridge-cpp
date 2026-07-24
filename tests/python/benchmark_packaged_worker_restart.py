@@ -68,6 +68,7 @@ def main() -> int:
         worker_prefix_args=args.worker_prefix_arg,
         args=args,
     )
+    _validate_runtime_provenance(args, runtime)
     started_at = time.perf_counter()
     for index in range(args.runs):
         run_shape = _run_shape_for_index(args, run_shapes, index + 1)
@@ -236,7 +237,11 @@ def _build_report(
                 steady_requests,
             ),
             "paired_phase_delta": _phase_summary(paired_phase_deltas),
-            "by_shape": _shape_summary(run_summaries),
+            "paired_delta_residuals": _paired_delta_residual_summary(run_summaries),
+            "by_shape": _shape_summary(
+                run_summaries,
+                threshold_ms=args.outlier_delta_threshold_ms,
+            ),
             "correlations": _correlations(run_summaries),
             "outliers": _outlier_records(
                 run_summaries,
@@ -350,6 +355,27 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Paired first-audio delta threshold for outlier records.",
     )
     return parser
+
+
+def _validate_runtime_provenance(
+    args: argparse.Namespace,
+    runtime: dict[str, object],
+) -> None:
+    if args.engine != "qwen" or args.runtime_backend != "faster":
+        return
+    imports = runtime.get("imports")
+    if not isinstance(imports, dict):
+        raise RuntimeError("runtime provenance is missing imports")
+    faster = imports.get("faster_qwen3_tts")
+    if not isinstance(faster, dict):
+        raise RuntimeError("runtime provenance is missing faster_qwen3_tts")
+    distribution = faster.get("distribution")
+    if not isinstance(distribution, dict):
+        raise RuntimeError("faster_qwen3_tts distribution provenance is missing")
+    if distribution.get("retained_wheel_match_verified") is not True:
+        raise RuntimeError(
+            "faster_qwen3_tts retained wheel provenance was not verified"
+        )
 
 
 def _worker_process_args_for_run(
@@ -519,6 +545,10 @@ def _run_summary(
         steady_first_audio = steady_median.get("first_audio_ms")
         if isinstance(steady_first_audio, (int, float)):
             paired_delta = float(first_audio) - float(steady_first_audio)
+    paired_delta_residuals = _paired_delta_residuals(
+        paired_delta,
+        paired_phase_delta,
+    )
     return {
         "run_index": run_index,
         "shape": run_shape,
@@ -540,11 +570,16 @@ def _run_summary(
         "steady_request_median": steady_median,
         "paired_delta_first_audio_ms": paired_delta,
         "paired_phase_delta": paired_phase_delta,
+        "paired_delta_residuals": paired_delta_residuals,
         "requests": enriched_requests,
     }
 
 
-def _shape_summary(run_summaries: list[dict[str, object]]) -> dict[str, object]:
+def _shape_summary(
+    run_summaries: list[dict[str, object]],
+    *,
+    threshold_ms: float = 20.0,
+) -> dict[str, object]:
     by_shape: dict[str, list[dict[str, object]]] = {}
     for run in run_summaries:
         shape = run.get("shape")
@@ -602,7 +637,11 @@ def _shape_summary(run_summaries: list[dict[str, object]]) -> dict[str, object]:
                     "paired_delta_first_audio_ms",
                 ),
             },
-            "slow_delta_count": sum(1 for run in runs if _is_slow_delta(run)),
+            "slow_delta_count": sum(
+                1
+                for run in runs
+                if _is_slow_delta(run, threshold_ms=threshold_ms)
+            ),
         }
     return summary
 
@@ -623,6 +662,7 @@ def _outlier_records(
         if delta is None or delta <= threshold_ms:
             continue
         phase_delta = run.get("paired_phase_delta")
+        residuals = run.get("paired_delta_residuals")
         first_request = run.get("first_request")
         steady_request = run.get("steady_request_median")
         outliers.append(
@@ -632,6 +672,9 @@ def _outlier_records(
                 "paired_delta_first_audio_ms": delta,
                 "paired_phase_delta": phase_delta
                 if isinstance(phase_delta, dict)
+                else {},
+                "paired_delta_residuals": residuals
+                if isinstance(residuals, dict)
                 else {},
                 "first_request": first_request
                 if isinstance(first_request, dict)
@@ -646,6 +689,55 @@ def _outlier_records(
             }
         )
     return outliers
+
+
+def _paired_delta_residuals(
+    paired_delta: float | None,
+    paired_phase_delta: dict[str, object],
+) -> dict[str, object]:
+    if paired_delta is None:
+        return {}
+    residuals: dict[str, object] = {}
+    prefill_delta = _number(paired_phase_delta.get("first_chunk_prefill_ms"))
+    if prefill_delta is not None:
+        residuals["delta_without_prefill_ms"] = paired_delta - prefill_delta
+
+    next_wall_delta = _number(paired_phase_delta.get("first_chunk_next_wall_ms"))
+    transport_delta = _number(
+        paired_phase_delta.get("transport_and_dispatch_residual_ms")
+    )
+    if next_wall_delta is not None or transport_delta is not None:
+        accounted = (next_wall_delta or 0.0) + (transport_delta or 0.0)
+        residuals["phase_accounted_delta_ms"] = accounted
+        residuals["phase_accounting_error_ms"] = paired_delta - accounted
+        residuals["phase_accounting_model"] = (
+            "first_chunk_next_wall_delta + transport_dispatch_delta"
+        )
+    return residuals
+
+
+def _paired_delta_residual_summary(
+    run_summaries: list[dict[str, object]],
+) -> dict[str, object]:
+    residuals = [
+        cast(dict[str, object], run["paired_delta_residuals"])
+        for run in run_summaries
+        if isinstance(run.get("paired_delta_residuals"), dict)
+    ]
+    return {
+        "delta_without_prefill_ms": _summary(
+            residuals,
+            "delta_without_prefill_ms",
+        ),
+        "phase_accounted_delta_ms": _summary(
+            residuals,
+            "phase_accounted_delta_ms",
+        ),
+        "phase_accounting_error_ms": _summary(
+            residuals,
+            "phase_accounting_error_ms",
+        ),
+    }
 
 
 def _correlations(run_summaries: list[dict[str, object]]) -> dict[str, object]:

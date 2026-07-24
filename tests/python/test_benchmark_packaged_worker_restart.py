@@ -11,10 +11,13 @@ from benchmark_packaged_worker_restart import (
     _load_run_shapes,
     _median_request,
     _outlier_records,
+    _paired_delta_residual_summary,
+    _paired_delta_residuals,
     _phase_delta,
     _progress_line,
     _run_shape_for_index,
     _shape_summary,
+    _validate_runtime_provenance,
     _with_request_pipeline_metrics,
     _worker_process_args_for_run,
     _write_json_file,
@@ -244,6 +247,15 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             short_first_audio["median"],
         )
 
+    def test_shape_summary_uses_configured_slow_delta_threshold(self) -> None:
+        summary = _shape_summary(
+            [_summary_run("long", delta=25.0, first_audio=20.0)],
+            threshold_ms=30.0,
+        )
+
+        long = cast(dict[str, object], summary["long"])
+        self.assertEqual(0, long["slow_delta_count"])
+
     def test_outlier_records_include_phase_and_shape_context(self) -> None:
         outliers = _outlier_records(
             [_summary_run("long", delta=25.0, first_audio=20.0)],
@@ -283,6 +295,76 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             correlations["total_delta_vs_text_token_count"],
         )
         self.assertEqual(3, token_count["count"])
+
+    def test_paired_delta_residuals_subtract_prefill_and_account_wall_time(
+        self,
+    ) -> None:
+        residuals = _paired_delta_residuals(
+            25.0,
+            {
+                "first_chunk_prefill_ms": 7.0,
+                "first_chunk_next_wall_ms": 23.0,
+                "transport_and_dispatch_residual_ms": 1.5,
+            },
+        )
+
+        self.assertEqual(18.0, residuals["delta_without_prefill_ms"])
+        self.assertEqual(24.5, residuals["phase_accounted_delta_ms"])
+        self.assertEqual(0.5, residuals["phase_accounting_error_ms"])
+
+    def test_paired_delta_residual_summary_reports_distribution(self) -> None:
+        summary = _paired_delta_residual_summary(
+            [
+                {
+                    "paired_delta_residuals": {
+                        "delta_without_prefill_ms": 3.0,
+                        "phase_accounting_error_ms": 0.5,
+                    }
+                },
+                {
+                    "paired_delta_residuals": {
+                        "delta_without_prefill_ms": 5.0,
+                        "phase_accounting_error_ms": -0.5,
+                    }
+                },
+            ]
+        )
+
+        without_prefill = cast(dict[str, object], summary["delta_without_prefill_ms"])
+        accounting_error = cast(dict[str, object], summary["phase_accounting_error_ms"])
+        self.assertEqual(4.0, without_prefill["median"])
+        self.assertEqual(0.0, accounting_error["median"])
+
+    def test_validate_runtime_provenance_requires_verified_faster_wheel(self) -> None:
+        args = argparse.Namespace(engine="qwen", runtime_backend="faster")
+
+        with self.assertRaisesRegex(RuntimeError, "not verified"):
+            _validate_runtime_provenance(
+                args,
+                {
+                    "imports": {
+                        "faster_qwen3_tts": {
+                            "distribution": {
+                                "retained_wheel_match_verified": None,
+                            }
+                        }
+                    }
+                },
+            )
+
+    def test_validate_runtime_provenance_accepts_verified_faster_wheel(self) -> None:
+        _validate_runtime_provenance(
+            argparse.Namespace(engine="qwen", runtime_backend="faster"),
+            {
+                "imports": {
+                    "faster_qwen3_tts": {
+                        "distribution": {
+                            "retained_wheel_match_verified": True,
+                        }
+                    }
+                }
+            },
+        )
 
 
 def _qwen_args(
