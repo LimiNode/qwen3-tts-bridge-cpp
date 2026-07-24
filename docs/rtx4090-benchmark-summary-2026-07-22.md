@@ -1151,6 +1151,54 @@ There are now two separate tracks:
   official benchmark to find whether CPU launch overhead and driver model
   explain the remaining raw-code gap to the author's RTX 4090 numbers.
 
+## 2026-07-24 Faster Prefill Profiling Smoke
+
+The retained local `faster_qwen3_tts-0.3.2` wheel was rebuilt from
+`C:/_repoz/faster-qwen3-tts-v032-stack112-clean` with extra first-chunk timing.
+The bridge now fails restart benchmarks if the installed faster distribution
+does not match the retained wheel, so these numbers are tied to the wheel kept
+in `dist/QwenTTSBridge/worker-python/wheels/`.
+
+Smoke parameters:
+
+```text
+model: models/Qwen3-TTS-12Hz-0.6B-CustomVoice
+runtime: source worker, Python .venv-packaging, faster backend
+GPU: RTX 4090, native Windows
+text: I am your robot. I am your worker.
+speaker: ryan
+chunk size: 8 frames
+warmup: 1 full synthesis pass, seed 4242
+run shape: 1 fresh worker x 2 requests
+profiling: --profile-prefill
+```
+
+Saved artifacts:
+
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-source-worker-faster-customvoice-chunk8-sampling-r1x2.json`
+- `docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-profile-source-worker-faster-customvoice-chunk8-greedy-r1x2.json`
+
+Results:
+
+| Mode | First audio, request 1 | First audio, steady | Completed, request 1 | Completed, steady | RTF, request 1 | RTF, steady | text tokens | talker prefill length |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| sampling | 371.793 ms | 354.488 ms | 1681.779 ms | 1665.302 ms | 0.3786 | 0.3749 | 18 | 21 |
+| greedy (`--no-sample`) | 346.011 ms | 344.166 ms | 1541.753 ms | 1494.255 ms | 0.3892 | 0.3772 | 18 | 21 |
+
+First-request GPU subphase samples:
+
+| Mode | talker forward GPU | prefill KV GPU | first sample GPU | bridge/dispatch residual | paired delta | accounting error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| sampling | 136.771 ms | 5.251 ms | 1.250 ms | 1.138 ms | 17.304 ms | 0.129 ms |
+| greedy (`--no-sample`) | 121.936 ms | 4.412 ms | 0.322 ms | 1.065 ms | 1.845 ms | 0.031 ms |
+
+Interpretation: this is a diagnostic smoke, not a stable performance table.
+It does prove that token counts and talker prefill length now come from the real
+faster path instead of fallback retokenization, and that request-to-client
+transport/dispatch overhead is around 1 ms for the first chunk in this setup.
+The coarse `prefill_ms` bucket is now split enough to show that talker forward
+dominates the prefill subphase for this prompt.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

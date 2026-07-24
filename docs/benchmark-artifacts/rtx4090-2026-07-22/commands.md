@@ -1231,3 +1231,77 @@ finally {
     $env:PYTHONPATH = $oldPyPath
 }
 ```
+
+2026-07-24 faster prefill profiling smoke:
+
+```powershell
+$oldPyPath = $env:PYTHONPATH
+try {
+    $env:PYTHONPATH = "worker/src;tests/python"
+    .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+        .\.venv-packaging\Scripts\python.exe `
+        --worker-prefix-arg=-B `
+        --worker-prefix-arg=-P `
+        --worker-prefix-arg=-s `
+        --worker-prefix-arg=-m `
+        --worker-prefix-arg=qwen_tts_bridge_worker `
+        --engine qwen `
+        --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+        --runtime-backend faster `
+        --device cuda `
+        --dtype auto `
+        --emit-every-frames 8 `
+        --max-seq-len 2048 `
+        --warmup-synthesis `
+        --warmup-synthesis-passes 1 `
+        --warmup-text "I am your robot. I am your worker." `
+        --warmup-language English `
+        --warmup-speaker ryan `
+        --runs 1 `
+        --requests-per-run 2 `
+        --seed 4242 `
+        --seed-mode fixed `
+        --warmup-seed 4242 `
+        --text "I am your robot. I am your worker." `
+        --language English `
+        --speaker ryan `
+        --profile-prefill `
+        --partial-output docs\benchmark-artifacts\rtx4090-2026-07-22\prefill-profile-source-worker-faster-customvoice-chunk8-sampling-r1x2.json `
+        --timeout-seconds 1200
+
+    .\.venv-packaging\Scripts\python.exe -B tests\python\benchmark_packaged_worker_restart.py `
+        .\.venv-packaging\Scripts\python.exe `
+        --worker-prefix-arg=-B `
+        --worker-prefix-arg=-P `
+        --worker-prefix-arg=-s `
+        --worker-prefix-arg=-m `
+        --worker-prefix-arg=qwen_tts_bridge_worker `
+        --engine qwen `
+        --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+        --runtime-backend faster `
+        --device cuda `
+        --dtype auto `
+        --emit-every-frames 8 `
+        --max-seq-len 2048 `
+        --warmup-synthesis `
+        --warmup-synthesis-passes 1 `
+        --warmup-text "I am your robot. I am your worker." `
+        --warmup-language English `
+        --warmup-speaker ryan `
+        --runs 1 `
+        --requests-per-run 2 `
+        --seed 4242 `
+        --seed-mode fixed `
+        --warmup-seed 4242 `
+        --text "I am your robot. I am your worker." `
+        --language English `
+        --speaker ryan `
+        --profile-prefill `
+        --no-sample `
+        --partial-output docs\benchmark-artifacts\rtx4090-2026-07-22\prefill-profile-source-worker-faster-customvoice-chunk8-greedy-r1x2.json `
+        --timeout-seconds 1200
+}
+finally {
+    $env:PYTHONPATH = $oldPyPath
+}
+```

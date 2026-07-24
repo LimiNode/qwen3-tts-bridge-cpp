@@ -66,6 +66,8 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
             no_compile_codebook_predictor=False,
             no_compile_talker=False,
             matmul_precision="",
+            profile_prefill=True,
+            no_sample=True,
             seed=4242,
             seed_mode="fixed",
             warmup_seed=9001,
@@ -88,6 +90,8 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
         self.assertIn("9001", worker_args)
         self.assertIn("--engine-startup-mode", worker_args)
         self.assertIn("engine_warmup", worker_args)
+        self.assertIn("--profile-prefill", worker_args)
+        self.assertIn("--no-sample", worker_args)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,19 @@ _PHASE_KEYS = (
     "first_chunk_text_token_count",
     "first_chunk_instruction_token_count",
     "first_chunk_prefill_sequence_length",
+    "first_chunk_talker_prefill_length",
+    "first_chunk_tokenize_wall_ms",
+    "first_chunk_build_talker_inputs_wall_ms",
+    "first_chunk_talker_forward_launch_wall_ms",
+    "first_chunk_talker_forward_gpu_ms",
+    "first_chunk_first_sample_launch_wall_ms",
+    "first_chunk_first_sample_gpu_ms",
+    "first_chunk_prefill_kv_launch_wall_ms",
+    "first_chunk_prefill_kv_gpu_ms",
+    "first_chunk_generation_state_wall_ms",
+    "first_chunk_generation_state_gpu_ms",
+    "first_chunk_prefill_to_sync_gpu_ms",
+    "first_chunk_prefill_sync_wait_ms",
 )
 
 
@@ -200,6 +213,8 @@ def _build_report(
             "run_warmup_seed_step": args.run_warmup_seed_step,
             "requests_per_run": args.requests_per_run,
             "cpu_affinity": args.cpu_affinity,
+            "profile_prefill": args.profile_prefill,
+            "do_sample": not args.no_sample,
             "run_shapes_jsonl": str(args.run_shapes_jsonl)
             if args.run_shapes_jsonl
             else None,
@@ -279,6 +294,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-compile-codebook-predictor", action="store_true")
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
+    parser.add_argument("--profile-prefill", action="store_true")
+    parser.add_argument("--no-sample", action="store_true")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--seed-mode",
@@ -627,6 +644,10 @@ def _shape_summary(
                     first_requests,
                     "first_chunk_prefill_sequence_length",
                 ),
+                "first_chunk_talker_prefill_length": _summary(
+                    first_requests,
+                    "first_chunk_talker_prefill_length",
+                ),
             },
             "steady_request_median": {
                 "first_audio_ms": _summary(steady_requests, "first_audio_ms"),
@@ -701,6 +722,16 @@ def _paired_delta_residuals(
     prefill_delta = _number(paired_phase_delta.get("first_chunk_prefill_ms"))
     if prefill_delta is not None:
         residuals["delta_without_prefill_ms"] = paired_delta - prefill_delta
+    first_sample_delta = _number(
+        paired_phase_delta.get("first_chunk_first_sample_gpu_ms")
+    )
+    if first_sample_delta is not None:
+        residuals["delta_without_first_sample_ms"] = (
+            paired_delta - first_sample_delta
+        )
+    prefill_kv_delta = _number(paired_phase_delta.get("first_chunk_prefill_kv_gpu_ms"))
+    if prefill_kv_delta is not None:
+        residuals["delta_without_prefill_kv_ms"] = paired_delta - prefill_kv_delta
 
     next_wall_delta = _number(paired_phase_delta.get("first_chunk_next_wall_ms"))
     transport_delta = _number(
@@ -732,6 +763,14 @@ def _paired_delta_residual_summary(
         "phase_accounted_delta_ms": _summary(
             residuals,
             "phase_accounted_delta_ms",
+        ),
+        "delta_without_first_sample_ms": _summary(
+            residuals,
+            "delta_without_first_sample_ms",
+        ),
+        "delta_without_prefill_kv_ms": _summary(
+            residuals,
+            "delta_without_prefill_kv_ms",
         ),
         "phase_accounting_error_ms": _summary(
             residuals,
@@ -772,6 +811,11 @@ def _correlations(run_summaries: list[dict[str, object]]) -> dict[str, object]:
             run_summaries,
             x_key,
             "first_chunk_prefill_sequence_length",
+        ),
+        "total_delta_vs_talker_prefill_length": _pearson_for_first_request(
+            run_summaries,
+            x_key,
+            "first_chunk_talker_prefill_length",
         ),
     }
     return result
@@ -978,6 +1022,28 @@ def _with_request_pipeline_metrics(
         "prefill_sequence_length",
         "first_chunk_prefill_sequence_length",
     )
+    for source_key, target_key in (
+        ("talker_prefill_length", "first_chunk_talker_prefill_length"),
+        ("tokenize_wall_ms", "first_chunk_tokenize_wall_ms"),
+        ("build_talker_inputs_wall_ms", "first_chunk_build_talker_inputs_wall_ms"),
+        (
+            "talker_forward_launch_wall_ms",
+            "first_chunk_talker_forward_launch_wall_ms",
+        ),
+        ("talker_forward_gpu_ms", "first_chunk_talker_forward_gpu_ms"),
+        (
+            "first_sample_launch_wall_ms",
+            "first_chunk_first_sample_launch_wall_ms",
+        ),
+        ("first_sample_gpu_ms", "first_chunk_first_sample_gpu_ms"),
+        ("prefill_kv_launch_wall_ms", "first_chunk_prefill_kv_launch_wall_ms"),
+        ("prefill_kv_gpu_ms", "first_chunk_prefill_kv_gpu_ms"),
+        ("generation_state_wall_ms", "first_chunk_generation_state_wall_ms"),
+        ("generation_state_gpu_ms", "first_chunk_generation_state_gpu_ms"),
+        ("prefill_to_sync_gpu_ms", "first_chunk_prefill_to_sync_gpu_ms"),
+        ("prefill_sync_wait_ms", "first_chunk_prefill_sync_wait_ms"),
+    ):
+        _copy_metric_number(enriched, first_chunk_phases, source_key, target_key)
 
     if first_frame_enqueued_ms is not None and first_frame_output_writer_ms is not None:
         enriched["worker_first_frame_flushed_estimated_ms"] = (

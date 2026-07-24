@@ -423,5 +423,7 @@ def _qwen_config(args: Any) -> dict[str, object]:
         "seed": getattr(args, "seed", None),
         "seed_mode": getattr(args, "seed_mode", None),
         "warmup_seed": getattr(args, "warmup_seed", None),
+        "profile_prefill": getattr(args, "profile_prefill", None),
+        "do_sample": not bool(getattr(args, "no_sample", False)),
         "engine_startup_mode": getattr(args, "engine_startup_mode", None),
     }

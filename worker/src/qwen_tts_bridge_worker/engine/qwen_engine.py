@@ -446,15 +446,19 @@ def _qwen_stream_generate_audio(
         if config.runtime_backend == "faster":
             public_stream = getattr(model, "generate_custom_voice_streaming", None)
             if callable(public_stream):
+                stream_kwargs: dict[str, Any] = {
+                    "text": request.text,
+                    "language": _qwen_runtime_language(request.language),
+                    "speaker": request.speaker,
+                    "instruct": request.instruction or None,
+                    "chunk_size": config.emit_every_frames,
+                    "do_sample": config.do_sample,
+                }
+                if config.profile_prefill:
+                    stream_kwargs["profile_prefill"] = True
                 return cast(
                     Iterable[tuple[Any, int]],
-                    public_stream(
-                        text=request.text,
-                        language=_qwen_runtime_language(request.language),
-                        speaker=request.speaker,
-                        instruct=request.instruction or None,
-                        chunk_size=config.emit_every_frames,
-                    ),
+                    public_stream(**stream_kwargs),
                 )
             return None
 
@@ -485,14 +489,18 @@ def _qwen_stream_generate_audio(
         if config.runtime_backend == "faster":
             public_stream = getattr(model, "generate_voice_design_streaming", None)
             if callable(public_stream):
+                stream_kwargs = {
+                    "text": request.text,
+                    "language": _qwen_runtime_language(request.language),
+                    "instruct": request.instruction,
+                    "chunk_size": config.emit_every_frames,
+                    "do_sample": config.do_sample,
+                }
+                if config.profile_prefill:
+                    stream_kwargs["profile_prefill"] = True
                 return cast(
                     Iterable[tuple[Any, int]],
-                    public_stream(
-                        text=request.text,
-                        language=_qwen_runtime_language(request.language),
-                        instruct=request.instruction,
-                        chunk_size=config.emit_every_frames,
-                    ),
+                    public_stream(**stream_kwargs),
                 )
             return None
 
@@ -675,10 +683,28 @@ def _first_chunk_timing_fields(
         "text_token_count",
         "instruction_token_count",
         "prefill_sequence_length",
+        "talker_prefill_length",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:
             fields[key] = int(value)
+    for key in (
+        "tokenize_wall_ms",
+        "build_talker_inputs_wall_ms",
+        "talker_forward_launch_wall_ms",
+        "talker_forward_gpu_ms",
+        "first_sample_launch_wall_ms",
+        "first_sample_gpu_ms",
+        "prefill_kv_launch_wall_ms",
+        "prefill_kv_gpu_ms",
+        "generation_state_wall_ms",
+        "generation_state_gpu_ms",
+        "prefill_to_sync_gpu_ms",
+        "prefill_sync_wait_ms",
+    ):
+        value = _number_field(chunk_timing, key)
+        if value is not None:
+            fields[key] = value
 
     residual_ms = next_wall_ms
     if prefill_ms is not None:

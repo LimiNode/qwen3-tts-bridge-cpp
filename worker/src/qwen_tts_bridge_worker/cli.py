@@ -77,6 +77,8 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 compile_codebook_predictor=not args.no_compile_codebook_predictor,
                 compile_talker=not args.no_compile_talker,
                 matmul_precision=args.matmul_precision,
+                profile_prefill=args.profile_prefill,
+                do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
                 warmup_seed=args.warmup_seed,
@@ -265,6 +267,16 @@ def _add_qwen_subcommand(
         choices=("highest", "high", "medium"),
         default="",
         help="Set torch float32 matmul precision before Qwen model load.",
+    )
+    qwen_parser.add_argument(
+        "--profile-prefill",
+        action="store_true",
+        help="Emit detailed faster-backend prefill timing in worker metrics.",
+    )
+    qwen_parser.add_argument(
+        "--no-sample",
+        action="store_true",
+        help="Use greedy decoding instead of sampling.",
     )
     qwen_parser.add_argument(
         "--seed",

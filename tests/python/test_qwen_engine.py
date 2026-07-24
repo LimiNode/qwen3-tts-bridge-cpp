@@ -544,6 +544,7 @@ class QwenEngineTests(unittest.TestCase):
                 "speaker": "Alice",
                 "instruct": "Speak warmly.",
                 "chunk_size": 8,
+                "do_sample": True,
             },
             fake_model.custom_stream_calls[0],
         )
@@ -587,6 +588,36 @@ class QwenEngineTests(unittest.TestCase):
         assert metrics is not None
         self.assertEqual(12.0, metrics["prefill_ms"])
 
+    def test_faster_stream_forwards_prefill_profile_flag(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+                profile_prefill=True,
+                do_sample=False,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                ),
+                threading.Event(),
+            )
+        )
+
+        self.assertTrue(fake_model.custom_stream_calls[0]["profile_prefill"])
+        self.assertFalse(fake_model.custom_stream_calls[0]["do_sample"])
+
     def test_faster_voice_design_uses_fixed_chunk_streaming(self) -> None:
         fake_model = _FasterStreamingModel("voice_design")
         engine = QwenTtsEngine(
@@ -617,6 +648,7 @@ class QwenEngineTests(unittest.TestCase):
                 "language": "English",
                 "instruct": "Low calm voice.",
                 "chunk_size": 12,
+                "do_sample": True,
             },
             fake_model.design_stream_calls[0],
         )

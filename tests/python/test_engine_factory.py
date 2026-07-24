@@ -66,6 +66,8 @@ class EngineFactoryTests(unittest.TestCase):
                 "--no-compile-talker",
                 "--matmul-precision",
                 "high",
+                "--profile-prefill",
+                "--no-sample",
                 "--warmup-synthesis",
                 "--warmup-text",
                 "Prime the engine.",
@@ -99,6 +101,8 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertTrue(config.compile_codebook_predictor)
         self.assertFalse(config.compile_talker)
         self.assertEqual("high", config.matmul_precision)
+        self.assertTrue(config.profile_prefill)
+        self.assertFalse(config.do_sample)
         self.assertTrue(config.warmup_synthesis_enabled)
         self.assertEqual("Prime the engine.", config.warmup_text)
         self.assertEqual("English", config.warmup_language)

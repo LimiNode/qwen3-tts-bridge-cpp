@@ -62,6 +62,10 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "text_token_count": 21,
                 "instruction_token_count": 9,
                 "prefill_sequence_length": 30,
+                "talker_prefill_length": 42,
+                "first_sample_gpu_ms": 6.0,
+                "prefill_kv_gpu_ms": 3.0,
+                "prefill_sync_wait_ms": 1.5,
             },
             {
                 "event": "request_first_pcm_ready",
@@ -94,6 +98,10 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(21.0, enriched["first_chunk_text_token_count"])
         self.assertEqual(9.0, enriched["first_chunk_instruction_token_count"])
         self.assertEqual(30.0, enriched["first_chunk_prefill_sequence_length"])
+        self.assertEqual(42.0, enriched["first_chunk_talker_prefill_length"])
+        self.assertEqual(6.0, enriched["first_chunk_first_sample_gpu_ms"])
+        self.assertEqual(3.0, enriched["first_chunk_prefill_kv_gpu_ms"])
+        self.assertEqual(1.5, enriched["first_chunk_prefill_sync_wait_ms"])
 
     def test_median_request_includes_pipeline_fields(self) -> None:
         median = _median_request(
@@ -303,12 +311,16 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             25.0,
             {
                 "first_chunk_prefill_ms": 7.0,
+                "first_chunk_first_sample_gpu_ms": 4.0,
+                "first_chunk_prefill_kv_gpu_ms": 2.0,
                 "first_chunk_next_wall_ms": 23.0,
                 "transport_and_dispatch_residual_ms": 1.5,
             },
         )
 
         self.assertEqual(18.0, residuals["delta_without_prefill_ms"])
+        self.assertEqual(21.0, residuals["delta_without_first_sample_ms"])
+        self.assertEqual(23.0, residuals["delta_without_prefill_kv_ms"])
         self.assertEqual(24.5, residuals["phase_accounted_delta_ms"])
         self.assertEqual(0.5, residuals["phase_accounting_error_ms"])
 

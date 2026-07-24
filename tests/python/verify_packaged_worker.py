@@ -241,6 +241,8 @@ def main() -> int:
     parser.add_argument("--no-compile-codebook-predictor", action="store_true")
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
+    parser.add_argument("--profile-prefill", action="store_true")
+    parser.add_argument("--no-sample", action="store_true")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--seed-mode",
@@ -353,6 +355,10 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.append("--no-compile-talker")
     if args.matmul_precision:
         worker_args.extend(["--matmul-precision", str(args.matmul_precision)])
+    if getattr(args, "profile_prefill", False):
+        worker_args.append("--profile-prefill")
+    if getattr(args, "no_sample", False):
+        worker_args.append("--no-sample")
     seed = getattr(args, "seed", None)
     if seed is not None:
         worker_args.extend(["--seed", str(seed)])
