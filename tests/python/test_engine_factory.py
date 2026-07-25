@@ -68,6 +68,8 @@ class EngineFactoryTests(unittest.TestCase):
                 "high",
                 "--profile-prefill",
                 "--profile-nvtx",
+                "--prefill-backend",
+                "compile_reduce_overhead",
                 "--no-sample",
                 "--warmup-synthesis",
                 "--warmup-text",
@@ -104,6 +106,7 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("high", config.matmul_precision)
         self.assertTrue(config.profile_prefill)
         self.assertTrue(config.profile_nvtx)
+        self.assertEqual("compile_reduce_overhead", config.prefill_backend)
         self.assertFalse(config.do_sample)
         self.assertTrue(config.warmup_synthesis_enabled)
         self.assertEqual("Prime the engine.", config.warmup_text)

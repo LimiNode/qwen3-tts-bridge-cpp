@@ -67,6 +67,8 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
             no_compile_talker=False,
             matmul_precision="",
             profile_prefill=True,
+            profile_nvtx=False,
+            prefill_backend="compile_default",
             no_sample=True,
             seed=4242,
             seed_mode="fixed",
@@ -91,6 +93,8 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
         self.assertIn("--engine-startup-mode", worker_args)
         self.assertIn("engine_warmup", worker_args)
         self.assertIn("--profile-prefill", worker_args)
+        self.assertIn("--prefill-backend", worker_args)
+        self.assertIn("compile_default", worker_args)
         self.assertIn("--no-sample", worker_args)
 
 

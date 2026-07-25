@@ -564,6 +564,7 @@ class QwenEngineTests(unittest.TestCase):
                 "instruct": "Speak warmly.",
                 "chunk_size": 8,
                 "do_sample": True,
+                "prefill_backend": "eager",
             },
             fake_model.custom_stream_calls[0],
         )
@@ -632,6 +633,7 @@ class QwenEngineTests(unittest.TestCase):
                 runtime_backend="faster",
                 profile_prefill=True,
                 profile_nvtx=True,
+                prefill_backend="compile_reduce_overhead",
                 do_sample=False,
             ),
             model_loader=lambda _config: fake_model,
@@ -654,6 +656,10 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(
             "first_user",
             fake_model.custom_stream_calls[0]["profile_request_role"],
+        )
+        self.assertEqual(
+            "compile_reduce_overhead",
+            fake_model.custom_stream_calls[0]["prefill_backend"],
         )
         self.assertFalse(fake_model.custom_stream_calls[0]["do_sample"])
 
@@ -688,6 +694,7 @@ class QwenEngineTests(unittest.TestCase):
                 "instruct": "Low calm voice.",
                 "chunk_size": 12,
                 "do_sample": True,
+                "prefill_backend": "eager",
             },
             fake_model.design_stream_calls[0],
         )

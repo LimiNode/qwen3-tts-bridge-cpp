@@ -234,6 +234,7 @@ def _build_report(
             "cpu_affinity": args.cpu_affinity,
             "profile_prefill": args.profile_prefill,
             "profile_nvtx": args.profile_nvtx,
+            "prefill_backend": args.prefill_backend,
             "expected_faster_wheel_sha256": args.expected_faster_wheel_sha256,
             "allow_unverified_faster_wheel": args.allow_unverified_faster_wheel,
             "do_sample": not args.no_sample,
@@ -336,6 +337,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--profile-prefill", action="store_true")
     parser.add_argument("--profile-nvtx", action="store_true")
+    parser.add_argument(
+        "--prefill-backend",
+        choices=("eager", "compile_default", "compile_reduce_overhead"),
+        default="eager",
+    )
     parser.add_argument(
         "--expected-faster-wheel-sha256",
         default="",
@@ -1682,6 +1688,9 @@ def _with_request_pipeline_metrics(
         ("profile_path", "first_chunk_profile_path"),
         ("profile_status", "first_chunk_profile_status"),
         ("profile_request_role", "first_chunk_profile_request_role"),
+        ("prefill_backend_requested", "first_chunk_prefill_backend_requested"),
+        ("prefill_backend_used", "first_chunk_prefill_backend_used"),
+        ("prefill_compile_error", "first_chunk_prefill_compile_error"),
     ):
         _copy_metric_string(enriched, first_chunk_phases, source_key, target_key)
     for source_key, target_key in (
@@ -1710,6 +1719,7 @@ def _with_request_pipeline_metrics(
             "all_component_streams_equal",
             "first_chunk_all_component_streams_equal",
         ),
+        ("prefill_compile_fallback", "first_chunk_prefill_compile_fallback"),
     ):
         _copy_metric_bool(enriched, first_chunk_phases, source_key, target_key)
 

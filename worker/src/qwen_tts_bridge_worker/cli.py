@@ -79,6 +79,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 matmul_precision=args.matmul_precision,
                 profile_prefill=args.profile_prefill,
                 profile_nvtx=args.profile_nvtx,
+                prefill_backend=args.prefill_backend,
                 do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
@@ -278,6 +279,12 @@ def _add_qwen_subcommand(
         "--profile-nvtx",
         action="store_true",
         help="Emit faster-backend NVTX ranges for external profilers.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-backend",
+        choices=("eager", "compile_default", "compile_reduce_overhead"),
+        default="eager",
+        help="Select the faster-backend talker prefill implementation.",
     )
     qwen_parser.add_argument(
         "--no-sample",

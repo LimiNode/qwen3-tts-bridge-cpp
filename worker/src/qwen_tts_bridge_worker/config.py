@@ -53,6 +53,9 @@ class QwenEngineConfig:
     matmul_precision: str = ""
     profile_prefill: bool = False
     profile_nvtx: bool = False
+    prefill_backend: Literal["eager", "compile_default", "compile_reduce_overhead"] = (
+        "eager"
+    )
     do_sample: bool = True
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"
@@ -90,6 +93,15 @@ class QwenEngineConfig:
             raise ValueError("qwen.compile_mode must not be empty")
         if self.matmul_precision not in {"", "highest", "high", "medium"}:
             raise ValueError("qwen.matmul_precision must be highest, high, or medium")
+        if self.prefill_backend not in {
+            "eager",
+            "compile_default",
+            "compile_reduce_overhead",
+        }:
+            raise ValueError(
+                "qwen.prefill_backend must be eager, compile_default, "
+                "or compile_reduce_overhead"
+            )
         if self.seed_mode not in {"request_id", "fixed"}:
             raise ValueError("qwen.seed_mode must be request_id or fixed")
         if self.warmup_synthesis_enabled and not self.warmup_text:

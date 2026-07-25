@@ -243,6 +243,11 @@ def main() -> int:
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--profile-prefill", action="store_true")
     parser.add_argument("--profile-nvtx", action="store_true")
+    parser.add_argument(
+        "--prefill-backend",
+        choices=("eager", "compile_default", "compile_reduce_overhead"),
+        default="eager",
+    )
     parser.add_argument("--no-sample", action="store_true")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
@@ -360,6 +365,9 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.append("--profile-prefill")
     if getattr(args, "profile_nvtx", False):
         worker_args.append("--profile-nvtx")
+    prefill_backend = str(getattr(args, "prefill_backend", "eager"))
+    if prefill_backend:
+        worker_args.extend(["--prefill-backend", prefill_backend])
     if getattr(args, "no_sample", False):
         worker_args.append("--no-sample")
     seed = getattr(args, "seed", None)

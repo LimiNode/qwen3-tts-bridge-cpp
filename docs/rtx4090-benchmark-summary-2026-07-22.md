@@ -1423,6 +1423,42 @@ CUDA Event intervals. The older `*_gpu_ms` names are retained for backward
 compatibility with saved artifacts, but they should be read as stream elapsed
 time between recorded events, not as summed kernel execution time.
 
+### Exact-Shape Prefill Compile Prototype
+
+An experimental faster-qwen3-tts branch was created at commit `f08260d`
+(`feat(prefill): add exact-shape compile backend switch`). The bridge now
+passes a faster-only `--prefill-backend` switch through to the packaged worker:
+`eager`, `compile_default`, or `compile_reduce_overhead`.
+
+The first prototype deliberately does not implement buckets. It caches
+`torch.compile(..., fullgraph=true, dynamic=false)` by exact tensor shape and
+reports `prefill_backend_requested`, `prefill_backend_used`, and
+`prefill_compile_fallback` in first-chunk metrics. The default remains `eager`.
+
+With same-shape synthesis warmup, the `r10` profile-off production control
+showed a large latency win for `compile_reduce_overhead`:
+
+| Condition | First TTFA median/p95 | Steady TTFA median/p95 | First prefill median/p95 | Steady prefill median/p95 |
+| --- | ---: | ---: | ---: | ---: |
+| eager, profile off | `391.653 / 413.613 ms` | `372.017 / 407.316 ms` | `161.767 / 181.532 ms` | `146.104 / 179.161 ms` |
+| compile_reduce_overhead, profile off | `274.279 / 294.758 ms` | `233.914 / 244.649 ms` | `43.147 / 48.091 ms` | `8.650 / 13.034 ms` |
+
+The profile-on diagnostic run confirms the target moved:
+
+| Condition | First talker-forward median/p95 | Steady talker-forward median/p95 | Fallbacks |
+| --- | ---: | ---: | ---: |
+| eager, profile on | `152.208 / 173.688 ms` | `128.720 / 173.398 ms` | `0/40` |
+| compile_reduce_overhead, profile on | `37.372 / 40.214 ms` | `3.308 / 4.240 ms` | `0/40` |
+
+This is the strongest performance result so far: production first TTFA improves
+by about `30%` and steady TTFA by about `37%` in this small same-shape `r10`
+control. However, it is not production-safe yet. A direct prefill-only parity
+probe showed exact eager/eager repeatability, but compiled prefill differed
+from eager (`logits_last_max_abs=0.2578125`,
+`past_hidden_max_abs=0.546875`) for both compile modes. Keep the backend
+experimental until the numerical difference is understood or accepted through a
+stronger audio-quality gate.
+
 ### Paired Nsight Follow-Up
 
 The worker now emits an outer `qtb_profile_first_steady_pair` NVTX range when

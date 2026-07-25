@@ -73,6 +73,9 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "profile_schema_version": 3,
                 "profile_path": "fast",
                 "profile_request_role": "first_user",
+                "prefill_backend_requested": "compile_default",
+                "prefill_backend_used": "compile_default",
+                "prefill_compile_fallback": False,
                 "profile_prefill_enabled": True,
                 "profile_complete": True,
                 "events_complete": True,
@@ -132,6 +135,15 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(3, enriched["first_chunk_profile_schema_version"])
         self.assertEqual("fast", enriched["first_chunk_profile_path"])
         self.assertEqual("first_user", enriched["first_chunk_profile_request_role"])
+        self.assertEqual(
+            "compile_default",
+            enriched["first_chunk_prefill_backend_requested"],
+        )
+        self.assertEqual(
+            "compile_default",
+            enriched["first_chunk_prefill_backend_used"],
+        )
+        self.assertFalse(enriched["first_chunk_prefill_compile_fallback"])
         self.assertTrue(enriched["first_chunk_profile_prefill_enabled"])
         self.assertTrue(enriched["first_chunk_profile_complete"])
         self.assertTrue(enriched["first_chunk_events_complete"])

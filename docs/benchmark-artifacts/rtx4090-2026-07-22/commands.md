@@ -78,6 +78,63 @@ paired delta median/p95: 2.335 ms / 18.668 ms
 profile statuses: disabled 120/120
 ```
 
+Exact-shape prefill compile prototype:
+
+```text
+faster-qwen3-tts branch: prefill-compile-exact-shape
+faster-qwen3-tts commit: f08260d
+portable faster wheel SHA256: fd6f117280ea44702b15eb417262d5019f97d748ac767a437befeede23c0c4fe
+bridge worker flag: --prefill-backend eager|compile_default|compile_reduce_overhead
+model: models/Qwen3-TTS-12Hz-0.6B-CustomVoice
+speaker: ryan
+text: I am your robot, I am your worker.
+decode: greedy (--no-sample)
+warmup: same synthesis text/language/speaker as measured request
+runtime provenance: --allow-unverified-faster-wheel because portable install
+  did not expose installed_archive_sha256; wheel hash and faster commit are
+  recorded here instead.
+```
+
+R3 exploratory artifacts:
+
+```text
+prefill-compile-exact-shape-smoke-r3/eager-summary.json
+SHA256: 0ffb8b857cc62ab96ea4802ccb4c80fb42447d9b403e9a9805724f87051ed97f
+prefill-compile-exact-shape-smoke-r3/compile_default-summary.json
+SHA256: f1da27ef07b8a53571cfe810f0998b6fba48fa085982db8b9548c6201174854d
+prefill-compile-exact-shape-smoke-r3/compile_reduce_overhead-summary.json
+SHA256: dac77665a761ffb20b00445d8432648b00e2b39ab7c12ad98fc32c61e0a96ddb
+prefill-compile-exact-shape-samewarmup-r3/compile_default-summary.json
+SHA256: f677776046c901386c817645329e0d085e51604fd2b1735c827fe6caeef46e3e
+prefill-compile-exact-shape-samewarmup-r3/compile_reduce_overhead-summary.json
+SHA256: 32f8dd0a8d04bd3f768eab348f63a8f2315703aad74d1d7ed6a953c283e9a7c9
+```
+
+R10 production-control artifacts:
+
+```text
+prefill-compile-exact-shape-r10/profile-on-eager-summary.json
+SHA256: 2701bd990f325db8e845930c47f616bb0bcf94039e0fb9051626f56566a64164
+prefill-compile-exact-shape-r10/profile-on-compile_reduce_overhead-summary.json
+SHA256: 3da14b8d4d823d8ab547e3926e3156762ea8c077d7bac66543a9b8a6608ee294
+prefill-compile-exact-shape-r10/profile-off-eager-summary.json
+SHA256: 950e78f513689784f4f122dc9d5931fe1ff04045f9b0b525c77b48fd0fd07803
+prefill-compile-exact-shape-r10/profile-off-compile_reduce_overhead-summary.json
+SHA256: 0257014f9a8a8a89f26770fe2db13183f1d662255624d7b5b26e9258654812a3
+prefill-compile-exact-shape-r10/prefill-parity-probe.json
+SHA256: f6835b63eba4aaf12a257f8e0fea061fa28fe4473a088e6846d9ca3a765c7ad8
+
+profile-off eager first TTFA median/p95: 391.653 ms / 413.613 ms
+profile-off compile_reduce_overhead first TTFA median/p95: 274.279 ms / 294.758 ms
+profile-off eager steady TTFA median/p95: 372.017 ms / 407.316 ms
+profile-off compile_reduce_overhead steady TTFA median/p95: 233.914 ms / 244.649 ms
+profile-on eager steady talker-forward median/p95: 128.720 ms / 173.398 ms
+profile-on compile_reduce_overhead steady talker-forward median/p95: 3.308 ms / 4.240 ms
+compile_reduce_overhead fallbacks: 0/40 profile-on, 0/40 profile-off
+parity gate: failed; eager/eager repeat was exact, but compiled prefill differed
+  from eager by logits_last_max_abs=0.2578125 and past_hidden_max_abs=0.546875.
+```
+
 Paired same-process Nsight captures:
 
 ```text

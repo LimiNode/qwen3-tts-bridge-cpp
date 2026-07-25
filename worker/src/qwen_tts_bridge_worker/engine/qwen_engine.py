@@ -501,6 +501,7 @@ def _qwen_stream_generate_audio(
                     "instruct": request.instruction or None,
                     "chunk_size": config.emit_every_frames,
                     "do_sample": config.do_sample,
+                    "prefill_backend": config.prefill_backend,
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
@@ -549,6 +550,7 @@ def _qwen_stream_generate_audio(
                     "instruct": request.instruction,
                     "chunk_size": config.emit_every_frames,
                     "do_sample": config.do_sample,
+                    "prefill_backend": config.prefill_backend,
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
@@ -759,6 +761,9 @@ def _first_chunk_timing_fields(
         "profile_path",
         "profile_status",
         "profile_request_role",
+        "prefill_backend_requested",
+        "prefill_backend_used",
+        "prefill_compile_error",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -770,6 +775,7 @@ def _first_chunk_timing_fields(
         "components_finite",
         "components_nonnegative",
         "all_component_streams_equal",
+        "prefill_compile_fallback",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):

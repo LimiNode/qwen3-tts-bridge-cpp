@@ -1,0 +1,20 @@
+{
+  "artifact_schema_version": 1,
+  "probe": "direct prefill-only eager vs torch.compile parity",
+  "model": "models/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "text": "I am your robot, I am your worker.",
+  "language": "English",
+  "speaker": "ryan",
+  "dtype": "bfloat16",
+  "attn_implementation": "eager",
+  "faster_commit": "f08260d",
+  "results": {
+    "eager_vs_eager_logits_last_max_abs": 0.0,
+    "eager_vs_eager_past_hidden_max_abs": 0.0,
+    "compile_reduce_overhead_logits_last_max_abs": 0.2578125,
+    "compile_reduce_overhead_past_hidden_max_abs": 0.546875,
+    "compile_default_logits_last_max_abs": 0.2578125,
+    "compile_default_past_hidden_max_abs": 0.546875
+  },
+  "interpretation": "Exact-shape torch.compile prefill is fast and does not fall back, but it does not pass strict tensor parity with eager on this probe. Keep it experimental until the source of the numerical difference is understood."
+}
