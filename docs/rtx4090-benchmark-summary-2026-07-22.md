@@ -1499,6 +1499,14 @@ showed that a second raw-eager generation call can change codec tokens while
 keeping frame count and duration fixed. That separate repeat/state issue must
 be isolated before any bucketed compile or product-facing speed work resumes.
 
+After this diagnostic commit, the portable worker was rebuilt from clean
+sources at bridge commit `fbdfa2e`, Qwen fork commit `25cc588`, and
+faster-qwen3-tts commit `f3b979c`. The staged mock worker smoke passed, the real
+CustomVoice FasterQwen eager smoke passed, and the packaged
+`compile_backend_eager` path also passed a startup/protocol smoke. That last
+result only proves the diagnostic backend is packaged and callable; it does not
+change the correctness verdict above.
+
 ### Paired Nsight Follow-Up
 
 The worker now emits an outer `qtb_profile_first_steady_pair` NVTX range when

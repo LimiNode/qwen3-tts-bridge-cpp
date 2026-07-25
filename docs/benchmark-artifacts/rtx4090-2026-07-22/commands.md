@@ -199,6 +199,44 @@ Verification after adding the parity ladder:
     first full run: stdio_transport_test timed out waiting for a frame
     isolated retry: stdio_transport_test passed
     second full run: 9/9 C++ tests passed
+
+Clean portable worker rebuild after commit fbdfa2e:
+  command:
+    scripts/package-python-worker.ps1 -Clean -IncludeQwenFork `
+      -QwenSourcePath external/python/Qwen3-TTS-streaming `
+      -IncludeFasterQwen `
+      -FasterQwenSourcePath C:/_repoz/faster-qwen3-tts-v032-stack112-clean `
+      -UseVenv
+  build-manifest.json SHA256:
+    2c27bdc85ccc35dee3452e9823e966a25d340e23809eae4a8e644a1d91564c5e
+  staged bridge worker wheel SHA256:
+    f8a1c3e0a31d682d303c6342ae63ff01632f7911dab6d66c78816988b8274b35
+  staged qwen fork wheel SHA256:
+    d9d782739fa9574082a530ef710bd0eece976f6f64e61574a97d039189b63bd4
+  staged faster-qwen wheel SHA256:
+    f3048bd67b9027207aad27d4d4f5464e00e912f01cf87ec2390cb6290b861ac7
+  clean sources in manifest:
+    bridge worker git_commit fbdfa2e30a2b71f688cd3d75bd28c4397bc1c3ea
+    Qwen fork git_commit 25cc5886a753035ac3ed9d4000440b2e842e5e56
+    faster-qwen git_commit f3b979c818f21b31a09656fff09022120cc73951
+  mock portable probe:
+    scripts/test-portable-python-worker.ps1 -UseVenv `
+      -WorkerCommand dist/QwenTTSBridge/worker-python/qwen_tts_worker.cmd `
+      -TimeoutSeconds 30 -MockChunks 2
+    passed
+  real-model portable faster eager smoke:
+    verify_packaged_worker.py dist/QwenTTSBridge/worker-python/qwen_tts_worker.cmd `
+      --engine qwen --runtime-backend faster `
+      --model-path models/Qwen3-TTS-12Hz-0.6B-CustomVoice `
+      --device cuda --dtype bfloat16 --attn-implementation eager `
+      --text "I am your robot, I am your worker." --language English `
+      --speaker ryan --enable-streaming-optimizations --no-compile `
+      --no-cuda-graphs --matmul-precision high --prefill-backend eager `
+      --no-sample
+    passed
+  real-model portable diagnostic compile smoke:
+    same command with --prefill-backend compile_backend_eager
+    passed as a startup/protocol smoke only; semantic parity remains failed.
 ```
 
 Paired same-process Nsight captures:
