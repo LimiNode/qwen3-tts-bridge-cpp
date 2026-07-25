@@ -46,6 +46,7 @@ class QwenTtsEngine:
         self._model: Any | None = None
         self._synthesis_lock = threading.Lock()
         self._last_chunk_metrics: dict[str, object] | None = None
+        self._profile_pair_range_open = False
 
     @property
     def capabilities(self) -> EngineCapabilities:
@@ -126,6 +127,7 @@ class QwenTtsEngine:
         if cancel_event.is_set():
             return
         model = self._require_model()
+        self._maybe_open_profile_pair_range(request.request_id)
         with self._synthesis_lock:
             _seed_runtime(_request_seed(self._config, request.request_id))
             audio_stream = self._generate_audio_stream(model, request)
@@ -162,6 +164,7 @@ class QwenTtsEngine:
             finally:
                 if callable(close_stream):
                     close_stream()
+                self._maybe_close_profile_pair_range(request.request_id)
 
     def pop_last_chunk_metrics(self) -> dict[str, object] | None:
         """Return timing metadata for the last yielded PCM chunk, if available."""
@@ -178,7 +181,27 @@ class QwenTtsEngine:
         close = getattr(model, "close", None)
         if callable(close):
             close()
+        self._close_profile_pair_range()
         gc.collect()
+
+    def _maybe_open_profile_pair_range(self, request_id: int) -> None:
+        if not self._config.profile_nvtx or request_id != 1:
+            return
+        if self._profile_pair_range_open:
+            return
+        self._profile_pair_range_open = _nvtx_range_push(
+            "qtb_profile_first_steady_pair"
+        )
+
+    def _maybe_close_profile_pair_range(self, request_id: int) -> None:
+        if request_id >= 2:
+            self._close_profile_pair_range()
+
+    def _close_profile_pair_range(self) -> None:
+        if not self._profile_pair_range_open:
+            return
+        _nvtx_range_pop()
+        self._profile_pair_range_open = False
 
     def _run_warmup_synthesis(self) -> dict[str, object]:
         request = SynthesisRequest(
@@ -349,6 +372,23 @@ def _request_seed(config: QwenEngineConfig, request_id: int) -> int | None:
     if config.seed_mode == "fixed":
         return int(base_seed)
     return int(base_seed) + int(request_id)
+
+
+def _nvtx_range_push(name: str) -> bool:
+    try:
+        torch = importlib.import_module("torch")
+        torch.cuda.nvtx.range_push(name)
+    except Exception:
+        return False
+    return True
+
+
+def _nvtx_range_pop() -> None:
+    try:
+        torch = importlib.import_module("torch")
+        torch.cuda.nvtx.range_pop()
+    except Exception:
+        pass
 
 
 def _warmup_pass_max_output_chunks(
