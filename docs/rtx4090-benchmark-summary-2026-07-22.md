@@ -1393,15 +1393,35 @@ The `r100` result strongly supports the talker-forward hypothesis for positive
 first-minus-steady tails:
 
 - positive paired deltas over `20 ms`: `12/100`;
-- all `12/12` positive outliers fall below the `20 ms` threshold after removing
-  positive talker-forward delta;
-- `positive_unexplained_without_talker_ms` p95: `8.194 ms`;
-- `absolute_delta_without_talker_forward_ms` p95: `8.643 ms`.
+- all `12/12` positive outliers are declassified below the `20 ms` threshold
+  after removing positive talker-forward delta;
+- conditional positive outlier total delta p50/p95/max:
+  `25.735 / 51.350 / 52.471 ms`;
+- conditional positive talker-forward delta p50/p95/max:
+  `20.671 / 40.001 / 43.705 ms`;
+- conditional positive unexplained residual p50/p95/max:
+  `7.053 / 13.370 / 15.502 ms`;
+- conditional talker-forward attribution fraction min/p50/p95/max:
+  `0.449 / 0.773 / 0.892 / 0.908`;
+- attribution fraction counts: `>=50%` in `11/12`, `>=80%` in `5/12`.
+
+These conditional figures come from
+`diagnostic-r100-profile-cleanup-v3/analysis-cleanup.json`, a derived
+reanalyzer artifact built from the saved `r100` report. The analyzer also adds
+per-real-steady-row residuals so future reports do not have to rely only on the
+older synthetic steady median row. Across `300` first-vs-steady pairs, the
+positive unexplained residual p95 is `8.625 ms` and the signed unexplained
+residual p95 is `8.990 ms`.
 
 This makes `talker.forward` the right optimization target for TTFA tails. The
 result does not mean every request is faster when profiled; absolute TTFA from
 the profiled run remains diagnostic-only, while production TTFA should be read
 from profile-off control runs.
+
+Terminology note: worker events now emit `*_stream_elapsed_ms` aliases for the
+CUDA Event intervals. The older `*_gpu_ms` names are retained for backward
+compatibility with saved artifacts, but they should be read as stream elapsed
+time between recorded events, not as summed kernel execution time.
 
 ### Paired Nsight Follow-Up
 

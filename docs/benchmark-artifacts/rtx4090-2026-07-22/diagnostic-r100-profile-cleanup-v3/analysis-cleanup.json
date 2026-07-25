@@ -1,0 +1,191 @@
+{
+  "artifact_schema_version": 1,
+  "paired_steady_residuals": {
+    "absolute_unexplained_without_talker_ms": {
+      "max": 26.420434051658958,
+      "median": 2.842225592583418,
+      "min": 0.005286932457238436,
+      "p90": 7.828700055973605,
+      "p95": 9.882401263387875
+    },
+    "count": 300,
+    "positive_unexplained_without_talker_ms": {
+      "max": 16.641495460644364,
+      "median": 1.8957035285420716,
+      "min": 0.0,
+      "p90": 6.45254001105205,
+      "p95": 8.625399736291733
+    },
+    "talker_explained_fraction": {
+      "max": 1.0,
+      "median": 0.30597785721246745,
+      "min": 0.0,
+      "p90": 0.8538597289274922,
+      "p95": 0.9300488460903263
+    },
+    "talker_forward_stream_delta_ms": {
+      "max": 44.97203063964844,
+      "median": 0.5698509216308594,
+      "min": -44.36476135253906,
+      "p90": 20.43901824951174,
+      "p95": 33.52031822204591
+    },
+    "total_delta_ms": {
+      "max": 56.14719999721274,
+      "median": 3.0753500177524984,
+      "min": -50.49440008588135,
+      "p90": 25.476509949658105,
+      "p95": 39.019575013662696
+    },
+    "unexplained_without_talker_ms": {
+      "max": 16.641495460644364,
+      "median": 2.423914753831923,
+      "min": -26.420434051658958,
+      "p90": 6.885722828935836,
+      "p95": 8.989562245598062
+    }
+  },
+  "positive_outlier_talker_forward_attribution": {
+    "count": 12,
+    "declassified_below_threshold_count": 12,
+    "explained_fraction_gte_50_count": 11,
+    "explained_fraction_gte_80_count": 5,
+    "positive_unexplained_without_talker_ms": {
+      "max": 15.501895456109196,
+      "median": 7.053381513105705,
+      "min": 2.1692520044744015,
+      "p90": 11.519318335317076,
+      "p95": 13.369645632756871
+    },
+    "runs": [
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 6.727947186678648,
+        "run_index": 3,
+        "talker_explained_fraction": 0.866597125496517,
+        "talker_positive_delta_ms": 43.705352783203125,
+        "total_delta_ms": 50.43329996988177
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 8.15326679777354,
+        "run_index": 24,
+        "talker_explained_fraction": 0.612437584793424,
+        "talker_positive_delta_ms": 12.884033203125,
+        "total_delta_ms": 21.03730000089854
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 15.501895456109196,
+        "run_index": 27,
+        "talker_explained_fraction": 0.704565421774027,
+        "talker_positive_delta_ms": 36.9696044921875,
+        "total_delta_ms": 52.471499948296696
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 7.856099128257483,
+        "run_index": 29,
+        "talker_explained_fraction": 0.7686374900516829,
+        "talker_positive_delta_ms": 26.099700927734375,
+        "total_delta_ms": 33.95580005599186
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 11.62507759546861,
+        "run_index": 30,
+        "talker_explained_fraction": 0.44899884044588007,
+        "talker_positive_delta_ms": 9.4730224609375,
+        "total_delta_ms": 21.09810005640611
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 10.567484993953258,
+        "run_index": 36,
+        "talker_explained_fraction": 0.6208008145058038,
+        "talker_positive_delta_ms": 17.3004150390625,
+        "total_delta_ms": 27.867900033015758
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 4.816609154455364,
+        "run_index": 56,
+        "talker_explained_fraction": 0.7764042989082389,
+        "talker_positive_delta_ms": 16.724990844726562,
+        "total_delta_ms": 21.541599999181926
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 3.152815393637866,
+        "run_index": 61,
+        "talker_explained_fraction": 0.8632860366140559,
+        "talker_positive_delta_ms": 19.908584594726562,
+        "total_delta_ms": 23.06139998836443
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 5.222155347466469,
+        "run_index": 72,
+        "talker_explained_fraction": 0.8677165097209109,
+        "talker_positive_delta_ms": 34.254844665527344,
+        "total_delta_ms": 39.47700001299381
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 7.378815839532763,
+        "run_index": 79,
+        "talker_explained_fraction": 0.6507400092633578,
+        "talker_positive_delta_ms": 13.748184204101562,
+        "total_delta_ms": 21.127000043634325
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 3.539634991902858,
+        "run_index": 80,
+        "talker_explained_fraction": 0.8784520269308348,
+        "talker_positive_delta_ms": 25.5816650390625,
+        "total_delta_ms": 29.121300030965358
+      },
+      {
+        "declassified_below_threshold": true,
+        "positive_unexplained_without_talker_ms": 2.1692520044744015,
+        "run_index": 85,
+        "talker_explained_fraction": 0.9080934462654222,
+        "talker_positive_delta_ms": 21.433547973632812,
+        "total_delta_ms": 23.602799978107214
+      }
+    ],
+    "talker_explained_fraction": {
+      "max": 0.9080934462654222,
+      "median": 0.7725208944799609,
+      "min": 0.44899884044588007,
+      "p90": 0.8773784752098424,
+      "p95": 0.8917906656313991
+    },
+    "talker_positive_delta_ms": {
+      "max": 43.705352783203125,
+      "median": 20.671066284179688,
+      "min": 9.4730224609375,
+      "p90": 36.69812850952149,
+      "p95": 40.00069122314453
+    },
+    "threshold_ms": 20.0,
+    "total_delta_ms": {
+      "max": 52.471499948296696,
+      "median": 25.735350005561486,
+      "min": 21.03730000089854,
+      "p90": 49.337669974192984,
+      "p95": 51.35048996016849
+    }
+  },
+  "source_report": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\diagnostic-r100-profile-cleanup-v3\\summary.json",
+  "talker_forward_declassification": {
+    "declassified_below_threshold_after_talker_forward_count": 12,
+    "declassified_below_threshold_after_talker_forward_fraction": 1.0,
+    "legacy_explained_by_talker_forward_count": 12,
+    "legacy_explained_by_talker_forward_fraction": 1.0,
+    "positive_outlier_count": 12,
+    "threshold_ms": 20.0
+  },
+  "threshold_ms": 20.0
+}

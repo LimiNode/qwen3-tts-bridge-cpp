@@ -48,9 +48,18 @@ expected faster wheel SHA256: 0b3aa64a592daa4d573b500455c27d87df54cdfd41219217bf
 profile_complete: 400/400
 stream consistent: 400/400
 positive paired deltas >20 ms: 12/100
-talker-forward explained positive outliers: 12/12
-positive_unexplained_without_talker_ms p95: 8.194 ms
-absolute_delta_without_talker_forward_ms p95: 8.643 ms
+talker-forward declassified positive outliers below 20 ms: 12/12
+conditional outlier total delta p50/p95/max: 25.735 / 51.350 / 52.471 ms
+conditional outlier talker-forward delta p50/p95/max: 20.671 / 40.001 / 43.705 ms
+conditional outlier unexplained residual p50/p95/max: 7.053 / 13.370 / 15.502 ms
+conditional talker attribution fraction min/p50/p95/max: 0.449 / 0.773 / 0.892 / 0.908
+conditional attribution counts: >=50% 11/12, >=80% 5/12
+per-real-steady positive unexplained residual p95: 8.625 ms
+per-real-steady signed unexplained residual p95: 8.990 ms
+reanalyzer artifact: diagnostic-r100-profile-cleanup-v3/analysis-cleanup.json
+reanalyzer SHA256: 73a0921044d7c5211abb69de80585925cd287ba44cf54292ac3ccc12a52bb371
+reanalyzer command:
+  PYTHONPATH=tests/python;worker/src .venv-packaging/Scripts/python.exe tests/python/reanalyze_benchmark_report.py --input docs/benchmark-artifacts/rtx4090-2026-07-22/diagnostic-r100-profile-cleanup-v3/summary.json --output docs/benchmark-artifacts/rtx4090-2026-07-22/diagnostic-r100-profile-cleanup-v3/analysis-cleanup.json --threshold-ms 20.0
 ```
 
 Production profile-off r30:

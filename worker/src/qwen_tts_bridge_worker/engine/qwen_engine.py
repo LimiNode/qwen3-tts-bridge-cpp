@@ -795,6 +795,17 @@ def _first_chunk_timing_fields(
         value = _number_field(chunk_timing, key)
         if value is not None:
             fields[key] = value
+    for source_key, alias_key in (
+        ("prefill_total_gpu_ms", "prefill_total_stream_elapsed_ms"),
+        ("talker_forward_gpu_ms", "talker_forward_stream_elapsed_ms"),
+        ("first_sample_gpu_ms", "first_sample_stream_elapsed_ms"),
+        ("prefill_kv_gpu_ms", "prefill_kv_stream_elapsed_ms"),
+        ("generation_state_gpu_ms", "generation_state_stream_elapsed_ms"),
+        ("prefill_to_sync_gpu_ms", "prefill_to_sync_stream_elapsed_ms"),
+    ):
+        value = _number_field(chunk_timing, source_key)
+        if value is not None:
+            fields[alias_key] = value
 
     residual_ms = next_wall_ms
     if prefill_ms is not None:

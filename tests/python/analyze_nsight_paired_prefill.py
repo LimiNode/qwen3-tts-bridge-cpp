@@ -1,12 +1,13 @@
 """Summarize same-process paired Nsight prefill captures."""
 
+# pyright: reportArgumentType=false
+
 from __future__ import annotations
 
 import argparse
 import json
 import sqlite3
 from pathlib import Path
-
 
 PREFILL_RANGE_NAMES = (
     "qtb_profile_first_user_prefill",
@@ -37,15 +38,23 @@ def main() -> int:
         ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
-    print(json.dumps({
-        "trace_count": report["trace_count"],
-        "tail_trace_count_gt20ms": report["tail_trace_count_gt20ms"],
-        "deltas": [
-            trace["first_minus_steady_prefill_range_ms"]
-            for trace in traces
-        ],
-    }, sort_keys=True))
+    args.output.write_text(
+        json.dumps(report, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    print(
+        json.dumps(
+            {
+                "trace_count": report["trace_count"],
+                "tail_trace_count_gt20ms": report["tail_trace_count_gt20ms"],
+                "deltas": [
+                    trace["first_minus_steady_prefill_range_ms"]
+                    for trace in traces
+                ],
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 

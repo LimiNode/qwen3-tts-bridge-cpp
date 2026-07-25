@@ -45,15 +45,21 @@ _PHASE_KEYS = (
     "first_chunk_tokenize_wall_ms",
     "first_chunk_build_talker_inputs_wall_ms",
     "first_chunk_prefill_total_gpu_ms",
+    "first_chunk_prefill_total_stream_elapsed_ms",
     "first_chunk_talker_forward_launch_wall_ms",
     "first_chunk_talker_forward_gpu_ms",
+    "first_chunk_talker_forward_stream_elapsed_ms",
     "first_chunk_first_sample_launch_wall_ms",
     "first_chunk_first_sample_gpu_ms",
+    "first_chunk_first_sample_stream_elapsed_ms",
     "first_chunk_prefill_kv_launch_wall_ms",
     "first_chunk_prefill_kv_gpu_ms",
+    "first_chunk_prefill_kv_stream_elapsed_ms",
     "first_chunk_generation_state_wall_ms",
     "first_chunk_generation_state_gpu_ms",
+    "first_chunk_generation_state_stream_elapsed_ms",
     "first_chunk_prefill_to_sync_gpu_ms",
+    "first_chunk_prefill_to_sync_stream_elapsed_ms",
     "first_chunk_prefill_sync_wait_ms",
     "first_chunk_prefill_gpu_component_sum_ms",
     "first_chunk_prefill_gpu_partition_error_ms",
@@ -272,8 +278,17 @@ def _build_report(
             "profile_validation": _profile_validation_summary(pipeline_requests),
             "paired_phase_delta": _phase_summary(paired_phase_deltas),
             "paired_delta_residuals": _paired_delta_residual_summary(run_summaries),
+            "paired_steady_residuals": _paired_steady_residual_summary(
+                run_summaries,
+            ),
             "talker_forward_explained_outliers": (
                 _talker_forward_explained_outlier_summary(
+                    run_summaries,
+                    threshold_ms=args.outlier_delta_threshold_ms,
+                )
+            ),
+            "positive_outlier_talker_forward_attribution": (
+                _positive_outlier_talker_forward_attribution(
                     run_summaries,
                     threshold_ms=args.outlier_delta_threshold_ms,
                 )
@@ -681,6 +696,10 @@ def _run_summary(
     steady_median = _median_request(steady_requests)
     paired_delta: float | None = None
     paired_phase_delta = _phase_delta(first_request, steady_median)
+    paired_steady_residuals = _paired_steady_residuals(
+        first_request,
+        steady_requests,
+    )
     first_audio = first_request.get("first_audio_ms")
     if isinstance(first_audio, (int, float)) and steady_median is not None:
         steady_first_audio = steady_median.get("first_audio_ms")
@@ -712,6 +731,7 @@ def _run_summary(
         "paired_delta_first_audio_ms": paired_delta,
         "paired_phase_delta": paired_phase_delta,
         "paired_delta_residuals": paired_delta_residuals,
+        "paired_steady_residuals": paired_steady_residuals,
         "requests": enriched_requests,
     }
 
@@ -885,8 +905,12 @@ def _paired_delta_residuals(
             paired_delta - first_sample_delta
         )
     talker_forward_delta = _number(
-        paired_phase_delta.get("first_chunk_talker_forward_gpu_ms")
+        paired_phase_delta.get("first_chunk_talker_forward_stream_elapsed_ms")
     )
+    if talker_forward_delta is None:
+        talker_forward_delta = _number(
+            paired_phase_delta.get("first_chunk_talker_forward_gpu_ms")
+        )
     if talker_forward_delta is not None:
         signed_residual = paired_delta - talker_forward_delta
         residuals["delta_without_talker_forward_ms"] = signed_residual
@@ -921,6 +945,107 @@ def _paired_delta_residuals(
             "first_chunk_next_wall_delta + transport_dispatch_delta"
         )
     return residuals
+
+
+def _paired_steady_residuals(
+    first_request: dict[str, object],
+    steady_requests: list[dict[str, object]],
+) -> dict[str, object]:
+    rows = [
+        residuals
+        for request in steady_requests
+        if (
+            residuals := _paired_steady_residual(
+                first_request,
+                request,
+            )
+        )
+    ]
+    return {
+        "count": len(rows),
+        "residuals": rows,
+        "summary": {
+            "total_delta_ms": _summary(rows, "total_delta_ms"),
+            "talker_forward_stream_delta_ms": _summary(
+                rows,
+                "talker_forward_stream_delta_ms",
+            ),
+            "unexplained_without_talker_ms": _summary(
+                rows,
+                "unexplained_without_talker_ms",
+            ),
+            "positive_unexplained_without_talker_ms": _summary(
+                rows,
+                "positive_unexplained_without_talker_ms",
+            ),
+            "absolute_unexplained_without_talker_ms": _summary(
+                rows,
+                "absolute_unexplained_without_talker_ms",
+            ),
+            "talker_explained_fraction": _summary(
+                rows,
+                "talker_explained_fraction",
+            ),
+        },
+    }
+
+
+def _paired_steady_residual(
+    first_request: dict[str, object],
+    steady_request: dict[str, object],
+) -> dict[str, object]:
+    total_delta = _metric_delta(first_request, steady_request, "first_audio_ms")
+    if total_delta is None:
+        return {}
+    talker_delta = _metric_delta(
+        first_request,
+        steady_request,
+        "first_chunk_talker_forward_stream_elapsed_ms",
+    )
+    if talker_delta is None:
+        talker_delta = _metric_delta(
+            first_request,
+            steady_request,
+            "first_chunk_talker_forward_gpu_ms",
+        )
+    result: dict[str, object] = {
+        "steady_request_id": steady_request.get("request_id"),
+        "total_delta_ms": total_delta,
+    }
+    if talker_delta is None:
+        return result
+    unexplained = total_delta - talker_delta
+    positive_total_delta = max(total_delta, 0.0)
+    talker_explained = min(max(talker_delta, 0.0), positive_total_delta)
+    result.update(
+        {
+            "talker_forward_stream_delta_ms": talker_delta,
+            "unexplained_without_talker_ms": unexplained,
+            "absolute_unexplained_without_talker_ms": abs(unexplained),
+            "talker_explained_ms": talker_explained,
+            "positive_unexplained_without_talker_ms": (
+                positive_total_delta - talker_explained
+            ),
+            "talker_explained_fraction": (
+                talker_explained / positive_total_delta
+                if positive_total_delta > 0.0
+                else None
+            ),
+        }
+    )
+    return result
+
+
+def _metric_delta(
+    first_request: dict[str, object],
+    steady_request: dict[str, object],
+    key: str,
+) -> float | None:
+    first_value = _number(first_request.get(key))
+    steady_value = _number(steady_request.get(key))
+    if first_value is None or steady_value is None:
+        return None
+    return first_value - steady_value
 
 
 def _paired_delta_residual_summary(
@@ -971,6 +1096,46 @@ def _paired_delta_residual_summary(
         "phase_accounting_error_ms": _summary(
             residuals,
             "phase_accounting_error_ms",
+        ),
+    }
+
+
+def _paired_steady_residual_summary(
+    run_summaries: list[dict[str, object]],
+) -> dict[str, object]:
+    residual_rows = []
+    for run in run_summaries:
+        paired_steady = run.get("paired_steady_residuals")
+        if not isinstance(paired_steady, dict):
+            continue
+        rows = paired_steady.get("residuals")
+        if not isinstance(rows, list):
+            continue
+        residual_rows.extend(
+            row for row in rows if isinstance(row, dict)
+        )
+    return {
+        "count": len(residual_rows),
+        "total_delta_ms": _summary(residual_rows, "total_delta_ms"),
+        "talker_forward_stream_delta_ms": _summary(
+            residual_rows,
+            "talker_forward_stream_delta_ms",
+        ),
+        "unexplained_without_talker_ms": _summary(
+            residual_rows,
+            "unexplained_without_talker_ms",
+        ),
+        "positive_unexplained_without_talker_ms": _summary(
+            residual_rows,
+            "positive_unexplained_without_talker_ms",
+        ),
+        "absolute_unexplained_without_talker_ms": _summary(
+            residual_rows,
+            "absolute_unexplained_without_talker_ms",
+        ),
+        "talker_explained_fraction": _summary(
+            residual_rows,
+            "talker_explained_fraction",
         ),
     }
 
@@ -1050,7 +1215,7 @@ def _talker_forward_explained_outlier_summary(
     threshold_ms: float,
 ) -> dict[str, object]:
     positive_outliers = []
-    explained = []
+    declassified = []
     for run in run_summaries:
         delta = _number(run.get("paired_delta_first_audio_ms"))
         if delta is None or delta <= threshold_ms:
@@ -1063,17 +1228,96 @@ def _talker_forward_explained_outlier_summary(
             else None
         )
         if unexplained is not None and unexplained <= threshold_ms:
-            explained.append(run)
+            declassified.append(run)
     count = len(positive_outliers)
-    explained_count = len(explained)
+    declassified_count = len(declassified)
     return {
         "threshold_ms": threshold_ms,
         "positive_outlier_count": count,
-        "explained_by_talker_forward_count": explained_count,
-        "explained_by_talker_forward_fraction": (
-            explained_count / count if count else None
+        "declassified_below_threshold_after_talker_forward_count": (
+            declassified_count
+        ),
+        "declassified_below_threshold_after_talker_forward_fraction": (
+            declassified_count / count if count else None
+        ),
+        "legacy_explained_by_talker_forward_count": declassified_count,
+        "legacy_explained_by_talker_forward_fraction": (
+            declassified_count / count if count else None
         ),
     }
+
+
+def _positive_outlier_talker_forward_attribution(
+    run_summaries: list[dict[str, object]],
+    *,
+    threshold_ms: float,
+) -> dict[str, object]:
+    rows = []
+    for run in run_summaries:
+        total_delta = _number(run.get("paired_delta_first_audio_ms"))
+        if total_delta is None or total_delta <= threshold_ms:
+            continue
+        residuals = run.get("paired_delta_residuals")
+        if not isinstance(residuals, dict):
+            continue
+        talker_delta = _number(residuals.get("talker_explained_ms"))
+        unexplained = _number(
+            residuals.get("positive_unexplained_without_talker_ms")
+        )
+        explained_fraction = _number(residuals.get("talker_explained_fraction"))
+        rows.append(
+            {
+                "run_index": run.get("run_index"),
+                "total_delta_ms": total_delta,
+                "talker_positive_delta_ms": talker_delta,
+                "positive_unexplained_without_talker_ms": unexplained,
+                "talker_explained_fraction": explained_fraction,
+                "declassified_below_threshold": (
+                    unexplained is not None and unexplained <= threshold_ms
+                ),
+            }
+        )
+    return {
+        "threshold_ms": threshold_ms,
+        "count": len(rows),
+        "declassified_below_threshold_count": _count_true(
+            rows,
+            "declassified_below_threshold",
+        ),
+        "total_delta_ms": _summary(rows, "total_delta_ms"),
+        "talker_positive_delta_ms": _summary(rows, "talker_positive_delta_ms"),
+        "positive_unexplained_without_talker_ms": _summary(
+            rows,
+            "positive_unexplained_without_talker_ms",
+        ),
+        "talker_explained_fraction": _summary(
+            rows,
+            "talker_explained_fraction",
+        ),
+        "explained_fraction_gte_50_count": _count_at_least(
+            rows,
+            "talker_explained_fraction",
+            0.5,
+        ),
+        "explained_fraction_gte_80_count": _count_at_least(
+            rows,
+            "talker_explained_fraction",
+            0.8,
+        ),
+        "runs": rows,
+    }
+
+
+def _count_at_least(
+    rows: list[dict[str, object]],
+    key: str,
+    threshold: float,
+) -> int:
+    return sum(
+        1
+        for row in rows
+        if (value := _number(row.get(key))) is not None and value >= threshold
+    )
 
 
 def _correlations(run_summaries: list[dict[str, object]]) -> dict[str, object]:
@@ -1381,20 +1625,44 @@ def _with_request_pipeline_metrics(
         ("build_talker_inputs_wall_ms", "first_chunk_build_talker_inputs_wall_ms"),
         ("prefill_total_gpu_ms", "first_chunk_prefill_total_gpu_ms"),
         (
+            "prefill_total_stream_elapsed_ms",
+            "first_chunk_prefill_total_stream_elapsed_ms",
+        ),
+        (
             "talker_forward_launch_wall_ms",
             "first_chunk_talker_forward_launch_wall_ms",
         ),
         ("talker_forward_gpu_ms", "first_chunk_talker_forward_gpu_ms"),
         (
+            "talker_forward_stream_elapsed_ms",
+            "first_chunk_talker_forward_stream_elapsed_ms",
+        ),
+        (
             "first_sample_launch_wall_ms",
             "first_chunk_first_sample_launch_wall_ms",
         ),
         ("first_sample_gpu_ms", "first_chunk_first_sample_gpu_ms"),
+        (
+            "first_sample_stream_elapsed_ms",
+            "first_chunk_first_sample_stream_elapsed_ms",
+        ),
         ("prefill_kv_launch_wall_ms", "first_chunk_prefill_kv_launch_wall_ms"),
         ("prefill_kv_gpu_ms", "first_chunk_prefill_kv_gpu_ms"),
+        (
+            "prefill_kv_stream_elapsed_ms",
+            "first_chunk_prefill_kv_stream_elapsed_ms",
+        ),
         ("generation_state_wall_ms", "first_chunk_generation_state_wall_ms"),
         ("generation_state_gpu_ms", "first_chunk_generation_state_gpu_ms"),
+        (
+            "generation_state_stream_elapsed_ms",
+            "first_chunk_generation_state_stream_elapsed_ms",
+        ),
         ("prefill_to_sync_gpu_ms", "first_chunk_prefill_to_sync_gpu_ms"),
+        (
+            "prefill_to_sync_stream_elapsed_ms",
+            "first_chunk_prefill_to_sync_stream_elapsed_ms",
+        ),
         ("prefill_sync_wait_ms", "first_chunk_prefill_sync_wait_ms"),
         (
             "prefill_gpu_component_sum_ms",

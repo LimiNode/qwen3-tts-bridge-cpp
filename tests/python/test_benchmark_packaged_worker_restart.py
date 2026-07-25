@@ -14,7 +14,10 @@ from benchmark_packaged_worker_restart import (
     _outlier_records,
     _paired_delta_residual_summary,
     _paired_delta_residuals,
+    _paired_steady_residual_summary,
+    _paired_steady_residuals,
     _phase_delta,
+    _positive_outlier_talker_forward_attribution,
     _profile_validation_summary,
     _progress_line,
     _RequestGpuPoller,
@@ -77,11 +80,17 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "components_nonnegative": True,
                 "all_component_streams_equal": True,
                 "prefill_total_gpu_ms": 11.0,
+                "prefill_total_stream_elapsed_ms": 11.0,
                 "talker_forward_gpu_ms": 1.0,
+                "talker_forward_stream_elapsed_ms": 1.0,
                 "first_sample_gpu_ms": 6.0,
+                "first_sample_stream_elapsed_ms": 6.0,
                 "prefill_kv_gpu_ms": 3.0,
+                "prefill_kv_stream_elapsed_ms": 3.0,
                 "generation_state_gpu_ms": 1.0,
+                "generation_state_stream_elapsed_ms": 1.0,
                 "prefill_to_sync_gpu_ms": 0.0,
+                "prefill_to_sync_stream_elapsed_ms": 0.0,
                 "prefill_sync_wait_ms": 1.5,
                 "prefill_gpu_component_sum_ms": 11.0,
                 "prefill_gpu_partition_error_ms": 0.0,
@@ -139,6 +148,10 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(0.0, enriched["first_chunk_prefill_gpu_partition_error_ms"])
         self.assertEqual(0.0, enriched["first_chunk_prefill_gpu_accounting_error_ms"])
         self.assertEqual(1234, enriched["first_chunk_talker_forward_gpu_stream_id"])
+        self.assertEqual(
+            1.0,
+            enriched["first_chunk_talker_forward_stream_elapsed_ms"],
+        )
 
     def test_median_request_includes_pipeline_fields(self) -> None:
         median = _median_request(
@@ -413,6 +426,59 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(24.5, residuals["phase_accounted_delta_ms"])
         self.assertEqual(0.5, residuals["phase_accounting_error_ms"])
 
+    def test_paired_steady_residuals_use_real_steady_rows(self) -> None:
+        summary = _paired_steady_residuals(
+            {
+                "first_audio_ms": 125.0,
+                "first_chunk_talker_forward_stream_elapsed_ms": 60.0,
+            },
+            [
+                {
+                    "request_id": 2,
+                    "first_audio_ms": 100.0,
+                    "first_chunk_talker_forward_stream_elapsed_ms": 40.0,
+                },
+                {
+                    "request_id": 3,
+                    "first_audio_ms": 110.0,
+                    "first_chunk_talker_forward_stream_elapsed_ms": 55.0,
+                },
+            ],
+        )
+
+        rows = cast(list[dict[str, object]], summary["residuals"])
+        aggregate = cast(dict[str, object], summary["summary"])
+        total = cast(dict[str, object], aggregate["total_delta_ms"])
+        unexplained = cast(
+            dict[str, object],
+            aggregate["unexplained_without_talker_ms"],
+        )
+
+        self.assertEqual(2, summary["count"])
+        self.assertEqual(25.0, rows[0]["total_delta_ms"])
+        self.assertEqual(20.0, rows[0]["talker_forward_stream_delta_ms"])
+        self.assertEqual(5.0, rows[0]["unexplained_without_talker_ms"])
+        self.assertEqual(20.0, total["median"])
+        self.assertEqual(7.5, unexplained["median"])
+
+    def test_paired_steady_residual_summary_flattens_runs(self) -> None:
+        summary = _paired_steady_residual_summary(
+            [
+                {
+                    "paired_steady_residuals": {
+                        "residuals": [
+                            {"total_delta_ms": 3.0},
+                            {"total_delta_ms": 5.0},
+                        ],
+                    },
+                }
+            ]
+        )
+
+        total = cast(dict[str, object], summary["total_delta_ms"])
+        self.assertEqual(2, summary["count"])
+        self.assertEqual(4.0, total["median"])
+
     def test_paired_delta_residual_summary_reports_distribution(self) -> None:
         summary = _paired_delta_residual_summary(
             [
@@ -486,6 +552,52 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             summary["profile_request_roles"],
         )
 
+    def test_positive_outlier_attribution_reports_conditional_distribution(
+        self,
+    ) -> None:
+        summary = _positive_outlier_talker_forward_attribution(
+            [
+                {
+                    "run_index": 1,
+                    "paired_delta_first_audio_ms": 30.0,
+                    "paired_delta_residuals": {
+                        "talker_explained_ms": 24.0,
+                        "positive_unexplained_without_talker_ms": 6.0,
+                        "talker_explained_fraction": 0.8,
+                    },
+                },
+                {
+                    "run_index": 2,
+                    "paired_delta_first_audio_ms": 22.0,
+                    "paired_delta_residuals": {
+                        "talker_explained_ms": 4.0,
+                        "positive_unexplained_without_talker_ms": 18.0,
+                        "talker_explained_fraction": 4.0 / 22.0,
+                    },
+                },
+                {
+                    "run_index": 3,
+                    "paired_delta_first_audio_ms": 5.0,
+                    "paired_delta_residuals": {
+                        "talker_explained_ms": 5.0,
+                    },
+                },
+            ],
+            threshold_ms=20.0,
+        )
+
+        total = cast(dict[str, object], summary["total_delta_ms"])
+        unexplained = cast(
+            dict[str, object],
+            summary["positive_unexplained_without_talker_ms"],
+        )
+        self.assertEqual(2, summary["count"])
+        self.assertEqual(2, summary["declassified_below_threshold_count"])
+        self.assertEqual(1, summary["explained_fraction_gte_50_count"])
+        self.assertEqual(1, summary["explained_fraction_gte_80_count"])
+        self.assertEqual(26.0, total["median"])
+        self.assertEqual(12.0, unexplained["median"])
+
     def test_talker_forward_explained_outlier_summary_counts_positive_tails(
         self,
     ) -> None:
@@ -514,8 +626,14 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         )
 
         self.assertEqual(2, summary["positive_outlier_count"])
-        self.assertEqual(1, summary["explained_by_talker_forward_count"])
-        self.assertEqual(0.5, summary["explained_by_talker_forward_fraction"])
+        self.assertEqual(
+            1,
+            summary["declassified_below_threshold_after_talker_forward_count"],
+        )
+        self.assertEqual(
+            0.5,
+            summary["declassified_below_threshold_after_talker_forward_fraction"],
+        )
 
     def test_gpu_poll_summary_extracts_first_gpu_maxima(self) -> None:
         summary = _gpu_poll_summary(

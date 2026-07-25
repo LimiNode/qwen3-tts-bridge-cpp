@@ -1,12 +1,13 @@
 """Summarize Nsight Systems CUDA/NVTX prefill traces."""
 
+# pyright: reportArgumentType=false, reportCallIssue=false, reportOperatorIssue=false
+
 from __future__ import annotations
 
 import argparse
 import json
 import sqlite3
 from pathlib import Path
-
 
 LAUNCH_API_PREFIXES = ("cudaLaunchKernel", "cuLaunchKernel")
 PHASE_PREFIX = "qtb_prefill_"
@@ -34,7 +35,10 @@ def main() -> int:
         "deltas_first_minus_steady": _deltas(first, steady),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    args.output.write_text(
+        json.dumps(report, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
     print(json.dumps(report["deltas_first_minus_steady"], sort_keys=True))
     return 0
 
@@ -302,7 +306,11 @@ def _percentile(values: list[float], percentile: float) -> float:
 
 def _deltas(left: dict[str, object], right: dict[str, object]) -> dict[str, object]:
     return {
-        "outer_range_duration_ms": _nested_delta(left, right, ("outer_range", "duration_ms")),
+        "outer_range_duration_ms": _nested_delta(
+            left,
+            right,
+            ("outer_range", "duration_ms"),
+        ),
         "cuda_api_interval_union_ms": _nested_delta(
             left,
             right,

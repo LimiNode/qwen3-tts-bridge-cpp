@@ -1,5 +1,7 @@
 """Analyze randomized faster telemetry overhead control artifacts."""
 
+# pyright: reportArgumentType=false, reportCallIssue=false
+
 from __future__ import annotations
 
 import argparse
@@ -7,8 +9,6 @@ import json
 import random
 import statistics
 from pathlib import Path
-from typing import Callable
-
 
 CONDITIONS = (
     "A_pristine",
@@ -46,7 +46,10 @@ def main() -> int:
     report["source_summary"] = str(args.summary)
     report["source_schedule"] = str(args.schedule)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    args.output.write_text(
+        json.dumps(report, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
     print(json.dumps(report["headline"], sort_keys=True))
     return 0
 
