@@ -245,7 +245,14 @@ def main() -> int:
     parser.add_argument("--profile-nvtx", action="store_true")
     parser.add_argument(
         "--prefill-backend",
-        choices=("eager", "compile_default", "compile_reduce_overhead"),
+        choices=(
+            "eager",
+            "compile_backend_eager",
+            "compile_backend_aot_eager",
+            "compile_default",
+            "compile_inductor_default",
+            "compile_reduce_overhead",
+        ),
         default="eager",
     )
     parser.add_argument("--no-sample", action="store_true")

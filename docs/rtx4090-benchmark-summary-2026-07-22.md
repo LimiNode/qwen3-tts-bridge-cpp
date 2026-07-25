@@ -1426,9 +1426,13 @@ time between recorded events, not as summed kernel execution time.
 ### Exact-Shape Prefill Compile Prototype
 
 An experimental faster-qwen3-tts branch was created at commit `f08260d`
-(`feat(prefill): add exact-shape compile backend switch`). The bridge now
-passes a faster-only `--prefill-backend` switch through to the packaged worker:
-`eager`, `compile_default`, or `compile_reduce_overhead`.
+(`feat(prefill): add exact-shape compile backend switch`) and then extended to
+diagnostic commit `f3b979c`
+(`test(prefill): add diagnostic compile backends`). The bridge now passes a
+faster-only `--prefill-backend` switch through to the packaged worker:
+`eager`, `compile_backend_eager`, `compile_backend_aot_eager`,
+`compile_inductor_default`, `compile_default`, or
+`compile_reduce_overhead`.
 
 The first prototype deliberately does not implement buckets. It caches
 `torch.compile(..., fullgraph=true, dynamic=false)` by exact tensor shape and
@@ -1452,12 +1456,48 @@ The profile-on diagnostic run confirms the target moved:
 
 This is the strongest performance result so far: production first TTFA improves
 by about `30%` and steady TTFA by about `37%` in this small same-shape `r10`
-control. However, it is not production-safe yet. A direct prefill-only parity
-probe showed exact eager/eager repeatability, but compiled prefill differed
-from eager (`logits_last_max_abs=0.2578125`,
-`past_hidden_max_abs=0.546875`) for both compile modes. Keep the backend
-experimental until the numerical difference is understood or accepted through a
-stronger audio-quality gate.
+control. However, it is not production-safe yet. This is not only a tensor
+parity issue: the compiled greedy run changes the end-to-end output length.
+
+| Condition | PCM bytes | Chunks | Audio duration |
+| --- | ---: | ---: | ---: |
+| eager, profile off | `232162` | `8` | `4836.708 ms` |
+| compile_reduce_overhead, profile off | `175046` | `6` | `3646.792 ms` |
+
+The compiled output is about `24.6%` shorter. Therefore completion time and
+RTF/inverse-RTF are not apples-to-apples for this experiment, even though TTFA
+and prefill timing remain useful diagnostics. A direct prefill-only parity probe
+showed exact eager/eager repeatability, but compiled prefill differed from eager
+(`logits_last_max_abs=0.2578125`, `past_hidden_max_abs=0.546875`) for both
+compile modes. The correct status is: exact-shape compiled prefill fails
+end-to-end semantic parity because greedy codec/EOS trajectory and waveform
+duration change. Keep the backend experimental and do not use it as a
+production opt-in until greedy codec sequence, EOS position, and waveform
+duration parity pass.
+
+A committed parity ladder was added in
+`scripts/qwen_prefill_compile_parity.py`. It snapshots prefill tensors
+immediately after each call, compares logits, hidden state, K/V cache tensors,
+top-token summaries, codec tokens, EOS frame, and waveform hashes, and writes
+JSON artifacts under
+`docs/benchmark-artifacts/rtx4090-2026-07-22/prefill-compile-parity-ladder/`.
+The ladder shows that the BF16 mismatch starts before Inductor-specific
+lowering: even `torch.compile(..., backend="eager")` differs from raw eager.
+
+| Artifact | Dtype / control | Key result |
+| --- | --- | --- |
+| `bf16-ladder-r2.json` | BF16 default precision | `compile_backend_eager` and `compile_backend_aot_eager` already differ from eager by `logits_last_max_abs=0.21875`, `past_hidden_max_abs=1.0`; Inductor modes differ by `0.2578125` / `0.546875`. Each backend is repeat-stable with itself. |
+| `bf16-precision-control-prefill-r2.json` | BF16, TF32 disabled, matmul precision `highest` | mismatch remains: backend-eager/aot-eager `0.2509765625` logits max abs; Inductor modes `0.25`. |
+| `fp32-prefill-r2.json` | FP32, TF32 disabled, matmul precision `highest` | compiled prefill nearly matches raw eager: logits max abs `1.9073486328125e-05`. |
+| `bf16-generation-eos-r1.json` | BF16 full greedy generation control | `compile_reduce_overhead` still fails semantic parity. Direct harness eager produced `46` frames / `87765` samples / `3656.875 ms`; compiled produced `50` frames / `95445` samples / `3976.875 ms`; first codec divergence was frame `0`, codebook `5`. |
+
+The FP32 control makes the current best interpretation narrower: the prototype
+is probably failing because of BF16 compiled-graph numerics in the talker
+prefill path, not because the cached exact-shape call is accidentally reusing
+the wrong tensors. However, the same-model 32-frame generation ladder also
+showed that a second raw-eager generation call can change codec tokens while
+keeping frame count and duration fixed. That separate repeat/state issue must
+be isolated before any bucketed compile or product-facing speed work resumes.
 
 ### Paired Nsight Follow-Up
 

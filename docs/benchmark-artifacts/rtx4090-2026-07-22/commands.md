@@ -82,9 +82,11 @@ Exact-shape prefill compile prototype:
 
 ```text
 faster-qwen3-tts branch: prefill-compile-exact-shape
-faster-qwen3-tts commit: f08260d
+faster-qwen3-tts compile prototype commit: f08260d
+faster-qwen3-tts diagnostic commit: f3b979c
 portable faster wheel SHA256: fd6f117280ea44702b15eb417262d5019f97d748ac767a437befeede23c0c4fe
-bridge worker flag: --prefill-backend eager|compile_default|compile_reduce_overhead
+clean diagnostic wheel SHA256: 4afd978d30b0d6d703aca38d0e59aa396492b99d4695a108938aa35b84425019
+bridge worker flag: --prefill-backend eager|compile_backend_eager|compile_backend_aot_eager|compile_inductor_default|compile_default|compile_reduce_overhead
 model: models/Qwen3-TTS-12Hz-0.6B-CustomVoice
 speaker: ryan
 text: I am your robot, I am your worker.
@@ -133,6 +135,70 @@ profile-on compile_reduce_overhead steady talker-forward median/p95: 3.308 ms / 
 compile_reduce_overhead fallbacks: 0/40 profile-on, 0/40 profile-off
 parity gate: failed; eager/eager repeat was exact, but compiled prefill differed
   from eager by logits_last_max_abs=0.2578125 and past_hidden_max_abs=0.546875.
+semantic parity gate: failed; compiled greedy output is shorter.
+  eager output: 232162 PCM bytes, 8 chunks, 4836.708 ms audio
+  compile_reduce_overhead output: 175046 PCM bytes, 6 chunks, 3646.792 ms audio
+  duration delta: -24.6%
+  completion time and RTF are not apples-to-apples for eager vs compiled.
+```
+
+Compile prototype source artifacts:
+
+```text
+faster-qwen-prefill-compile-patch/0001-feat-prefill-add-exact-shape-compile-backend-switch.patch
+SHA256: a486d09fdbc739157b5c05b5da56bed0fddc8185a30d7babd28273cf8e141e3c
+faster-qwen-prefill-compile-patch/0002-test-prefill-add-diagnostic-compile-backends.patch
+SHA256: be279eaebf202cdd1a342624e76575cddf73b41cb62f78e903ae79b3fd4a0de7
+faster-qwen-prefill-compile-patch/faster-qwen3-tts-71fa0fd-to-f3b979c.bundle
+SHA256: a85e8f371ccc649b3d2c2eab4b8b9522c1501c7cb0429a99c4e488666965f908
+```
+
+Compile parity ladder artifacts:
+
+```text
+script: scripts/qwen_prefill_compile_parity.py
+
+prefill-compile-parity-ladder/bf16-ladder-r2.json
+SHA256: a669c7c09384a4b6bc0909ca0177a277c97a289f156a9b95aef4213d59db1fd3
+prefill-compile-parity-ladder/bf16-precision-control-prefill-r2.json
+SHA256: 563e9892de3e6c4a111c3207b115631ddf02e5ad47cce705aecae920fbd06161
+prefill-compile-parity-ladder/fp32-prefill-r2.json
+SHA256: 0c14bbb52e28cf9d57eb89bbd97c7bff752eeff750b81cf4df6cfcc164bc35f6
+prefill-compile-parity-ladder/bf16-generation-eos-r1.json
+SHA256: 58d8ffe9cd6515b8c8b7f94c3c1c02fe234b2e57a429963fd15b9c5aacbbe313
+
+BF16 ladder:
+  compile_backend_eager logits_last_max_abs: 0.21875
+  compile_backend_aot_eager logits_last_max_abs: 0.21875
+  compile_inductor_default logits_last_max_abs: 0.2578125
+  compile_reduce_overhead logits_last_max_abs: 0.2578125
+  same-backend prefill repeat stability: 0.0 max abs for logits_last and past_hidden
+  32-frame capped generation: all compiled backends changed codec hashes and
+    diverged at frame 0 while frame count and audio samples stayed equal.
+
+BF16 precision control:
+  TF32 disabled and matmul precision highest did not restore parity.
+  backend-eager/aot-eager logits_last_max_abs: 0.2509765625
+  Inductor logits_last_max_abs: 0.25
+
+FP32 control:
+  TF32 disabled and matmul precision highest nearly restored prefill parity.
+  compiled logits_last_max_abs: 1.9073486328125e-05
+
+Full BF16 direct generation control:
+  eager: 46 frames, 87765 samples, 3656.875 ms audio
+  compile_reduce_overhead: 50 frames, 95445 samples, 3976.875 ms audio
+  first codec divergence: frame 0, codebook 5
+  direct harness duration direction differs from packaged r10, but both prove
+    that compiled BF16 prefill changes the greedy codec/waveform trajectory.
+
+Verification after adding the parity ladder:
+  scripts/check-python.ps1 -UseVenv
+    passed: Ruff, Pyright, 154 Python tests, 2 skipped
+  ctest --test-dir build/default --output-on-failure
+    first full run: stdio_transport_test timed out waiting for a frame
+    isolated retry: stdio_transport_test passed
+    second full run: 9/9 C++ tests passed
 ```
 
 Paired same-process Nsight captures:

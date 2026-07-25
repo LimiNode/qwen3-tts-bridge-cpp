@@ -282,7 +282,14 @@ def _add_qwen_subcommand(
     )
     qwen_parser.add_argument(
         "--prefill-backend",
-        choices=("eager", "compile_default", "compile_reduce_overhead"),
+        choices=(
+            "eager",
+            "compile_backend_eager",
+            "compile_backend_aot_eager",
+            "compile_default",
+            "compile_inductor_default",
+            "compile_reduce_overhead",
+        ),
         default="eager",
         help="Select the faster-backend talker prefill implementation.",
     )
