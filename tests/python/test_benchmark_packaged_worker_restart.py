@@ -447,6 +447,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                     "first_chunk_components_nonnegative": True,
                     "first_chunk_all_component_streams_equal": True,
                     "first_chunk_profile_path": "fast",
+                    "first_chunk_profile_status": "complete",
                     "first_chunk_profile_request_role": "first_user",
                 },
                 {
@@ -457,19 +458,29 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                     "first_chunk_components_nonnegative": True,
                     "first_chunk_all_component_streams_equal": False,
                     "first_chunk_profile_path": "parity",
+                    "first_chunk_profile_status": "incomplete",
                     "first_chunk_profile_request_role": "steady",
                 },
                 {
                     "first_chunk_profile_prefill_enabled": False,
+                    "first_chunk_profile_status": "disabled",
                 },
             ]
         )
 
+        self.assertEqual(
+            {"complete": 1, "disabled": 1, "incomplete": 1},
+            summary["all_profile_statuses"],
+        )
         self.assertEqual(2, summary["profiled_first_chunk_count"])
         self.assertEqual(1, summary["profile_complete_count"])
         self.assertEqual(0.5, summary["profile_complete_fraction"])
         self.assertEqual(1, summary["all_component_streams_equal_count"])
         self.assertEqual({"fast": 1, "parity": 1}, summary["profile_paths"])
+        self.assertEqual(
+            {"complete": 1, "incomplete": 1},
+            summary["profile_statuses"],
+        )
         self.assertEqual(
             {"first_user": 1, "steady": 1},
             summary["profile_request_roles"],
@@ -584,6 +595,51 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             },
         )
 
+    def test_validate_runtime_provenance_accepts_expected_faster_wheel_sha(
+        self,
+    ) -> None:
+        _validate_runtime_provenance(
+            argparse.Namespace(
+                engine="qwen",
+                runtime_backend="faster",
+                expected_faster_wheel_sha256="ABC123",
+                allow_unverified_faster_wheel=False,
+            ),
+            {
+                "imports": {
+                    "faster_qwen3_tts": {
+                        "distribution": {
+                            "installed_archive_sha256": "abc123",
+                            "retained_wheel_match_verified": False,
+                        }
+                    }
+                }
+            },
+        )
+
+    def test_validate_runtime_provenance_rejects_expected_faster_wheel_sha_mismatch(
+        self,
+    ) -> None:
+        with self.assertRaisesRegex(RuntimeError, "SHA256 mismatch"):
+            _validate_runtime_provenance(
+                argparse.Namespace(
+                    engine="qwen",
+                    runtime_backend="faster",
+                    expected_faster_wheel_sha256="expected",
+                    allow_unverified_faster_wheel=False,
+                ),
+                {
+                    "imports": {
+                        "faster_qwen3_tts": {
+                            "distribution": {
+                                "installed_archive_sha256": "actual",
+                                "retained_wheel_match_verified": True,
+                            }
+                        }
+                    }
+                },
+            )
+
     def test_validate_runtime_provenance_allows_explicit_control_mismatch(
         self,
     ) -> None:
@@ -632,6 +688,9 @@ def _qwen_args(
         no_compile_codebook_predictor=False,
         no_compile_talker=False,
         matmul_precision="",
+        profile_prefill=False,
+        profile_nvtx=False,
+        expected_faster_wheel_sha256="",
         allow_unverified_faster_wheel=False,
         no_sample=False,
         seed=seed,

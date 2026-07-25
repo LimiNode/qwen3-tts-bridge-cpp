@@ -464,6 +464,9 @@ def _qwen_stream_generate_audio(
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
+                if config.profile_nvtx:
+                    stream_kwargs["profile_nvtx"] = True
+                if config.profile_prefill or config.profile_nvtx:
                     profile_request_role = _profile_request_role(request.request_id)
                     if profile_request_role is not None:
                         stream_kwargs["profile_request_role"] = profile_request_role
@@ -509,6 +512,9 @@ def _qwen_stream_generate_audio(
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
+                if config.profile_nvtx:
+                    stream_kwargs["profile_nvtx"] = True
+                if config.profile_prefill or config.profile_nvtx:
                     profile_request_role = _profile_request_role(request.request_id)
                     if profile_request_role is not None:
                         stream_kwargs["profile_request_role"] = profile_request_role
@@ -711,6 +717,7 @@ def _first_chunk_timing_fields(
             fields[key] = int(value)
     for key in (
         "profile_path",
+        "profile_status",
         "profile_request_role",
     ):
         value = chunk_timing.get(key)

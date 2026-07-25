@@ -631,6 +631,7 @@ class QwenEngineTests(unittest.TestCase):
                 model_path="models/qwen-custom",
                 runtime_backend="faster",
                 profile_prefill=True,
+                profile_nvtx=True,
                 do_sample=False,
             ),
             model_loader=lambda _config: fake_model,
@@ -649,6 +650,7 @@ class QwenEngineTests(unittest.TestCase):
         )
 
         self.assertTrue(fake_model.custom_stream_calls[0]["profile_prefill"])
+        self.assertTrue(fake_model.custom_stream_calls[0]["profile_nvtx"])
         self.assertEqual(
             "first_user",
             fake_model.custom_stream_calls[0]["profile_request_role"],

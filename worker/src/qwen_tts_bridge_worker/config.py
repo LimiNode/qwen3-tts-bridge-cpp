@@ -52,6 +52,7 @@ class QwenEngineConfig:
     compile_talker: bool = True
     matmul_precision: str = ""
     profile_prefill: bool = False
+    profile_nvtx: bool = False
     do_sample: bool = True
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"

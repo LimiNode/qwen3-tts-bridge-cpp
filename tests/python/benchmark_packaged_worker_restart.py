@@ -227,6 +227,8 @@ def _build_report(
             "requests_per_run": args.requests_per_run,
             "cpu_affinity": args.cpu_affinity,
             "profile_prefill": args.profile_prefill,
+            "profile_nvtx": args.profile_nvtx,
+            "expected_faster_wheel_sha256": args.expected_faster_wheel_sha256,
             "allow_unverified_faster_wheel": args.allow_unverified_faster_wheel,
             "do_sample": not args.no_sample,
             "request_gpu_poll_interval_ms": args.request_gpu_poll_interval_ms,
@@ -318,6 +320,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--profile-prefill", action="store_true")
+    parser.add_argument("--profile-nvtx", action="store_true")
+    parser.add_argument(
+        "--expected-faster-wheel-sha256",
+        default="",
+        help=(
+            "Require faster_qwen3_tts installed_archive_sha256 to match this "
+            "condition-specific wheel hash."
+        ),
+    )
     parser.add_argument(
         "--allow-unverified-faster-wheel",
         action="store_true",
@@ -432,6 +443,19 @@ def _validate_runtime_provenance(
     distribution = faster.get("distribution")
     if not isinstance(distribution, dict):
         raise RuntimeError("faster_qwen3_tts distribution provenance is missing")
+    expected_sha = str(getattr(args, "expected_faster_wheel_sha256", "")).strip()
+    if expected_sha:
+        installed_sha = distribution.get("installed_archive_sha256")
+        if not isinstance(installed_sha, str):
+            raise RuntimeError(
+                "faster_qwen3_tts installed archive SHA256 is missing"
+            )
+        if installed_sha.lower() != expected_sha.lower():
+            raise RuntimeError(
+                "faster_qwen3_tts installed archive SHA256 mismatch: "
+                f"expected {expected_sha}, got {installed_sha}"
+            )
+        return
     if getattr(args, "allow_unverified_faster_wheel", False):
         return
     if distribution.get("retained_wheel_match_verified") is not True:
@@ -959,6 +983,10 @@ def _profile_validation_summary(requests: list[dict[str, object]]) -> dict[str, 
     ]
     profile_count = len(profiled)
     return {
+        "all_profile_statuses": _string_counts(
+            requests,
+            "first_chunk_profile_status",
+        ),
         "profiled_first_chunk_count": profile_count,
         "profile_complete_count": _count_true(
             profiled,
@@ -989,6 +1017,7 @@ def _profile_validation_summary(requests: list[dict[str, object]]) -> dict[str, 
             "first_chunk_all_component_streams_equal",
         ),
         "profile_paths": _string_counts(profiled, "first_chunk_profile_path"),
+        "profile_statuses": _string_counts(profiled, "first_chunk_profile_status"),
         "profile_request_roles": _string_counts(
             profiled,
             "first_chunk_profile_request_role",
@@ -1383,6 +1412,7 @@ def _with_request_pipeline_metrics(
         _copy_metric_number(enriched, first_chunk_phases, source_key, target_key)
     for source_key, target_key in (
         ("profile_path", "first_chunk_profile_path"),
+        ("profile_status", "first_chunk_profile_status"),
         ("profile_request_role", "first_chunk_profile_request_role"),
     ):
         _copy_metric_string(enriched, first_chunk_phases, source_key, target_key)

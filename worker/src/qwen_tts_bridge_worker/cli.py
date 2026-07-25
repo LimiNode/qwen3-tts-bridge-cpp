@@ -78,6 +78,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 compile_talker=not args.no_compile_talker,
                 matmul_precision=args.matmul_precision,
                 profile_prefill=args.profile_prefill,
+                profile_nvtx=args.profile_nvtx,
                 do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
@@ -272,6 +273,11 @@ def _add_qwen_subcommand(
         "--profile-prefill",
         action="store_true",
         help="Emit detailed faster-backend prefill timing in worker metrics.",
+    )
+    qwen_parser.add_argument(
+        "--profile-nvtx",
+        action="store_true",
+        help="Emit faster-backend NVTX ranges for external profilers.",
     )
     qwen_parser.add_argument(
         "--no-sample",
