@@ -1,0 +1,247 @@
+{
+  "artifact_schema_version": 1,
+  "deltas_first_minus_steady": {
+    "cuda_api_interval_union_ms": 4.021446999999995,
+    "cuda_api_launch_sum_ms": 3.7105809999999195,
+    "cuda_kernel_sum_ms": -0.048323999999984046,
+    "cuda_queue_p95_ms": -0.000222,
+    "host_or_unattributed_wall_ms": 10.931564999999978,
+    "outer_range_duration_ms": 10.883526999999987
+  },
+  "first_user": {
+    "cuda_api": {
+      "all_calls": 2982,
+      "all_duration_ms": {
+        "max": 0.228467,
+        "min": 0.000435,
+        "p50": 0.0277295,
+        "p95": 0.04258974999999998,
+        "sum": 85.06944099999978
+      },
+      "interval_union_ms": 85.069441,
+      "launch_calls": 2748,
+      "launch_duration_ms": {
+        "max": 0.228467,
+        "min": 0.01927,
+        "p50": 0.0278805,
+        "p95": 0.04270835000000001,
+        "sum": 82.44017199999983
+      }
+    },
+    "cuda_kernel": {
+      "count": 2748,
+      "duration_ms": {
+        "max": 0.012928,
+        "min": 0.0008,
+        "p50": 0.0016,
+        "p95": 0.007444800000000003,
+        "sum": 5.935712000000006
+      },
+      "matched_launch_count": 2748,
+      "sum_ms": 5.935712000000051
+    },
+    "cuda_memcpy": {
+      "count": 8,
+      "sum_ms": 0.008544
+    },
+    "cuda_memset": {
+      "count": 57,
+      "sum_ms": 0.022175999999999994
+    },
+    "cuda_queue": {
+      "count": 2748,
+      "duration_ms": {
+        "max": 0.147342,
+        "min": -0.035538,
+        "p50": -0.001047,
+        "p95": -0.00023739999999999964,
+        "sum": -1.0593020000000046
+      },
+      "positive_count": 80
+    },
+    "gpu_active_sum_ms": 5.966432000000051,
+    "host_or_unattributed_wall_ms": 177.23204699999994,
+    "kernel_by_nvtx_phase": {
+      "qtb_prefill_final_sync": {
+        "kernel_count": 0,
+        "kernel_duration_ms": null,
+        "kernel_sum_ms": 0,
+        "range_duration_ms": 0.058773
+      },
+      "qtb_prefill_first_sample": {
+        "kernel_count": 22,
+        "kernel_duration_ms": {
+          "max": 0.011904,
+          "min": 0.000832,
+          "p50": 0.001296,
+          "p95": 0.0035871999999999996,
+          "sum": 0.047393
+        },
+        "kernel_sum_ms": 0.047393,
+        "range_duration_ms": 1.494421
+      },
+      "qtb_prefill_generation_state": {
+        "kernel_count": 4,
+        "kernel_duration_ms": {
+          "max": 0.00224,
+          "min": 0.000896,
+          "p50": 0.001264,
+          "p95": 0.0020959999999999993,
+          "sum": 0.005664
+        },
+        "kernel_sum_ms": 0.005664,
+        "range_duration_ms": 0.631417
+      },
+      "qtb_prefill_static_cache": {
+        "kernel_count": 140,
+        "kernel_duration_ms": {
+          "max": 0.00288,
+          "min": 0.0008,
+          "p50": 0.002528,
+          "p95": 0.002784,
+          "sum": 0.31577899999999975
+        },
+        "kernel_sum_ms": 0.31577900000000003,
+        "range_duration_ms": 6.470607
+      },
+      "qtb_prefill_talker_forward": {
+        "kernel_count": 2582,
+        "kernel_duration_ms": {
+          "max": 0.012928,
+          "min": 0.000832,
+          "p50": 0.001504,
+          "p95": 0.007804799999999988,
+          "sum": 5.566876000000012
+        },
+        "kernel_sum_ms": 5.566876000000056,
+        "range_duration_ms": 173.882459
+      }
+    },
+    "outer_range": {
+      "duration_ms": 183.198479,
+      "end": 207405936,
+      "name": "qtb_profile_first_user_request",
+      "start": 24207457
+    },
+    "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-v3\\first-user-prefill.sqlite"
+  },
+  "note": "queue_ms is kernel.start - matched launch API end for matching CUPTI correlation IDs; host_or_unattributed_wall_ms is an outer range minus GPU active-time sum, not pure queue or gap time",
+  "steady": {
+    "cuda_api": {
+      "all_calls": 2982,
+      "all_duration_ms": {
+        "max": 0.172463,
+        "min": 0.000497,
+        "p50": 0.027132499999999997,
+        "p95": 0.0387087,
+        "sum": 81.047994
+      },
+      "interval_union_ms": 81.047994,
+      "launch_calls": 2748,
+      "launch_duration_ms": {
+        "max": 0.172463,
+        "min": 0.018837,
+        "p50": 0.027306,
+        "p95": 0.039095450000000004,
+        "sum": 78.72959099999991
+      }
+    },
+    "cuda_kernel": {
+      "count": 2748,
+      "duration_ms": {
+        "max": 0.012992,
+        "min": 0.0008,
+        "p50": 0.001616,
+        "p95": 0.007509150000000003,
+        "sum": 5.984036000000008
+      },
+      "matched_launch_count": 2748,
+      "sum_ms": 5.984036000000035
+    },
+    "cuda_memcpy": {
+      "count": 8,
+      "sum_ms": 0.008320999999999999
+    },
+    "cuda_memset": {
+      "count": 57,
+      "sum_ms": 0.02211299999999999
+    },
+    "cuda_queue": {
+      "count": 2748,
+      "duration_ms": {
+        "max": 0.174316,
+        "min": -0.04068,
+        "p50": -0.000806,
+        "p95": -1.5399999999999636e-05,
+        "sum": -0.8051609999999976
+      },
+      "positive_count": 130
+    },
+    "gpu_active_sum_ms": 6.014470000000035,
+    "host_or_unattributed_wall_ms": 166.30048199999996,
+    "kernel_by_nvtx_phase": {
+      "qtb_prefill_final_sync": {
+        "kernel_count": 0,
+        "kernel_duration_ms": null,
+        "kernel_sum_ms": 0,
+        "range_duration_ms": 0.042979
+      },
+      "qtb_prefill_first_sample": {
+        "kernel_count": 22,
+        "kernel_duration_ms": {
+          "max": 0.011936,
+          "min": 0.000832,
+          "p50": 0.001312,
+          "p95": 0.003678399999999999,
+          "sum": 0.04800000000000001
+        },
+        "kernel_sum_ms": 0.048,
+        "range_duration_ms": 1.612066
+      },
+      "qtb_prefill_generation_state": {
+        "kernel_count": 4,
+        "kernel_duration_ms": {
+          "max": 0.002368,
+          "min": 0.000896,
+          "p50": 0.001312,
+          "p95": 0.0022191999999999997,
+          "sum": 0.005888
+        },
+        "kernel_sum_ms": 0.005888,
+        "range_duration_ms": 0.504241
+      },
+      "qtb_prefill_static_cache": {
+        "kernel_count": 140,
+        "kernel_duration_ms": {
+          "max": 0.003072,
+          "min": 0.0008,
+          "p50": 0.002528,
+          "p95": 0.002848,
+          "sum": 0.31709099999999985
+        },
+        "kernel_sum_ms": 0.317091,
+        "range_duration_ms": 6.171075
+      },
+      "qtb_prefill_talker_forward": {
+        "kernel_count": 2582,
+        "kernel_duration_ms": {
+          "max": 0.012992,
+          "min": 0.0008,
+          "p50": 0.0015045,
+          "p95": 0.007930599999999977,
+          "sum": 5.613057000000017
+        },
+        "kernel_sum_ms": 5.613057000000039,
+        "range_duration_ms": 163.434853
+      }
+    },
+    "outer_range": {
+      "duration_ms": 172.314952,
+      "end": 195669243,
+      "name": "qtb_profile_steady_request",
+      "start": 23354291
+    },
+    "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-v3\\steady-prefill.sqlite"
+  },
+  "units": "milliseconds unless stated otherwise"
+}

@@ -1,0 +1,380 @@
+{
+  "artifact_schema_version": 1,
+  "bootstrap_95ci": {
+    "B_minus_A": {
+      "first_audio_ms_median_difference_ms": {
+        "ci95_ms": [
+          -42.150900000706315,
+          18.653649982297793
+        ],
+        "observed_ms": -2.9521499818656594
+      },
+      "first_audio_ms_p95_difference_ms": {
+        "ci95_ms": [
+          -8.91050003701821,
+          18.78132004349021
+        ],
+        "observed_ms": 5.294815028901212
+      },
+      "paired_delta_first_audio_ms_median_difference_ms": {
+        "ci95_ms": [
+          -1.3111174994264727,
+          2.227026212494818
+        ],
+        "observed_ms": 0.36004994763061404
+      },
+      "paired_delta_first_audio_ms_p95_difference_ms": {
+        "ci95_ms": [
+          -17.355364980176116,
+          27.11029996862635
+        ],
+        "observed_ms": 3.616445016814424
+      },
+      "steady_first_audio_ms_median_difference_ms": {
+        "ci95_ms": [
+          -34.92677999311127,
+          8.814050001092255
+        ],
+        "observed_ms": -2.9563499556388706
+      },
+      "steady_first_audio_ms_p95_difference_ms": {
+        "ci95_ms": [
+          -7.030700042378157,
+          7.803185060038231
+        ],
+        "observed_ms": 0.35662001464515924
+      }
+    },
+    "C_minus_B": {
+      "first_audio_ms_median_difference_ms": {
+        "ci95_ms": [
+          -17.761164955300046,
+          15.823649999219924
+        ],
+        "observed_ms": 4.974499956006184
+      },
+      "first_audio_ms_p95_difference_ms": {
+        "ci95_ms": [
+          -23.06430001044646,
+          4.975324973929673
+        ],
+        "observed_ms": -7.605865006917156
+      },
+      "paired_delta_first_audio_ms_median_difference_ms": {
+        "ci95_ms": [
+          -2.7797000657301396,
+          1.329861191334202
+        ],
+        "observed_ms": -0.7957000052556396
+      },
+      "paired_delta_first_audio_ms_p95_difference_ms": {
+        "ci95_ms": [
+          -33.37606504210269,
+          14.886164979543562
+        ],
+        "observed_ms": -12.176004957291312
+      },
+      "steady_first_audio_ms_median_difference_ms": {
+        "ci95_ms": [
+          -8.983199979411438,
+          17.376549949403852
+        ],
+        "observed_ms": 2.0154499798081815
+      },
+      "steady_first_audio_ms_p95_difference_ms": {
+        "ci95_ms": [
+          -6.303495043539442,
+          4.815220150776424
+        ],
+        "observed_ms": 0.2737199771218002
+      }
+    }
+  },
+  "comparison_summaries": {
+    "all_r50": {
+      "B_minus_A": {
+        "first_audio_ms_median_difference_ms": -2.9521499818656594,
+        "first_audio_ms_p95_difference_ms": 5.294815028901212,
+        "paired_delta_first_audio_ms_median_difference_ms": 0.36004994763061404,
+        "paired_delta_first_audio_ms_p95_difference_ms": 3.616445016814424,
+        "steady_first_audio_ms_median_difference_ms": -2.9563499556388706,
+        "steady_first_audio_ms_p95_difference_ms": 0.35662001464515924
+      },
+      "C_minus_B": {
+        "first_audio_ms_median_difference_ms": 4.974499956006184,
+        "first_audio_ms_p95_difference_ms": -7.605865006917156,
+        "paired_delta_first_audio_ms_median_difference_ms": -0.7957000052556396,
+        "paired_delta_first_audio_ms_p95_difference_ms": -12.176004957291312,
+        "steady_first_audio_ms_median_difference_ms": 2.0154499798081815,
+        "steady_first_audio_ms_p95_difference_ms": 0.2737199771218002
+      }
+    },
+    "extension_r20": {
+      "B_minus_A": {
+        "first_audio_ms_median_difference_ms": -7.465700007742271,
+        "first_audio_ms_p95_difference_ms": 4.360065047512762,
+        "paired_delta_first_audio_ms_median_difference_ms": -1.2340499961283058,
+        "paired_delta_first_audio_ms_p95_difference_ms": 0.3553850227035653,
+        "steady_first_audio_ms_median_difference_ms": -5.007650004699826,
+        "steady_first_audio_ms_p95_difference_ms": 0.9319050150224939
+      },
+      "C_minus_B": {
+        "first_audio_ms_median_difference_ms": -14.039949979633093,
+        "first_audio_ms_p95_difference_ms": -7.482815036200918,
+        "paired_delta_first_audio_ms_median_difference_ms": 1.7952000198420137,
+        "paired_delta_first_audio_ms_p95_difference_ms": -1.3765899813734066,
+        "steady_first_audio_ms_median_difference_ms": 0.3477499994914979,
+        "steady_first_audio_ms_p95_difference_ms": -4.864640062442049
+      }
+    },
+    "initial_r30": {
+      "B_minus_A": {
+        "first_audio_ms_median_difference_ms": -1.7268499941565096,
+        "first_audio_ms_p95_difference_ms": 2.5676149904029444,
+        "paired_delta_first_audio_ms_median_difference_ms": 0.9334000351373106,
+        "paired_delta_first_audio_ms_p95_difference_ms": 6.115180000779219,
+        "steady_first_audio_ms_median_difference_ms": -2.9877500201109797,
+        "steady_first_audio_ms_p95_difference_ms": -1.0364450427005067
+      },
+      "C_minus_B": {
+        "first_audio_ms_median_difference_ms": 2.4857499811332673,
+        "first_audio_ms_p95_difference_ms": -9.959239949239418,
+        "paired_delta_first_audio_ms_median_difference_ms": -1.3007500092498958,
+        "paired_delta_first_audio_ms_p95_difference_ms": -7.500769966281922,
+        "steady_first_audio_ms_median_difference_ms": 3.80705003044568,
+        "steady_first_audio_ms_p95_difference_ms": 3.4949200169648975
+      }
+    }
+  },
+  "headline": {
+    "bootstrap_resamples": 20000,
+    "bootstrap_seed": 20260725,
+    "note": "condition p95 differences are differences of independent condition quantiles, not p95 of per-run overhead"
+  },
+  "source_schedule": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\profile-overhead-control-v3-r50x4-randomized-runs\\schedule.jsonl",
+  "source_summary": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\profile-overhead-control-v3-r50x4-randomized-runs\\summary.json",
+  "split_summaries": {
+    "all_r50": {
+      "A_pristine": {
+        "count": 50,
+        "first_audio_ms": {
+          "max": 421.5180999599397,
+          "median": 363.0554499977734,
+          "min": 350.5294999922626,
+          "p90": 413.202259974787,
+          "p95": 415.14821496384684
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 40.54529999848455,
+          "median": 2.6289000234100968,
+          "min": -40.36169999744743,
+          "p90": 20.612090011127297,
+          "p95": 32.007609974243636
+        },
+        "steady_first_audio_ms": {
+          "max": 414.1386999981478,
+          "median": 360.8017499791458,
+          "min": 350.3150000469759,
+          "p90": 405.21216999622993,
+          "p95": 407.58655999961775
+        }
+      },
+      "B_telemetry_profile_off": {
+        "count": 50,
+        "first_audio_ms": {
+          "max": 440.48660004045814,
+          "median": 360.10330001590773,
+          "min": 351.6149999923073,
+          "p90": 410.0984299671836,
+          "p95": 420.44302999274805
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 50.2150000538677,
+          "median": 2.988949971040711,
+          "min": -26.618000003509223,
+          "p90": 26.569470023969195,
+          "p95": 35.62405499105806
+        },
+        "steady_first_audio_ms": {
+          "max": 414.2936000134796,
+          "median": 357.84540002350695,
+          "min": 349.02949997922406,
+          "p90": 404.8688399605453,
+          "p95": 407.9431800142629
+        }
+      },
+      "C_telemetry_profile_on": {
+        "count": 50,
+        "first_audio_ms": {
+          "max": 417.4223000300117,
+          "median": 365.0777999719139,
+          "min": 353.5991999669932,
+          "p90": 409.3393000366632,
+          "p95": 412.8371649858309
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 44.702299986965954,
+          "median": 2.1932499657850713,
+          "min": -36.81309998501092,
+          "p90": 11.368529987521475,
+          "p95": 23.448050033766748
+        },
+        "steady_first_audio_ms": {
+          "max": 411.5250000031665,
+          "median": 359.86085000331514,
+          "min": 350.90819996548817,
+          "p90": 406.574759981595,
+          "p95": 408.2168999913847
+        }
+      }
+    },
+    "extension_r20": {
+      "A_pristine": {
+        "count": 20,
+        "first_audio_ms": {
+          "max": 421.5180999599397,
+          "median": 392.0127500023227,
+          "min": 354.4230000115931,
+          "p90": 414.19821998570114,
+          "p95": 416.0649099649163
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 39.67399999964982,
+          "median": 3.639600006863475,
+          "min": -14.813199930358678,
+          "p90": 24.397839995799607,
+          "p95": 38.600879957084544
+        },
+        "steady_first_audio_ms": {
+          "max": 414.1386999981478,
+          "median": 374.41525000031106,
+          "min": 350.9631999768317,
+          "p90": 406.3832799671218,
+          "p95": 411.8752300157212
+        }
+      },
+      "B_telemetry_profile_off": {
+        "count": 20,
+        "first_audio_ms": {
+          "max": 440.48660004045814,
+          "median": 384.54704999458045,
+          "min": 352.65889996662736,
+          "p90": 415.924620028818,
+          "p95": 420.42497501242906
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 50.2150000538677,
+          "median": 2.405550010735169,
+          "min": -26.618000003509223,
+          "p90": 32.88441000622698,
+          "p95": 38.95626497978811
+        },
+        "steady_first_audio_ms": {
+          "max": 414.2936000134796,
+          "median": 369.40759999561124,
+          "min": 351.034699997399,
+          "p90": 408.71400000178255,
+          "p95": 412.80713503074367
+        }
+      },
+      "C_telemetry_profile_on": {
+        "count": 20,
+        "first_audio_ms": {
+          "max": 413.07060001417994,
+          "median": 370.50710001494735,
+          "min": 355.66450003534555,
+          "p90": 412.7389299974311,
+          "p95": 412.94215997622814
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 44.702299986965954,
+          "median": 4.200750030577183,
+          "min": -16.320299939252436,
+          "p90": 12.023699993733358,
+          "p95": 37.5796749984147
+        },
+        "steady_first_audio_ms": {
+          "max": 409.1033000149764,
+          "median": 369.75534999510273,
+          "min": 350.90819996548817,
+          "p90": 406.6726999823004,
+          "p95": 407.9424949683016
+        }
+      }
+    },
+    "initial_r30": {
+      "A_pristine": {
+        "count": 30,
+        "first_audio_ms": {
+          "max": 418.404099997133,
+          "median": 359.0690999990329,
+          "min": 350.5294999922626,
+          "p90": 410.699879960157,
+          "p95": 413.43143997946754
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 40.54529999848455,
+          "median": 2.3177999537438154,
+          "min": -40.36169999744743,
+          "p90": 9.65328997699544,
+          "p95": 18.274040002142975
+        },
+        "steady_first_audio_ms": {
+          "max": 409.05950003070757,
+          "median": 356.9011999934446,
+          "min": 350.3150000469759,
+          "p90": 404.9040299898479,
+          "p95": 405.3176950139459
+        }
+      },
+      "B_telemetry_profile_off": {
+        "count": 30,
+        "first_audio_ms": {
+          "max": 422.50260000582784,
+          "median": 357.3422500048764,
+          "min": 351.6149999923073,
+          "p90": 408.09194002649747,
+          "p95": 415.9990549698705
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 45.91599997365847,
+          "median": 3.251199988881126,
+          "min": -1.7757000168785453,
+          "p90": 16.6335299552884,
+          "p95": 24.389220002922194
+        },
+        "steady_first_audio_ms": {
+          "max": 405.2831999724731,
+          "median": 353.9134499733336,
+          "min": 349.02949997922406,
+          "p90": 403.68890000972897,
+          "p95": 404.2812499712454
+        }
+      },
+      "C_telemetry_profile_on": {
+        "count": 30,
+        "first_audio_ms": {
+          "max": 417.4223000300117,
+          "median": 359.8279999860097,
+          "min": 353.5991999669932,
+          "p90": 405.5401000310667,
+          "p95": 406.03981502063107
+        },
+        "paired_delta_first_audio_ms": {
+          "max": 27.90890005417168,
+          "median": 1.9504499796312302,
+          "min": -36.81309998501092,
+          "p90": 11.368529987521475,
+          "p95": 16.888450036640272
+        },
+        "steady_first_audio_ms": {
+          "max": 411.5250000031665,
+          "median": 357.7205000037793,
+          "min": 351.30219999700785,
+          "p90": 406.34876998956315,
+          "p95": 407.7761699882103
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,548 @@
+{
+  "artifact_schema_version": 1,
+  "tail_trace_count_gt20ms": 0,
+  "trace_count": 20,
+  "traces": [
+    {
+      "first_minus_steady_kernel_sum_ms": -0.010687999999998254,
+      "first_minus_steady_launch_api_sum_ms": -6.91847400000006,
+      "first_minus_steady_prefill_range_ms": -18.232017000000013,
+      "pair_range_ms": 4084.208062,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 82.410976,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.923136000000035,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 80.1001410000001,
+          "range_ms": 173.084918
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 89.344838,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.933824000000033,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 87.01861500000015,
+          "range_ms": 191.316935
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-01.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.01589799999998931,
+      "first_minus_steady_launch_api_sum_ms": -2.9889369999999076,
+      "first_minus_steady_prefill_range_ms": -7.529093999999986,
+      "pair_range_ms": 4173.407177,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 83.999045,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.995455000000051,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 81.57082800000009,
+          "range_ms": 176.210505
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 86.985143,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.011353000000041,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 84.559765,
+          "range_ms": 183.739599
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-02.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.0389229999999916,
+      "first_minus_steady_launch_api_sum_ms": 1.9788509999999206,
+      "first_minus_steady_prefill_range_ms": 5.762146000000001,
+      "pair_range_ms": 4321.664448,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 103.415566,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.975894000000047,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 100.864992,
+          "range_ms": 229.174942
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 101.623855,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.014817000000039,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 98.88614100000008,
+          "range_ms": 223.412796
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-03.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.009996999999996703,
+      "first_minus_steady_launch_api_sum_ms": -2.8291919999998214,
+      "first_minus_steady_prefill_range_ms": -10.430513000000019,
+      "pair_range_ms": 4074.428662,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 85.812695,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.954421000000046,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 83.42314800000003,
+          "range_ms": 180.487272
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 88.636109,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.964418000000043,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 86.25233999999985,
+          "range_ms": 190.917785
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-04.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.01572900000000832,
+      "first_minus_steady_launch_api_sum_ms": 0.8438039999998921,
+      "first_minus_steady_prefill_range_ms": 1.2056500000000199,
+      "pair_range_ms": 3811.754187,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 81.407235,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.003123000000045,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 79.106562,
+          "range_ms": 170.474318
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 80.549484,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.018852000000053,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 78.2627580000001,
+          "range_ms": 169.268668
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-05.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": 0.03481900000000415,
+      "first_minus_steady_launch_api_sum_ms": -16.369435000000323,
+      "first_minus_steady_prefill_range_ms": -45.24495000000002,
+      "pair_range_ms": 4126.545403,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 84.410893,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.040164000000045,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 81.95502899999987,
+          "range_ms": 175.689993
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 100.894881,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.005345000000041,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 98.32446400000019,
+          "range_ms": 220.934943
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-06.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": 0.009051999999998728,
+      "first_minus_steady_launch_api_sum_ms": -1.3102360000001596,
+      "first_minus_steady_prefill_range_ms": -1.9868759999999952,
+      "pair_range_ms": 3884.792528,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 84.09947,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.022531000000042,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 81.78788999999989,
+          "range_ms": 176.486425
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 85.516075,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.013479000000043,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 83.09812600000005,
+          "range_ms": 178.473301
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-07.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.020449999999997637,
+      "first_minus_steady_launch_api_sum_ms": 1.093598000000057,
+      "first_minus_steady_prefill_range_ms": -0.010902000000015732,
+      "pair_range_ms": 3834.399115,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 81.101148,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.017434000000042,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 78.69323199999998,
+          "range_ms": 170.787199
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 79.925193,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 6.03788400000004,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 77.59963399999992,
+          "range_ms": 170.798101
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-08.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": 0.00552999999999404,
+      "first_minus_steady_launch_api_sum_ms": 0.5835329999999743,
+      "first_minus_steady_prefill_range_ms": 1.6862390000000005,
+      "pair_range_ms": 3906.028937,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 82.752773,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.984922000000036,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 80.19648100000012,
+          "range_ms": 174.364245
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 81.97726,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.979392000000042,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 79.61294800000015,
+          "range_ms": 172.678006
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-09.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.01003399999998944,
+      "first_minus_steady_launch_api_sum_ms": -1.996059000000173,
+      "first_minus_steady_prefill_range_ms": -3.495823999999999,
+      "pair_range_ms": 3789.376664,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 79.809904,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.942834000000032,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 77.3221819999999,
+          "range_ms": 168.533445
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 81.799212,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.952868000000022,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 79.31824100000007,
+          "range_ms": 172.029269
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-10.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.0323440000000037,
+      "first_minus_steady_launch_api_sum_ms": 1.4103180000002737,
+      "first_minus_steady_prefill_range_ms": 4.387898000000007,
+      "pair_range_ms": 4172.342143,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 87.633326,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.928741000000035,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 85.13005300000007,
+          "range_ms": 184.372003
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 86.380597,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.961085000000039,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 83.7197349999998,
+          "range_ms": 179.984105
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-11.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.019322999999997315,
+      "first_minus_steady_launch_api_sum_ms": 1.3379439999999079,
+      "first_minus_steady_prefill_range_ms": 3.4189369999999997,
+      "pair_range_ms": 3796.384742,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 82.240749,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.930024000000034,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 79.91524500000001,
+          "range_ms": 173.60266
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 81.042466,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.9493470000000315,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 78.5773010000001,
+          "range_ms": 170.183723
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-12.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.002238999999994995,
+      "first_minus_steady_launch_api_sum_ms": -16.610617000000005,
+      "first_minus_steady_prefill_range_ms": -45.90814,
+      "pair_range_ms": 4212.816613,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 83.800202,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.936257000000032,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 81.35729999999994,
+          "range_ms": 176.22985
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 100.608088,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.938496000000027,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 97.96791699999994,
+          "range_ms": 222.13799
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-13.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.0067670000000052966,
+      "first_minus_steady_launch_api_sum_ms": -16.24684900000007,
+      "first_minus_steady_prefill_range_ms": -44.89977399999998,
+      "pair_range_ms": 4251.733369,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 86.29019,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.935801000000031,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 83.60344699999997,
+          "range_ms": 180.604598
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 102.363011,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.942568000000036,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 99.85029600000004,
+          "range_ms": 225.504372
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-14.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": 0.01820800000000755,
+      "first_minus_steady_launch_api_sum_ms": -5.006292999999772,
+      "first_minus_steady_prefill_range_ms": -13.519846999999999,
+      "pair_range_ms": 4133.707966,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 85.05472,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.997554000000045,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 82.68996700000007,
+          "range_ms": 178.406517
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 90.205566,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.979346000000038,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 87.69625999999984,
+          "range_ms": 191.926364
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-15.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.015013000000007715,
+      "first_minus_steady_launch_api_sum_ms": -16.60579600000011,
+      "first_minus_steady_prefill_range_ms": -45.39255300000002,
+      "pair_range_ms": 4239.487592,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 85.828109,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.931261000000021,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 83.31921599999997,
+          "range_ms": 180.65191
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 102.411806,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.946274000000029,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 99.92501200000008,
+          "range_ms": 226.044463
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-16.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": 0.05487999999999804,
+      "first_minus_steady_launch_api_sum_ms": -17.531232999999958,
+      "first_minus_steady_prefill_range_ms": -47.731037999999984,
+      "pair_range_ms": 4311.256391,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 84.850718,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.9480310000000305,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 82.40205699999979,
+          "range_ms": 176.774672
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 102.580029,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.8931510000000324,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 99.93328999999974,
+          "range_ms": 224.50571
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-17.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": -0.02714000000000194,
+      "first_minus_steady_launch_api_sum_ms": -1.0141140000000775,
+      "first_minus_steady_prefill_range_ms": -2.6068930000000137,
+      "pair_range_ms": 4158.452204,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 100.042437,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.915842000000028,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 97.39557700000013,
+          "range_ms": 219.935083
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 100.909103,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.94298200000003,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 98.40969100000021,
+          "range_ms": 222.541976
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-18.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": 0.02095700000000278,
+      "first_minus_steady_launch_api_sum_ms": -14.630775999999855,
+      "first_minus_steady_prefill_range_ms": -42.48086700000002,
+      "pair_range_ms": 4194.604654,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 86.260792,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.989018000000039,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 83.82793800000024,
+          "range_ms": 180.154273
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 100.892685,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.968061000000036,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 98.4587140000001,
+          "range_ms": 222.63514
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-19.sqlite"
+    },
+    {
+      "first_minus_steady_kernel_sum_ms": 0.0025189999999977175,
+      "first_minus_steady_launch_api_sum_ms": -17.820138999999884,
+      "first_minus_steady_prefill_range_ms": -49.795086,
+      "pair_range_ms": 4242.117376,
+      "prefill_ranges": {
+        "qtb_profile_first_user_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 84.812848,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.935966000000027,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 82.31257600000006,
+          "range_ms": 177.598667
+        },
+        "qtb_profile_steady_prefill": {
+          "cuda_api_count": 2982,
+          "cuda_api_union_ms": 102.96533,
+          "kernel_count": 2748,
+          "kernel_sum_ms": 5.9334470000000294,
+          "launch_api_count": 2748,
+          "launch_api_sum_ms": 100.13271499999995,
+          "range_ms": 227.393753
+        }
+      },
+      "source": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\nsight-systems-paired-v3\\paired-prefill-20.sqlite"
+    }
+  ],
+  "units": "milliseconds unless stated otherwise"
+}

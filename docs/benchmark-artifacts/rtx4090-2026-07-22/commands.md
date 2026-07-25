@@ -6,6 +6,83 @@ Run from:
 C:/_repoz/faster-qwen3-tts-v032-stack112-clean
 ```
 
+2026-07-25/26 profile cleanup and diagnostic r100:
+
+```text
+faster-qwen3-tts cleanup commit: 71fa0fd
+cleanup wheel SHA256: 0b3aa64a592daa4d573b500455c27d87df54cdfd41219217bf153ffb2c94d0dc
+patch series: faster-qwen3-tts-telemetry-patch/0001-0005-prefill-profile-telemetry-cleanup-series.patch
+patch series SHA256: 374937d27ba58762092a7978ff5c82b28871e24b38630b8d6aeb2afcd8a3b8cc
+git bundle: faster-qwen3-tts-telemetry-patch/faster-qwen3-tts-afa6120-to-71fa0fd.bundle
+git bundle SHA256: 85b5d68076b7bb330b9c98cbd6af708b75fdd6d1b7dc7c358e9dc6f88b2774e7
+```
+
+Reanalysis and Nsight summary artifacts:
+
+```text
+profile-overhead-control-v3-r50x4-randomized-runs/reanalysis-bootstrap.json
+SHA256: 007c106670770b7e1d0f0faa01f9554787d6c1a101abfdf8cc89e89207c7805d
+
+nsight-systems-v3/kern-exec-summary.json
+SHA256: 90aabb22c25e1726ffae5ef7d3a3532be5744b17499469c8a6d5c7970825864c
+
+profile-cleanup-bc-smoke-r10x4/B-profile-off-summary.json
+SHA256: 8f379d04f1a0b85a6e489e4aced4a494f03cfdea65a5617ac296ef7d43858c87
+
+profile-cleanup-bc-smoke-r10x4/C-profile-on-summary.json
+SHA256: 45a18d1d171b316ae6f19c1b4b2108ee3e7317441cc18c9284de63b51ff4b6a9
+```
+
+Diagnostic r100:
+
+```text
+artifact: diagnostic-r100-profile-cleanup-v3/summary.json
+SHA256: 3a1b9604f4f6792d2618ceb31326009c62791794e23ef10438d224b836d35a27
+runs: 100 fresh workers
+requests per run: 4
+profile_prefill: true
+profile_nvtx: false
+GPU polling: disabled
+expected faster wheel SHA256: 0b3aa64a592daa4d573b500455c27d87df54cdfd41219217bf153ffb2c94d0dc
+
+profile_complete: 400/400
+stream consistent: 400/400
+positive paired deltas >20 ms: 12/100
+talker-forward explained positive outliers: 12/12
+positive_unexplained_without_talker_ms p95: 8.194 ms
+absolute_delta_without_talker_forward_ms p95: 8.643 ms
+```
+
+Production profile-off r30:
+
+```text
+artifact: production-r30-profile-off-cleanup-v3/summary.json
+SHA256: 30db1a8ce55033ed337ec9569109d48c2f76d0de1fb616ffd979095e62b910df
+runs: 30 fresh workers
+requests per run: 4
+profile_prefill: false
+profile_nvtx: false
+expected faster wheel SHA256: 0b3aa64a592daa4d573b500455c27d87df54cdfd41219217bf153ffb2c94d0dc
+first TTFA median/p95: 375.377 ms / 417.717 ms
+steady TTFA median/p95: 384.442 ms / 411.271 ms
+paired delta median/p95: 2.335 ms / 18.668 ms
+profile statuses: disabled 120/120
+```
+
+Paired same-process Nsight captures:
+
+```text
+artifact directory: nsight-systems-paired-v3/
+summary: nsight-systems-paired-v3/paired-summary.json
+summary SHA256: 50f8a929276334636b6733d17851355bc1b5541bf81c8142ddd102c568a4ba50
+capture range: qtb_profile_first_steady_pair
+nested ranges: qtb_profile_first_user_prefill, qtb_profile_steady_prefill
+trace count: 20
+positive first-minus-steady prefill deltas >20 ms: 0/20
+limitation: these paired Nsight captures did not directly catch a positive p95
+tail process; use diagnostic r100 CUDA-event data for positive-tail attribution.
+```
+
 Using:
 
 ```text

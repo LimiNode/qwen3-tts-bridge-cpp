@@ -1,0 +1,6 @@
+progress 5/30 elapsed_s=181.9 last_first_audio_ms=376.8 last_steady_first_audio_ms=397.2 last_delta_first_audio_ms=-20.4
+progress 10/30 elapsed_s=364.3 last_first_audio_ms=395.3 last_steady_first_audio_ms=407.8 last_delta_first_audio_ms=-12.5
+progress 15/30 elapsed_s=549.7 last_first_audio_ms=399.2 last_steady_first_audio_ms=379.5 last_delta_first_audio_ms=19.7
+progress 20/30 elapsed_s=736.2 last_first_audio_ms=364.2 last_steady_first_audio_ms=362.0 last_delta_first_audio_ms=2.3
+progress 25/30 elapsed_s=920.3 last_first_audio_ms=406.9 last_steady_first_audio_ms=400.3 last_delta_first_audio_ms=6.6
+progress 30/30 elapsed_s=1105.9 last_first_audio_ms=408.0 last_steady_first_audio_ms=410.0 last_delta_first_audio_ms=-2.0

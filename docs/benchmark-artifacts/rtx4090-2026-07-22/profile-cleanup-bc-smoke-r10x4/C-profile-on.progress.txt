@@ -1,0 +1,10 @@
+progress 1/10 elapsed_s=37.4 last_first_audio_ms=389.1 last_steady_first_audio_ms=409.9 last_delta_first_audio_ms=-20.8
+progress 2/10 elapsed_s=72.5 last_first_audio_ms=356.4 last_steady_first_audio_ms=354.5 last_delta_first_audio_ms=1.9
+progress 3/10 elapsed_s=109.5 last_first_audio_ms=364.7 last_steady_first_audio_ms=394.0 last_delta_first_audio_ms=-29.3
+progress 4/10 elapsed_s=146.4 last_first_audio_ms=399.7 last_steady_first_audio_ms=402.4 last_delta_first_audio_ms=-2.7
+progress 5/10 elapsed_s=182.4 last_first_audio_ms=357.0 last_steady_first_audio_ms=355.7 last_delta_first_audio_ms=1.2
+progress 6/10 elapsed_s=220.1 last_first_audio_ms=361.6 last_steady_first_audio_ms=360.1 last_delta_first_audio_ms=1.5
+progress 7/10 elapsed_s=256.9 last_first_audio_ms=404.2 last_steady_first_audio_ms=368.6 last_delta_first_audio_ms=35.6
+progress 8/10 elapsed_s=294.6 last_first_audio_ms=409.5 last_steady_first_audio_ms=417.7 last_delta_first_audio_ms=-8.2
+progress 9/10 elapsed_s=329.9 last_first_audio_ms=355.7 last_steady_first_audio_ms=351.3 last_delta_first_audio_ms=4.4
+progress 10/10 elapsed_s=364.6 last_first_audio_ms=356.1 last_steady_first_audio_ms=353.6 last_delta_first_audio_ms=2.4

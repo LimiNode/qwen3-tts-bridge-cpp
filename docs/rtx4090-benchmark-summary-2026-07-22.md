@@ -1325,6 +1325,100 @@ by about `10.9 ms`. This makes a low-level scheduler or graph/compiled prefill
 track more plausible than tuning individual CUDA kernels for this particular
 first-user tail.
 
+Follow-up `cuda_kern_exec_*` analysis of the same SQLite exports confirmed the
+launch-bound shape more directly:
+
+| Trace | launch API calls | launch API sum | CUDA API interval union | kernel count | kernel sum | kernel p95 | talker-forward kernels |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| first user | 2,748 | 82.440 ms | 85.069 ms | 2,748 | 5.936 ms | 0.0074 ms | 2,582 |
+| steady | 2,748 | 78.730 ms | 81.048 ms | 2,748 | 5.984 ms | 0.0075 ms | 2,582 |
+
+`non-GPU/gap bucket` should be read as `host_or_unattributed_wall_ms`, not as a
+pure queue measurement: it includes CUDA API time, CPU framework dispatch,
+possible driver/runtime waits, gaps between API calls, and profiler overhead.
+Nsight queue delay from matched correlation IDs did not explain the delta on
+these two samples.
+
+### Profile Cleanup And R100
+
+The faster telemetry patch was extended to separate CUDA-event prefill timing
+from NVTX ranges:
+
+- `profile_prefill=true` records CUDA events and writes timing fields.
+- `profile_nvtx=true` emits NVTX ranges for Nsight capture.
+- The mass diagnostic runs use `profile_prefill=true`, `profile_nvtx=false`.
+- Profile-off requests now report `profile_status=disabled` instead of looking
+  like incomplete profiles.
+- Benchmark provenance can now require a condition-specific
+  `--expected-faster-wheel-sha256`.
+
+New faster telemetry state:
+
+```text
+faster-qwen3-tts telemetry cleanup commit: 71fa0fd
+retained cleanup wheel SHA256: 0b3aa64a592daa4d573b500455c27d87df54cdfd41219217bf153ffb2c94d0dc
+patch series: faster-qwen3-tts-telemetry-patch/0001-0005-prefill-profile-telemetry-cleanup-series.patch
+patch series SHA256: 374937d27ba58762092a7978ff5c82b28871e24b38630b8d6aeb2afcd8a3b8cc
+git bundle: faster-qwen3-tts-telemetry-patch/faster-qwen3-tts-afa6120-to-71fa0fd.bundle
+git bundle SHA256: 85b5d68076b7bb330b9c98cbd6af708b75fdd6d1b7dc7c358e9dc6f88b2774e7
+```
+
+The old randomized `r50` was reanalyzed without new GPU runs. The original
+`+5.295 ms` `B-A p95` value is a difference of independent condition p95s, not
+`p95(B-A)` per-run overhead. Bootstrap CIs are wide enough that this should not
+block diagnostic profiling:
+
+| Comparison | Observed median diff | Bootstrap 95% CI | Observed p95 diff | Bootstrap 95% CI |
+| --- | ---: | ---: | ---: | ---: |
+| B-A first TTFA | -2.952 ms | [-42.151, +18.654] ms | +5.295 ms | [-8.911, +18.781] ms |
+| C-B first TTFA | +4.974 ms | [-17.761, +15.824] ms | -7.606 ms | [-23.064, +4.975] ms |
+| B-A paired delta | +0.360 ms | [-1.311, +2.227] ms | +3.616 ms | [-17.355, +27.110] ms |
+| C-B paired delta | -0.796 ms | [-2.780, +1.330] ms | -12.176 ms | [-33.376, +14.886] ms |
+
+A short B/C smoke after cleanup used the new wheel and `profile_nvtx=false`.
+The profile-on condition completed `40/40` first-chunk profiles with
+stream-consistency `40/40`.
+
+The main diagnostic `r100` then ran with `profile_prefill=true`,
+`profile_nvtx=false`, 100 fresh workers, and four requests per worker.
+Validation was clean: `400/400` profiles complete, `400/400` streams
+consistent, and all used the new wheel SHA.
+
+| Run | first TTFA median | first TTFA p95 | steady TTFA median | steady TTFA p95 | paired delta median | paired delta p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| diagnostic r100, profiled | 367.719 ms | 423.344 ms | 365.681 ms | 416.137 ms | 2.818 ms | 27.931 ms |
+| production r30, profile off | 375.377 ms | 417.717 ms | 384.442 ms | 411.271 ms | 2.335 ms | 18.668 ms |
+
+The `r100` result strongly supports the talker-forward hypothesis for positive
+first-minus-steady tails:
+
+- positive paired deltas over `20 ms`: `12/100`;
+- all `12/12` positive outliers fall below the `20 ms` threshold after removing
+  positive talker-forward delta;
+- `positive_unexplained_without_talker_ms` p95: `8.194 ms`;
+- `absolute_delta_without_talker_forward_ms` p95: `8.643 ms`.
+
+This makes `talker.forward` the right optimization target for TTFA tails. The
+result does not mean every request is faster when profiled; absolute TTFA from
+the profiled run remains diagnostic-only, while production TTFA should be read
+from profile-off control runs.
+
+### Paired Nsight Follow-Up
+
+The worker now emits an outer `qtb_profile_first_steady_pair` NVTX range when
+`profile_nvtx=true`, spanning request 1 and request 2 in one worker process.
+Twenty paired Nsight captures were collected. They did not catch a positive
+first-minus-steady prefill delta over `20 ms`; several traces instead showed a
+negative delta where the first prefill range was shorter than the steady range.
+
+This means the event-based `r100` can be treated as the stronger evidence for
+positive tail attribution, while paired Nsight remains useful structural
+evidence but has not yet directly captured a positive p95-tail sample. The
+current interpretation should stay careful: positive tails are explained by
+CUDA-event talker-forward deltas in `r100`; Nsight proves the launch-bound
+shape of ordinary captures but has not yet independently captured a positive
+tail process.
+
 ### Shape Warmup Matrix
 
 A small 8-run shape matrix was added to compare a fixed medium warmup against
