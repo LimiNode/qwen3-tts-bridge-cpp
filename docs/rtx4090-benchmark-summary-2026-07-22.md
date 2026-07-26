@@ -1507,6 +1507,37 @@ CustomVoice FasterQwen eager smoke passed, and the packaged
 result only proves the diagnostic backend is packaged and callable; it does not
 change the correctness verdict above.
 
+Follow-up review found an important flaw in the semantic ladder: the prior
+`do_sample=False` path was not fully greedy. FasterQwen constructed its
+residual `PredictorGraph` with `do_sample=True`, so the first talker codebook
+used argmax but the remaining predictor codebooks still sampled. The FasterQwen
+prototype was extended to commit `0272258`
+(`fix(predictor): honor greedy mode for residual codebooks`) by constructing a
+separate `PredictorGraph(do_sample=False)` and selecting it whenever a request
+uses `do_sample=False`. The bridge parity harness now uses the same selector
+when it calls `fast_generate_streaming` directly.
+
+With true greedy predictor behavior:
+
+| Artifact | Key result |
+| --- | --- |
+| `true-greedy-predictor/eager-repeat-r3.json` | raw eager x3 is now deterministic: codec hash, frame count, EOS, audio sample count, and waveform hash all match. |
+| `true-greedy-predictor/bf16-ladder-r2.json` | BF16 compiled backends still fail semantic parity. `compile_backend_eager` and `compile_backend_aot_eager` keep frame/sample count but diverge at frame `1`, codebook `8`; Inductor modes diverge at frame `0`, codebook `15` and change frame/sample count. |
+| `true-greedy-predictor/bf16-precision-control-ladder-r2.json` | Disabling TF32 and reduced-precision reductions does not restore BF16 parity. |
+| `true-greedy-predictor/fp32-ladder-r2.json` | FP32 true-greedy semantic parity passes for `compile_backend_eager`, `compile_backend_aot_eager`, and `compile_inductor_default`; prefill tensor deltas remain tiny (`logits_last_max_abs=1.9073486328125e-05`). |
+
+A first hook-based localization pass was added in
+`scripts/qwen_prefill_module_parity.py`. For BF16 raw eager vs
+`compile_backend_eager`, the first visible layer-0 difference is at
+`model.layers.0.self_attn.o_proj` (`max_abs=0.00048828125`,
+`rmse=3.2677187846275046e-05`); it then amplifies through the layer-0 MLP to
+`model.layers.0` `max_abs=0.03125`. In FP32, the same first visible location is
+near machine noise (`max_abs=4.172325134277344e-07`). No obvious
+`torch.compiler.is_compiling()` / `torch._dynamo.is_compiling()` branch was
+found in the FasterQwen or vendored Qwen model path. The next target is inside
+the layer-0 attention output path: attention probabilities/context, `o_proj`,
+and possible BF16 reduction/order differences.
+
 ### Paired Nsight Follow-Up
 
 The worker now emits an outer `qtb_profile_first_steady_pair` NVTX range when

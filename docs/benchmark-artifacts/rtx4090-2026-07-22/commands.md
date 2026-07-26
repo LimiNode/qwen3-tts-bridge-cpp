@@ -239,6 +239,98 @@ Clean portable worker rebuild after commit fbdfa2e:
     passed as a startup/protocol smoke only; semantic parity remains failed.
 ```
 
+True-greedy predictor follow-up:
+
+```text
+problem confirmed:
+  FasterQwen from_pretrained constructed PredictorGraph(do_sample=True).
+  fast_generate_streaming(do_sample=False) only made talker codebook 0 greedy;
+  residual predictor codebooks 1..15 still used PredictorGraph sampling.
+
+faster-qwen3-tts fix commit: 0272258
+commit message: fix(predictor): honor greedy mode for residual codebooks
+
+source artifacts:
+  faster-qwen-true-greedy-predictor-patch/0001-feat-prefill-add-exact-shape-compile-backend-switch.patch
+  SHA256: 00b124e225e28d72e8efcf756143cdbf93bd780745bdcc612738c3031d098477
+  faster-qwen-true-greedy-predictor-patch/0002-test-prefill-add-diagnostic-compile-backends.patch
+  SHA256: 9195ebdb84b266c028cafd3c7fc725299d743cba2d3c502efb51530b5842e7a7
+  faster-qwen-true-greedy-predictor-patch/0003-fix-predictor-honor-greedy-mode-for-residual-codeboo.patch
+  SHA256: 5ab612173ea1de08970153522d7d74e4d73b6a89385185b18592dafe1602f549
+  faster-qwen-true-greedy-predictor-patch/faster-qwen3-tts-71fa0fd-to-0272258.bundle
+  SHA256: 27e84a8fd011d0ca985f6e286d54f645c3901c708b33cb11edb77d5ab9b430fe
+
+bridge harness update:
+  scripts/qwen_prefill_compile_parity.py now selects model._select_predictor_graph(False)
+  when calling fast_generate_streaming directly.
+
+available checks:
+  .venv-packaging/Scripts/python.exe -m py_compile `
+    scripts/qwen_prefill_compile_parity.py `
+    scripts/qwen_prefill_module_parity.py `
+    C:/_repoz/faster-qwen3-tts-v032-stack112-clean/faster_qwen3_tts/model.py `
+    C:/_repoz/faster-qwen3-tts-v032-stack112-clean/tests/test_sampling.py
+    passed
+  inline selector/multinomial guard:
+    passed
+  pytest was not available in .venv-packaging or .venv-faster-qwen.
+  scripts/check-python.ps1 -UseVenv
+    passed: Ruff, Pyright, 154 Python tests, 2 skipped
+  ctest --test-dir build/default --output-on-failure
+    first full run: stdio_transport_test timed out waiting for a frame
+    isolated retry: stdio_transport_test passed
+    second full run: 9/9 C++ tests passed
+
+true-greedy artifacts:
+  true-greedy-predictor/eager-repeat-r3.json
+  SHA256: 96d710ccd735ed83d7104ba27c05d5009a08ae4734b2a1965092232c6c08fd33
+  result: raw eager x3 same_codec=true, same_frame_count=true, same_audio_samples=true
+
+  true-greedy-predictor/bf16-ladder-r2.json
+  SHA256: df6c6a166100a2ed92ce9fa0f9e512f3c2964f6942b3e99aef40e59c07853097
+  result: BF16 compiled backends still fail true-greedy semantic parity.
+    compile_backend_eager first divergence: frame 1, codebook 8
+    compile_backend_aot_eager first divergence: frame 1, codebook 8
+    compile_inductor_default first divergence: frame 0, codebook 15
+    compile_reduce_overhead first divergence: frame 0, codebook 15
+
+  true-greedy-predictor/bf16-precision-control-ladder-r2.json
+  SHA256: b67078b01932d957786e44e6833c6ac76d14600cda6b2a7809dd9bc33479f9f0
+  result: disabling TF32/reduced-precision reductions did not restore BF16 parity.
+
+  true-greedy-predictor/fp32-ladder-r2.json
+  SHA256: aa8bebcc1850161fed3d7d3ad1ed921aeea4c1c4ed45e5af404f9f37b7a2657b
+  result: FP32 true-greedy semantic parity passed for compile_backend_eager,
+    compile_backend_aot_eager, and compile_inductor_default.
+
+hook localization artifacts:
+  script: scripts/qwen_prefill_module_parity.py
+
+  true-greedy-predictor/bf16-hook-smoke.json
+  SHA256: dbadef94e1334b3df4311be0181c7c5af29e52f65bc13796cb575a7b22224c93
+
+  true-greedy-predictor/bf16-layer0-hook-smoke.json
+  SHA256: e3fc3dbf2bd269076ccd1a2b4e74c27099ef7d160cf3337ebd04d6098a135430
+  first visible layer-0 difference:
+    model.layers.0.self_attn.o_proj max_abs=0.00048828125
+    rmse=3.2677187846275046e-05
+  layer-0 output:
+    model.layers.0 max_abs=0.03125
+
+  true-greedy-predictor/fp32-layer0-hook-smoke.json
+  SHA256: cfc729ca093277b237ad7de6692ade246f97696df3200be5a88db9bfbd6d38b2
+  first visible layer-0 difference:
+    model.layers.0.self_attn.o_proj max_abs=4.172325134277344e-07
+    rmse=1.313299780036914e-08
+
+compile-aware branch search:
+  rg -n "is_compiling|torch\\.compiler|torch\\._dynamo|dynamo|compile" `
+    C:/_repoz/faster-qwen3-tts-v032-stack112-clean/faster_qwen3_tts `
+    external/python/Qwen3-TTS-streaming/qwen_tts
+  result: no obvious is_compiling branch found in the FasterQwen/Qwen talker
+    prefill path; hits were compile setup helpers and cudagraph markers.
+```
+
 Paired same-process Nsight captures:
 
 ```text

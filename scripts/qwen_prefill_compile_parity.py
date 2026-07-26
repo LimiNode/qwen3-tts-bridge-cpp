@@ -352,7 +352,7 @@ def _generate_once(
             trailing_text_hiddens=tth,
             tts_pad_embed=tpe,
             config=config,
-            predictor_graph=model.predictor_graph,
+            predictor_graph=_select_predictor_graph(model, do_sample=False),
             talker_graph=model.talker_graph,
             max_new_tokens=max_new_tokens,
             min_new_tokens=2,
@@ -386,6 +386,13 @@ def _generate_once(
         ).hexdigest(),
         "timings": timings,
     }
+
+
+def _select_predictor_graph(model: Any, *, do_sample: bool) -> Any:
+    selector = getattr(model, "_select_predictor_graph", None)
+    if callable(selector):
+        return selector(do_sample)
+    return model.predictor_graph
 
 
 def _decode_audio(speech_tokenizer: Any, codec: torch.Tensor) -> np.ndarray:
