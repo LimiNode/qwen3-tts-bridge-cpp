@@ -1,0 +1,263 @@
+From 2d04337dcd3d2ce1f91e47894b9cb73ca9629faa Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 04:14:51 +0300
+Subject: [PATCH 5/5] fix(prefill): preserve mask skip under compile
+
+---
+ faster_qwen3_tts/streaming.py | 143 ++++++++++++++++++++++++++++++++--
+ 1 file changed, 136 insertions(+), 7 deletions(-)
+
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index e07edd9..bcc2e7c 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -8,10 +8,12 @@ CUDA graph usage is identical to non-streaming — same per-step performance.
+ 
+ import math
+ import time
++from contextlib import contextmanager
+ from typing import Callable, Generator, Optional, Tuple
+ 
+ import torch
+ import torch.nn.functional as F
++import qwen_tts.core.models.modeling_qwen3_tts as _qwen_modeling
+ 
+ from .generate import get_eos_tracker, get_fused_codec_embeddings
+ from .predictor_graph import PredictorGraph
+@@ -75,6 +77,7 @@ def _run_talker_prefill(
+         "prefill_backend_used": "eager",
+         "prefill_compile_fallback": False,
+         "prefill_compile_error": None,
++        "prefill_compile_force_mask_skip": False,
+     }
+     if prefill_backend == "eager":
+         return (
+@@ -115,12 +118,14 @@ def _run_talker_prefill(
+         if compiled is None:
+             compiled = _compile_talker_prefill(talker, prefill_backend)
+             _PREFILL_COMPILE_CACHE[cache_key] = compiled
+-        out = compiled(
+-            talker_input_embeds,
+-            attention_mask,
+-            trailing_text_hiddens,
+-            tts_pad_embed,
+-        )
++        force_mask_skip = _can_skip_prefill_mask(talker, attention_mask)
++        with _force_qwen_prefill_mask_skip(force_mask_skip):
++            out = compiled(
++                talker_input_embeds,
++                attention_mask,
++                trailing_text_hiddens,
++                tts_pad_embed,
++            )
+     except Exception as exc:
+         message = f"{type(exc).__name__}: {exc}"
+         _PREFILL_COMPILE_ERRORS[cache_key] = message
+@@ -138,9 +143,37 @@ def _run_talker_prefill(
+         )
+ 
+     profile["prefill_backend_used"] = prefill_backend
++    profile["prefill_compile_force_mask_skip"] = force_mask_skip
+     return out, profile
+ 
+ 
++@contextmanager
++def _force_qwen_prefill_mask_skip(enabled: bool):
++    if not enabled:
++        yield
++        return
++    original = _qwen_modeling.create_causal_mask
++    _qwen_modeling.create_causal_mask = _return_no_causal_mask
++    try:
++        yield
++    finally:
++        _qwen_modeling.create_causal_mask = original
++
++
++def _return_no_causal_mask(**kwargs):
++    return None
++
++
++def _can_skip_prefill_mask(talker, attention_mask: torch.Tensor) -> bool:
++    model = getattr(talker, "model", None)
++    config = getattr(model, "config", None)
++    if getattr(config, "sliding_window", None) is not None:
++        return False
++    if attention_mask is None:
++        return True
++    return bool(attention_mask.detach().bool().all().item())
++
++
+ def _talker_prefill_eager(
+     talker,
+     talker_input_embeds: torch.Tensor,
+@@ -369,9 +402,21 @@ def fast_generate_streaming(
+     total_steps = 0
+     chunk_count = 0
+     eos_found = False
++    termination = {
++        "termination_reason": "max_new_tokens",
++        "hit_eos": False,
++        "hit_max_new_tokens": False,
++        "hit_max_seq_len": False,
++        "terminal_token_id": None,
++        "terminal_step_index": None,
++        "generator_loop_iterations": 0,
++        "generated_steps": 0,
++        "emitted_steps": 0,
++    }
+     chunk_start = time.time()
+ 
+     for step_idx in range(max_new_tokens):
++        termination["generator_loop_iterations"] = step_idx + 1
+         if step_idx > 0:
+             prev_slot = (step_idx - 1) % 2
+             token_events[prev_slot].synchronize()
+@@ -381,12 +426,28 @@ def fast_generate_streaming(
+                 # its tail before yielding, so an EOS entry never leaves it.
+                 chunk_buffer.pop()
+                 eos_found = True
++                termination.update(
++                    {
++                        "termination_reason": "eos",
++                        "hit_eos": True,
++                        "terminal_token_id": eos_id,
++                        "terminal_step_index": step_idx - 1,
++                    }
++                )
+                 break
+         cur_slot = step_idx % 2
+         if token_events[cur_slot].query() and int(token_cpu[cur_slot]) == eos_id:
+             # This iteration's own token is already visible and is EOS — stop
+             # before doing any work (no overshoot).
+             eos_found = True
++            termination.update(
++                {
++                    "termination_reason": "eos",
++                    "hit_eos": True,
++                    "terminal_token_id": eos_id,
++                    "terminal_step_index": step_idx,
++                }
++            )
+             break
+ 
+         # --- CUDA-Graphed Code Predictor ---
+@@ -419,6 +480,13 @@ def fast_generate_streaming(
+         # --- CUDA-Graphed Talker decode step ---
+         current_pos = prefill_len + step_idx
+         if current_pos >= talker_graph.max_seq_len - 1:
++            termination.update(
++                {
++                    "termination_reason": "max_seq_len",
++                    "hit_max_seq_len": True,
++                    "terminal_step_index": step_idx,
++                }
++            )
+             break
+ 
+         hidden_states = talker_graph.run(inputs_embeds, position=current_pos)
+@@ -454,10 +522,27 @@ def fast_generate_streaming(
+             if int(token_cpu[step_idx % 2]) == eos_id:
+                 chunk_buffer.pop()
+                 eos_found = True
++                termination.update(
++                    {
++                        "termination_reason": "eos",
++                        "hit_eos": True,
++                        "terminal_token_id": eos_id,
++                        "terminal_step_index": step_idx,
++                    }
++                )
+                 if not chunk_buffer:
+                     break
++            elif step_idx + 1 >= max_new_tokens:
++                termination.update(
++                    {
++                        "termination_reason": "max_new_tokens",
++                        "hit_max_new_tokens": True,
++                        "terminal_step_index": step_idx,
++                    }
++                )
+             chunk_decode_time = time.time() - chunk_start
+             total_steps += len(chunk_buffer)
++            is_final_chunk = eos_found or step_idx + 1 >= max_new_tokens
+ 
+             yield (
+                 torch.stack(chunk_buffer),
+@@ -468,7 +553,13 @@ def fast_generate_streaming(
+                         "prefill_ms": t_prefill * 1000 if chunk_count == 0 else 0,
+                         "decode_ms": chunk_decode_time * 1000,
+                         "total_steps_so_far": total_steps,
+-                        "is_final": eos_found,
++                        "is_final": is_final_chunk,
++                        **_termination_telemetry(
++                            termination,
++                            generated_steps=total_steps,
++                            emitted_steps=total_steps,
++                            include=is_final_chunk,
++                        ),
+                     },
+                     input_metadata=input_metadata,
+                     prefill_profile=prefill_profile if chunk_count == 0 else None,
+@@ -490,6 +581,23 @@ def fast_generate_streaming(
+             tail_idx = total_steps + len(chunk_buffer) - 1
+             if int(token_cpu[tail_idx % 2]) == eos_id:
+                 chunk_buffer.pop()
++                eos_found = True
++                termination.update(
++                    {
++                        "termination_reason": "eos",
++                        "hit_eos": True,
++                        "terminal_token_id": eos_id,
++                        "terminal_step_index": tail_idx,
++                    }
++                )
++            elif total_steps + len(chunk_buffer) >= max_new_tokens:
++                termination.update(
++                    {
++                        "termination_reason": "max_new_tokens",
++                        "hit_max_new_tokens": True,
++                        "terminal_step_index": total_steps + len(chunk_buffer) - 1,
++                    }
++                )
+ 
+     if chunk_buffer:
+         chunk_decode_time = time.time() - chunk_start
+@@ -505,6 +613,12 @@ def fast_generate_streaming(
+                     "decode_ms": chunk_decode_time * 1000,
+                     "total_steps_so_far": total_steps,
+                     "is_final": True,
++                    **_termination_telemetry(
++                        termination,
++                        generated_steps=total_steps,
++                        emitted_steps=total_steps,
++                        include=True,
++                    ),
+                 },
+                 input_metadata=input_metadata,
+                 prefill_profile=prefill_profile if chunk_count == 0 else None,
+@@ -797,6 +911,21 @@ def _chunk_timing(
+     return timing
+ 
+ 
++def _termination_telemetry(
++    termination: dict,
++    *,
++    generated_steps: int,
++    emitted_steps: int,
++    include: bool,
++) -> dict:
++    if not include:
++        return {}
++    telemetry = dict(termination)
++    telemetry["generated_steps"] = generated_steps
++    telemetry["emitted_steps"] = emitted_steps
++    return telemetry
++
++
+ @torch.inference_mode()
+ def parity_generate_streaming(
+     talker,
+-- 
+2.53.0.windows.1
+

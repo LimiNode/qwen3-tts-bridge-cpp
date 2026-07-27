@@ -432,8 +432,11 @@ def _frame_accounting(
     final_timing = timings[-1] if timings else {}
     final_chunk_steps = int(final_timing.get("chunk_steps", 0)) if timings else 0
     final_is_final = bool(final_timing.get("is_final", False)) if timings else False
+    generator_termination = _generator_termination(final_timing)
     eos_positions = _eos_positions(codec, eos_id)
-    if eos_positions:
+    if generator_termination.get("termination_reason"):
+        stop_reason = str(generator_termination["termination_reason"])
+    elif eos_positions:
         stop_reason = "eos"
     elif emitted_steps == requested_max_new_tokens:
         stop_reason = "max_new_tokens"
@@ -448,6 +451,12 @@ def _frame_accounting(
         "final_chunk_steps": final_chunk_steps,
         "final_is_final": final_is_final,
         "stop_reason": stop_reason,
+        "stop_reason_source": (
+            "generator_telemetry"
+            if generator_termination.get("termination_reason")
+            else "emitted_codec_derived"
+        ),
+        "generator_termination": generator_termination,
         "eos_positions": eos_positions,
         "timing_total_steps": [
             int(timing["total_steps_so_far"])
@@ -466,6 +475,21 @@ def _eos_positions(codec: torch.Tensor, eos_id: int) -> list[dict[str, int]]:
         {"frame": int(index[0]), "codebook": int(index[1])}
         for index in indices.cpu()
     ]
+
+
+def _generator_termination(timing: dict[str, Any]) -> dict[str, Any]:
+    fields = (
+        "termination_reason",
+        "hit_eos",
+        "hit_max_new_tokens",
+        "hit_max_seq_len",
+        "terminal_token_id",
+        "terminal_step_index",
+        "generator_loop_iterations",
+        "generated_steps",
+        "emitted_steps",
+    )
+    return {field: timing[field] for field in fields if field in timing}
 
 
 def _decode_audio(speech_tokenizer: Any, codec: torch.Tensor) -> np.ndarray:

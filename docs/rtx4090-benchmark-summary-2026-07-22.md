@@ -1589,6 +1589,51 @@ The isolated C++ transport stress requested by review also passed:
 reproduce the earlier one-off full-suite failure, so the current status is
 "observed once in full CTest, not reproduced in isolated 100x stress".
 
+### Single-Pass Mask Bisection And Partial Compile Fix
+
+The attention bisection harness was rewritten to produce one single-pass
+layer-0 trace. All reported checkpoints now come from one sequential execution,
+and the report includes the previously missing `causal_mask` /
+`scores_masked` boundary plus a materialized stage ladder.
+
+This closed the first bisection step. In BF16 raw eager vs
+`compile_backend_eager`, the first divergent value is `causal_mask`, not
+softmax or `o_proj`: raw eager skips the mask (`None`, normalized to zeros in
+the diagnostic), while Dynamo tracing through Transformers
+`create_causal_mask` materializes a boolean 0/1 mask. Qwen's eager attention
+path then adds that boolean mask to attention scores, which changes logits.
+
+| Artifact | Key result |
+| --- | --- |
+| `attention-single-pass-bisect/bf16-layer0-mask-focus-v2-compile-backend-eager.json` | first trace diff is `causal_mask` (`max_abs=1.0`); materialized ladder first diff is `causal_mask_build`. |
+| `attention-single-pass-bisect/bf16-layer0-inductor-force-mask-skip.json` | after forcing the same mask skip, Inductor's next BF16 trace diff is `scores` (`max_abs=0.125`); materialized ladder first diff is `qkv/q_norm` (`max_abs=0.03125`). |
+| `attention-single-pass-bisect/fp32-layer0-inductor-force-mask-skip.json` | FP32 Inductor after mask skip is near numerical noise (`scores max_abs=3.337860107421875e-06`). |
+
+The FasterQwen patch stack was extended to commit `2d04337`
+(`fix(prefill): preserve mask skip under compile`). During compiled prefill
+tracing, if the prefill has no padding and no sliding window, the wrapper
+temporarily makes Qwen's module-level `create_causal_mask` return `None`, which
+matches raw eager behavior without tracing Transformers'
+data-dependent `padding_mask.all()` branch. The profile reports
+`prefill_compile_force_mask_skip=true` when this path is used.
+
+This is a real correctness fix for the non-Inductor compiled backends:
+
+| Artifact | Backend | Result |
+| --- | --- | --- |
+| `mask-skip-compile-fix/bf16-compile-backend-eager-r1-v2.json` | `compile_backend_eager` | real compiled backend, no fallback, prefill max diff `0.0`, codec/frame/EOS parity passes. |
+| `mask-skip-compile-fix/bf16-compiled-ladder-r2-v2.json` | `compile_backend_eager` | repeat-stable, prefill max diff `0.0`, true-greedy codec parity passes. |
+| `mask-skip-compile-fix/bf16-compiled-ladder-r2-v2.json` | `compile_backend_aot_eager` | repeat-stable, prefill max diff `0.0`, true-greedy codec parity passes. |
+| `mask-skip-compile-fix/bf16-compiled-ladder-r2-v2.json` | `compile_inductor_default` / `compile_reduce_overhead` | still not correctness-safe: prefill max diff `0.203125`; generation stops by true EOS at emitted frame `51` instead of eager reaching `max_new_tokens=64`. |
+
+The current product-facing gate is therefore narrower and more useful:
+`compile_backend_eager` and `compile_backend_aot_eager` are correctness-clean in
+this true-greedy BF16 control, while Inductor/reduce-overhead remain
+experimental. The next optimization step is to isolate and test a minimal BF16
+Inductor fix around layer-0 `q_norm`/QKV, or measure whether `aot_eager`
+provides enough speedup to be worth a guarded opt-in before returning to
+`reduce-overhead`.
+
 ### Paired Nsight Follow-Up
 
 The worker now emits an outer `qtb_profile_first_steady_pair` NVTX range when

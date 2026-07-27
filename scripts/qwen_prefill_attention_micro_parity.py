@@ -5,11 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Callable
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 import torch
 import torch.nn.functional as F
+import transformers.masking_utils as _masking_utils
 from faster_qwen3_tts import FasterQwen3TTS
 from qwen_tts.core.models.modeling_qwen3_tts import (
     apply_multimodal_rotary_pos_emb,
@@ -31,7 +33,10 @@ CHECKPOINT_NAMES = (
     "v_proj",
     "q_rope",
     "k_rope",
+    "key_states",
+    "value_states",
     "scores",
+    "causal_mask",
     "scores_masked",
     "softmax_probs",
     "attention_context",
@@ -45,6 +50,11 @@ CHECKPOINT_NAMES = (
     "layer_output",
 )
 CHECKPOINT_INDEX = {name: index for index, name in enumerate(CHECKPOINT_NAMES)}
+DEFAULT_CHECKPOINT_NAMES = tuple(
+    name
+    for name in CHECKPOINT_NAMES
+    if name not in {"key_states", "value_states", "causal_mask"}
+)
 
 
 def main() -> int:
@@ -59,6 +69,7 @@ def main() -> int:
     parser.add_argument("--right-backend", default="compile_backend_eager")
     parser.add_argument("--checkpoint", action="append", dest="checkpoints")
     parser.add_argument("--attention-core-fp32", action="store_true")
+    parser.add_argument("--force-mask-skip-during-compile", action="store_true")
     parser.add_argument("--matmul-precision", default="high")
     parser.add_argument("--disable-tf32", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
@@ -89,44 +100,48 @@ def main() -> int:
         return_metadata=True,
     )
     talker.eval()
-    checkpoint_names = tuple(args.checkpoints or CHECKPOINT_NAMES)
+    checkpoint_names = tuple(args.checkpoints or DEFAULT_CHECKPOINT_NAMES)
     for name in checkpoint_names:
         if name not in CHECKPOINT_INDEX:
             raise ValueError(f"Unsupported checkpoint: {name}")
-    raw = _snapshot(
-        tuple(
-            _layer0_attention_checkpoint(talker.model, tie, tam, name)
-            if not args.attention_core_fp32
-            else _layer0_attention_checkpoint(
-                talker.model,
-                tie,
-                tam,
-                name,
-                attention_core_fp32=True,
-            )
-            for name in checkpoint_names
+    raw_full_gpu = tuple(
+        tensor.detach().clone()
+        for tensor in _layer0_trace(
+            talker.model,
+            tie,
+            tam,
+            attention_core_fp32=args.attention_core_fp32,
         )
     )
-    compiled_fn = _compile_checkpoint_fn(
-        lambda embeds, mask: tuple(
-            _layer0_attention_checkpoint(
-                talker.model,
-                embeds,
-                mask,
-                name,
-                attention_core_fp32=args.attention_core_fp32,
-            )
-            for name in checkpoint_names
+    raw_full = _snapshot(raw_full_gpu)
+    compiled_trace_fn = _compile_fn(
+        lambda embeds, mask: _layer0_trace(
+            talker.model,
+            embeds,
+            mask,
+            attention_core_fp32=args.attention_core_fp32,
+            force_mask_skip=args.force_mask_skip_during_compile,
         ),
         args.right_backend,
     )
-    compiled = _snapshot(compiled_fn(tie, tam))
+    with _maybe_force_mask_skip(args.force_mask_skip_during_compile):
+        compiled_full = _snapshot(compiled_trace_fn(tie, tam))
+    raw = _select(raw_full, checkpoint_names)
+    compiled = _select(compiled_full, checkpoint_names)
     comparisons = [
         _compare(name, raw[index], compiled[index])
         for index, name in enumerate(checkpoint_names)
     ]
+    stage_ladder = _materialized_stage_ladder(
+        talker.model,
+        raw_full_gpu,
+        args.right_backend,
+        attention_core_fp32=args.attention_core_fp32,
+        force_mask_skip_during_compile=args.force_mask_skip_during_compile,
+    )
     report = {
         "artifact_schema_version": 1,
+        "trace_mode": "single_pass",
         "model": args.model,
         "text": args.text,
         "language": args.language,
@@ -136,9 +151,11 @@ def main() -> int:
         "attn_implementation": args.attn_implementation,
         "right_backend": args.right_backend,
         "attention_core_fp32": args.attention_core_fp32,
+        "force_mask_skip_during_compile": args.force_mask_skip_during_compile,
         "checkpoints": checkpoint_names,
         "metadata": metadata,
         "comparisons": comparisons,
+        "materialized_stage_ladder": stage_ladder,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -156,8 +173,8 @@ def _configure_precision(args: argparse.Namespace) -> None:
         torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
 
 
-def _compile_checkpoint_fn(
-    function: Callable[..., tuple[torch.Tensor, ...]],
+def _compile_fn(
+    function: Callable[..., Any],
     backend: str,
 ) -> Callable[..., Any]:
     if backend == "eager":
@@ -181,16 +198,319 @@ def _compile_checkpoint_fn(
     )
 
 
-def _layer0_attention_checkpoint(
+def _layer0_trace(
     model: Any,
     inputs_embeds: torch.Tensor,
     attention_mask: torch.Tensor,
-    checkpoint: str,
     *,
     attention_core_fp32: bool = False,
-) -> torch.Tensor:
+    force_mask_skip: bool = False,
+) -> tuple[torch.Tensor, ...]:
+    cache_position, position_ids, causal_mask = _build_causal_mask(
+        model,
+        inputs_embeds,
+        attention_mask,
+        force_mask_skip=force_mask_skip,
+    )
+    position_embeddings = model.rotary_emb(inputs_embeds, position_ids)
+
+    layer = model.layers[0]
+    attn = layer.self_attn
+    layer_input = inputs_embeds
+    input_norm = layer.input_layernorm(layer_input)
+
+    input_shape = input_norm.shape[:-1]
+    hidden_shape = (*input_shape, -1, attn.head_dim)
+    q_proj = attn.q_proj(input_norm).view(hidden_shape)
+    q_norm = attn.q_norm(q_proj).transpose(1, 2)
+    k_proj = attn.k_proj(input_norm).view(hidden_shape)
+    k_norm = attn.k_norm(k_proj).transpose(1, 2)
+    v_proj = attn.v_proj(input_norm).view(hidden_shape).transpose(1, 2)
+
+    cos, sin = position_embeddings
+    q_rope, k_rope = apply_multimodal_rotary_pos_emb(
+        q_norm,
+        k_norm,
+        cos,
+        sin,
+        attn.rope_scaling["mrope_section"],
+        attn.rope_scaling["interleaved"],
+    )
+
+    key_states = repeat_kv(k_rope, attn.num_key_value_groups)
+    value_states = repeat_kv(v_proj, attn.num_key_value_groups)
+    attn_query = q_rope.float() if attention_core_fp32 else q_rope
+    attn_key = key_states.float() if attention_core_fp32 else key_states
+    attn_value = value_states.float() if attention_core_fp32 else value_states
+    scores = torch.matmul(attn_query, attn_key.transpose(2, 3)) * attn.scaling
+    if causal_mask is None:
+        causal = torch.zeros_like(scores)
+    else:
+        causal = causal_mask[:, :, :, : key_states.shape[-2]]
+    scores_for_softmax = scores + causal
+    softmax_probs = F.softmax(scores_for_softmax, dim=-1, dtype=torch.float32)
+    if not attention_core_fp32:
+        softmax_probs = softmax_probs.to(q_rope.dtype)
+    context = torch.matmul(softmax_probs, attn_value)
+    if attention_core_fp32:
+        context = context.to(q_rope.dtype)
+    context = context.transpose(1, 2).contiguous()
+    o_proj_input = context.reshape(*input_shape, -1).contiguous()
+    o_proj_output = attn.o_proj(o_proj_input)
+    post_attention_residual = layer_input + o_proj_output
+    mlp_input = layer.post_attention_layernorm(post_attention_residual)
+    mlp_gate = layer.mlp.gate_proj(mlp_input)
+    mlp_up = layer.mlp.up_proj(mlp_input)
+    mlp_down = layer.mlp.down_proj(layer.mlp.act_fn(mlp_gate) * mlp_up)
+    layer_output = post_attention_residual + mlp_down
+    return (
+        layer_input,
+        input_norm,
+        q_proj,
+        q_norm,
+        k_proj,
+        k_norm,
+        v_proj,
+        q_rope,
+        k_rope,
+        key_states,
+        value_states,
+        scores,
+        causal,
+        scores_for_softmax,
+        softmax_probs,
+        context,
+        o_proj_input,
+        o_proj_output,
+        post_attention_residual,
+        mlp_input,
+        mlp_gate,
+        mlp_up,
+        mlp_down,
+        layer_output,
+    )
+
+
+def _select(
+    trace: tuple[torch.Tensor, ...],
+    names: tuple[str, ...],
+) -> tuple[torch.Tensor, ...]:
+    return tuple(trace[CHECKPOINT_INDEX[name]] for name in names)
+
+
+def _materialized_stage_ladder(
+    model: Any,
+    trace: tuple[torch.Tensor, ...],
+    backend: str,
+    *,
+    attention_core_fp32: bool,
+    force_mask_skip_during_compile: bool,
+) -> list[dict[str, Any]]:
+    by_name = dict(zip(CHECKPOINT_NAMES, trace, strict=True))
+    layer = model.layers[0]
+    attn = layer.self_attn
+    input_shape = by_name["input_layernorm"].shape[:-1]
+
+    def causal_mask_stage(
+        inputs_embeds: torch.Tensor,
+        attention_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        _, _, causal_mask = _build_causal_mask(
+            model,
+            inputs_embeds,
+            attention_mask,
+            force_mask_skip=force_mask_skip_during_compile,
+        )
+        if causal_mask is None:
+            return torch.zeros(
+                (
+                    inputs_embeds.shape[0],
+                    model.config.num_attention_heads,
+                    inputs_embeds.shape[1],
+                    inputs_embeds.shape[1],
+                ),
+                dtype=inputs_embeds.dtype,
+                device=inputs_embeds.device,
+            )
+        return causal_mask
+
+    def compare_stage(
+        name: str,
+        function: Callable[..., torch.Tensor | tuple[torch.Tensor, ...]],
+        *inputs: torch.Tensor,
+        output_names: tuple[str, ...],
+    ) -> dict[str, Any]:
+        with torch.inference_mode():
+            raw_output = _as_tuple(function(*inputs))
+            compiled = _compile_fn(function, backend)
+            with _maybe_force_mask_skip(force_mask_skip_during_compile):
+                compiled_output = _as_tuple(compiled(*inputs))
+        rows = [
+            _compare(output_name, left.detach().cpu(), right.detach().cpu())
+            for output_name, left, right in zip(
+                output_names,
+                raw_output,
+                compiled_output,
+                strict=True,
+            )
+        ]
+        first_diff = next((row for row in rows if row["max_abs"] != 0.0), None)
+        return {"stage": name, "outputs": rows, "first_diff": first_diff}
+
+    def qkv_stage(input_norm: torch.Tensor) -> tuple[torch.Tensor, ...]:
+        hidden_shape = (*input_norm.shape[:-1], -1, attn.head_dim)
+        q_proj = attn.q_proj(input_norm).view(hidden_shape)
+        q_norm = attn.q_norm(q_proj).transpose(1, 2)
+        k_proj = attn.k_proj(input_norm).view(hidden_shape)
+        k_norm = attn.k_norm(k_proj).transpose(1, 2)
+        v_proj = attn.v_proj(input_norm).view(hidden_shape).transpose(1, 2)
+        return q_proj, q_norm, k_proj, k_norm, v_proj
+
+    def rope_stage(
+        q_norm: torch.Tensor,
+        k_norm: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        cache_position = torch.arange(q_norm.shape[2], device=q_norm.device)
+        position_ids = cache_position.view(1, 1, -1).expand(3, q_norm.shape[0], -1)
+        cos, sin = model.rotary_emb(by_name["layer_input"], position_ids)
+        return apply_multimodal_rotary_pos_emb(
+            q_norm,
+            k_norm,
+            cos,
+            sin,
+            attn.rope_scaling["mrope_section"],
+            attn.rope_scaling["interleaved"],
+        )
+
+    def scores_stage(
+        q_rope: torch.Tensor,
+        k_rope: torch.Tensor,
+    ) -> torch.Tensor:
+        key_states = repeat_kv(k_rope, attn.num_key_value_groups)
+        query = q_rope.float() if attention_core_fp32 else q_rope
+        key = key_states.float() if attention_core_fp32 else key_states
+        return torch.matmul(query, key.transpose(2, 3)) * attn.scaling
+
+    def mask_stage(scores: torch.Tensor, causal: torch.Tensor) -> torch.Tensor:
+        return scores + causal
+
+    def softmax_stage(scores_masked: torch.Tensor) -> torch.Tensor:
+        probs = F.softmax(scores_masked, dim=-1, dtype=torch.float32)
+        return probs if attention_core_fp32 else probs.to(by_name["q_rope"].dtype)
+
+    def context_stage(
+        probs: torch.Tensor,
+        value_states: torch.Tensor,
+    ) -> torch.Tensor:
+        value = value_states.float() if attention_core_fp32 else value_states
+        context = torch.matmul(probs, value)
+        return context.to(by_name["q_rope"].dtype) if attention_core_fp32 else context
+
+    def o_proj_input_stage(context: torch.Tensor) -> torch.Tensor:
+        context = context.transpose(1, 2).contiguous()
+        return context.reshape(*input_shape, -1).contiguous()
+
+    def o_proj_stage(o_proj_input: torch.Tensor) -> torch.Tensor:
+        return attn.o_proj(o_proj_input)
+
+    def mlp_stage(post_attention_residual: torch.Tensor) -> tuple[torch.Tensor, ...]:
+        mlp_input = layer.post_attention_layernorm(post_attention_residual)
+        mlp_gate = layer.mlp.gate_proj(mlp_input)
+        mlp_up = layer.mlp.up_proj(mlp_input)
+        mlp_down = layer.mlp.down_proj(layer.mlp.act_fn(mlp_gate) * mlp_up)
+        layer_output = post_attention_residual + mlp_down
+        return mlp_input, mlp_gate, mlp_up, mlp_down, layer_output
+
+    return [
+        compare_stage(
+            "causal_mask_build",
+            causal_mask_stage,
+            by_name["layer_input"],
+            torch.ones(
+                by_name["layer_input"].shape[:2],
+                dtype=torch.long,
+                device=by_name["layer_input"].device,
+            ),
+            output_names=("causal_mask",),
+        ),
+        compare_stage(
+            "qkv",
+            qkv_stage,
+            by_name["input_layernorm"],
+            output_names=("q_proj", "q_norm", "k_proj", "k_norm", "v_proj"),
+        ),
+        compare_stage(
+            "rope",
+            rope_stage,
+            by_name["q_norm"],
+            by_name["k_norm"],
+            output_names=("q_rope", "k_rope"),
+        ),
+        compare_stage(
+            "scores",
+            scores_stage,
+            by_name["q_rope"],
+            by_name["k_rope"],
+            output_names=("scores",),
+        ),
+        compare_stage(
+            "mask_add",
+            mask_stage,
+            by_name["scores"],
+            by_name["causal_mask"],
+            output_names=("scores_masked",),
+        ),
+        compare_stage(
+            "softmax",
+            softmax_stage,
+            by_name["scores_masked"],
+            output_names=("softmax_probs",),
+        ),
+        compare_stage(
+            "context",
+            context_stage,
+            by_name["softmax_probs"],
+            by_name["value_states"],
+            output_names=("attention_context",),
+        ),
+        compare_stage(
+            "o_proj_input",
+            o_proj_input_stage,
+            by_name["attention_context"],
+            output_names=("o_proj_input",),
+        ),
+        compare_stage(
+            "o_proj",
+            o_proj_stage,
+            by_name["o_proj_input"],
+            output_names=("o_proj_output",),
+        ),
+        compare_stage(
+            "mlp",
+            mlp_stage,
+            by_name["post_attention_residual"],
+            output_names=(
+                "mlp_input",
+                "mlp_gate",
+                "mlp_up",
+                "mlp_down",
+                "layer_output",
+            ),
+        ),
+    ]
+
+
+def _build_causal_mask(
+    model: Any,
+    inputs_embeds: torch.Tensor,
+    attention_mask: torch.Tensor,
+    *,
+    force_mask_skip: bool = False,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
     cache_position = torch.arange(inputs_embeds.shape[1], device=inputs_embeds.device)
     position_ids = cache_position.view(1, 1, -1).expand(3, inputs_embeds.shape[0], -1)
+    if force_mask_skip:
+        return cache_position, position_ids, None
     text_position_ids = position_ids[0]
     cache = DynamicCache()
     mask_function = (
@@ -206,100 +526,28 @@ def _layer0_attention_checkpoint(
         past_key_values=cache,
         position_ids=text_position_ids,
     )
-    position_embeddings = model.rotary_emb(inputs_embeds, position_ids)
+    return cache_position, position_ids, causal_mask
 
-    layer = model.layers[0]
-    attn = layer.self_attn
-    layer_input = inputs_embeds
-    if checkpoint == "layer_input":
-        return layer_input
-    input_norm = layer.input_layernorm(layer_input)
-    if checkpoint == "input_layernorm":
-        return input_norm
 
-    input_shape = input_norm.shape[:-1]
-    hidden_shape = (*input_shape, -1, attn.head_dim)
-    q_proj = attn.q_proj(input_norm).view(hidden_shape)
-    if checkpoint == "q_proj":
-        return q_proj
-    q_norm = attn.q_norm(q_proj).transpose(1, 2)
-    if checkpoint == "q_norm":
-        return q_norm
-    k_proj = attn.k_proj(input_norm).view(hidden_shape)
-    if checkpoint == "k_proj":
-        return k_proj
-    k_norm = attn.k_norm(k_proj).transpose(1, 2)
-    if checkpoint == "k_norm":
-        return k_norm
-    v_proj = attn.v_proj(input_norm).view(hidden_shape).transpose(1, 2)
-    if checkpoint == "v_proj":
-        return v_proj
+@contextmanager
+def _maybe_force_mask_skip(enabled: bool):
+    if not enabled:
+        yield
+        return
+    original = _masking_utils.is_torchdynamo_compiling
+    _masking_utils.is_torchdynamo_compiling = lambda: False
+    try:
+        yield
+    finally:
+        _masking_utils.is_torchdynamo_compiling = original
 
-    cos, sin = position_embeddings
-    q_rope, k_rope = apply_multimodal_rotary_pos_emb(
-        q_norm,
-        k_norm,
-        cos,
-        sin,
-        attn.rope_scaling["mrope_section"],
-        attn.rope_scaling["interleaved"],
-    )
-    if checkpoint == "q_rope":
-        return q_rope
-    if checkpoint == "k_rope":
-        return k_rope
 
-    key_states = repeat_kv(k_rope, attn.num_key_value_groups)
-    value_states = repeat_kv(v_proj, attn.num_key_value_groups)
-    attn_query = q_rope.float() if attention_core_fp32 else q_rope
-    attn_key = key_states.float() if attention_core_fp32 else key_states
-    attn_value = value_states.float() if attention_core_fp32 else value_states
-    scores = torch.matmul(attn_query, attn_key.transpose(2, 3)) * attn.scaling
-    if checkpoint == "scores":
-        return scores
-    if causal_mask is None:
-        scores_for_softmax = scores
-    else:
-        causal = causal_mask[:, :, :, : key_states.shape[-2]]
-        scores_for_softmax = scores + causal
-    if checkpoint == "scores_masked":
-        return scores_for_softmax
-    softmax_probs = F.softmax(scores_for_softmax, dim=-1, dtype=torch.float32)
-    if not attention_core_fp32:
-        softmax_probs = softmax_probs.to(q_rope.dtype)
-    if checkpoint == "softmax_probs":
-        return softmax_probs
-    context = torch.matmul(softmax_probs, attn_value)
-    if attention_core_fp32:
-        context = context.to(q_rope.dtype)
-    if checkpoint == "attention_context":
-        return context
-    context = context.transpose(1, 2).contiguous()
-    o_proj_input = context.reshape(*input_shape, -1).contiguous()
-    if checkpoint == "o_proj_input":
-        return o_proj_input
-    o_proj_output = attn.o_proj(o_proj_input)
-    if checkpoint == "o_proj_output":
-        return o_proj_output
-    post_attention_residual = layer_input + o_proj_output
-    if checkpoint == "post_attention_residual":
-        return post_attention_residual
-    mlp_input = layer.post_attention_layernorm(post_attention_residual)
-    if checkpoint == "mlp_input":
-        return mlp_input
-    mlp_gate = layer.mlp.gate_proj(mlp_input)
-    if checkpoint == "mlp_gate":
-        return mlp_gate
-    mlp_up = layer.mlp.up_proj(mlp_input)
-    if checkpoint == "mlp_up":
-        return mlp_up
-    mlp_down = layer.mlp.down_proj(layer.mlp.act_fn(mlp_gate) * mlp_up)
-    if checkpoint == "mlp_down":
-        return mlp_down
-    layer_output = post_attention_residual + mlp_down
-    if checkpoint == "layer_output":
-        return layer_output
-    raise ValueError(f"Unsupported checkpoint: {checkpoint}")
+def _as_tuple(
+    value: torch.Tensor | tuple[torch.Tensor, ...],
+) -> tuple[torch.Tensor, ...]:
+    if isinstance(value, tuple):
+        return value
+    return (value,)
 
 
 def _snapshot(tensors: tuple[torch.Tensor, ...]) -> tuple[torch.Tensor, ...]:

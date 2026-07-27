@@ -1200,6 +1200,86 @@ faster-qwen-fail-closed-greedy-predictor-patch/0004-fix-predictor-fail-closed-wi
 faster-qwen-fail-closed-greedy-predictor-patch/faster-qwen-prefill-compile-exact-shape-through-9f1c801.bundle SHA256: 3294b4a1d438bed688df15223968249ca58e8ef996eecdd3de11ef425e28163f
 ```
 
+Single-pass bisection and mask-skip compile fix:
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean;external/python/Qwen3-TTS-streaming"
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_attention_micro_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --right-backend compile_backend_eager `
+    --checkpoint scores `
+    --checkpoint causal_mask `
+    --checkpoint scores_masked `
+    --checkpoint softmax_probs `
+    --checkpoint o_proj_output `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\attention-single-pass-bisect\bf16-layer0-mask-focus-v2-compile-backend-eager.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_attention_micro_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --right-backend compile_inductor_default `
+    --checkpoint scores `
+    --checkpoint causal_mask `
+    --checkpoint scores_masked `
+    --checkpoint softmax_probs `
+    --checkpoint attention_context `
+    --checkpoint o_proj_output `
+    --checkpoint layer_output `
+    --force-mask-skip-during-compile `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\attention-single-pass-bisect\bf16-layer0-inductor-force-mask-skip.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --backend eager `
+    --backend compile_backend_eager `
+    --backend compile_backend_aot_eager `
+    --backend compile_inductor_default `
+    --backend compile_reduce_overhead `
+    --repeats 2 `
+    --max-new-tokens 64 `
+    --chunk-size 8 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\mask-skip-compile-fix\bf16-compiled-ladder-r2-v2.json
+```
+
+FasterQwen patch artifacts through `2d04337`:
+
+```powershell
+$dir = "docs\benchmark-artifacts\rtx4090-2026-07-22\faster-qwen-mask-skip-compile-fix-patch"
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+git -C C:\_repoz\faster-qwen3-tts-v032-stack112-clean format-patch `
+    -o (Resolve-Path $dir) 71fa0fd..2d04337
+git -C C:\_repoz\faster-qwen3-tts-v032-stack112-clean bundle create `
+    (Join-Path (Resolve-Path $dir) "faster-qwen-prefill-compile-through-2d04337.bundle") `
+    prefill-compile-exact-shape ^71fa0fd
+```
+
+Additional artifact hashes:
+
+```text
+attention-single-pass-bisect/bf16-layer0-inductor-force-mask-skip.json SHA256: f12e00b0be17afee87b6f12f61a1704b288991f140c1128214de8f136ac46fab
+attention-single-pass-bisect/bf16-layer0-mask-focus-v2-compile-backend-eager.json SHA256: 97f9dae768b0725d85a7b1df7e8f6840f1ca617b5549b0d07fbe949a25fc61f8
+attention-single-pass-bisect/fp32-layer0-inductor-force-mask-skip.json SHA256: a54686e9f23af53f0966080371004b38d13ec9d8e26f8bd15815720c55ef4ee4
+mask-skip-compile-fix/bf16-compile-backend-eager-r1-v2.json SHA256: 0d597fcebe3030da32378934c50cf6a8a7a9c7cc9672d285ff384ac78dbcdfa3
+mask-skip-compile-fix/bf16-compiled-ladder-r2-v2.json SHA256: b8b98eb7f6da41bb5e254159e2c5671e58c4aa6e4c6b73e4a9330925ac7ccef3
+faster-qwen-mask-skip-compile-fix-patch/0005-fix-prefill-preserve-mask-skip-under-compile.patch SHA256: bad0d99c716060dd5174263bf554e07789c5938ad51eefc0a6c4d45557051e2a
+faster-qwen-mask-skip-compile-fix-patch/faster-qwen-prefill-compile-through-2d04337.bundle SHA256: 72cbcee9fe125013f4ab0fa333005d2cf1b725591aeed9bc1a092d64b0b1053d
+```
+
 2026-07-24 profile-on/off overhead control:
 
 ```powershell

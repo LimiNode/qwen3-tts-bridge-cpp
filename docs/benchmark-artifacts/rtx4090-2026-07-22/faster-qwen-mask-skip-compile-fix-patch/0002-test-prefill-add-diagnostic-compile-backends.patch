@@ -1,0 +1,66 @@
+From f3b979c818f21b31a09656fff09022120cc73951 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Sat, 25 Jul 2026 16:31:58 +0300
+Subject: [PATCH 2/5] test(prefill): add diagnostic compile backends
+
+---
+ faster_qwen3_tts/streaming.py | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index a17b815..e07edd9 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -19,7 +19,17 @@ from .sampling import apply_repetition_penalty, build_suppress_mask, sample_logi
+ from .talker_graph import TalkerGraph
+ 
+ 
+-_PREFILL_BACKENDS = {"eager", "compile_default", "compile_reduce_overhead"}
++_PREFILL_BACKENDS = {
++    "eager",
++    "compile_backend_eager",
++    "compile_backend_aot_eager",
++    "compile_default",
++    "compile_inductor_default",
++    "compile_reduce_overhead",
++}
++_PREFILL_BACKEND_ALIASES = {
++    "compile_default": "compile_inductor_default",
++}
+ _PREFILL_COMPILE_CACHE = {}
+ _PREFILL_COMPILE_ERRORS = {}
+ 
+@@ -42,6 +52,7 @@ class _CudaNvtxRange:
+ 
+ def _normalize_prefill_backend(prefill_backend: str) -> str:
+     backend = str(prefill_backend or "eager").strip().lower()
++    backend = _PREFILL_BACKEND_ALIASES.get(backend, backend)
+     if backend not in _PREFILL_BACKENDS:
+         raise ValueError(
+             f"Unsupported prefill_backend {prefill_backend!r}. "
+@@ -152,8 +163,13 @@ def _talker_prefill_eager(
+ 
+ 
+ def _compile_talker_prefill(talker, prefill_backend: str) -> Callable:
++    backend = "inductor"
+     mode = None
+-    if prefill_backend == "compile_reduce_overhead":
++    if prefill_backend == "compile_backend_eager":
++        backend = "eager"
++    elif prefill_backend == "compile_backend_aot_eager":
++        backend = "aot_eager"
++    elif prefill_backend == "compile_reduce_overhead":
+         mode = "reduce-overhead"
+ 
+     def prefill_fn(
+@@ -172,6 +188,7 @@ def _compile_talker_prefill(talker, prefill_backend: str) -> Callable:
+ 
+     return torch.compile(
+         prefill_fn,
++        backend=backend,
+         fullgraph=True,
+         dynamic=False,
+         mode=mode,
+-- 
+2.53.0.windows.1
+

@@ -1,0 +1,925 @@
+{
+  "artifact_schema_version": 1,
+  "trace_mode": "single_pass",
+  "model": "models\\Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "text": "I am your robot, I am your worker.",
+  "language": "English",
+  "speaker": "ryan",
+  "device": "cuda",
+  "dtype": "float32",
+  "attn_implementation": "eager",
+  "right_backend": "compile_backend_eager",
+  "attention_core_fp32": false,
+  "checkpoints": [
+    "layer_input",
+    "input_layernorm",
+    "q_proj",
+    "q_norm",
+    "k_proj",
+    "k_norm",
+    "v_proj",
+    "q_rope",
+    "k_rope",
+    "scores",
+    "scores_masked",
+    "softmax_probs",
+    "attention_context",
+    "o_proj_input",
+    "o_proj_output",
+    "post_attention_residual",
+    "mlp_input",
+    "mlp_gate",
+    "mlp_up",
+    "mlp_down",
+    "layer_output"
+  ],
+  "metadata": {
+    "text_token_count": 18,
+    "instruction_token_count": 0,
+    "talker_prefill_length": 21,
+    "tokenize_wall_ms": 3.3500000135973096,
+    "build_talker_inputs_wall_ms": 210.9604999423027
+  },
+  "comparisons": [
+    {
+      "name": "layer_input",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.0000008600829895
+    },
+    {
+      "name": "input_layernorm",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 0.9999999300535978
+    },
+    {
+      "name": "q_proj",
+      "shape": [
+        1,
+        21,
+        16,
+        128
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        43008,
+        2048,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.00000089650487
+    },
+    {
+      "name": "q_norm",
+      "shape": [
+        1,
+        16,
+        21,
+        128
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        43008,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.0000004151075916
+    },
+    {
+      "name": "k_proj",
+      "shape": [
+        1,
+        21,
+        8,
+        128
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        1024,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.0000001067136435
+    },
+    {
+      "name": "k_norm",
+      "shape": [
+        1,
+        8,
+        21,
+        128
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.0000005300113073
+    },
+    {
+      "name": "v_proj",
+      "shape": [
+        1,
+        8,
+        21,
+        128
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.0000000816845978
+    },
+    {
+      "name": "q_rope",
+      "shape": [
+        1,
+        16,
+        21,
+        128
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        43008,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.0000005811507249
+    },
+    {
+      "name": "k_rope",
+      "shape": [
+        1,
+        8,
+        21,
+        128
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.0000002120044555
+    },
+    {
+      "name": "scores",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 0.9999998774360354
+    },
+    {
+      "name": "scores_masked",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 1.0000009536743164,
+      "mean_abs": 0.523809552192688,
+      "rmse": 0.7237468957901001,
+      "max_abs_flat_index": 2612,
+      "cosine": 0.9929681432968684
+    },
+    {
+      "name": "softmax_probs",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.244284987449646,
+      "mean_abs": 0.004366440232843161,
+      "rmse": 0.0194381196051836,
+      "max_abs_flat_index": 4452,
+      "cosine": 0.9889093206806573
+    },
+    {
+      "name": "attention_context",
+      "shape": [
+        1,
+        21,
+        16,
+        128
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        43008,
+        2048,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0772709995508194,
+      "mean_abs": 0.0010027779499068856,
+      "rmse": 0.0029264085460454226,
+      "max_abs_flat_index": 5686,
+      "cosine": 0.9882300208066495
+    },
+    {
+      "name": "o_proj_input",
+      "shape": [
+        1,
+        21,
+        2048
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        43008,
+        2048,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0772709995508194,
+      "mean_abs": 0.0010027779499068856,
+      "rmse": 0.0029264085460454226,
+      "max_abs_flat_index": 5686,
+      "cosine": 0.9882300208066495
+    },
+    {
+      "name": "o_proj_output",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0809478759765625,
+      "mean_abs": 0.0014288531383499503,
+      "rmse": 0.0026382720097899437,
+      "max_abs_flat_index": 2223,
+      "cosine": 0.9890369031840577
+    },
+    {
+      "name": "post_attention_residual",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0809478759765625,
+      "mean_abs": 0.0014288531383499503,
+      "rmse": 0.0026382720097899437,
+      "max_abs_flat_index": 2223,
+      "cosine": 0.9994785663289292
+    },
+    {
+      "name": "mlp_input",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.721392810344696,
+      "mean_abs": 0.013938556425273418,
+      "rmse": 0.025637945160269737,
+      "max_abs_flat_index": 2093,
+      "cosine": 0.9974218798118589
+    },
+    {
+      "name": "mlp_gate",
+      "shape": [
+        1,
+        21,
+        3072
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        64512,
+        3072,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.6794565916061401,
+      "mean_abs": 0.0085988137871027,
+      "rmse": 0.016800185665488243,
+      "max_abs_flat_index": 3321,
+      "cosine": 0.9963847573595732
+    },
+    {
+      "name": "mlp_up",
+      "shape": [
+        1,
+        21,
+        3072
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        64512,
+        3072,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.45516645908355713,
+      "mean_abs": 0.007152697071433067,
+      "rmse": 0.014422586187720299,
+      "max_abs_flat_index": 9563,
+      "cosine": 0.9946132114067037
+    },
+    {
+      "name": "mlp_down",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 1.861104965209961,
+      "mean_abs": 0.001374274492263794,
+      "rmse": 0.014599810354411602,
+      "max_abs_flat_index": 3247,
+      "cosine": 0.9908407204522666
+    },
+    {
+      "name": "layer_output",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.float32",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 1.9130654335021973,
+      "mean_abs": 0.002024594461545348,
+      "rmse": 0.015453215688467026,
+      "max_abs_flat_index": 3247,
+      "cosine": 0.9919955465889977
+    }
+  ],
+  "materialized_stage_ladder": [
+    {
+      "stage": "qkv",
+      "outputs": [
+        {
+          "name": "q_proj",
+          "shape": [
+            1,
+            21,
+            16,
+            128
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            43008,
+            2048,
+            128,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.00000089650487
+        },
+        {
+          "name": "q_norm",
+          "shape": [
+            1,
+            16,
+            21,
+            128
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            43008,
+            128,
+            2048,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000004151075916
+        },
+        {
+          "name": "k_proj",
+          "shape": [
+            1,
+            21,
+            8,
+            128
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            21504,
+            1024,
+            128,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000001067136435
+        },
+        {
+          "name": "k_norm",
+          "shape": [
+            1,
+            8,
+            21,
+            128
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            21504,
+            128,
+            1024,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000005300113073
+        },
+        {
+          "name": "v_proj",
+          "shape": [
+            1,
+            8,
+            21,
+            128
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            21504,
+            128,
+            1024,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000000816845978
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "rope",
+      "outputs": [
+        {
+          "name": "q_rope",
+          "shape": [
+            1,
+            16,
+            21,
+            128
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            43008,
+            128,
+            2048,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000005811507249
+        },
+        {
+          "name": "k_rope",
+          "shape": [
+            1,
+            8,
+            21,
+            128
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            21504,
+            128,
+            1024,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000002120044555
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "scores",
+      "outputs": [
+        {
+          "name": "scores",
+          "shape": [
+            1,
+            16,
+            21,
+            21
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            7056,
+            441,
+            21,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 0.9999998774360354
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "mask_add",
+      "outputs": [
+        {
+          "name": "scores_masked",
+          "shape": [
+            1,
+            16,
+            21,
+            21
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            7056,
+            441,
+            21,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 0.9999998774360354
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "softmax",
+      "outputs": [
+        {
+          "name": "softmax_probs",
+          "shape": [
+            1,
+            16,
+            21,
+            21
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            7056,
+            441,
+            21,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.000000203442836
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "context",
+      "outputs": [
+        {
+          "name": "attention_context",
+          "shape": [
+            1,
+            16,
+            21,
+            128
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            43008,
+            2688,
+            128,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000002449709906
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "o_proj_input",
+      "outputs": [
+        {
+          "name": "o_proj_input",
+          "shape": [
+            1,
+            21,
+            2048
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            43008,
+            2048,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000002449709906
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "o_proj",
+      "outputs": [
+        {
+          "name": "o_proj_output",
+          "shape": [
+            1,
+            21,
+            1024
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            21504,
+            1024,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.000000299486291
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "mlp",
+      "outputs": [
+        {
+          "name": "mlp_input",
+          "shape": [
+            1,
+            21,
+            1024
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            21504,
+            1024,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 0.9999996427285252
+        },
+        {
+          "name": "mlp_gate",
+          "shape": [
+            1,
+            21,
+            3072
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            64512,
+            3072,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000009822405023
+        },
+        {
+          "name": "mlp_up",
+          "shape": [
+            1,
+            21,
+            3072
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            64512,
+            3072,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000014107088318
+        },
+        {
+          "name": "mlp_down",
+          "shape": [
+            1,
+            21,
+            1024
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            21504,
+            1024,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.000002533664305
+        },
+        {
+          "name": "layer_output",
+          "shape": [
+            1,
+            21,
+            1024
+          ],
+          "dtype": "torch.float32",
+          "stride": [
+            21504,
+            1024,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000005814913249
+        }
+      ],
+      "first_diff": null
+    }
+  ]
+}
