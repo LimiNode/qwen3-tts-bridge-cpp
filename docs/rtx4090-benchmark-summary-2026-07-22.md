@@ -1953,6 +1953,43 @@ these four narrow compatibility islands into a maintainable FasterQwen patch
 and then run performance gates. Until that patch is product-shaped and retains
 semantic parity, the default stays eager.
 
+### Raw-vs-Strict Context Gate Correction
+
+A follow-up A/B/C/D gate found an important bug in the diagnostic strict SDPA
+island. The previous strict gate compared strict eager against strict Inductor,
+but the strict SDPA wrapper was not identical to the raw Transformers SDPA
+path. It missed two production wrapper details:
+
+- `is_causal=True` for full prefill when `attention_mask=None` and sequence
+  length is greater than one;
+- PyTorch SDPA GQA dispatch through `enable_gqa=True` when Transformers selects
+  that path.
+
+Before the fix, raw eager vs strict eager differed even without Inductor:
+
+| Artifact | Result |
+| --- | --- |
+| `context-gate/bf16-sdpa-raw-strict-inductor-reduce-r1.json` | raw eager vs strict eager failed: `logits_last max_abs 19.828125`; generation still had matching frame/EOS status, so the broken strict reference was easy to miss. |
+| `context-gate/bf16-sdpa-strict-component-ablation-prefill-r1.json` | component ablation isolated the large diff to `strict_sdpa_eager`; RMSNorm, RoPE, and MLP islands stayed exact. |
+| `context-gate/bf16-sdpa-strict-component-ablation-prefill-after-causal-r1.json` | adding causal SDPA reduced the diff to `0.21875`, but did not close raw-vs-strict parity. |
+
+After matching both causal and GQA behavior, the diagnostic strict SDPA island is
+now exact against raw eager:
+
+| Artifact | Result |
+| --- | --- |
+| `context-gate/bf16-sdpa-strict-component-ablation-prefill-after-causal-gqa-r1.json` | all component ablations are exact against raw eager: `logits_last max_abs 0.0`. |
+| `context-gate/bf16-sdpa-raw-strict-inductor-reduce-after-causal-gqa-r1.json` | A/B/C/D gate passed for raw eager, strict eager, strict Inductor default, and strict Inductor reduce-overhead: prefill diff `0.0`; codec, frame count, and EOS status match. |
+| `context-gate/bf16-sdpa-raw-strict-inductor-reduce-eos-after-causal-gqa-r1.json` | same A/B/C/D gate passed with true EOS termination at `max_new_tokens=256`. |
+| `context-gate/semantic-russian-quote-bf16-sdpa-after-causal-gqa-r1.json` | Russian/Unicode prompt passed: prefill diff `0.0`; codec, frame count, and EOS status match. |
+| `context-gate/semantic-english-instruction-bf16-sdpa-after-causal-gqa-r1.json` | English prompt with instruction passed: prefill diff `0.0`; codec, frame count, and EOS status match. Both paths stopped `short_without_eos`, so this is a parity check rather than an EOS-coverage check. |
+
+This closes the raw-vs-strict correctness objection for the current RTX 4090
+BF16 SDPA diagnostic stack. Product defaults should still remain eager until
+the compatibility islands are moved out of monkeypatch-style diagnostics into a
+maintainable FasterQwen opt-in and the resulting product-shaped path passes the
+same semantic gates.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

@@ -1079,6 +1079,155 @@ finally {
 }
 ```
 
+## 2026-07-27 Raw-vs-Strict Context Gate Correction
+
+The first context gate showed that the diagnostic strict SDPA island was not a
+valid raw eager reference: it missed production SDPA `is_causal` and GQA
+dispatch behavior. The strict SDPA custom op was updated to match the
+Transformers wrapper path for the all-valid prefill case.
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean;C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
+  --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --text "I am your robot, I am your worker." `
+  --language English `
+  --speaker ryan `
+  --dtype bfloat16 `
+  --attn-implementation sdpa `
+  --force-talker-attn-implementation sdpa `
+  --trace-attention-calls `
+  --prefill-mask-mode auto `
+  --include-component-ablation `
+  --skip-generation `
+  --repeats 1 `
+  --max-new-tokens 64 `
+  --chunk-size 8 `
+  --device-profile rtx4090 `
+  --output docs\benchmark-artifacts\rtx4090-2026-07-22\context-gate\bf16-sdpa-strict-component-ablation-prefill-after-causal-gqa-r1.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
+  --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --text "I am your robot, I am your worker." `
+  --language English `
+  --speaker ryan `
+  --dtype bfloat16 `
+  --attn-implementation sdpa `
+  --force-talker-attn-implementation sdpa `
+  --trace-attention-calls `
+  --prefill-mask-mode auto `
+  --include-reduce-overhead `
+  --repeats 1 `
+  --max-new-tokens 64 `
+  --chunk-size 8 `
+  --device-profile rtx4090 `
+  --output docs\benchmark-artifacts\rtx4090-2026-07-22\context-gate\bf16-sdpa-raw-strict-inductor-reduce-after-causal-gqa-r1.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
+  --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --text "I am your robot, I am your worker." `
+  --language English `
+  --speaker ryan `
+  --dtype bfloat16 `
+  --attn-implementation sdpa `
+  --force-talker-attn-implementation sdpa `
+  --trace-attention-calls `
+  --prefill-mask-mode auto `
+  --include-reduce-overhead `
+  --repeats 1 `
+  --max-new-tokens 256 `
+  --chunk-size 8 `
+  --device-profile rtx4090 `
+  --output docs\benchmark-artifacts\rtx4090-2026-07-22\context-gate\bf16-sdpa-raw-strict-inductor-reduce-eos-after-causal-gqa-r1.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
+  --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --text "Я твой робот, я твой работник." `
+  --language Russian `
+  --speaker ryan `
+  --dtype bfloat16 `
+  --attn-implementation sdpa `
+  --force-talker-attn-implementation sdpa `
+  --trace-attention-calls `
+  --prefill-mask-mode auto `
+  --include-reduce-overhead `
+  --repeats 1 `
+  --max-new-tokens 128 `
+  --chunk-size 8 `
+  --device-profile rtx4090 `
+  --output docs\benchmark-artifacts\rtx4090-2026-07-22\context-gate\semantic-russian-quote-bf16-sdpa-after-causal-gqa-r1.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
+  --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --text "The machine speaks softly and keeps perfect time." `
+  --language English `
+  --speaker ryan `
+  --instruction "Speak softly and steadily." `
+  --dtype bfloat16 `
+  --attn-implementation sdpa `
+  --force-talker-attn-implementation sdpa `
+  --trace-attention-calls `
+  --prefill-mask-mode auto `
+  --include-reduce-overhead `
+  --repeats 1 `
+  --max-new-tokens 128 `
+  --chunk-size 8 `
+  --device-profile rtx4090 `
+  --output docs\benchmark-artifacts\rtx4090-2026-07-22\context-gate\semantic-english-instruction-bf16-sdpa-after-causal-gqa-r1.json
+```
+
+Results:
+
+```text
+bf16-sdpa-strict-component-ablation-prefill-r1.json
+  before causal/GQA fix: strict_sdpa_eager logits_last max_abs 19.828125
+bf16-sdpa-strict-component-ablation-prefill-after-causal-r1.json
+  after causal fix only: strict_sdpa_eager logits_last max_abs 0.21875
+bf16-sdpa-strict-component-ablation-prefill-after-causal-gqa-r1.json
+  after causal+GQA fix: all component ablations logits_last max_abs 0.0
+bf16-sdpa-raw-strict-inductor-reduce-after-causal-gqa-r1.json
+  raw eager, strict eager, strict Inductor default, and strict reduce-overhead all match; stop_reason=max_new_tokens
+bf16-sdpa-raw-strict-inductor-reduce-eos-after-causal-gqa-r1.json
+  same A/B/C/D gate passes with true EOS termination
+semantic-russian-quote-bf16-sdpa-after-causal-gqa-r1.json
+  Russian/Unicode prompt passes; stop_reason=max_new_tokens
+semantic-english-instruction-bf16-sdpa-after-causal-gqa-r1.json
+  instruction prompt passes; both paths stop short_without_eos
+```
+
+Artifact hashes:
+
+```text
+context-gate/bf16-sdpa-raw-strict-inductor-reduce-r1.json SHA256: 09dca329e1407c868953aa2d7a7194888a45e969da7ab7f1e253e8c6b17b12f9
+context-gate/bf16-sdpa-strict-component-ablation-prefill-r1.json SHA256: fdcf936cdee03b57b616e0f79dd96b5fcb7cc6c5028ee1fd6adb8bce69c4f71f
+context-gate/bf16-sdpa-strict-component-ablation-prefill-after-causal-r1.json SHA256: 8e4a23b05a73e4d798ea8f1c14c8d59f8c6b9ee10e76b6948adf337634de69bf
+context-gate/bf16-sdpa-strict-component-ablation-prefill-after-causal-gqa-r1.json SHA256: b7b04d542c9f2f0f61b7d469fc4cb7f97ac01127691e2e19598a56fc1c0c68cb
+context-gate/bf16-sdpa-raw-strict-inductor-reduce-after-causal-gqa-r1.json SHA256: 0b58349c173a6857bb82cd29e57c06e0858491ca7d972bd34050363456c26462
+context-gate/bf16-sdpa-raw-strict-inductor-reduce-eos-after-causal-gqa-r1.json SHA256: 74800d82e5eccdfefe9989f36926ee2f80bd42f5a13c9cfc07d08a3a483937fe
+context-gate/semantic-russian-quote-bf16-sdpa-after-causal-gqa-r1.json SHA256: 47a863111ad7ba6762511c7a950e500601321a9505b08fd5f39601a67c68d380
+context-gate/semantic-english-instruction-bf16-sdpa-after-causal-gqa-r1.json SHA256: 60c0d80c57cfca3f24b28444d4efd812b7aae347ecd3e44162d98a5cfe1392f0
+```
+
+Verification:
+
+```text
+.venv-faster-qwen/Scripts/python.exe -m py_compile scripts/qwen_prefill_compile_parity.py scripts/qwen_prefill_context_gate.py
+scripts/check-python.ps1 -UseVenv -VenvPath .venv
+  passed: 154 tests, 2 skipped
+ctest --test-dir build/default --output-on-failure
+  first run: stdio_transport_test transient ready wait failure
+ctest --test-dir build/default -R stdio_transport_test --output-on-failure -V
+  passed
+ctest --test-dir build/default --output-on-failure
+  passed: 9/9 tests
+ctest --test-dir build/default -R stdio_transport_test --output-on-failure --repeat until-fail:20
+  passed: 20/20 repetitions
+git diff --check
+  passed; only CRLF conversion warnings for touched text files
+```
+
 ## Mask Contract Hardening And Inductor RMS/RoPE Diagnostics
 
 Safe production gate after replacing bare `all_valid=true` with mask

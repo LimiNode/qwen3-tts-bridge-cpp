@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 import torch
 import torch.nn.functional as F
+from transformers.integrations.sdpa_attention import use_gqa_in_sdpa
 import qwen_tts.core.models.modeling_qwen3_tts as qwen_modeling
 from faster_qwen3_tts import FasterQwen3TTS
 from faster_qwen3_tts.streaming import (
@@ -75,9 +76,17 @@ def _strict_sdpa(
     value: torch.Tensor,
     scaling: float,
     num_key_value_groups: int,
+    is_causal: bool,
+    enable_gqa: bool,
 ) -> torch.Tensor:
-    key_states = qwen_modeling.repeat_kv(key, num_key_value_groups)
-    value_states = qwen_modeling.repeat_kv(value, num_key_value_groups)
+    sdpa_kwargs = {}
+    key_states = key
+    value_states = value
+    if enable_gqa:
+        sdpa_kwargs["enable_gqa"] = True
+    else:
+        key_states = qwen_modeling.repeat_kv(key, num_key_value_groups)
+        value_states = qwen_modeling.repeat_kv(value, num_key_value_groups)
     output = F.scaled_dot_product_attention(
         query,
         key_states,
@@ -85,6 +94,8 @@ def _strict_sdpa(
         attn_mask=None,
         dropout_p=0.0,
         scale=scaling,
+        is_causal=is_causal,
+        **sdpa_kwargs,
     )
     return output.transpose(1, 2).contiguous()
 
@@ -96,6 +107,8 @@ def _(
     value: torch.Tensor,
     scaling: float,
     num_key_value_groups: int,
+    is_causal: bool,
+    enable_gqa: bool,
 ) -> torch.Tensor:
     return torch.empty(
         (query.shape[0], query.shape[2], query.shape[1], query.shape[3]),
@@ -607,6 +620,8 @@ def _make_attention_forward(mode: str, original_sdpa):
                 dropout=dropout,
                 **_kwargs,
             )
+        is_causal = query.shape[2] > 1 and getattr(module, "is_causal", True)
+        enable_gqa = use_gqa_in_sdpa(attention_mask, key)
         return (
             _strict_sdpa(
                 query,
@@ -614,6 +629,8 @@ def _make_attention_forward(mode: str, original_sdpa):
                 value,
                 scaling,
                 module.num_key_value_groups,
+                is_causal,
+                enable_gqa,
             ),
             None,
         )
