@@ -202,6 +202,7 @@ class QwenModelLoaderTests(unittest.TestCase):
                     attn_implementation="sdpa",
                     prefill_backend="compile_reduce_overhead",
                     prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                    warmup_synthesis_enabled=True,
                 )
             )
 

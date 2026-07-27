@@ -105,6 +105,137 @@ faster-qwen-strict-bf16-sdpa-lifecycle-patch/0002-fix-prefill-make-compat-mode-i
 faster-qwen-strict-bf16-sdpa-lifecycle-patch/faster-qwen-prefill-compile-through-95ea2ca.bundle  3FCED2B067672D497F07F23AC1B842B39132E3718206902AA6845D713AE9DA12
 ```
 
+2026-07-28 strict BF16 SDPA prefill-only lifecycle correction:
+
+```text
+faster-qwen3-tts lifecycle commit: 9023eb8
+scope:
+  - pass prefill_compile_compat_mode into the returned FasterQwen3TTS wrapper
+  - expose public prefill_compile_compat_metadata
+  - validate strict target module counts at load without keeping forwards patched
+  - apply strict forwards only inside compiled prefill calls
+  - require warmup_synthesis_enabled=true for bridge strict product mode
+  - validate bridge strict metadata before ready
+```
+
+Verification after prefill-only correction:
+
+```text
+FasterQwen targeted:
+  .venv-faster-qwen\Scripts\python.exe -m pytest tests\test_prefill_compat.py tests\test_sampling.py -q
+  result: 52 passed, 1 warning
+
+FasterQwen selected:
+  .venv-faster-qwen\Scripts\python.exe -m pytest tests\test_ggml_backend.py tests\test_prefill_compat.py tests\test_sample_rate.py tests\test_sampling.py tests\test_voice_clone_prompt_api.py -q
+  result: 109 passed, 1 warning
+
+FasterQwen full:
+  $env:PYTHONPATH='C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+  .venv-faster-qwen\Scripts\python.exe -m pytest -q
+  result: 123 passed, 18 warnings, 298.34s
+
+Bridge Python:
+  scripts\check-python.ps1 -UseVenv -VenvPath .venv
+  result: 158 tests OK, 2 skipped
+
+Bridge C++:
+  ctest --test-dir build\default --output-on-failure
+  result: 9/9 passed
+
+Bridge targeted:
+  $env:PYTHONPATH='worker/src;tests/python'
+  .venv\Scripts\python.exe -m unittest tests.python.test_qwen_engine tests.python.test_qwen_model_loader tests.python.test_engine_factory
+  result: 49 tests OK
+
+py_compile:
+  .venv\Scripts\python.exe -m py_compile scripts\qwen_prefill_compile_parity.py scripts\qwen_prefill_context_gate.py scripts\qwen_strict_worker_load_smoke.py
+  result: passed
+```
+
+Real worker-load strict smoke through bridge QwenTtsEngine:
+
+```powershell
+$env:PYTHONPATH='C:\_repoz\qwen3-tts-bridge-cpp\worker\src;C:\_repoz\faster-qwen3-tts-v032-stack112-clean;C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+.\.venv-packaging\Scripts\python.exe scripts\qwen_strict_worker_load_smoke.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --prefill-backend compile_reduce_overhead `
+    --speaker ryan `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --warmup-synthesis `
+    --warmup-max-output-chunks 1 `
+    --max-chunks 1 `
+    --output tmp\strict-worker-load-smoke-packaging.json
+```
+
+Smoke result:
+
+```text
+metadata before ready/warmup:
+  wrapper=declared=mode=strict_bf16_sdpa_v1
+  applied=false
+  patched_modules={}
+  validated_modules={rmsnorm: 134, mlp: 33, attention: 33}
+warmup: 1 bounded audio chunk
+request: 1 PCM chunk, 29610 bytes
+prefill_backend_used=compile_reduce_overhead
+prefill_compile_fallback=false
+chunk metrics report transient strict patch:
+  prefill_compile_compat_applied=true
+  patched_modules={rmsnorm: 134, mlp: 33, attention: 33}
+```
+
+Environment note:
+
+```text
+.venv-faster-qwen has torch 2.10.0+cu128 and no Triton package, so the same
+worker-load smoke falls back to eager prefill there. The compile-path smoke
+above intentionally uses .venv-packaging, which has torch 2.11.0+cu126 and
+triton-windows 3.7.1.post27.
+```
+
+Semantic context gate after prefill-only correction:
+
+```powershell
+$env:PYTHONPATH='C:\_repoz\faster-qwen3-tts-v032-stack112-clean;C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --speaker ryan `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --max-new-tokens 64 `
+    --repeats 1 `
+    --include-product-compat `
+    --include-reduce-overhead `
+    --compact-output `
+    --output tmp\context-gate-prefill-only-smoke.json
+```
+
+Semantic result:
+
+```text
+raw_eager, strict_eager, strict_inductor_default, strict_reduce_overhead,
+product_strict_inductor_default, product_strict_reduce_overhead:
+  semantic_pass=true
+  termination_equal=true
+  same_codec=true
+  same_frame_count=true
+  prefill diff vs raw=0.0
+```
+
+Prefill-only lifecycle patch SHA256:
+
+```text
+faster-qwen-strict-bf16-sdpa-lifecycle-patch/0003-fix-prefill-keep-strict-compat-prefill-only.patch  4138C702545AE8A84397AE7466F38262E4D17E96E1FE2A3B81CC47B0BBFFFAE8
+faster-qwen-strict-bf16-sdpa-lifecycle-patch/faster-qwen-prefill-compile-through-9023eb8.bundle  6CD1E618B8F728420275973621A654F83559989B208A523B86F8C8ECB3E36FCB
+```
+
 Diagnostic semantic gates:
 
 ```powershell

@@ -296,6 +296,7 @@ class EngineFactoryTests(unittest.TestCase):
             "attn_implementation": "sdpa",
             "prefill_backend": "compile_reduce_overhead",
             "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "warmup_synthesis_enabled": True,
         }
         invalid_updates: tuple[dict[str, Any], ...] = (
             {"runtime_backend": "upstream"},
@@ -303,6 +304,7 @@ class EngineFactoryTests(unittest.TestCase):
             {"attn_implementation": "flash_attention_2"},
             {"prefill_backend": "eager"},
             {"prefill_backend": "compile_backend_eager"},
+            {"warmup_synthesis_enabled": False},
         )
 
         for update in invalid_updates:

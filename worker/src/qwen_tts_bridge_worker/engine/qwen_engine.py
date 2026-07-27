@@ -385,6 +385,7 @@ def _validate_loaded_prefill_compile_compat(
             f"compat mode: requested={config.prefill_compile_compat_mode!r}, "
             f"actual={actual_mode!r}"
         )
+    _validate_loaded_prefill_compile_compat_metadata(model, config)
 
     actual_dtype = _normalized_dtype_name(getattr(model, "dtype", None))
     if actual_dtype != "bfloat16":
@@ -399,6 +400,57 @@ def _validate_loaded_prefill_compile_compat(
             "strict_bf16_sdpa_v1 requires loaded faster model attention=sdpa; "
             f"actual={actual_attn or 'unknown'}"
         )
+
+
+def _validate_loaded_prefill_compile_compat_metadata(
+    model: Any,
+    config: QwenEngineConfig,
+) -> None:
+    metadata = getattr(model, "prefill_compile_compat_metadata", None)
+    if callable(metadata):
+        metadata = metadata()
+    if not isinstance(metadata, dict):
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 requires loaded faster model compat metadata"
+        )
+
+    expected = config.prefill_compile_compat_mode
+    version = metadata.get("prefill_compile_compat_metadata_version")
+    if version != 1:
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 requires compat metadata version 1; "
+            f"actual={version!r}"
+        )
+    wrapper_mode = metadata.get("prefill_compile_compat_wrapper_mode", expected)
+    declared_mode = metadata.get("prefill_compile_compat_declared_mode")
+    applied_mode = metadata.get("prefill_compile_compat_mode")
+    if (
+        wrapper_mode != expected
+        or declared_mode != expected
+        or applied_mode != expected
+    ):
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 compat metadata mode mismatch: "
+            f"wrapper={wrapper_mode!r}, declared={declared_mode!r}, "
+            f"applied={applied_mode!r}, expected={expected!r}"
+        )
+    if metadata.get("prefill_compile_compat_applied") is True:
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 compat patch must be idle after model load"
+        )
+
+    patched = metadata.get("prefill_compile_compat_validated_modules")
+    if not isinstance(patched, dict):
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 compat metadata missing validated module counts"
+        )
+    for name in ("rmsnorm", "mlp", "attention"):
+        count = patched.get(name)
+        if not isinstance(count, int) or count <= 0:
+            raise QwenEngineError(
+                "strict_bf16_sdpa_v1 requires positive patched module count "
+                f"for {name}; actual={count!r}"
+            )
 
 
 def _normalized_dtype_name(dtype: Any) -> str:

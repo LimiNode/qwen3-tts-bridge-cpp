@@ -133,14 +133,40 @@ class _FasterStreamingModel:
         dtype: str = "bfloat16",
         attn_implementation: str = "sdpa",
         prefill_compile_compat_mode: str = "none",
+        prefill_compile_compat_metadata: dict[str, object] | None = None,
     ) -> None:
         self.model = _NestedWrapper(model_type, attn_implementation)
         self.dtype = dtype
         self.prefill_compile_compat_mode = prefill_compile_compat_mode
+        self.prefill_compile_compat_metadata = (
+            prefill_compile_compat_metadata
+            if prefill_compile_compat_metadata is not None
+            else self._default_prefill_compile_compat_metadata(
+                prefill_compile_compat_mode
+            )
+        )
         self._supported_speakers = supported_speakers
         self.custom_stream_calls: list[dict[str, object]] = []
         self.design_stream_calls: list[dict[str, object]] = []
         self.closed_streams = 0
+
+    def _default_prefill_compile_compat_metadata(
+        self,
+        mode: str,
+    ) -> dict[str, object]:
+        validated = mode != "none"
+        return {
+            "prefill_compile_compat_metadata_version": 1,
+            "prefill_compile_compat_wrapper_mode": mode,
+            "prefill_compile_compat_declared_mode": mode,
+            "prefill_compile_compat_mode": mode,
+            "prefill_compile_compat_applied": False,
+            "prefill_compile_compat_reused": False,
+            "prefill_compile_compat_patched_modules": {},
+            "prefill_compile_compat_validated_modules": (
+                {"attention": 1, "mlp": 1, "rmsnorm": 1} if validated else {}
+            ),
+        }
 
     def get_supported_speakers(self) -> list[str] | None:
         return self._supported_speakers
@@ -656,6 +682,7 @@ class QwenEngineTests(unittest.TestCase):
                 profile_nvtx=True,
                 prefill_backend="compile_reduce_overhead",
                 prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                warmup_synthesis_enabled=True,
                 do_sample=False,
             ),
             model_loader=lambda _config: fake_model,
@@ -702,6 +729,7 @@ class QwenEngineTests(unittest.TestCase):
                 attn_implementation="sdpa",
                 prefill_backend="compile_reduce_overhead",
                 prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                warmup_synthesis_enabled=True,
             ),
             model_loader=lambda _config: fake_model,
         )
@@ -723,6 +751,33 @@ class QwenEngineTests(unittest.TestCase):
                 "fake": {"attn_implementation": "eager"},
                 "match": "attention=sdpa",
             },
+            {
+                "fake": {
+                    "prefill_compile_compat_metadata": {
+                        "prefill_compile_compat_metadata_version": 1,
+                        "prefill_compile_compat_wrapper_mode": (
+                            "strict_bf16_sdpa_v1"
+                        ),
+                        "prefill_compile_compat_declared_mode": (
+                            "strict_bf16_sdpa_v1"
+                        ),
+                        "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+                        "prefill_compile_compat_applied": True,
+                        "prefill_compile_compat_reused": False,
+                        "prefill_compile_compat_patched_modules": {
+                            "attention": 1,
+                            "mlp": 1,
+                            "rmsnorm": 1,
+                        },
+                        "prefill_compile_compat_validated_modules": {
+                            "attention": 1,
+                            "mlp": 1,
+                            "rmsnorm": 1,
+                        },
+                    }
+                },
+                "match": "idle",
+            },
         )
         for case in cases:
             fake_kwargs = {
@@ -742,6 +797,7 @@ class QwenEngineTests(unittest.TestCase):
                     attn_implementation="sdpa",
                     prefill_backend="compile_reduce_overhead",
                     prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                    warmup_synthesis_enabled=True,
                 ),
                 model_loader=lambda _config, fake_model=fake_model: fake_model,
             )

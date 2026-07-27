@@ -162,6 +162,11 @@ class QwenEngineConfig:
                 "requires prefill_backend=compile_inductor_default or "
                 "compile_reduce_overhead"
             )
+        if not self.warmup_synthesis_enabled:
+            raise ValueError(
+                "qwen.prefill_compile_compat_mode=strict_bf16_sdpa_v1 "
+                "requires warmup_synthesis_enabled=true"
+            )
 
 
 EngineConfig: TypeAlias = MockEngineConfig | QwenEngineConfig
