@@ -70,6 +70,8 @@ class EngineFactoryTests(unittest.TestCase):
                 "--profile-nvtx",
                 "--prefill-backend",
                 "compile_reduce_overhead",
+                "--prefill-compile-compat-mode",
+                "strict_bf16_sdpa_v1",
                 "--no-sample",
                 "--warmup-synthesis",
                 "--warmup-text",
@@ -107,6 +109,10 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertTrue(config.profile_prefill)
         self.assertTrue(config.profile_nvtx)
         self.assertEqual("compile_reduce_overhead", config.prefill_backend)
+        self.assertEqual(
+            "strict_bf16_sdpa_v1",
+            config.prefill_compile_compat_mode,
+        )
         self.assertFalse(config.do_sample)
         self.assertTrue(config.warmup_synthesis_enabled)
         self.assertEqual("Prime the engine.", config.warmup_text)

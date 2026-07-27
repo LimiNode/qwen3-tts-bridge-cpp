@@ -1,0 +1,68 @@
+{
+  "date": "2026-07-27",
+  "hardware": "NVIDIA GeForce RTX 4090",
+  "model": "Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "text": "I am your robot, I am your worker.",
+  "language": "English",
+  "speaker": "ryan",
+  "seed": 4242,
+  "seed_mode": "fixed",
+  "no_sample": true,
+  "rows": [
+    {
+      "artifact": "source-worker-eager-r5x4.json",
+      "prefill_backend": "eager",
+      "prefill_compile_compat_mode": "none",
+      "runs": 5,
+      "requests_per_run": 4,
+      "steady_first_audio_median_ms": 357.1858999785036,
+      "steady_completed_median_ms": 1441.3211999926716,
+      "steady_real_time_factor_median": 0.3786183553498037,
+      "steady_inverse_rtf_median": 2.6411820395662136,
+      "steady_prefill_median_ms": 136.18779997341335,
+      "steady_talker_forward_gpu_median_ms": 130.58560180664062,
+      "profile_complete_fraction": 1.0
+    },
+    {
+      "artifact": "source-worker-product-strict-inductor-default-r5x4.json",
+      "prefill_backend": "compile_inductor_default",
+      "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+      "runs": 5,
+      "requests_per_run": 4,
+      "steady_first_audio_median_ms": 322.37199996598065,
+      "steady_completed_median_ms": 1363.4946999372914,
+      "steady_real_time_factor_median": 0.3581742368190076,
+      "steady_inverse_rtf_median": 2.7919372674068668,
+      "steady_prefill_median_ms": 109.18780008796602,
+      "steady_talker_forward_gpu_median_ms": 103.73529815673828,
+      "profile_complete_fraction": 1.0,
+      "speedup_vs_eager": {
+        "steady_first_audio": 1.107992939883727,
+        "steady_completed": 1.0570786964254129,
+        "steady_prefill": 1.2472803725663038,
+        "steady_talker_forward_gpu": 1.2588347855262634
+      }
+    },
+    {
+      "artifact": "source-worker-product-strict-reduce-r5x4.json",
+      "prefill_backend": "compile_reduce_overhead",
+      "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+      "runs": 5,
+      "requests_per_run": 4,
+      "steady_first_audio_median_ms": 228.13330008648336,
+      "steady_completed_median_ms": 1266.5997999720275,
+      "steady_real_time_factor_median": 0.33272107088568303,
+      "steady_inverse_rtf_median": 3.0055205020170845,
+      "steady_prefill_median_ms": 11.34760002605617,
+      "steady_talker_forward_gpu_median_ms": 5.7333760261535645,
+      "profile_complete_fraction": 1.0,
+      "speedup_vs_eager": {
+        "steady_first_audio": 1.5656894449126784,
+        "steady_completed": 1.1379452294438248,
+        "steady_prefill": 12.001462834493742,
+        "steady_talker_forward_gpu": 22.776388852040554
+      }
+    }
+  ],
+  "verdict": "compile_reduce_overhead with strict_bf16_sdpa_v1 is the recommended opt-in candidate for this RTX 4090 CustomVoice shape."
+}

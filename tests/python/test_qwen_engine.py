@@ -565,6 +565,7 @@ class QwenEngineTests(unittest.TestCase):
                 "chunk_size": 8,
                 "do_sample": True,
                 "prefill_backend": "eager",
+                "prefill_compile_compat_mode": "none",
             },
             fake_model.custom_stream_calls[0],
         )
@@ -634,6 +635,7 @@ class QwenEngineTests(unittest.TestCase):
                 profile_prefill=True,
                 profile_nvtx=True,
                 prefill_backend="compile_reduce_overhead",
+                prefill_compile_compat_mode="strict_bf16_sdpa_v1",
                 do_sample=False,
             ),
             model_loader=lambda _config: fake_model,
@@ -660,6 +662,10 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(
             "compile_reduce_overhead",
             fake_model.custom_stream_calls[0]["prefill_backend"],
+        )
+        self.assertEqual(
+            "strict_bf16_sdpa_v1",
+            fake_model.custom_stream_calls[0]["prefill_compile_compat_mode"],
         )
         self.assertFalse(fake_model.custom_stream_calls[0]["do_sample"])
 
@@ -695,6 +701,7 @@ class QwenEngineTests(unittest.TestCase):
                 "chunk_size": 12,
                 "do_sample": True,
                 "prefill_backend": "eager",
+                "prefill_compile_compat_mode": "none",
             },
             fake_model.design_stream_calls[0],
         )

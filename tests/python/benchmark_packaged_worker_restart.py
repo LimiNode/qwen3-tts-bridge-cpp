@@ -235,6 +235,7 @@ def _build_report(
             "profile_prefill": args.profile_prefill,
             "profile_nvtx": args.profile_nvtx,
             "prefill_backend": args.prefill_backend,
+            "prefill_compile_compat_mode": args.prefill_compile_compat_mode,
             "expected_faster_wheel_sha256": args.expected_faster_wheel_sha256,
             "allow_unverified_faster_wheel": args.allow_unverified_faster_wheel,
             "do_sample": not args.no_sample,
@@ -348,6 +349,11 @@ def _build_parser() -> argparse.ArgumentParser:
             "compile_reduce_overhead",
         ),
         default="eager",
+    )
+    parser.add_argument(
+        "--prefill-compile-compat-mode",
+        choices=("none", "strict_bf16_sdpa_v1"),
+        default="none",
     )
     parser.add_argument(
         "--expected-faster-wheel-sha256",
@@ -1698,6 +1704,10 @@ def _with_request_pipeline_metrics(
         ("prefill_backend_requested", "first_chunk_prefill_backend_requested"),
         ("prefill_backend_used", "first_chunk_prefill_backend_used"),
         ("prefill_compile_error", "first_chunk_prefill_compile_error"),
+        (
+            "prefill_compile_compat_mode",
+            "first_chunk_prefill_compile_compat_mode",
+        ),
     ):
         _copy_metric_string(enriched, first_chunk_phases, source_key, target_key)
     for source_key, target_key in (
@@ -1727,6 +1737,14 @@ def _with_request_pipeline_metrics(
             "first_chunk_all_component_streams_equal",
         ),
         ("prefill_compile_fallback", "first_chunk_prefill_compile_fallback"),
+        (
+            "prefill_compile_compat_applied",
+            "first_chunk_prefill_compile_compat_applied",
+        ),
+        (
+            "prefill_compile_compat_reused",
+            "first_chunk_prefill_compile_compat_reused",
+        ),
     ):
         _copy_metric_bool(enriched, first_chunk_phases, source_key, target_key)
 

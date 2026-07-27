@@ -502,6 +502,9 @@ def _qwen_stream_generate_audio(
                     "chunk_size": config.emit_every_frames,
                     "do_sample": config.do_sample,
                     "prefill_backend": config.prefill_backend,
+                    "prefill_compile_compat_mode": (
+                        config.prefill_compile_compat_mode
+                    ),
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
@@ -551,6 +554,9 @@ def _qwen_stream_generate_audio(
                     "chunk_size": config.emit_every_frames,
                     "do_sample": config.do_sample,
                     "prefill_backend": config.prefill_backend,
+                    "prefill_compile_compat_mode": (
+                        config.prefill_compile_compat_mode
+                    ),
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
@@ -764,6 +770,7 @@ def _first_chunk_timing_fields(
         "prefill_backend_requested",
         "prefill_backend_used",
         "prefill_compile_error",
+        "prefill_compile_compat_mode",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -776,10 +783,15 @@ def _first_chunk_timing_fields(
         "components_nonnegative",
         "all_component_streams_equal",
         "prefill_compile_fallback",
+        "prefill_compile_compat_applied",
+        "prefill_compile_compat_reused",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
             fields[key] = value
+    value = chunk_timing.get("prefill_compile_compat_patched_modules")
+    if isinstance(value, dict):
+        fields["prefill_compile_compat_patched_modules"] = dict(value)
     for key in (
         "tokenize_wall_ms",
         "build_talker_inputs_wall_ms",

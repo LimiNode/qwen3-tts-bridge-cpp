@@ -1990,6 +1990,96 @@ the compatibility islands are moved out of monkeypatch-style diagnostics into a
 maintainable FasterQwen opt-in and the resulting product-shaped path passes the
 same semantic gates.
 
+### Product-Shaped Strict BF16 SDPA Opt-In
+
+The strict compatibility stack has now been moved from diagnostic monkeypatches
+into a FasterQwen opt-in mode:
+
+```text
+prefill_compile_compat_mode=strict_bf16_sdpa_v1
+```
+
+The local FasterQwen worktree is
+`C:\_repoz\faster-qwen3-tts-v032-stack112-clean`, branch
+`prefill-compile-exact-shape`, commit `12527a7`. The bridge worker exposes the
+mode through `--prefill-compile-compat-mode`; the default remains `none`.
+
+The opt-in is deliberately fail-closed. It is accepted only for BF16 inputs,
+batch size `1`, compiled prefill backends
+`compile_inductor_default` / `compile_reduce_overhead`, verified mask skip with
+`attention_mask=None`, SDPA attention metadata, and no sliding-window prefill.
+The compatibility islands are instance-local on the Talker object and cover
+RMSNorm, RoPE additions, MLP multiply, and SDPA.
+
+The semantic gate was also hardened. Generation comparisons now fail unless
+termination telemetry agrees (`termination_reason`, `hit_eos`,
+`terminal_token_id`, `terminal_step_index`, `generated_steps`, `emitted_steps`)
+and the run is semantically complete. A short generation without EOS is no
+longer accepted unless the harness is explicitly run with
+`--allow-partial-generation`.
+
+Correctness gates on RTX 4090:
+
+| Artifact | Shape | Result |
+| --- | --- | --- |
+| `context-gate-v2/bf16-sdpa-raw-strict-inductor-reduce-r3.json` | English quote, `max_new_tokens=64` | raw, strict eager, strict Inductor default, and strict reduce-overhead all pass; prefill diff `0.0`; termination matches with `max_new_tokens`. |
+| `context-gate-v2/bf16-sdpa-raw-strict-inductor-reduce-eos-r3.json` | English quote, `max_new_tokens=256` | all paths pass; true EOS termination matches. |
+| `context-gate-v2/semantic-russian-quote-bf16-sdpa-r3.json` | Russian text | all paths pass; termination matches. |
+| `context-gate-v2/semantic-english-instruction-short-bf16-sdpa-r3.json` | English text plus instruction | all paths pass; true EOS termination matches. |
+| `context-gate-v2/product-strict-bf16-sdpa-r3.json` | product opt-in contexts | raw vs product strict Inductor default/reduce both pass; `max_new_tokens` termination matches. |
+| `context-gate-v2/product-strict-bf16-sdpa-eos-r3.json` | product opt-in contexts, EOS | raw vs product strict Inductor default/reduce both pass; EOS termination matches. |
+| `context-gate-v2/matrix-customvoice-english-short-product-r3.json` | short CustomVoice text | product contexts pass with EOS. |
+| `context-gate-v2/matrix-customvoice-english-long-product-r3.json` | longer CustomVoice text | product contexts pass with `max_new_tokens`. |
+
+FasterQwen validation:
+
+```text
+py_compile: passed for prefill_compat.py, streaming.py, model.py, and tests.
+pytest tests/test_sampling.py tests/test_prefill_compat.py -q: 45 passed, 1 Dynamo warning.
+pytest tests/test_ggml_backend.py tests/test_prefill_compat.py tests/test_sample_rate.py tests/test_sampling.py tests/test_voice_clone_prompt_api.py -q: 102 passed, 1 Dynamo warning.
+PYTHONPATH=<Qwen fork> pytest tests/test_e2e_parity.py -q: 14 passed, 17 warnings, 305.83s.
+PYTHONPATH=<Qwen fork> pytest -q: 116 passed, 18 warnings, 298.91s after final patch.
+Bridge scripts/check-python.ps1 -UseVenv -VenvPath .venv: 154 tests OK, 2 skipped.
+Bridge ctest --test-dir build\default --output-on-failure: 9/9 passed.
+Bridge stdio_transport_test stress, --repeat until-fail:20: 20/20 passed.
+```
+
+The patch and bundle are saved under
+`docs/benchmark-artifacts/rtx4090-2026-07-22/faster-qwen-strict-bf16-sdpa-product-patch/`.
+
+### Product Opt-In Performance A/B
+
+Restart-based source-worker benchmark, RTX 4090, CustomVoice 0.6B, speaker
+`ryan`, BF16, SDPA, chunk size `8`, fixed seed `4242`, greedy decode, one
+warmup synthesis before `ready`, `5` runs x `4` requests:
+
+| Mode | Steady first audio median | Steady completed median | Steady RTF median | Steady inverse RTF | Steady prefill median | Talker forward GPU median |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| eager / no compat | 357.2 ms | 1441.3 ms | 0.379 | 2.64x | 136.2 ms | 130.6 ms |
+| Inductor default / `strict_bf16_sdpa_v1` | 322.4 ms | 1363.5 ms | 0.358 | 2.79x | 109.2 ms | 103.7 ms |
+| reduce-overhead / `strict_bf16_sdpa_v1` | 228.1 ms | 1266.6 ms | 0.333 | 3.01x | 11.3 ms | 5.7 ms |
+
+Relative to eager, `compile_reduce_overhead + strict_bf16_sdpa_v1` improves
+steady first-audio latency by about `1.56x`, steady completion/RTF by about
+`1.14x`, and the measured steady prefill bucket by about `12.0x`. Profile
+validation was complete for all three reports.
+
+Artifacts:
+
+```text
+product-compat-performance/source-worker-eager-r5x4.json
+product-compat-performance/source-worker-product-strict-inductor-default-r5x4.json
+product-compat-performance/source-worker-product-strict-reduce-r5x4.json
+product-compat-performance/summary.json
+```
+
+Current recommendation: keep product defaults eager, but treat
+`compile_reduce_overhead + strict_bf16_sdpa_v1` as the first realistic opt-in
+candidate for this RTX 4090 CustomVoice shape. VoiceDesign was not validated
+because the local model is CustomVoice only. CMP 50HX compatibility remains a
+future hardware profile; the mode's fail-closed BF16/SDPA checks should help,
+but it still needs a real run on that card before being advertised.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

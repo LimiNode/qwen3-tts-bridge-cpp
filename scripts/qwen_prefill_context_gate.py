@@ -25,6 +25,7 @@ from qwen_prefill_compile_parity import (
     _snapshot_prefill_output,
     _tensor_fingerprint,
     _top_logit_summary,
+    _validate_generation_comparisons,
     _validate_attention_probe,
 )
 
@@ -54,11 +55,14 @@ def main() -> int:
     parser.add_argument("--chunk-size", type=int, default=8)
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--skip-generation", action="store_true")
+    parser.add_argument("--allow-partial-generation", action="store_true")
     parser.add_argument("--matmul-precision", default="high")
     parser.add_argument("--disable-tf32", action="store_true")
     parser.add_argument("--trace-attention-calls", action="store_true")
     parser.add_argument("--include-reduce-overhead", action="store_true")
     parser.add_argument("--include-component-ablation", action="store_true")
+    parser.add_argument("--include-product-compat", action="store_true")
+    parser.add_argument("--compact-output", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
@@ -108,6 +112,7 @@ def main() -> int:
     contexts = _context_specs(
         include_reduce_overhead=args.include_reduce_overhead,
         include_component_ablation=args.include_component_ablation,
+        include_product_compat=args.include_product_compat,
     )
     prefill_runs: dict[str, list[dict[str, Any]]] = {}
     prefill_objects: dict[str, list[Any]] = {}
@@ -127,6 +132,7 @@ def main() -> int:
                     metadata,
                     spec["backend"],
                     args.prefill_mask_mode,
+                    spec.get("prefill_compile_compat_mode", "none"),
                 )
                 snapshot = _snapshot_prefill_output(out)
                 objects.append(snapshot)
@@ -160,6 +166,10 @@ def main() -> int:
                     max_new_tokens=args.max_new_tokens,
                     chunk_size=args.chunk_size,
                     prefill_mask_mode=args.prefill_mask_mode,
+                    prefill_compile_compat_mode=spec.get(
+                        "prefill_compile_compat_mode",
+                        "none",
+                    ),
                 )
 
     prefill_comparisons = _compare_all_prefill(prefill_objects)
@@ -168,7 +178,9 @@ def main() -> int:
         generation_comparisons = _compare_all_generation(
             generation_runs,
             eos_id=int(config.codec_eos_token_id),
+            allow_partial_generation=args.allow_partial_generation,
         )
+        _validate_context_generation_comparisons(generation_comparisons)
 
     report = {
         "artifact_schema_version": 1,
@@ -188,12 +200,15 @@ def main() -> int:
         "forced_talker_attn_config_updates": forced_attn_updates,
         "attention_call_probe": attention_call_probe,
         "include_component_ablation": args.include_component_ablation,
+        "include_product_compat": args.include_product_compat,
         "prefill_mask_mode_requested": args.prefill_mask_mode,
         "contexts": contexts,
         "repeats": args.repeats,
         "max_new_tokens": args.max_new_tokens,
         "chunk_size": args.chunk_size,
         "skip_generation": args.skip_generation,
+        "allow_partial_generation": args.allow_partial_generation,
+        "compact_output": args.compact_output,
         "inputs": {
             "talker_input_embeds": _tensor_fingerprint(tie),
             "attention_mask": _tensor_fingerprint(tam),
@@ -209,6 +224,8 @@ def main() -> int:
             "comparisons": generation_comparisons,
         },
     }
+    if args.compact_output:
+        _compact_report(report)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps(_summary(report), sort_keys=True))
@@ -219,6 +236,7 @@ def _context_specs(
     *,
     include_reduce_overhead: bool,
     include_component_ablation: bool,
+    include_product_compat: bool,
 ) -> list[dict[str, Any]]:
     raw = _compat("current", "current", "current", "current")
     strict = _compat("strict_custom", "strict_add", "strict_mul", "strict_sdpa")
@@ -279,6 +297,23 @@ def _context_specs(
                 },
             ]
         )
+    if include_product_compat:
+        rows.extend(
+            [
+                {
+                    "label": "product_strict_inductor_default",
+                    "backend": "compile_inductor_default",
+                    "compat": raw,
+                    "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+                },
+                {
+                    "label": "product_strict_reduce_overhead",
+                    "backend": "compile_reduce_overhead",
+                    "compat": raw,
+                    "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+                },
+            ]
+        )
     return rows
 
 
@@ -314,17 +349,43 @@ def _compare_all_generation(
     generation_runs: dict[str, list[dict[str, Any]]],
     *,
     eos_id: int,
+    allow_partial_generation: bool,
 ) -> dict[str, Any]:
     raw = generation_runs["raw_eager"][0]
     strict = generation_runs["strict_eager"][0]
     return {
         label: {
-            "vs_raw_eager": _compare_generation(raw, rows[-1], eos_id=eos_id),
-            "vs_strict_eager": _compare_generation(strict, rows[-1], eos_id=eos_id),
+            "vs_strict_eager": _compare_generation(
+                strict,
+                rows[-1],
+                eos_id=eos_id,
+                allow_partial_generation=allow_partial_generation,
+            ),
+            "vs_raw_eager": _compare_generation(
+                raw,
+                rows[-1],
+                eos_id=eos_id,
+                allow_partial_generation=allow_partial_generation,
+            ),
             "frame_accounting": rows[-1].get("frame_accounting"),
         }
         for label, rows in generation_runs.items()
     }
+
+
+def _validate_context_generation_comparisons(comparisons: dict[str, Any]) -> None:
+    _validate_generation_comparisons(
+        {
+            f"{label}.vs_raw_eager": values["vs_raw_eager"]
+            for label, values in comparisons.items()
+        }
+    )
+    _validate_generation_comparisons(
+        {
+            f"{label}.vs_strict_eager": values["vs_strict_eager"]
+            for label, values in comparisons.items()
+        }
+    )
 
 
 def _summary(report: dict[str, Any]) -> dict[str, Any]:
@@ -342,11 +403,20 @@ def _summary(report: dict[str, Any]) -> dict[str, Any]:
                 "same_codec": values["vs_raw_eager"]["same_codec"],
                 "same_frame_count": values["vs_raw_eager"]["same_frame_count"],
                 "eos_equal": values["vs_raw_eager"]["eos_equal"],
+                "termination_equal": values["vs_raw_eager"]["termination_equal"],
+                "semantic_pass": values["vs_raw_eager"]["semantic_pass"],
                 "stop_reason": (values.get("frame_accounting") or {}).get("stop_reason"),
             }
             for label, values in generation.items()
         },
     }
+
+
+def _compact_report(report: dict[str, Any]) -> None:
+    for rows in report.get("generation", {}).get("runs", {}).values():
+        for row in rows:
+            row.pop("codec_values", None)
+            row.pop("timings", None)
 
 
 def _eval_inner_modules(model: Any) -> None:

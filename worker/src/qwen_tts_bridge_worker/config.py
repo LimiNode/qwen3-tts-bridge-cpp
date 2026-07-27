@@ -61,6 +61,7 @@ class QwenEngineConfig:
         "compile_inductor_default",
         "compile_reduce_overhead",
     ] = "eager"
+    prefill_compile_compat_mode: Literal["none", "strict_bf16_sdpa_v1"] = "none"
     do_sample: bool = True
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"
@@ -109,6 +110,14 @@ class QwenEngineConfig:
             raise ValueError(
                 "qwen.prefill_backend must be eager, a supported diagnostic "
                 "compile backend, or compile_reduce_overhead"
+            )
+        if self.prefill_compile_compat_mode not in {
+            "none",
+            "strict_bf16_sdpa_v1",
+        }:
+            raise ValueError(
+                "qwen.prefill_compile_compat_mode must be none or "
+                "strict_bf16_sdpa_v1"
             )
         if self.seed_mode not in {"request_id", "fixed"}:
             raise ValueError("qwen.seed_mode must be request_id or fixed")

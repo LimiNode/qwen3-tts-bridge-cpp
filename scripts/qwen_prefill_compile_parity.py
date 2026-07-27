@@ -141,10 +141,16 @@ def main() -> int:
         default="auto",
         choices=("auto", "explicit", "skip"),
     )
+    parser.add_argument(
+        "--prefill-compile-compat-mode",
+        default="none",
+        choices=("none", "strict_bf16_sdpa_v1"),
+    )
     parser.add_argument("--max-new-tokens", type=int, default=64)
     parser.add_argument("--chunk-size", type=int, default=8)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--skip-generation", action="store_true")
+    parser.add_argument("--allow-partial-generation", action="store_true")
     parser.add_argument("--matmul-precision", default="high")
     parser.add_argument("--disable-tf32", action="store_true")
     parser.add_argument("--disable-compile-rmsnorm", action="store_true")
@@ -241,6 +247,7 @@ def main() -> int:
                     metadata,
                     backend,
                     args.prefill_mask_mode,
+                    args.prefill_compile_compat_mode,
                 )
                 snapshot = _snapshot_prefill_output(out)
                 objects.append(snapshot)
@@ -287,6 +294,7 @@ def main() -> int:
                     max_new_tokens=args.max_new_tokens,
                     chunk_size=args.chunk_size,
                     prefill_mask_mode=args.prefill_mask_mode,
+                    prefill_compile_compat_mode=args.prefill_compile_compat_mode,
                 )
                 for backend in backends
             }
@@ -295,9 +303,11 @@ def main() -> int:
                     generation["eager"][0],
                     rows[-1],
                     eos_id=int(config.codec_eos_token_id),
+                    allow_partial_generation=args.allow_partial_generation,
                 )
                 for backend, rows in generation.items()
             }
+            _validate_generation_comparisons(generation_comparisons)
 
     report = {
         "artifact_schema_version": 1,
@@ -316,6 +326,7 @@ def main() -> int:
         "forced_talker_attn_config_updates": forced_attn_updates,
         "attention_call_probe": attention_call_probe,
         "prefill_mask_mode_requested": args.prefill_mask_mode,
+        "prefill_compile_compat_mode": args.prefill_compile_compat_mode,
         "disable_compile_rmsnorm": args.disable_compile_rmsnorm,
         "disable_compile_rope": args.disable_compile_rope,
         "rmsnorm_compat_mode": args.rmsnorm_compat_mode,
@@ -327,6 +338,7 @@ def main() -> int:
         "max_new_tokens": args.max_new_tokens,
         "chunk_size": args.chunk_size,
         "skip_generation": args.skip_generation,
+        "allow_partial_generation": args.allow_partial_generation,
         "precision": {
             "matmul_precision": args.matmul_precision,
             "disable_tf32": args.disable_tf32,
@@ -375,6 +387,8 @@ def main() -> int:
                         "same_codec": value["same_codec"],
                         "same_frame_count": value["same_frame_count"],
                         "eos_equal": value["eos_equal"],
+                        "termination_equal": value["termination_equal"],
+                        "semantic_pass": value["semantic_pass"],
                     }
                     for key, value in generation_comparisons.items()
                 },
@@ -735,6 +749,7 @@ def _prefill_once(
     metadata: dict[str, Any],
     backend: str,
     prefill_mask_mode: str,
+    prefill_compile_compat_mode: str,
 ) -> tuple[Any, dict[str, Any]]:
     mask_mode = (
         select_prefill_mask_mode(metadata)
@@ -751,6 +766,8 @@ def _prefill_once(
             tpe,
             prefill_backend=backend,
             prefill_mask_mode=mask_mode,
+            prefill_compile_compat_mode=prefill_compile_compat_mode,
+            input_metadata=metadata,
         )
     torch.cuda.synchronize()
     return out, profile
@@ -834,6 +851,7 @@ def _generation_repeats(
     max_new_tokens: int,
     chunk_size: int,
     prefill_mask_mode: str,
+    prefill_compile_compat_mode: str,
 ) -> list[dict[str, Any]]:
     return [
         _generate_once(
@@ -850,6 +868,7 @@ def _generation_repeats(
             max_new_tokens=max_new_tokens,
             chunk_size=chunk_size,
             prefill_mask_mode=prefill_mask_mode,
+            prefill_compile_compat_mode=prefill_compile_compat_mode,
             repeat=repeat_index + 1,
         )
         for repeat_index in range(repeats)
@@ -871,6 +890,7 @@ def _generate_once(
     max_new_tokens: int,
     chunk_size: int,
     prefill_mask_mode: str,
+    prefill_compile_compat_mode: str,
     repeat: int,
 ) -> dict[str, Any]:
     chunks = []
@@ -897,6 +917,7 @@ def _generate_once(
             profile_prefill=True,
             prefill_backend=backend,
             prefill_mask_mode=prefill_mask_mode,
+            prefill_compile_compat_mode=prefill_compile_compat_mode,
         ):
             chunks.append(codec_chunk.detach().cpu().contiguous())
             timings.append(timing)
@@ -952,6 +973,7 @@ def _frame_accounting(
     final_chunk_steps = int(final_timing.get("chunk_steps", 0)) if timings else 0
     final_is_final = bool(final_timing.get("is_final", False)) if timings else False
     generator_termination = _generator_termination(final_timing)
+    generated_steps = int(generator_termination.get("generated_steps", emitted_steps))
     eos_positions = _eos_positions(codec, eos_id)
     if generator_termination.get("termination_reason"):
         stop_reason = str(generator_termination["termination_reason"])
@@ -966,7 +988,7 @@ def _frame_accounting(
     return {
         "requested_max_new_tokens": requested_max_new_tokens,
         "emitted_steps": emitted_steps,
-        "generated_steps": emitted_steps,
+        "generated_steps": generated_steps,
         "final_chunk_steps": final_chunk_steps,
         "final_is_final": final_is_final,
         "stop_reason": stop_reason,
@@ -1028,6 +1050,7 @@ def _compare_generation(
     right: dict[str, Any],
     *,
     eos_id: int,
+    allow_partial_generation: bool = False,
 ) -> dict[str, Any]:
     first_divergence = _first_codec_divergence(
         left.get("codec_values"),
@@ -1036,19 +1059,137 @@ def _compare_generation(
     left_codec = left["codec_sha256"]
     right_codec = right["codec_sha256"]
     same_codec = left_codec == right_codec
+    left_accounting = left.get("frame_accounting") or {}
+    right_accounting = right.get("frame_accounting") or {}
+    termination = _compare_termination_accounting(
+        left_accounting,
+        right_accounting,
+        allow_partial_generation=allow_partial_generation,
+    )
+    same_frame_count = left["generated_frames"] == right["generated_frames"]
+    same_audio_samples = left["audio_samples"] == right["audio_samples"]
+    same_waveform = left["waveform_sha256"] == right["waveform_sha256"]
+    eos_equal = left["eos_frame"] == right["eos_frame"]
+    semantic_pass = (
+        same_codec
+        and same_frame_count
+        and same_audio_samples
+        and same_waveform
+        and eos_equal
+        and termination["termination_equal"]
+        and termination["left_generation_complete"]
+        and termination["right_generation_complete"]
+    )
     return {
         "same_codec": same_codec,
-        "same_frame_count": left["generated_frames"] == right["generated_frames"],
-        "same_audio_samples": left["audio_samples"] == right["audio_samples"],
-        "same_waveform": left["waveform_sha256"] == right["waveform_sha256"],
+        "same_frame_count": same_frame_count,
+        "same_audio_samples": same_audio_samples,
+        "same_waveform": same_waveform,
         "eos_id": eos_id,
         "left_eos_frame": left["eos_frame"],
         "right_eos_frame": right["eos_frame"],
-        "eos_equal": left["eos_frame"] == right["eos_frame"],
+        "eos_equal": eos_equal,
+        "left_frame_accounting": left_accounting,
+        "right_frame_accounting": right_accounting,
+        "termination_equal": termination["termination_equal"],
+        "termination_differences": termination["termination_differences"],
+        "left_generation_complete": termination["left_generation_complete"],
+        "right_generation_complete": termination["right_generation_complete"],
+        "left_completion_errors": termination["left_completion_errors"],
+        "right_completion_errors": termination["right_completion_errors"],
+        "allow_partial_generation": allow_partial_generation,
+        "semantic_pass": semantic_pass,
         "left_audio_duration_ms": left["audio_duration_ms"],
         "right_audio_duration_ms": right["audio_duration_ms"],
         "first_divergence": first_divergence,
     }
+
+
+def _compare_termination_accounting(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    *,
+    allow_partial_generation: bool,
+) -> dict[str, Any]:
+    fields = (
+        "termination_reason",
+        "hit_eos",
+        "hit_max_new_tokens",
+        "hit_max_seq_len",
+        "terminal_token_id",
+        "terminal_step_index",
+        "generator_loop_iterations",
+        "generated_steps",
+        "emitted_steps",
+    )
+    left_term = left.get("generator_termination") or {}
+    right_term = right.get("generator_termination") or {}
+    differences = {
+        field: {"left": left_term.get(field), "right": right_term.get(field)}
+        for field in fields
+        if left_term.get(field) != right_term.get(field)
+    }
+    left_errors = _generation_completion_errors(
+        left,
+        allow_partial_generation=allow_partial_generation,
+    )
+    right_errors = _generation_completion_errors(
+        right,
+        allow_partial_generation=allow_partial_generation,
+    )
+    return {
+        "termination_equal": not differences,
+        "termination_differences": differences,
+        "left_generation_complete": not left_errors,
+        "right_generation_complete": not right_errors,
+        "left_completion_errors": left_errors,
+        "right_completion_errors": right_errors,
+    }
+
+
+def _generation_completion_errors(
+    accounting: dict[str, Any],
+    *,
+    allow_partial_generation: bool,
+) -> list[str]:
+    if allow_partial_generation:
+        return []
+    errors = []
+    termination = accounting.get("generator_termination") or {}
+    reason = termination.get("termination_reason")
+    if not accounting.get("final_is_final", False):
+        errors.append("final_is_final is false")
+    if reason not in {"eos", "max_new_tokens", "max_seq_len"}:
+        errors.append(f"unsupported termination_reason {reason!r}")
+    if accounting.get("stop_reason") == "short_without_eos":
+        errors.append("short_without_eos is not allowed")
+    if accounting.get("generated_steps") != accounting.get("emitted_steps"):
+        errors.append("generated_steps != emitted_steps")
+    if termination.get("generated_steps") != termination.get("emitted_steps"):
+        errors.append("termination generated_steps != emitted_steps")
+    return errors
+
+
+def _validate_generation_comparisons(comparisons: dict[str, Any]) -> None:
+    failures = {
+        label: values
+        for label, values in comparisons.items()
+        if not values.get("semantic_pass", False)
+    }
+    if failures:
+        details = {
+            label: {
+                "same_codec": values.get("same_codec"),
+                "same_frame_count": values.get("same_frame_count"),
+                "same_waveform": values.get("same_waveform"),
+                "termination_equal": values.get("termination_equal"),
+                "left_completion_errors": values.get("left_completion_errors"),
+                "right_completion_errors": values.get("right_completion_errors"),
+                "first_divergence": values.get("first_divergence"),
+            }
+            for label, values in failures.items()
+        }
+        raise RuntimeError(f"Generation semantic gate failed: {details!r}")
 
 
 def _first_codec_divergence(left: object, right: object) -> dict[str, Any] | None:

@@ -255,6 +255,11 @@ def main() -> int:
         ),
         default="eager",
     )
+    parser.add_argument(
+        "--prefill-compile-compat-mode",
+        choices=("none", "strict_bf16_sdpa_v1"),
+        default="none",
+    )
     parser.add_argument("--no-sample", action="store_true")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
@@ -375,6 +380,13 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
     prefill_backend = str(getattr(args, "prefill_backend", "eager"))
     if prefill_backend:
         worker_args.extend(["--prefill-backend", prefill_backend])
+    prefill_compile_compat_mode = str(
+        getattr(args, "prefill_compile_compat_mode", "none")
+    )
+    if prefill_compile_compat_mode:
+        worker_args.extend(
+            ["--prefill-compile-compat-mode", prefill_compile_compat_mode]
+        )
     if getattr(args, "no_sample", False):
         worker_args.append("--no-sample")
     seed = getattr(args, "seed", None)

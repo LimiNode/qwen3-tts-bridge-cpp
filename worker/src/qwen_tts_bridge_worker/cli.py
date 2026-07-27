@@ -80,6 +80,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 profile_prefill=args.profile_prefill,
                 profile_nvtx=args.profile_nvtx,
                 prefill_backend=args.prefill_backend,
+                prefill_compile_compat_mode=args.prefill_compile_compat_mode,
                 do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
@@ -292,6 +293,12 @@ def _add_qwen_subcommand(
         ),
         default="eager",
         help="Select the faster-backend talker prefill implementation.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-compile-compat-mode",
+        choices=("none", "strict_bf16_sdpa_v1"),
+        default="none",
+        help="Select the faster-backend compiled prefill compatibility mode.",
     )
     qwen_parser.add_argument(
         "--no-sample",
