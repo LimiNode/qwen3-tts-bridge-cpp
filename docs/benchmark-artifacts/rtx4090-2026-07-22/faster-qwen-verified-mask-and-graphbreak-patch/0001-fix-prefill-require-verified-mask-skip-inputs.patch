@@ -1,0 +1,207 @@
+From afa5aa9e3a2121689ea986246ae8a89cbba8cf08 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 10:02:01 +0300
+Subject: [PATCH 1/2] fix(prefill): require verified mask skip inputs
+
+---
+ faster_qwen3_tts/model.py     | 13 ++++++++-----
+ faster_qwen3_tts/streaming.py | 23 ++++++++++++++---------
+ tests/test_sampling.py        |  4 ++++
+ 3 files changed, 26 insertions(+), 14 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 2b11a42..1fe332d 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -635,7 +635,7 @@ class FasterQwen3TTS:
+ 
+         m = self.model.model
+         build_started = time.perf_counter()
+-        tie, tam, tth, tpe = self._build_talker_inputs_local(
++        tie, tam, tth, tpe, mask_metadata = self._build_talker_inputs_local(
+             m=m,
+             input_ids=input_ids,
+             ref_ids=[None],
+@@ -644,6 +644,7 @@ class FasterQwen3TTS:
+             speakers=[speaker],
+             non_streaming_mode=non_streaming_mode,
+             instruct_ids=instruct_ids,
++            return_mask_metadata=True,
+         )
+         build_talker_inputs_wall_ms = (time.perf_counter() - build_started) * 1000
+ 
+@@ -657,9 +658,6 @@ class FasterQwen3TTS:
+ 
+         if return_metadata:
+             instruct_id = instruct_ids[0] if instruct_ids else None
+-            mask_metadata = self._prefill_attention_mask_metadata(
+-                torch.tensor([int(tie.shape[1])], dtype=torch.long)
+-            )
+             metadata = {
+                 "text_token_count": int(input_ids[0].shape[-1]) if input_ids else 0,
+                 "instruction_token_count": (
+@@ -691,6 +689,7 @@ class FasterQwen3TTS:
+         speakers,
+         non_streaming_mode: bool,
+         instruct_ids=None,
++        return_mask_metadata: bool = False,
+     ):
+         """Local copy of upstream talker input building for qwen-tts main repo."""
+         talker_input_embeds = [[] for _ in range(len(input_ids))]
+@@ -941,6 +940,7 @@ class FasterQwen3TTS:
+         talker_attention_mask = (
+             (indices >= num_pads.unsqueeze(1)).long().to(talker_input_embeds.device)
+         )
++        mask_metadata = self._prefill_attention_mask_metadata(original_lengths)
+ 
+         pad_embedding_vector = tts_pad_embed.squeeze()
+         sequences_to_pad = [t.squeeze(0) for t in trailing_text_hiddens]
+@@ -960,12 +960,15 @@ class FasterQwen3TTS:
+         padded_hiddens[padding_mask] = pad_embedding_vector
+         trailing_text_hiddens = padded_hiddens
+ 
+-        return (
++        result = (
+             talker_input_embeds,
+             talker_attention_mask,
+             trailing_text_hiddens,
+             tts_pad_embed,
+         )
++        if return_mask_metadata:
++            return (*result, mask_metadata)
++        return result
+ 
+     @torch.inference_mode()
+     def generate_voice_clone(
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 42ebb85..3f831ae 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -73,6 +73,7 @@ def _run_talker_prefill(
+ ):
+     prefill_mask_mode = _normalize_prefill_mask_mode(prefill_mask_mode)
+     skip_prefill_causal_mask = prefill_mask_mode == "skip"
++    prefill_attention_mask = None if skip_prefill_causal_mask else attention_mask
+     profile = {
+         "prefill_backend_requested": prefill_backend,
+         "prefill_backend_used": "eager",
+@@ -86,7 +87,7 @@ def _run_talker_prefill(
+             _talker_prefill_eager(
+                 talker,
+                 talker_input_embeds,
+-                attention_mask,
++                prefill_attention_mask,
+                 trailing_text_hiddens,
+                 tts_pad_embed,
+                 skip_prefill_causal_mask=skip_prefill_causal_mask,
+@@ -97,7 +98,7 @@ def _run_talker_prefill(
+     cache_key = _prefill_compile_cache_key(
+         talker,
+         talker_input_embeds,
+-        attention_mask,
++        prefill_attention_mask,
+         trailing_text_hiddens,
+         tts_pad_embed,
+         prefill_backend,
+@@ -110,7 +111,7 @@ def _run_talker_prefill(
+             _talker_prefill_eager(
+                 talker,
+                 talker_input_embeds,
+-                attention_mask,
++                prefill_attention_mask,
+                 trailing_text_hiddens,
+                 tts_pad_embed,
+                 skip_prefill_causal_mask=skip_prefill_causal_mask,
+@@ -125,7 +126,7 @@ def _run_talker_prefill(
+             _PREFILL_COMPILE_CACHE[cache_key] = compiled
+         out = compiled(
+             talker_input_embeds,
+-            attention_mask,
++            prefill_attention_mask,
+             trailing_text_hiddens,
+             tts_pad_embed,
+             skip_prefill_causal_mask,
+@@ -139,7 +140,7 @@ def _run_talker_prefill(
+             _talker_prefill_eager(
+                 talker,
+                 talker_input_embeds,
+-                attention_mask,
++                prefill_attention_mask,
+                 trailing_text_hiddens,
+                 tts_pad_embed,
+                 skip_prefill_causal_mask=skip_prefill_causal_mask,
+@@ -182,7 +183,7 @@ def select_prefill_mask_mode(input_metadata: Optional[dict]) -> str:
+ def _talker_prefill_eager(
+     talker,
+     talker_input_embeds: torch.Tensor,
+-    attention_mask: torch.Tensor,
++    attention_mask: Optional[torch.Tensor],
+     trailing_text_hiddens: torch.Tensor,
+     tts_pad_embed: torch.Tensor,
+     *,
+@@ -215,7 +216,7 @@ def _compile_talker_prefill(talker, prefill_backend: str) -> Callable:
+ 
+     def prefill_fn(
+         inputs_embeds: torch.Tensor,
+-        attention_mask: torch.Tensor,
++        attention_mask: Optional[torch.Tensor],
+         trailing_text_hiddens: torch.Tensor,
+         tts_pad_embed: torch.Tensor,
+         skip_prefill_causal_mask: bool,
+@@ -258,7 +259,9 @@ def _prefill_compile_cache_key(
+     )
+ 
+ 
+-def _tensor_signature(tensor: torch.Tensor) -> tuple:
++def _tensor_signature(tensor: Optional[torch.Tensor]) -> tuple:
++    if tensor is None:
++        return ("none",)
+     return (
+         tuple(tensor.shape),
+         str(tensor.dtype),
+@@ -289,6 +292,7 @@ def fast_generate_streaming(
+     profile_prefill: bool = False,
+     profile_nvtx: bool = False,
+     prefill_backend: str = "eager",
++    prefill_mask_mode: str = "auto",
+ ) -> Generator[Tuple[torch.Tensor, dict], None, None]:
+     """
+     Streaming autoregressive generation with CUDA-graphed predictor and talker.
+@@ -309,7 +313,8 @@ def fast_generate_streaming(
+     talker_codec_head = talker.codec_head
+     fused_codec_weights, fused_codec_offsets = get_fused_codec_embeddings(predictor)
+     prefill_backend = _normalize_prefill_backend(prefill_backend)
+-    prefill_mask_mode = select_prefill_mask_mode(input_metadata)
++    if str(prefill_mask_mode or "auto").strip().lower() == "auto":
++        prefill_mask_mode = select_prefill_mask_mode(input_metadata)
+ 
+     # === PREFILL (still uses HF forward for variable-length prefill) ===
+     t_start = time.perf_counter()
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index 4e214e8..a5bd472 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -157,9 +157,11 @@ def test_run_talker_prefill_passes_static_mask_mode():
+     class DummyTalker:
+         def __init__(self):
+             self.seen = []
++            self.masks = []
+ 
+         def forward(self, **kwargs):
+             self.seen.append(kwargs["skip_prefill_causal_mask"])
++            self.masks.append(kwargs["attention_mask"])
+             hidden = kwargs["inputs_embeds"]
+             return types.SimpleNamespace(
+                 logits=torch.zeros(1, hidden.shape[1], 3),
+@@ -194,6 +196,8 @@ def test_run_talker_prefill_passes_static_mask_mode():
+     )
+ 
+     assert talker.seen == [True, False]
++    assert talker.masks[0] is None
++    assert talker.masks[1] is tam
+ 
+ 
+ @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required for fast_generate syncs.")
+-- 
+2.53.0.windows.1
+

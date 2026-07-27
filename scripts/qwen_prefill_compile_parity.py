@@ -5,11 +5,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
+import qwen_tts.core.models.modeling_qwen3_tts as qwen_modeling
 from faster_qwen3_tts import FasterQwen3TTS
 from faster_qwen3_tts.streaming import (
     _run_talker_prefill,
@@ -22,6 +24,7 @@ DEFAULT_BACKENDS = (
     "compile_backend_eager",
     "compile_backend_aot_eager",
     "compile_inductor_default",
+    "compile_inductor_graphbreak",
     "compile_reduce_overhead",
 )
 
@@ -38,12 +41,19 @@ def main() -> int:
     parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--attn-implementation", default="eager")
     parser.add_argument("--backend", action="append", dest="backends")
+    parser.add_argument(
+        "--prefill-mask-mode",
+        default="auto",
+        choices=("auto", "explicit", "skip"),
+    )
     parser.add_argument("--max-new-tokens", type=int, default=64)
     parser.add_argument("--chunk-size", type=int, default=8)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--skip-generation", action="store_true")
     parser.add_argument("--matmul-precision", default="high")
     parser.add_argument("--disable-tf32", action="store_true")
+    parser.add_argument("--disable-compile-rmsnorm", action="store_true")
+    parser.add_argument("--disable-compile-rope", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
@@ -67,77 +77,82 @@ def main() -> int:
     m, talker, config, tie, tam, tth, tpe, metadata = prepared
     backends = tuple(args.backends or DEFAULT_BACKENDS)
 
-    prefill_outputs: dict[str, list[dict[str, Any]]] = {}
-    prefill_objects: dict[str, list[Any]] = {}
-    for backend in backends:
-        rows = []
-        objects = []
-        for repeat_index in range(args.repeats):
-            out, profile = _prefill_once(
-                talker,
-                tie,
-                tam,
-                tth,
-                tpe,
-                metadata,
-                backend,
-            )
-            snapshot = _snapshot_prefill_output(out)
-            objects.append(snapshot)
-            rows.append(
-                {
-                    "repeat": repeat_index + 1,
-                    "profile": profile,
-                    "logits_last": _tensor_fingerprint(
-                        snapshot["logits"][:, -1, :]
-                    ),
-                    "past_hidden": _tensor_fingerprint(snapshot["past_hidden"]),
-                    "top_logits": _top_logit_summary(snapshot["logits"][:, -1, :]),
-                }
-            )
-        prefill_outputs[backend] = rows
-        prefill_objects[backend] = objects
+    with _compile_disable_context(
+        rmsnorm=args.disable_compile_rmsnorm,
+        rope=args.disable_compile_rope,
+    ):
+        prefill_outputs: dict[str, list[dict[str, Any]]] = {}
+        prefill_objects: dict[str, list[Any]] = {}
+        for backend in backends:
+            rows = []
+            objects = []
+            for repeat_index in range(args.repeats):
+                out, profile = _prefill_once(
+                    talker,
+                    tie,
+                    tam,
+                    tth,
+                    tpe,
+                    metadata,
+                    backend,
+                    args.prefill_mask_mode,
+                )
+                snapshot = _snapshot_prefill_output(out)
+                objects.append(snapshot)
+                rows.append(
+                    {
+                        "repeat": repeat_index + 1,
+                        "profile": profile,
+                        "logits_last": _tensor_fingerprint(
+                            snapshot["logits"][:, -1, :]
+                        ),
+                        "past_hidden": _tensor_fingerprint(snapshot["past_hidden"]),
+                        "top_logits": _top_logit_summary(snapshot["logits"][:, -1, :]),
+                    }
+                )
+            prefill_outputs[backend] = rows
+            prefill_objects[backend] = objects
 
-    eager_reference = prefill_objects["eager"][0]
-    prefill_comparisons = {
-        backend: _compare_prefill_outputs(eager_reference, objects[-1])
-        for backend, objects in prefill_objects.items()
-    }
-    repeat_comparisons = {
-        backend: _compare_prefill_outputs(objects[0], objects[-1])
-        for backend, objects in prefill_objects.items()
-        if len(objects) > 1
-    }
-
-    generation = {}
-    generation_comparisons = {}
-    if not args.skip_generation:
-        generation = {
-            backend: _generation_repeats(
-                model,
-                m,
-                talker,
-                config,
-                tie,
-                tam,
-                tth,
-                tpe,
-                metadata,
-                backend,
-                repeats=args.repeats,
-                max_new_tokens=args.max_new_tokens,
-                chunk_size=args.chunk_size,
-            )
-            for backend in backends
+        eager_reference = prefill_objects["eager"][0]
+        prefill_comparisons = {
+            backend: _compare_prefill_outputs(eager_reference, objects[-1])
+            for backend, objects in prefill_objects.items()
         }
-        generation_comparisons = {
-            backend: _compare_generation(
-                generation["eager"][0],
-                rows[-1],
-                eos_id=int(config.codec_eos_token_id),
-            )
-            for backend, rows in generation.items()
+        repeat_comparisons = {
+            backend: _compare_prefill_outputs(objects[0], objects[-1])
+            for backend, objects in prefill_objects.items()
+            if len(objects) > 1
         }
+        generation = {}
+        generation_comparisons = {}
+        if not args.skip_generation:
+            generation = {
+                backend: _generation_repeats(
+                    model,
+                    m,
+                    talker,
+                    config,
+                    tie,
+                    tam,
+                    tth,
+                    tpe,
+                    metadata,
+                    backend,
+                    repeats=args.repeats,
+                    max_new_tokens=args.max_new_tokens,
+                    chunk_size=args.chunk_size,
+                    prefill_mask_mode=args.prefill_mask_mode,
+                )
+                for backend in backends
+            }
+            generation_comparisons = {
+                backend: _compare_generation(
+                    generation["eager"][0],
+                    rows[-1],
+                    eos_id=int(config.codec_eos_token_id),
+                )
+                for backend, rows in generation.items()
+            }
 
     report = {
         "artifact_schema_version": 1,
@@ -151,6 +166,9 @@ def main() -> int:
         "runtime": _runtime_metadata(args.device),
         "dtype": args.dtype,
         "attn_implementation": args.attn_implementation,
+        "prefill_mask_mode_requested": args.prefill_mask_mode,
+        "disable_compile_rmsnorm": args.disable_compile_rmsnorm,
+        "disable_compile_rope": args.disable_compile_rope,
         "backends": backends,
         "repeats": args.repeats,
         "max_new_tokens": args.max_new_tokens,
@@ -221,6 +239,25 @@ def _configure_precision(args: argparse.Namespace) -> None:
         torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
 
 
+@contextmanager
+def _compile_disable_context(*, rmsnorm: bool, rope: bool):
+    original_rmsnorm_forward = qwen_modeling.Qwen3TTSRMSNorm.forward
+    original_rope = qwen_modeling.apply_multimodal_rotary_pos_emb
+    try:
+        if rmsnorm:
+            qwen_modeling.Qwen3TTSRMSNorm.forward = torch.compiler.disable(
+                original_rmsnorm_forward
+            )
+        if rope:
+            qwen_modeling.apply_multimodal_rotary_pos_emb = torch.compiler.disable(
+                original_rope
+            )
+        yield
+    finally:
+        qwen_modeling.Qwen3TTSRMSNorm.forward = original_rmsnorm_forward
+        qwen_modeling.apply_multimodal_rotary_pos_emb = original_rope
+
+
 def _runtime_metadata(device: str) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "torch_version": torch.__version__,
@@ -261,7 +298,13 @@ def _prefill_once(
     tpe: torch.Tensor,
     metadata: dict[str, Any],
     backend: str,
+    prefill_mask_mode: str,
 ) -> tuple[Any, dict[str, Any]]:
+    mask_mode = (
+        select_prefill_mask_mode(metadata)
+        if prefill_mask_mode == "auto"
+        else prefill_mask_mode
+    )
     torch.cuda.synchronize()
     with torch.inference_mode():
         out, profile = _run_talker_prefill(
@@ -271,7 +314,7 @@ def _prefill_once(
             tth,
             tpe,
             prefill_backend=backend,
-            prefill_mask_mode=select_prefill_mask_mode(metadata),
+            prefill_mask_mode=mask_mode,
         )
     torch.cuda.synchronize()
     return out, profile
@@ -354,6 +397,7 @@ def _generation_repeats(
     repeats: int,
     max_new_tokens: int,
     chunk_size: int,
+    prefill_mask_mode: str,
 ) -> list[dict[str, Any]]:
     return [
         _generate_once(
@@ -369,6 +413,7 @@ def _generation_repeats(
             backend,
             max_new_tokens=max_new_tokens,
             chunk_size=chunk_size,
+            prefill_mask_mode=prefill_mask_mode,
             repeat=repeat_index + 1,
         )
         for repeat_index in range(repeats)
@@ -389,6 +434,7 @@ def _generate_once(
     *,
     max_new_tokens: int,
     chunk_size: int,
+    prefill_mask_mode: str,
     repeat: int,
 ) -> dict[str, Any]:
     chunks = []
@@ -414,6 +460,7 @@ def _generate_once(
             input_metadata=metadata,
             profile_prefill=True,
             prefill_backend=backend,
+            prefill_mask_mode=prefill_mask_mode,
         ):
             chunks.append(codec_chunk.detach().cpu().contiguous())
             timings.append(timing)

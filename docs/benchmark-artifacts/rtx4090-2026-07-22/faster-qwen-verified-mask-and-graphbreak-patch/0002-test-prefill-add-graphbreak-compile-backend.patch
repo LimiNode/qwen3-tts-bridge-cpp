@@ -1,0 +1,41 @@
+From 8791fcddc1a90c1ef5e43eebbe1b1afff59a9d98 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 10:08:58 +0300
+Subject: [PATCH 2/2] test(prefill): add graphbreak compile backend
+
+---
+ faster_qwen3_tts/streaming.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 3f831ae..056b094 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -25,6 +25,7 @@ _PREFILL_BACKENDS = {
+     "compile_backend_aot_eager",
+     "compile_default",
+     "compile_inductor_default",
++    "compile_inductor_graphbreak",
+     "compile_reduce_overhead",
+ }
+ _PREFILL_BACKEND_ALIASES = {
+@@ -213,6 +214,7 @@ def _compile_talker_prefill(talker, prefill_backend: str) -> Callable:
+         backend = "aot_eager"
+     elif prefill_backend == "compile_reduce_overhead":
+         mode = "reduce-overhead"
++    fullgraph = prefill_backend != "compile_inductor_graphbreak"
+ 
+     def prefill_fn(
+         inputs_embeds: torch.Tensor,
+@@ -233,7 +235,7 @@ def _compile_talker_prefill(talker, prefill_backend: str) -> Callable:
+     return torch.compile(
+         prefill_fn,
+         backend=backend,
+-        fullgraph=True,
++        fullgraph=fullgraph,
+         dynamic=False,
+         mode=mode,
+     )
+-- 
+2.53.0.windows.1
+

@@ -1,0 +1,42 @@
+From 408236366b7cab3567e57c6b9183303e1f3700d9 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 10:02:11 +0300
+Subject: [PATCH] fix(talker): require absent mask for verified skips
+
+---
+ qwen_tts/core/models/modeling_qwen3_tts.py | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/qwen_tts/core/models/modeling_qwen3_tts.py b/qwen_tts/core/models/modeling_qwen3_tts.py
+index d2d8e58..b7f3da9 100644
+--- a/qwen_tts/core/models/modeling_qwen3_tts.py
++++ b/qwen_tts/core/models/modeling_qwen3_tts.py
+@@ -1723,6 +1723,8 @@ class Qwen3TTSTalkerModel(Qwen3TTSTalkerTextPreTrainedModel):
+             text_position_ids = position_ids[0]
+         
+         if skip_prefill_causal_mask:
++            if attention_mask is not None:
++                raise ValueError("skip_prefill_causal_mask requires attention_mask=None")
+             if inputs_embeds.shape[1] <= 1:
+                 raise ValueError("skip_prefill_causal_mask is only valid for prefill calls")
+             if not cache_position_created_locally:
+@@ -1972,6 +1974,7 @@ class Qwen3TTSTalkerForConditionalGeneration(Qwen3TTSTalkerTextPreTrainedModel,
+                 inputs_embeds = inputs_embeds + trailing_text_hidden[:, generation_step].unsqueeze(1)
+             else:
+                 inputs_embeds = inputs_embeds + tts_pad_embed
++        position_ids = None
+         if attention_mask is not None:
+             if (
+                 cache_position is None
+@@ -1995,6 +1998,8 @@ class Qwen3TTSTalkerForConditionalGeneration(Qwen3TTSTalkerTextPreTrainedModel,
+         if skip_prefill_causal_mask:
+             if generation_step != -1:
+                 raise ValueError("skip_prefill_causal_mask is only valid for prefill calls")
++            if attention_mask is not None:
++                raise ValueError("skip_prefill_causal_mask requires attention_mask=None")
+             if cache_position is not None:
+                 raise ValueError("skip_prefill_causal_mask requires internally constructed cache_position")
+             if past_key_values is not None:
+-- 
+2.53.0.windows.1
+

@@ -1754,6 +1754,58 @@ promoted from these diagnostics yet; the next useful experiment is an explicit
 eager island or compile-disable boundary around RMSNorm+RoPE, followed by the
 same true-greedy semantic gate.
 
+### Verified Mask Contract And Standalone RoPE Repro
+
+The mask contract was tightened one more step. FasterQwen now derives
+`prefill_mask_decision_source` from the real local talker attention-mask builder
+while it still has `original_lengths`, rather than reconstructing provenance
+later from a synthetic one-element length tensor. Verified skip also passes
+`attention_mask=None` into Qwen; explicit mode remains the only mode that passes
+a real mask tensor. The Qwen submodule rejects direct
+`skip_prefill_causal_mask=True` calls that still provide an `attention_mask`.
+
+The SDPA gate now has explicit artifacts:
+
+| Artifact | Result |
+| --- | --- |
+| `mask-contract-sdpa-gate/bf16-sdpa-explicit-compile-backend-eager-r1.json` | Raw eager explicit matches raw eager skip semantically, but compiled explicit remains unsafe (`prefill diff 0.21875`, codec differs). |
+| `mask-contract-sdpa-gate/bf16-sdpa-skip-compile-backend-eager-r1.json` | Verified skip is exact: compiled prefill diff `0.0`, codec/waveform/frame parity passes. |
+
+This closes the mask track for the current all-valid CustomVoice path: padded or
+unknown masks remain explicit and therefore do not opt into the compiled
+verified-skip path.
+
+A standalone RoPE repro was added in `scripts/qwen_rope_inductor_repro.py`. It
+captures real layer-0 `q_norm`, `k_norm`, `cos`, and `sin` tensors, then runs a
+small multimodal RoPE function across backends. In BF16, eager,
+`compile_backend_eager`, and `compile_backend_aot_eager` are exact, while
+Inductor first diverges at `q_rope` (`max_abs 0.03125`) and then `scores`
+(`max_abs 0.0625`). The primitive ladder shows `cos/sin` mixing,
+`rotate_half`, and the individual multiply terms are exact; the first visible
+difference is the BF16 add that produces `q_rope` / `k_rope`. The same repro in
+FP32 is exact under Inductor.
+
+The automatic PyTorch accuracy minifier was attempted with
+`TORCHDYNAMO_REPRO_AFTER=dynamo` and `TORCHDYNAMO_REPRO_LEVEL=4`, but it failed
+inside the minifier/guard machinery on this graph (`Expected tensors only, but
+got list`, followed by an internal shape-guard error). The standalone repro is
+therefore the current portable minifier substitute.
+
+The simple eager-island compatibility route was also checked using an
+experimental `compile_inductor_graphbreak` backend. It did not restore prefill
+parity:
+
+| Variant | Prefill max diff |
+| --- | ---: |
+| Inductor graphbreak baseline | `0.203125` |
+| graphbreak + RMSNorm compile-disable | `0.22265625` |
+| graphbreak + RMSNorm and RoPE compile-disable | `0.25` |
+
+So the next useful optimization path is not a simple graph-break wrapper around
+RMSNorm/RoPE. A better candidate is a smaller custom-op or explicit
+decomposition around the BF16 RoPE add, tested first in the standalone repro and
+only then promoted back into the full true-greedy gate.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

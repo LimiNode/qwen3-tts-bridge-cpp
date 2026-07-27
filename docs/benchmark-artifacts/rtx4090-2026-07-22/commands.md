@@ -1170,6 +1170,106 @@ faster-qwen-mask-contract-hardening-patch/faster-qwen-prefill-compile-through-70
 qwen-mask-contract-hardening-patch/0001-fix-talker-reject-unsafe-prefill-mask-skips.patch SHA256: 3c144938e710cca661df5cc9b6c427026d3847b6ec2c6407e2ea090ea91b7e96
 ```
 
+## Verified Mask Contract, SDPA Gate, And RoPE Repro
+
+The final mask-contract gate used explicit and verified-skip runs:
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean;C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --prefill-mask-mode skip `
+    --backend eager `
+    --backend compile_backend_eager `
+    --repeats 1 `
+    --max-new-tokens 64 `
+    --chunk-size 8 `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\mask-contract-sdpa-gate\bf16-sdpa-skip-compile-backend-eager-r1.json
+```
+
+Standalone RoPE repro:
+
+```powershell
+.\.venv-packaging\Scripts\python.exe scripts\qwen_rope_inductor_repro.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --compute-dtype input `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\rope-inductor-repro\bf16-rope-repro-input.json
+```
+
+Compatibility graph-break matrix:
+
+```powershell
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --prefill-mask-mode skip `
+    --backend eager `
+    --backend compile_inductor_graphbreak `
+    --disable-compile-rmsnorm `
+    --disable-compile-rope `
+    --repeats 1 `
+    --skip-generation `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\inductor-eager-islands\bf16-prefill-rms-rope-r1.json
+```
+
+Automatic accuracy minifier attempt:
+
+```powershell
+$env:TORCHDYNAMO_REPRO_AFTER = "dynamo"
+$env:TORCHDYNAMO_REPRO_LEVEL = "4"
+.\.venv-packaging\Scripts\python.exe scripts\qwen_rope_inductor_repro.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --compute-dtype input `
+    --backend compile_inductor_default `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\rope-inductor-repro\bf16-rope-repro-minifier-attempt.json
+```
+
+This minifier attempt did not produce a usable launcher; PyTorch failed inside
+the minifier path with an internal tensor/list input assertion and shape-guard
+error.
+
+Artifact hashes:
+
+```text
+mask-contract-sdpa-gate/bf16-sdpa-explicit-compile-backend-eager-r1.json SHA256: ecbcc7f1295b980f7fad7f2ac128edaf180cda1f2ec6c9ad41fa2fec0b2ff1d8
+mask-contract-sdpa-gate/bf16-sdpa-skip-compile-backend-eager-r1.json SHA256: 821463c100f2888ab9b5ae6828bf0aa1e30d20219bdb1e832216033a1c52fe58
+rope-inductor-repro/bf16-rope-repro-input.json SHA256: d2ee6b009d4d524a1c8644960f94f4105fba87d55edeb3b6811e7437bfa772f6
+rope-inductor-repro/fp32-rope-repro.json SHA256: 21a47f6646f87854ba48f070f4bc37c1e2930aab79020f8df37600e805160726
+inductor-eager-islands/bf16-prefill-baseline-r1.json SHA256: bffafb470f77b9f208c4760bb8958ca499431804a88715cd09565f18e8263aaa
+inductor-eager-islands/bf16-prefill-rms-r1.json SHA256: c0aa13aabc966977937e26a31eafa4a8174d2b87770f5e1e4db6b593b5ffcba9
+inductor-eager-islands/bf16-prefill-rms-rope-islands-smoke.json SHA256: b44f6ec7eb842773990a4c77a9a4131dd70112e50166e634d206a97b00126576
+inductor-eager-islands/bf16-prefill-rms-rope-r1.json SHA256: b44f6ec7eb842773990a4c77a9a4131dd70112e50166e634d206a97b00126576
+faster-qwen-verified-mask-and-graphbreak-patch/0001-fix-prefill-require-verified-mask-skip-inputs.patch SHA256: 994223679175f2962e3c4b534e9dfb5ca7bf938520b737c64dca5a2032ea0116
+faster-qwen-verified-mask-and-graphbreak-patch/0002-test-prefill-add-graphbreak-compile-backend.patch SHA256: 298a1cd7913a193f36ecda1995df6725ca0d728b3eb9d338c456973c57bcdfe7
+faster-qwen-verified-mask-and-graphbreak-patch/faster-qwen-prefill-compile-through-8791fcd.bundle SHA256: 82fd2ac837e6cbee0715731d8bcb71a2397a6c3c7d855990e34cfb6cc84de714
+qwen-verified-mask-patch/0001-fix-talker-require-absent-mask-for-verified-skips.patch SHA256: 01569aeff9d69c085335a741df77b99169f55ec987be285926a5499fe5f4497d
+```
+
 Fail-closed greedy predictor patch artifacts:
 
 ```powershell
