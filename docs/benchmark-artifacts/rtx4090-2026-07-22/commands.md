@@ -1987,6 +1987,22 @@ faster-qwen-compiled-explicit-safety-patch/faster-qwen-prefill-compile-through-9
 SHA256: 436f994a2af207d475a65b8f8076597eb3dd7d1840d7376f628ccce09b43fbfd
 ```
 
+Updated safety-test source artifacts:
+
+```text
+faster-qwen3-tts safety-test commit: 2fd44e0
+commit message: test(prefill): cover compiled mask safety matrix
+
+faster-qwen-mask-safety-matrix-patch/0001-fix-prefill-reject-compiled-explicit-masks.patch
+SHA256: 854aaea8004bca80ef4c0e5339d1e88b08d2eaf01dcf4bb8a7a91b5538cd2430
+
+faster-qwen-mask-safety-matrix-patch/0002-test-prefill-cover-compiled-mask-safety-matrix.patch
+SHA256: 88e54b3a93490d2176d32fc6910c3cdf61e5bc4966ceeb64cc2d72fd7c57c761
+
+faster-qwen-mask-safety-matrix-patch/faster-qwen-prefill-compile-through-2fd44e0.bundle
+SHA256: 814e7ad3caf5f3dcbececba8982ed60a1360e3c611bd1e74e1d2efda3e0e525a
+```
+
 Safety smoke, expected to fail before model execution:
 
 ```powershell
@@ -2059,6 +2075,100 @@ strict-compat-full-gate/bf16-inductor-strict-rms-strict-rope-r1.json
 SHA256: 52f9e4d60a1f6dcc42e946d9e545a54fac23c41e749eccf623778744ba953286
 result: failed; logits_last max_abs 0.25, past_hidden max_abs 0.5,
   codec differs at frame 7 codebook 1, same frame count and EOS status.
+```
+
+Attention A/B and layer-prefix bisection follow-up:
+
+```text
+bridge scripts:
+  scripts/qwen_prefill_compile_parity.py
+  scripts/qwen_prefill_layer_prefix_parity.py
+new diagnostic switch:
+  --force-talker-attn-implementation eager|sdpa
+compat modes:
+  --rmsnorm-compat-mode strict_custom
+  --rope-compat-mode strict_add
+  --mlp-compat-mode strict_mul
+```
+
+Requested eager attention did not load actual eager attention:
+
+```text
+attention-ab-strict-full-gate/bf16-inductor-eager-attn-strict-rms-strict-rope-r1.json
+SHA256: 9da5f22568930b835fd6176dbbb61e200f3caa35c9e7c489977555e42614a6fe
+actual_talker_attn_implementation: sdpa
+result: failed; logits_last max_abs 0.25
+```
+
+Forced attention A/B:
+
+```text
+attention-ab-strict-full-gate/bf16-inductor-forced-sdpa-attn-strict-rms-strict-rope-r1.json
+SHA256: 06edaf5e6ea6f03a5a2e57fe2559d48c210666281c2c9b5b6ef7f4486eea1430
+result: failed; logits_last max_abs 0.25, past_hidden max_abs 0.5,
+  codec differs at frame 7 codebook 1, same frame count and EOS status.
+
+attention-ab-strict-full-gate/bf16-inductor-forced-eager-attn-strict-rms-strict-rope-r1.json
+SHA256: 5a9dbe400f51a7fdb439169a6d56a45611f0684830d685732fb1032157dafba5
+result: failed; logits_last max_abs 1.4375, past_hidden max_abs 1.8125,
+  codec differs at frame 0 codebook 2, same frame count and EOS status.
+```
+
+Layer-prefix bisection, strict RMSNorm/RoPE only:
+
+```text
+layer-prefix-bisect/bf16-sdpa-strict-prefix-0.json
+SHA256: 24c9d4406ba1b16113346bf450647abd16f64e8f9f1b25c1352955ef2df5fd36
+result: exact
+
+layer-prefix-bisect/bf16-sdpa-strict-prefix-1.json
+SHA256: 4e3131a378b39fcfb2b535c6c1e4e3bc2ff50086e9b7a49a8f337c97cb79472c
+result: layer output max_abs 0.125
+
+layer-prefix-bisect/bf16-sdpa-strict-layer0-mlp_mul.json
+SHA256: 928bf71796c16ff0e720720838c3b0fd46f5c1bbc3a52631f42878e14c559c50
+result: first materialized MLP diff, max_abs 0.015625
+
+layer-prefix-bisect/bf16-sdpa-strict-layer0-mlp_output.json
+SHA256: 4c71df70dae5fc4b35db55fabf9e1903ce09b2f4bd77c4ec7e76f4cb136051a8
+result: MLP output max_abs 0.125
+```
+
+Layer-prefix bisection, strict RMSNorm/RoPE/MLP multiply:
+
+```text
+layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-prefix-1.json
+SHA256: 8765e991efce517b5a14118e0dd98d42b38c155017ca5b788312947ded379d3b
+result: exact
+
+layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-prefix-8.json
+SHA256: 401316a7d27a55cb341b32f91f58482065fade91604a26f8e60c703fb6cd0d29
+result: exact
+
+layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-prefix-9.json
+SHA256: 0e6cd6f480d65cdd356e313e8a3b97b27c0f242124fd62b771d847456d552c2e
+result: exact
+
+layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-prefix-10.json
+SHA256: 7586333ef0d421d3debc6bcb7008c90e6b37f8d26be88fa08ef5c97e39e93302
+result: first new prefix diff, max_abs 0.00390625
+
+layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-layer9-attention_output.json
+SHA256: 1b1b16ca3656856177bc9780e14b7a2334ba66287ae4b3cdc4c0b6a9abf94671
+result: first layer-9 stage diff, max_abs 0.0009765625
+
+layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-layer9-layer_output.json
+SHA256: a0365a74c81f2719166366ec3ab938d371118cd04cf8da480f41a8f0c332c302
+result: layer-9 output max_abs 0.0625
+```
+
+Full strict RMSNorm/RoPE/MLP gate:
+
+```text
+strict-compat-full-gate/bf16-inductor-strict-rms-rope-mlp-r1.json
+SHA256: 984a508e5f7888f2056de678544d81617d33bad17a9c3ab74542551fc24e7e25
+result: failed; logits_last max_abs 0.21875, past_hidden max_abs 1.0,
+  codec differs at frame 4 codebook 7, frame count differs.
 ```
 
 Verification after strict compatibility pass:

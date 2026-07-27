@@ -58,6 +58,16 @@ def _(tensor: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
     return torch.empty_like(tensor)
 
 
+@torch.library.custom_op("qtb_prefill_parity::strict_mul", mutates_args=())
+def _strict_mul(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
+    return left * right
+
+
+@_strict_mul.register_fake
+def _(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
+    return torch.empty_like(left)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="models/Qwen3-TTS-12Hz-0.6B-CustomVoice")
@@ -69,6 +79,12 @@ def main() -> int:
     parser.add_argument("--device-profile", default="auto")
     parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--attn-implementation", default="eager")
+    parser.add_argument(
+        "--force-talker-attn-implementation",
+        default="",
+        choices=("", "eager", "sdpa"),
+        help="Diagnostic override for configs already loaded into the Talker modules.",
+    )
     parser.add_argument("--backend", action="append", dest="backends")
     parser.add_argument(
         "--prefill-mask-mode",
@@ -93,6 +109,11 @@ def main() -> int:
         default="current",
         choices=("current", "strict_add"),
     )
+    parser.add_argument(
+        "--mlp-compat-mode",
+        default="current",
+        choices=("current", "strict_mul"),
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
@@ -114,13 +135,25 @@ def main() -> int:
         return_metadata=True,
     )
     m, talker, config, tie, tam, tth, tpe, metadata = prepared
+    forced_attn_updates = 0
+    if args.force_talker_attn_implementation:
+        forced_attn_updates = _force_talker_attn_implementation(
+            talker,
+            args.force_talker_attn_implementation,
+        )
+        metadata = dict(metadata)
+        metadata["prefill_attn_implementation"] = _actual_talker_attn(talker)
+        metadata["prefill_attn_implementation_forced"] = True
+        metadata["prefill_attn_implementation_forced_updates"] = forced_attn_updates
     backends = tuple(args.backends or DEFAULT_BACKENDS)
+    actual_talker_attn = _actual_talker_attn(talker)
 
     with _compile_disable_context(
         rmsnorm=args.disable_compile_rmsnorm,
         rope=args.disable_compile_rope,
         rmsnorm_compat_mode=args.rmsnorm_compat_mode,
         rope_compat_mode=args.rope_compat_mode,
+        mlp_compat_mode=args.mlp_compat_mode,
     ):
         prefill_outputs: dict[str, list[dict[str, Any]]] = {}
         prefill_objects: dict[str, list[Any]] = {}
@@ -207,11 +240,15 @@ def main() -> int:
         "runtime": _runtime_metadata(args.device),
         "dtype": args.dtype,
         "attn_implementation": args.attn_implementation,
+        "force_talker_attn_implementation": args.force_talker_attn_implementation,
+        "actual_talker_attn_implementation": actual_talker_attn,
+        "forced_talker_attn_config_updates": forced_attn_updates,
         "prefill_mask_mode_requested": args.prefill_mask_mode,
         "disable_compile_rmsnorm": args.disable_compile_rmsnorm,
         "disable_compile_rope": args.disable_compile_rope,
         "rmsnorm_compat_mode": args.rmsnorm_compat_mode,
         "rope_compat_mode": args.rope_compat_mode,
+        "mlp_compat_mode": args.mlp_compat_mode,
         "backends": backends,
         "repeats": args.repeats,
         "max_new_tokens": args.max_new_tokens,
@@ -254,6 +291,7 @@ def main() -> int:
         json.dumps(
             {
                 "output": str(args.output),
+                "actual_talker_attn_implementation": actual_talker_attn,
                 "prefill_vs_eager": {
                     key: value["logits_last"]["max_abs"]
                     for key, value in prefill_comparisons.items()
@@ -273,6 +311,32 @@ def main() -> int:
     return 0
 
 
+def _force_talker_attn_implementation(talker: Any, attn_implementation: str) -> int:
+    updates = 0
+    seen_configs = set()
+    for module in talker.modules():
+        config = getattr(module, "config", None)
+        if config is None:
+            continue
+        config_id = id(config)
+        if config_id in seen_configs:
+            continue
+        seen_configs.add(config_id)
+        if hasattr(config, "_attn_implementation"):
+            setattr(config, "_attn_implementation", attn_implementation)
+            updates += 1
+    return updates
+
+
+def _actual_talker_attn(talker: Any) -> str:
+    talker_model_config = getattr(
+        getattr(talker, "model", None),
+        "config",
+        getattr(talker, "config", None),
+    )
+    return str(getattr(talker_model_config, "_attn_implementation", "unknown"))
+
+
 def _configure_precision(args: argparse.Namespace) -> None:
     if args.matmul_precision:
         torch.set_float32_matmul_precision(args.matmul_precision)
@@ -289,9 +353,11 @@ def _compile_disable_context(
     rope: bool,
     rmsnorm_compat_mode: str,
     rope_compat_mode: str,
+    mlp_compat_mode: str = "current",
 ):
     original_rmsnorm_forward = qwen_modeling.Qwen3TTSRMSNorm.forward
     original_rope = qwen_modeling.apply_multimodal_rotary_pos_emb
+    original_mlp_forward = qwen_modeling.Qwen3TTSTalkerTextMLP.forward
     try:
         if rmsnorm:
             qwen_modeling.Qwen3TTSRMSNorm.forward = torch.compiler.disable(
@@ -309,10 +375,15 @@ def _compile_disable_context(
             qwen_modeling.apply_multimodal_rotary_pos_emb = _make_rope_forward(
                 rope_compat_mode
             )
+        if mlp_compat_mode != "current":
+            qwen_modeling.Qwen3TTSTalkerTextMLP.forward = _make_mlp_forward(
+                mlp_compat_mode
+            )
         yield
     finally:
         qwen_modeling.Qwen3TTSRMSNorm.forward = original_rmsnorm_forward
         qwen_modeling.apply_multimodal_rotary_pos_emb = original_rope
+        qwen_modeling.Qwen3TTSTalkerTextMLP.forward = original_mlp_forward
 
 
 def _make_rmsnorm_forward(mode: str):
@@ -353,6 +424,21 @@ def _make_rope_forward(mode: str):
             unsqueeze_dim,
         )
         return _strict_add(q_mul_cos, q_mul_sin), _strict_add(k_mul_cos, k_mul_sin)
+
+    return forward
+
+
+def _make_mlp_forward(mode: str):
+    if mode != "strict_mul":
+        raise ValueError(f"Unsupported MLP compatibility mode: {mode}")
+
+    def forward(self, x):
+        return self.down_proj(
+            _strict_mul(
+                self.act_fn(self.gate_proj(x)),
+                self.up_proj(x),
+            )
+        )
 
     return forward
 

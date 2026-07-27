@@ -1846,6 +1846,64 @@ BF16 Inductor hazards, but after neutralizing them the full graph still has at
 least one additional BF16 Inductor divergence. Do not run performance gates for
 Inductor until the next bisection finds and fixes that remaining source.
 
+### Attention A/B And Layer-Prefix Bisection
+
+The next review suggested checking whether the remaining strict full-gate
+failure was specifically SDPA. The first A/B attempt exposed an important
+diagnostic trap: requesting `--attn-implementation eager` still loaded a Talker
+whose actual `_attn_implementation` was `sdpa`. The parity harness now records
+`actual_talker_attn_implementation` and supports a diagnostic
+`--force-talker-attn-implementation` override for already-loaded Talker configs.
+
+The forced full gates show that SDPA is not the only remaining cause:
+
+| Artifact | Actual attention | Result |
+| --- | --- | --- |
+| `attention-ab-strict-full-gate/bf16-inductor-forced-sdpa-attn-strict-rms-strict-rope-r1.json` | `sdpa` | still fails: `logits_last max_abs 0.25`, codec differs at frame `7`, codebook `1`; frame count and EOS status stay equal. |
+| `attention-ab-strict-full-gate/bf16-inductor-forced-eager-attn-strict-rms-strict-rope-r1.json` | `eager` | also fails, and more strongly: `logits_last max_abs 1.4375`, codec differs at frame `0`, codebook `2`; frame count and EOS status stay equal. |
+
+Because eager-attention also fails, the broad SDPA custom-op path was not
+promoted. Instead, a single-output layer-prefix repro was added in
+`scripts/qwen_prefill_layer_prefix_parity.py`. It runs either the first `N`
+Talker transformer layers or one selected stage inside a layer, comparing eager
+against Inductor under the same strict RMSNorm/RoPE diagnostics.
+
+With strict RMSNorm and strict RoPE, the first layer already differs:
+
+| Artifact | Result |
+| --- | --- |
+| `layer-prefix-bisect/bf16-sdpa-strict-prefix-0.json` | exact. |
+| `layer-prefix-bisect/bf16-sdpa-strict-prefix-1.json` | first layer output differs (`max_abs 0.125`). |
+| `layer-prefix-bisect/bf16-sdpa-strict-layer0-mlp_mul.json` | layer-0 `gate/up/act` are exact; first materialized MLP diff appears at `act(gate) * up` (`max_abs 0.015625`). |
+| `layer-prefix-bisect/bf16-sdpa-strict-layer0-mlp_output.json` | the MLP down projection amplifies that to `max_abs 0.125`. |
+
+Adding an opaque custom-op around the MLP multiply makes layer 0 exact and keeps
+the first several prefixes exact:
+
+| Artifact | Result |
+| --- | --- |
+| `layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-prefix-1.json` | exact. |
+| `layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-prefix-8.json` | exact. |
+| `layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-prefix-9.json` | exact. |
+| `layer-prefix-bisect/bf16-sdpa-strict-rms-rope-mlp-prefix-10.json` | first new prefix diff appears (`max_abs 0.00390625`). |
+
+The next failing layer is therefore layer `9`. With strict RMSNorm/RoPE/MLP
+multiply enabled, layer `9` first differs at the attention output
+(`max_abs 0.0009765625`), then the residual/MLP path amplifies it to layer
+output `max_abs 0.0625`.
+
+The full strict RMSNorm/RoPE/MLP gate still fails:
+
+| Artifact | Result |
+| --- | --- |
+| `strict-compat-full-gate/bf16-inductor-strict-rms-rope-mlp-r1.json` | still fails: `logits_last max_abs 0.21875`, `past_hidden max_abs 1.0`, codec differs at frame `4`, codebook `7`, and frame count differs. |
+
+Current interpretation: BF16 Inductor correctness is not blocked by one single
+operation. The chain so far is RMSNorm/RoPE, then MLP multiply in early layers,
+then attention output in layer `9`. Product defaults should still remain eager;
+the next diagnostic target is a layer-9 attention-core repro or a very narrow
+attention compatibility island after strict RMSNorm/RoPE/MLP.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
