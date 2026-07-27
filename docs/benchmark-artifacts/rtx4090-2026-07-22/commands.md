@@ -1960,6 +1960,124 @@ finally {
 }
 ```
 
+Strict RMSNorm/RoPE Inductor compatibility pass:
+
+```text
+faster-qwen3-tts branch: prefill-compile-exact-shape
+faster-qwen3-tts safety commit: 9ba25c7
+bridge script: scripts/qwen_prefill_compile_parity.py
+bridge repros:
+  scripts/qwen_rope_inductor_repro.py
+  scripts/qwen_rmsnorm_inductor_repro.py
+model: models/Qwen3-TTS-12Hz-0.6B-CustomVoice
+speaker: ryan
+text: I am your robot, I am your worker.
+dtype: bfloat16
+attn_implementation: sdpa
+device_profile: rtx4090
+```
+
+Source artifacts:
+
+```text
+faster-qwen-compiled-explicit-safety-patch/0001-fix-prefill-reject-compiled-explicit-masks.patch
+SHA256: 6f6b207802a14dbf6828d6ffca36d8dc04d27098c022152a1111b2a93f9d301f
+
+faster-qwen-compiled-explicit-safety-patch/faster-qwen-prefill-compile-through-9ba25c7.bundle
+SHA256: 436f994a2af207d475a65b8f8076597eb3dd7d1840d7376f628ccce09b43fbfd
+```
+
+Safety smoke, expected to fail before model execution:
+
+```powershell
+$env:PYTHONPATH='C:\_repoz\faster-qwen3-tts-v032-stack112-clean;C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+$env:PYTHONDONTWRITEBYTECODE='1'
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --prefill-mask-mode explicit `
+    --backend eager `
+    --backend compile_backend_eager `
+    --repeats 1 `
+    --skip-generation `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\compiled-explicit-safety\should-not-exist.json
+```
+
+Expected result:
+
+```text
+faster_qwen3_tts.streaming.UnsupportedPrefillConfiguration:
+  Compiled prefill requires verified mask skip; use eager for explicit masks.
+```
+
+Standalone strict RoPE artifacts:
+
+```text
+strict-rope-repro/bf16-rope-current.json
+SHA256: 5f0223a7c00c44b46ffe24dd4f3b3c8410ac7bd81c7752f054271edecc035533
+result: compile_inductor_default first_diff q_rope, max_abs 0.03125
+
+strict-rope-repro/bf16-rope-strict_add.json
+SHA256: f62ac6d728b44d94c04ac907e70d4c0e8be86d479da76b589df56805605ae5f3
+result: compile_inductor_default exact
+
+strict-rope-repro/bf16-rope-strict_rope.json
+SHA256: 0d7cbddbf369b0db732fc838a9e748141c84cc1c4103b295e1c49ad087e47b9a
+result: compile_inductor_default exact
+```
+
+Standalone strict RMSNorm artifacts:
+
+```text
+strict-rmsnorm-repro/bf16-qnorm-current.json
+SHA256: 50b0d76061a3252e4b430b4f235ad28da7b75b7c55d89d035e72f96012fdfba2
+result: compile_inductor_default max_abs 0.03125
+
+strict-rmsnorm-repro/bf16-qnorm-aten_rms_norm.json
+SHA256: be622911494ee1c6487d828c9b5f54a7a0b86ba197a87ac13e4688219224b2fd
+result: compile_inductor_default exact
+
+strict-rmsnorm-repro/bf16-qnorm-strict_custom.json
+SHA256: ddb40cb583a89a1980d3ac60cbfd32eab06460b7455b1fd3f17a9ad36c61dda1
+result: compile_inductor_default exact
+```
+
+Full true-greedy strict compatibility gates:
+
+```text
+strict-compat-full-gate/bf16-inductor-aten-rms-strict-rope-r1.json
+SHA256: 7cbc4d63381a7812fd69b1e4029b010b0d60614eebc4c028602926980db8b930
+result: failed; logits_last max_abs 0.3125, past_hidden max_abs 0.3125,
+  codec differs at frame 5 codebook 1, same frame count and EOS status.
+
+strict-compat-full-gate/bf16-inductor-strict-rms-strict-rope-r1.json
+SHA256: 52f9e4d60a1f6dcc42e946d9e545a54fac23c41e749eccf623778744ba953286
+result: failed; logits_last max_abs 0.25, past_hidden max_abs 0.5,
+  codec differs at frame 7 codebook 1, same frame count and EOS status.
+```
+
+Verification after strict compatibility pass:
+
+```text
+py_compile:
+  .venv-faster-qwen/Scripts/python.exe -m py_compile scripts/qwen_prefill_compile_parity.py
+  scripts/qwen_rope_inductor_repro.py scripts/qwen_rmsnorm_inductor_repro.py
+  C:/_repoz/faster-qwen3-tts-v032-stack112-clean/faster_qwen3_tts/streaming.py
+  C:/_repoz/faster-qwen3-tts-v032-stack112-clean/tests/test_sampling.py
+  passed
+
+scripts/check-python.ps1 -UseVenv -VenvPath .venv
+  passed: Ruff, Pyright, 154 Python tests, 2 skipped
+
+ctest --test-dir build/default --output-on-failure
+  passed: 9/9 C++ tests
+```
+
 Input-shape matrix, Qwen `auto -> engine_warmup`, one full synthesis warmup:
 
 ```powershell

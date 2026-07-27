@@ -1806,6 +1806,46 @@ RMSNorm/RoPE. A better candidate is a smaller custom-op or explicit
 decomposition around the BF16 RoPE add, tested first in the standalone repro and
 only then promoted back into the full true-greedy gate.
 
+### Strict RMSNorm/RoPE Inductor Compatibility Gates
+
+The FasterQwen compiled-prefill safety boundary was tightened after the SDPA
+gate proved that compiled explicit masks are still unsafe. Non-eager prefill
+backends now reject `prefill_mask_mode=explicit` and require the verified
+`skip` path. The intentional safety smoke exits with
+`UnsupportedPrefillConfiguration` and does not write a benchmark artifact:
+compiled explicit masks are blocked before model execution.
+
+The standalone RoPE repro now has stricter custom-op modes:
+
+| Artifact | Result |
+| --- | --- |
+| `strict-rope-repro/bf16-rope-current.json` | current BF16 Inductor RoPE still first differs at `q_rope` (`max_abs 0.03125`). |
+| `strict-rope-repro/bf16-rope-strict_add.json` | wrapping the final BF16 adds in a custom op makes Inductor exact. |
+| `strict-rope-repro/bf16-rope-strict_rope.json` | wrapping the whole RoPE operation in a custom op also makes Inductor exact. |
+
+A standalone RMSNorm repro was added in
+`scripts/qwen_rmsnorm_inductor_repro.py`. It captures the real layer-0 `q_norm`
+input and compares BF16 Inductor against eager:
+
+| Artifact | Result |
+| --- | --- |
+| `strict-rmsnorm-repro/bf16-qnorm-current.json` | current RMSNorm differs under Inductor (`max_abs 0.03125`). |
+| `strict-rmsnorm-repro/bf16-qnorm-aten_rms_norm.json` | `aten.rms_norm` is exact in the isolated repro. |
+| `strict-rmsnorm-repro/bf16-qnorm-strict_custom.json` | a strict RMSNorm custom op is exact in the isolated repro. |
+
+These isolated fixes did not make the full Talker graph safe:
+
+| Artifact | Compatibility mode | Result |
+| --- | --- | --- |
+| `strict-compat-full-gate/bf16-inductor-aten-rms-strict-rope-r1.json` | `aten_rms_norm` + strict RoPE add | still fails: `logits_last max_abs 0.3125`, codec differs at frame `5`, codebook `1`; frame count and EOS status stay equal. |
+| `strict-compat-full-gate/bf16-inductor-strict-rms-strict-rope-r1.json` | strict RMSNorm custom op + strict RoPE add | still fails: `logits_last max_abs 0.25`, codec differs at frame `7`, codebook `1`; frame count and EOS status stay equal. |
+
+This closes the first strict-op experiment without a product rollout. The
+current verdict is narrower: the isolated RMSNorm and RoPE lowerings are real
+BF16 Inductor hazards, but after neutralizing them the full graph still has at
+least one additional BF16 Inductor divergence. Do not run performance gates for
+Inductor until the next bisection finds and fixes that remaining source.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

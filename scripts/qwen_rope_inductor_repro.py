@@ -34,6 +34,41 @@ STAGES = (
 )
 
 
+@torch.library.custom_op("qtb_rope_repro::strict_add", mutates_args=())
+def _strict_add(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
+    return left + right
+
+
+@_strict_add.register_fake
+def _(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
+    return torch.empty_like(left)
+
+
+@torch.library.custom_op("qtb_rope_repro::strict_rope", mutates_args=())
+def _strict_rope(
+    q_norm: torch.Tensor,
+    k_norm: torch.Tensor,
+    cos_mixed: torch.Tensor,
+    sin_mixed: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    q_rotate = _rotate_half(q_norm)
+    k_rotate = _rotate_half(k_norm)
+    return (
+        (q_norm * cos_mixed) + (q_rotate * sin_mixed),
+        (k_norm * cos_mixed) + (k_rotate * sin_mixed),
+    )
+
+
+@_strict_rope.register_fake
+def _(
+    q_norm: torch.Tensor,
+    k_norm: torch.Tensor,
+    cos_mixed: torch.Tensor,
+    sin_mixed: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    return torch.empty_like(q_norm), torch.empty_like(k_norm)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="models/Qwen3-TTS-12Hz-0.6B-CustomVoice")
@@ -45,6 +80,11 @@ def main() -> int:
     parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--attn-implementation", default="sdpa")
     parser.add_argument("--compute-dtype", choices=("input", "float32"), default="input")
+    parser.add_argument(
+        "--rope-mode",
+        choices=("current", "strict_add", "strict_rope"),
+        default="current",
+    )
     parser.add_argument("--backend", action="append", dest="backends")
     parser.add_argument("--matmul-precision", default="high")
     parser.add_argument("--disable-tf32", action="store_true")
@@ -88,11 +128,12 @@ def main() -> int:
             tensors["interleaved"],
             tensors["num_key_value_groups"],
             tensors["scaling"],
+            args.rope_mode,
         )
     )
     backend_rows = {}
     for backend in backends:
-        fn = _compile_fn(lambda q, k, cos, sin: _rope_stages(q, k, cos, sin, tensors["sections"], tensors["interleaved"], tensors["num_key_value_groups"], tensors["scaling"]), backend)
+        fn = _compile_fn(lambda q, k, cos, sin: _rope_stages(q, k, cos, sin, tensors["sections"], tensors["interleaved"], tensors["num_key_value_groups"], tensors["scaling"], args.rope_mode), backend)
         with torch.inference_mode():
             out = _snapshot(fn(tensors["q_norm"], tensors["k_norm"], tensors["cos"], tensors["sin"]))
         rows = {
@@ -116,6 +157,7 @@ def main() -> int:
         "runtime": _runtime_metadata(args.device),
         "dtype": args.dtype,
         "compute_dtype": args.compute_dtype,
+        "rope_mode": args.rope_mode,
         "attn_implementation": args.attn_implementation,
         "metadata": metadata,
         "tensor_fingerprints": {
@@ -213,6 +255,7 @@ def _rope_stages(
     interleaved: bool,
     num_key_value_groups: int,
     scaling: float,
+    rope_mode: str,
 ) -> dict[str, torch.Tensor]:
     cos_mixed, sin_mixed = _mix_multimodal_rope(cos, sin, sections, interleaved)
     q_rotate = _rotate_half(q_norm)
@@ -221,8 +264,16 @@ def _rope_stages(
     q_mul_sin = q_rotate * sin_mixed
     k_mul_cos = k_norm * cos_mixed
     k_mul_sin = k_rotate * sin_mixed
-    q_rope = q_mul_cos + q_mul_sin
-    k_rope = k_mul_cos + k_mul_sin
+    if rope_mode == "current":
+        q_rope = q_mul_cos + q_mul_sin
+        k_rope = k_mul_cos + k_mul_sin
+    elif rope_mode == "strict_add":
+        q_rope = _strict_add(q_mul_cos, q_mul_sin)
+        k_rope = _strict_add(k_mul_cos, k_mul_sin)
+    elif rope_mode == "strict_rope":
+        q_rope, k_rope = _strict_rope(q_norm, k_norm, cos_mixed, sin_mixed)
+    else:
+        raise ValueError(f"Unsupported rope_mode: {rope_mode}")
     key_states = repeat_kv(k_rope, num_key_value_groups)
     scores = torch.matmul(q_rope, key_states.transpose(2, 3)) * scaling
     return {

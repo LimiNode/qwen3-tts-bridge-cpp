@@ -11,6 +11,7 @@ from typing import Any
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import qwen_tts.core.models.modeling_qwen3_tts as qwen_modeling
 from faster_qwen3_tts import FasterQwen3TTS
 from faster_qwen3_tts.streaming import (
@@ -27,6 +28,34 @@ DEFAULT_BACKENDS = (
     "compile_inductor_graphbreak",
     "compile_reduce_overhead",
 )
+
+
+@torch.library.custom_op("qtb_prefill_parity::strict_add", mutates_args=())
+def _strict_add(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
+    return left + right
+
+
+@_strict_add.register_fake
+def _(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
+    return torch.empty_like(left)
+
+
+@torch.library.custom_op("qtb_prefill_parity::strict_rmsnorm", mutates_args=())
+def _strict_rmsnorm(
+    tensor: torch.Tensor,
+    weight: torch.Tensor,
+    eps: float,
+) -> torch.Tensor:
+    input_dtype = tensor.dtype
+    values = tensor.float()
+    variance = values.pow(2).mean(-1, keepdim=True)
+    values = values * torch.rsqrt(variance + eps)
+    return weight * values.to(input_dtype)
+
+
+@_strict_rmsnorm.register_fake
+def _(tensor: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
+    return torch.empty_like(tensor)
 
 
 def main() -> int:
@@ -54,6 +83,16 @@ def main() -> int:
     parser.add_argument("--disable-tf32", action="store_true")
     parser.add_argument("--disable-compile-rmsnorm", action="store_true")
     parser.add_argument("--disable-compile-rope", action="store_true")
+    parser.add_argument(
+        "--rmsnorm-compat-mode",
+        default="current",
+        choices=("current", "aten_rms_norm", "f_rms_norm", "strict_custom"),
+    )
+    parser.add_argument(
+        "--rope-compat-mode",
+        default="current",
+        choices=("current", "strict_add"),
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
@@ -80,6 +119,8 @@ def main() -> int:
     with _compile_disable_context(
         rmsnorm=args.disable_compile_rmsnorm,
         rope=args.disable_compile_rope,
+        rmsnorm_compat_mode=args.rmsnorm_compat_mode,
+        rope_compat_mode=args.rope_compat_mode,
     ):
         prefill_outputs: dict[str, list[dict[str, Any]]] = {}
         prefill_objects: dict[str, list[Any]] = {}
@@ -169,6 +210,8 @@ def main() -> int:
         "prefill_mask_mode_requested": args.prefill_mask_mode,
         "disable_compile_rmsnorm": args.disable_compile_rmsnorm,
         "disable_compile_rope": args.disable_compile_rope,
+        "rmsnorm_compat_mode": args.rmsnorm_compat_mode,
+        "rope_compat_mode": args.rope_compat_mode,
         "backends": backends,
         "repeats": args.repeats,
         "max_new_tokens": args.max_new_tokens,
@@ -240,7 +283,13 @@ def _configure_precision(args: argparse.Namespace) -> None:
 
 
 @contextmanager
-def _compile_disable_context(*, rmsnorm: bool, rope: bool):
+def _compile_disable_context(
+    *,
+    rmsnorm: bool,
+    rope: bool,
+    rmsnorm_compat_mode: str,
+    rope_compat_mode: str,
+):
     original_rmsnorm_forward = qwen_modeling.Qwen3TTSRMSNorm.forward
     original_rope = qwen_modeling.apply_multimodal_rotary_pos_emb
     try:
@@ -248,14 +297,120 @@ def _compile_disable_context(*, rmsnorm: bool, rope: bool):
             qwen_modeling.Qwen3TTSRMSNorm.forward = torch.compiler.disable(
                 original_rmsnorm_forward
             )
+        elif rmsnorm_compat_mode != "current":
+            qwen_modeling.Qwen3TTSRMSNorm.forward = _make_rmsnorm_forward(
+                rmsnorm_compat_mode
+            )
         if rope:
             qwen_modeling.apply_multimodal_rotary_pos_emb = torch.compiler.disable(
                 original_rope
+            )
+        elif rope_compat_mode != "current":
+            qwen_modeling.apply_multimodal_rotary_pos_emb = _make_rope_forward(
+                rope_compat_mode
             )
         yield
     finally:
         qwen_modeling.Qwen3TTSRMSNorm.forward = original_rmsnorm_forward
         qwen_modeling.apply_multimodal_rotary_pos_emb = original_rope
+
+
+def _make_rmsnorm_forward(mode: str):
+    def forward(self, hidden_states):
+        if mode == "aten_rms_norm":
+            return torch.ops.aten.rms_norm.default(
+                hidden_states,
+                [hidden_states.shape[-1]],
+                self.weight,
+                self.variance_epsilon,
+            )
+        if mode == "f_rms_norm":
+            return F.rms_norm(
+                hidden_states,
+                normalized_shape=(hidden_states.shape[-1],),
+                weight=self.weight,
+                eps=self.variance_epsilon,
+            )
+        if mode == "strict_custom":
+            return _strict_rmsnorm(hidden_states, self.weight, self.variance_epsilon)
+        raise ValueError(f"Unsupported RMSNorm compatibility mode: {mode}")
+
+    return forward
+
+
+def _make_rope_forward(mode: str):
+    if mode != "strict_add":
+        raise ValueError(f"Unsupported RoPE compatibility mode: {mode}")
+
+    def forward(q, k, cos, sin, mrope_section, mrope_interleaved=False, unsqueeze_dim=1):
+        q_mul_cos, q_mul_sin, k_mul_cos, k_mul_sin = _rope_terms(
+            q,
+            k,
+            cos,
+            sin,
+            mrope_section,
+            mrope_interleaved,
+            unsqueeze_dim,
+        )
+        return _strict_add(q_mul_cos, q_mul_sin), _strict_add(k_mul_cos, k_mul_sin)
+
+    return forward
+
+
+def _rope_terms(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    cos: torch.Tensor,
+    sin: torch.Tensor,
+    mrope_section: list[int],
+    mrope_interleaved: bool,
+    unsqueeze_dim: int,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    if mrope_interleaved:
+        dim = cos.shape[-1]
+        modality_count = len(mrope_section)
+        cos_half = _apply_interleaved_rope(
+            cos[..., : dim // 2],
+            mrope_section,
+            modality_count,
+        )
+        sin_half = _apply_interleaved_rope(
+            sin[..., : dim // 2],
+            mrope_section,
+            modality_count,
+        )
+        cos = torch.cat((cos_half, cos_half), dim=-1).unsqueeze(unsqueeze_dim)
+        sin = torch.cat((sin_half, sin_half), dim=-1).unsqueeze(unsqueeze_dim)
+    else:
+        sections = mrope_section * 2
+        cos = torch.cat(
+            [chunk[index % 3] for index, chunk in enumerate(cos.split(sections, dim=-1))],
+            dim=-1,
+        ).unsqueeze(unsqueeze_dim)
+        sin = torch.cat(
+            [chunk[index % 3] for index, chunk in enumerate(sin.split(sections, dim=-1))],
+            dim=-1,
+        ).unsqueeze(unsqueeze_dim)
+    q_rotate = qwen_modeling.rotate_half(q)
+    k_rotate = qwen_modeling.rotate_half(k)
+    return q * cos, q_rotate * sin, k * cos, k_rotate * sin
+
+
+def _apply_interleaved_rope(
+    tensor: torch.Tensor,
+    sections: list[int],
+    modality_count: int,
+) -> torch.Tensor:
+    output = tensor[0].clone()
+    for index, section_size in enumerate(sections[1:], 1):
+        begin = index
+        end = section_size * modality_count
+        output[..., begin:end:modality_count] = tensor[
+            index,
+            ...,
+            begin:end:modality_count,
+        ]
+    return output
 
 
 def _runtime_metadata(device: str) -> dict[str, Any]:

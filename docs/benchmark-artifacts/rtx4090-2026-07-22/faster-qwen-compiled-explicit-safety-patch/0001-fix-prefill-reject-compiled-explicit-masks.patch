@@ -1,0 +1,132 @@
+From 9ba25c7cd06b809306aa57bad1ccac70b23c30aa Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 15:44:27 +0300
+Subject: [PATCH] fix(prefill): reject compiled explicit masks
+
+---
+ faster_qwen3_tts/streaming.py | 18 +++++++++++++
+ tests/test_sampling.py        | 50 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 68 insertions(+)
+
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 056b094..770954b 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -35,6 +35,10 @@ _PREFILL_COMPILE_CACHE = {}
+ _PREFILL_COMPILE_ERRORS = {}
+ 
+ 
++class UnsupportedPrefillConfiguration(ValueError):
++    """Raised when a requested prefill backend/mask combination is unsafe."""
++
++
+ class _CudaNvtxRange:
+     def __init__(self, name: str, enabled: bool):
+         self._name = name
+@@ -72,7 +76,9 @@ def _run_talker_prefill(
+     prefill_backend: str,
+     prefill_mask_mode: str = "auto",
+ ):
++    prefill_backend = _normalize_prefill_backend(prefill_backend)
+     prefill_mask_mode = _normalize_prefill_mask_mode(prefill_mask_mode)
++    _validate_prefill_configuration(prefill_backend, prefill_mask_mode)
+     skip_prefill_causal_mask = prefill_mask_mode == "skip"
+     prefill_attention_mask = None if skip_prefill_causal_mask else attention_mask
+     profile = {
+@@ -165,6 +171,15 @@ def _normalize_prefill_mask_mode(prefill_mask_mode: str) -> str:
+     return mode
+ 
+ 
++def _validate_prefill_configuration(prefill_backend: str, prefill_mask_mode: str) -> None:
++    if prefill_backend == "eager":
++        return
++    if prefill_mask_mode != "skip":
++        raise UnsupportedPrefillConfiguration(
++            "Compiled prefill requires verified mask skip; use eager for explicit masks."
++        )
++
++
+ def select_prefill_mask_mode(input_metadata: Optional[dict]) -> str:
+     if not input_metadata:
+         return "explicit"
+@@ -317,6 +332,9 @@ def fast_generate_streaming(
+     prefill_backend = _normalize_prefill_backend(prefill_backend)
+     if str(prefill_mask_mode or "auto").strip().lower() == "auto":
+         prefill_mask_mode = select_prefill_mask_mode(input_metadata)
++    else:
++        prefill_mask_mode = _normalize_prefill_mask_mode(prefill_mask_mode)
++    _validate_prefill_configuration(prefill_backend, prefill_mask_mode)
+ 
+     # === PREFILL (still uses HF forward for variable-length prefill) ===
+     t_start = time.perf_counter()
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index a5bd472..01fbce0 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -8,6 +8,7 @@ from faster_qwen3_tts.model import FasterQwen3TTS
+ from faster_qwen3_tts.sampling import apply_repetition_penalty
+ from faster_qwen3_tts.sampling import sample_logits
+ from faster_qwen3_tts.streaming import _run_talker_prefill
++from faster_qwen3_tts.streaming import UnsupportedPrefillConfiguration
+ from faster_qwen3_tts.streaming import select_prefill_mask_mode
+ 
+ 
+@@ -200,6 +201,55 @@ def test_run_talker_prefill_passes_static_mask_mode():
+     assert talker.masks[1] is tam
+ 
+ 
++def test_run_talker_prefill_rejects_compiled_explicit_masks():
++    class DummyTalker:
++        def forward(self, **kwargs):
++            hidden = kwargs["inputs_embeds"]
++            return types.SimpleNamespace(
++                logits=torch.zeros(1, hidden.shape[1], 3),
++                past_hidden=hidden[:, -1:, :],
++                past_key_values=[],
++                generation_step=0,
++            )
++
++    talker = DummyTalker()
++    tie = torch.zeros(1, 2, 4)
++    tam = torch.ones(1, 2, dtype=torch.long)
++    tth = torch.zeros(1, 1, 4)
++    tpe = torch.zeros(1, 1, 4)
++
++    _run_talker_prefill(
++        talker,
++        tie,
++        tam,
++        tth,
++        tpe,
++        prefill_backend="eager",
++        prefill_mask_mode="explicit",
++    )
++
++    with pytest.raises(UnsupportedPrefillConfiguration):
++        _run_talker_prefill(
++            talker,
++            tie,
++            tam,
++            tth,
++            tpe,
++            prefill_backend="compile_backend_eager",
++            prefill_mask_mode="explicit",
++        )
++
++    _run_talker_prefill(
++        talker,
++        tie,
++        tam,
++        tth,
++        tpe,
++        prefill_backend="compile_backend_eager",
++        prefill_mask_mode="skip",
++    )
++
++
+ @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required for fast_generate syncs.")
+ def test_min_new_tokens_suppresses_early_eos():
+     class DummyConfig:
+-- 
+2.53.0.windows.1
+
