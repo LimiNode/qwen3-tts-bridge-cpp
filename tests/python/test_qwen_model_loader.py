@@ -177,8 +177,37 @@ class QwenModelLoaderTests(unittest.TestCase):
                 "dtype": "bfloat16",
                 "attn_implementation": "eager",
                 "max_seq_len": 1024,
+                "prefill_compile_compat_mode": "none",
             },
             fake_faster.calls[0][1],
+        )
+
+    def test_faster_backend_forwards_prefill_compile_compat_mode(self) -> None:
+        fake_faster = _FakeFasterQwen()
+
+        def import_module(name: str) -> object:
+            if name == "faster_qwen3_tts":
+                return _FakeFasterModule(fake_faster)
+            raise AssertionError(f"unexpected import: {name}")
+
+        with patch(
+            "qwen_tts_bridge_worker.engine.qwen.model_loader.importlib.import_module",
+            side_effect=import_module,
+        ):
+            load_qwen_model(
+                QwenEngineConfig(
+                    model_path="models/qwen",
+                    runtime_backend="faster",
+                    dtype="bfloat16",
+                    attn_implementation="sdpa",
+                    prefill_backend="compile_reduce_overhead",
+                    prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                )
+            )
+
+        self.assertEqual(
+            "strict_bf16_sdpa_v1",
+            fake_faster.calls[0][1]["prefill_compile_compat_mode"],
         )
 
 

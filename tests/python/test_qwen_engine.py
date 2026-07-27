@@ -129,8 +129,14 @@ class _FasterStreamingModel:
         self,
         model_type: str,
         supported_speakers: list[str] | None = None,
+        *,
+        dtype: str = "bfloat16",
+        attn_implementation: str = "sdpa",
+        prefill_compile_compat_mode: str = "none",
     ) -> None:
-        self.model = _NestedWrapper(model_type)
+        self.model = _NestedWrapper(model_type, attn_implementation)
+        self.dtype = dtype
+        self.prefill_compile_compat_mode = prefill_compile_compat_mode
         self._supported_speakers = supported_speakers
         self.custom_stream_calls: list[dict[str, object]] = []
         self.design_stream_calls: list[dict[str, object]] = []
@@ -192,9 +198,20 @@ class _FasterStreamingModel:
         return _Stream()
 
 
+class _TalkerConfig:
+    def __init__(self, attn_implementation: str) -> None:
+        self._attn_implementation = attn_implementation
+
+
+class _ModelConfig:
+    def __init__(self, attn_implementation: str) -> None:
+        self.talker_config = _TalkerConfig(attn_implementation)
+
+
 class _NestedWrapper:
-    def __init__(self, model_type: str) -> None:
+    def __init__(self, model_type: str, attn_implementation: str = "sdpa") -> None:
         self.model = _InnerModel(model_type)
+        self.config = _ModelConfig(attn_implementation)
 
 
 class QwenEngineTests(unittest.TestCase):
@@ -627,11 +644,14 @@ class QwenEngineTests(unittest.TestCase):
         fake_model = _FasterStreamingModel(
             "custom_voice",
             supported_speakers=["Alice"],
+            prefill_compile_compat_mode="strict_bf16_sdpa_v1",
         )
         engine = QwenTtsEngine(
             QwenEngineConfig(
                 model_path="models/qwen-custom",
                 runtime_backend="faster",
+                dtype="bfloat16",
+                attn_implementation="sdpa",
                 profile_prefill=True,
                 profile_nvtx=True,
                 prefill_backend="compile_reduce_overhead",
@@ -668,6 +688,66 @@ class QwenEngineTests(unittest.TestCase):
             fake_model.custom_stream_calls[0]["prefill_compile_compat_mode"],
         )
         self.assertFalse(fake_model.custom_stream_calls[0]["do_sample"])
+
+    def test_strict_prefill_compat_rejects_unvalidated_voice_design_model(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "voice_design",
+            prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-design",
+                runtime_backend="faster",
+                dtype="bfloat16",
+                attn_implementation="sdpa",
+                prefill_backend="compile_reduce_overhead",
+                prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+
+        with self.assertRaisesRegex(QwenEngineError, "CustomVoice"):
+            engine.load()
+
+    def test_strict_prefill_compat_rejects_loaded_runtime_mismatch(self) -> None:
+        cases = (
+            {
+                "fake": {"prefill_compile_compat_mode": "none"},
+                "match": "did not apply",
+            },
+            {
+                "fake": {"dtype": "float16"},
+                "match": "dtype=bfloat16",
+            },
+            {
+                "fake": {"attn_implementation": "eager"},
+                "match": "attention=sdpa",
+            },
+        )
+        for case in cases:
+            fake_kwargs = {
+                "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+                **case["fake"],
+            }
+            fake_model = _FasterStreamingModel(
+                "custom_voice",
+                supported_speakers=["Alice"],
+                **fake_kwargs,
+            )
+            engine = QwenTtsEngine(
+                QwenEngineConfig(
+                    model_path="models/qwen-custom",
+                    runtime_backend="faster",
+                    dtype="bfloat16",
+                    attn_implementation="sdpa",
+                    prefill_backend="compile_reduce_overhead",
+                    prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                ),
+                model_loader=lambda _config, fake_model=fake_model: fake_model,
+            )
+            with self.subTest(case=case):
+                with self.assertRaisesRegex(QwenEngineError, str(case["match"])):
+                    engine.load()
 
     def test_faster_voice_design_uses_fixed_chunk_streaming(self) -> None:
         fake_model = _FasterStreamingModel("voice_design")

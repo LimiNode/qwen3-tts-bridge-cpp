@@ -184,6 +184,7 @@ def main() -> int:
         device=args.device,
         dtype=args.dtype,
         attn_implementation=args.attn_implementation,
+        prefill_compile_compat_mode=args.prefill_compile_compat_mode,
     )
     _eval_inner_modules(model)
 

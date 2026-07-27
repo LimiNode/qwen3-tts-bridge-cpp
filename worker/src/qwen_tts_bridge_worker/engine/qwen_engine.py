@@ -70,6 +70,7 @@ class QwenTtsEngine:
             return
         _seed_runtime(self._config.seed)
         self._model = self._model_loader(self._config)
+        _validate_loaded_prefill_compile_compat(self._model, self._config)
 
     def warmup(self) -> dict[str, object] | None:
         """Ensure the model object exists before the worker sends ready."""
@@ -361,6 +362,67 @@ def _qwen_model_type(model: Any) -> str:
     if model_type is None:
         model_type = getattr(model, "tts_model_type", "")
     return str(model_type)
+
+
+def _validate_loaded_prefill_compile_compat(
+    model: Any,
+    config: QwenEngineConfig,
+) -> None:
+    if config.prefill_compile_compat_mode == "none":
+        return
+
+    model_type = _qwen_model_type(model)
+    if model_type != "custom_voice":
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 is currently validated only for "
+            f"CustomVoice models; loaded tts_model_type={model_type or 'unknown'}"
+        )
+
+    actual_mode = getattr(model, "prefill_compile_compat_mode", None)
+    if actual_mode != config.prefill_compile_compat_mode:
+        raise QwenEngineError(
+            "loaded faster model did not apply requested prefill compile "
+            f"compat mode: requested={config.prefill_compile_compat_mode!r}, "
+            f"actual={actual_mode!r}"
+        )
+
+    actual_dtype = _normalized_dtype_name(getattr(model, "dtype", None))
+    if actual_dtype != "bfloat16":
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 requires loaded faster model dtype=bfloat16; "
+            f"actual={actual_dtype or 'unknown'}"
+        )
+
+    actual_attn = _loaded_talker_attention_implementation(model)
+    if actual_attn != "sdpa":
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 requires loaded faster model attention=sdpa; "
+            f"actual={actual_attn or 'unknown'}"
+        )
+
+
+def _normalized_dtype_name(dtype: Any) -> str:
+    text = str(dtype or "").strip().lower()
+    if text in {"torch.bfloat16", "bfloat16", "bf16"}:
+        return "bfloat16"
+    if text in {"torch.float16", "float16", "fp16"}:
+        return "float16"
+    if text in {"torch.float32", "float32", "fp32"}:
+        return "float32"
+    return text
+
+
+def _loaded_talker_attention_implementation(model: Any) -> str:
+    for path in (
+        ("model", "model", "config", "talker_config", "_attn_implementation"),
+        ("model", "config", "talker_config", "_attn_implementation"),
+        ("model", "model", "talker", "config", "_attn_implementation"),
+        ("model", "talker", "config", "_attn_implementation"),
+    ):
+        value = _nested_attr(model, path)
+        if value is not None:
+            return str(value)
+    return ""
 
 
 def _request_seed(config: QwenEngineConfig, request_id: int) -> int | None:

@@ -25,52 +25,123 @@ seed: 4242
 decode: --no-sample
 ```
 
-Diagnostic semantic gates:
+2026-07-28 strict BF16 SDPA lifecycle hardening:
+
+```text
+run from: C:\_repoz\qwen3-tts-bridge-cpp
+bridge branch: development-flash-attn-experiment
+faster-qwen3-tts branch: prefill-compile-exact-shape
+faster-qwen3-tts lifecycle commit: 95ea2ca
+scope:
+  - immutable loaded-model compat mode
+  - atomic Talker module patching
+  - bridge cross-field config validation
+  - bridge loaded-model validation before ready
+  - strict VoiceDesign temporarily blocked until real-model gate
+```
+
+Verification after lifecycle hardening:
+
+```text
+FasterQwen targeted:
+  .venv-faster-qwen\Scripts\python.exe -m pytest tests\test_sampling.py tests\test_prefill_compat.py -q
+  result: 50 passed, 1 warning
+
+FasterQwen selected:
+  .venv-faster-qwen\Scripts\python.exe -m pytest tests\test_ggml_backend.py tests\test_prefill_compat.py tests\test_sample_rate.py tests\test_sampling.py tests\test_voice_clone_prompt_api.py -q
+  result: 107 passed, 1 warning
+
+FasterQwen full:
+  $env:PYTHONPATH='C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+  .venv-faster-qwen\Scripts\python.exe -m pytest -q
+  result: 121 passed, 18 warnings, 287.12s
+
+Bridge Python:
+  scripts\check-python.ps1 -UseVenv -VenvPath .venv
+  result: 158 tests OK, 2 skipped
+
+Bridge C++:
+  ctest --test-dir build\default --output-on-failure
+  result: 9/9 passed
+```
+
+Real-model diagnostic-lazy smoke after lifecycle hardening:
 
 ```powershell
+$env:PYTHONPATH='C:\_repoz\faster-qwen3-tts-v032-stack112-clean;C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
 .\.venv-faster-qwen\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
-    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
-    --runtime-backend faster `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
     --device cuda `
     --dtype bfloat16 `
     --attn-implementation sdpa `
     --speaker ryan `
     --text "I am your robot, I am your worker." `
     --language English `
-    --seed 4242 `
-    --no-sample `
+    --max-new-tokens 64 `
+    --repeats 1 `
+    --include-product-compat `
+    --include-reduce-overhead `
+    --compact-output `
+    --output tmp\context-gate-product-lifecycle-smoke.json
+```
+
+Smoke result:
+
+```text
+raw_eager, strict_eager, strict_inductor_default, strict_reduce_overhead,
+product_strict_inductor_default, product_strict_reduce_overhead:
+  semantic_pass=true
+  termination_equal=true
+  same_codec=true
+  same_frame_count=true
+  prefill diff vs raw=0.0
+```
+
+Lifecycle patch SHA256:
+
+```text
+faster-qwen-strict-bf16-sdpa-lifecycle-patch/0001-feat-prefill-add-strict-bf16-sdpa-compat-mode.patch  7717E6DF57F032208F44529229187457B53A9CD871EE2BF8D8387CDC6B6E5D06
+faster-qwen-strict-bf16-sdpa-lifecycle-patch/0002-fix-prefill-make-compat-mode-immutable.patch  90DA4DA036BA242A4B7DCCA6115B51BB08E88675638BD5675BC32C2C9C9A2556
+faster-qwen-strict-bf16-sdpa-lifecycle-patch/faster-qwen-prefill-compile-through-95ea2ca.bundle  3FCED2B067672D497F07F23AC1B842B39132E3718206902AA6845D713AE9DA12
+```
+
+Diagnostic semantic gates:
+
+```powershell
+.\.venv-faster-qwen\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --speaker ryan `
+    --text "I am your robot, I am your worker." `
+    --language English `
     --max-new-tokens 64 `
     --repeats 3 `
     --include-reduce-overhead `
     --output docs\benchmark-artifacts\rtx4090-2026-07-22\context-gate-v2\bf16-sdpa-raw-strict-inductor-reduce-r3.json
 
 .\.venv-faster-qwen\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
-    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
-    --runtime-backend faster `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
     --device cuda `
     --dtype bfloat16 `
     --attn-implementation sdpa `
     --speaker ryan `
     --text "I am your robot, I am your worker." `
     --language English `
-    --seed 4242 `
-    --no-sample `
     --max-new-tokens 256 `
     --repeats 3 `
     --include-reduce-overhead `
     --output docs\benchmark-artifacts\rtx4090-2026-07-22\context-gate-v2\bf16-sdpa-raw-strict-inductor-reduce-eos-r3.json
 
 .\.venv-faster-qwen\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
-    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
-    --runtime-backend faster `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
     --device cuda `
     --dtype bfloat16 `
     --attn-implementation sdpa `
     --speaker ryan `
     --text "I am your robot, I am your worker." `
     --language English `
-    --seed 4242 `
-    --no-sample `
     --max-new-tokens 64 `
     --repeats 3 `
     --include-product-compat `
@@ -78,16 +149,13 @@ Diagnostic semantic gates:
     --output docs\benchmark-artifacts\rtx4090-2026-07-22\context-gate-v2\product-strict-bf16-sdpa-r3.json
 
 .\.venv-faster-qwen\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
-    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
-    --runtime-backend faster `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
     --device cuda `
     --dtype bfloat16 `
     --attn-implementation sdpa `
     --speaker ryan `
     --text "I am your robot, I am your worker." `
     --language English `
-    --seed 4242 `
-    --no-sample `
     --max-new-tokens 256 `
     --repeats 3 `
     --include-product-compat `

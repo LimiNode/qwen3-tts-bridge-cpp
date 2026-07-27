@@ -2001,15 +2001,26 @@ prefill_compile_compat_mode=strict_bf16_sdpa_v1
 
 The local FasterQwen worktree is
 `C:\_repoz\faster-qwen3-tts-v032-stack112-clean`, branch
-`prefill-compile-exact-shape`, commit `12527a7`. The bridge worker exposes the
+`prefill-compile-exact-shape`, commit `95ea2ca`. The bridge worker exposes the
 mode through `--prefill-compile-compat-mode`; the default remains `none`.
 
-The opt-in is deliberately fail-closed. It is accepted only for BF16 inputs,
-batch size `1`, compiled prefill backends
+The opt-in is deliberately fail-closed. It is accepted only for FasterQwen
+CustomVoice, BF16 inputs, batch size `1`, compiled prefill backends
 `compile_inductor_default` / `compile_reduce_overhead`, verified mask skip with
 `attention_mask=None`, SDPA attention metadata, and no sliding-window prefill.
 The compatibility islands are instance-local on the Talker object and cover
 RMSNorm, RoPE additions, MLP multiply, and SDPA.
+
+The lifecycle is now model-immutable in the public FasterQwen path:
+`FasterQwen3TTS.from_pretrained(..., prefill_compile_compat_mode=...)`
+declares the Talker mode at load time. After that, per-request attempts to use
+a different mode fail, including `strict -> none` and `none -> strict`.
+The module patch is atomic: target modules are collected and validated before
+any `forward` method is replaced. The bridge also rejects invalid strict config
+combinations before model load and validates the loaded model before sending
+`ready`: actual model type, dtype, attention implementation, and loaded compat
+mode must match the strict contract. VoiceDesign remains temporarily blocked
+for strict mode until a real VoiceDesign gate is run.
 
 The semantic gate was also hardened. Generation comparisons now fail unless
 termination telemetry agrees (`termination_reason`, `hit_eos`,
@@ -2042,10 +2053,19 @@ PYTHONPATH=<Qwen fork> pytest -q: 116 passed, 18 warnings, 298.91s after final p
 Bridge scripts/check-python.ps1 -UseVenv -VenvPath .venv: 154 tests OK, 2 skipped.
 Bridge ctest --test-dir build\default --output-on-failure: 9/9 passed.
 Bridge stdio_transport_test stress, --repeat until-fail:20: 20/20 passed.
+After lifecycle hardening:
+  FasterQwen selected suite: 107 passed, 1 warning.
+  FasterQwen full suite with Qwen fork: 121 passed, 18 warnings, 287.12s.
+  Bridge scripts/check-python.ps1 -UseVenv -VenvPath .venv: 158 tests OK, 2 skipped.
+  Bridge ctest --test-dir build\default --output-on-failure: 9/9 passed.
+  Real-model context-gate smoke with product compat: semantic_pass=true for all
+  raw/strict/product contexts; prefill diff 0.0.
 ```
 
 The patch and bundle are saved under
 `docs/benchmark-artifacts/rtx4090-2026-07-22/faster-qwen-strict-bf16-sdpa-product-patch/`.
+The lifecycle-hardened patch and bundle are saved under
+`docs/benchmark-artifacts/rtx4090-2026-07-22/faster-qwen-strict-bf16-sdpa-lifecycle-patch/`.
 
 ### Product Opt-In Performance A/B
 

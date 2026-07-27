@@ -49,7 +49,7 @@ class EngineFactoryTests(unittest.TestCase):
                 "--dtype",
                 "bfloat16",
                 "--attn-implementation",
-                "flash_attention_2",
+                "sdpa",
                 "--max-seq-len",
                 "1024",
                 "--emit-every-frames",
@@ -93,7 +93,7 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("faster", config.runtime_backend)
         self.assertEqual("cuda:0", config.device)
         self.assertEqual("bfloat16", config.dtype)
-        self.assertEqual("flash_attention_2", config.attn_implementation)
+        self.assertEqual("sdpa", config.attn_implementation)
         self.assertEqual(1024, config.max_seq_len)
         self.assertEqual(4, config.emit_every_frames)
         self.assertEqual(96, config.decode_window_frames)
@@ -287,6 +287,32 @@ class EngineFactoryTests(unittest.TestCase):
             with self.subTest(qwen_config=qwen_config):
                 with self.assertRaises(ValueError):
                     QwenEngineConfig(**qwen_config)
+
+    def test_qwen_config_rejects_invalid_strict_prefill_compat_contract(self) -> None:
+        valid: dict[str, Any] = {
+            "model_path": "models/qwen",
+            "runtime_backend": "faster",
+            "dtype": "bfloat16",
+            "attn_implementation": "sdpa",
+            "prefill_backend": "compile_reduce_overhead",
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+        }
+        invalid_updates: tuple[dict[str, Any], ...] = (
+            {"runtime_backend": "upstream"},
+            {"dtype": "float16"},
+            {"attn_implementation": "flash_attention_2"},
+            {"prefill_backend": "eager"},
+            {"prefill_backend": "compile_backend_eager"},
+        )
+
+        for update in invalid_updates:
+            qwen_config = dict(valid)
+            qwen_config.update(update)
+            with self.subTest(update=update):
+                with self.assertRaises(ValueError):
+                    QwenEngineConfig(**qwen_config)
+
+        QwenEngineConfig(**valid)
 
     def test_reject_invalid_mock_delay(self) -> None:
         for value in (-1.0, math.inf, math.nan):

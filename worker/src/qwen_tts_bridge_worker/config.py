@@ -119,6 +119,7 @@ class QwenEngineConfig:
                 "qwen.prefill_compile_compat_mode must be none or "
                 "strict_bf16_sdpa_v1"
             )
+        self._validate_prefill_compile_compat_contract()
         if self.seed_mode not in {"request_id", "fixed"}:
             raise ValueError("qwen.seed_mode must be request_id or fixed")
         if self.warmup_synthesis_enabled and not self.warmup_text:
@@ -134,6 +135,33 @@ class QwenEngineConfig:
             raise ValueError("qwen.warmup_unbounded_passes must be non-negative")
         if not self.warmup_language:
             raise ValueError("qwen.warmup_language must not be empty")
+
+    def _validate_prefill_compile_compat_contract(self) -> None:
+        if self.prefill_compile_compat_mode == "none":
+            return
+        if self.runtime_backend != "faster":
+            raise ValueError(
+                "qwen.prefill_compile_compat_mode requires runtime_backend=faster"
+            )
+        if self.dtype not in {"bfloat16", "bf16"}:
+            raise ValueError(
+                "qwen.prefill_compile_compat_mode=strict_bf16_sdpa_v1 "
+                "requires dtype=bfloat16"
+            )
+        if self.attn_implementation != "sdpa":
+            raise ValueError(
+                "qwen.prefill_compile_compat_mode=strict_bf16_sdpa_v1 "
+                "requires attn_implementation=sdpa"
+            )
+        if self.prefill_backend not in {
+            "compile_inductor_default",
+            "compile_reduce_overhead",
+        }:
+            raise ValueError(
+                "qwen.prefill_compile_compat_mode=strict_bf16_sdpa_v1 "
+                "requires prefill_backend=compile_inductor_default or "
+                "compile_reduce_overhead"
+            )
 
 
 EngineConfig: TypeAlias = MockEngineConfig | QwenEngineConfig

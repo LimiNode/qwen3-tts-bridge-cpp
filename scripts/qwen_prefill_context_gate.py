@@ -72,6 +72,7 @@ def main() -> int:
         device=args.device,
         dtype=args.dtype,
         attn_implementation=args.attn_implementation,
+        prefill_compile_compat_mode=None,
     )
     _eval_inner_modules(model)
     prepared = model._prepare_generation_custom(

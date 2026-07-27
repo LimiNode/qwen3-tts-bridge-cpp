@@ -62,6 +62,7 @@ def load_faster_qwen_model(config: QwenEngineConfig) -> Any:
             dtype=_faster_dtype(config),
             attn_implementation=config.attn_implementation or "eager",
             max_seq_len=config.max_seq_len,
+            prefill_compile_compat_mode=config.prefill_compile_compat_mode,
         )
     except Exception as exc:
         raise QwenModelLoadError(f"failed to load faster Qwen model: {exc}") from exc

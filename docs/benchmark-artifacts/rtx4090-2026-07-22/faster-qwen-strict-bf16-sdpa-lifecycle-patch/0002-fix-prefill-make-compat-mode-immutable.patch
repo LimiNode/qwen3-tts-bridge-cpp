@@ -1,0 +1,494 @@
+From 95ea2ca4873857e408de4ab412761ad554ffab90 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Tue, 28 Jul 2026 00:55:30 +0300
+Subject: [PATCH 2/2] fix(prefill): make compat mode immutable
+
+---
+ faster_qwen3_tts/model.py          |  47 +++++++++-
+ faster_qwen3_tts/prefill_compat.py | 139 +++++++++++++++++++++++------
+ faster_qwen3_tts/streaming.py      |   4 +-
+ tests/test_prefill_compat.py       | 120 +++++++++++++++++++++++++
+ tests/test_sampling.py             |  13 +++
+ 5 files changed, 294 insertions(+), 29 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index a0a8e97..e4295bd 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -14,6 +14,10 @@ import numpy as np
+ import soundfile as sf
+ import torch
+ 
++from .prefill_compat import (
++    configure_prefill_compile_compat,
++    normalize_prefill_compile_compat_mode,
++)
+ from .utils import suppress_flash_attn_warning
+ 
+ logger = logging.getLogger(__name__)
+@@ -36,6 +40,7 @@ class FasterQwen3TTS:
+         device: str = "cuda",
+         dtype: torch.dtype = torch.bfloat16,
+         max_seq_len: int = 2048,
++        prefill_compile_compat_mode: Optional[str] = "none",
+     ):
+         self.model = base_model  # The qwen-tts Qwen3TTSModel instance
+         self.predictor_graph = predictor_graph
+@@ -44,6 +49,11 @@ class FasterQwen3TTS:
+         self.device = device
+         self.dtype = dtype
+         self.max_seq_len = max_seq_len
++        self.prefill_compile_compat_mode = (
++            normalize_prefill_compile_compat_mode(prefill_compile_compat_mode)
++            if prefill_compile_compat_mode is not None
++            else "none"
++        )
+         self.sample_rate = self._infer_sample_rate(base_model)
+         self._warmed_up = False
+         self._voice_prompt_cache = {}  # Cache (ref_audio, ref_text) -> (vcp, ref_ids)
+@@ -122,6 +132,18 @@ class FasterQwen3TTS:
+             raise RuntimeError("Greedy PredictorGraph is unavailable for do_sample=False")
+         return self.predictor_graph_greedy
+ 
++    def _resolve_prefill_compile_compat_mode(self, requested_mode: Optional[str]) -> str:
++        if requested_mode is None:
++            return self.prefill_compile_compat_mode
++        requested_mode = normalize_prefill_compile_compat_mode(requested_mode)
++        if requested_mode != self.prefill_compile_compat_mode:
++            raise RuntimeError(
++                "prefill_compile_compat_mode is immutable for a loaded model: "
++                f"requested {requested_mode!r}, loaded "
++                f"{self.prefill_compile_compat_mode!r}."
++            )
++        return requested_mode
++
+     @staticmethod
+     def _reject_ggml_cached_reference_args(
+         ref_spk: Optional[Union[str, Path]],
+@@ -155,6 +177,7 @@ class FasterQwen3TTS:
+         qwentts_ref_cache_dir: Optional[Union[str, Path]] = None,
+         cache_dir: Optional[Union[str, Path]] = None,
+         local_files_only: bool = False,
++        prefill_compile_compat_mode: Optional[str] = "none",
+     ):
+         """
+         Load Qwen3-TTS model and prepare CUDA graphs.
+@@ -180,12 +203,21 @@ class FasterQwen3TTS:
+             A backend-specific model implementing the public generation and
+             warmup APIs.
+         """
++        normalized_prefill_compile_compat_mode = (
++            normalize_prefill_compile_compat_mode(prefill_compile_compat_mode)
++            if prefill_compile_compat_mode is not None
++            else None
++        )
+         if backend not in ("torch", "ggml", "qwentts"):
+             raise ValueError(
+                 f"Unsupported backend {backend!r}. Expected 'torch', 'ggml', or 'qwentts'."
+             )
+ 
+         if backend in ("ggml", "qwentts"):
++            if normalized_prefill_compile_compat_mode not in (None, "none"):
++                raise ValueError(
++                    "prefill_compile_compat_mode is only supported by backend='torch'"
++                )
+             from .ggml_backend import GGMLQwen3TTS
+ 
+             if gguf_talker_path is not None or gguf_codec_path is not None:
+@@ -236,6 +268,11 @@ class FasterQwen3TTS:
+         )
+ 
+         talker = base_model.model.talker
++        if normalized_prefill_compile_compat_mode is not None:
++            configure_prefill_compile_compat(
++                talker,
++                normalized_prefill_compile_compat_mode,
++            )
+         talker_config = base_model.model.config.talker_config
+ 
+         # Extract predictor config from loaded model
+@@ -1414,10 +1451,13 @@ class FasterQwen3TTS:
+         profile_nvtx: bool = False,
+         profile_request_role: Optional[str] = None,
+         prefill_backend: str = "eager",
+-        prefill_compile_compat_mode: str = "none",
++        prefill_compile_compat_mode: Optional[str] = None,
+     ) -> Generator[Tuple[np.ndarray, int, dict], None, None]:
+         if self.model.model.tts_model_type != "custom_voice":
+             raise ValueError("Loaded model does not support custom voice generation")
++        prefill_compile_compat_mode = self._resolve_prefill_compile_compat_mode(
++            prefill_compile_compat_mode
++        )
+ 
+         self.model._validate_languages([language])
+         self.model._validate_speakers([speaker])
+@@ -1618,10 +1658,13 @@ class FasterQwen3TTS:
+         profile_nvtx: bool = False,
+         profile_request_role: Optional[str] = None,
+         prefill_backend: str = "eager",
+-        prefill_compile_compat_mode: str = "none",
++        prefill_compile_compat_mode: Optional[str] = None,
+     ) -> Generator[Tuple[np.ndarray, int, dict], None, None]:
+         if self.model.model.tts_model_type != "voice_design":
+             raise ValueError("Loaded model does not support voice design generation")
++        prefill_compile_compat_mode = self._resolve_prefill_compile_compat_mode(
++            prefill_compile_compat_mode
++        )
+ 
+         self.model._validate_languages([language])
+ 
+diff --git a/faster_qwen3_tts/prefill_compat.py b/faster_qwen3_tts/prefill_compat.py
+index 668fb65..45f9f91 100644
+--- a/faster_qwen3_tts/prefill_compat.py
++++ b/faster_qwen3_tts/prefill_compat.py
+@@ -114,45 +114,121 @@ def normalize_prefill_compile_compat_mode(mode: str) -> str:
+     return normalized
+ 
+ 
++def configure_prefill_compile_compat(talker: Any, mode: str) -> dict[str, Any]:
++    """Declare and, when requested, install immutable Talker compat mode."""
++    mode = normalize_prefill_compile_compat_mode(mode)
++    declared = getattr(
++        talker,
++        "_faster_qwen3_tts_prefill_compile_compat_declared_mode",
++        None,
++    )
++    if declared is not None and declared != mode:
++        raise RuntimeError(
++            "Talker prefill compile compatibility mode is immutable after load: "
++            f"{declared!r} != {mode!r}"
++        )
++    if declared == mode:
++        return prefill_compile_compat_metadata(talker)
++
++    if mode == "none":
++        talker._faster_qwen3_tts_prefill_compile_compat_declared_mode = mode
++        talker._faster_qwen3_tts_prefill_compile_compat_mode = mode
++        talker._faster_qwen3_tts_prefill_compile_compat_patched_modules = {}
++        return prefill_compile_compat_metadata(talker)
++
++    metadata = apply_prefill_compile_compat(talker, mode)
++    talker._faster_qwen3_tts_prefill_compile_compat_declared_mode = mode
++    return metadata
++
++
++def ensure_prefill_compile_compat(talker: Any, requested_mode: str) -> dict[str, Any]:
++    """Validate that a request uses the Talker's immutable compat mode."""
++    requested_mode = normalize_prefill_compile_compat_mode(requested_mode)
++    declared = getattr(
++        talker,
++        "_faster_qwen3_tts_prefill_compile_compat_declared_mode",
++        None,
++    )
++    if declared is not None and declared != requested_mode:
++        raise RuntimeError(
++            "Requested prefill compile compatibility mode does not match the "
++            f"loaded model: requested {requested_mode!r}, loaded {declared!r}."
++        )
++    if declared is not None:
++        return prefill_compile_compat_metadata(talker)
++
++    # Low-level diagnostic entry points may operate on an unconfigured Talker.
++    # Keep them lazy, but never allow a patched Talker to pretend it is "none".
++    applied = getattr(talker, "_faster_qwen3_tts_prefill_compile_compat_mode", None)
++    if applied not in (None, requested_mode):
++        raise RuntimeError(
++            "Talker already has a different prefill compile compatibility mode: "
++            f"{applied!r} != {requested_mode!r}"
++        )
++    if requested_mode == "none":
++        return {
++            "prefill_compile_compat_mode": requested_mode,
++            "prefill_compile_compat_applied": False,
++            "prefill_compile_compat_reused": False,
++            "prefill_compile_compat_patched_modules": {},
++        }
++    return apply_prefill_compile_compat(talker, requested_mode)
++
++
++def prefill_compile_compat_metadata(talker: Any) -> dict[str, Any]:
++    mode = getattr(
++        talker,
++        "_faster_qwen3_tts_prefill_compile_compat_mode",
++        getattr(
++            talker,
++            "_faster_qwen3_tts_prefill_compile_compat_declared_mode",
++            "none",
++        ),
++    )
++    patched = dict(
++        getattr(
++            talker,
++            "_faster_qwen3_tts_prefill_compile_compat_patched_modules",
++            {},
++        )
++    )
++    return {
++        "prefill_compile_compat_mode": normalize_prefill_compile_compat_mode(mode),
++        "prefill_compile_compat_applied": bool(patched),
++        "prefill_compile_compat_reused": bool(patched),
++        "prefill_compile_compat_patched_modules": patched,
++    }
++
++
+ def apply_prefill_compile_compat(talker: Any, mode: str) -> dict[str, Any]:
+     """Install instance-local compatibility forwards for compiled prefill."""
+     mode = normalize_prefill_compile_compat_mode(mode)
+     if mode == "none":
+-        return {"prefill_compile_compat_mode": mode, "prefill_compile_compat_applied": False}
+-
+-    if getattr(talker, "_faster_qwen3_tts_prefill_compile_compat_mode", None) == mode:
+         return {
+             "prefill_compile_compat_mode": mode,
+-            "prefill_compile_compat_applied": True,
+-            "prefill_compile_compat_reused": True,
+-            "prefill_compile_compat_patched_modules": dict(
+-                getattr(
+-                    talker,
+-                    "_faster_qwen3_tts_prefill_compile_compat_patched_modules",
+-                    {},
+-                )
+-            ),
++            "prefill_compile_compat_applied": False,
++            "prefill_compile_compat_reused": False,
++            "prefill_compile_compat_patched_modules": {},
+         }
+ 
++    if getattr(talker, "_faster_qwen3_tts_prefill_compile_compat_mode", None) == mode:
++        return prefill_compile_compat_metadata(talker)
++
+     if getattr(talker, "_faster_qwen3_tts_prefill_compile_compat_mode", None) not in (None, mode):
+         raise RuntimeError("Talker already has a different prefill compile compatibility mode")
+ 
+-    patched = {"rmsnorm": 0, "mlp": 0, "attention": 0}
+-    for module in talker.modules():
+-        class_name = type(module).__name__
+-        if class_name == "Qwen3TTSRMSNorm":
+-            module.forward = types.MethodType(_strict_rmsnorm_forward, module)
+-            patched["rmsnorm"] += 1
+-        elif class_name == "Qwen3TTSTalkerTextMLP":
+-            module.forward = types.MethodType(_strict_mlp_forward, module)
+-            patched["mlp"] += 1
+-        elif class_name in {"Qwen3TTSAttention", "Qwen3TTSTalkerAttention"}:
+-            module.forward = types.MethodType(_strict_attention_forward, module)
+-            patched["attention"] += 1
+-
++    targets = _collect_prefill_compile_compat_targets(talker)
++    patched = {name: len(modules) for name, modules in targets.items()}
+     if patched["rmsnorm"] == 0 or patched["mlp"] == 0 or patched["attention"] == 0:
+         raise RuntimeError(f"Incomplete prefill compile compatibility patch: {patched!r}")
+ 
++    for module in targets["rmsnorm"]:
++        module.forward = types.MethodType(_strict_rmsnorm_forward, module)
++    for module in targets["mlp"]:
++        module.forward = types.MethodType(_strict_mlp_forward, module)
++    for module in targets["attention"]:
++        module.forward = types.MethodType(_strict_attention_forward, module)
++
+     talker._faster_qwen3_tts_prefill_compile_compat_mode = mode
+     talker._faster_qwen3_tts_prefill_compile_compat_patched_modules = dict(patched)
+     return {
+@@ -163,6 +239,19 @@ def apply_prefill_compile_compat(talker: Any, mode: str) -> dict[str, Any]:
+     }
+ 
+ 
++def _collect_prefill_compile_compat_targets(talker: Any) -> dict[str, list[Any]]:
++    targets: dict[str, list[Any]] = {"rmsnorm": [], "mlp": [], "attention": []}
++    for module in talker.modules():
++        class_name = type(module).__name__
++        if class_name == "Qwen3TTSRMSNorm":
++            targets["rmsnorm"].append(module)
++        elif class_name == "Qwen3TTSTalkerTextMLP":
++            targets["mlp"].append(module)
++        elif class_name in {"Qwen3TTSAttention", "Qwen3TTSTalkerAttention"}:
++            targets["attention"].append(module)
++    return targets
++
++
+ def validate_strict_bf16_sdpa_v1(
+     *,
+     prefill_backend: str,
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 3dd21df..afa7244 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -15,7 +15,7 @@ import torch.nn.functional as F
+ 
+ from .generate import get_eos_tracker, get_fused_codec_embeddings
+ from .prefill_compat import (
+-    apply_prefill_compile_compat,
++    ensure_prefill_compile_compat,
+     normalize_prefill_compile_compat_mode,
+     validate_strict_bf16_sdpa_v1,
+ )
+@@ -148,7 +148,7 @@ def _run_talker_prefill(
+ 
+     try:
+         profile.update(
+-            apply_prefill_compile_compat(talker, prefill_compile_compat_mode)
++            ensure_prefill_compile_compat(talker, prefill_compile_compat_mode)
+         )
+         compiled = _PREFILL_COMPILE_CACHE.get(cache_key)
+         if compiled is None:
+diff --git a/tests/test_prefill_compat.py b/tests/test_prefill_compat.py
+index e30e2ad..7bc2f4d 100644
+--- a/tests/test_prefill_compat.py
++++ b/tests/test_prefill_compat.py
+@@ -5,6 +5,62 @@ import torch.nn.functional as F
+ from faster_qwen3_tts import prefill_compat
+ 
+ 
++class Qwen3TTSRMSNorm(torch.nn.Module):
++    def __init__(self):
++        super().__init__()
++        self.weight = torch.nn.Parameter(torch.ones(4))
++        self.variance_epsilon = 1.0e-6
++
++    def forward(self, hidden_states):
++        return hidden_states
++
++
++class Qwen3TTSTalkerTextMLP(torch.nn.Module):
++    def __init__(self):
++        super().__init__()
++        self.gate_proj = torch.nn.Linear(4, 4)
++        self.up_proj = torch.nn.Linear(4, 4)
++        self.down_proj = torch.nn.Linear(4, 4)
++        self.act_fn = torch.nn.SiLU()
++
++    def forward(self, hidden_states):
++        return hidden_states
++
++
++class Qwen3TTSTalkerAttention(torch.nn.Module):
++    def __init__(self):
++        super().__init__()
++        self.q_proj = torch.nn.Linear(4, 4)
++        self.k_proj = torch.nn.Linear(4, 4)
++        self.v_proj = torch.nn.Linear(4, 4)
++        self.o_proj = torch.nn.Linear(4, 4)
++        self.q_norm = torch.nn.Identity()
++        self.k_norm = torch.nn.Identity()
++        self.head_dim = 4
++        self.scaling = 0.5
++        self.num_key_value_groups = 1
++        self.layer_idx = 0
++        self.is_causal = True
++
++    def forward(self, hidden_states):
++        return hidden_states
++
++
++class CompleteTalker(torch.nn.Module):
++    def __init__(self):
++        super().__init__()
++        self.norm = Qwen3TTSRMSNorm()
++        self.mlp = Qwen3TTSTalkerTextMLP()
++        self.attn = Qwen3TTSTalkerAttention()
++
++
++class PartialTalker(torch.nn.Module):
++    def __init__(self):
++        super().__init__()
++        self.norm = Qwen3TTSRMSNorm()
++        self.mlp = Qwen3TTSTalkerTextMLP()
++
++
+ def test_strict_add_matches_torch_add():
+     left = torch.randn(2, 3, dtype=torch.float32)
+     right = torch.randn(2, 3, dtype=torch.float32)
+@@ -118,3 +174,67 @@ def test_strict_sdpa_cuda_bf16_gqa_layout():
+     assert output.shape == (1, 7, 4, 16)
+     assert output.dtype is torch.bfloat16
+     assert output.is_contiguous()
++
++
++def test_configure_prefill_compile_compat_none_declares_immutable_mode():
++    talker = CompleteTalker()
++    metadata = prefill_compat.configure_prefill_compile_compat(talker, "none")
++
++    assert metadata["prefill_compile_compat_mode"] == "none"
++    assert metadata["prefill_compile_compat_applied"] is False
++    assert (
++        talker._faster_qwen3_tts_prefill_compile_compat_declared_mode
++        == "none"
++    )
++
++    with pytest.raises(RuntimeError, match="does not match"):
++        prefill_compat.ensure_prefill_compile_compat(
++            talker,
++            "strict_bf16_sdpa_v1",
++        )
++
++
++def test_configure_prefill_compile_compat_strict_rejects_later_none():
++    talker = CompleteTalker()
++    metadata = prefill_compat.configure_prefill_compile_compat(
++        talker,
++        "strict_bf16_sdpa_v1",
++    )
++
++    assert metadata["prefill_compile_compat_applied"] is True
++    assert metadata["prefill_compile_compat_patched_modules"] == {
++        "attention": 1,
++        "mlp": 1,
++        "rmsnorm": 1,
++    }
++
++    with pytest.raises(RuntimeError, match="does not match"):
++        prefill_compat.ensure_prefill_compile_compat(talker, "none")
++
++
++def test_legacy_unconfigured_talker_cannot_report_none_after_strict_patch():
++    talker = CompleteTalker()
++
++    prefill_compat.ensure_prefill_compile_compat(
++        talker,
++        "strict_bf16_sdpa_v1",
++    )
++
++    with pytest.raises(RuntimeError, match="different"):
++        prefill_compat.ensure_prefill_compile_compat(talker, "none")
++
++
++def test_prefill_compile_compat_patch_is_atomic_on_incomplete_talker():
++    talker = PartialTalker()
++    original_norm_forward = talker.norm.forward
++    original_mlp_forward = talker.mlp.forward
++
++    with pytest.raises(RuntimeError, match="Incomplete"):
++        prefill_compat.apply_prefill_compile_compat(
++            talker,
++            "strict_bf16_sdpa_v1",
++        )
++
++    assert talker.norm.forward == original_norm_forward
++    assert talker.mlp.forward == original_mlp_forward
++    assert not hasattr(talker, "_faster_qwen3_tts_prefill_compile_compat_mode")
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index 0363f87..d743026 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -61,6 +61,19 @@ def test_faster_wrapper_selects_greedy_predictor_graph():
+         model._select_predictor_graph(False)
+ 
+ 
++def test_faster_wrapper_uses_loaded_prefill_compile_compat_mode_by_default():
++    model = FasterQwen3TTS.__new__(FasterQwen3TTS)
++    model.prefill_compile_compat_mode = "strict_bf16_sdpa_v1"
++
++    assert model._resolve_prefill_compile_compat_mode(None) == "strict_bf16_sdpa_v1"
++    assert (
++        model._resolve_prefill_compile_compat_mode("strict_bf16_sdpa_v1")
++        == "strict_bf16_sdpa_v1"
++    )
++    with pytest.raises(RuntimeError, match="immutable"):
++        model._resolve_prefill_compile_compat_mode("none")
++
++
+ @pytest.mark.parametrize(
+     ("metadata", "expected"),
+     [
+-- 
+2.53.0.windows.1
+
