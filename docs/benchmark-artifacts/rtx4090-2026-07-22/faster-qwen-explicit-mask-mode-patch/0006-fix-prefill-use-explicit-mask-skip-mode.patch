@@ -1,0 +1,342 @@
+From d515c2dbcb3ef43dcdc793a16ea8b5a98330ab02 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 05:50:06 +0300
+Subject: [PATCH 6/6] fix(prefill): use explicit mask skip mode
+
+---
+ faster_qwen3_tts/model.py     |  5 ++
+ faster_qwen3_tts/streaming.py | 80 +++++++++++++++++--------------
+ tests/test_sampling.py        | 88 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 138 insertions(+), 35 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 6739926..73638cc 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -639,6 +639,11 @@ class FasterQwen3TTS:
+                     int(instruct_id.shape[-1]) if instruct_id is not None else 0
+                 ),
+                 "talker_prefill_length": int(tie.shape[1]),
++                "prefill_batch_size": int(tie.shape[0]),
++                "prefill_attention_mask_all_valid": True,
++                "prefill_has_sliding_window": bool(
++                    getattr(config, "sliding_window", None) is not None
++                ),
+                 "tokenize_wall_ms": tokenize_wall_ms,
+                 "build_talker_inputs_wall_ms": build_talker_inputs_wall_ms,
+             }
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index bcc2e7c..bda2715 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -8,12 +8,10 @@ CUDA graph usage is identical to non-streaming — same per-step performance.
+ 
+ import math
+ import time
+-from contextlib import contextmanager
+ from typing import Callable, Generator, Optional, Tuple
+ 
+ import torch
+ import torch.nn.functional as F
+-import qwen_tts.core.models.modeling_qwen3_tts as _qwen_modeling
+ 
+ from .generate import get_eos_tracker, get_fused_codec_embeddings
+ from .predictor_graph import PredictorGraph
+@@ -71,13 +69,17 @@ def _run_talker_prefill(
+     tts_pad_embed: torch.Tensor,
+     *,
+     prefill_backend: str,
++    prefill_mask_mode: str = "auto",
+ ):
++    prefill_mask_mode = _normalize_prefill_mask_mode(prefill_mask_mode)
++    skip_prefill_causal_mask = prefill_mask_mode == "skip"
+     profile = {
+         "prefill_backend_requested": prefill_backend,
+         "prefill_backend_used": "eager",
+         "prefill_compile_fallback": False,
+         "prefill_compile_error": None,
+-        "prefill_compile_force_mask_skip": False,
++        "prefill_mask_mode": prefill_mask_mode,
++        "prefill_skip_causal_mask": skip_prefill_causal_mask,
+     }
+     if prefill_backend == "eager":
+         return (
+@@ -87,6 +89,7 @@ def _run_talker_prefill(
+                 attention_mask,
+                 trailing_text_hiddens,
+                 tts_pad_embed,
++                skip_prefill_causal_mask=skip_prefill_causal_mask,
+             ),
+             profile,
+         )
+@@ -98,6 +101,7 @@ def _run_talker_prefill(
+         trailing_text_hiddens,
+         tts_pad_embed,
+         prefill_backend,
++        prefill_mask_mode,
+     )
+     if cache_key in _PREFILL_COMPILE_ERRORS:
+         profile["prefill_compile_fallback"] = True
+@@ -109,6 +113,7 @@ def _run_talker_prefill(
+                 attention_mask,
+                 trailing_text_hiddens,
+                 tts_pad_embed,
++                skip_prefill_causal_mask=skip_prefill_causal_mask,
+             ),
+             profile,
+         )
+@@ -118,14 +123,13 @@ def _run_talker_prefill(
+         if compiled is None:
+             compiled = _compile_talker_prefill(talker, prefill_backend)
+             _PREFILL_COMPILE_CACHE[cache_key] = compiled
+-        force_mask_skip = _can_skip_prefill_mask(talker, attention_mask)
+-        with _force_qwen_prefill_mask_skip(force_mask_skip):
+-            out = compiled(
+-                talker_input_embeds,
+-                attention_mask,
+-                trailing_text_hiddens,
+-                tts_pad_embed,
+-            )
++        out = compiled(
++            talker_input_embeds,
++            attention_mask,
++            trailing_text_hiddens,
++            tts_pad_embed,
++            skip_prefill_causal_mask,
++        )
+     except Exception as exc:
+         message = f"{type(exc).__name__}: {exc}"
+         _PREFILL_COMPILE_ERRORS[cache_key] = message
+@@ -138,40 +142,37 @@ def _run_talker_prefill(
+                 attention_mask,
+                 trailing_text_hiddens,
+                 tts_pad_embed,
++                skip_prefill_causal_mask=skip_prefill_causal_mask,
+             ),
+             profile,
+         )
+ 
+     profile["prefill_backend_used"] = prefill_backend
+-    profile["prefill_compile_force_mask_skip"] = force_mask_skip
+     return out, profile
+ 
+ 
+-@contextmanager
+-def _force_qwen_prefill_mask_skip(enabled: bool):
+-    if not enabled:
+-        yield
+-        return
+-    original = _qwen_modeling.create_causal_mask
+-    _qwen_modeling.create_causal_mask = _return_no_causal_mask
+-    try:
+-        yield
+-    finally:
+-        _qwen_modeling.create_causal_mask = original
+-
+-
+-def _return_no_causal_mask(**kwargs):
+-    return None
++def _normalize_prefill_mask_mode(prefill_mask_mode: str) -> str:
++    mode = str(prefill_mask_mode or "auto").strip().lower()
++    if mode not in {"auto", "skip", "explicit"}:
++        raise ValueError(
++            f"Unsupported prefill_mask_mode {prefill_mask_mode!r}. "
++            "Expected 'auto', 'skip', or 'explicit'."
++        )
++    if mode == "auto":
++        return "explicit"
++    return mode
+ 
+ 
+-def _can_skip_prefill_mask(talker, attention_mask: torch.Tensor) -> bool:
+-    model = getattr(talker, "model", None)
+-    config = getattr(model, "config", None)
+-    if getattr(config, "sliding_window", None) is not None:
+-        return False
+-    if attention_mask is None:
+-        return True
+-    return bool(attention_mask.detach().bool().all().item())
++def select_prefill_mask_mode(input_metadata: Optional[dict]) -> str:
++    if not input_metadata:
++        return "explicit"
++    if input_metadata.get("prefill_attention_mask_all_valid") is not True:
++        return "explicit"
++    if input_metadata.get("prefill_batch_size") != 1:
++        return "explicit"
++    if input_metadata.get("prefill_has_sliding_window") is True:
++        return "explicit"
++    return "skip"
+ 
+ 
+ def _talker_prefill_eager(
+@@ -180,6 +181,8 @@ def _talker_prefill_eager(
+     attention_mask: torch.Tensor,
+     trailing_text_hiddens: torch.Tensor,
+     tts_pad_embed: torch.Tensor,
++    *,
++    skip_prefill_causal_mask: bool = False,
+ ):
+     return talker.forward(
+         inputs_embeds=talker_input_embeds,
+@@ -192,6 +195,7 @@ def _talker_prefill_eager(
+         generation_step=None,
+         past_hidden=None,
+         past_key_values=None,
++        skip_prefill_causal_mask=skip_prefill_causal_mask,
+     )
+ 
+ 
+@@ -210,6 +214,7 @@ def _compile_talker_prefill(talker, prefill_backend: str) -> Callable:
+         attention_mask: torch.Tensor,
+         trailing_text_hiddens: torch.Tensor,
+         tts_pad_embed: torch.Tensor,
++        skip_prefill_causal_mask: bool,
+     ):
+         return _talker_prefill_eager(
+             talker,
+@@ -217,6 +222,7 @@ def _compile_talker_prefill(talker, prefill_backend: str) -> Callable:
+             attention_mask,
+             trailing_text_hiddens,
+             tts_pad_embed,
++            skip_prefill_causal_mask=skip_prefill_causal_mask,
+         )
+ 
+     return torch.compile(
+@@ -235,10 +241,12 @@ def _prefill_compile_cache_key(
+     trailing_text_hiddens: torch.Tensor,
+     tts_pad_embed: torch.Tensor,
+     prefill_backend: str,
++    prefill_mask_mode: str,
+ ) -> tuple:
+     return (
+         id(talker),
+         prefill_backend,
++        prefill_mask_mode,
+         _tensor_signature(talker_input_embeds),
+         _tensor_signature(attention_mask),
+         _tensor_signature(trailing_text_hiddens),
+@@ -297,6 +305,7 @@ def fast_generate_streaming(
+     talker_codec_head = talker.codec_head
+     fused_codec_weights, fused_codec_offsets = get_fused_codec_embeddings(predictor)
+     prefill_backend = _normalize_prefill_backend(prefill_backend)
++    prefill_mask_mode = select_prefill_mask_mode(input_metadata)
+ 
+     # === PREFILL (still uses HF forward for variable-length prefill) ===
+     t_start = time.perf_counter()
+@@ -320,6 +329,7 @@ def fast_generate_streaming(
+             trailing_text_hiddens,
+             tts_pad_embed,
+             prefill_backend=prefill_backend,
++            prefill_mask_mode=prefill_mask_mode,
+         )
+     prefill_profile["talker_forward_launch_wall_ms"] = (
+         time.perf_counter() - forward_started
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index 55a3df9..c106220 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -7,6 +7,8 @@ from faster_qwen3_tts.generate import fast_generate
+ from faster_qwen3_tts.model import FasterQwen3TTS
+ from faster_qwen3_tts.sampling import apply_repetition_penalty
+ from faster_qwen3_tts.sampling import sample_logits
++from faster_qwen3_tts.streaming import _run_talker_prefill
++from faster_qwen3_tts.streaming import select_prefill_mask_mode
+ 
+ 
+ def test_repetition_penalty_uses_all_history():
+@@ -56,6 +58,92 @@ def test_faster_wrapper_selects_greedy_predictor_graph():
+         model._select_predictor_graph(False)
+ 
+ 
++@pytest.mark.parametrize(
++    ("metadata", "expected"),
++    [
++        (
++            {
++                "prefill_attention_mask_all_valid": True,
++                "prefill_batch_size": 1,
++                "prefill_has_sliding_window": False,
++            },
++            "skip",
++        ),
++        (
++            {
++                "prefill_attention_mask_all_valid": False,
++                "prefill_batch_size": 1,
++                "prefill_has_sliding_window": False,
++            },
++            "explicit",
++        ),
++        (
++            {
++                "prefill_attention_mask_all_valid": True,
++                "prefill_batch_size": 2,
++                "prefill_has_sliding_window": False,
++            },
++            "explicit",
++        ),
++        (
++            {
++                "prefill_attention_mask_all_valid": True,
++                "prefill_batch_size": 1,
++                "prefill_has_sliding_window": True,
++            },
++            "explicit",
++        ),
++        (None, "explicit"),
++        ({}, "explicit"),
++    ],
++)
++def test_select_prefill_mask_mode_is_fail_closed(metadata, expected):
++    assert select_prefill_mask_mode(metadata) == expected
++
++
++def test_run_talker_prefill_passes_static_mask_mode():
++    class DummyTalker:
++        def __init__(self):
++            self.seen = []
++
++        def forward(self, **kwargs):
++            self.seen.append(kwargs["skip_prefill_causal_mask"])
++            hidden = kwargs["inputs_embeds"]
++            return types.SimpleNamespace(
++                logits=torch.zeros(1, hidden.shape[1], 3),
++                past_hidden=hidden[:, -1:, :],
++                past_key_values=[],
++                generation_step=0,
++            )
++
++    talker = DummyTalker()
++    tie = torch.zeros(1, 2, 4)
++    tam = torch.ones(1, 2, dtype=torch.long)
++    tth = torch.zeros(1, 1, 4)
++    tpe = torch.zeros(1, 1, 4)
++
++    _run_talker_prefill(
++        talker,
++        tie,
++        tam,
++        tth,
++        tpe,
++        prefill_backend="eager",
++        prefill_mask_mode="skip",
++    )
++    _run_talker_prefill(
++        talker,
++        tie,
++        tam,
++        tth,
++        tpe,
++        prefill_backend="eager",
++        prefill_mask_mode="explicit",
++    )
++
++    assert talker.seen == [True, False]
++
++
+ @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required for fast_generate syncs.")
+ def test_min_new_tokens_suppresses_early_eos():
+     class DummyConfig:
+-- 
+2.53.0.windows.1
+

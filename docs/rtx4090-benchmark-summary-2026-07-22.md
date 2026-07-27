@@ -1634,6 +1634,48 @@ Inductor fix around layer-0 `q_norm`/QKV, or measure whether `aot_eager`
 provides enough speedup to be worth a guarded opt-in before returning to
 `reduce-overhead`.
 
+### Production Mask Mode And Device Profiles
+
+The proof-of-cause mask fix was replaced with an explicit API-level mask mode.
+The Qwen submodule now has commit `f75125e`
+(`fix(talker): allow explicit prefill mask skip`), adding
+`skip_prefill_causal_mask` to the talker model and forwarding wrapper. The
+FasterQwen branch now has commit `d515c2d`
+(`fix(prefill): use explicit mask skip mode`), which passes a static
+`prefill_mask_mode` into the compiled prefill graph and includes that mode in
+the compile cache key. The previous global monkeypatch of
+`create_causal_mask` is gone.
+
+The mask decision is now fail-closed and metadata-driven:
+
+| Case | Mode |
+| --- | --- |
+| single CustomVoice prefill, all tokens valid, no sliding window | `skip` |
+| missing metadata | `explicit` |
+| padded attention mask | `explicit` |
+| batch size other than `1` | `explicit` |
+| sliding-window model | `explicit` |
+
+This also removes the CUDA `.all().item()` synchronization from the request
+critical path. A small smoke confirmed the mask selector and `_run_talker_prefill`
+bool forwarding without requiring pytest in the local environments.
+
+The real-model BF16 controls still pass with the production mask mode:
+
+| Artifact | Result |
+| --- | --- |
+| `production-mask-mode/bf16-compile-backend-eager-r1.json` | `compile_backend_eager` uses the real compiled backend, `fallback=false`, `prefill_mask_mode=skip`, prefill diff `0.0`, codec/frame/termination parity passes. |
+| `production-mask-mode/bf16-safe-compile-ladder-r2.json` | `compile_backend_eager` and `compile_backend_aot_eager` remain exact over `2` repeats; both have prefill diff `0.0` and true-greedy semantic parity. |
+
+The parity and micro-bisect reports now include runtime hardware metadata:
+Torch version, CUDA version, GPU name, compute capability, and total VRAM. The
+current RTX 4090 results are therefore explicitly tagged as
+`device_profile=rtx4090`. Older GPUs, including the available-but-not-installed
+CMP 50HX class, should be treated as a future `compat` profile rather than
+assuming the RTX 4090 defaults. Before enabling product defaults on such cards,
+run a separate gate for FP16/FP32 behavior, VRAM headroom, compile availability,
+and fallback behavior.
+
 ### Paired Nsight Follow-Up
 
 The worker now emits an outer `qtb_profile_first_steady_pair` NVTX range when

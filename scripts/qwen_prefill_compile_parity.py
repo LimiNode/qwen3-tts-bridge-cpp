@@ -14,6 +14,7 @@ from faster_qwen3_tts import FasterQwen3TTS
 from faster_qwen3_tts.streaming import (
     _run_talker_prefill,
     fast_generate_streaming,
+    select_prefill_mask_mode,
 )
 
 DEFAULT_BACKENDS = (
@@ -33,6 +34,7 @@ def main() -> int:
     parser.add_argument("--speaker", default="ryan")
     parser.add_argument("--instruction", default="")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--device-profile", default="auto")
     parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--attn-implementation", default="eager")
     parser.add_argument("--backend", action="append", dest="backends")
@@ -71,7 +73,15 @@ def main() -> int:
         rows = []
         objects = []
         for repeat_index in range(args.repeats):
-            out, profile = _prefill_once(talker, tie, tam, tth, tpe, backend)
+            out, profile = _prefill_once(
+                talker,
+                tie,
+                tam,
+                tth,
+                tpe,
+                metadata,
+                backend,
+            )
             snapshot = _snapshot_prefill_output(out)
             objects.append(snapshot)
             rows.append(
@@ -137,6 +147,8 @@ def main() -> int:
         "speaker": args.speaker,
         "instruction": args.instruction,
         "device": args.device,
+        "device_profile": args.device_profile,
+        "runtime": _runtime_metadata(args.device),
         "dtype": args.dtype,
         "attn_implementation": args.attn_implementation,
         "backends": backends,
@@ -209,6 +221,28 @@ def _configure_precision(args: argparse.Namespace) -> None:
         torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
 
 
+def _runtime_metadata(device: str) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "torch_version": torch.__version__,
+        "torch_cuda_version": torch.version.cuda,
+        "cuda_available": torch.cuda.is_available(),
+        "device": device,
+    }
+    if device.startswith("cuda") and torch.cuda.is_available():
+        index = torch.cuda.current_device()
+        props = torch.cuda.get_device_properties(index)
+        metadata.update(
+            {
+                "cuda_device_index": index,
+                "cuda_device_name": props.name,
+                "cuda_compute_capability": [props.major, props.minor],
+                "cuda_total_memory_bytes": int(props.total_memory),
+                "cuda_total_memory_gib": props.total_memory / (1024**3),
+            }
+        )
+    return metadata
+
+
 def _eval_inner_modules(model: Any) -> None:
     for item in (
         getattr(getattr(model, "model", None), "model", None),
@@ -225,6 +259,7 @@ def _prefill_once(
     tam: torch.Tensor,
     tth: torch.Tensor,
     tpe: torch.Tensor,
+    metadata: dict[str, Any],
     backend: str,
 ) -> tuple[Any, dict[str, Any]]:
     torch.cuda.synchronize()
@@ -236,6 +271,7 @@ def _prefill_once(
             tth,
             tpe,
             prefill_backend=backend,
+            prefill_mask_mode=select_prefill_mask_mode(metadata),
         )
     torch.cuda.synchronize()
     return out, profile

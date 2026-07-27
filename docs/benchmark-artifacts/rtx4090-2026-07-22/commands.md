@@ -1280,6 +1280,70 @@ faster-qwen-mask-skip-compile-fix-patch/0005-fix-prefill-preserve-mask-skip-unde
 faster-qwen-mask-skip-compile-fix-patch/faster-qwen-prefill-compile-through-2d04337.bundle SHA256: 72cbcee9fe125013f4ab0fa333005d2cf1b725591aeed9bc1a092d64b0b1053d
 ```
 
+Production explicit mask mode controls:
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean;external/python/Qwen3-TTS-streaming"
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --backend eager `
+    --backend compile_backend_eager `
+    --repeats 1 `
+    --max-new-tokens 64 `
+    --chunk-size 8 `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\production-mask-mode\bf16-compile-backend-eager-r1.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --backend eager `
+    --backend compile_backend_eager `
+    --backend compile_backend_aot_eager `
+    --repeats 2 `
+    --max-new-tokens 64 `
+    --chunk-size 8 `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\production-mask-mode\bf16-safe-compile-ladder-r2.json
+```
+
+Patch artifacts through Qwen `f75125e` and FasterQwen `d515c2d`:
+
+```powershell
+$fasterDir = "docs\benchmark-artifacts\rtx4090-2026-07-22\faster-qwen-explicit-mask-mode-patch"
+New-Item -ItemType Directory -Force -Path $fasterDir | Out-Null
+git -C C:\_repoz\faster-qwen3-tts-v032-stack112-clean format-patch `
+    -o (Resolve-Path $fasterDir) 71fa0fd..d515c2d
+git -C C:\_repoz\faster-qwen3-tts-v032-stack112-clean bundle create `
+    (Join-Path (Resolve-Path $fasterDir) "faster-qwen-prefill-compile-through-d515c2d.bundle") `
+    prefill-compile-exact-shape ^71fa0fd
+
+$qwenDir = "docs\benchmark-artifacts\rtx4090-2026-07-22\qwen-explicit-mask-skip-patch"
+New-Item -ItemType Directory -Force -Path $qwenDir | Out-Null
+git -C external\python\Qwen3-TTS-streaming format-patch `
+    -o (Resolve-Path $qwenDir) 25cc588..f75125e
+```
+
+Production mask mode artifact hashes:
+
+```text
+production-mask-mode/bf16-compile-backend-eager-r1.json SHA256: 957e897815b50f37ebe84d169dea0338061b71716d8b6ba8f723000f90ff7b60
+production-mask-mode/bf16-safe-compile-ladder-r2.json SHA256: 6cf3843c92ea2c482180810c5d22b258385a044ebdbe3676b6ef142d43b5dc38
+faster-qwen-explicit-mask-mode-patch/0006-fix-prefill-use-explicit-mask-skip-mode.patch SHA256: 57337df4196f95363969258cf93ba50d82090178433549ac0e790cc40b2197e2
+faster-qwen-explicit-mask-mode-patch/faster-qwen-prefill-compile-through-d515c2d.bundle SHA256: d7111fc05f5037b43c378f4c1fd7f57f7f6dd6b45702e6d2f97d657c3e3078fd
+qwen-explicit-mask-skip-patch/0001-fix-talker-allow-explicit-prefill-mask-skip.patch SHA256: d970b2b23e33506e06e6363f7c529bee22b623b3757605fbe48b623d8f17343b
+```
+
 2026-07-24 profile-on/off overhead control:
 
 ```powershell

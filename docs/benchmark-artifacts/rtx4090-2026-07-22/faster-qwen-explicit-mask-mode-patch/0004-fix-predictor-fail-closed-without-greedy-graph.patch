@@ -1,0 +1,44 @@
+From 9f1c8014a58c94bf50e2e071a5559d2ab8c0533a Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 02:13:33 +0300
+Subject: [PATCH 4/6] fix(predictor): fail closed without greedy graph
+
+---
+ faster_qwen3_tts/model.py | 4 +++-
+ tests/test_sampling.py    | 4 ++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 88e5eb3..6739926 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -94,8 +94,10 @@ class FasterQwen3TTS:
+ 
+     def _select_predictor_graph(self, do_sample: bool):
+         """Return a predictor graph whose sampling mode matches the request."""
+-        if do_sample or self.predictor_graph_greedy is None:
++        if do_sample:
+             return self.predictor_graph
++        if self.predictor_graph_greedy is None:
++            raise RuntimeError("Greedy PredictorGraph is unavailable for do_sample=False")
+         return self.predictor_graph_greedy
+ 
+     @staticmethod
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index dd5d5a1..55a3df9 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -51,6 +51,10 @@ def test_faster_wrapper_selects_greedy_predictor_graph():
+     assert model._select_predictor_graph(True) is sampling_graph
+     assert model._select_predictor_graph(False) is greedy_graph
+ 
++    model.predictor_graph_greedy = None
++    with pytest.raises(RuntimeError, match="Greedy PredictorGraph is unavailable"):
++        model._select_predictor_graph(False)
++
+ 
+ @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required for fast_generate syncs.")
+ def test_min_new_tokens_suppresses_early_eos():
+-- 
+2.53.0.windows.1
+

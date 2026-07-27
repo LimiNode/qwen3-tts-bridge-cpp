@@ -1,0 +1,68 @@
+From f75125e5fb7fa7e8fa6f75cc5ac541b90af82e98 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 05:49:56 +0300
+Subject: [PATCH] fix(talker): allow explicit prefill mask skip
+
+---
+ qwen_tts/core/models/modeling_qwen3_tts.py | 24 ++++++++++++++--------
+ 1 file changed, 15 insertions(+), 9 deletions(-)
+
+diff --git a/qwen_tts/core/models/modeling_qwen3_tts.py b/qwen_tts/core/models/modeling_qwen3_tts.py
+index 4ab6cbc..15f5960 100644
+--- a/qwen_tts/core/models/modeling_qwen3_tts.py
++++ b/qwen_tts/core/models/modeling_qwen3_tts.py
+@@ -1664,6 +1664,7 @@ class Qwen3TTSTalkerModel(Qwen3TTSTalkerTextPreTrainedModel):
+         output_attentions: Optional[bool] = None,
+         output_hidden_states: Optional[bool] = None,
+         cache_position: Optional[torch.LongTensor] = None,
++        skip_prefill_causal_mask: bool = False,
+         **flash_attn_kwargs: Unpack[FlashAttentionKwargs],
+     ) -> BaseModelOutputWithPast:
+         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+@@ -1706,15 +1707,18 @@ class Qwen3TTSTalkerModel(Qwen3TTSTalkerTextPreTrainedModel):
+         else:
+             text_position_ids = position_ids[0]
+         
+-        mask_function = create_causal_mask if self.config.sliding_window is None else create_sliding_window_causal_mask
+-        causal_mask = mask_function(
+-            config=self.config,
+-            input_embeds=inputs_embeds,
+-            attention_mask=attention_mask,
+-            cache_position=cache_position,
+-            past_key_values=past_key_values,
+-            position_ids=text_position_ids,
+-        )
++        if skip_prefill_causal_mask:
++            causal_mask = None
++        else:
++            mask_function = create_causal_mask if self.config.sliding_window is None else create_sliding_window_causal_mask
++            causal_mask = mask_function(
++                config=self.config,
++                input_embeds=inputs_embeds,
++                attention_mask=attention_mask,
++                cache_position=cache_position,
++                past_key_values=past_key_values,
++                position_ids=text_position_ids,
++            )
+ 
+         hidden_states = inputs_embeds
+ 
+@@ -1878,6 +1882,7 @@ class Qwen3TTSTalkerForConditionalGeneration(Qwen3TTSTalkerTextPreTrainedModel,
+         subtalker_top_p=None,
+         subtalker_top_k=None,
+         subtalker_temperature=None,
++        skip_prefill_causal_mask=False,
+         **kwargs,
+     ) -> CausalLMOutputWithPast:
+         r"""
+@@ -1972,6 +1977,7 @@ class Qwen3TTSTalkerForConditionalGeneration(Qwen3TTSTalkerTextPreTrainedModel,
+             output_attentions=output_attentions,
+             output_hidden_states=output_hidden_states,
+             cache_position=cache_position,
++            skip_prefill_causal_mask=skip_prefill_causal_mask,
+             **kwargs,
+         )
+ 
+-- 
+2.53.0.windows.1
+

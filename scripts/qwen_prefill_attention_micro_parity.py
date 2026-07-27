@@ -64,6 +64,7 @@ def main() -> int:
     parser.add_argument("--language", default="English")
     parser.add_argument("--speaker", default="ryan")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--device-profile", default="auto")
     parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--attn-implementation", default="eager")
     parser.add_argument("--right-backend", default="compile_backend_eager")
@@ -147,6 +148,8 @@ def main() -> int:
         "language": args.language,
         "speaker": args.speaker,
         "device": args.device,
+        "device_profile": args.device_profile,
+        "runtime": _runtime_metadata(args.device),
         "dtype": args.dtype,
         "attn_implementation": args.attn_implementation,
         "right_backend": args.right_backend,
@@ -171,6 +174,28 @@ def _configure_precision(args: argparse.Namespace) -> None:
         torch.backends.cuda.matmul.allow_tf32 = False
         torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
         torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
+
+
+def _runtime_metadata(device: str) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "torch_version": torch.__version__,
+        "torch_cuda_version": torch.version.cuda,
+        "cuda_available": torch.cuda.is_available(),
+        "device": device,
+    }
+    if device.startswith("cuda") and torch.cuda.is_available():
+        index = torch.cuda.current_device()
+        props = torch.cuda.get_device_properties(index)
+        metadata.update(
+            {
+                "cuda_device_index": index,
+                "cuda_device_name": props.name,
+                "cuda_compute_capability": [props.major, props.minor],
+                "cuda_total_memory_bytes": int(props.total_memory),
+                "cuda_total_memory_gib": props.total_memory / (1024**3),
+            }
+        )
+    return metadata
 
 
 def _compile_fn(
