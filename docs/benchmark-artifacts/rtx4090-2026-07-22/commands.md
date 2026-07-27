@@ -2171,6 +2171,125 @@ result: failed; logits_last max_abs 0.21875, past_hidden max_abs 1.0,
   codec differs at frame 4 codebook 7, frame count differs.
 ```
 
+FasterQwen pytest verification after installing pytest into `.venv-faster-qwen`:
+
+```text
+command:
+  .venv-faster-qwen/Scripts/python.exe -m pip install pytest
+result:
+  installed pytest 9.1.1, pluggy 1.6.0, iniconfig 2.3.0
+
+command:
+  .venv-faster-qwen/Scripts/python.exe -m pytest
+    C:/_repoz/faster-qwen3-tts-v032-stack112-clean/tests/test_sampling.py -q
+result:
+  25 passed, 1 Dynamo warning, 21.40 s
+
+command:
+  .venv-faster-qwen/Scripts/python.exe -m pytest
+    C:/_repoz/faster-qwen3-tts-v032-stack112-clean/tests/test_ggml_backend.py
+    C:/_repoz/faster-qwen3-tts-v032-stack112-clean/tests/test_sample_rate.py
+    C:/_repoz/faster-qwen3-tts-v032-stack112-clean/tests/test_voice_clone_prompt_api.py -q
+result:
+  57 passed, 5.56 s
+
+full suite:
+  .venv-faster-qwen/Scripts/python.exe -m pytest
+    C:/_repoz/faster-qwen3-tts-v032-stack112-clean/tests -vv
+result:
+  timed out after 15 minutes before completing.
+
+collect-only:
+  96 tests collected in 10.00 s.
+```
+
+Attention sentinel and production-signature layer-9 repro:
+
+```text
+new scripts/features:
+  scripts/qwen_prefill_compile_parity.py --trace-attention-calls
+  scripts/qwen_prefill_layer9_attention_parity.py
+
+attention-sentinel/bf16-sdpa-trace-strict-rms-rope-mlp-prefill-r1.json
+SHA256: 97e673d28ebe44bca36541628c39aa143f8bee79b83dfc7c38527d94c4e271c8
+result: attention_call_probe eager=0, sdpa=28; prefill diff remains 0.21875
+  without strict SDPA.
+```
+
+Production-signature layer-9 ladder, strict RMSNorm/RoPE/MLP multiply:
+
+```text
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-layer_input.json
+SHA256: 08fdc7b8e8236140d2fc41360c82707c2a0c20c3198e9c49f10aa3c4d9dd6854
+result: exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-q_proj.json
+SHA256: 719ecb4e66a9419f8c8e8573260e2fe9a95afcaf86ace243b21c8275f8f867aa
+result: exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-k_proj.json
+SHA256: 9a50844e82eea11b77e36d20e1328c6827b3b1a23852d37357ca793a83ec9b13
+result: exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-v_proj.json
+SHA256: 194a093b3d46cc7ce44b86293d5f80a0eb1dff50cf28ab036cc55d24d1c8d377
+result: exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-q_norm.json
+SHA256: f9c044f1858c2a894f4b4d31bee72c5feb3a08132fdc6166350833c17a7af181
+result: exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-k_norm.json
+SHA256: c1fe7b4ed09cf01bc8c766a6374fbb9de14339069bca81f6ce1950d0c177ae51
+result: exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-q_rope.json
+SHA256: e627b4b9d949bf28cdb5e7ff885ee47f813b2e2e99a6a11ab19adbabd80cbbe0
+result: exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-k_rope.json
+SHA256: c770eae843f733b256a8ca48268acf06aa4e64e68ee262871a39c687d910ff2d
+result: exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-attention_context-default.json
+SHA256: 98c36f15be651005cf00ec094a7a1e64a1d375e7d7c49851a9d9679fb805de7f
+result: default SDPA max_abs 0.0009765625
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-attention_context-math_sdpa.json
+SHA256: 9dd270dc1db73272f11af091257987779eeb97a49ef239c68d503fa23a57d051
+result: forced math SDPA max_abs 0.0009765625
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-attention_context-eager_formula.json
+SHA256: ec4c88450fbf1ebf4a48a8da8d7a34083e9d9875ed1ec47d131f513efc631914
+result: explicit eager formula max_abs 0.017578125
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-attention_context-strict_sdpa.json
+SHA256: 57d5e0bb274e41dfd2005df027ce0d8ec5f69e707402f0380b6d94ebc270a48e
+result: opaque strict SDPA custom op exact
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-o_proj.json
+SHA256: c06bb8dbb7d010de34dbee4357d740225146adb6d367e04faf677a79522594c8
+result: default SDPA path max_abs 0.0009765625
+
+layer9-production-signature/bf16-sdpa-strict-rms-rope-mlp-layer9-attention_output.json
+SHA256: cced91dfb3372d56368d819683ee6475bdc592ed5f72228773dfe8e196e4a344
+result: default SDPA path max_abs 0.0009765625
+```
+
+Full strict RMSNorm/RoPE/MLP/SDPA true-greedy gate:
+
+```text
+strict-compat-full-gate/bf16-inductor-strict-rms-rope-mlp-sdpa-r1.json
+SHA256: ec7c72ecfec83244a82a51d1ab22e253ccf9a129b9866a16553cbc435aa86b5a
+result: passed; attention probe eager=0, sdpa=28; prefill diff 0.0;
+  codec/frame/EOS/waveform/audio samples match eager.
+
+strict-compat-full-gate/bf16-inductor-strict-rms-rope-mlp-sdpa-r2.json
+SHA256: 4390e94cf17250ca22b7552bb23ebb850b8651506e288ac0b2f41931b7d122f6
+result: passed over 2 repeats; attention probe eager=0, sdpa=28; prefill diff
+  0.0; codec/frame/EOS/waveform/audio samples match eager.
+```
+
 Verification after strict compatibility pass:
 
 ```text

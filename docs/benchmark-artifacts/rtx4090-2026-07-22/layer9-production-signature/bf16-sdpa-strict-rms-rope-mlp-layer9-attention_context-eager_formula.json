@@ -1,0 +1,174 @@
+{
+  "actual_talker_attn_implementation": "sdpa",
+  "artifact_schema_version": 1,
+  "attention_call_probe": {
+    "eager": 0,
+    "sdpa": 28
+  },
+  "attention_core_mode": "eager_formula",
+  "attn_implementation": "sdpa",
+  "comparison": {
+    "cosine_similarity": 0.9999420046806335,
+    "dtype": "torch.bfloat16",
+    "max_abs": 0.017578125,
+    "mean_abs": 0.0006449377397075295,
+    "rmse": 0.0012147619854658842,
+    "shape": [
+      1,
+      21,
+      16,
+      128
+    ]
+  },
+  "compile_inductor_default": {
+    "device": "cpu",
+    "dtype": "torch.bfloat16",
+    "is_contiguous": true,
+    "sha256": "b279050af670c720c386e765b3907f5c152fb63b997a9c1ae949c30ac0b5dc60",
+    "shape": [
+      1,
+      21,
+      16,
+      128
+    ],
+    "storage_offset": 0,
+    "stride": [
+      43008,
+      2048,
+      128,
+      1
+    ]
+  },
+  "device": "cuda",
+  "device_profile": "rtx4090",
+  "dtype": "bfloat16",
+  "eager": {
+    "device": "cpu",
+    "dtype": "torch.bfloat16",
+    "is_contiguous": true,
+    "sha256": "22f586e5522369da59197b4f532f05060a33ce880ae42d230bbc1d78098a9908",
+    "shape": [
+      1,
+      21,
+      16,
+      128
+    ],
+    "storage_offset": 0,
+    "stride": [
+      43008,
+      2048,
+      128,
+      1
+    ]
+  },
+  "force_talker_attn_implementation": "sdpa",
+  "forced_talker_attn_config_updates": 2,
+  "input": {
+    "attention_mask": {
+      "device": "cuda:0",
+      "dtype": "torch.int64",
+      "is_contiguous": true,
+      "sha256": "7b0f2fad20a85cf0019788e98b3bf0246e7c45861e5741368767c361c16c2392",
+      "shape": [
+        1,
+        21
+      ],
+      "storage_offset": 0,
+      "stride": [
+        21,
+        1
+      ]
+    },
+    "layer_input": {
+      "device": "cuda:0",
+      "dtype": "torch.bfloat16",
+      "is_contiguous": true,
+      "sha256": "ce7d0d88ea8ee6572bb989272cf3c1e4c5222726cddf05122041510704c70254",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "storage_offset": 0,
+      "stride": [
+        21504,
+        1024,
+        1
+      ]
+    },
+    "talker_input_embeds": {
+      "device": "cuda:0",
+      "dtype": "torch.bfloat16",
+      "is_contiguous": true,
+      "sha256": "b9daafc2a673ade7fcb52aa3cac47043fcf921afd5bc5c2994122f841470cccb",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "storage_offset": 0,
+      "stride": [
+        21504,
+        1024,
+        1
+      ]
+    }
+  },
+  "instruction": "",
+  "language": "English",
+  "layer_index": 9,
+  "metadata": {
+    "build_talker_inputs_wall_ms": 275.97289998084307,
+    "instruction_token_count": 0,
+    "prefill_attention_mask_all_valid": true,
+    "prefill_attn_implementation": "sdpa",
+    "prefill_attn_implementation_forced": true,
+    "prefill_attn_implementation_forced_updates": 2,
+    "prefill_batch_size": 1,
+    "prefill_has_sliding_window": false,
+    "prefill_mask_decision_source": "constructed_all_ones",
+    "talker_prefill_length": 21,
+    "text_token_count": 18,
+    "tokenize_wall_ms": 5.210499977692962
+  },
+  "mlp_compat_mode": "strict_mul",
+  "model": "models\\Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "production_signature": {
+    "attention_mask": null,
+    "cache_position": {
+      "device": "cuda:0",
+      "dtype": "torch.int64",
+      "is_contiguous": true,
+      "sha256": "53204a0cac92e3f6ddc04fe40aa5979df120e8acd636cffa132481808b9b66c6",
+      "shape": [
+        21
+      ],
+      "storage_offset": 0,
+      "stride": [
+        1
+      ]
+    },
+    "cache_type": "DynamicCache",
+    "use_cache": true,
+    "verified_mask_skip": true
+  },
+  "rmsnorm_compat_mode": "strict_custom",
+  "rope_compat_mode": "strict_add",
+  "runtime": {
+    "cuda_available": true,
+    "cuda_compute_capability": [
+      8,
+      9
+    ],
+    "cuda_device_index": 0,
+    "cuda_device_name": "NVIDIA GeForce RTX 4090",
+    "cuda_total_memory_bytes": 51526369280,
+    "cuda_total_memory_gib": 47.9876708984375,
+    "device": "cuda",
+    "torch_cuda_version": "12.6",
+    "torch_version": "2.11.0+cu126"
+  },
+  "speaker": "ryan",
+  "stage": "attention_context",
+  "text": "I am your robot, I am your worker."
+}

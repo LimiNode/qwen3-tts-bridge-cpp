@@ -68,6 +68,42 @@ def _(left: torch.Tensor, right: torch.Tensor) -> torch.Tensor:
     return torch.empty_like(left)
 
 
+@torch.library.custom_op("qtb_prefill_parity::strict_sdpa", mutates_args=())
+def _strict_sdpa(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    scaling: float,
+    num_key_value_groups: int,
+) -> torch.Tensor:
+    key_states = qwen_modeling.repeat_kv(key, num_key_value_groups)
+    value_states = qwen_modeling.repeat_kv(value, num_key_value_groups)
+    output = F.scaled_dot_product_attention(
+        query,
+        key_states,
+        value_states,
+        attn_mask=None,
+        dropout_p=0.0,
+        scale=scaling,
+    )
+    return output.transpose(1, 2).contiguous()
+
+
+@_strict_sdpa.register_fake
+def _(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    scaling: float,
+    num_key_value_groups: int,
+) -> torch.Tensor:
+    return torch.empty(
+        (query.shape[0], query.shape[2], query.shape[1], query.shape[3]),
+        dtype=query.dtype,
+        device=query.device,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="models/Qwen3-TTS-12Hz-0.6B-CustomVoice")
@@ -85,6 +121,7 @@ def main() -> int:
         choices=("", "eager", "sdpa"),
         help="Diagnostic override for configs already loaded into the Talker modules.",
     )
+    parser.add_argument("--trace-attention-calls", action="store_true")
     parser.add_argument("--backend", action="append", dest="backends")
     parser.add_argument(
         "--prefill-mask-mode",
@@ -113,6 +150,11 @@ def main() -> int:
         "--mlp-compat-mode",
         default="current",
         choices=("current", "strict_mul"),
+    )
+    parser.add_argument(
+        "--attention-compat-mode",
+        default="current",
+        choices=("current", "strict_sdpa"),
     )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -147,6 +189,21 @@ def main() -> int:
         metadata["prefill_attn_implementation_forced_updates"] = forced_attn_updates
     backends = tuple(args.backends or DEFAULT_BACKENDS)
     actual_talker_attn = _actual_talker_attn(talker)
+    attention_call_probe = None
+    if args.trace_attention_calls:
+        resolved_mask_mode = _resolve_prefill_mask_mode(
+            args.prefill_mask_mode,
+            metadata,
+        )
+        attention_call_probe = _probe_attention_calls(
+            talker,
+            tie,
+            tam,
+            tth,
+            tpe,
+            prefill_mask_mode=resolved_mask_mode,
+        )
+        _validate_attention_probe(actual_talker_attn, attention_call_probe)
 
     with _compile_disable_context(
         rmsnorm=args.disable_compile_rmsnorm,
@@ -154,6 +211,7 @@ def main() -> int:
         rmsnorm_compat_mode=args.rmsnorm_compat_mode,
         rope_compat_mode=args.rope_compat_mode,
         mlp_compat_mode=args.mlp_compat_mode,
+        attention_compat_mode=args.attention_compat_mode,
     ):
         prefill_outputs: dict[str, list[dict[str, Any]]] = {}
         prefill_objects: dict[str, list[Any]] = {}
@@ -243,12 +301,14 @@ def main() -> int:
         "force_talker_attn_implementation": args.force_talker_attn_implementation,
         "actual_talker_attn_implementation": actual_talker_attn,
         "forced_talker_attn_config_updates": forced_attn_updates,
+        "attention_call_probe": attention_call_probe,
         "prefill_mask_mode_requested": args.prefill_mask_mode,
         "disable_compile_rmsnorm": args.disable_compile_rmsnorm,
         "disable_compile_rope": args.disable_compile_rope,
         "rmsnorm_compat_mode": args.rmsnorm_compat_mode,
         "rope_compat_mode": args.rope_compat_mode,
         "mlp_compat_mode": args.mlp_compat_mode,
+        "attention_compat_mode": args.attention_compat_mode,
         "backends": backends,
         "repeats": args.repeats,
         "max_new_tokens": args.max_new_tokens,
@@ -292,6 +352,7 @@ def main() -> int:
             {
                 "output": str(args.output),
                 "actual_talker_attn_implementation": actual_talker_attn,
+                "attention_call_probe": attention_call_probe,
                 "prefill_vs_eager": {
                     key: value["logits_last"]["max_abs"]
                     for key, value in prefill_comparisons.items()
@@ -309,6 +370,73 @@ def main() -> int:
         )
     )
     return 0
+
+
+def _resolve_prefill_mask_mode(prefill_mask_mode: str, metadata: dict[str, Any]) -> str:
+    requested = str(prefill_mask_mode or "auto").strip().lower()
+    if requested == "auto":
+        return select_prefill_mask_mode(metadata)
+    return requested
+
+
+def _probe_attention_calls(
+    talker: Any,
+    tie: torch.Tensor,
+    tam: torch.Tensor,
+    tth: torch.Tensor,
+    tpe: torch.Tensor,
+    *,
+    prefill_mask_mode: str,
+) -> dict[str, int]:
+    counts = {
+        "eager": 0,
+        "sdpa": 0,
+    }
+    original_eager = qwen_modeling.eager_attention_forward
+    original_sdpa = qwen_modeling.ALL_ATTENTION_FUNCTIONS.get("sdpa")
+
+    def eager_wrapper(*args, **kwargs):
+        counts["eager"] += 1
+        return original_eager(*args, **kwargs)
+
+    def sdpa_wrapper(*args, **kwargs):
+        counts["sdpa"] += 1
+        return original_sdpa(*args, **kwargs)
+
+    try:
+        qwen_modeling.eager_attention_forward = eager_wrapper
+        if original_sdpa is not None:
+            qwen_modeling.ALL_ATTENTION_FUNCTIONS["sdpa"] = sdpa_wrapper
+        _run_talker_prefill(
+            talker,
+            tie,
+            tam,
+            tth,
+            tpe,
+            prefill_backend="eager",
+            prefill_mask_mode=prefill_mask_mode,
+        )
+        torch.cuda.synchronize()
+    finally:
+        qwen_modeling.eager_attention_forward = original_eager
+        if original_sdpa is not None:
+            qwen_modeling.ALL_ATTENTION_FUNCTIONS["sdpa"] = original_sdpa
+    return counts
+
+
+def _validate_attention_probe(actual_talker_attn: str, counts: dict[str, int]) -> None:
+    if actual_talker_attn == "eager":
+        if counts.get("eager") != 28 or counts.get("sdpa") != 0:
+            raise RuntimeError(
+                "Attention probe mismatch for eager mode: "
+                f"observed {counts!r}."
+            )
+    elif actual_talker_attn == "sdpa":
+        if counts.get("sdpa") != 28 or counts.get("eager") != 0:
+            raise RuntimeError(
+                "Attention probe mismatch for sdpa mode: "
+                f"observed {counts!r}."
+            )
 
 
 def _force_talker_attn_implementation(talker: Any, attn_implementation: str) -> int:
@@ -354,10 +482,12 @@ def _compile_disable_context(
     rmsnorm_compat_mode: str,
     rope_compat_mode: str,
     mlp_compat_mode: str = "current",
+    attention_compat_mode: str = "current",
 ):
     original_rmsnorm_forward = qwen_modeling.Qwen3TTSRMSNorm.forward
     original_rope = qwen_modeling.apply_multimodal_rotary_pos_emb
     original_mlp_forward = qwen_modeling.Qwen3TTSTalkerTextMLP.forward
+    original_sdpa = qwen_modeling.ALL_ATTENTION_FUNCTIONS.get("sdpa")
     try:
         if rmsnorm:
             qwen_modeling.Qwen3TTSRMSNorm.forward = torch.compiler.disable(
@@ -379,11 +509,20 @@ def _compile_disable_context(
             qwen_modeling.Qwen3TTSTalkerTextMLP.forward = _make_mlp_forward(
                 mlp_compat_mode
             )
+        if attention_compat_mode != "current":
+            if original_sdpa is None:
+                raise ValueError("SDPA attention function is unavailable.")
+            qwen_modeling.ALL_ATTENTION_FUNCTIONS["sdpa"] = _make_attention_forward(
+                attention_compat_mode,
+                original_sdpa,
+            )
         yield
     finally:
         qwen_modeling.Qwen3TTSRMSNorm.forward = original_rmsnorm_forward
         qwen_modeling.apply_multimodal_rotary_pos_emb = original_rope
         qwen_modeling.Qwen3TTSTalkerTextMLP.forward = original_mlp_forward
+        if original_sdpa is not None:
+            qwen_modeling.ALL_ATTENTION_FUNCTIONS["sdpa"] = original_sdpa
 
 
 def _make_rmsnorm_forward(mode: str):
@@ -438,6 +577,45 @@ def _make_mlp_forward(mode: str):
                 self.act_fn(self.gate_proj(x)),
                 self.up_proj(x),
             )
+        )
+
+    return forward
+
+
+def _make_attention_forward(mode: str, original_sdpa):
+    if mode != "strict_sdpa":
+        raise ValueError(f"Unsupported attention compatibility mode: {mode}")
+
+    def forward(
+        module,
+        query,
+        key,
+        value,
+        attention_mask,
+        scaling,
+        dropout=0.0,
+        **_kwargs,
+    ):
+        if attention_mask is not None or dropout != 0.0:
+            return original_sdpa(
+                module,
+                query,
+                key,
+                value,
+                attention_mask,
+                scaling=scaling,
+                dropout=dropout,
+                **_kwargs,
+            )
+        return (
+            _strict_sdpa(
+                query,
+                key,
+                value,
+                scaling,
+                module.num_key_value_groups,
+            ),
+            None,
         )
 
     return forward

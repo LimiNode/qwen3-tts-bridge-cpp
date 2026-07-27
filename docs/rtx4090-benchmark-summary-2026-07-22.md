@@ -1904,6 +1904,55 @@ then attention output in layer `9`. Product defaults should still remain eager;
 the next diagnostic target is a layer-9 attention-core repro or a very narrow
 attention compatibility island after strict RMSNorm/RoPE/MLP.
 
+### Production-Signature Layer-9 Attention Repro
+
+The FasterQwen safety tests were run for real after installing `pytest` into the
+local Faster venv. `tests/test_sampling.py` passed (`25` tests, one Dynamo
+warning), and the non-e2e unit files passed (`57` tests). The full FasterQwen
+suite collected `96` tests but did not finish within a `15` minute timeout;
+the slow/blocking portion is the model e2e parity file, not the safety matrix.
+
+The parity harness now has an attention call sentinel. It performs a separate
+eager prefill probe before the compiled gate and records observed attention
+function calls without wrapping the compiled graph. For the current product-like
+SDPA path, the probe records:
+
+```text
+observed attention calls: eager=0, sdpa=28
+```
+
+A production-signature layer-9 repro was added in
+`scripts/qwen_prefill_layer9_attention_parity.py`. It materializes the exact
+eager output after layers `0..8`, then runs layer `9` raw vs Inductor from that
+same input using `use_cache=True`, `DynamicCache`, the same `cache_position`,
+the same `position_embeddings`, and `attention_mask=None` from verified skip.
+
+With strict RMSNorm/RoPE/MLP enabled, the production-shaped ladder confirms the
+same layer-9 attention-core finding:
+
+| Stage | Result |
+| --- | --- |
+| `layer_input` through `k_rope` | exact. |
+| `attention_context` default SDPA | first diff: `max_abs 0.0009765625`. |
+| `attention_context` forced math SDPA | same diff: `max_abs 0.0009765625`. |
+| `attention_context` eager formula | larger diff: `max_abs 0.017578125`. |
+| `attention_context` opaque `strict_sdpa` custom op | exact. |
+
+That opaque SDPA compatibility island was then promoted back into the full
+true-greedy gate together with strict RMSNorm, strict RoPE, and strict MLP
+multiply. This is the first BF16 Inductor full-gate pass in the diagnostic
+stack:
+
+| Artifact | Result |
+| --- | --- |
+| `strict-compat-full-gate/bf16-inductor-strict-rms-rope-mlp-sdpa-r1.json` | prefill diff `0.0`; codec, frame count, EOS status, waveform, audio sample count all match eager. |
+| `strict-compat-full-gate/bf16-inductor-strict-rms-rope-mlp-sdpa-r2.json` | repeat check also passes: prefill diff `0.0`, codec/waveform/frame/EOS/audio samples match eager over `2` repeats. |
+
+This is still diagnostic code, not a product default. The next step is to turn
+these four narrow compatibility islands into a maintainable FasterQwen patch
+and then run performance gates. Until that patch is product-shaped and retains
+semantic parity, the default stays eager.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
