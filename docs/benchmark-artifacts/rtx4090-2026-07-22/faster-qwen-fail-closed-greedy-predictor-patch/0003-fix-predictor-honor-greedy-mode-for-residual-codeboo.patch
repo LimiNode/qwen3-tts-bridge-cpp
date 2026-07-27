@@ -1,0 +1,184 @@
+From 0272258b577965161efcdd33cfac3c3a843351d5 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 00:31:19 +0300
+Subject: [PATCH 3/4] fix(predictor): honor greedy mode for residual codebooks
+
+---
+ faster_qwen3_tts/model.py | 34 ++++++++++++++++++++++++++++------
+ tests/test_sampling.py    | 31 +++++++++++++++++++++++++++++++
+ 2 files changed, 59 insertions(+), 6 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index f38d235..88e5eb3 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -32,12 +32,14 @@ class FasterQwen3TTS:
+         base_model,
+         predictor_graph,
+         talker_graph,
++        predictor_graph_greedy=None,
+         device: str = "cuda",
+         dtype: torch.dtype = torch.bfloat16,
+         max_seq_len: int = 2048,
+     ):
+         self.model = base_model  # The qwen-tts Qwen3TTSModel instance
+         self.predictor_graph = predictor_graph
++        self.predictor_graph_greedy = predictor_graph_greedy
+         self.talker_graph = talker_graph
+         self.device = device
+         self.dtype = dtype
+@@ -90,6 +92,12 @@ class FasterQwen3TTS:
+         """Treat None as the method-specific upstream default."""
+         return default if non_streaming_mode is None else non_streaming_mode
+ 
++    def _select_predictor_graph(self, do_sample: bool):
++        """Return a predictor graph whose sampling mode matches the request."""
++        if do_sample or self.predictor_graph_greedy is None:
++            return self.predictor_graph
++        return self.predictor_graph_greedy
++
+     @staticmethod
+     def _reject_ggml_cached_reference_args(
+         ref_spk: Optional[Union[str, Path]],
+@@ -223,6 +231,17 @@ class FasterQwen3TTS:
+             top_k=50,
+             temperature=0.9,
+         )
++        predictor_graph_greedy = PredictorGraph(
++            predictor,
++            pred_config,
++            talker_hidden,
++            device=device,
++            dtype=dtype,
++            do_sample=False,
++            top_k=0,
++            top_p=1.0,
++            temperature=1.0,
++        )
+ 
+         talker_graph = TalkerGraph(
+             talker.model,
+@@ -237,6 +256,7 @@ class FasterQwen3TTS:
+         return cls(
+             base_model=base_model,
+             predictor_graph=predictor_graph,
++            predictor_graph_greedy=predictor_graph_greedy,
+             talker_graph=talker_graph,
+             device=device,
+             dtype=dtype,
+@@ -254,6 +274,8 @@ class FasterQwen3TTS:
+ 
+         logger.info("Warming up CUDA graphs...")
+         self.predictor_graph.capture(num_warmup=3)
++        if self.predictor_graph_greedy is not None:
++            self.predictor_graph_greedy.capture(num_warmup=3)
+         self.talker_graph.capture(prefill_len=prefill_len, num_warmup=3)
+         self._warmed_up = True
+         logger.info("CUDA graphs captured and ready")
+@@ -1002,7 +1024,7 @@ class FasterQwen3TTS:
+             trailing_text_hiddens=tth,
+             tts_pad_embed=tpe,
+             config=config,
+-            predictor_graph=self.predictor_graph,
++            predictor_graph=self._select_predictor_graph(do_sample),
+             talker_graph=self.talker_graph,
+             max_new_tokens=max_new_tokens,
+             min_new_tokens=min_new_tokens,
+@@ -1181,7 +1203,7 @@ class FasterQwen3TTS:
+             chunk_size=chunk_size,
+         )
+         if not parity_mode:
+-            stream_kwargs["predictor_graph"] = self.predictor_graph
++            stream_kwargs["predictor_graph"] = self._select_predictor_graph(do_sample)
+             stream_kwargs["talker_graph"] = self.talker_graph
+ 
+         for codec_chunk, timing in stream_fn(**stream_kwargs):
+@@ -1293,7 +1315,7 @@ class FasterQwen3TTS:
+             trailing_text_hiddens=tth,
+             tts_pad_embed=tpe,
+             config=config,
+-            predictor_graph=self.predictor_graph,
++            predictor_graph=self._select_predictor_graph(do_sample),
+             talker_graph=self.talker_graph,
+             max_new_tokens=max_new_tokens,
+             min_new_tokens=min_new_tokens,
+@@ -1397,7 +1419,7 @@ class FasterQwen3TTS:
+             trailing_text_hiddens=tth,
+             tts_pad_embed=tpe,
+             config=config,
+-            predictor_graph=self.predictor_graph,
++            predictor_graph=self._select_predictor_graph(do_sample),
+             talker_graph=self.talker_graph,
+             max_new_tokens=max_new_tokens,
+             min_new_tokens=min_new_tokens,
+@@ -1496,7 +1518,7 @@ class FasterQwen3TTS:
+             trailing_text_hiddens=tth,
+             tts_pad_embed=tpe,
+             config=config,
+-            predictor_graph=self.predictor_graph,
++            predictor_graph=self._select_predictor_graph(do_sample),
+             talker_graph=self.talker_graph,
+             max_new_tokens=max_new_tokens,
+             min_new_tokens=min_new_tokens,
+@@ -1595,7 +1617,7 @@ class FasterQwen3TTS:
+             trailing_text_hiddens=tth,
+             tts_pad_embed=tpe,
+             config=config,
+-            predictor_graph=self.predictor_graph,
++            predictor_graph=self._select_predictor_graph(do_sample),
+             talker_graph=self.talker_graph,
+             max_new_tokens=max_new_tokens,
+             min_new_tokens=min_new_tokens,
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index ab873b5..dd5d5a1 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -4,7 +4,9 @@ import pytest
+ import torch
+ 
+ from faster_qwen3_tts.generate import fast_generate
++from faster_qwen3_tts.model import FasterQwen3TTS
+ from faster_qwen3_tts.sampling import apply_repetition_penalty
++from faster_qwen3_tts.sampling import sample_logits
+ 
+ 
+ def test_repetition_penalty_uses_all_history():
+@@ -21,6 +23,35 @@ def test_repetition_penalty_uses_all_history():
+     assert pytest.approx(out[0, 0, 8].item(), rel=1e-6) == -1.0 * 1.1
+ 
+ 
++def test_sample_logits_greedy_does_not_call_multinomial(monkeypatch):
++    def fail_multinomial(*args, **kwargs):
++        raise AssertionError("greedy sampling must not call torch.multinomial")
++
++    monkeypatch.setattr(torch, "multinomial", fail_multinomial)
++
++    logits = torch.tensor([[0.1, 1.0, 0.5]])
++    token = sample_logits(
++        logits,
++        temperature=0.9,
++        top_k=50,
++        top_p=1.0,
++        do_sample=False,
++    )
++
++    assert token.tolist() == [1]
++
++
++def test_faster_wrapper_selects_greedy_predictor_graph():
++    sampling_graph = types.SimpleNamespace(do_sample=True)
++    greedy_graph = types.SimpleNamespace(do_sample=False)
++    model = FasterQwen3TTS.__new__(FasterQwen3TTS)
++    model.predictor_graph = sampling_graph
++    model.predictor_graph_greedy = greedy_graph
++
++    assert model._select_predictor_graph(True) is sampling_graph
++    assert model._select_predictor_graph(False) is greedy_graph
++
++
+ @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required for fast_generate syncs.")
+ def test_min_new_tokens_suppresses_early_eos():
+     class DummyConfig:
+-- 
+2.53.0.windows.1
+

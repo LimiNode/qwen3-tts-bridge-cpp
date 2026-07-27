@@ -1079,6 +1079,127 @@ finally {
 }
 ```
 
+Fail-closed greedy predictor patch artifacts:
+
+```powershell
+$dir = "docs\benchmark-artifacts\rtx4090-2026-07-22\faster-qwen-fail-closed-greedy-predictor-patch"
+New-Item -ItemType Directory -Force -Path $dir | Out-Null
+git -C C:\_repoz\faster-qwen3-tts-v032-stack112-clean format-patch `
+    -o (Resolve-Path $dir) 71fa0fd..9f1c801
+git -C C:\_repoz\faster-qwen3-tts-v032-stack112-clean bundle create `
+    (Join-Path (Resolve-Path $dir) "faster-qwen-prefill-compile-exact-shape-through-9f1c801.bundle") `
+    prefill-compile-exact-shape ^71fa0fd
+```
+
+Frame-accounting parity controls:
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean;external/python/Qwen3-TTS-streaming"
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --backend eager `
+    --backend compile_backend_eager `
+    --backend compile_inductor_default `
+    --repeats 1 `
+    --max-new-tokens 64 `
+    --chunk-size 8 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\frame-accounting\bf16-ladder-r1.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype float32 `
+    --attn-implementation eager `
+    --backend eager `
+    --backend compile_backend_eager `
+    --backend compile_inductor_default `
+    --repeats 1 `
+    --max-new-tokens 64 `
+    --chunk-size 8 `
+    --disable-tf32 `
+    --matmul-precision highest `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\frame-accounting\fp32-ladder-r1.json
+```
+
+Layer-0 attention micro-bisect and FP32-island controls:
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean;external/python/Qwen3-TTS-streaming"
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_attention_micro_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --right-backend compile_backend_eager `
+    --checkpoint scores `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\attention-micro-bisect\bf16-layer0-attention-scores-only-compile-backend-eager.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_attention_micro_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --right-backend compile_backend_eager `
+    --checkpoint softmax_probs `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\attention-micro-bisect\bf16-layer0-attention-softmax-only-compile-backend-eager.json
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_attention_micro_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --right-backend compile_backend_eager `
+    --checkpoint scores `
+    --checkpoint softmax_probs `
+    --checkpoint attention_context `
+    --checkpoint o_proj_input `
+    --checkpoint o_proj_output `
+    --attention-core-fp32 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\attention-micro-bisect\bf16-attention-core-fp32-selected-compile-backend-eager.json
+```
+
+Transport stress:
+
+```powershell
+ctest --test-dir build\default -R stdio_transport_test --repeat until-fail:100 --output-on-failure
+```
+
+Result: `100/100` iterations passed in `449.94 s`.
+
+New artifact hashes:
+
+```text
+frame-accounting/bf16-ladder-r1.json SHA256: 074c6b4c8950cb9d8943c6662486f6e838544a69b1c06633ec0e65471ab95ed1
+frame-accounting/fp32-ladder-r1.json SHA256: 26a7026dded548be7ae06875dcfa6b99942f0d8364ec457f4710235e5f934364
+attention-micro-bisect/bf16-attention-core-fp32-selected-compile-backend-eager.json SHA256: 3e798ae67f0804adc3186f1675f1e5427fe65c28f90ce03554e8c90e0ee7ea69
+attention-micro-bisect/bf16-layer0-attention-scores-only-compile-backend-eager.json SHA256: cc658fe50ced6959c97a2abf9951ff3dae158ac36a65abf315758a7bbfa7efda
+attention-micro-bisect/bf16-layer0-attention-selected-compile-backend-eager.json SHA256: 8a04cab465eb6d5808982efdec623bbb061952df9e696f1d797dfe44db04a750
+attention-micro-bisect/bf16-layer0-attention-softmax-only-compile-backend-eager.json SHA256: 34aba3c672ae2a6b55bc614111b8ef11feb32c63ab5b974112d9f166f435fc71
+attention-micro-bisect/fp32-layer0-attention-selected-compile-backend-eager.json SHA256: e3160b83064d3e340060c25400d1ec2d6396c80189bbf110a9bb22c4ef84e532
+attention-micro-bisect/fp32-layer0-attention-softmax-only-compile-backend-eager.json SHA256: 581fd1d5f557519ad9a2b9d8ff3cd6bb9fc4b5bfa86bb545aad1f014df8f4058
+attention-micro-bisect/materialized-scores-softmax-control.json SHA256: 65537f107d65885ee2f006f1d6c09f3207e173aa92acac02da64ede4768cc406
+faster-qwen-fail-closed-greedy-predictor-patch/0001-feat-prefill-add-exact-shape-compile-backend-switch.patch SHA256: e49d105869d39c0aa95996878a4d797229e4473d064663b825cdcce11a24c2b5
+faster-qwen-fail-closed-greedy-predictor-patch/0002-test-prefill-add-diagnostic-compile-backends.patch SHA256: 4bbd1df46fa823748886b34b46b776ee15319bfa1efd4a19412bb04d4ba37762
+faster-qwen-fail-closed-greedy-predictor-patch/0003-fix-predictor-honor-greedy-mode-for-residual-codeboo.patch SHA256: 0523270f8158dd5d4b6e5e96f22fffe2e9486bff41fa3546c25e1efa1cfe2087
+faster-qwen-fail-closed-greedy-predictor-patch/0004-fix-predictor-fail-closed-without-greedy-graph.patch SHA256: ece402e6a01f079de8248de62adf6d01ed95006eab23783b7f58086b9f22ddb2
+faster-qwen-fail-closed-greedy-predictor-patch/faster-qwen-prefill-compile-exact-shape-through-9f1c801.bundle SHA256: 3294b4a1d438bed688df15223968249ca58e8ef996eecdd3de11ef425e28163f
+```
+
 2026-07-24 profile-on/off overhead control:
 
 ```powershell

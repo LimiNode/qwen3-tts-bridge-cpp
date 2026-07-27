@@ -10,13 +10,11 @@ from typing import Any
 
 import numpy as np
 import torch
-
 from faster_qwen3_tts import FasterQwen3TTS
 from faster_qwen3_tts.streaming import (
     _run_talker_prefill,
     fast_generate_streaming,
 )
-
 
 DEFAULT_BACKENDS = (
     "eager",
@@ -175,7 +173,10 @@ def main() -> int:
     }
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    args.output.write_text(
+        json.dumps(report, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
     print(
         json.dumps(
             {
@@ -218,7 +219,14 @@ def _eval_inner_modules(model: Any) -> None:
             eval_fn()
 
 
-def _prefill_once(talker: Any, tie: torch.Tensor, tam: torch.Tensor, tth: torch.Tensor, tpe: torch.Tensor, backend: str) -> tuple[Any, dict[str, Any]]:
+def _prefill_once(
+    talker: Any,
+    tie: torch.Tensor,
+    tam: torch.Tensor,
+    tth: torch.Tensor,
+    tpe: torch.Tensor,
+    backend: str,
+) -> tuple[Any, dict[str, Any]]:
     torch.cuda.synchronize()
     with torch.inference_mode():
         out, profile = _run_talker_prefill(
@@ -244,7 +252,10 @@ def _snapshot_prefill_output(out: Any) -> dict[str, Any]:
     }
 
 
-def _compare_prefill_outputs(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+def _compare_prefill_outputs(
+    left: dict[str, Any],
+    right: dict[str, Any],
+) -> dict[str, Any]:
     return {
         "logits_last": _compare_tensors(
             left["logits"][:, -1, :],
@@ -267,7 +278,9 @@ def _compare_past_key_values(left: Any, right: Any) -> dict[str, Any]:
     rows = []
     max_abs_values = []
     rmse_values = []
-    for layer_index, (left_layer, right_layer) in enumerate(zip(left, right)):
+    for layer_index, (left_layer, right_layer) in enumerate(
+        zip(left, right, strict=True)
+    ):
         for name, left_tensor, right_tensor in (
             ("key", left_layer[0], right_layer[0]),
             ("value", left_layer[1], right_layer[1]),
@@ -368,17 +381,30 @@ def _generate_once(
         ):
             chunks.append(codec_chunk.detach().cpu().contiguous())
             timings.append(timing)
-    codec = torch.cat(chunks, dim=0) if chunks else torch.empty((0, 16), dtype=torch.long)
+    codec = (
+        torch.cat(chunks, dim=0)
+        if chunks
+        else torch.empty((0, 16), dtype=torch.long)
+    )
     audio = _decode_audio(m.speech_tokenizer, codec)
+    eos_id = int(config.codec_eos_token_id)
+    frame_accounting = _frame_accounting(
+        codec,
+        timings,
+        eos_id=eos_id,
+        requested_max_new_tokens=max_new_tokens,
+    )
     return {
         "repeat": repeat,
         "backend": backend,
+        "requested_max_new_tokens": max_new_tokens,
         "codec_shape": list(codec.shape),
         "codec_values": codec.tolist(),
         "codec_sha256": _tensor_sha256(codec),
         "first_codec_token": int(codec[0, 0]) if codec.numel() else None,
         "generated_frames": int(codec.shape[0]),
-        "eos_frame": _eos_frame(codec, int(config.codec_eos_token_id)),
+        "eos_frame": _eos_frame(codec, eos_id),
+        "frame_accounting": frame_accounting,
         "audio_samples": int(audio.shape[0]),
         "audio_duration_ms": float(audio.shape[0]) * 1000.0 / 24000.0,
         "waveform_sha256": hashlib.sha256(
@@ -395,6 +421,53 @@ def _select_predictor_graph(model: Any, *, do_sample: bool) -> Any:
     return model.predictor_graph
 
 
+def _frame_accounting(
+    codec: torch.Tensor,
+    timings: list[dict[str, Any]],
+    *,
+    eos_id: int,
+    requested_max_new_tokens: int,
+) -> dict[str, Any]:
+    emitted_steps = int(codec.shape[0])
+    final_timing = timings[-1] if timings else {}
+    final_chunk_steps = int(final_timing.get("chunk_steps", 0)) if timings else 0
+    final_is_final = bool(final_timing.get("is_final", False)) if timings else False
+    eos_positions = _eos_positions(codec, eos_id)
+    if eos_positions:
+        stop_reason = "eos"
+    elif emitted_steps == requested_max_new_tokens:
+        stop_reason = "max_new_tokens"
+    elif emitted_steps < requested_max_new_tokens:
+        stop_reason = "short_without_eos"
+    else:
+        stop_reason = "unknown"
+    return {
+        "requested_max_new_tokens": requested_max_new_tokens,
+        "emitted_steps": emitted_steps,
+        "generated_steps": emitted_steps,
+        "final_chunk_steps": final_chunk_steps,
+        "final_is_final": final_is_final,
+        "stop_reason": stop_reason,
+        "eos_positions": eos_positions,
+        "timing_total_steps": [
+            int(timing["total_steps_so_far"])
+            for timing in timings
+            if "total_steps_so_far" in timing
+        ],
+    }
+
+
+def _eos_positions(codec: torch.Tensor, eos_id: int) -> list[dict[str, int]]:
+    if codec.numel() == 0:
+        return []
+    hits = codec == eos_id
+    indices = hits.nonzero(as_tuple=False)
+    return [
+        {"frame": int(index[0]), "codebook": int(index[1])}
+        for index in indices.cpu()
+    ]
+
+
 def _decode_audio(speech_tokenizer: Any, codec: torch.Tensor) -> np.ndarray:
     if codec.numel() == 0:
         return np.zeros(0, dtype=np.float32)
@@ -407,7 +480,12 @@ def _decode_audio(speech_tokenizer: Any, codec: torch.Tensor) -> np.ndarray:
     return np.asarray(audio).reshape(-1)
 
 
-def _compare_generation(left: dict[str, Any], right: dict[str, Any], *, eos_id: int) -> dict[str, Any]:
+def _compare_generation(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    *,
+    eos_id: int,
+) -> dict[str, Any]:
     first_divergence = _first_codec_divergence(
         left.get("codec_values"),
         right.get("codec_values"),

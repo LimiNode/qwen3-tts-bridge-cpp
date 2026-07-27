@@ -1,0 +1,49 @@
+{
+  "artifact_schema_version": 1,
+  "rows": [
+    {
+      "dtype": "bfloat16",
+      "metadata": {
+        "text_token_count": 18,
+        "instruction_token_count": 0,
+        "talker_prefill_length": 21,
+        "tokenize_wall_ms": 5.364299984648824,
+        "build_talker_inputs_wall_ms": 275.62440000474453
+      },
+      "raw_materialized_vs_compiled_materialized_softmax": {
+        "shape": [
+          1,
+          16,
+          21,
+          21
+        ],
+        "dtype": "torch.bfloat16",
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "rmse": 0.0
+      }
+    },
+    {
+      "dtype": "float32",
+      "metadata": {
+        "text_token_count": 18,
+        "instruction_token_count": 0,
+        "talker_prefill_length": 21,
+        "tokenize_wall_ms": 1.7473999178037047,
+        "build_talker_inputs_wall_ms": 12.409500079229474
+      },
+      "raw_materialized_vs_compiled_materialized_softmax": {
+        "shape": [
+          1,
+          16,
+          21,
+          21
+        ],
+        "dtype": "torch.float32",
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "rmse": 0.0
+      }
+    }
+  ]
+}

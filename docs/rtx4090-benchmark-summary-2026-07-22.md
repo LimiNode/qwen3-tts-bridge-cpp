@@ -1538,6 +1538,57 @@ found in the FasterQwen or vendored Qwen model path. The next target is inside
 the layer-0 attention output path: attention probabilities/context, `o_proj`,
 and possible BF16 reduction/order differences.
 
+### Fail-Closed Greedy And Attention Micro-Bisect
+
+The FasterQwen patch stack was extended to commit `9f1c801`
+(`fix(predictor): fail closed without greedy graph`). `do_sample=False` now
+raises if the separate greedy predictor graph is missing, instead of silently
+falling back to the sampling predictor graph. The bridge artifact directory
+contains a fresh patch series and bundle under
+`faster-qwen-fail-closed-greedy-predictor-patch/`.
+
+The parity harness now records explicit frame accounting for every generated
+run: requested token budget, emitted steps, final chunk metadata, all EOS
+positions, and a derived `stop_reason`. A short `r1` control confirms the
+existing verdict while making stop behavior auditable:
+
+| Artifact | Backend | Codec / frame result | Stop accounting |
+| --- | --- | --- | --- |
+| `frame-accounting/bf16-ladder-r1.json` | `compile_backend_eager` | codec differs, same `64` frames / `122325` samples | `max_new_tokens`, no EOS |
+| `frame-accounting/bf16-ladder-r1.json` | `compile_inductor_default` | codec differs, shorter `62` frames / `118485` samples | `short_without_eos`, no EOS |
+| `frame-accounting/fp32-ladder-r1.json` | `compile_backend_eager` | codec, frame count, samples, and EOS equal eager | `max_new_tokens`, no EOS |
+| `frame-accounting/fp32-ladder-r1.json` | `compile_inductor_default` | codec, frame count, samples, and EOS equal eager | `max_new_tokens`, no EOS |
+
+An attention micro-bisect script was added at
+`scripts/qwen_prefill_attention_micro_parity.py`. It recomputes selected
+layer-0 attention checkpoints directly, with no forward hooks inside the
+compiled graph, and supports an experimental `--attention-core-fp32` mode for
+the QK/softmax/PV core. The current micro results are useful but not yet
+definitive:
+
+| Artifact | Key result |
+| --- | --- |
+| `attention-micro-bisect/bf16-layer0-attention-scores-only-compile-backend-eager.json` | layer-0 raw eager vs `compile_backend_eager` attention scores match exactly (`max_abs=0.0`). |
+| `attention-micro-bisect/bf16-layer0-attention-softmax-only-compile-backend-eager.json` | recomputing through the checkpoint function first differs at `softmax_probs` (`max_abs=0.244140625`). |
+| `attention-micro-bisect/fp32-layer0-attention-softmax-only-compile-backend-eager.json` | the same checkpoint-function softmax difference appears even in FP32 (`max_abs=0.244284987449646`). |
+| `attention-micro-bisect/materialized-scores-softmax-control.json` | softmax on already materialized scores matches raw vs compiled exactly in both BF16 and FP32 (`max_abs=0.0`). |
+| `attention-micro-bisect/bf16-attention-core-fp32-selected-compile-backend-eager.json` | forcing the attention core to FP32 does not remove the checkpoint-function difference (`softmax_probs max_abs=0.24424684047698975`). |
+
+The cautious interpretation is that the hook-based `o_proj` boundary is still a
+real first visible mismatch, but the new micro-bisect has not proven that
+softmax itself is the root cause. Because a materialized softmax control is
+exact and an FP32 attention-core island does not fix the checkpoint-function
+diff, this stage did not promote any FP32-island runtime patch. The next
+correctness step should inspect the compiled FX/AOT graph or build an even
+smaller exported repro around the layer-0 attention function before trying a
+product-facing mixed-precision workaround.
+
+The isolated C++ transport stress requested by review also passed:
+`ctest --test-dir build\default -R stdio_transport_test --repeat until-fail:100
+--output-on-failure` completed `100/100` iterations in `449.94 s`. This did not
+reproduce the earlier one-off full-suite failure, so the current status is
+"observed once in full CTest, not reproduced in isolated 100x stress".
+
 ### Paired Nsight Follow-Up
 
 The worker now emits an outer `qtb_profile_first_steady_pair` NVTX range when

@@ -1,0 +1,45 @@
+{
+  "artifact_schema_version": 1,
+  "model": "models\\Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "text": "I am your robot, I am your worker.",
+  "language": "English",
+  "speaker": "ryan",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "attn_implementation": "eager",
+  "right_backend": "compile_backend_eager",
+  "checkpoints": [
+    "softmax_probs"
+  ],
+  "metadata": {
+    "text_token_count": 18,
+    "instruction_token_count": 0,
+    "talker_prefill_length": 21,
+    "tokenize_wall_ms": 3.804599982686341,
+    "build_talker_inputs_wall_ms": 305.4692998994142
+  },
+  "comparisons": [
+    {
+      "name": "softmax_probs",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.244140625,
+      "mean_abs": 0.004483056254684925,
+      "rmse": 0.01946619153022766,
+      "max_abs_flat_index": 4452,
+      "cosine": 0.9888816198648708
+    }
+  ]
+}

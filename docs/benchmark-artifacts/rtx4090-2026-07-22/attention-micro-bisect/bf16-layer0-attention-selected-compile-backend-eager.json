@@ -1,0 +1,110 @@
+{
+  "artifact_schema_version": 1,
+  "model": "models\\Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "text": "I am your robot, I am your worker.",
+  "language": "English",
+  "speaker": "ryan",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "attn_implementation": "eager",
+  "right_backend": "compile_backend_eager",
+  "checkpoints": [
+    "scores",
+    "softmax_probs",
+    "o_proj_input",
+    "o_proj_output"
+  ],
+  "metadata": {
+    "text_token_count": 18,
+    "instruction_token_count": 0,
+    "talker_prefill_length": 21,
+    "tokenize_wall_ms": 5.58999995701015,
+    "build_talker_inputs_wall_ms": 306.66979996021837
+  },
+  "comparisons": [
+    {
+      "name": "scores",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 1.0000003674887143
+    },
+    {
+      "name": "softmax_probs",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.244140625,
+      "mean_abs": 0.004483056254684925,
+      "rmse": 0.01946619153022766,
+      "max_abs_flat_index": 4452,
+      "cosine": 0.9888816198648708
+    },
+    {
+      "name": "o_proj_input",
+      "shape": [
+        1,
+        21,
+        2048
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        43008,
+        2048,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0777587890625,
+      "mean_abs": 0.001019169925712049,
+      "rmse": 0.002936831908300519,
+      "max_abs_flat_index": 5686,
+      "cosine": 0.9881481960291328
+    },
+    {
+      "name": "o_proj_output",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.08203125,
+      "mean_abs": 0.0014465244021266699,
+      "rmse": 0.002647245768457651,
+      "max_abs_flat_index": 2223,
+      "cosine": 0.9889753197937426
+    }
+  ]
+}
