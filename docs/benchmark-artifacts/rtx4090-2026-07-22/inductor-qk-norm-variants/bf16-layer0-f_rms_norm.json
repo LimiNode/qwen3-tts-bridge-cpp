@@ -1,0 +1,1015 @@
+{
+  "artifact_schema_version": 1,
+  "trace_mode": "single_pass",
+  "model": "models\\Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "text": "I am your robot, I am your worker.",
+  "language": "English",
+  "speaker": "ryan",
+  "device": "cuda",
+  "device_profile": "rtx4090",
+  "runtime": {
+    "torch_version": "2.11.0+cu126",
+    "torch_cuda_version": "12.6",
+    "cuda_available": true,
+    "device": "cuda",
+    "cuda_device_index": 0,
+    "cuda_device_name": "NVIDIA GeForce RTX 4090",
+    "cuda_compute_capability": [
+      8,
+      9
+    ],
+    "cuda_total_memory_bytes": 51526369280,
+    "cuda_total_memory_gib": 47.9876708984375
+  },
+  "dtype": "bfloat16",
+  "attn_implementation": "eager",
+  "right_backend": "compile_inductor_default",
+  "qk_norm_variant": "f_rms_norm",
+  "attention_core_fp32": false,
+  "force_mask_skip_during_compile": true,
+  "checkpoints": [
+    "layer_input",
+    "input_layernorm",
+    "q_proj",
+    "q_norm",
+    "k_proj",
+    "k_norm",
+    "v_proj",
+    "q_rope",
+    "k_rope",
+    "scores",
+    "scores_masked",
+    "softmax_probs",
+    "attention_context",
+    "o_proj_input",
+    "o_proj_output",
+    "post_attention_residual",
+    "mlp_input",
+    "mlp_gate",
+    "mlp_up",
+    "mlp_down",
+    "layer_output"
+  ],
+  "metadata": {
+    "text_token_count": 18,
+    "instruction_token_count": 0,
+    "talker_prefill_length": 21,
+    "prefill_batch_size": 1,
+    "prefill_attention_mask_all_valid": true,
+    "prefill_mask_decision_source": "constructed_all_ones",
+    "prefill_has_sliding_window": false,
+    "prefill_attn_implementation": "sdpa",
+    "tokenize_wall_ms": 5.835800082422793,
+    "build_talker_inputs_wall_ms": 274.540500016883
+  },
+  "comparisons": [
+    {
+      "name": "layer_input",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0,
+      "mean_abs": 0.0,
+      "rmse": 0.0,
+      "max_abs_flat_index": 0,
+      "cosine": 0.999999677188701
+    },
+    {
+      "name": "input_layernorm",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0078125,
+      "mean_abs": 0.00010545850818743929,
+      "rmse": 0.000357444048859179,
+      "max_abs_flat_index": 1635,
+      "cosine": 0.999997411308273
+    },
+    {
+      "name": "q_proj",
+      "shape": [
+        1,
+        21,
+        16,
+        128
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        43008,
+        2048,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0078125,
+      "mean_abs": 0.00015745112614240497,
+      "rmse": 0.0003570829576347023,
+      "max_abs_flat_index": 2707,
+      "cosine": 1.0000004893477557
+    },
+    {
+      "name": "q_norm",
+      "shape": [
+        1,
+        16,
+        21,
+        128
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        43008,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0390625,
+      "mean_abs": 0.0016740778228268027,
+      "rmse": 0.0036171411629766226,
+      "max_abs_flat_index": 24638,
+      "cosine": 0.9999969283512187
+    },
+    {
+      "name": "k_proj",
+      "shape": [
+        1,
+        21,
+        8,
+        128
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.015625,
+      "mean_abs": 0.00015332063776440918,
+      "rmse": 0.0003811817732639611,
+      "max_abs_flat_index": 1709,
+      "cosine": 0.999998292205916
+    },
+    {
+      "name": "k_norm",
+      "shape": [
+        1,
+        8,
+        21,
+        128
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0625,
+      "mean_abs": 0.0017662743339315057,
+      "rmse": 0.004287085495889187,
+      "max_abs_flat_index": 9183,
+      "cosine": 0.9999965018245105
+    },
+    {
+      "name": "v_proj",
+      "shape": [
+        1,
+        8,
+        21,
+        128
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.00390625,
+      "mean_abs": 0.0001280686556128785,
+      "rmse": 0.00026257362333126366,
+      "max_abs_flat_index": 194,
+      "cosine": 0.999998203301939
+    },
+    {
+      "name": "q_rope",
+      "shape": [
+        1,
+        16,
+        21,
+        128
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        43008,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0625,
+      "mean_abs": 0.0019023397471755743,
+      "rmse": 0.003850839799270034,
+      "max_abs_flat_index": 10712,
+      "cosine": 0.999996430659078
+    },
+    {
+      "name": "k_rope",
+      "shape": [
+        1,
+        8,
+        21,
+        128
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        2688,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0625,
+      "mean_abs": 0.0020236060954630375,
+      "rmse": 0.00460704043507576,
+      "max_abs_flat_index": 9183,
+      "cosine": 0.999995866248331
+    },
+    {
+      "name": "scores",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.125,
+      "mean_abs": 0.006290764082223177,
+      "rmse": 0.013104408048093319,
+      "max_abs_flat_index": 2255,
+      "cosine": 0.9999960797952772
+    },
+    {
+      "name": "scores_masked",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.125,
+      "mean_abs": 0.006290764082223177,
+      "rmse": 0.013104408048093319,
+      "max_abs_flat_index": 2255,
+      "cosine": 0.9999960797952772
+    },
+    {
+      "name": "softmax_probs",
+      "shape": [
+        1,
+        16,
+        21,
+        21
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        7056,
+        441,
+        21,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.021484375,
+      "mean_abs": 0.0005343964439816773,
+      "rmse": 0.0016223103739321232,
+      "max_abs_flat_index": 508,
+      "cosine": 0.9999178489994116
+    },
+    {
+      "name": "attention_context",
+      "shape": [
+        1,
+        21,
+        16,
+        128
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        43008,
+        2048,
+        128,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0078125,
+      "mean_abs": 9.98310642899014e-05,
+      "rmse": 0.00019135020556859672,
+      "max_abs_flat_index": 12282,
+      "cosine": 0.9999488126995447
+    },
+    {
+      "name": "o_proj_input",
+      "shape": [
+        1,
+        21,
+        2048
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        43008,
+        2048,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0078125,
+      "mean_abs": 9.98310642899014e-05,
+      "rmse": 0.00019135020556859672,
+      "max_abs_flat_index": 12282,
+      "cosine": 0.9999488126995447
+    },
+    {
+      "name": "o_proj_output",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.003173828125,
+      "mean_abs": 0.00013777890126220882,
+      "rmse": 0.0002119026321452111,
+      "max_abs_flat_index": 11439,
+      "cosine": 0.9999234600491413
+    },
+    {
+      "name": "post_attention_residual",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0078125,
+      "mean_abs": 0.0001377716107526794,
+      "rmse": 0.00023707911896053702,
+      "max_abs_flat_index": 8982,
+      "cosine": 0.9999939220357128
+    },
+    {
+      "name": "mlp_input",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.03125,
+      "mean_abs": 0.001488428795710206,
+      "rmse": 0.0023192386142909527,
+      "max_abs_flat_index": 2838,
+      "cosine": 0.9999792828897297
+    },
+    {
+      "name": "mlp_gate",
+      "shape": [
+        1,
+        21,
+        3072
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        64512,
+        3072,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0859375,
+      "mean_abs": 0.0011218497529625893,
+      "rmse": 0.002157913288101554,
+      "max_abs_flat_index": 12537,
+      "cosine": 0.999938693839388
+    },
+    {
+      "name": "mlp_up",
+      "shape": [
+        1,
+        21,
+        3072
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        64512,
+        3072,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.095703125,
+      "mean_abs": 0.0009902410674840212,
+      "rmse": 0.0024952234234660864,
+      "max_abs_flat_index": 14408,
+      "cosine": 0.999833416104916
+    },
+    {
+      "name": "mlp_down",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0078125,
+      "mean_abs": 0.00010826849029399455,
+      "rmse": 0.00020158734696451575,
+      "max_abs_flat_index": 2223,
+      "cosine": 0.999993380928215
+    },
+    {
+      "name": "layer_output",
+      "shape": [
+        1,
+        21,
+        1024
+      ],
+      "dtype": "torch.bfloat16",
+      "stride": [
+        21504,
+        1024,
+        1
+      ],
+      "contiguous": true,
+      "max_abs": 0.0078125,
+      "mean_abs": 0.00016631523612886667,
+      "rmse": 0.0002876028884202242,
+      "max_abs_flat_index": 2838,
+      "cosine": 0.9999958048035773
+    }
+  ],
+  "materialized_stage_ladder": [
+    {
+      "stage": "causal_mask_build",
+      "outputs": [
+        {
+          "name": "causal_mask",
+          "shape": [
+            1,
+            16,
+            21,
+            21
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            7056,
+            441,
+            21,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": null
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "qkv",
+      "outputs": [
+        {
+          "name": "q_proj",
+          "shape": [
+            1,
+            21,
+            16,
+            128
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            43008,
+            2048,
+            128,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.000004159758884
+        },
+        {
+          "name": "q_norm",
+          "shape": [
+            1,
+            16,
+            21,
+            128
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            43008,
+            128,
+            2048,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000031545633956
+        },
+        {
+          "name": "k_proj",
+          "shape": [
+            1,
+            21,
+            8,
+            128
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            21504,
+            1024,
+            128,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000011742446724
+        },
+        {
+          "name": "k_norm",
+          "shape": [
+            1,
+            8,
+            21,
+            128
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            21504,
+            128,
+            1024,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.000001907973357
+        },
+        {
+          "name": "v_proj",
+          "shape": [
+            1,
+            8,
+            21,
+            128
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            21504,
+            128,
+            1024,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000016336922228
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "rope",
+      "outputs": [
+        {
+          "name": "q_rope",
+          "shape": [
+            1,
+            16,
+            21,
+            128
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            43008,
+            128,
+            2048,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.03125,
+          "mean_abs": 0.0002740116906352341,
+          "rmse": 0.001324753975495696,
+          "max_abs_flat_index": 5145,
+          "cosine": 1.000002739161594
+        },
+        {
+          "name": "k_rope",
+          "shape": [
+            1,
+            8,
+            21,
+            128
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            21504,
+            128,
+            1024,
+            1
+          ],
+          "contiguous": false,
+          "max_abs": 0.03125,
+          "mean_abs": 0.00028649746673181653,
+          "rmse": 0.0016041527269408107,
+          "max_abs_flat_index": 1282,
+          "cosine": 1.0000013778301824
+        }
+      ],
+      "first_diff": {
+        "name": "q_rope",
+        "shape": [
+          1,
+          16,
+          21,
+          128
+        ],
+        "dtype": "torch.bfloat16",
+        "stride": [
+          43008,
+          128,
+          2048,
+          1
+        ],
+        "contiguous": false,
+        "max_abs": 0.03125,
+        "mean_abs": 0.0002740116906352341,
+        "rmse": 0.001324753975495696,
+        "max_abs_flat_index": 5145,
+        "cosine": 1.000002739161594
+      }
+    },
+    {
+      "stage": "scores",
+      "outputs": [
+        {
+          "name": "scores",
+          "shape": [
+            1,
+            16,
+            21,
+            21
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            7056,
+            441,
+            21,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000007350194762
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "mask_add",
+      "outputs": [
+        {
+          "name": "scores_masked",
+          "shape": [
+            1,
+            16,
+            21,
+            21
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            7056,
+            441,
+            21,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.0000007350194762
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "softmax",
+      "outputs": [
+        {
+          "name": "softmax_probs",
+          "shape": [
+            1,
+            16,
+            21,
+            21
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            7056,
+            441,
+            21,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 1.000000406583729
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "context",
+      "outputs": [
+        {
+          "name": "attention_context",
+          "shape": [
+            1,
+            16,
+            21,
+            128
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            43008,
+            2688,
+            128,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 0.9999990821573781
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "o_proj_input",
+      "outputs": [
+        {
+          "name": "o_proj_input",
+          "shape": [
+            1,
+            21,
+            2048
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            43008,
+            2048,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 0.9999990821573781
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "o_proj",
+      "outputs": [
+        {
+          "name": "o_proj_output",
+          "shape": [
+            1,
+            21,
+            1024
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            21504,
+            1024,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "rmse": 0.0,
+          "max_abs_flat_index": 0,
+          "cosine": 0.9999985033387145
+        }
+      ],
+      "first_diff": null
+    },
+    {
+      "stage": "mlp",
+      "outputs": [
+        {
+          "name": "mlp_input",
+          "shape": [
+            1,
+            21,
+            1024
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            21504,
+            1024,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.03125,
+          "mean_abs": 0.00026938418159261346,
+          "rmse": 0.0008841882226988673,
+          "max_abs_flat_index": 5910,
+          "cosine": 0.9999970535025016
+        },
+        {
+          "name": "mlp_gate",
+          "shape": [
+            1,
+            21,
+            3072
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            64512,
+            3072,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0078125,
+          "mean_abs": 0.00035614141961559653,
+          "rmse": 0.0006494446424767375,
+          "max_abs_flat_index": 1954,
+          "cosine": 0.9999929367314587
+        },
+        {
+          "name": "mlp_up",
+          "shape": [
+            1,
+            21,
+            3072
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            64512,
+            3072,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0078125,
+          "mean_abs": 0.0002891964977607131,
+          "rmse": 0.00048789838911034167,
+          "max_abs_flat_index": 8094,
+          "cosine": 0.9999927487992717
+        },
+        {
+          "name": "mlp_down",
+          "shape": [
+            1,
+            21,
+            1024
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            21504,
+            1024,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.0078125,
+          "mean_abs": 5.026702638133429e-05,
+          "rmse": 0.00010524169192649424,
+          "max_abs_flat_index": 7343,
+          "cosine": 0.9999989437411912
+        },
+        {
+          "name": "layer_output",
+          "shape": [
+            1,
+            21,
+            1024
+          ],
+          "dtype": "torch.bfloat16",
+          "stride": [
+            21504,
+            1024,
+            1
+          ],
+          "contiguous": true,
+          "max_abs": 0.03125,
+          "mean_abs": 5.044705903856084e-05,
+          "rmse": 0.00024958723224699497,
+          "max_abs_flat_index": 7343,
+          "cosine": 0.9999970279220904
+        }
+      ],
+      "first_diff": {
+        "name": "mlp_input",
+        "shape": [
+          1,
+          21,
+          1024
+        ],
+        "dtype": "torch.bfloat16",
+        "stride": [
+          21504,
+          1024,
+          1
+        ],
+        "contiguous": true,
+        "max_abs": 0.03125,
+        "mean_abs": 0.00026938418159261346,
+        "rmse": 0.0008841882226988673,
+        "max_abs_flat_index": 5910,
+        "cosine": 0.9999970535025016
+      }
+    }
+  ]
+}

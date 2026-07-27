@@ -1,0 +1,200 @@
+From 70bfea45fdf1cc39710f77f926aa731c8cd7ad07 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Mon, 27 Jul 2026 06:42:21 +0300
+Subject: [PATCH] fix(prefill): harden mask skip selection
+
+---
+ faster_qwen3_tts/model.py     | 34 +++++++++++++++++++++--
+ faster_qwen3_tts/streaming.py |  4 +++
+ tests/test_sampling.py        | 52 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 88 insertions(+), 2 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 73638cc..2b11a42 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -83,6 +83,28 @@ class FasterQwen3TTS:
+ 
+         return int(sample_rate)
+ 
++    @staticmethod
++    def _prefill_attention_mask_metadata(original_lengths: torch.Tensor) -> Dict[str, Any]:
++        """Describe whether the locally constructed prefill mask is all-valid."""
++        if original_lengths.ndim != 1 or original_lengths.numel() == 0:
++            return {
++                "prefill_attention_mask_all_valid": False,
++                "prefill_mask_decision_source": "unknown",
++            }
++
++        lengths = original_lengths.detach().cpu()
++        max_len = int(lengths.max().item())
++        min_len = int(lengths.min().item())
++        if min_len == max_len:
++            return {
++                "prefill_attention_mask_all_valid": True,
++                "prefill_mask_decision_source": "constructed_all_ones",
++            }
++        return {
++            "prefill_attention_mask_all_valid": False,
++            "prefill_mask_decision_source": "constructed_left_padded",
++        }
++
+     @staticmethod
+     def _resolve_non_streaming_mode(
+         non_streaming_mode: Optional[bool],
+@@ -577,6 +599,7 @@ class FasterQwen3TTS:
+ 
+         talker = m.talker
+         config = m.config.talker_config
++        talker_model_config = getattr(getattr(talker, "model", None), "config", config)
+         talker.rope_deltas = None
+ 
+         # For ICL mode: return ref_codes so the decoder can use them as acoustic context
+@@ -629,10 +652,14 @@ class FasterQwen3TTS:
+ 
+         talker = m.talker
+         config = m.config.talker_config
++        talker_model_config = getattr(getattr(talker, "model", None), "config", config)
+         talker.rope_deltas = None
+ 
+         if return_metadata:
+             instruct_id = instruct_ids[0] if instruct_ids else None
++            mask_metadata = self._prefill_attention_mask_metadata(
++                torch.tensor([int(tie.shape[1])], dtype=torch.long)
++            )
+             metadata = {
+                 "text_token_count": int(input_ids[0].shape[-1]) if input_ids else 0,
+                 "instruction_token_count": (
+@@ -640,9 +667,12 @@ class FasterQwen3TTS:
+                 ),
+                 "talker_prefill_length": int(tie.shape[1]),
+                 "prefill_batch_size": int(tie.shape[0]),
+-                "prefill_attention_mask_all_valid": True,
++                **mask_metadata,
+                 "prefill_has_sliding_window": bool(
+-                    getattr(config, "sliding_window", None) is not None
++                    getattr(talker_model_config, "sliding_window", None) is not None
++                ),
++                "prefill_attn_implementation": getattr(
++                    talker_model_config, "_attn_implementation", "eager"
+                 ),
+                 "tokenize_wall_ms": tokenize_wall_ms,
+                 "build_talker_inputs_wall_ms": build_talker_inputs_wall_ms,
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index bda2715..42ebb85 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -168,10 +168,14 @@ def select_prefill_mask_mode(input_metadata: Optional[dict]) -> str:
+         return "explicit"
+     if input_metadata.get("prefill_attention_mask_all_valid") is not True:
+         return "explicit"
++    if input_metadata.get("prefill_mask_decision_source") != "constructed_all_ones":
++        return "explicit"
+     if input_metadata.get("prefill_batch_size") != 1:
+         return "explicit"
+     if input_metadata.get("prefill_has_sliding_window") is True:
+         return "explicit"
++    if input_metadata.get("prefill_attn_implementation") not in {"eager", "sdpa"}:
++        return "explicit"
+     return "skip"
+ 
+ 
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index c106220..4e214e8 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -64,32 +64,69 @@ def test_faster_wrapper_selects_greedy_predictor_graph():
+         (
+             {
+                 "prefill_attention_mask_all_valid": True,
++                "prefill_mask_decision_source": "constructed_all_ones",
+                 "prefill_batch_size": 1,
+                 "prefill_has_sliding_window": False,
++                "prefill_attn_implementation": "eager",
+             },
+             "skip",
+         ),
+         (
+             {
+                 "prefill_attention_mask_all_valid": False,
++                "prefill_mask_decision_source": "constructed_left_padded",
+                 "prefill_batch_size": 1,
+                 "prefill_has_sliding_window": False,
++                "prefill_attn_implementation": "eager",
+             },
+             "explicit",
+         ),
+         (
+             {
+                 "prefill_attention_mask_all_valid": True,
++                "prefill_batch_size": 1,
++                "prefill_has_sliding_window": False,
++                "prefill_attn_implementation": "eager",
++            },
++            "explicit",
++        ),
++        (
++            {
++                "prefill_attention_mask_all_valid": True,
++                "prefill_mask_decision_source": "constructed_all_ones",
+                 "prefill_batch_size": 2,
+                 "prefill_has_sliding_window": False,
++                "prefill_attn_implementation": "eager",
+             },
+             "explicit",
+         ),
+         (
+             {
+                 "prefill_attention_mask_all_valid": True,
++                "prefill_mask_decision_source": "constructed_all_ones",
+                 "prefill_batch_size": 1,
+                 "prefill_has_sliding_window": True,
++                "prefill_attn_implementation": "eager",
++            },
++            "explicit",
++        ),
++        (
++            {
++                "prefill_attention_mask_all_valid": True,
++                "prefill_mask_decision_source": "constructed_all_ones",
++                "prefill_batch_size": 1,
++                "prefill_has_sliding_window": False,
++                "prefill_attn_implementation": "sdpa",
++            },
++            "skip",
++        ),
++        (
++            {
++                "prefill_attention_mask_all_valid": True,
++                "prefill_mask_decision_source": "constructed_all_ones",
++                "prefill_batch_size": 1,
++                "prefill_has_sliding_window": False,
++                "prefill_attn_implementation": "flash_attention_2",
+             },
+             "explicit",
+         ),
+@@ -101,6 +138,21 @@ def test_select_prefill_mask_mode_is_fail_closed(metadata, expected):
+     assert select_prefill_mask_mode(metadata) == expected
+ 
+ 
++def test_prefill_attention_mask_metadata_tracks_local_provenance():
++    assert FasterQwen3TTS._prefill_attention_mask_metadata(torch.tensor([8])) == {
++        "prefill_attention_mask_all_valid": True,
++        "prefill_mask_decision_source": "constructed_all_ones",
++    }
++    assert FasterQwen3TTS._prefill_attention_mask_metadata(torch.tensor([5, 8])) == {
++        "prefill_attention_mask_all_valid": False,
++        "prefill_mask_decision_source": "constructed_left_padded",
++    }
++    assert FasterQwen3TTS._prefill_attention_mask_metadata(torch.tensor([])) == {
++        "prefill_attention_mask_all_valid": False,
++        "prefill_mask_decision_source": "unknown",
++    }
++
++
+ def test_run_talker_prefill_passes_static_mask_mode():
+     class DummyTalker:
+         def __init__(self):
+-- 
+2.53.0.windows.1
+

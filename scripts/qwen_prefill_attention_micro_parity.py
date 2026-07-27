@@ -69,6 +69,35 @@ def main() -> int:
     parser.add_argument("--attn-implementation", default="eager")
     parser.add_argument("--right-backend", default="compile_backend_eager")
     parser.add_argument("--checkpoint", action="append", dest="checkpoints")
+    parser.add_argument(
+        "--qk-norm-variant",
+        default="current",
+        choices=(
+            "current",
+            "input_contiguous",
+            "output_contiguous",
+            "manual_fp32",
+            "f_rms_norm",
+            "aten_rms_norm",
+        ),
+    )
+    parser.add_argument(
+        "--layer-norm-variant",
+        default="current",
+        choices=(
+            "current",
+            "input_contiguous",
+            "output_contiguous",
+            "manual_fp32",
+            "f_rms_norm",
+            "aten_rms_norm",
+        ),
+    )
+    parser.add_argument(
+        "--rope-variant",
+        default="current",
+        choices=("current", "input_contiguous", "output_contiguous", "fp32"),
+    )
     parser.add_argument("--attention-core-fp32", action="store_true")
     parser.add_argument("--force-mask-skip-during-compile", action="store_true")
     parser.add_argument("--matmul-precision", default="high")
@@ -111,6 +140,9 @@ def main() -> int:
             talker.model,
             tie,
             tam,
+            layer_norm_variant=args.layer_norm_variant,
+            qk_norm_variant=args.qk_norm_variant,
+            rope_variant=args.rope_variant,
             attention_core_fp32=args.attention_core_fp32,
         )
     )
@@ -120,6 +152,9 @@ def main() -> int:
             talker.model,
             embeds,
             mask,
+            layer_norm_variant=args.layer_norm_variant,
+            qk_norm_variant=args.qk_norm_variant,
+            rope_variant=args.rope_variant,
             attention_core_fp32=args.attention_core_fp32,
             force_mask_skip=args.force_mask_skip_during_compile,
         ),
@@ -137,6 +172,9 @@ def main() -> int:
         talker.model,
         raw_full_gpu,
         args.right_backend,
+        layer_norm_variant=args.layer_norm_variant,
+        qk_norm_variant=args.qk_norm_variant,
+        rope_variant=args.rope_variant,
         attention_core_fp32=args.attention_core_fp32,
         force_mask_skip_during_compile=args.force_mask_skip_during_compile,
     )
@@ -153,6 +191,9 @@ def main() -> int:
         "dtype": args.dtype,
         "attn_implementation": args.attn_implementation,
         "right_backend": args.right_backend,
+        "layer_norm_variant": args.layer_norm_variant,
+        "qk_norm_variant": args.qk_norm_variant,
+        "rope_variant": args.rope_variant,
         "attention_core_fp32": args.attention_core_fp32,
         "force_mask_skip_during_compile": args.force_mask_skip_during_compile,
         "checkpoints": checkpoint_names,
@@ -228,6 +269,9 @@ def _layer0_trace(
     inputs_embeds: torch.Tensor,
     attention_mask: torch.Tensor,
     *,
+    layer_norm_variant: str = "current",
+    qk_norm_variant: str = "current",
+    rope_variant: str = "current",
     attention_core_fp32: bool = False,
     force_mask_skip: bool = False,
 ) -> tuple[torch.Tensor, ...]:
@@ -242,24 +286,28 @@ def _layer0_trace(
     layer = model.layers[0]
     attn = layer.self_attn
     layer_input = inputs_embeds
-    input_norm = layer.input_layernorm(layer_input)
+    input_norm = _rms_norm(layer.input_layernorm, layer_input, layer_norm_variant)
 
     input_shape = input_norm.shape[:-1]
     hidden_shape = (*input_shape, -1, attn.head_dim)
     q_proj = attn.q_proj(input_norm).view(hidden_shape)
-    q_norm = attn.q_norm(q_proj).transpose(1, 2)
     k_proj = attn.k_proj(input_norm).view(hidden_shape)
-    k_norm = attn.k_norm(k_proj).transpose(1, 2)
+    q_norm = _rms_norm(attn.q_norm, q_proj, qk_norm_variant).transpose(1, 2)
+    k_norm = _rms_norm(attn.k_norm, k_proj, qk_norm_variant).transpose(1, 2)
+    if qk_norm_variant == "output_contiguous":
+        q_norm = q_norm.contiguous()
+        k_norm = k_norm.contiguous()
     v_proj = attn.v_proj(input_norm).view(hidden_shape).transpose(1, 2)
 
     cos, sin = position_embeddings
-    q_rope, k_rope = apply_multimodal_rotary_pos_emb(
+    q_rope, k_rope = _apply_rope(
         q_norm,
         k_norm,
         cos,
         sin,
         attn.rope_scaling["mrope_section"],
         attn.rope_scaling["interleaved"],
+        rope_variant,
     )
 
     key_states = repeat_kv(k_rope, attn.num_key_value_groups)
@@ -283,7 +331,11 @@ def _layer0_trace(
     o_proj_input = context.reshape(*input_shape, -1).contiguous()
     o_proj_output = attn.o_proj(o_proj_input)
     post_attention_residual = layer_input + o_proj_output
-    mlp_input = layer.post_attention_layernorm(post_attention_residual)
+    mlp_input = _rms_norm(
+        layer.post_attention_layernorm,
+        post_attention_residual,
+        layer_norm_variant,
+    )
     mlp_gate = layer.mlp.gate_proj(mlp_input)
     mlp_up = layer.mlp.up_proj(mlp_input)
     mlp_down = layer.mlp.down_proj(layer.mlp.act_fn(mlp_gate) * mlp_up)
@@ -316,6 +368,74 @@ def _layer0_trace(
     )
 
 
+def _rms_norm(norm: Any, tensor: torch.Tensor, variant: str) -> torch.Tensor:
+    if variant == "current":
+        return norm(tensor)
+    if variant == "input_contiguous":
+        return norm(tensor.contiguous())
+    if variant == "manual_fp32":
+        input_dtype = tensor.dtype
+        values = tensor.float()
+        variance = values.pow(2).mean(-1, keepdim=True)
+        values = values * torch.rsqrt(variance + norm.variance_epsilon)
+        return norm.weight * values.to(input_dtype)
+    if variant == "f_rms_norm":
+        return F.rms_norm(
+            tensor,
+            normalized_shape=(tensor.shape[-1],),
+            weight=norm.weight,
+            eps=norm.variance_epsilon,
+        )
+    if variant == "aten_rms_norm":
+        return torch.ops.aten.rms_norm.default(
+            tensor,
+            [tensor.shape[-1]],
+            norm.weight,
+            norm.variance_epsilon,
+        )
+    if variant == "output_contiguous":
+        return norm(tensor)
+    raise ValueError(f"Unsupported RMSNorm variant: {variant}")
+
+
+def _apply_rope(
+    q_norm: torch.Tensor,
+    k_norm: torch.Tensor,
+    cos: torch.Tensor,
+    sin: torch.Tensor,
+    mrope_section: list[int],
+    interleaved: bool,
+    variant: str,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    output_dtype = q_norm.dtype
+    if variant == "input_contiguous":
+        q_norm = q_norm.contiguous()
+        k_norm = k_norm.contiguous()
+    elif variant == "fp32":
+        q_norm = q_norm.float()
+        k_norm = k_norm.float()
+        cos = cos.float()
+        sin = sin.float()
+    elif variant != "current" and variant != "output_contiguous":
+        raise ValueError(f"Unsupported rope_variant: {variant}")
+
+    q_rope, k_rope = apply_multimodal_rotary_pos_emb(
+        q_norm,
+        k_norm,
+        cos,
+        sin,
+        mrope_section,
+        interleaved,
+    )
+    if variant == "fp32":
+        q_rope = q_rope.to(output_dtype)
+        k_rope = k_rope.to(output_dtype)
+    if variant == "output_contiguous":
+        q_rope = q_rope.contiguous()
+        k_rope = k_rope.contiguous()
+    return q_rope, k_rope
+
+
 def _select(
     trace: tuple[torch.Tensor, ...],
     names: tuple[str, ...],
@@ -328,6 +448,9 @@ def _materialized_stage_ladder(
     trace: tuple[torch.Tensor, ...],
     backend: str,
     *,
+    layer_norm_variant: str,
+    qk_norm_variant: str,
+    rope_variant: str,
     attention_core_fp32: bool,
     force_mask_skip_during_compile: bool,
 ) -> list[dict[str, Any]]:
@@ -385,9 +508,12 @@ def _materialized_stage_ladder(
     def qkv_stage(input_norm: torch.Tensor) -> tuple[torch.Tensor, ...]:
         hidden_shape = (*input_norm.shape[:-1], -1, attn.head_dim)
         q_proj = attn.q_proj(input_norm).view(hidden_shape)
-        q_norm = attn.q_norm(q_proj).transpose(1, 2)
         k_proj = attn.k_proj(input_norm).view(hidden_shape)
-        k_norm = attn.k_norm(k_proj).transpose(1, 2)
+        q_norm = _rms_norm(attn.q_norm, q_proj, qk_norm_variant).transpose(1, 2)
+        k_norm = _rms_norm(attn.k_norm, k_proj, qk_norm_variant).transpose(1, 2)
+        if qk_norm_variant == "output_contiguous":
+            q_norm = q_norm.contiguous()
+            k_norm = k_norm.contiguous()
         v_proj = attn.v_proj(input_norm).view(hidden_shape).transpose(1, 2)
         return q_proj, q_norm, k_proj, k_norm, v_proj
 
@@ -398,13 +524,14 @@ def _materialized_stage_ladder(
         cache_position = torch.arange(q_norm.shape[2], device=q_norm.device)
         position_ids = cache_position.view(1, 1, -1).expand(3, q_norm.shape[0], -1)
         cos, sin = model.rotary_emb(by_name["layer_input"], position_ids)
-        return apply_multimodal_rotary_pos_emb(
+        return _apply_rope(
             q_norm,
             k_norm,
             cos,
             sin,
             attn.rope_scaling["mrope_section"],
             attn.rope_scaling["interleaved"],
+            rope_variant,
         )
 
     def scores_stage(
@@ -439,7 +566,11 @@ def _materialized_stage_ladder(
         return attn.o_proj(o_proj_input)
 
     def mlp_stage(post_attention_residual: torch.Tensor) -> tuple[torch.Tensor, ...]:
-        mlp_input = layer.post_attention_layernorm(post_attention_residual)
+        mlp_input = _rms_norm(
+            layer.post_attention_layernorm,
+            post_attention_residual,
+            layer_norm_variant,
+        )
         mlp_gate = layer.mlp.gate_proj(mlp_input)
         mlp_up = layer.mlp.up_proj(mlp_input)
         mlp_down = layer.mlp.down_proj(layer.mlp.act_fn(mlp_gate) * mlp_up)
@@ -447,6 +578,16 @@ def _materialized_stage_ladder(
         return mlp_input, mlp_gate, mlp_up, mlp_down, layer_output
 
     return [
+        compare_stage(
+            "input_layernorm",
+            lambda layer_input: _rms_norm(
+                layer.input_layernorm,
+                layer_input,
+                layer_norm_variant,
+            ),
+            by_name["layer_input"],
+            output_names=("input_layernorm",),
+        ),
         compare_stage(
             "causal_mask_build",
             causal_mask_stage,

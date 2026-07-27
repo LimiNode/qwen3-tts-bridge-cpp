@@ -1079,6 +1079,97 @@ finally {
 }
 ```
 
+## Mask Contract Hardening And Inductor RMS/RoPE Diagnostics
+
+Safe production gate after replacing bare `all_valid=true` with mask
+provenance and adding Qwen fail-closed skip guards:
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean;C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --backend eager `
+    --backend compile_backend_eager `
+    --backend compile_backend_aot_eager `
+    --repeats 2 `
+    --max-new-tokens 64 `
+    --chunk-size 8 `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\production-mask-contract-hardening\bf16-safe-compile-ladder-r2.json
+```
+
+Inductor remains blocked under the same hardened mask contract:
+
+```powershell
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_compile_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --backend eager `
+    --backend compile_inductor_default `
+    --repeats 1 `
+    --max-new-tokens 64 `
+    --chunk-size 8 `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\production-mask-contract-hardening\bf16-inductor-default-r1.json
+```
+
+Layer-0 Inductor diagnostics used:
+
+```powershell
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_attention_micro_parity.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --speaker ryan `
+    --dtype bfloat16 `
+    --attn-implementation eager `
+    --right-backend compile_inductor_default `
+    --force-mask-skip-during-compile `
+    --layer-norm-variant f_rms_norm `
+    --qk-norm-variant f_rms_norm `
+    --rope-variant fp32 `
+    --device-profile rtx4090 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\inductor-rope-variants\bf16-layer0-all-f_rms_norm-rope-fp32.json
+```
+
+The `--qk-norm-variant` sweep covered `current`, `input_contiguous`,
+`output_contiguous`, `manual_fp32`, `f_rms_norm`, and `aten_rms_norm`. The
+`--layer-norm-variant` all-RMS sweep covered `f_rms_norm` and `aten_rms_norm`.
+The RoPE sweep covered `input_contiguous`, `output_contiguous`, and `fp32`.
+
+Artifact hashes:
+
+```text
+production-mask-contract-hardening/bf16-compile-backend-eager-r1.json SHA256: 3504bad9a71824320f409f1a3ab085316c0c6a0369b810edfee5a56f04b5e579
+production-mask-contract-hardening/bf16-inductor-default-r1.json SHA256: 4059d46074ebf7c73ae2b110b2e64d9847730fc639fdc9e42334819d41c3499c
+production-mask-contract-hardening/bf16-safe-compile-ladder-r2.json SHA256: 539bdb22335dd64787e423e8b36e0d71599ee5ff500e470ec9e62a9ea58faf29
+inductor-qk-norm-variants/bf16-layer0-aten_rms_norm.json SHA256: 1190532b9d55f17dd2ce0ad74d54cc2c3e5989144403024259e9b1a2c374f51a
+inductor-qk-norm-variants/bf16-layer0-current.json SHA256: 464d4c7775701dd5c485dbefa95f3933f175350fa2164fcdd78180baac64eeb7
+inductor-qk-norm-variants/bf16-layer0-f_rms_norm.json SHA256: 9367ff4a4117cb31da8153a9af3082bbb37485f8d23b7a977ca5b22a0902c5b8
+inductor-qk-norm-variants/bf16-layer0-input_contiguous.json SHA256: f9a686721c57960f62d4bb2ffc5d5f2c9608da2b25eb0c23e9a9eeb2435f9b38
+inductor-qk-norm-variants/bf16-layer0-manual_fp32.json SHA256: 4985d5afa5fc6b25a7ee7e6be2709ebfe7ced2534e37d7e0c97fcc6c20fec8da
+inductor-qk-norm-variants/bf16-layer0-output_contiguous.json SHA256: 0c1075d29e86de9633304881804ee24082278d82ea0a3434bb7230d2b8d29322
+inductor-rms-norm-variants/bf16-layer0-all-aten_rms_norm.json SHA256: 62523578fe5d97f961cb17f0e56ced41324047ffc8652389c0497cc22edf0022
+inductor-rms-norm-variants/bf16-layer0-all-f_rms_norm.json SHA256: 94a4468c407ec0f8876733c46c26e246bee5944c6197caf218602b1559c17714
+inductor-rope-variants/bf16-layer0-all-f_rms_norm-rope-fp32.json SHA256: d328f0431ab266701bbfb5593feafed8640b01b92a23cb73d97f96b65a4e2f23
+inductor-rope-variants/bf16-layer0-all-f_rms_norm-rope-input_contiguous.json SHA256: e63fe44a8cc97b28e01979cb9f570127c37cc6a4508e2a7dff291b8fb05d573c
+inductor-rope-variants/bf16-layer0-all-f_rms_norm-rope-output_contiguous.json SHA256: 8ac4df7fa6dd08509ec02ee7352ac2783893e889eb955561d653b4546966c166
+faster-qwen-mask-contract-hardening-patch/0001-fix-prefill-harden-mask-skip-selection.patch SHA256: ef2d77bb01af3481bf1604c82464f894fe268d5263e8036cd7c5648b7b77bd67
+faster-qwen-mask-contract-hardening-patch/faster-qwen-prefill-compile-through-70bfea4.bundle SHA256: ea07e795fb92f45f2a66f4643863db2e601757158b090706f5adb3fe0140bfd2
+qwen-mask-contract-hardening-patch/0001-fix-talker-reject-unsafe-prefill-mask-skips.patch SHA256: 3c144938e710cca661df5cc9b6c427026d3847b6ec2c6407e2ea090ea91b7e96
+```
+
 Fail-closed greedy predictor patch artifacts:
 
 ```powershell

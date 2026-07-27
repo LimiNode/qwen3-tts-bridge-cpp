@@ -1716,6 +1716,44 @@ request was itself an outlier (`very_long_b`, 613.2 ms). Treat this as a
 directional diagnostic. A larger shuffled matrix with request-time GPU polling
 is still needed before changing product defaults.
 
+### Mask Contract Hardening And Inductor RMS/RoPE Follow-Up
+
+The explicit prefill mask mode was hardened so `skip` is no longer selected
+from a bare `prefill_attention_mask_all_valid=true`. FasterQwen now records the
+CPU-side mask provenance as `prefill_mask_decision_source` and requires
+`constructed_all_ones`, batch size `1`, no sliding window, and a supported
+attention implementation before selecting `skip`. The real CustomVoice path
+currently reports the actual talker attention implementation as `sdpa`, even
+when the diagnostic CLI argument is `--attn-implementation eager`; therefore
+the supported set for the proven path is `eager` / `sdpa`, while other
+implementations remain fail-closed.
+
+The Qwen submodule also rejects unsafe direct `skip_prefill_causal_mask` calls:
+decode/single-token calls, caller-provided `cache_position`, caller-provided
+KV-cache, sliding-window attention, and unvalidated attention implementations
+raise before the causal mask is skipped.
+
+| Artifact | Result |
+| --- | --- |
+| `production-mask-contract-hardening/bf16-compile-backend-eager-r1.json` | `compile_backend_eager` keeps `prefill_mask_mode=skip`, prefill diff `0.0`, codec/EOS/frame parity passes. |
+| `production-mask-contract-hardening/bf16-safe-compile-ladder-r2.json` | `compile_backend_eager` and `compile_backend_aot_eager` remain exact over `2` repeats. |
+| `production-mask-contract-hardening/bf16-inductor-default-r1.json` | Inductor remains blocked: prefill diff `0.203125`, codec differs, frame count differs. |
+
+The Inductor BF16 bisection then tested the suspected Q/K normalization path
+without changing product code. `.contiguous()` and manual FP32 RMS reduction do
+not remove the materialized `q_norm` / `k_norm` differences. `F.rms_norm` and
+`aten.rms_norm` do remove the isolated Q/K RMSNorm differences, but the full
+layer trace then first diverges at `q_rope` / `k_rope`, and that propagates to
+attention scores and softmax. Applying contiguous or FP32 variants around RoPE
+did not remove the RoPE difference.
+
+Current interpretation: Inductor rollout is still correctness-blocked, but the
+root cause has moved from the old mask bug to a BF16 Inductor lowering issue
+covering RMSNorm and then multimodal RoPE. A product patch should not be
+promoted from these diagnostics yet; the next useful experiment is an explicit
+eager island or compile-disable boundary around RMSNorm+RoPE, followed by the
+same true-greedy semantic gate.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
