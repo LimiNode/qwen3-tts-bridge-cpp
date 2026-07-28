@@ -1,0 +1,4826 @@
+{
+  "artifact_schema_version": 1,
+  "attn_implementation": "sdpa",
+  "coverage": {
+    "covered_fraction": 0.478,
+    "covered_prompts": 239,
+    "selected_count": 6
+  },
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "elapsed_seconds": 13.068,
+  "histogram": [
+    {
+      "count": 50,
+      "cumulative_fraction": 0.1,
+      "examples": [
+        "prompt_0014",
+        "prompt_0015",
+        "prompt_0024",
+        "prompt_0045",
+        "prompt_0049"
+      ],
+      "fraction": 0.1,
+      "talker_prefill_length": 32
+    },
+    {
+      "count": 45,
+      "cumulative_fraction": 0.19,
+      "examples": [
+        "prompt_0005",
+        "prompt_0009",
+        "prompt_0010",
+        "prompt_0013",
+        "prompt_0017"
+      ],
+      "fraction": 0.09,
+      "talker_prefill_length": 29
+    },
+    {
+      "count": 44,
+      "cumulative_fraction": 0.278,
+      "examples": [
+        "prompt_0038",
+        "prompt_0040",
+        "prompt_0054",
+        "prompt_0055",
+        "prompt_0085"
+      ],
+      "fraction": 0.088,
+      "talker_prefill_length": 35
+    },
+    {
+      "count": 36,
+      "cumulative_fraction": 0.35,
+      "examples": [
+        "prompt_0058",
+        "prompt_0060",
+        "prompt_0065",
+        "prompt_0069",
+        "prompt_0070"
+      ],
+      "fraction": 0.072,
+      "talker_prefill_length": 34
+    },
+    {
+      "count": 32,
+      "cumulative_fraction": 0.414,
+      "examples": [
+        "prompt_0025",
+        "prompt_0029",
+        "prompt_0030",
+        "prompt_0033",
+        "prompt_0037"
+      ],
+      "fraction": 0.064,
+      "talker_prefill_length": 33
+    },
+    {
+      "count": 32,
+      "cumulative_fraction": 0.478,
+      "examples": [
+        "prompt_0027",
+        "prompt_0032",
+        "prompt_0043",
+        "prompt_0068",
+        "prompt_0096"
+      ],
+      "fraction": 0.064,
+      "talker_prefill_length": 30
+    },
+    {
+      "count": 30,
+      "cumulative_fraction": 0.538,
+      "examples": [
+        "prompt_0018",
+        "prompt_0020",
+        "prompt_0023",
+        "prompt_0044",
+        "prompt_0067"
+      ],
+      "fraction": 0.06,
+      "talker_prefill_length": 31
+    },
+    {
+      "count": 28,
+      "cumulative_fraction": 0.594,
+      "examples": [
+        "prompt_0094",
+        "prompt_0095",
+        "prompt_0105",
+        "prompt_0109",
+        "prompt_0110"
+      ],
+      "fraction": 0.056,
+      "talker_prefill_length": 38
+    },
+    {
+      "count": 26,
+      "cumulative_fraction": 0.646,
+      "examples": [
+        "prompt_0007",
+        "prompt_0012",
+        "prompt_0042",
+        "prompt_0061",
+        "prompt_0066"
+      ],
+      "fraction": 0.052,
+      "talker_prefill_length": 26
+    },
+    {
+      "count": 25,
+      "cumulative_fraction": 0.696,
+      "examples": [
+        "prompt_0003",
+        "prompt_0022",
+        "prompt_0056",
+        "prompt_0081",
+        "prompt_0086"
+      ],
+      "fraction": 0.05,
+      "talker_prefill_length": 27
+    },
+    {
+      "count": 25,
+      "cumulative_fraction": 0.746,
+      "examples": [
+        "prompt_0019",
+        "prompt_0034",
+        "prompt_0035",
+        "prompt_0078",
+        "prompt_0080"
+      ],
+      "fraction": 0.05,
+      "talker_prefill_length": 36
+    },
+    {
+      "count": 20,
+      "cumulative_fraction": 0.786,
+      "examples": [
+        "prompt_0074",
+        "prompt_0075",
+        "prompt_0098",
+        "prompt_0100",
+        "prompt_0104"
+      ],
+      "fraction": 0.04,
+      "talker_prefill_length": 37
+    },
+    {
+      "count": 17,
+      "cumulative_fraction": 0.82,
+      "examples": [
+        "prompt_0004",
+        "prompt_0036",
+        "prompt_0048",
+        "prompt_0062",
+        "prompt_0124"
+      ],
+      "fraction": 0.034,
+      "talker_prefill_length": 28
+    },
+    {
+      "count": 17,
+      "cumulative_fraction": 0.854,
+      "examples": [
+        "prompt_0008",
+        "prompt_0021",
+        "prompt_0026",
+        "prompt_0031",
+        "prompt_0128"
+      ],
+      "fraction": 0.034,
+      "talker_prefill_length": 25
+    },
+    {
+      "count": 17,
+      "cumulative_fraction": 0.888,
+      "examples": [
+        "prompt_0016",
+        "prompt_0041",
+        "prompt_0046",
+        "prompt_0051",
+        "prompt_0136"
+      ],
+      "fraction": 0.034,
+      "talker_prefill_length": 24
+    },
+    {
+      "count": 15,
+      "cumulative_fraction": 0.918,
+      "examples": [
+        "prompt_0001",
+        "prompt_0006",
+        "prompt_0011",
+        "prompt_0121",
+        "prompt_0126"
+      ],
+      "fraction": 0.03,
+      "talker_prefill_length": 21
+    },
+    {
+      "count": 12,
+      "cumulative_fraction": 0.942,
+      "examples": [
+        "prompt_0039",
+        "prompt_0118",
+        "prompt_0120",
+        "prompt_0159",
+        "prompt_0238"
+      ],
+      "fraction": 0.024,
+      "talker_prefill_length": 40
+    },
+    {
+      "count": 12,
+      "cumulative_fraction": 0.966,
+      "examples": [
+        "prompt_0079",
+        "prompt_0114",
+        "prompt_0115",
+        "prompt_0199",
+        "prompt_0234"
+      ],
+      "fraction": 0.024,
+      "talker_prefill_length": 41
+    },
+    {
+      "count": 5,
+      "cumulative_fraction": 0.976,
+      "examples": [
+        "prompt_0002",
+        "prompt_0122",
+        "prompt_0242",
+        "prompt_0362",
+        "prompt_0482"
+      ],
+      "fraction": 0.01,
+      "talker_prefill_length": 23
+    },
+    {
+      "count": 4,
+      "cumulative_fraction": 0.984,
+      "examples": [
+        "prompt_0059",
+        "prompt_0179",
+        "prompt_0299",
+        "prompt_0419"
+      ],
+      "fraction": 0.008,
+      "talker_prefill_length": 39
+    },
+    {
+      "count": 4,
+      "cumulative_fraction": 0.992,
+      "examples": [
+        "prompt_0099",
+        "prompt_0219",
+        "prompt_0339",
+        "prompt_0459"
+      ],
+      "fraction": 0.008,
+      "talker_prefill_length": 42
+    },
+    {
+      "count": 4,
+      "cumulative_fraction": 1.0,
+      "examples": [
+        "prompt_0119",
+        "prompt_0239",
+        "prompt_0359",
+        "prompt_0479"
+      ],
+      "fraction": 0.008,
+      "talker_prefill_length": 45
+    }
+  ],
+  "method": "prepare_generation_custom_without_audio",
+  "model": "models\\Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "output": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\prefill-length-histogram-customvoice-500.json",
+  "prompt_count": 500,
+  "rows": [
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0001",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "I am your robot, I am your worker.",
+      "text_characters": 34
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0002",
+      "language": "Auto",
+      "talker_prefill_length": 23,
+      "text": "Please say: The avatar answers with a calm and friendly voice.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0003",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0004",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives.",
+      "text_characters": 80
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0005",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0006",
+      "language": "Auto",
+      "talker_prefill_length": 21,
+      "text": "The machine should speak naturally while the model stays warm.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0007",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Please say: A short reply is often enough for conversational avatars.",
+      "text_characters": 69
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0008",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well.",
+      "text_characters": 78
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0009",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0010",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0011",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis.",
+      "text_characters": 55
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0012",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update.",
+      "text_characters": 74
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0013",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0014",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0015",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0016",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "This is a longer request with enough words to exercise another prompt shape.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0017",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0018",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0019",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0020",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers.",
+      "text_characters": 99
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0021",
+      "language": "English",
+      "talker_prefill_length": 25,
+      "text": "I am your robot, I am your worker. Keep it concise.",
+      "text_characters": 51
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0022",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Keep it concise.",
+      "text_characters": 79
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0023",
+      "language": "English",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Keep it concise.",
+      "text_characters": 92
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0024",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Keep it concise.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0025",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Keep it concise.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0026",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "The machine should speak naturally while the model stays warm. Keep it concise.",
+      "text_characters": 79
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0027",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "Please say: A short reply is often enough for conversational avatars. Keep it concise.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0028",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Keep it concise.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0029",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Keep it concise.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0030",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Keep it concise.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0031",
+      "language": "English",
+      "talker_prefill_length": 25,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Keep it concise.",
+      "text_characters": 72
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0032",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Keep it concise.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0033",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Keep it concise.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0034",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Keep it concise.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0035",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Keep it concise.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0036",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Keep it concise.",
+      "text_characters": 93
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0037",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Keep it concise.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0038",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Keep it concise.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0039",
+      "language": "English",
+      "talker_prefill_length": 40,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Keep it concise.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0040",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Keep it concise.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0041",
+      "language": "English",
+      "talker_prefill_length": 24,
+      "text": "I am your robot, I am your worker. Speak clearly.",
+      "text_characters": 49
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0042",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Speak clearly.",
+      "text_characters": 77
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0043",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Speak clearly.",
+      "text_characters": 90
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0044",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Speak clearly.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0045",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Speak clearly.",
+      "text_characters": 99
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0046",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "The machine should speak naturally while the model stays warm. Speak clearly.",
+      "text_characters": 77
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0047",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A short reply is often enough for conversational avatars. Speak clearly.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0048",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Speak clearly.",
+      "text_characters": 93
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0049",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Speak clearly.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0050",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Speak clearly.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0051",
+      "language": "English",
+      "talker_prefill_length": 24,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Speak clearly.",
+      "text_characters": 70
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0052",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Speak clearly.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0053",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Speak clearly.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0054",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Speak clearly.",
+      "text_characters": 109
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0055",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Speak clearly.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0056",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Speak clearly.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0057",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Speak clearly.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0058",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Speak clearly.",
+      "text_characters": 112
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0059",
+      "language": "English",
+      "talker_prefill_length": 39,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Speak clearly.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0060",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Speak clearly.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0061",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "I am your robot, I am your worker. Use a natural pace.",
+      "text_characters": 54
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0062",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Use a natural pace.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0063",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Use a natural pace.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0064",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Use a natural pace.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0065",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Use a natural pace.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0066",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "The machine should speak naturally while the model stays warm. Use a natural pace.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0067",
+      "language": "English",
+      "talker_prefill_length": 31,
+      "text": "Please say: A short reply is often enough for conversational avatars. Use a natural pace.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0068",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Use a natural pace.",
+      "text_characters": 98
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0069",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Use a natural pace.",
+      "text_characters": 109
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0070",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Use a natural pace.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0071",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Use a natural pace.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0072",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Use a natural pace.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0073",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Use a natural pace.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0074",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Use a natural pace.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0075",
+      "language": "English",
+      "talker_prefill_length": 37,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Use a natural pace.",
+      "text_characters": 120
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0076",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Use a natural pace.",
+      "text_characters": 96
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0077",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Use a natural pace.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0078",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Use a natural pace.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0079",
+      "language": "English",
+      "talker_prefill_length": 41,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Use a natural pace.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0080",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Use a natural pace.",
+      "text_characters": 119
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0081",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "I am your robot, I am your worker. End with a confident tone.",
+      "text_characters": 61
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0082",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "Please say: The avatar answers with a calm and friendly voice. End with a confident tone.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0083",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. End with a confident tone.",
+      "text_characters": 102
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0084",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. End with a confident tone.",
+      "text_characters": 107
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0085",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. End with a confident tone.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0086",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "The machine should speak naturally while the model stays warm. End with a confident tone.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0087",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "Please say: A short reply is often enough for conversational avatars. End with a confident tone.",
+      "text_characters": 96
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0088",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. End with a confident tone.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0089",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. End with a confident tone.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0090",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. End with a confident tone.",
+      "text_characters": 118
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0091",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. End with a confident tone.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0092",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. End with a confident tone.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0093",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. End with a confident tone.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0094",
+      "language": "Auto",
+      "talker_prefill_length": 38,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. End with a confident tone.",
+      "text_characters": 121
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0095",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. End with a confident tone.",
+      "text_characters": 127
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0096",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "This is a longer request with enough words to exercise another prompt shape. End with a confident tone.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0097",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. End with a confident tone.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0098",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. End with a confident tone.",
+      "text_characters": 124
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0099",
+      "language": "English",
+      "talker_prefill_length": 42,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. End with a confident tone.",
+      "text_characters": 113
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0100",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. End with a confident tone.",
+      "text_characters": 126
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0101",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "I am your robot, I am your worker. This request is part of a mixed workload.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0102",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "Please say: The avatar answers with a calm and friendly voice. This request is part of a mixed workload.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0103",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. This request is part of a mixed workload.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0104",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. This request is part of a mixed workload.",
+      "text_characters": 122
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0105",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. This request is part of a mixed workload.",
+      "text_characters": 126
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0106",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "The machine should speak naturally while the model stays warm. This request is part of a mixed workload.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0107",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "Please say: A short reply is often enough for conversational avatars. This request is part of a mixed workload.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0108",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. This request is part of a mixed workload.",
+      "text_characters": 120
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0109",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. This request is part of a mixed workload.",
+      "text_characters": 131
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0110",
+      "language": "Auto",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. This request is part of a mixed workload.",
+      "text_characters": 133
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0111",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. This request is part of a mixed workload.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0112",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. This request is part of a mixed workload.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0113",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. This request is part of a mixed workload.",
+      "text_characters": 130
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0114",
+      "language": "Auto",
+      "talker_prefill_length": 41,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. This request is part of a mixed workload.",
+      "text_characters": 136
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0115",
+      "language": "English",
+      "talker_prefill_length": 41,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. This request is part of a mixed workload.",
+      "text_characters": 142
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0116",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "This is a longer request with enough words to exercise another prompt shape. This request is part of a mixed workload.",
+      "text_characters": 118
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0117",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. This request is part of a mixed workload.",
+      "text_characters": 130
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0118",
+      "language": "Auto",
+      "talker_prefill_length": 40,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. This request is part of a mixed workload.",
+      "text_characters": 139
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0119",
+      "language": "English",
+      "talker_prefill_length": 45,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. This request is part of a mixed workload.",
+      "text_characters": 128
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "prompt_0120",
+      "language": "Auto",
+      "talker_prefill_length": 40,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. This request is part of a mixed workload.",
+      "text_characters": 141
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0121",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "I am your robot, I am your worker.",
+      "text_characters": 34
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0122",
+      "language": "Auto",
+      "talker_prefill_length": 23,
+      "text": "Please say: The avatar answers with a calm and friendly voice.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0123",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0124",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives.",
+      "text_characters": 80
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0125",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0126",
+      "language": "Auto",
+      "talker_prefill_length": 21,
+      "text": "The machine should speak naturally while the model stays warm.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0127",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Please say: A short reply is often enough for conversational avatars.",
+      "text_characters": 69
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0128",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well.",
+      "text_characters": 78
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0129",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0130",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0131",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis.",
+      "text_characters": 55
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0132",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update.",
+      "text_characters": 74
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0133",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0134",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0135",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0136",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "This is a longer request with enough words to exercise another prompt shape.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0137",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0138",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0139",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0140",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers.",
+      "text_characters": 99
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0141",
+      "language": "English",
+      "talker_prefill_length": 25,
+      "text": "I am your robot, I am your worker. Keep it concise.",
+      "text_characters": 51
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0142",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Keep it concise.",
+      "text_characters": 79
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0143",
+      "language": "English",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Keep it concise.",
+      "text_characters": 92
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0144",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Keep it concise.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0145",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Keep it concise.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0146",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "The machine should speak naturally while the model stays warm. Keep it concise.",
+      "text_characters": 79
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0147",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "Please say: A short reply is often enough for conversational avatars. Keep it concise.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0148",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Keep it concise.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0149",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Keep it concise.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0150",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Keep it concise.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0151",
+      "language": "English",
+      "talker_prefill_length": 25,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Keep it concise.",
+      "text_characters": 72
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0152",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Keep it concise.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0153",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Keep it concise.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0154",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Keep it concise.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0155",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Keep it concise.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0156",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Keep it concise.",
+      "text_characters": 93
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0157",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Keep it concise.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0158",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Keep it concise.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0159",
+      "language": "English",
+      "talker_prefill_length": 40,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Keep it concise.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0160",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Keep it concise.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0161",
+      "language": "English",
+      "talker_prefill_length": 24,
+      "text": "I am your robot, I am your worker. Speak clearly.",
+      "text_characters": 49
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0162",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Speak clearly.",
+      "text_characters": 77
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0163",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Speak clearly.",
+      "text_characters": 90
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0164",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Speak clearly.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0165",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Speak clearly.",
+      "text_characters": 99
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0166",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "The machine should speak naturally while the model stays warm. Speak clearly.",
+      "text_characters": 77
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0167",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A short reply is often enough for conversational avatars. Speak clearly.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0168",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Speak clearly.",
+      "text_characters": 93
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0169",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Speak clearly.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0170",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Speak clearly.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0171",
+      "language": "English",
+      "talker_prefill_length": 24,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Speak clearly.",
+      "text_characters": 70
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0172",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Speak clearly.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0173",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Speak clearly.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0174",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Speak clearly.",
+      "text_characters": 109
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0175",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Speak clearly.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0176",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Speak clearly.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0177",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Speak clearly.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0178",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Speak clearly.",
+      "text_characters": 112
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0179",
+      "language": "English",
+      "talker_prefill_length": 39,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Speak clearly.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0180",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Speak clearly.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0181",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "I am your robot, I am your worker. Use a natural pace.",
+      "text_characters": 54
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0182",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Use a natural pace.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0183",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Use a natural pace.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0184",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Use a natural pace.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0185",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Use a natural pace.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0186",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "The machine should speak naturally while the model stays warm. Use a natural pace.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0187",
+      "language": "English",
+      "talker_prefill_length": 31,
+      "text": "Please say: A short reply is often enough for conversational avatars. Use a natural pace.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0188",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Use a natural pace.",
+      "text_characters": 98
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0189",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Use a natural pace.",
+      "text_characters": 109
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0190",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Use a natural pace.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0191",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Use a natural pace.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0192",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Use a natural pace.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0193",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Use a natural pace.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0194",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Use a natural pace.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0195",
+      "language": "English",
+      "talker_prefill_length": 37,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Use a natural pace.",
+      "text_characters": 120
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0196",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Use a natural pace.",
+      "text_characters": 96
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0197",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Use a natural pace.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0198",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Use a natural pace.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0199",
+      "language": "English",
+      "talker_prefill_length": 41,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Use a natural pace.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0200",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Use a natural pace.",
+      "text_characters": 119
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0201",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "I am your robot, I am your worker. End with a confident tone.",
+      "text_characters": 61
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0202",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "Please say: The avatar answers with a calm and friendly voice. End with a confident tone.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0203",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. End with a confident tone.",
+      "text_characters": 102
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0204",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. End with a confident tone.",
+      "text_characters": 107
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0205",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. End with a confident tone.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0206",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "The machine should speak naturally while the model stays warm. End with a confident tone.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0207",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "Please say: A short reply is often enough for conversational avatars. End with a confident tone.",
+      "text_characters": 96
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0208",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. End with a confident tone.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0209",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. End with a confident tone.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0210",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. End with a confident tone.",
+      "text_characters": 118
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0211",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. End with a confident tone.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0212",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. End with a confident tone.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0213",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. End with a confident tone.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0214",
+      "language": "Auto",
+      "talker_prefill_length": 38,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. End with a confident tone.",
+      "text_characters": 121
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0215",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. End with a confident tone.",
+      "text_characters": 127
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0216",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "This is a longer request with enough words to exercise another prompt shape. End with a confident tone.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0217",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. End with a confident tone.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0218",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. End with a confident tone.",
+      "text_characters": 124
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0219",
+      "language": "English",
+      "talker_prefill_length": 42,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. End with a confident tone.",
+      "text_characters": 113
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0220",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. End with a confident tone.",
+      "text_characters": 126
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0221",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "I am your robot, I am your worker. This request is part of a mixed workload.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0222",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "Please say: The avatar answers with a calm and friendly voice. This request is part of a mixed workload.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0223",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. This request is part of a mixed workload.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0224",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. This request is part of a mixed workload.",
+      "text_characters": 122
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0225",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. This request is part of a mixed workload.",
+      "text_characters": 126
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0226",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "The machine should speak naturally while the model stays warm. This request is part of a mixed workload.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0227",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "Please say: A short reply is often enough for conversational avatars. This request is part of a mixed workload.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0228",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. This request is part of a mixed workload.",
+      "text_characters": 120
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0229",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. This request is part of a mixed workload.",
+      "text_characters": 131
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0230",
+      "language": "Auto",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. This request is part of a mixed workload.",
+      "text_characters": 133
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0231",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. This request is part of a mixed workload.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0232",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. This request is part of a mixed workload.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0233",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. This request is part of a mixed workload.",
+      "text_characters": 130
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0234",
+      "language": "Auto",
+      "talker_prefill_length": 41,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. This request is part of a mixed workload.",
+      "text_characters": 136
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0235",
+      "language": "English",
+      "talker_prefill_length": 41,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. This request is part of a mixed workload.",
+      "text_characters": 142
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0236",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "This is a longer request with enough words to exercise another prompt shape. This request is part of a mixed workload.",
+      "text_characters": 118
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0237",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. This request is part of a mixed workload.",
+      "text_characters": 130
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0238",
+      "language": "Auto",
+      "talker_prefill_length": 40,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. This request is part of a mixed workload.",
+      "text_characters": 139
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0239",
+      "language": "English",
+      "talker_prefill_length": 45,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. This request is part of a mixed workload.",
+      "text_characters": 128
+    },
+    {
+      "instruction": "Speak neutrally.",
+      "instruction_characters": 16,
+      "label": "prompt_0240",
+      "language": "Auto",
+      "talker_prefill_length": 40,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. This request is part of a mixed workload.",
+      "text_characters": 141
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0241",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "I am your robot, I am your worker.",
+      "text_characters": 34
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0242",
+      "language": "Auto",
+      "talker_prefill_length": 23,
+      "text": "Please say: The avatar answers with a calm and friendly voice.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0243",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0244",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives.",
+      "text_characters": 80
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0245",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0246",
+      "language": "Auto",
+      "talker_prefill_length": 21,
+      "text": "The machine should speak naturally while the model stays warm.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0247",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Please say: A short reply is often enough for conversational avatars.",
+      "text_characters": 69
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0248",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well.",
+      "text_characters": 78
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0249",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0250",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0251",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis.",
+      "text_characters": 55
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0252",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update.",
+      "text_characters": 74
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0253",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0254",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0255",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0256",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "This is a longer request with enough words to exercise another prompt shape.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0257",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0258",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0259",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0260",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers.",
+      "text_characters": 99
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0261",
+      "language": "English",
+      "talker_prefill_length": 25,
+      "text": "I am your robot, I am your worker. Keep it concise.",
+      "text_characters": 51
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0262",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Keep it concise.",
+      "text_characters": 79
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0263",
+      "language": "English",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Keep it concise.",
+      "text_characters": 92
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0264",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Keep it concise.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0265",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Keep it concise.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0266",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "The machine should speak naturally while the model stays warm. Keep it concise.",
+      "text_characters": 79
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0267",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "Please say: A short reply is often enough for conversational avatars. Keep it concise.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0268",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Keep it concise.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0269",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Keep it concise.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0270",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Keep it concise.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0271",
+      "language": "English",
+      "talker_prefill_length": 25,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Keep it concise.",
+      "text_characters": 72
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0272",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Keep it concise.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0273",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Keep it concise.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0274",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Keep it concise.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0275",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Keep it concise.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0276",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Keep it concise.",
+      "text_characters": 93
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0277",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Keep it concise.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0278",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Keep it concise.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0279",
+      "language": "English",
+      "talker_prefill_length": 40,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Keep it concise.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0280",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Keep it concise.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0281",
+      "language": "English",
+      "talker_prefill_length": 24,
+      "text": "I am your robot, I am your worker. Speak clearly.",
+      "text_characters": 49
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0282",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Speak clearly.",
+      "text_characters": 77
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0283",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Speak clearly.",
+      "text_characters": 90
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0284",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Speak clearly.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0285",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Speak clearly.",
+      "text_characters": 99
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0286",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "The machine should speak naturally while the model stays warm. Speak clearly.",
+      "text_characters": 77
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0287",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A short reply is often enough for conversational avatars. Speak clearly.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0288",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Speak clearly.",
+      "text_characters": 93
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0289",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Speak clearly.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0290",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Speak clearly.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0291",
+      "language": "English",
+      "talker_prefill_length": 24,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Speak clearly.",
+      "text_characters": 70
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0292",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Speak clearly.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0293",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Speak clearly.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0294",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Speak clearly.",
+      "text_characters": 109
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0295",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Speak clearly.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0296",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Speak clearly.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0297",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Speak clearly.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0298",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Speak clearly.",
+      "text_characters": 112
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0299",
+      "language": "English",
+      "talker_prefill_length": 39,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Speak clearly.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0300",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Speak clearly.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0301",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "I am your robot, I am your worker. Use a natural pace.",
+      "text_characters": 54
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0302",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Use a natural pace.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0303",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Use a natural pace.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0304",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Use a natural pace.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0305",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Use a natural pace.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0306",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "The machine should speak naturally while the model stays warm. Use a natural pace.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0307",
+      "language": "English",
+      "talker_prefill_length": 31,
+      "text": "Please say: A short reply is often enough for conversational avatars. Use a natural pace.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0308",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Use a natural pace.",
+      "text_characters": 98
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0309",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Use a natural pace.",
+      "text_characters": 109
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0310",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Use a natural pace.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0311",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Use a natural pace.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0312",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Use a natural pace.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0313",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Use a natural pace.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0314",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Use a natural pace.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0315",
+      "language": "English",
+      "talker_prefill_length": 37,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Use a natural pace.",
+      "text_characters": 120
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0316",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Use a natural pace.",
+      "text_characters": 96
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0317",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Use a natural pace.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0318",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Use a natural pace.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0319",
+      "language": "English",
+      "talker_prefill_length": 41,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Use a natural pace.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0320",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Use a natural pace.",
+      "text_characters": 119
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0321",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "I am your robot, I am your worker. End with a confident tone.",
+      "text_characters": 61
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0322",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "Please say: The avatar answers with a calm and friendly voice. End with a confident tone.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0323",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. End with a confident tone.",
+      "text_characters": 102
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0324",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. End with a confident tone.",
+      "text_characters": 107
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0325",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. End with a confident tone.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0326",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "The machine should speak naturally while the model stays warm. End with a confident tone.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0327",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "Please say: A short reply is often enough for conversational avatars. End with a confident tone.",
+      "text_characters": 96
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0328",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. End with a confident tone.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0329",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. End with a confident tone.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0330",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. End with a confident tone.",
+      "text_characters": 118
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0331",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. End with a confident tone.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0332",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. End with a confident tone.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0333",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. End with a confident tone.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0334",
+      "language": "Auto",
+      "talker_prefill_length": 38,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. End with a confident tone.",
+      "text_characters": 121
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0335",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. End with a confident tone.",
+      "text_characters": 127
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0336",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "This is a longer request with enough words to exercise another prompt shape. End with a confident tone.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0337",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. End with a confident tone.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0338",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. End with a confident tone.",
+      "text_characters": 124
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0339",
+      "language": "English",
+      "talker_prefill_length": 42,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. End with a confident tone.",
+      "text_characters": 113
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0340",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. End with a confident tone.",
+      "text_characters": 126
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0341",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "I am your robot, I am your worker. This request is part of a mixed workload.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0342",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "Please say: The avatar answers with a calm and friendly voice. This request is part of a mixed workload.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0343",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. This request is part of a mixed workload.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0344",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. This request is part of a mixed workload.",
+      "text_characters": 122
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0345",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. This request is part of a mixed workload.",
+      "text_characters": 126
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0346",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "The machine should speak naturally while the model stays warm. This request is part of a mixed workload.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0347",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "Please say: A short reply is often enough for conversational avatars. This request is part of a mixed workload.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0348",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. This request is part of a mixed workload.",
+      "text_characters": 120
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0349",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. This request is part of a mixed workload.",
+      "text_characters": 131
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0350",
+      "language": "Auto",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. This request is part of a mixed workload.",
+      "text_characters": 133
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0351",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. This request is part of a mixed workload.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0352",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. This request is part of a mixed workload.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0353",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. This request is part of a mixed workload.",
+      "text_characters": 130
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0354",
+      "language": "Auto",
+      "talker_prefill_length": 41,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. This request is part of a mixed workload.",
+      "text_characters": 136
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0355",
+      "language": "English",
+      "talker_prefill_length": 41,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. This request is part of a mixed workload.",
+      "text_characters": 142
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0356",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "This is a longer request with enough words to exercise another prompt shape. This request is part of a mixed workload.",
+      "text_characters": 118
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0357",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. This request is part of a mixed workload.",
+      "text_characters": 130
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0358",
+      "language": "Auto",
+      "talker_prefill_length": 40,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. This request is part of a mixed workload.",
+      "text_characters": 139
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0359",
+      "language": "English",
+      "talker_prefill_length": 45,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. This request is part of a mixed workload.",
+      "text_characters": 128
+    },
+    {
+      "instruction": "Speak with quiet confidence.",
+      "instruction_characters": 28,
+      "label": "prompt_0360",
+      "language": "Auto",
+      "talker_prefill_length": 40,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. This request is part of a mixed workload.",
+      "text_characters": 141
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0361",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "I am your robot, I am your worker.",
+      "text_characters": 34
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0362",
+      "language": "Auto",
+      "talker_prefill_length": 23,
+      "text": "Please say: The avatar answers with a calm and friendly voice.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0363",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0364",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives.",
+      "text_characters": 80
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0365",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0366",
+      "language": "Auto",
+      "talker_prefill_length": 21,
+      "text": "The machine should speak naturally while the model stays warm.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0367",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Please say: A short reply is often enough for conversational avatars.",
+      "text_characters": 69
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0368",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well.",
+      "text_characters": 78
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0369",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0370",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0371",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis.",
+      "text_characters": 55
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0372",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update.",
+      "text_characters": 74
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0373",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0374",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0375",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0376",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "This is a longer request with enough words to exercise another prompt shape.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0377",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0378",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0379",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0380",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers.",
+      "text_characters": 99
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0381",
+      "language": "English",
+      "talker_prefill_length": 25,
+      "text": "I am your robot, I am your worker. Keep it concise.",
+      "text_characters": 51
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0382",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Keep it concise.",
+      "text_characters": 79
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0383",
+      "language": "English",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Keep it concise.",
+      "text_characters": 92
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0384",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Keep it concise.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0385",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Keep it concise.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0386",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "The machine should speak naturally while the model stays warm. Keep it concise.",
+      "text_characters": 79
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0387",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "Please say: A short reply is often enough for conversational avatars. Keep it concise.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0388",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Keep it concise.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0389",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Keep it concise.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0390",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Keep it concise.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0391",
+      "language": "English",
+      "talker_prefill_length": 25,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Keep it concise.",
+      "text_characters": 72
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0392",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Keep it concise.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0393",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Keep it concise.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0394",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Keep it concise.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0395",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Keep it concise.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0396",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Keep it concise.",
+      "text_characters": 93
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0397",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Keep it concise.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0398",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Keep it concise.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0399",
+      "language": "English",
+      "talker_prefill_length": 40,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Keep it concise.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0400",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Keep it concise.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0401",
+      "language": "English",
+      "talker_prefill_length": 24,
+      "text": "I am your robot, I am your worker. Speak clearly.",
+      "text_characters": 49
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0402",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Speak clearly.",
+      "text_characters": 77
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0403",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Speak clearly.",
+      "text_characters": 90
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0404",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Speak clearly.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0405",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Speak clearly.",
+      "text_characters": 99
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0406",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "The machine should speak naturally while the model stays warm. Speak clearly.",
+      "text_characters": 77
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0407",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A short reply is often enough for conversational avatars. Speak clearly.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0408",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Speak clearly.",
+      "text_characters": 93
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0409",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Speak clearly.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0410",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Speak clearly.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0411",
+      "language": "English",
+      "talker_prefill_length": 24,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Speak clearly.",
+      "text_characters": 70
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0412",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Speak clearly.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0413",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Speak clearly.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0414",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Speak clearly.",
+      "text_characters": 109
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0415",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Speak clearly.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0416",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Speak clearly.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0417",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Speak clearly.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0418",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Speak clearly.",
+      "text_characters": 112
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0419",
+      "language": "English",
+      "talker_prefill_length": 39,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Speak clearly.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0420",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Speak clearly.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0421",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "I am your robot, I am your worker. Use a natural pace.",
+      "text_characters": 54
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0422",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "Please say: The avatar answers with a calm and friendly voice. Use a natural pace.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0423",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. Use a natural pace.",
+      "text_characters": 95
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0424",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. Use a natural pace.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0425",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. Use a natural pace.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0426",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "The machine should speak naturally while the model stays warm. Use a natural pace.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0427",
+      "language": "English",
+      "talker_prefill_length": 31,
+      "text": "Please say: A short reply is often enough for conversational avatars. Use a natural pace.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0428",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. Use a natural pace.",
+      "text_characters": 98
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0429",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. Use a natural pace.",
+      "text_characters": 109
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0430",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. Use a natural pace.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0431",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. Use a natural pace.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0432",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. Use a natural pace.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0433",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. Use a natural pace.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0434",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. Use a natural pace.",
+      "text_characters": 114
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0435",
+      "language": "English",
+      "talker_prefill_length": 37,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. Use a natural pace.",
+      "text_characters": 120
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0436",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "This is a longer request with enough words to exercise another prompt shape. Use a natural pace.",
+      "text_characters": 96
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0437",
+      "language": "English",
+      "talker_prefill_length": 34,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. Use a natural pace.",
+      "text_characters": 108
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0438",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. Use a natural pace.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0439",
+      "language": "English",
+      "talker_prefill_length": 41,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. Use a natural pace.",
+      "text_characters": 106
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0440",
+      "language": "Auto",
+      "talker_prefill_length": 36,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. Use a natural pace.",
+      "text_characters": 119
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0441",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "I am your robot, I am your worker. End with a confident tone.",
+      "text_characters": 61
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0442",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "Please say: The avatar answers with a calm and friendly voice. End with a confident tone.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0443",
+      "language": "English",
+      "talker_prefill_length": 33,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. End with a confident tone.",
+      "text_characters": 102
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0444",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. End with a confident tone.",
+      "text_characters": 107
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0445",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. End with a confident tone.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0446",
+      "language": "Auto",
+      "talker_prefill_length": 27,
+      "text": "The machine should speak naturally while the model stays warm. End with a confident tone.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0447",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "Please say: A short reply is often enough for conversational avatars. End with a confident tone.",
+      "text_characters": 96
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0448",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. End with a confident tone.",
+      "text_characters": 105
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0449",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. End with a confident tone.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0450",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. End with a confident tone.",
+      "text_characters": 118
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0451",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. End with a confident tone.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0452",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. End with a confident tone.",
+      "text_characters": 101
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0453",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. End with a confident tone.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0454",
+      "language": "Auto",
+      "talker_prefill_length": 38,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. End with a confident tone.",
+      "text_characters": 121
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0455",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. End with a confident tone.",
+      "text_characters": 127
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0456",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "This is a longer request with enough words to exercise another prompt shape. End with a confident tone.",
+      "text_characters": 103
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0457",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. End with a confident tone.",
+      "text_characters": 115
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0458",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. End with a confident tone.",
+      "text_characters": 124
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0459",
+      "language": "English",
+      "talker_prefill_length": 42,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. End with a confident tone.",
+      "text_characters": 113
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0460",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. End with a confident tone.",
+      "text_characters": 126
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0461",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "I am your robot, I am your worker. This request is part of a mixed workload.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0462",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "Please say: The avatar answers with a calm and friendly voice. This request is part of a mixed workload.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0463",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence. This request is part of a mixed workload.",
+      "text_characters": 117
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0464",
+      "language": "Auto",
+      "talker_prefill_length": 37,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives. This request is part of a mixed workload.",
+      "text_characters": 122
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0465",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker. This request is part of a mixed workload.",
+      "text_characters": 126
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0466",
+      "language": "Auto",
+      "talker_prefill_length": 30,
+      "text": "The machine should speak naturally while the model stays warm. This request is part of a mixed workload.",
+      "text_characters": 104
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0467",
+      "language": "English",
+      "talker_prefill_length": 35,
+      "text": "Please say: A short reply is often enough for conversational avatars. This request is part of a mixed workload.",
+      "text_characters": 111
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0468",
+      "language": "Auto",
+      "talker_prefill_length": 34,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well. This request is part of a mixed workload.",
+      "text_characters": 120
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0469",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling. This request is part of a mixed workload.",
+      "text_characters": 131
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0470",
+      "language": "Auto",
+      "talker_prefill_length": 38,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request. This request is part of a mixed workload.",
+      "text_characters": 133
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0471",
+      "language": "English",
+      "talker_prefill_length": 30,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis. This request is part of a mixed workload.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0472",
+      "language": "Auto",
+      "talker_prefill_length": 35,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update. This request is part of a mixed workload.",
+      "text_characters": 116
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0473",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes. This request is part of a mixed workload.",
+      "text_characters": 130
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0474",
+      "language": "Auto",
+      "talker_prefill_length": 41,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor. This request is part of a mixed workload.",
+      "text_characters": 136
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0475",
+      "language": "English",
+      "talker_prefill_length": 41,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager. This request is part of a mixed workload.",
+      "text_characters": 142
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0476",
+      "language": "Auto",
+      "talker_prefill_length": 33,
+      "text": "This is a longer request with enough words to exercise another prompt shape. This request is part of a mixed workload.",
+      "text_characters": 118
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0477",
+      "language": "English",
+      "talker_prefill_length": 38,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text. This request is part of a mixed workload.",
+      "text_characters": 130
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0478",
+      "language": "Auto",
+      "talker_prefill_length": 40,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics. This request is part of a mixed workload.",
+      "text_characters": 139
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0479",
+      "language": "English",
+      "talker_prefill_length": 45,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching. This request is part of a mixed workload.",
+      "text_characters": 128
+    },
+    {
+      "instruction": "Use a warm but restrained delivery.",
+      "instruction_characters": 35,
+      "label": "prompt_0480",
+      "language": "Auto",
+      "talker_prefill_length": 40,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers. This request is part of a mixed workload.",
+      "text_characters": 141
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0481",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "I am your robot, I am your worker.",
+      "text_characters": 34
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0482",
+      "language": "Auto",
+      "talker_prefill_length": 23,
+      "text": "Please say: The avatar answers with a calm and friendly voice.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0483",
+      "language": "English",
+      "talker_prefill_length": 27,
+      "text": "For the demo, say: Please summarize the current task in one clear sentence.",
+      "text_characters": 75
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0484",
+      "language": "Auto",
+      "talker_prefill_length": 28,
+      "text": "In a relaxed tone, say: Latency matters most when the first audio chunk arrives.",
+      "text_characters": 80
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0485",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: We are testing a persistent local text to speech worker.",
+      "text_characters": 84
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0486",
+      "language": "Auto",
+      "talker_prefill_length": 21,
+      "text": "The machine should speak naturally while the model stays warm.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0487",
+      "language": "English",
+      "talker_prefill_length": 26,
+      "text": "Please say: A short reply is often enough for conversational avatars.",
+      "text_characters": 69
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0488",
+      "language": "Auto",
+      "talker_prefill_length": 25,
+      "text": "For the demo, say: Longer replies need predictable streaming behavior as well.",
+      "text_characters": 78
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0489",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "In a relaxed tone, say: Read this as a precise laboratory note for performance profiling.",
+      "text_characters": 89
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0490",
+      "language": "Auto",
+      "talker_prefill_length": 29,
+      "text": "For a realtime avatar, say: Tell the operator that the bridge is ready for another request.",
+      "text_characters": 91
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0491",
+      "language": "English",
+      "talker_prefill_length": 21,
+      "text": "Use a neutral studio voice and avoid dramatic emphasis.",
+      "text_characters": 55
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0492",
+      "language": "Auto",
+      "talker_prefill_length": 26,
+      "text": "Please say: Say hello, pause briefly, and continue with the status update.",
+      "text_characters": 74
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0493",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "For the demo, say: The renderer waits for audio frames while the Python worker computes.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0494",
+      "language": "Auto",
+      "talker_prefill_length": 32,
+      "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor.",
+      "text_characters": 94
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0495",
+      "language": "English",
+      "talker_prefill_length": 32,
+      "text": "For a realtime avatar, say: Repeat the key point: exact lengths compile, unknown lengths stay eager.",
+      "text_characters": 100
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0496",
+      "language": "Auto",
+      "talker_prefill_length": 24,
+      "text": "This is a longer request with enough words to exercise another prompt shape.",
+      "text_characters": 76
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0497",
+      "language": "English",
+      "talker_prefill_length": 29,
+      "text": "Please say: A production avatar can receive questions, commands, jokes, and status text.",
+      "text_characters": 88
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0498",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics.",
+      "text_characters": 97
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0499",
+      "language": "English",
+      "talker_prefill_length": 36,
+      "text": "In a relaxed tone, say: Ya tvoy robot, ya tvoy rabotnik, and the profiler is watching.",
+      "text_characters": 86
+    },
+    {
+      "instruction": "Sound like a helpful desktop assistant.",
+      "instruction_characters": 39,
+      "label": "prompt_0500",
+      "language": "Auto",
+      "talker_prefill_length": 31,
+      "text": "For a realtime avatar, say: Kraftwerk said the machine has rhythm, but the benchmark needs numbers.",
+      "text_characters": 99
+    }
+  ],
+  "runtime": {
+    "cuda_available": true,
+    "cuda_compute_capability": [
+      8,
+      9
+    ],
+    "cuda_device_index": 0,
+    "cuda_device_name": "NVIDIA GeForce RTX 4090",
+    "cuda_total_memory_bytes": 51526369280,
+    "cuda_total_memory_gib": 47.9876708984375,
+    "device": "cuda",
+    "torch_cuda_version": "13.0",
+    "torch_version": "2.10.0+cu130"
+  },
+  "selected_exact_lengths": [
+    32,
+    29,
+    35,
+    34,
+    33,
+    30
+  ],
+  "speaker": "ryan"
+}

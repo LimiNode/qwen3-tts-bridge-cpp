@@ -2224,10 +2224,84 @@ The eviction subtest with `max_entries=4` passed at the Python LRU layer:
 eviction delta was `2`.
 
 Recommendation update: do not ship unbounded dynamic compile-on-miss. The next
-product direction should be a small static warmed bucket set for common
-`talker_prefill_length` ranges, plus eager fallback for unknown shapes. A
-separate diagnostic can test whether padded buckets preserve semantic parity
-and keep `reduce-overhead` in the ordinal `3+` replay regime.
+product direction is an exact-length compiled allowlist for common
+`talker_prefill_length` values, plus eager fallback for unknown exact lengths.
+Padded buckets are a separate correctness project and must not be treated as
+equivalent until right-padding, last-token indexing, KV copy length,
+`cache_position`, and semantic parity have been verified.
+
+### Exact-Length Allowlist Gate
+
+The first product-shaped exact-length allowlist pass used FasterQwen branch
+`prefill-compile-exact-shape` through local commit `7e68b57`, installed from
+wheel SHA256
+`5ef9a4c9ba6e30191316437f6783c8673ef645c3576cc167e9867579dafd22de`.
+The bridge worker wheel SHA256 was
+`8aec77800aa7537d03e4e1818404b1d9f741c7e1b0a1df6d836cc853870b63f2`.
+
+An offline histogram over `500` CustomVoice 0.6B preparation-only prompts
+selected these exact `talker_prefill_length` values:
+
+```text
+32, 29, 35, 34, 33, 30
+```
+
+Coverage on that synthetic representative set was `239 / 500 = 47.8%`.
+This histogram is product-shaped for the local 0.6B CustomVoice model: voice
+instructions are ignored during preparation because the runtime generation path
+also drops `instruct` for `tts_model_size=0b6`.
+
+Wheel-only allowlist gate result: pass. For all six selected exact lengths,
+compiled `compile_reduce_overhead + strict_bf16_sdpa_v1` reached ordinal `3`,
+reported `prefill_shape_policy=compiled_allowlist`, used
+`prefill_backend_used=compile_reduce_overhead`, had
+`prefill_compile_fallback=false`, and matched eager with `max_abs=0.0`.
+
+Wheel-only strict worker smoke result: pass. With
+`prefill_compile_on_miss=false`, the request length `32` hit the allowlist and
+reported `prefill_shape_policy=compiled_allowlist`,
+`prefill_shape_allowlist_hit=true`, and `prefill_compile_fallback=false`.
+
+Wheel-only mixed persistent-worker benchmark result:
+
+| Metric | Result |
+| --- | ---: |
+| allowlisted measured requests | 6 / 12 |
+| unknown measured requests | 6 / 12 |
+| compiled allowlist policy count | 6 |
+| eager unknown policy count | 6 |
+| compile fallback count | 0 |
+| measured length mismatch count | 0 |
+| first audio median | 309.1 ms |
+| first audio p95 | 412.4 ms |
+| completed median | 3009.7 ms |
+| RTF median | 0.363 |
+| inverse RTF median | 2.75x |
+
+Artifacts:
+
+```text
+prefill-length-histogram-customvoice-500.json
+prefill-allowlist-gate-top6-wheel.json
+strict-worker-load-smoke-exact-allowlist-wheel.json
+prefill-mixed-workload-schedule.jsonl
+prefill-mixed-workload-wheel.json
+faster-qwen-exact-length-allowlist-patch/0001-feat-prefill-add-exact-length-compile-policy.patch
+faster-qwen-exact-length-allowlist-patch/0002-fix-prefill-allow-strict-causal-mask-replay.patch
+faster-qwen-exact-length-allowlist-patch/faster-qwen-prefill-exact-allowlist-through-7e68b57.bundle
+```
+
+Companion artifact SHA256:
+
+```text
+prefill-length-histogram-customvoice-500.json d3e5e9425ccdc5096fbb953ccb552c2382c0a49451c79a953c5297b6323e6a5b
+prefill-allowlist-gate-top6-wheel.json 3ff2a2f727f2f5df80cb56e536f38eeea9fac8581ad9030bb835c15ff899e3f5
+strict-worker-load-smoke-exact-allowlist-wheel.json fe178e5ecf8da4dce99206b32d2262b9cb6fd770030b1d7713ed4f7f2423819c
+prefill-mixed-workload-wheel.json 0ba4679f781294ddf0216ed19d265198314b4cf1c2f6e0fc398bf4a5ee2b876f
+0001-feat-prefill-add-exact-length-compile-policy.patch f3c695153cf3913f1ae3a7badf438fe8bb79f6ccd3bdd5b5ac478577a7aa5435
+0002-fix-prefill-allow-strict-causal-mask-replay.patch 7fd7823aef48b22e2ee4a5e16346669156f1d6aa8532cfbda7c4de49ddbfeed3
+faster-qwen-prefill-exact-allowlist-through-7e68b57.bundle 8ffc1f73dbcfd3672bf30a3e2679b82629ee0ef2477d351b38d7b1e4e6825422
+```
 
 ## Sources
 

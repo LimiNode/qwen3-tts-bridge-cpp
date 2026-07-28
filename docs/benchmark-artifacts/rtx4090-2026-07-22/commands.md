@@ -6,6 +6,137 @@ Run from:
 C:/_repoz/faster-qwen3-tts-v032-stack112-clean
 ```
 
+Exact-length allowlist product gate, 2026-07-28:
+
+```text
+Bridge branch: development-flash-attn-experiment
+FasterQwen branch: prefill-compile-exact-shape
+FasterQwen commit: 7e68b57
+FasterQwen wheel SHA256: 5ef9a4c9ba6e30191316437f6783c8673ef645c3576cc167e9867579dafd22de
+Bridge worker wheel SHA256: 8aec77800aa7537d03e4e1818404b1d9f741c7e1b0a1df6d836cc853870b63f2
+Runtime: .venv-qwen-flash, torch 2.10.0+cu130, Triton 3.6.0
+```
+
+```powershell
+git -C C:\_repoz\faster-qwen3-tts-v032-stack112-clean format-patch `
+    3daf26a..7e68b57 `
+    --output-directory `
+    C:\_repoz\qwen3-tts-bridge-cpp\docs\benchmark-artifacts\rtx4090-2026-07-22\faster-qwen-exact-length-allowlist-patch
+
+git -C C:\_repoz\faster-qwen3-tts-v032-stack112-clean bundle create `
+    C:\_repoz\qwen3-tts-bridge-cpp\docs\benchmark-artifacts\rtx4090-2026-07-22\faster-qwen-exact-length-allowlist-patch\faster-qwen-prefill-exact-allowlist-through-7e68b57.bundle `
+    prefill-compile-exact-shape ^3daf26a
+
+.\.venv-packaging\Scripts\python.exe -m pip wheel `
+    C:\_repoz\faster-qwen3-tts-v032-stack112-clean `
+    -w dist\QwenTTSBridge\worker-python\wheels `
+    --no-deps
+
+.\.venv-packaging\Scripts\python.exe -m pip wheel `
+    .\worker `
+    -w dist\QwenTTSBridge\worker-python\wheels `
+    --no-deps
+
+.\.venv-qwen-flash\Scripts\python.exe -m pip install `
+    --force-reinstall `
+    --no-deps `
+    dist\QwenTTSBridge\worker-python\wheels\faster_qwen3_tts-0.3.2-py3-none-any.whl
+
+.\.venv-qwen-flash\Scripts\python.exe -m pip install `
+    --force-reinstall `
+    --no-deps `
+    dist\QwenTTSBridge\worker-python\wheels\qwen_tts_bridge_worker-0.2.0-py3-none-any.whl
+```
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\qwen3-tts-bridge-cpp\scripts"
+
+.\.venv-qwen-flash\Scripts\python.exe scripts\qwen_prefill_length_histogram.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --speaker ryan `
+    --prompt-count 500 `
+    --select-count 6 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\prefill-length-histogram-customvoice-500.json
+
+.\.venv-qwen-flash\Scripts\python.exe scripts\qwen_prefill_allowlist_gate.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --speaker ryan `
+    --histogram docs\benchmark-artifacts\rtx4090-2026-07-22\prefill-length-histogram-customvoice-500.json `
+    --select-count 6 `
+    --compiled-repeats 3 `
+    --backend compile_reduce_overhead `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\prefill-allowlist-gate-top6-wheel.json
+```
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\qwen3-tts-bridge-cpp\scripts"
+
+.\.venv-qwen-flash\Scripts\python.exe scripts\qwen_strict_worker_load_smoke.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --prefill-backend compile_reduce_overhead `
+    --prefill-compile-lengths 32,29,35,34,33,30 `
+    --no-prefill-compile-on-miss `
+    --text "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor." `
+    --language Auto `
+    --speaker ryan `
+    --warmup-synthesis `
+    --warmup-max-output-chunks 1 `
+    --max-chunks 1 `
+    --wheel-path dist\QwenTTSBridge\worker-python\wheels\faster_qwen3_tts-0.3.2-py3-none-any.whl `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\strict-worker-load-smoke-exact-allowlist-wheel.json
+```
+
+```powershell
+$env:PYTHONPATH = "C:\_repoz\qwen3-tts-bridge-cpp\tests\python"
+
+.\.venv-qwen-flash\Scripts\python.exe tests\python\benchmark_packaged_worker.py `
+    .venv-qwen-flash\Scripts\python.exe `
+    --worker-prefix-arg=-m `
+    --worker-prefix-arg=qwen_tts_bridge_worker `
+    --engine qwen `
+    --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --runtime-backend faster `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --profile-prefill `
+    --prefill-backend compile_reduce_overhead `
+    --prefill-compile-compat-mode strict_bf16_sdpa_v1 `
+    --prefill-compile-lengths 32,29,35,34,33,30 `
+    --no-prefill-compile-on-miss `
+    --warmup-synthesis `
+    --warmup-max-output-chunks 1 `
+    --warmup-text "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor." `
+    --warmup-language Auto `
+    --warmup-speaker ryan `
+    --request-shapes-jsonl docs\benchmark-artifacts\rtx4090-2026-07-22\prefill-mixed-workload-schedule.jsonl `
+    --warmups 18 `
+    --requests 12 `
+    --timeout-seconds 900 `
+    > docs\benchmark-artifacts\rtx4090-2026-07-22\prefill-mixed-workload-wheel.json
+```
+
+Result summary:
+
+```text
+histogram selected exact lengths: 32, 29, 35, 34, 33, 30
+histogram coverage: 239 / 500 = 47.8%
+allowlist gate: passed, max_abs=0.0, all six lengths reached ordinal 3
+strict worker smoke: passed, length 32 compiled_allowlist, fallback=false
+mixed workload: 6 compiled_allowlist, 6 eager_unknown, fallback_true=0, length_mismatch=0
+mixed workload first_audio median=309.1 ms, p95=412.4 ms
+mixed workload completed median=3009.7 ms, RTF median=0.363, inverse RTF median=2.75x
+```
+
 2026-07-27 strict BF16 SDPA product opt-in:
 
 ```text
