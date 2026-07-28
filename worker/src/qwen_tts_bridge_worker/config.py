@@ -73,6 +73,7 @@ class QwenEngineConfig:
     prefill_allowlist_max_entries: int = 6
     prefill_allowlist_max_abs_threshold: float = 0.0
     prefill_require_precompiled: bool = False
+    prefill_first_chunk_warmup_enabled: bool = False
     do_sample: bool = True
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"
@@ -163,6 +164,14 @@ class QwenEngineConfig:
                 "non-negative"
             )
         self._validate_exact_allowlist_contract()
+        if (
+            self.prefill_first_chunk_warmup_enabled
+            and self.prefill_compile_policy != "exact_allowlist"
+        ):
+            raise ValueError(
+                "qwen.prefill_first_chunk_warmup_enabled requires "
+                "prefill_compile_policy=exact_allowlist"
+            )
         self._validate_prefill_compile_compat_contract()
         if self.seed_mode not in {"request_id", "fixed"}:
             raise ValueError("qwen.seed_mode must be request_id or fixed")

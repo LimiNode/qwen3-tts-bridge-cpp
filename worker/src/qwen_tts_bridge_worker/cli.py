@@ -96,6 +96,9 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                     args.prefill_allowlist_max_abs_threshold
                 ),
                 prefill_require_precompiled=args.prefill_require_precompiled,
+                prefill_first_chunk_warmup_enabled=(
+                    args.prefill_first_chunk_warmup
+                ),
                 do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
@@ -368,6 +371,11 @@ def _add_qwen_subcommand(
         "--prefill-require-precompiled",
         action="store_true",
         help="Reject compiled allowlist cache misses after startup prewarm.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-first-chunk-warmup",
+        action="store_true",
+        help="Prewarm one representative audio chunk before reporting ready.",
     )
     qwen_parser.add_argument(
         "--no-sample",

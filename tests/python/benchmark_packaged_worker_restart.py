@@ -283,6 +283,7 @@ def _build_report(
                 args.prefill_allowlist_max_abs_threshold
             ),
             "prefill_require_precompiled": args.prefill_require_precompiled,
+            "prefill_first_chunk_warmup": args.prefill_first_chunk_warmup,
             "expected_faster_wheel_sha256": args.expected_faster_wheel_sha256,
             "allow_unverified_faster_wheel": args.allow_unverified_faster_wheel,
             "do_sample": not args.no_sample,
@@ -432,6 +433,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.0,
     )
     parser.add_argument("--prefill-require-precompiled", action="store_true")
+    parser.add_argument("--prefill-first-chunk-warmup", action="store_true")
     parser.add_argument(
         "--expected-faster-wheel-sha256",
         default="",

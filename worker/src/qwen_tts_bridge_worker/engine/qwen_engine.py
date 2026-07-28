@@ -12,6 +12,7 @@ import json
 import random
 import threading
 from collections.abc import Callable, Iterable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, cast
 
@@ -86,6 +87,8 @@ class QwenTtsEngine:
                 self._run_prefill_allowlist_warmup(self._require_model())
             )
             _set_prefill_require_precompiled(self._require_model(), True)
+        if self._config.prefill_first_chunk_warmup_enabled:
+            warmup_fields.update(self._run_prefill_first_chunk_warmup())
         if self._config.warmup_synthesis_enabled:
             warmup_fields.update(self._run_warmup_synthesis())
         return warmup_fields or None
@@ -253,15 +256,17 @@ class QwenTtsEngine:
         request: SynthesisRequest,
         *,
         pass_index: int,
+        output_chunk_limit: int | None = None,
     ) -> dict[str, object]:
         cancel_event = threading.Event()
         stream = self.synthesize_stream(request, cancel_event)
         close_stream = getattr(stream, "close", None)
         started_at = monotonic_seconds()
         first_audio_ms: float | None = None
-        max_output_chunks = _warmup_pass_max_output_chunks(
-            self._config,
-            pass_index,
+        max_output_chunks = (
+            output_chunk_limit
+            if output_chunk_limit is not None
+            else _warmup_pass_max_output_chunks(self._config, pass_index)
         )
         audio_chunks = 0
         audio_bytes = 0
@@ -302,6 +307,54 @@ class QwenTtsEngine:
             "inverse_rtf": round(inverse_real_time_factor, 6),
             "bounded": max_output_chunks is not None,
             "max_output_chunks": max_output_chunks,
+        }
+
+    def _run_prefill_first_chunk_warmup(self) -> dict[str, object]:
+        entries = _load_prefill_allowlist_warmup_manifest(
+            Path(self._config.prefill_allowlist_warmup_manifest),
+            self._config.prefill_compile_lengths,
+        )
+        length = self._config.prefill_compile_lengths[0]
+        entry = entries[length]
+        model = self._require_model()
+        request = SynthesisRequest(
+            request_id=0,
+            text=str(entry["text"]),
+            language=str(entry["language"]),
+            speaker=str(entry.get("speaker") or self._config.warmup_speaker),
+            instruction=_prefill_warmup_instruction(model, entry) or "",
+            output=AudioFormat.default(),
+        )
+        self.validate_request(request)
+
+        started_at = monotonic_seconds()
+        with _preserved_rng_state():
+            pass_fields = self._run_warmup_synthesis_pass(
+                request,
+                pass_index=1,
+                output_chunk_limit=1,
+            )
+        reset_started = monotonic_seconds()
+        talker_graph = getattr(model, "talker_graph", None)
+        if talker_graph is None:
+            raise QwenEngineError(
+                "loaded faster model does not expose talker_graph for first-chunk warmup"
+            )
+        torch = importlib.import_module("torch")
+        with torch.inference_mode():
+            talker_graph.reset(0)
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        self._last_chunk_metrics = None
+
+        return {
+            "prefill_first_chunk_warmup": True,
+            "prefill_first_chunk_warmup_ready": True,
+            "prefill_first_chunk_warmup_length": length,
+            "prefill_first_chunk_warmup_duration_ms": elapsed_milliseconds(started_at),
+            "prefill_first_chunk_warmup_reset_ms": elapsed_milliseconds(reset_started),
+            "prefill_first_chunk_warmup_first_audio_ms": pass_fields["first_audio_ms"],
+            "prefill_first_chunk_warmup_audio_chunks": pass_fields["audio_chunks"],
         }
 
     def _run_prefill_allowlist_warmup(self, model: Any) -> dict[str, object]:
@@ -999,6 +1052,37 @@ def _seed_runtime(seed: int | None) -> None:
         numpy.random.seed(seed % (2**32))
     except Exception:
         pass
+
+
+@contextmanager
+def _preserved_rng_state() -> Iterator[None]:
+    python_state = random.getstate()
+    numpy_state: object | None = None
+    torch = None
+    torch_cpu_state = None
+    torch_cuda_states = None
+    try:
+        numpy = importlib.import_module("numpy")
+        numpy_state = numpy.random.get_state()
+    except Exception:
+        numpy = None
+    try:
+        torch = importlib.import_module("torch")
+        torch_cpu_state = torch.get_rng_state()
+        if torch.cuda.is_available():
+            torch_cuda_states = torch.cuda.get_rng_state_all()
+    except Exception:
+        torch = None
+    try:
+        yield
+    finally:
+        random.setstate(python_state)
+        if numpy_state is not None and numpy is not None:
+            numpy.random.set_state(numpy_state)
+        if torch is not None and torch_cpu_state is not None:
+            torch.set_rng_state(torch_cpu_state)
+            if torch_cuda_states is not None:
+                torch.cuda.set_rng_state_all(torch_cuda_states)
     try:
         torch = importlib.import_module("torch")
         torch.manual_seed(seed)

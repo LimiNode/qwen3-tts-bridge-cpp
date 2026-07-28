@@ -55,6 +55,7 @@ def main() -> int:
         default=0.0,
     )
     parser.add_argument("--prefill-require-precompiled", action="store_true")
+    parser.add_argument("--prefill-first-chunk-warmup", action="store_true")
     parser.add_argument("--text", default="I am your robot, I am your worker.")
     parser.add_argument("--language", default="English")
     parser.add_argument("--speaker", default="ryan")
@@ -96,6 +97,7 @@ def main() -> int:
             args.prefill_allowlist_max_abs_threshold
         ),
         prefill_require_precompiled=args.prefill_require_precompiled,
+        prefill_first_chunk_warmup_enabled=args.prefill_first_chunk_warmup,
         warmup_synthesis_enabled=args.warmup_synthesis,
         warmup_max_output_chunks=args.warmup_max_output_chunks,
         warmup_text=args.text,
@@ -172,6 +174,7 @@ def main() -> int:
                 args.prefill_allowlist_warmup_repeats
             ),
             "prefill_require_precompiled": args.prefill_require_precompiled,
+            "prefill_first_chunk_warmup": args.prefill_first_chunk_warmup,
             "warmup_synthesis": args.warmup_synthesis,
             "warmup_max_output_chunks": args.warmup_max_output_chunks,
         },
@@ -394,6 +397,13 @@ def _validate_exact_allowlist_result(
     if warmup.get("prefill_decode_state_ready") is not True:
         raise RuntimeError(
             "exact allowlist smoke did not prewarm decode state before ready"
+        )
+    if (
+        args.prefill_first_chunk_warmup
+        and warmup.get("prefill_first_chunk_warmup_ready") is not True
+    ):
+        raise RuntimeError(
+            "exact allowlist smoke did not prewarm the first chunk before ready"
         )
     if list(warmup.get("prefill_allowlist_lengths") or []) != list(
         args.prefill_compile_lengths
