@@ -240,6 +240,18 @@ def _build_report(
             "prefill_compile_lengths": args.prefill_compile_lengths,
             "prefill_compile_on_miss": args.prefill_compile_on_miss,
             "prefill_unknown_shape_policy": args.prefill_unknown_shape_policy,
+            "prefill_compile_policy": args.prefill_compile_policy,
+            "prefill_allowlist_warmup_manifest": (
+                args.prefill_allowlist_warmup_manifest
+            ),
+            "prefill_allowlist_warmup_repeats": (
+                args.prefill_allowlist_warmup_repeats
+            ),
+            "prefill_allowlist_max_entries": args.prefill_allowlist_max_entries,
+            "prefill_allowlist_max_abs_threshold": (
+                args.prefill_allowlist_max_abs_threshold
+            ),
+            "prefill_require_precompiled": args.prefill_require_precompiled,
             "expected_faster_wheel_sha256": args.expected_faster_wheel_sha256,
             "allow_unverified_faster_wheel": args.allow_unverified_faster_wheel,
             "do_sample": not args.no_sample,
@@ -375,6 +387,20 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=("eager", "error"),
         default="eager",
     )
+    parser.add_argument(
+        "--prefill-compile-policy",
+        choices=("diagnostic_dynamic", "exact_allowlist"),
+        default="diagnostic_dynamic",
+    )
+    parser.add_argument("--prefill-allowlist-warmup-manifest", default="")
+    parser.add_argument("--prefill-allowlist-warmup-repeats", type=int, default=3)
+    parser.add_argument("--prefill-allowlist-max-entries", type=int, default=6)
+    parser.add_argument(
+        "--prefill-allowlist-max-abs-threshold",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument("--prefill-require-precompiled", action="store_true")
     parser.add_argument(
         "--expected-faster-wheel-sha256",
         default="",

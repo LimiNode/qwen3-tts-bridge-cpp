@@ -419,6 +419,34 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
             str(getattr(args, "prefill_unknown_shape_policy", "eager")),
         ]
     )
+    worker_args.extend(
+        [
+            "--prefill-compile-policy",
+            str(getattr(args, "prefill_compile_policy", "diagnostic_dynamic")),
+        ]
+    )
+    prefill_allowlist_warmup_manifest = str(
+        getattr(args, "prefill_allowlist_warmup_manifest", "")
+    )
+    if prefill_allowlist_warmup_manifest:
+        worker_args.extend(
+            [
+                "--prefill-allowlist-warmup-manifest",
+                prefill_allowlist_warmup_manifest,
+            ]
+        )
+    worker_args.extend(
+        [
+            "--prefill-allowlist-warmup-repeats",
+            str(getattr(args, "prefill_allowlist_warmup_repeats", 3)),
+            "--prefill-allowlist-max-entries",
+            str(getattr(args, "prefill_allowlist_max_entries", 6)),
+            "--prefill-allowlist-max-abs-threshold",
+            str(getattr(args, "prefill_allowlist_max_abs_threshold", 0.0)),
+        ]
+    )
+    if getattr(args, "prefill_require_precompiled", False):
+        worker_args.append("--prefill-require-precompiled")
     if getattr(args, "no_sample", False):
         worker_args.append("--no-sample")
     seed = getattr(args, "seed", None)
