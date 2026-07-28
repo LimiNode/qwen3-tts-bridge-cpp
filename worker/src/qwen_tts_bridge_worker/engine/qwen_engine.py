@@ -982,9 +982,14 @@ def _first_chunk_timing_fields(
         "prefill_gpu_accounting_error_ms",
         "prefill_compile_wall_ms",
         "prefill_compile_wrapper_create_ms",
+        "prefill_compile_wrapper_create_host_ms",
         "prefill_compiled_call_ms",
+        "prefill_compiled_call_host_ms",
         "prefill_compiled_first_call_ms",
         "prefill_compiled_warm_call_ms",
+        "prefill_compiled_call_1_host_ms",
+        "prefill_compiled_call_2_host_ms",
+        "prefill_compiled_call_3plus_host_ms",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:

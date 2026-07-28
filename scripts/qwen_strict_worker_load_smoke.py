@@ -244,6 +244,27 @@ def _validate_result(result: dict[str, Any], args: argparse.Namespace) -> None:
             "strict worker smoke fell back from compiled prefill: "
             f"{first_metrics.get('prefill_compile_error')!r}"
         )
+    if first_metrics.get("prefill_compile_cache_kind") != "python_callable_lru":
+        raise RuntimeError(
+            "strict worker smoke reported unexpected compile cache kind: "
+            f"{first_metrics.get('prefill_compile_cache_kind')!r}"
+        )
+    cache_after_request = result.get("cache_stats_after_request")
+    if not isinstance(cache_after_request, dict):
+        raise RuntimeError("strict worker smoke did not report request cache stats")
+    if cache_after_request.get("entries", 0) < 1:
+        raise RuntimeError(
+            "strict worker smoke did not populate Python callable cache: "
+            f"{cache_after_request!r}"
+        )
+    for key in (
+        "prefill_cuda_memory_before_allocated_bytes",
+        "prefill_cuda_memory_before_reserved_bytes",
+        "prefill_cuda_memory_after_allocated_bytes",
+        "prefill_cuda_memory_after_reserved_bytes",
+    ):
+        if key not in first_metrics:
+            raise RuntimeError(f"strict worker smoke missing CUDA memory field {key}")
     for label in ("metadata_after_request", "metadata_after_close"):
         _validate_idle_metadata(label, result.get(label))
     cache_after_close = result.get("cache_stats_after_close") or {}

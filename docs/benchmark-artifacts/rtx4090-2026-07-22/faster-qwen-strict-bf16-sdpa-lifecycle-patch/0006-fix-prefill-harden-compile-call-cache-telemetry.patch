@@ -1,0 +1,217 @@
+From 3daf26a6995c9150c0ba1c9df931655ca4f5a07c Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Tue, 28 Jul 2026 18:13:32 +0300
+Subject: [PATCH] fix(prefill): harden compile-call cache telemetry
+
+---
+ faster_qwen3_tts/streaming.py | 49 +++++++++++++++++------
+ tests/test_prefill_compat.py  | 75 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 112 insertions(+), 12 deletions(-)
+
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 38dccca..4feb623 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -10,7 +10,7 @@ import math
+ import threading
+ import time
+ from collections import OrderedDict
+-from typing import Callable, Generator, Optional, Tuple
++from typing import Any, Callable, Generator, Optional, Tuple
+ 
+ import torch
+ import torch.nn.functional as F
+@@ -126,9 +126,14 @@ def _run_talker_prefill(
+         "prefill_compile_cache_evictions": cache_stats["evictions"],
+         "prefill_compile_cache_kind": "python_callable_lru",
+         "prefill_compile_wrapper_create_ms": 0.0,
++        "prefill_compile_wrapper_create_host_ms": 0.0,
+         "prefill_compiled_call_ms": 0.0,
++        "prefill_compiled_call_host_ms": 0.0,
+         "prefill_compiled_first_call_ms": 0.0,
+         "prefill_compiled_warm_call_ms": 0.0,
++        "prefill_compiled_call_1_host_ms": 0.0,
++        "prefill_compiled_call_2_host_ms": 0.0,
++        "prefill_compiled_call_3plus_host_ms": 0.0,
+         "prefill_shape_call_ordinal": 0,
+         **memory_before,
+     }
+@@ -189,6 +194,9 @@ def _run_talker_prefill(
+                     (time.perf_counter() - compile_started) * 1000.0,
+                     3,
+                 )
++                profile["prefill_compile_wrapper_create_host_ms"] = profile[
++                    "prefill_compile_wrapper_create_ms"
++                ]
+                 _prefill_compile_cache_store(cache_key, compiled)
+             profile["prefill_shape_call_ordinal"] = _prefill_compile_next_call_ordinal(
+                 cache_key
+@@ -212,16 +220,13 @@ def _run_talker_prefill(
+                 (time.perf_counter() - call_started) * 1000.0,
+                 3,
+             )
+-            if profile["prefill_shape_call_ordinal"] == 1:
+-                profile["prefill_compiled_first_call_ms"] = profile[
+-                    "prefill_compiled_call_ms"
+-                ]
+-            else:
+-                profile["prefill_compiled_warm_call_ms"] = profile[
+-                    "prefill_compiled_call_ms"
+-                ]
++            profile["prefill_compiled_call_host_ms"] = profile[
++                "prefill_compiled_call_ms"
++            ]
++            _record_prefill_compile_call_bucket(profile)
+     except Exception as exc:
+         message = f"{type(exc).__name__}: {exc}"
++        _prefill_compile_cache_drop(cache_key)
+         _prefill_compile_error_store(cache_key, message)
+         profile["prefill_compile_fallback"] = True
+         profile["prefill_compile_error"] = message
+@@ -242,7 +247,7 @@ def _run_talker_prefill(
+     return out, profile
+ 
+ 
+-def prefill_compile_cache_stats() -> dict[str, int]:
++def prefill_compile_cache_stats() -> dict[str, Any]:
+     with _PREFILL_COMPILE_CACHE_LOCK:
+         return {
+             "entries": len(_PREFILL_COMPILE_CACHE),
+@@ -253,7 +258,7 @@ def prefill_compile_cache_stats() -> dict[str, int]:
+         }
+ 
+ 
+-def clear_prefill_compile_cache(talker=None) -> dict[str, int]:
++def clear_prefill_compile_cache(talker=None) -> dict[str, Any]:
+     talker_id = id(talker) if talker is not None else None
+     removed_entries = 0
+     removed_errors = 0
+@@ -274,7 +279,7 @@ def clear_prefill_compile_cache(talker=None) -> dict[str, int]:
+     }
+ 
+ 
+-def configure_prefill_compile_cache(*, max_entries: int | None = None) -> dict[str, int]:
++def configure_prefill_compile_cache(*, max_entries: int | None = None) -> dict[str, Any]:
+     global _PREFILL_COMPILE_CACHE_MAX_ENTRIES
+     with _PREFILL_COMPILE_CACHE_LOCK:
+         if max_entries is not None:
+@@ -300,6 +305,13 @@ def _prefill_compile_cache_store(cache_key: tuple, compiled) -> None:
+         _prefill_compile_evict_locked()
+ 
+ 
++def _prefill_compile_cache_drop(cache_key: tuple) -> bool:
++    with _PREFILL_COMPILE_CACHE_LOCK:
++        removed = _PREFILL_COMPILE_CACHE.pop(cache_key, None) is not None
++        _PREFILL_COMPILE_CALL_COUNTS.pop(cache_key, None)
++        return removed
++
++
+ def _prefill_compile_error(cache_key: tuple) -> str | None:
+     with _PREFILL_COMPILE_CACHE_LOCK:
+         message = _PREFILL_COMPILE_ERRORS.get(cache_key)
+@@ -347,6 +359,19 @@ def _prefill_compile_talker_entries_locked() -> dict[int, int]:
+     return counts
+ 
+ 
++def _record_prefill_compile_call_bucket(profile: dict[str, Any]) -> None:
++    duration_ms = profile["prefill_compiled_call_host_ms"]
++    ordinal = profile["prefill_shape_call_ordinal"]
++    if ordinal == 1:
++        profile["prefill_compiled_call_1_host_ms"] = duration_ms
++        profile["prefill_compiled_first_call_ms"] = duration_ms
++    elif ordinal == 2:
++        profile["prefill_compiled_call_2_host_ms"] = duration_ms
++    else:
++        profile["prefill_compiled_call_3plus_host_ms"] = duration_ms
++        profile["prefill_compiled_warm_call_ms"] = duration_ms
++
++
+ def _cuda_memory_stats(prefix: str) -> dict[str, int]:
+     if not torch.cuda.is_available():
+         return {}
+diff --git a/tests/test_prefill_compat.py b/tests/test_prefill_compat.py
+index 21a37e8..a6c0041 100644
+--- a/tests/test_prefill_compat.py
++++ b/tests/test_prefill_compat.py
+@@ -452,3 +452,78 @@ def test_prefill_compile_cache_tracks_ordinals_evictions_and_talker_entries():
+     finally:
+         streaming.configure_prefill_compile_cache(max_entries=64)
+         streaming.clear_prefill_compile_cache()
++
++
++def test_prefill_compile_call_bucket_keeps_second_call_separate():
++    profile = {
++        "prefill_compiled_call_host_ms": 12.5,
++        "prefill_shape_call_ordinal": 2,
++        "prefill_compiled_call_1_host_ms": 0.0,
++        "prefill_compiled_call_2_host_ms": 0.0,
++        "prefill_compiled_call_3plus_host_ms": 0.0,
++        "prefill_compiled_first_call_ms": 0.0,
++        "prefill_compiled_warm_call_ms": 0.0,
++    }
++
++    streaming._record_prefill_compile_call_bucket(profile)
++
++    assert profile["prefill_compiled_call_2_host_ms"] == 12.5
++    assert profile["prefill_compiled_call_3plus_host_ms"] == 0.0
++    assert profile["prefill_compiled_warm_call_ms"] == 0.0
++
++
++def test_failed_prefill_compile_call_drops_callable_and_ordinal(monkeypatch):
++    streaming.clear_prefill_compile_cache()
++    try:
++        talker = CompleteTalker()
++        inputs = torch.randn(1, 2, 4)
++        trailing = torch.randn(1, 2, 4)
++        pad = torch.randn(4)
++
++        def failing_compile(_talker, _backend):
++            def failing_call(*_args, **_kwargs):
++                raise RuntimeError("compiled call failed")
++
++            return failing_call
++
++        monkeypatch.setattr(streaming, "_compile_talker_prefill", failing_compile)
++        monkeypatch.setattr(
++            streaming,
++            "_talker_prefill_eager",
++            lambda *args, **kwargs: object(),
++        )
++
++        _result, profile = streaming._run_talker_prefill(
++            talker,
++            inputs,
++            None,
++            trailing,
++            pad,
++            prefill_backend="compile_backend_eager",
++            prefill_mask_mode="skip",
++        )
++
++        stats = streaming.prefill_compile_cache_stats()
++        assert profile["prefill_compile_fallback"] is True
++        assert profile["prefill_shape_call_ordinal"] == 1
++        assert stats["entries"] == 0
++        assert stats["errors"] == 1
++        assert stats["talker_entries"] == {}
++
++        _result, retry_profile = streaming._run_talker_prefill(
++            talker,
++            inputs,
++            None,
++            trailing,
++            pad,
++            prefill_backend="compile_backend_eager",
++            prefill_mask_mode="skip",
++        )
++
++        retry_stats = streaming.prefill_compile_cache_stats()
++        assert retry_profile["prefill_compile_fallback"] is True
++        assert retry_profile["prefill_shape_call_ordinal"] == 0
++        assert retry_stats["entries"] == 0
++        assert retry_stats["errors"] == 1
++    finally:
++        streaming.clear_prefill_compile_cache()
+-- 
+2.53.0.windows.1
+

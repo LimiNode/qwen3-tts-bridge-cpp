@@ -758,6 +758,7 @@ def _prefill_once(
         else prefill_mask_mode
     )
     torch.cuda.synchronize()
+    _reset_cuda_peak_memory_stats()
     with torch.inference_mode():
         out, profile = _run_talker_prefill(
             talker,
@@ -771,7 +772,22 @@ def _prefill_once(
             input_metadata=metadata,
         )
     torch.cuda.synchronize()
+    profile.update(_cuda_peak_memory_stats("prefill_cuda_memory_request_peak"))
     return out, profile
+
+
+def _reset_cuda_peak_memory_stats() -> None:
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+
+
+def _cuda_peak_memory_stats(prefix: str) -> dict[str, int]:
+    if not torch.cuda.is_available():
+        return {}
+    return {
+        f"{prefix}_allocated_bytes": int(torch.cuda.max_memory_allocated()),
+        f"{prefix}_reserved_bytes": int(torch.cuda.max_memory_reserved()),
+    }
 
 
 def _snapshot_prefill_output(out: Any) -> dict[str, Any]:

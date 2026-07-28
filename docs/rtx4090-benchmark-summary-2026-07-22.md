@@ -2122,6 +2122,28 @@ After compile-cache telemetry clarification:
     CUDA memory snapshots were present before/after prefill and after close.
   Wheel-only semantic context-gate smoke:
     semantic_pass=true for all raw/strict/product contexts; prefill diff 0.0.
+After compile-call telemetry hardening:
+  FasterQwen targeted suite: 57 passed, 1 warning.
+  FasterQwen selected suite: 114 passed, 1 warning.
+  FasterQwen full suite with Qwen fork: 128 passed, 18 warnings, 301.03s.
+  Bridge targeted unittest: 49 tests OK.
+  Bridge scripts/check-python.ps1 -UseVenv -VenvPath .venv: 158 tests OK, 2 skipped.
+  Bridge ctest --test-dir build\default --output-on-failure: 9/9 passed
+  after retry; one earlier run hit a transient stdio_transport_test ready
+  timeout, then stdio_transport_test passed 5/5 with --repeat until-fail:5.
+  Wheel-only strict worker smoke:
+    faster_qwen3_tts imported from .venv-packaging site-packages, installed
+    wheel sha256=3b32e0c39df07ae52591aadd7173fb7f22713344ef4e7dc899befa46beb011be;
+    request prefill_backend_used=compile_reduce_overhead, fallback=false,
+    cache_hit=true, cache_kind=python_callable_lru, shape_call_ordinal=2;
+    compiled_call_host_ms=99.53, call_2_host_ms=99.53,
+    warm_call_ms=0.0; cache after request entries=1; cache after close
+    entries=0; CUDA memory snapshots were present before/after prefill and
+    after close.
+  Wheel-only semantic context-gate smoke:
+    semantic_pass=true for all raw/strict/product contexts; prefill diff 0.0;
+    diagnostic profiles include per-request PyTorch CUDA allocator peaks, for
+    example product_strict_reduce_overhead peak reserved=2713714688 bytes.
 ```
 
 The patch and bundle are saved under
