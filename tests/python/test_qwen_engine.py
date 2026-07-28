@@ -155,6 +155,9 @@ class _FasterStreamingModel:
         mode: str,
     ) -> dict[str, object]:
         validated = mode != "none"
+        validated_modules = (
+            {"attention": 1, "mlp": 1, "rmsnorm": 4} if validated else {}
+        )
         return {
             "prefill_compile_compat_metadata_version": 1,
             "prefill_compile_compat_wrapper_mode": mode,
@@ -163,9 +166,14 @@ class _FasterStreamingModel:
             "prefill_compile_compat_applied": False,
             "prefill_compile_compat_reused": False,
             "prefill_compile_compat_patched_modules": {},
-            "prefill_compile_compat_validated_modules": (
-                {"attention": 1, "mlp": 1, "rmsnorm": 1} if validated else {}
-            ),
+            "prefill_compile_compat_validated_modules": validated_modules,
+            "prefill_compile_compat_target_fingerprint": {
+                "schema_version": 1,
+                "attention": validated_modules.get("attention", 0),
+                "expected_decoder_layers": validated_modules.get("attention", 0),
+                "mlp": validated_modules.get("mlp", 0),
+                "rmsnorm": validated_modules.get("rmsnorm", 0),
+            },
         }
 
     def get_supported_speakers(self) -> list[str] | None:
@@ -767,16 +775,53 @@ class QwenEngineTests(unittest.TestCase):
                         "prefill_compile_compat_patched_modules": {
                             "attention": 1,
                             "mlp": 1,
-                            "rmsnorm": 1,
+                            "rmsnorm": 4,
                         },
+                        "prefill_compile_compat_validated_modules": {
+                            "attention": 1,
+                            "mlp": 1,
+                            "rmsnorm": 4,
+                        },
+                        "prefill_compile_compat_target_fingerprint": {
+                            "schema_version": 1,
+                            "attention": 1,
+                            "expected_decoder_layers": 1,
+                            "mlp": 1,
+                            "rmsnorm": 4,
+                        },
+                    }
+                },
+                "match": "idle",
+            },
+            {
+                "fake": {
+                    "prefill_compile_compat_metadata": {
+                        "prefill_compile_compat_metadata_version": 1,
+                        "prefill_compile_compat_wrapper_mode": (
+                            "strict_bf16_sdpa_v1"
+                        ),
+                        "prefill_compile_compat_declared_mode": (
+                            "strict_bf16_sdpa_v1"
+                        ),
+                        "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+                        "prefill_compile_compat_applied": False,
+                        "prefill_compile_compat_reused": False,
+                        "prefill_compile_compat_patched_modules": {},
                         "prefill_compile_compat_validated_modules": {
                             "attention": 1,
                             "mlp": 1,
                             "rmsnorm": 1,
                         },
+                        "prefill_compile_compat_target_fingerprint": {
+                            "schema_version": 1,
+                            "attention": 1,
+                            "expected_decoder_layers": 1,
+                            "mlp": 1,
+                            "rmsnorm": 1,
+                        },
                     }
                 },
-                "match": "idle",
+                "match": "RMSNorm",
             },
         )
         for case in cases:

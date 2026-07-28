@@ -236,6 +236,159 @@ faster-qwen-strict-bf16-sdpa-lifecycle-patch/0003-fix-prefill-keep-strict-compat
 faster-qwen-strict-bf16-sdpa-lifecycle-patch/faster-qwen-prefill-compile-through-9023eb8.bundle  6CD1E618B8F728420275973621A654F83559989B208A523B86F8C8ECB3E36FCB
 ```
 
+2026-07-28 strict BF16 SDPA hardening before shape/cache matrix:
+
+```text
+faster-qwen3-tts hardening commit: 7732b7b
+scope:
+  - per-Talker RLock around transient strict prefill forward replacement
+  - target fingerprint metadata for validated strict modules
+  - bridge fingerprint/count structural validation
+  - bounded compiled prefill cache with hit/miss/size/compile-ms telemetry
+  - clear model-scoped compiled prefill cache entries from FasterQwen3TTS.close()
+  - wheel-only strict worker smoke with installed wheel provenance
+  - smoke metadata before warmup, after request, and after close
+```
+
+Verification after hardening:
+
+```text
+FasterQwen targeted:
+  .venv-faster-qwen\Scripts\python.exe -m pytest tests\test_prefill_compat.py tests\test_sampling.py -q
+  result: 54 passed, 1 warning
+
+FasterQwen selected:
+  .venv-faster-qwen\Scripts\python.exe -m pytest tests\test_ggml_backend.py tests\test_prefill_compat.py tests\test_sample_rate.py tests\test_sampling.py tests\test_voice_clone_prompt_api.py -q
+  result: 111 passed, 1 warning
+
+FasterQwen full:
+  $env:PYTHONPATH='C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+  .venv-faster-qwen\Scripts\python.exe -m pytest -q
+  result: 125 passed, 18 warnings, 292.94s
+
+Bridge targeted:
+  $env:PYTHONPATH='worker/src;tests/python'
+  .venv\Scripts\python.exe -m unittest tests.python.test_qwen_engine tests.python.test_qwen_model_loader tests.python.test_engine_factory
+  result: 49 tests OK
+
+Bridge Python:
+  scripts\check-python.ps1 -UseVenv -VenvPath .venv
+  result: 158 tests OK, 2 skipped
+
+Bridge C++:
+  ctest --test-dir build\default --output-on-failure
+  result: 9/9 passed
+
+py_compile:
+  .venv\Scripts\python.exe -m py_compile scripts\qwen_prefill_compile_parity.py scripts\qwen_prefill_context_gate.py scripts\qwen_strict_worker_load_smoke.py
+  result: passed
+```
+
+Wheel build and install:
+
+```powershell
+$wheelDir='C:\_repoz\qwen3-tts-bridge-cpp\tmp\faster-qwen-wheel-7732b7b'
+New-Item -ItemType Directory -Force -Path $wheelDir | Out-Null
+C:\_repoz\qwen3-tts-bridge-cpp\.venv-packaging\Scripts\python.exe -m pip wheel `
+    --no-deps `
+    --wheel-dir $wheelDir `
+    C:\_repoz\faster-qwen3-tts-v032-stack112-clean
+
+.\.venv-packaging\Scripts\python.exe -m pip install --force-reinstall --no-deps `
+    tmp\faster-qwen-wheel-7732b7b\faster_qwen3_tts-0.3.2-py3-none-any.whl
+```
+
+Wheel SHA256:
+
+```text
+tmp/faster-qwen-wheel-7732b7b/faster_qwen3_tts-0.3.2-py3-none-any.whl  E83D500A5F0611E0A6E136B27214EA32C7531F6C36E60695E3ECC2238205C456
+```
+
+Wheel-only strict worker smoke:
+
+```powershell
+$env:PYTHONPATH='C:\_repoz\qwen3-tts-bridge-cpp\worker\src;C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+.\.venv-packaging\Scripts\python.exe scripts\qwen_strict_worker_load_smoke.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --prefill-backend compile_reduce_overhead `
+    --speaker ryan `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --warmup-synthesis `
+    --warmup-max-output-chunks 1 `
+    --max-chunks 1 `
+    --forbid-import-path C:\_repoz\faster-qwen3-tts-v032-stack112-clean `
+    --wheel-path tmp\faster-qwen-wheel-7732b7b\faster_qwen3_tts-0.3.2-py3-none-any.whl `
+    --output tmp\strict-worker-load-smoke-wheel-only.json
+```
+
+Wheel-only smoke result:
+
+```text
+faster_qwen3_tts.__file__:
+  C:\_repoz\qwen3-tts-bridge-cpp\.venv-packaging\Lib\site-packages\faster_qwen3_tts\__init__.py
+direct_url archive sha256:
+  e83d500a5f0611e0a6e136b27214ea32c7531f6c36e60695e3ecc2238205c456
+metadata before warmup / after request / after close:
+  wrapper=declared=mode=strict_bf16_sdpa_v1
+  applied=false
+  patched_modules={}
+  validated_modules={rmsnorm: 134, mlp: 33, attention: 33}
+  target_fingerprint={schema_version: 1, rmsnorm: 134, mlp: 33, attention: 33, expected_decoder_layers: 33}
+request:
+  prefill_backend_used=compile_reduce_overhead
+  prefill_compile_fallback=false
+  prefill_compile_cache_hit=true
+  prefill_compile_cache_entries=1
+  prefill_compile_cache_max_entries=64
+cache after close:
+  entries=0
+  errors=0
+  max_entries=64
+```
+
+Wheel-only semantic context gate:
+
+```powershell
+$env:PYTHONPATH='C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+.\.venv-packaging\Scripts\python.exe scripts\qwen_prefill_context_gate.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --speaker ryan `
+    --text "I am your robot, I am your worker." `
+    --language English `
+    --max-new-tokens 64 `
+    --repeats 1 `
+    --include-product-compat `
+    --include-reduce-overhead `
+    --compact-output `
+    --output tmp\context-gate-hardening-wheel-only.json
+```
+
+Wheel-only semantic result:
+
+```text
+raw_eager, strict_eager, strict_inductor_default, strict_reduce_overhead,
+product_strict_inductor_default, product_strict_reduce_overhead:
+  semantic_pass=true
+  termination_equal=true
+  same_codec=true
+  same_frame_count=true
+  prefill diff vs raw=0.0
+```
+
+Hardening patch SHA256:
+
+```text
+faster-qwen-strict-bf16-sdpa-lifecycle-patch/0004-fix-prefill-harden-strict-compat-concurrency.patch  4D5DA9310685AD93DBCFE9740070E8297E69C539A3DA8E8AD6812BA2BFCC76C6
+faster-qwen-strict-bf16-sdpa-lifecycle-patch/faster-qwen-prefill-compile-through-7732b7b.bundle  D89FC8D148F601419426D95038A626E6E130A1C081E0D3267C8FC36426076C5A
+```
+
 Diagnostic semantic gates:
 
 ```powershell

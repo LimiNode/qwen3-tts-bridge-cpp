@@ -2001,7 +2001,7 @@ prefill_compile_compat_mode=strict_bf16_sdpa_v1
 
 The local FasterQwen worktree is
 `C:\_repoz\faster-qwen3-tts-v032-stack112-clean`, branch
-`prefill-compile-exact-shape`, commit `9023eb8`. The bridge worker exposes the
+`prefill-compile-exact-shape`, commit `7732b7b`. The bridge worker exposes the
 mode through `--prefill-compile-compat-mode`; the default remains `none`.
 
 The opt-in is deliberately fail-closed. It is accepted only for FasterQwen
@@ -2013,6 +2013,11 @@ SDPA, but they are now applied only inside compiled prefill calls. Load-time
 configuration validates the target module counts and records metadata, then
 leaves the Talker forwards idle so PredictorGraph/TalkerGraph decode capture
 uses the original model forwards.
+The transient replacement is guarded by a per-Talker `RLock`, so direct
+concurrent FasterQwen streaming calls serialize the strict prefill section
+instead of observing a half-restored `forward` state. Compiled prefill cache
+entries are bounded, expose hit/miss/size/compile-time telemetry, and are
+cleared for the model's Talker from `FasterQwen3TTS.close()`.
 
 The lifecycle is now model-immutable in the public FasterQwen path:
 `FasterQwen3TTS.from_pretrained(..., prefill_compile_compat_mode=...)`
@@ -2023,10 +2028,11 @@ any `forward` method is temporarily replaced. The bridge also rejects invalid
 strict config combinations before model load and validates the loaded model
 before sending `ready`: actual model type, dtype, attention implementation,
 loaded compat mode, metadata version, declared mode, idle patch state, and
-validated module counts must match the strict contract. Strict product mode now
-also requires synthesis warmup before `ready`; unknown first-use compile/capture
-work must not be hidden in the first user request. VoiceDesign remains
-temporarily blocked for strict mode until a real VoiceDesign gate is run.
+validated module counts/fingerprint must match the strict contract. Strict
+product mode now also requires synthesis warmup before `ready`; unknown
+first-use compile/capture work must not be hidden in the first user request.
+VoiceDesign remains temporarily blocked for strict mode until a real VoiceDesign
+gate is run.
 
 The semantic gate was also hardened. Generation comparisons now fail unless
 termination telemetry agrees (`termination_reason`, `hit_eos`,
@@ -2078,6 +2084,24 @@ After prefill-only lifecycle correction:
     validated_modules={rmsnorm:134, mlp:33, attention:33};
     request prefill_backend_used=compile_reduce_overhead and fallback=false.
   Real semantic context-gate smoke:
+    semantic_pass=true for all raw/strict/product contexts; prefill diff 0.0.
+After concurrency/provenance/cache hardening:
+  FasterQwen targeted suite: 54 passed, 1 warning.
+  FasterQwen selected suite: 111 passed, 1 warning.
+  FasterQwen full suite with Qwen fork: 125 passed, 18 warnings, 292.94s.
+  Bridge targeted unittest: 49 tests OK.
+  Bridge scripts/check-python.ps1 -UseVenv -VenvPath .venv: 158 tests OK, 2 skipped.
+  Bridge ctest --test-dir build\default --output-on-failure: 9/9 passed.
+  Wheel-only strict worker smoke:
+    faster_qwen3_tts imported from .venv-packaging site-packages, installed
+    wheel sha256=e83d500a5f0611e0a6e136b27214ea32c7531f6c36e60695e3ecc2238205c456;
+    metadata before warmup, after request, and after close stayed idle
+    (applied=false, patched_modules={});
+    target_fingerprint={schema_version:1, rmsnorm:134, mlp:33,
+    attention:33, expected_decoder_layers:33};
+    request prefill_backend_used=compile_reduce_overhead, fallback=false,
+    cache_hit=true; cache after close entries=0.
+  Wheel-only semantic context-gate smoke:
     semantic_pass=true for all raw/strict/product contexts; prefill diff 0.0.
 ```
 

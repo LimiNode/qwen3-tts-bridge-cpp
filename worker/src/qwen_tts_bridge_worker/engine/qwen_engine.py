@@ -451,6 +451,50 @@ def _validate_loaded_prefill_compile_compat_metadata(
                 "strict_bf16_sdpa_v1 requires positive patched module count "
                 f"for {name}; actual={count!r}"
             )
+    _validate_loaded_prefill_compile_compat_fingerprint(patched, metadata)
+
+
+def _validate_loaded_prefill_compile_compat_fingerprint(
+    counts: dict[str, Any],
+    metadata: dict[str, Any],
+) -> None:
+    fingerprint = metadata.get("prefill_compile_compat_target_fingerprint")
+    if not isinstance(fingerprint, dict):
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 compat metadata missing target fingerprint"
+        )
+    if fingerprint.get("schema_version") != 1:
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 requires target fingerprint schema version 1; "
+            f"actual={fingerprint.get('schema_version')!r}"
+        )
+    for name in ("rmsnorm", "mlp", "attention"):
+        if fingerprint.get(name) != counts.get(name):
+            raise QwenEngineError(
+                "strict_bf16_sdpa_v1 target fingerprint/count mismatch for "
+                f"{name}: fingerprint={fingerprint.get(name)!r}, "
+                f"count={counts.get(name)!r}"
+            )
+
+    attention_count = counts["attention"]
+    mlp_count = counts["mlp"]
+    rmsnorm_count = counts["rmsnorm"]
+    if attention_count != mlp_count:
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 requires attention and MLP target counts "
+            f"to match; attention={attention_count}, mlp={mlp_count}"
+        )
+    if rmsnorm_count < attention_count * 3:
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 RMSNorm target count is too small for the "
+            f"decoder stack; rmsnorm={rmsnorm_count}, layers={attention_count}"
+        )
+    if rmsnorm_count > attention_count * 5 + 8:
+        raise QwenEngineError(
+            "strict_bf16_sdpa_v1 RMSNorm target count is unexpectedly large "
+            f"for the decoder stack; rmsnorm={rmsnorm_count}, "
+            f"layers={attention_count}"
+        )
 
 
 def _normalized_dtype_name(dtype: Any) -> str:
@@ -873,6 +917,8 @@ def _first_chunk_timing_fields(
         "prefill_kv_gpu_stream_id",
         "generation_state_gpu_stream_id",
         "prefill_to_sync_gpu_stream_id",
+        "prefill_compile_cache_entries",
+        "prefill_compile_cache_max_entries",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:
@@ -899,6 +945,7 @@ def _first_chunk_timing_fields(
         "prefill_compile_fallback",
         "prefill_compile_compat_applied",
         "prefill_compile_compat_reused",
+        "prefill_compile_cache_hit",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
@@ -923,6 +970,7 @@ def _first_chunk_timing_fields(
         "prefill_gpu_component_sum_ms",
         "prefill_gpu_partition_error_ms",
         "prefill_gpu_accounting_error_ms",
+        "prefill_compile_wall_ms",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:
