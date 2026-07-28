@@ -316,6 +316,7 @@ class QwenTtsEngine:
         select_mask_mode = streaming.select_prefill_mask_mode
 
         rows: list[dict[str, object]] = []
+        decode_state_fields: dict[str, object] | None = None
         started_at = monotonic_seconds()
         for expected_length in self._config.prefill_compile_lengths:
             entry = entries[expected_length]
@@ -397,6 +398,14 @@ class QwenTtsEngine:
                     "compiled prefill warmup did not reach ordinal 3: "
                     f"length={expected_length}, profile={last_profile}"
                 )
+            if decode_state_fields is None:
+                decode_state_fields = _run_prefill_decode_state_warmup(
+                    model,
+                    talker,
+                    tam,
+                    out,
+                    metadata,
+                )
             self._prewarmed_prefill_lengths.add(expected_length)
             rows.append(
                 {
@@ -422,6 +431,9 @@ class QwenTtsEngine:
                 }
             )
 
+        if decode_state_fields is None:
+            raise QwenEngineError("prefill decode-state warmup did not run")
+
         return {
             "prefill_allowlist_warmup": True,
             "prefill_allowlist_ready": True,
@@ -431,6 +443,7 @@ class QwenTtsEngine:
             ),
             "prefill_allowlist_warmup_duration_ms": elapsed_milliseconds(started_at),
             "prefill_allowlist_warmup_passes": rows,
+            **decode_state_fields,
         }
 
     def _require_model(self) -> Any:
@@ -781,6 +794,81 @@ def _call_prefill_for_warmup(
     if torch.cuda.is_available():
         torch.cuda.synchronize()
     return out, cast(dict[str, object], profile)
+
+
+def _run_prefill_decode_state_warmup(
+    model: Any,
+    talker: Any,
+    attention_mask: Any,
+    prefill_out: Any,
+    metadata: dict[str, Any],
+) -> dict[str, object]:
+    talker_graph = getattr(model, "talker_graph", None)
+    if talker_graph is None:
+        raise QwenEngineError("loaded faster model does not expose talker_graph")
+
+    torch = importlib.import_module("torch")
+    started_at = monotonic_seconds()
+    with torch.inference_mode():
+        prefill_kv_started = monotonic_seconds()
+        prefill_len = int(talker_graph.prefill_kv(prefill_out.past_key_values))
+        prefill_kv_ms = elapsed_milliseconds(prefill_kv_started)
+
+        generation_state_started = monotonic_seconds()
+        attention_mask_all_valid = (
+            metadata.get("prefill_attention_mask_all_valid") is True
+        )
+        generation_attention_mask = None if attention_mask_all_valid else attention_mask
+        talker_graph.set_generation_state(
+            generation_attention_mask,
+            getattr(talker, "rope_deltas", None),
+            attention_mask_all_valid=attention_mask_all_valid,
+        )
+        generation_state_ms = elapsed_milliseconds(generation_state_started)
+
+        replay_started = monotonic_seconds()
+        if prefill_len >= int(talker_graph.max_seq_len) - 1:
+            raise QwenEngineError(
+                "prefill decode-state warmup length exceeds talker graph capacity: "
+                f"prefill_len={prefill_len}, max_seq_len={talker_graph.max_seq_len}"
+            )
+        input_embeds = prefill_out.past_hidden[:, -1:, :]
+        talker_graph.run(input_embeds, position=prefill_len)
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        replay_ms = elapsed_milliseconds(replay_started)
+
+        reset_started = monotonic_seconds()
+        talker_graph.reset(prefill_len)
+        reset_ms = elapsed_milliseconds(reset_started)
+
+    profile = getattr(talker_graph, "last_generation_state_profile", None)
+    profile_fields = dict(profile) if isinstance(profile, dict) else {}
+    if profile_fields.get("generation_state_mask_cache_hit") is not True:
+        raise QwenEngineError(
+            "prefill decode-state warmup did not hit the generation mask cache: "
+            f"{profile_fields}"
+        )
+    if profile_fields.get("generation_state_masks_built") != 0:
+        raise QwenEngineError(
+            "prefill decode-state warmup rebuilt generation masks: "
+            f"{profile_fields}"
+        )
+
+    return {
+        "prefill_decode_state_warmup": True,
+        "prefill_decode_state_ready": True,
+        "prefill_decode_state_length": prefill_len,
+        "prefill_decode_state_warmup_duration_ms": elapsed_milliseconds(started_at),
+        "prefill_decode_state_prefill_kv_ms": prefill_kv_ms,
+        "prefill_decode_state_generation_state_ms": generation_state_ms,
+        "prefill_decode_state_replay_ms": replay_ms,
+        "prefill_decode_state_reset_ms": reset_ms,
+        **{
+            f"prefill_decode_state_{key}": value
+            for key, value in profile_fields.items()
+        },
+    }
 
 
 def _snapshot_prefill_output(out: Any) -> dict[str, Any]:
@@ -1247,6 +1335,7 @@ def _first_chunk_timing_fields(
         "prefill_kv_gpu_stream_id",
         "generation_state_gpu_stream_id",
         "prefill_to_sync_gpu_stream_id",
+        "generation_state_masks_built",
         "prefill_compile_cache_entries",
         "prefill_compile_cache_talker_entries",
         "prefill_compile_cache_max_entries",
@@ -1291,6 +1380,8 @@ def _first_chunk_timing_fields(
         "prefill_shape_allowlist_hit",
         "prefill_compile_on_miss",
         "prefill_require_precompiled",
+        "generation_state_mask_cache_hit",
+        "generation_state_attention_mask_all_valid",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
@@ -1318,6 +1409,10 @@ def _first_chunk_timing_fields(
         "prefill_kv_launch_wall_ms",
         "prefill_kv_gpu_ms",
         "generation_state_wall_ms",
+        "generation_state_total_ms",
+        "generation_state_mask_key_ms",
+        "generation_state_mask_table_build_ms",
+        "generation_state_rope_copy_ms",
         "generation_state_gpu_ms",
         "prefill_to_sync_gpu_ms",
         "prefill_sync_wait_ms",
@@ -1349,6 +1444,15 @@ def _first_chunk_timing_fields(
         value = _number_field(chunk_timing, source_key)
         if value is not None:
             fields[alias_key] = value
+
+    for key in (
+        "generation_state_mask_key",
+        "generation_state_previous_mask_key",
+    ):
+        if key in chunk_timing:
+            value = chunk_timing.get(key)
+            if value is None or isinstance(value, (list, tuple)):
+                fields[key] = value
 
     residual_ms = next_wall_ms
     if prefill_ms is not None:

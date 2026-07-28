@@ -353,7 +353,7 @@ class EngineFactoryTests(unittest.TestCase):
             },
             {
                 "model_path": "models/qwen",
-                "prefill_allowlist_max_abs_threshold": 0.0,
+                "prefill_allowlist_max_abs_threshold": -1.0,
             },
             {
                 "model_path": "models/qwen",
@@ -420,6 +420,7 @@ class EngineFactoryTests(unittest.TestCase):
             {"prefill_unknown_shape_policy": "error"},
             {"prefill_allowlist_warmup_manifest": ""},
             {"prefill_require_precompiled": False},
+            {"prefill_allowlist_max_abs_threshold": 1.0e-2},
         )
 
         for update in invalid_updates:

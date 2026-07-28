@@ -2367,6 +2367,81 @@ prefill-prewarm-shape-debug.json 4048d77777a7ac4515592ca63a998ac8433f1147f265218
 faster-qwen-prewarmed-allowlist.bundle 1f4d18a9689121f05f04f9e090fba980be521b744dc162fc743d119a285c7e01
 ```
 
+### Decode-State Startup Gate
+
+The next focused fix addressed the `generation_state_wall_ms` tail observed
+after exact allowlist prewarm. FasterQwen local commit `d6aac14` normalizes the
+verified all-valid generation attention mask to the same canonical state as the
+`None` mask used during graph capture. It also reports mask key timing, mask
+table build timing, cache hit/miss, and the number of masks built.
+
+The bridge startup prewarm now also runs one representative prefill-to-decode
+gate before ready:
+
+```text
+compiled prefill
+-> prefill_kv
+-> set_generation_state
+-> one TalkerGraph replay
+-> reset
+```
+
+This does not run codec decode or full speech synthesis. It only proves that
+the boundary from compiled prefill into the CUDA-graphed AR decode path is
+ready.
+
+Wheel-only decode-state smoke result: pass.
+
+| Metric | Result |
+| --- | ---: |
+| FasterQwen local commit | `d6aac14` |
+| FasterQwen wheel SHA256 | `f3aed60c510f30e2902b8317c93459d37533c6fbe8081ae940bec38bff6af211` |
+| startup allowlist duration | `46292.815 ms` |
+| startup allowlist ordinals | `3, 3, 3, 3, 3, 3` |
+| startup decode-state duration | `21.405 ms` |
+| startup decode-state generation state | `0.106 ms` |
+| startup decode-state replay | `8.315 ms` |
+| first user request cache hit | `true` |
+| first user request ordinal | `4` |
+| first user request compiled prefill call | `10.651 ms` |
+| first user request generation state | `0.114 ms` |
+| first user request mask cache hit | `true` |
+| first user request masks built | `0` |
+| first user prefill total | `96.089 ms` |
+| first user AR decode | `194.061 ms` |
+| first user codec/wrapper residual | `306.242 ms` |
+| first user audio wall time | `596.391 ms` |
+
+Interpretation: the eight-second generation-state table rebuild is removed for
+the verified all-valid path. The first user request no longer rebuilds the
+2048-entry mask table. The remaining first-PCM latency is now outside compiled
+prefill and generation-state setup; in this smoke it is dominated by AR decode
+plus codec/wrapper residual. That is the next performance track, not part of
+the decode-state cache fix.
+
+The strict exact allowlist startup threshold is now `max_abs == 0.0` for
+`strict_bf16_sdpa_v1`; non-zero drift is rejected instead of tolerated up to
+`1e-2`.
+
+Decode-state artifacts:
+
+```text
+strict-worker-load-smoke-exact-allowlist-decode-state-wheel.json
+faster-qwen-decode-state-patch/0001-feat-prefill-add-exact-length-compile-policy.patch
+faster-qwen-decode-state-patch/0002-fix-prefill-allow-strict-causal-mask-replay.patch
+faster-qwen-decode-state-patch/0003-fix-prefill-require-prewarmed-compiled-shapes.patch
+faster-qwen-decode-state-patch/0004-fix-prefill-reuse-all-valid-generation-mask-state.patch
+faster-qwen-decode-state-patch/faster-qwen-decode-state-through-d6aac14.bundle
+```
+
+Decode-state artifact SHA256:
+
+```text
+strict-worker-load-smoke-exact-allowlist-decode-state-wheel.json 88487b1bfe41e6ae5006f317cbcd9cfe49a12a900bb102482cd9fdc7e3a9c462
+0004-fix-prefill-reuse-all-valid-generation-mask-state.patch 4d0a9496553990a72dbfe8e45c001bf7720fe3e52e1f17e6b2a2be5f40e94bb6
+faster-qwen-decode-state-through-d6aac14.bundle 218ba6ffc38eb4273cbe06b40d7e4e3fc9ba70bac0276358ff7836abb5a3eb83
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

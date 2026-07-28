@@ -52,7 +52,7 @@ def main() -> int:
     parser.add_argument(
         "--prefill-allowlist-max-abs-threshold",
         type=float,
-        default=1.0e-2,
+        default=0.0,
     )
     parser.add_argument("--prefill-require-precompiled", action="store_true")
     parser.add_argument("--text", default="I am your robot, I am your worker.")
@@ -63,6 +63,14 @@ def main() -> int:
     parser.add_argument("--max-chunks", type=int, default=1)
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument("--warmup-max-output-chunks", type=int, default=1)
+    parser.add_argument("--max-generation-state-wall-ms", type=float, default=5.0)
+    parser.add_argument("--max-compiled-prefill-ms", type=float, default=25.0)
+    parser.add_argument(
+        "--max-first-chunk-wall-ms",
+        type=float,
+        default=0.0,
+        help="Optional first PCM wall-time gate; 0 disables this check.",
+    )
     parser.add_argument("--forbid-import-path", action="append", default=[])
     parser.add_argument("--wheel-path", type=Path)
     parser.add_argument("--output", type=Path, required=True)
@@ -383,6 +391,10 @@ def _validate_exact_allowlist_result(
         raise RuntimeError(
             "exact allowlist smoke did not prewarm allowlisted shapes before ready"
         )
+    if warmup.get("prefill_decode_state_ready") is not True:
+        raise RuntimeError(
+            "exact allowlist smoke did not prewarm decode state before ready"
+        )
     if list(warmup.get("prefill_allowlist_lengths") or []) != list(
         args.prefill_compile_lengths
     ):
@@ -415,6 +427,47 @@ def _validate_exact_allowlist_result(
         raise RuntimeError(
             "exact allowlist first request did not use a prewarmed compiled entry: "
             f"{first_metrics!r}"
+        )
+    if first_metrics.get("generation_state_mask_cache_hit") is not True:
+        raise RuntimeError(
+            "exact allowlist first request missed generation mask cache: "
+            f"{first_metrics!r}"
+        )
+    if int(first_metrics.get("generation_state_masks_built", 0)) != 0:
+        raise RuntimeError(
+            "exact allowlist first request rebuilt generation masks: "
+            f"{first_metrics!r}"
+        )
+    _require_metric_below(
+        first_metrics,
+        "prefill_compiled_call_3plus_host_ms",
+        args.max_compiled_prefill_ms,
+    )
+    _require_metric_below(
+        first_metrics,
+        "generation_state_wall_ms",
+        args.max_generation_state_wall_ms,
+    )
+    if args.max_first_chunk_wall_ms > 0.0:
+        _require_metric_below(
+            first_metrics,
+            "next_wall_ms",
+            args.max_first_chunk_wall_ms,
+        )
+
+
+def _require_metric_below(
+    metrics: dict[str, Any],
+    key: str,
+    threshold: float,
+) -> None:
+    value = metrics.get(key)
+    if not isinstance(value, (int, float)):
+        raise RuntimeError(f"exact allowlist smoke missing numeric metric {key}")
+    if float(value) >= threshold:
+        raise RuntimeError(
+            f"exact allowlist smoke metric {key}={value} exceeds "
+            f"threshold {threshold}"
         )
 
 

@@ -71,7 +71,7 @@ class QwenEngineConfig:
     prefill_allowlist_warmup_manifest: str = ""
     prefill_allowlist_warmup_repeats: int = 3
     prefill_allowlist_max_entries: int = 6
-    prefill_allowlist_max_abs_threshold: float = 1.0e-2
+    prefill_allowlist_max_abs_threshold: float = 0.0
     prefill_require_precompiled: bool = False
     do_sample: bool = True
     seed: int | None = None
@@ -156,11 +156,11 @@ class QwenEngineConfig:
             raise ValueError("qwen.prefill_allowlist_max_entries must be positive")
         if (
             not math.isfinite(self.prefill_allowlist_max_abs_threshold)
-            or self.prefill_allowlist_max_abs_threshold <= 0.0
+            or self.prefill_allowlist_max_abs_threshold < 0.0
         ):
             raise ValueError(
                 "qwen.prefill_allowlist_max_abs_threshold must be finite and "
-                "positive"
+                "non-negative"
             )
         self._validate_exact_allowlist_contract()
         self._validate_prefill_compile_compat_contract()
@@ -266,6 +266,12 @@ class QwenEngineConfig:
             raise ValueError(
                 "qwen.prefill_compile_policy=exact_allowlist requires "
                 "prefill_require_precompiled=true"
+            )
+        if self.prefill_allowlist_max_abs_threshold != 0.0:
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist with "
+                "strict_bf16_sdpa_v1 requires "
+                "prefill_allowlist_max_abs_threshold=0.0"
             )
 
 

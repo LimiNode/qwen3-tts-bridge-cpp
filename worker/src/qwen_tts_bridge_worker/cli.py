@@ -361,7 +361,7 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument(
         "--prefill-allowlist-max-abs-threshold",
         type=float,
-        default=1.0e-2,
+        default=0.0,
         help="Maximum eager-vs-compiled prefill drift accepted during startup.",
     )
     qwen_parser.add_argument(
