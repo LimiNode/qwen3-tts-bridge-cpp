@@ -922,6 +922,7 @@ def _first_chunk_timing_fields(
         "prefill_compile_cache_max_entries",
         "prefill_compile_cache_evictions",
         "prefill_shape_call_ordinal",
+        "prefill_shape_length",
         "prefill_cuda_memory_before_allocated_bytes",
         "prefill_cuda_memory_before_reserved_bytes",
         "prefill_cuda_memory_before_max_reserved_bytes",
@@ -941,6 +942,7 @@ def _first_chunk_timing_fields(
         "prefill_compile_error",
         "prefill_compile_compat_mode",
         "prefill_compile_cache_kind",
+        "prefill_shape_policy",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -956,6 +958,8 @@ def _first_chunk_timing_fields(
         "prefill_compile_compat_applied",
         "prefill_compile_compat_reused",
         "prefill_compile_cache_hit",
+        "prefill_shape_allowlist_hit",
+        "prefill_compile_on_miss",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):

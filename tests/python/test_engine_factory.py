@@ -72,6 +72,11 @@ class EngineFactoryTests(unittest.TestCase):
                 "compile_reduce_overhead",
                 "--prefill-compile-compat-mode",
                 "strict_bf16_sdpa_v1",
+                "--prefill-compile-lengths",
+                "16,21,24",
+                "--no-prefill-compile-on-miss",
+                "--prefill-unknown-shape-policy",
+                "error",
                 "--no-sample",
                 "--warmup-synthesis",
                 "--warmup-text",
@@ -113,6 +118,9 @@ class EngineFactoryTests(unittest.TestCase):
             "strict_bf16_sdpa_v1",
             config.prefill_compile_compat_mode,
         )
+        self.assertEqual((16, 21, 24), config.prefill_compile_lengths)
+        self.assertFalse(config.prefill_compile_on_miss)
+        self.assertEqual("error", config.prefill_unknown_shape_policy)
         self.assertFalse(config.do_sample)
         self.assertTrue(config.warmup_synthesis_enabled)
         self.assertEqual("Prime the engine.", config.warmup_text)
@@ -276,6 +284,18 @@ class EngineFactoryTests(unittest.TestCase):
             {"model_path": "models/qwen", "overlap_samples": -1},
             {"model_path": "models/qwen", "compile_mode": ""},
             {"model_path": "models/qwen", "matmul_precision": "fastest"},
+            {
+                "model_path": "models/qwen",
+                "prefill_compile_lengths": (16, 16),
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_compile_lengths": (0,),
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_unknown_shape_policy": "continue",
+            },
             {
                 "model_path": "models/qwen",
                 "warmup_synthesis_enabled": True,

@@ -25,6 +25,22 @@ def main() -> int:
         default="compile_reduce_overhead",
         choices=("compile_inductor_default", "compile_reduce_overhead"),
     )
+    parser.add_argument(
+        "--prefill-compile-lengths",
+        type=_parse_prefill_compile_lengths,
+        default=(),
+    )
+    parser.add_argument(
+        "--no-prefill-compile-on-miss",
+        action="store_false",
+        dest="prefill_compile_on_miss",
+        default=True,
+    )
+    parser.add_argument(
+        "--prefill-unknown-shape-policy",
+        choices=("eager", "error"),
+        default="eager",
+    )
     parser.add_argument("--text", default="I am your robot, I am your worker.")
     parser.add_argument("--language", default="English")
     parser.add_argument("--speaker", default="ryan")
@@ -47,6 +63,9 @@ def main() -> int:
         emit_every_frames=args.emit_every_frames,
         prefill_backend=args.prefill_backend,
         prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+        prefill_compile_lengths=args.prefill_compile_lengths,
+        prefill_compile_on_miss=args.prefill_compile_on_miss,
+        prefill_unknown_shape_policy=args.prefill_unknown_shape_policy,
         warmup_synthesis_enabled=args.warmup_synthesis,
         warmup_max_output_chunks=args.warmup_max_output_chunks,
         warmup_text=args.text,
@@ -66,7 +85,7 @@ def main() -> int:
     _validate_forbidden_import_paths(provenance, args.forbid_import_path)
     try:
         engine.load()
-        model = getattr(engine, "_model")
+        model = engine._model
         metadata_before_warmup = _metadata(model)
         warmup = engine.warmup()
 
@@ -112,6 +131,9 @@ def main() -> int:
             "attn_implementation": args.attn_implementation,
             "prefill_backend": args.prefill_backend,
             "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_lengths": args.prefill_compile_lengths,
+            "prefill_compile_on_miss": args.prefill_compile_on_miss,
+            "prefill_unknown_shape_policy": args.prefill_unknown_shape_policy,
             "warmup_synthesis": args.warmup_synthesis,
             "warmup_max_output_chunks": args.warmup_max_output_chunks,
         },
@@ -139,6 +161,35 @@ def _metadata(model: Any) -> dict[str, Any] | None:
     if isinstance(metadata, dict):
         return dict(metadata)
     return None
+
+
+def _parse_prefill_compile_lengths(value: str) -> tuple[int, ...]:
+    text = value.strip()
+    if not text:
+        return ()
+    lengths: list[int] = []
+    for part in text.split(","):
+        item = part.strip()
+        if not item:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must not contain empty items"
+            )
+        try:
+            length = int(item)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain integers"
+            ) from exc
+        if length <= 0:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain positive integers"
+            )
+        lengths.append(length)
+    if len(set(lengths)) != len(lengths):
+        raise argparse.ArgumentTypeError(
+            "--prefill-compile-lengths must not contain duplicates"
+        )
+    return tuple(lengths)
 
 
 def _provenance(args: argparse.Namespace) -> dict[str, Any]:
@@ -224,7 +275,9 @@ def _validate_result(result: dict[str, Any], args: argparse.Namespace) -> None:
     provenance = result["provenance"]
     if args.wheel_path is not None:
         expected_sha = str(provenance["wheel_sha256"]).lower()
-        direct_url_sha = _direct_url_sha256(provenance.get("faster_qwen3_tts_direct_url"))
+        direct_url_sha = _direct_url_sha256(
+            provenance.get("faster_qwen3_tts_direct_url")
+        )
         if direct_url_sha != expected_sha:
             raise RuntimeError(
                 "installed faster_qwen3_tts archive SHA does not match wheel: "
@@ -249,6 +302,17 @@ def _validate_result(result: dict[str, Any], args: argparse.Namespace) -> None:
             "strict worker smoke reported unexpected compile cache kind: "
             f"{first_metrics.get('prefill_compile_cache_kind')!r}"
         )
+    if args.prefill_compile_lengths:
+        if first_metrics.get("prefill_shape_allowlist_hit") is not True:
+            raise RuntimeError(
+                "strict worker smoke did not hit the configured prefill "
+                f"allowlist: {first_metrics!r}"
+            )
+        if first_metrics.get("prefill_shape_policy") != "compiled_allowlist":
+            raise RuntimeError(
+                "strict worker smoke used unexpected shape policy: "
+                f"{first_metrics.get('prefill_shape_policy')!r}"
+            )
     cache_after_request = result.get("cache_stats_after_request")
     if not isinstance(cache_after_request, dict):
         raise RuntimeError("strict worker smoke did not report request cache stats")

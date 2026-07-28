@@ -177,7 +177,11 @@ class QwenModelLoaderTests(unittest.TestCase):
                 "dtype": "bfloat16",
                 "attn_implementation": "eager",
                 "max_seq_len": 1024,
+                "prefill_backend": "eager",
                 "prefill_compile_compat_mode": "none",
+                "prefill_compile_lengths": (),
+                "prefill_compile_on_miss": True,
+                "prefill_unknown_shape_policy": "eager",
             },
             fake_faster.calls[0][1],
         )
@@ -202,13 +206,29 @@ class QwenModelLoaderTests(unittest.TestCase):
                     attn_implementation="sdpa",
                     prefill_backend="compile_reduce_overhead",
                     prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                    prefill_compile_lengths=(16, 21),
+                    prefill_compile_on_miss=False,
+                    prefill_unknown_shape_policy="eager",
                     warmup_synthesis_enabled=True,
                 )
             )
 
         self.assertEqual(
+            "compile_reduce_overhead",
+            fake_faster.calls[0][1]["prefill_backend"],
+        )
+        self.assertEqual(
             "strict_bf16_sdpa_v1",
             fake_faster.calls[0][1]["prefill_compile_compat_mode"],
+        )
+        self.assertEqual(
+            (16, 21),
+            fake_faster.calls[0][1]["prefill_compile_lengths"],
+        )
+        self.assertFalse(fake_faster.calls[0][1]["prefill_compile_on_miss"])
+        self.assertEqual(
+            "eager",
+            fake_faster.calls[0][1]["prefill_unknown_shape_policy"],
         )
 
 

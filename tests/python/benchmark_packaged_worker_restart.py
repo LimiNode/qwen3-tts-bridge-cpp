@@ -42,6 +42,7 @@ _PHASE_KEYS = (
     "first_chunk_instruction_token_count",
     "first_chunk_prefill_sequence_length",
     "first_chunk_talker_prefill_length",
+    "first_chunk_prefill_shape_length",
     "first_chunk_tokenize_wall_ms",
     "first_chunk_build_talker_inputs_wall_ms",
     "first_chunk_prefill_total_gpu_ms",
@@ -236,6 +237,9 @@ def _build_report(
             "profile_nvtx": args.profile_nvtx,
             "prefill_backend": args.prefill_backend,
             "prefill_compile_compat_mode": args.prefill_compile_compat_mode,
+            "prefill_compile_lengths": args.prefill_compile_lengths,
+            "prefill_compile_on_miss": args.prefill_compile_on_miss,
+            "prefill_unknown_shape_policy": args.prefill_unknown_shape_policy,
             "expected_faster_wheel_sha256": args.expected_faster_wheel_sha256,
             "allow_unverified_faster_wheel": args.allow_unverified_faster_wheel,
             "do_sample": not args.no_sample,
@@ -356,6 +360,22 @@ def _build_parser() -> argparse.ArgumentParser:
         default="none",
     )
     parser.add_argument(
+        "--prefill-compile-lengths",
+        type=_parse_prefill_compile_lengths,
+        default=(),
+    )
+    parser.add_argument(
+        "--no-prefill-compile-on-miss",
+        action="store_false",
+        dest="prefill_compile_on_miss",
+        default=True,
+    )
+    parser.add_argument(
+        "--prefill-unknown-shape-policy",
+        choices=("eager", "error"),
+        default="eager",
+    )
+    parser.add_argument(
         "--expected-faster-wheel-sha256",
         default="",
         help=(
@@ -460,6 +480,35 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Paired first-audio delta threshold for outlier records.",
     )
     return parser
+
+
+def _parse_prefill_compile_lengths(value: str) -> tuple[int, ...]:
+    text = value.strip()
+    if not text:
+        return ()
+    lengths: list[int] = []
+    for part in text.split(","):
+        item = part.strip()
+        if not item:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must not contain empty items"
+            )
+        try:
+            length = int(item)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain integers"
+            ) from exc
+        if length <= 0:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain positive integers"
+            )
+        lengths.append(length)
+    if len(set(lengths)) != len(lengths):
+        raise argparse.ArgumentTypeError(
+            "--prefill-compile-lengths must not contain duplicates"
+        )
+    return tuple(lengths)
 
 
 def _validate_runtime_provenance(
@@ -1206,6 +1255,14 @@ def _profile_validation_summary(requests: list[dict[str, object]]) -> dict[str, 
             profiled,
             "first_chunk_profile_request_role",
         ),
+        "prefill_shape_policies": _string_counts(
+            requests,
+            "first_chunk_prefill_shape_policy",
+        ),
+        "prefill_shape_allowlist_hit_count": _count_true(
+            requests,
+            "first_chunk_prefill_shape_allowlist_hit",
+        ),
     }
 
 
@@ -1640,6 +1697,7 @@ def _with_request_pipeline_metrics(
     )
     for source_key, target_key in (
         ("talker_prefill_length", "first_chunk_talker_prefill_length"),
+        ("prefill_shape_length", "first_chunk_prefill_shape_length"),
         ("tokenize_wall_ms", "first_chunk_tokenize_wall_ms"),
         ("build_talker_inputs_wall_ms", "first_chunk_build_talker_inputs_wall_ms"),
         ("prefill_total_gpu_ms", "first_chunk_prefill_total_gpu_ms"),
@@ -1708,6 +1766,7 @@ def _with_request_pipeline_metrics(
             "prefill_compile_compat_mode",
             "first_chunk_prefill_compile_compat_mode",
         ),
+        ("prefill_shape_policy", "first_chunk_prefill_shape_policy"),
     ):
         _copy_metric_string(enriched, first_chunk_phases, source_key, target_key)
     for source_key, target_key in (
@@ -1745,6 +1804,11 @@ def _with_request_pipeline_metrics(
             "prefill_compile_compat_reused",
             "first_chunk_prefill_compile_compat_reused",
         ),
+        (
+            "prefill_shape_allowlist_hit",
+            "first_chunk_prefill_shape_allowlist_hit",
+        ),
+        ("prefill_compile_on_miss", "first_chunk_prefill_compile_on_miss"),
     ):
         _copy_metric_bool(enriched, first_chunk_phases, source_key, target_key)
 

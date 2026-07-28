@@ -260,6 +260,22 @@ def main() -> int:
         choices=("none", "strict_bf16_sdpa_v1"),
         default="none",
     )
+    parser.add_argument(
+        "--prefill-compile-lengths",
+        type=_parse_prefill_compile_lengths,
+        default=(),
+    )
+    parser.add_argument(
+        "--no-prefill-compile-on-miss",
+        action="store_false",
+        dest="prefill_compile_on_miss",
+        default=True,
+    )
+    parser.add_argument(
+        "--prefill-unknown-shape-policy",
+        choices=("eager", "error"),
+        default="eager",
+    )
     parser.add_argument("--no-sample", action="store_true")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
@@ -387,6 +403,22 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.extend(
             ["--prefill-compile-compat-mode", prefill_compile_compat_mode]
         )
+    prefill_compile_lengths = getattr(args, "prefill_compile_lengths", ())
+    if prefill_compile_lengths:
+        worker_args.extend(
+            [
+                "--prefill-compile-lengths",
+                ",".join(str(length) for length in prefill_compile_lengths),
+            ]
+        )
+    if not getattr(args, "prefill_compile_on_miss", True):
+        worker_args.append("--no-prefill-compile-on-miss")
+    worker_args.extend(
+        [
+            "--prefill-unknown-shape-policy",
+            str(getattr(args, "prefill_unknown_shape_policy", "eager")),
+        ]
+    )
     if getattr(args, "no_sample", False):
         worker_args.append("--no-sample")
     seed = getattr(args, "seed", None)
@@ -419,6 +451,35 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
 
 def _worker_process_args(args: argparse.Namespace) -> list[str]:
     return [*getattr(args, "worker_prefix_arg", []), *_worker_args(args)]
+
+
+def _parse_prefill_compile_lengths(value: str) -> tuple[int, ...]:
+    text = value.strip()
+    if not text:
+        return ()
+    lengths: list[int] = []
+    for part in text.split(","):
+        item = part.strip()
+        if not item:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must not contain empty items"
+            )
+        try:
+            length = int(item)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain integers"
+            ) from exc
+        if length <= 0:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain positive integers"
+            )
+        lengths.append(length)
+    if len(set(lengths)) != len(lengths):
+        raise argparse.ArgumentTypeError(
+            "--prefill-compile-lengths must not contain duplicates"
+        )
+    return tuple(lengths)
 
 
 def _exercise_worker(

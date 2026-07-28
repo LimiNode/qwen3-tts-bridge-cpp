@@ -81,6 +81,9 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 profile_nvtx=args.profile_nvtx,
                 prefill_backend=args.prefill_backend,
                 prefill_compile_compat_mode=args.prefill_compile_compat_mode,
+                prefill_compile_lengths=args.prefill_compile_lengths,
+                prefill_compile_on_miss=args.prefill_compile_on_miss,
+                prefill_unknown_shape_policy=args.prefill_unknown_shape_policy,
                 do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
@@ -301,6 +304,26 @@ def _add_qwen_subcommand(
         help="Select the faster-backend compiled prefill compatibility mode.",
     )
     qwen_parser.add_argument(
+        "--prefill-compile-lengths",
+        type=_parse_prefill_compile_lengths,
+        default=(),
+        help="Comma-separated exact talker prefill lengths that may use "
+        "compiled prefill.",
+    )
+    qwen_parser.add_argument(
+        "--no-prefill-compile-on-miss",
+        action="store_false",
+        dest="prefill_compile_on_miss",
+        default=True,
+        help="Use eager prefill for lengths outside --prefill-compile-lengths.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-unknown-shape-policy",
+        choices=("eager", "error"),
+        default="eager",
+        help="Choose eager fallback or fail-fast for unknown compiled prefill shapes.",
+    )
+    qwen_parser.add_argument(
         "--no-sample",
         action="store_true",
         help="Use greedy decoding instead of sampling.",
@@ -375,6 +398,35 @@ def _reject_mixed_legacy_engine_flags(args: argparse.Namespace) -> None:
         raise ValueError(
             "legacy engine flags cannot be combined with engine subcommands"
         )
+
+
+def _parse_prefill_compile_lengths(value: str) -> tuple[int, ...]:
+    text = value.strip()
+    if not text:
+        return ()
+    lengths: list[int] = []
+    for part in text.split(","):
+        item = part.strip()
+        if not item:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must not contain empty items"
+            )
+        try:
+            length = int(item)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain integers"
+            ) from exc
+        if length <= 0:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain positive integers"
+            )
+        lengths.append(length)
+    if len(set(lengths)) != len(lengths):
+        raise argparse.ArgumentTypeError(
+            "--prefill-compile-lengths must not contain duplicates"
+        )
+    return tuple(lengths)
 
 
 def _selected_worker_version(args: argparse.Namespace) -> str:

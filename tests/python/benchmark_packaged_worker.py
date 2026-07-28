@@ -29,6 +29,7 @@ def main() -> int:
         parser.error(f"worker executable was not found: {worker_executable}")
     if args.engine == "qwen" and not args.model_path:
         parser.error("--model-path is required for --engine qwen")
+    request_shapes = _load_request_shapes(args.request_shapes_jsonl)
 
     harness = PackagedWorkerHarness(
         worker_executable=worker_executable,
@@ -40,32 +41,41 @@ def main() -> int:
         warmups = []
         for index in range(args.warmups):
             request_id = index + 1
+            shape = _request_shape_for_index(args, request_shapes, index + 1)
             warmups.append(
                 _run_request(
                     harness,
                     request_id=request_id,
-                    text=args.text,
-                    language=args.language,
-                    speaker=args.speaker,
-                    instruction=args.instruction,
+                    text=str(shape["text"]),
+                    language=str(shape["language"]),
+                    speaker=str(shape["speaker"]),
+                    instruction=str(shape["instruction"]),
                 )
             )
         results = []
         for index in range(args.requests):
             request_id = args.warmups + index + 1
+            shape = _request_shape_for_index(args, request_shapes, request_id)
+            result = _run_request(
+                harness,
+                request_id=request_id,
+                text=str(shape["text"]),
+                language=str(shape["language"]),
+                speaker=str(shape["speaker"]),
+                instruction=str(shape["instruction"]),
+            )
+            result["shape_label"] = shape["label"]
+            result["talker_prefill_length"] = shape.get("talker_prefill_length")
             results.append(
-                _run_request(
-                    harness,
-                    request_id=request_id,
-                    text=args.text,
-                    language=args.language,
-                    speaker=args.speaker,
-                    instruction=args.instruction,
-                )
+                result
             )
         _shutdown(harness)
+        worker_metrics = _worker_metrics(harness.stderr_text())
     finally:
         harness.close()
+
+    warmups = [_with_request_metrics(row, worker_metrics) for row in warmups]
+    results = [_with_request_metrics(row, worker_metrics) for row in results]
 
     print(
         json.dumps(
@@ -85,6 +95,12 @@ def main() -> int:
                     "warmup_unbounded_passes": args.warmup_unbounded_passes,
                     "warmup_max_output_chunks": args.warmup_max_output_chunks,
                     "engine_startup_mode": args.engine_startup_mode,
+                    "prefill_compile_lengths": args.prefill_compile_lengths,
+                    "prefill_compile_on_miss": args.prefill_compile_on_miss,
+                    "prefill_unknown_shape_policy": args.prefill_unknown_shape_policy,
+                    "request_shapes_jsonl": str(args.request_shapes_jsonl)
+                    if args.request_shapes_jsonl
+                    else None,
                 },
                 "runtime": runtime_fingerprint(
                     worker_executable=worker_executable,
@@ -132,6 +148,41 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-compile-codebook-predictor", action="store_true")
     parser.add_argument("--no-compile-talker", action="store_true")
     parser.add_argument("--matmul-precision", default="")
+    parser.add_argument("--profile-prefill", action="store_true")
+    parser.add_argument("--profile-nvtx", action="store_true")
+    parser.add_argument(
+        "--prefill-backend",
+        choices=(
+            "eager",
+            "compile_backend_eager",
+            "compile_backend_aot_eager",
+            "compile_default",
+            "compile_inductor_default",
+            "compile_reduce_overhead",
+        ),
+        default="eager",
+    )
+    parser.add_argument(
+        "--prefill-compile-compat-mode",
+        choices=("none", "strict_bf16_sdpa_v1"),
+        default="none",
+    )
+    parser.add_argument(
+        "--prefill-compile-lengths",
+        type=_parse_prefill_compile_lengths,
+        default=(),
+    )
+    parser.add_argument(
+        "--no-prefill-compile-on-miss",
+        action="store_false",
+        dest="prefill_compile_on_miss",
+        default=True,
+    )
+    parser.add_argument(
+        "--prefill-unknown-shape-policy",
+        choices=("eager", "error"),
+        default="eager",
+    )
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--seed-mode",
@@ -160,7 +211,100 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--language", default="auto")
     parser.add_argument("--speaker", default="")
     parser.add_argument("--instruction", default="")
+    parser.add_argument(
+        "--request-shapes-jsonl",
+        type=Path,
+        default=None,
+        help="Optional JSONL schedule with label/text/language/speaker/instruction.",
+    )
     return parser
+
+
+def _load_request_shapes(path: Path | None) -> list[dict[str, object]]:
+    if path is None:
+        return []
+    shapes = []
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
+    for line_number, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"invalid request shape JSONL at line {line_number}: {exc}"
+            ) from exc
+        if not isinstance(item, dict):
+            raise ValueError(
+                f"request shape JSONL line {line_number} must be an object"
+            )
+        text = item.get("text")
+        if not isinstance(text, str) or not text:
+            raise ValueError(
+                f"request shape JSONL line {line_number} must contain text"
+            )
+        label = item.get("label", f"shape_{line_number}")
+        if not isinstance(label, str) or not label:
+            raise ValueError(
+                f"request shape JSONL line {line_number} has invalid label"
+            )
+        shapes.append(
+            {
+                "label": label,
+                "text": text,
+                "language": item.get("language", "auto"),
+                "speaker": item.get("speaker", ""),
+                "instruction": item.get("instruction", ""),
+                "talker_prefill_length": item.get("talker_prefill_length"),
+            }
+        )
+    return shapes
+
+
+def _request_shape_for_index(
+    args: argparse.Namespace,
+    shapes: list[dict[str, object]],
+    request_id: int,
+) -> dict[str, object]:
+    if shapes:
+        return shapes[(request_id - 1) % len(shapes)]
+    return {
+        "label": "default",
+        "text": args.text,
+        "language": args.language,
+        "speaker": args.speaker,
+        "instruction": args.instruction,
+        "talker_prefill_length": None,
+    }
+
+
+def _parse_prefill_compile_lengths(value: str) -> tuple[int, ...]:
+    text = value.strip()
+    if not text:
+        return ()
+    lengths: list[int] = []
+    for part in text.split(","):
+        item = part.strip()
+        if not item:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must not contain empty items"
+            )
+        try:
+            length = int(item)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain integers"
+            ) from exc
+        if length <= 0:
+            raise argparse.ArgumentTypeError(
+                "--prefill-compile-lengths must contain positive integers"
+            )
+        lengths.append(length)
+    if len(set(lengths)) != len(lengths):
+        raise argparse.ArgumentTypeError(
+            "--prefill-compile-lengths must not contain duplicates"
+        )
+    return tuple(lengths)
 
 
 def _hello(harness: PackagedWorkerHarness) -> None:
@@ -235,6 +379,76 @@ def _run_request(
         "local_rtf": real_time_factor,
         "inverse_rtf": inverse_real_time_factor,
     }
+
+
+def _with_request_metrics(
+    request: dict[str, object],
+    worker_metrics: list[dict[str, object]],
+) -> dict[str, object]:
+    request_id = request.get("request_id")
+    if not isinstance(request_id, int):
+        return request
+    phases = _metrics_by_event(worker_metrics, request_id).get(
+        "request_first_chunk_engine_phases",
+        {},
+    )
+    if not isinstance(phases, dict):
+        return request
+    enriched = dict(request)
+    for key in (
+        "prefill_ms",
+        "ar_decode_ms",
+        "talker_prefill_length",
+        "prefill_shape_length",
+        "prefill_shape_call_ordinal",
+        "prefill_compiled_call_3plus_host_ms",
+    ):
+        value = phases.get(key)
+        if isinstance(value, (int, float)):
+            enriched[f"first_chunk_{key}"] = float(value)
+    for key in (
+        "prefill_backend_used",
+        "prefill_shape_policy",
+        "prefill_compile_cache_kind",
+    ):
+        value = phases.get(key)
+        if isinstance(value, str):
+            enriched[f"first_chunk_{key}"] = value
+    for key in (
+        "prefill_compile_fallback",
+        "prefill_shape_allowlist_hit",
+        "prefill_compile_on_miss",
+    ):
+        value = phases.get(key)
+        if isinstance(value, bool):
+            enriched[f"first_chunk_{key}"] = value
+    return enriched
+
+
+def _metrics_by_event(
+    worker_metrics: list[dict[str, object]],
+    request_id: int,
+) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    for metric in worker_metrics:
+        if metric.get("request_id") != request_id:
+            continue
+        event = metric.get("event")
+        if isinstance(event, str) and event not in result:
+            result[event] = metric
+    return result
+
+
+def _worker_metrics(stderr_text: str) -> list[dict[str, object]]:
+    metrics = []
+    for line in stderr_text.splitlines():
+        if not line.startswith("qtb_metric "):
+            continue
+        try:
+            metrics.append(json.loads(line.removeprefix("qtb_metric ")))
+        except json.JSONDecodeError:
+            continue
+    return metrics
 
 
 def _summary(

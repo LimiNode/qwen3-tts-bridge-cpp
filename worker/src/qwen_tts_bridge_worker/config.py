@@ -62,6 +62,9 @@ class QwenEngineConfig:
         "compile_reduce_overhead",
     ] = "eager"
     prefill_compile_compat_mode: Literal["none", "strict_bf16_sdpa_v1"] = "none"
+    prefill_compile_lengths: tuple[int, ...] = ()
+    prefill_compile_on_miss: bool = True
+    prefill_unknown_shape_policy: Literal["eager", "error"] = "eager"
     do_sample: bool = True
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"
@@ -119,6 +122,16 @@ class QwenEngineConfig:
                 "qwen.prefill_compile_compat_mode must be none or "
                 "strict_bf16_sdpa_v1"
             )
+        if self.prefill_unknown_shape_policy not in {"eager", "error"}:
+            raise ValueError(
+                "qwen.prefill_unknown_shape_policy must be eager or error"
+            )
+        if any(length <= 0 for length in self.prefill_compile_lengths):
+            raise ValueError("qwen.prefill_compile_lengths must be positive")
+        if len(set(self.prefill_compile_lengths)) != len(
+            self.prefill_compile_lengths
+        ):
+            raise ValueError("qwen.prefill_compile_lengths must be unique")
         self._validate_prefill_compile_compat_contract()
         if self.seed_mode not in {"request_id", "fixed"}:
             raise ValueError("qwen.seed_mode must be request_id or fixed")

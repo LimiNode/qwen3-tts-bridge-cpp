@@ -224,6 +224,10 @@ class _FasterStreamingModel:
                     "prefill_gpu_partition_error_ms": 0.0,
                     "prefill_gpu_accounting_error_ms": 0.0,
                     "talker_forward_gpu_stream_id": 1234,
+                    "prefill_shape_length": 21,
+                    "prefill_shape_policy": "compiled_allowlist",
+                    "prefill_shape_allowlist_hit": True,
+                    "prefill_compile_on_miss": False,
                 }
 
             def close(self) -> None:
@@ -639,6 +643,10 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(0.0, metrics["prefill_gpu_partition_error_ms"])
         self.assertEqual(0.0, metrics["prefill_gpu_accounting_error_ms"])
         self.assertEqual(1234, metrics["talker_forward_gpu_stream_id"])
+        self.assertEqual(21, metrics["prefill_shape_length"])
+        self.assertEqual("compiled_allowlist", metrics["prefill_shape_policy"])
+        self.assertTrue(metrics["prefill_shape_allowlist_hit"])
+        self.assertFalse(metrics["prefill_compile_on_miss"])
         self.assertEqual(80.0, metrics["ar_decode_ms"])
         self.assertEqual(8, metrics["chunk_steps"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])
@@ -723,6 +731,47 @@ class QwenEngineTests(unittest.TestCase):
             fake_model.custom_stream_calls[0]["prefill_compile_compat_mode"],
         )
         self.assertFalse(fake_model.custom_stream_calls[0]["do_sample"])
+
+    def test_faster_stream_keeps_prefill_shape_policy_on_loaded_model(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+            prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+                dtype="bfloat16",
+                attn_implementation="sdpa",
+                prefill_backend="compile_reduce_overhead",
+                prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                prefill_compile_lengths=(16, 21),
+                prefill_compile_on_miss=False,
+                prefill_unknown_shape_policy="eager",
+                warmup_synthesis_enabled=True,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                ),
+                threading.Event(),
+            )
+        )
+
+        self.assertNotIn("prefill_compile_lengths", fake_model.custom_stream_calls[0])
+        self.assertNotIn("prefill_compile_on_miss", fake_model.custom_stream_calls[0])
+        self.assertNotIn(
+            "prefill_unknown_shape_policy",
+            fake_model.custom_stream_calls[0],
+        )
 
     def test_strict_prefill_compat_rejects_unvalidated_voice_design_model(self) -> None:
         fake_model = _FasterStreamingModel(
