@@ -892,17 +892,31 @@ def _snapshot_value(value: Any) -> Any:
 
 
 def _prefill_snapshot_max_abs(left: Any, right: Any) -> float:
+    if type(left) is not type(right):
+        raise QwenEngineError(
+            "prefill warmup output type mismatch: "
+            f"{type(left).__name__} != {type(right).__name__}"
+        )
     if hasattr(left, "shape") and hasattr(right, "shape"):
         if tuple(left.shape) != tuple(right.shape):
             raise QwenEngineError(
                 "prefill warmup output shape mismatch: "
                 f"{tuple(left.shape)} != {tuple(right.shape)}"
             )
+        if getattr(left, "dtype", None) != getattr(right, "dtype", None):
+            raise QwenEngineError(
+                "prefill warmup output dtype mismatch: "
+                f"{getattr(left, 'dtype', None)} != {getattr(right, 'dtype', None)}"
+            )
         return float((left - right).abs().max().item()) if left.numel() else 0.0
     if isinstance(left, dict) and isinstance(right, dict):
-        keys = set(left) & set(right)
+        if set(left) != set(right):
+            raise QwenEngineError(
+                "prefill warmup output dictionary keys mismatch: "
+                f"{sorted(map(str, left))} != {sorted(map(str, right))}"
+            )
         return max(
-            (_prefill_snapshot_max_abs(left[key], right[key]) for key in keys),
+            (_prefill_snapshot_max_abs(left[key], right[key]) for key in left),
             default=0.0,
         )
     if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):

@@ -12,6 +12,7 @@ from qwen_tts_bridge_worker.engine import (
     SynthesisRequest,
     UnsupportedAudioFormatError,
 )
+from qwen_tts_bridge_worker.engine.qwen_engine import _prefill_snapshot_max_abs
 
 
 class _InnerModel:
@@ -253,6 +254,33 @@ class _NestedWrapper:
 
 
 class QwenEngineTests(unittest.TestCase):
+    def test_prefill_snapshot_rejects_structural_mismatch(self) -> None:
+        cases = (
+            ({"hidden": 1}, {"cache": 1}, "dictionary keys mismatch"),
+            ([1], (1,), "type mismatch"),
+            ([1], [1, 2], "sequence length mismatch"),
+        )
+
+        for left, right, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(QwenEngineError, message):
+                    _prefill_snapshot_max_abs(left, right)
+
+    def test_prefill_snapshot_rejects_tensor_dtype_mismatch(self) -> None:
+        class _EmptyTensor:
+            def __init__(self, dtype: str) -> None:
+                self.shape = (1, 4)
+                self.dtype = dtype
+
+            def numel(self) -> int:
+                return 0
+
+        with self.assertRaisesRegex(QwenEngineError, "dtype mismatch"):
+            _prefill_snapshot_max_abs(
+                _EmptyTensor("bfloat16"),
+                _EmptyTensor("float32"),
+            )
+
     def test_capabilities_are_conservative_before_load(self) -> None:
         engine = QwenTtsEngine(QwenEngineConfig(model_path="models/qwen-custom"))
 
