@@ -84,6 +84,18 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 prefill_compile_lengths=args.prefill_compile_lengths,
                 prefill_compile_on_miss=args.prefill_compile_on_miss,
                 prefill_unknown_shape_policy=args.prefill_unknown_shape_policy,
+                prefill_compile_policy=args.prefill_compile_policy,
+                prefill_allowlist_warmup_manifest=(
+                    args.prefill_allowlist_warmup_manifest
+                ),
+                prefill_allowlist_warmup_repeats=(
+                    args.prefill_allowlist_warmup_repeats
+                ),
+                prefill_allowlist_max_entries=args.prefill_allowlist_max_entries,
+                prefill_allowlist_max_abs_threshold=(
+                    args.prefill_allowlist_max_abs_threshold
+                ),
+                prefill_require_precompiled=args.prefill_require_precompiled,
                 do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
@@ -322,6 +334,40 @@ def _add_qwen_subcommand(
         choices=("eager", "error"),
         default="eager",
         help="Choose eager fallback or fail-fast for unknown compiled prefill shapes.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-compile-policy",
+        choices=("diagnostic_dynamic", "exact_allowlist"),
+        default="diagnostic_dynamic",
+        help="Select diagnostic dynamic compile or product exact allowlist mode.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-allowlist-warmup-manifest",
+        default="",
+        help="JSON or JSONL prompt manifest used to prewarm exact allowlist shapes.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-allowlist-warmup-repeats",
+        type=int,
+        default=3,
+        help="Compiled prefill repeats per allowlisted shape before ready.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-allowlist-max-entries",
+        type=int,
+        default=6,
+        help="Maximum exact prefill shapes allowed in product mode.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-allowlist-max-abs-threshold",
+        type=float,
+        default=1.0e-2,
+        help="Maximum eager-vs-compiled prefill drift accepted during startup.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-require-precompiled",
+        action="store_true",
+        help="Reject compiled allowlist cache misses after startup prewarm.",
     )
     qwen_parser.add_argument(
         "--no-sample",

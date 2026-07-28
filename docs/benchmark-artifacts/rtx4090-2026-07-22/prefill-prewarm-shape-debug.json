@@ -1,0 +1,358 @@
+{
+  "warmup": {
+    "prefill_allowlist_warmup": true,
+    "prefill_allowlist_ready": true,
+    "prefill_allowlist_lengths": [
+      32,
+      29,
+      35,
+      34,
+      33,
+      30
+    ],
+    "prefill_allowlist_warmup_repeats": 3,
+    "prefill_allowlist_warmup_duration_ms": 50123.758,
+    "prefill_allowlist_warmup_passes": [
+      {
+        "talker_prefill_length": 32,
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_shape_call_ordinal": 3,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            32,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ]
+      },
+      {
+        "talker_prefill_length": 29,
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_shape_call_ordinal": 3,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            29,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ]
+      },
+      {
+        "talker_prefill_length": 35,
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_shape_call_ordinal": 3,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            35,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ]
+      },
+      {
+        "talker_prefill_length": 34,
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_shape_call_ordinal": 3,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            34,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ]
+      },
+      {
+        "talker_prefill_length": 33,
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_shape_call_ordinal": 3,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            33,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ]
+      },
+      {
+        "talker_prefill_length": 30,
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_shape_call_ordinal": 3,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            30,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          true
+        ]
+      }
+    ]
+  },
+  "chunks": [
+    {
+      "index": 1,
+      "pcm_bytes": 29610,
+      "metrics": {
+        "next_wall_ms": 14968.741,
+        "pcm_convert_ms": 0.322,
+        "prefill_ms": 14335.33640007954,
+        "ar_decode_ms": 311.65623664855957,
+        "chunk_steps": 8,
+        "ar_ms_per_step": 38.957029581069946,
+        "text_token_count": 30,
+        "instruction_token_count": 0,
+        "talker_prefill_length": 32,
+        "profile_schema_version": 3,
+        "prefill_compile_cache_entries": 7,
+        "prefill_compile_cache_talker_entries": 7,
+        "prefill_compile_cache_max_entries": 64,
+        "prefill_compile_cache_evictions": 0,
+        "prefill_shape_call_ordinal": 1,
+        "prefill_shape_length": 32,
+        "prefill_cuda_memory_before_allocated_bytes": 2465907200,
+        "prefill_cuda_memory_before_reserved_bytes": 2583691264,
+        "prefill_cuda_memory_before_max_reserved_bytes": 2583691264,
+        "prefill_cuda_memory_after_allocated_bytes": 2462040576,
+        "prefill_cuda_memory_after_reserved_bytes": 2583691264,
+        "prefill_cuda_memory_after_max_reserved_bytes": 2583691264,
+        "profile_path": "fast",
+        "profile_status": "disabled",
+        "prefill_backend_requested": "compile_reduce_overhead",
+        "prefill_backend_used": "compile_reduce_overhead",
+        "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+        "prefill_compile_cache_kind": "python_callable_lru",
+        "prefill_shape_policy": "compiled_allowlist",
+        "profile_prefill_enabled": false,
+        "prefill_compile_fallback": false,
+        "prefill_compile_compat_applied": true,
+        "prefill_compile_compat_reused": true,
+        "prefill_compile_cache_hit": false,
+        "prefill_shape_allowlist_hit": true,
+        "prefill_compile_on_miss": false,
+        "prefill_require_precompiled": false,
+        "prefill_compile_compat_patched_modules": {
+          "rmsnorm": 134,
+          "mlp": 33,
+          "attention": 33
+        },
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            32,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "tokenize_wall_ms": 3.5623000003397465,
+        "build_talker_inputs_wall_ms": 10.345500078983605,
+        "talker_forward_launch_wall_ms": 6467.341499985196,
+        "first_sample_launch_wall_ms": 1.540199969895184,
+        "prefill_kv_launch_wall_ms": 5.080499919131398,
+        "generation_state_wall_ms": 7861.070499988273,
+        "prefill_sync_wait_ms": 0.04279997665435076,
+        "prefill_compile_wrapper_create_ms": 7.726,
+        "prefill_compile_wrapper_create_host_ms": 7.726,
+        "prefill_compiled_call_ms": 6453.184,
+        "prefill_compiled_call_host_ms": 6453.184,
+        "prefill_compiled_first_call_ms": 6453.184,
+        "prefill_compiled_warm_call_ms": 0.0,
+        "prefill_compiled_call_1_host_ms": 6453.184,
+        "prefill_compiled_call_2_host_ms": 0.0,
+        "prefill_compiled_call_3plus_host_ms": 0.0,
+        "codec_wrapper_residual_ms": 321.7483632718995
+      }
+    }
+  ]
+}

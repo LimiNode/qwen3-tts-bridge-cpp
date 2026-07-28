@@ -1,0 +1,154 @@
+From 5aadd31a80ac8ab69d0e0809bbbe6378d08bba70 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 00:26:09 +0300
+Subject: [PATCH 3/3] fix(prefill): require prewarmed compiled shapes
+
+---
+ faster_qwen3_tts/model.py     |  6 ++++++
+ faster_qwen3_tts/streaming.py | 33 +++++++++++++++++++++++++++++++++
+ 2 files changed, 39 insertions(+)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 1701ea0..cbe14e1 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -47,6 +47,7 @@ class FasterQwen3TTS:
+         prefill_compile_lengths: Optional[Iterable[int]] = None,
+         prefill_compile_on_miss: bool = True,
+         prefill_unknown_shape_policy: str = "eager",
++        prefill_require_precompiled: bool = False,
+     ):
+         self.model = base_model  # The qwen-tts Qwen3TTSModel instance
+         self.predictor_graph = predictor_graph
+@@ -74,6 +75,7 @@ class FasterQwen3TTS:
+         self.prefill_unknown_shape_policy = str(prefill_unknown_shape_policy or "eager")
+         if self.prefill_unknown_shape_policy not in {"eager", "error"}:
+             raise ValueError("prefill_unknown_shape_policy must be eager or error")
++        self.prefill_require_precompiled = bool(prefill_require_precompiled)
+         self.sample_rate = self._infer_sample_rate(base_model)
+         self._warmed_up = False
+         self._voice_prompt_cache = {}  # Cache (ref_audio, ref_text) -> (vcp, ref_ids)
+@@ -223,6 +225,7 @@ class FasterQwen3TTS:
+         prefill_compile_lengths: Optional[Iterable[int]] = None,
+         prefill_compile_on_miss: bool = True,
+         prefill_unknown_shape_policy: str = "eager",
++        prefill_require_precompiled: bool = False,
+     ):
+         """
+         Load Qwen3-TTS model and prepare CUDA graphs.
+@@ -374,6 +377,7 @@ class FasterQwen3TTS:
+             prefill_compile_lengths=prefill_compile_lengths,
+             prefill_compile_on_miss=prefill_compile_on_miss,
+             prefill_unknown_shape_policy=prefill_unknown_shape_policy,
++            prefill_require_precompiled=prefill_require_precompiled,
+         )
+ 
+     def warmup(self, prefill_len: int = 100) -> None:
+@@ -1578,6 +1582,7 @@ class FasterQwen3TTS:
+             prefill_compile_lengths=self.prefill_compile_lengths,
+             prefill_compile_on_miss=self.prefill_compile_on_miss,
+             prefill_unknown_shape_policy=self.prefill_unknown_shape_policy,
++            prefill_require_precompiled=self.prefill_require_precompiled,
+         ):
+             all_codes.append(codec_chunk)
+             n_new = codec_chunk.shape[0]
+@@ -1785,6 +1790,7 @@ class FasterQwen3TTS:
+             prefill_compile_lengths=self.prefill_compile_lengths,
+             prefill_compile_on_miss=self.prefill_compile_on_miss,
+             prefill_unknown_shape_policy=self.prefill_unknown_shape_policy,
++            prefill_require_precompiled=self.prefill_require_precompiled,
+         ):
+             all_codes.append(codec_chunk)
+             n_new = codec_chunk.shape[0]
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 8a23d10..c72fe6c 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -107,6 +107,7 @@ def _run_talker_prefill(
+     prefill_compile_lengths: Optional[Iterable[int]] = None,
+     prefill_compile_on_miss: bool = True,
+     prefill_unknown_shape_policy: str = "eager",
++    prefill_require_precompiled: bool = False,
+     input_metadata: Optional[dict] = None,
+ ):
+     prefill_backend = _normalize_prefill_backend(prefill_backend)
+@@ -151,9 +152,22 @@ def _run_talker_prefill(
+         "prefill_compile_cache_evictions": cache_stats["evictions"],
+         "prefill_compile_cache_kind": "python_callable_lru",
+         "prefill_shape_length": shape_length,
++        "prefill_shape_talker_input_embeds": _jsonable_tensor_signature(
++            _tensor_signature(talker_input_embeds)
++        ),
++        "prefill_shape_attention_mask": _jsonable_tensor_signature(
++            _tensor_signature(prefill_attention_mask)
++        ),
++        "prefill_shape_trailing_text_hiddens": _jsonable_tensor_signature(
++            _tensor_signature(trailing_text_hiddens)
++        ),
++        "prefill_shape_tts_pad_embed": _jsonable_tensor_signature(
++            _tensor_signature(tts_pad_embed)
++        ),
+         "prefill_shape_policy": "eager",
+         "prefill_shape_allowlist_hit": allowlist_hit,
+         "prefill_compile_on_miss": bool(prefill_compile_on_miss),
++        "prefill_require_precompiled": bool(prefill_require_precompiled),
+         "prefill_compile_wrapper_create_ms": 0.0,
+         "prefill_compile_wrapper_create_host_ms": 0.0,
+         "prefill_compiled_call_ms": 0.0,
+@@ -259,6 +273,12 @@ def _run_talker_prefill(
+             compiled = _prefill_compile_cache_get(cache_key)
+             profile["prefill_compile_cache_hit"] = compiled is not None
+             if compiled is None:
++                if prefill_require_precompiled:
++                    raise UnsupportedPrefillConfiguration(
++                        "Compiled prefill cache miss is not allowed when "
++                        "prefill_require_precompiled is true: "
++                        f"talker_prefill_length={shape_length}"
++                    )
+                 compile_started = time.perf_counter()
+                 compiled = _compile_talker_prefill(talker, prefill_backend)
+                 profile["prefill_compile_wrapper_create_ms"] = round(
+@@ -299,6 +319,8 @@ def _run_talker_prefill(
+         message = f"{type(exc).__name__}: {exc}"
+         _prefill_compile_cache_drop(cache_key)
+         _prefill_compile_error_store(cache_key, message)
++        if prefill_require_precompiled:
++            raise
+         profile["prefill_compile_fallback"] = True
+         profile["prefill_compile_error"] = message
+         return (
+@@ -606,6 +628,15 @@ def _tensor_signature(tensor: Optional[torch.Tensor]) -> tuple:
+     )
+ 
+ 
++def _jsonable_tensor_signature(signature: tuple) -> tuple:
++    if not signature or signature[0] == "none":
++        return signature
++    return (
++        list(signature[0]),
++        *signature[1:],
++    )
++
++
+ @torch.inference_mode()
+ def fast_generate_streaming(
+     talker,
+@@ -633,6 +664,7 @@ def fast_generate_streaming(
+     prefill_compile_lengths: Optional[Iterable[int]] = None,
+     prefill_compile_on_miss: bool = True,
+     prefill_unknown_shape_policy: str = "eager",
++    prefill_require_precompiled: bool = False,
+ ) -> Generator[Tuple[torch.Tensor, dict], None, None]:
+     """
+     Streaming autoregressive generation with CUDA-graphed predictor and talker.
+@@ -693,6 +725,7 @@ def fast_generate_streaming(
+             prefill_compile_lengths=compile_lengths,
+             prefill_compile_on_miss=prefill_compile_on_miss,
+             prefill_unknown_shape_policy=unknown_shape_policy,
++            prefill_require_precompiled=prefill_require_precompiled,
+             input_metadata=input_metadata,
+         )
+     prefill_profile["talker_forward_launch_wall_ms"] = (
+-- 
+2.53.0.windows.1
+

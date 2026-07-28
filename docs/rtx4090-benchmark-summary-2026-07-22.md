@@ -2303,6 +2303,70 @@ prefill-mixed-workload-wheel.json 0ba4679f781294ddf0216ed19d265198314b4cf1c2f6e0
 faster-qwen-prefill-exact-allowlist-through-7e68b57.bundle 8ffc1f73dbcfd3672bf30a3e2679b82629ee0ef2477d351b38d7b1e4e6825422
 ```
 
+### Startup Prewarmed Exact Allowlist
+
+The product startup path now has a fail-closed exact allowlist mode in the
+bridge worker. It requires FasterQwen, `strict_bf16_sdpa_v1`, a non-empty
+allowlist of at most six exact lengths, `prefill_compile_on_miss=false`,
+`prefill_unknown_shape_policy=eager`, a warmup manifest, and
+`prefill_require_precompiled=true`.
+
+Startup prewarm runs before the worker reports ready. For each allowlisted
+length, it prepares a manifest prompt under `torch.inference_mode()`, compares
+compiled prefill against eager, and runs the compiled form to ordinal `3`.
+After that, the bridge flips the loaded FasterQwen model into
+`prefill_require_precompiled=true`, so an allowlisted cache miss on the user path
+fails instead of compiling silently.
+
+The first fail-closed smoke exposed a useful bug: prewarm inputs were originally
+created outside inference mode, while real streaming runs under
+`@torch.inference_mode()`. Because FasterQwen's cache key includes
+`requires_grad`, the user request was a cache miss even for
+`talker_prefill_length=32`. The bridge prewarm now prepares inputs in inference
+mode, preserving the stricter grad-aware cache key.
+
+Wheel-only prewarmed strict worker smoke result: pass.
+
+| Metric | Result |
+| --- | ---: |
+| FasterQwen local commit | `5aadd31` |
+| FasterQwen wheel SHA256 | `53df465d0c25304600434f84f440802fd31afdd4e5ef34d6ddc20c72d04741c9` |
+| prewarmed lengths | `32, 29, 35, 34, 33, 30` |
+| startup prewarm duration | `47821.824 ms` |
+| startup prewarm ordinals | `3, 3, 3, 3, 3, 3` |
+| first user request cache hit | `true` |
+| first user request ordinal | `4` |
+| first user request require precompiled | `true` |
+| first user request compiled prefill call | `13.653 ms` |
+| first user request prefill total | `8135.318 ms` |
+| first user request generation state wall time | `8100.611 ms` |
+| first user audio wall time | `8644.604 ms` |
+
+Interpretation: the startup cold-compile leak is closed for the tested shape.
+The remaining first-request latency is not a prefill compile miss; it is now
+dominated by `generation_state_wall_ms`, which should be the next performance
+investigation target.
+
+New artifacts:
+
+```text
+strict-worker-load-smoke-exact-allowlist-prewarmed-wheel.json
+prefill-prewarm-shape-debug.json
+faster-qwen-prewarmed-allowlist-patch/0001-feat-prefill-add-exact-length-compile-policy.patch
+faster-qwen-prewarmed-allowlist-patch/0002-fix-prefill-allow-strict-causal-mask-replay.patch
+faster-qwen-prewarmed-allowlist-patch/0003-fix-prefill-require-prewarmed-compiled-shapes.patch
+faster-qwen-prewarmed-allowlist-patch/faster-qwen-prewarmed-allowlist.bundle
+```
+
+New artifact SHA256:
+
+```text
+strict-worker-load-smoke-exact-allowlist-prewarmed-wheel.json 45e2c432aeecf1889fe718b4d5b54e6bf155abc0de8aed873810d78d51fb19fd
+prefill-prewarm-shape-debug.json 4048d77777a7ac4515592ca63a998ac8433f1147f2652181c166d3e9202be25b
+0003-fix-prefill-require-prewarmed-compiled-shapes.patch 2556ac4ff8e5ba543217f48433b2d216cdded8f0acdd23000c3d6f4ff1f55abd
+faster-qwen-prewarmed-allowlist.bundle 1f4d18a9689121f05f04f9e090fba980be521b744dc162fc743d119a285c7e01
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

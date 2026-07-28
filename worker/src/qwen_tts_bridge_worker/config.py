@@ -65,6 +65,14 @@ class QwenEngineConfig:
     prefill_compile_lengths: tuple[int, ...] = ()
     prefill_compile_on_miss: bool = True
     prefill_unknown_shape_policy: Literal["eager", "error"] = "eager"
+    prefill_compile_policy: Literal["diagnostic_dynamic", "exact_allowlist"] = (
+        "diagnostic_dynamic"
+    )
+    prefill_allowlist_warmup_manifest: str = ""
+    prefill_allowlist_warmup_repeats: int = 3
+    prefill_allowlist_max_entries: int = 6
+    prefill_allowlist_max_abs_threshold: float = 1.0e-2
+    prefill_require_precompiled: bool = False
     do_sample: bool = True
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"
@@ -126,12 +134,35 @@ class QwenEngineConfig:
             raise ValueError(
                 "qwen.prefill_unknown_shape_policy must be eager or error"
             )
+        if self.prefill_compile_policy not in {
+            "diagnostic_dynamic",
+            "exact_allowlist",
+        }:
+            raise ValueError(
+                "qwen.prefill_compile_policy must be diagnostic_dynamic or "
+                "exact_allowlist"
+            )
         if any(length <= 0 for length in self.prefill_compile_lengths):
             raise ValueError("qwen.prefill_compile_lengths must be positive")
         if len(set(self.prefill_compile_lengths)) != len(
             self.prefill_compile_lengths
         ):
             raise ValueError("qwen.prefill_compile_lengths must be unique")
+        if self.prefill_allowlist_warmup_repeats < 3:
+            raise ValueError(
+                "qwen.prefill_allowlist_warmup_repeats must be at least 3"
+            )
+        if self.prefill_allowlist_max_entries <= 0:
+            raise ValueError("qwen.prefill_allowlist_max_entries must be positive")
+        if (
+            not math.isfinite(self.prefill_allowlist_max_abs_threshold)
+            or self.prefill_allowlist_max_abs_threshold <= 0.0
+        ):
+            raise ValueError(
+                "qwen.prefill_allowlist_max_abs_threshold must be finite and "
+                "positive"
+            )
+        self._validate_exact_allowlist_contract()
         self._validate_prefill_compile_compat_contract()
         if self.seed_mode not in {"request_id", "fixed"}:
             raise ValueError("qwen.seed_mode must be request_id or fixed")
@@ -175,10 +206,66 @@ class QwenEngineConfig:
                 "requires prefill_backend=compile_inductor_default or "
                 "compile_reduce_overhead"
             )
-        if not self.warmup_synthesis_enabled:
+        if (
+            not self.warmup_synthesis_enabled
+            and self.prefill_compile_policy != "exact_allowlist"
+        ):
             raise ValueError(
                 "qwen.prefill_compile_compat_mode=strict_bf16_sdpa_v1 "
-                "requires warmup_synthesis_enabled=true"
+                "requires warmup_synthesis_enabled=true or "
+                "prefill_compile_policy=exact_allowlist"
+            )
+
+    def _validate_exact_allowlist_contract(self) -> None:
+        if self.prefill_compile_policy != "exact_allowlist":
+            return
+        if self.runtime_backend != "faster":
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist requires "
+                "runtime_backend=faster"
+            )
+        if self.prefill_compile_compat_mode != "strict_bf16_sdpa_v1":
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist requires "
+                "prefill_compile_compat_mode=strict_bf16_sdpa_v1"
+            )
+        if self.prefill_backend not in {
+            "compile_inductor_default",
+            "compile_reduce_overhead",
+        }:
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist requires "
+                "prefill_backend=compile_inductor_default or compile_reduce_overhead"
+            )
+        if not self.prefill_compile_lengths:
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist requires "
+                "prefill_compile_lengths"
+            )
+        if len(self.prefill_compile_lengths) > self.prefill_allowlist_max_entries:
+            raise ValueError(
+                "qwen.prefill_compile_lengths exceeds "
+                "qwen.prefill_allowlist_max_entries"
+            )
+        if self.prefill_compile_on_miss:
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist requires "
+                "prefill_compile_on_miss=false"
+            )
+        if self.prefill_unknown_shape_policy != "eager":
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist requires "
+                "prefill_unknown_shape_policy=eager"
+            )
+        if not self.prefill_allowlist_warmup_manifest:
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist requires "
+                "prefill_allowlist_warmup_manifest"
+            )
+        if not self.prefill_require_precompiled:
+            raise ValueError(
+                "qwen.prefill_compile_policy=exact_allowlist requires "
+                "prefill_require_precompiled=true"
             )
 
 

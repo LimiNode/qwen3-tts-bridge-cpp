@@ -182,6 +182,7 @@ class QwenModelLoaderTests(unittest.TestCase):
                 "prefill_compile_lengths": (),
                 "prefill_compile_on_miss": True,
                 "prefill_unknown_shape_policy": "eager",
+                "prefill_require_precompiled": False,
             },
             fake_faster.calls[0][1],
         )
@@ -230,6 +231,40 @@ class QwenModelLoaderTests(unittest.TestCase):
             "eager",
             fake_faster.calls[0][1]["prefill_unknown_shape_policy"],
         )
+        self.assertFalse(fake_faster.calls[0][1]["prefill_require_precompiled"])
+
+    def test_exact_allowlist_load_defers_require_precompiled_until_warmup(
+        self,
+    ) -> None:
+        fake_faster = _FakeFasterQwen()
+
+        def import_module(name: str) -> object:
+            if name == "faster_qwen3_tts":
+                return _FakeFasterModule(fake_faster)
+            raise AssertionError(f"unexpected import: {name}")
+
+        with patch(
+            "qwen_tts_bridge_worker.engine.qwen.model_loader.importlib.import_module",
+            side_effect=import_module,
+        ):
+            load_qwen_model(
+                QwenEngineConfig(
+                    model_path="models/qwen",
+                    runtime_backend="faster",
+                    dtype="bfloat16",
+                    attn_implementation="sdpa",
+                    prefill_backend="compile_reduce_overhead",
+                    prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                    prefill_compile_lengths=(16,),
+                    prefill_compile_on_miss=False,
+                    prefill_unknown_shape_policy="eager",
+                    prefill_compile_policy="exact_allowlist",
+                    prefill_allowlist_warmup_manifest="manifest.json",
+                    prefill_require_precompiled=True,
+                )
+            )
+
+        self.assertFalse(fake_faster.calls[0][1]["prefill_require_precompiled"])
 
 
 def _fake_import_module(auto_model: _FakeAutoModel):

@@ -41,6 +41,20 @@ def main() -> int:
         choices=("eager", "error"),
         default="eager",
     )
+    parser.add_argument(
+        "--prefill-compile-policy",
+        choices=("diagnostic_dynamic", "exact_allowlist"),
+        default="diagnostic_dynamic",
+    )
+    parser.add_argument("--prefill-allowlist-warmup-manifest", default="")
+    parser.add_argument("--prefill-allowlist-warmup-repeats", type=int, default=3)
+    parser.add_argument("--prefill-allowlist-max-entries", type=int, default=6)
+    parser.add_argument(
+        "--prefill-allowlist-max-abs-threshold",
+        type=float,
+        default=1.0e-2,
+    )
+    parser.add_argument("--prefill-require-precompiled", action="store_true")
     parser.add_argument("--text", default="I am your robot, I am your worker.")
     parser.add_argument("--language", default="English")
     parser.add_argument("--speaker", default="ryan")
@@ -66,6 +80,14 @@ def main() -> int:
         prefill_compile_lengths=args.prefill_compile_lengths,
         prefill_compile_on_miss=args.prefill_compile_on_miss,
         prefill_unknown_shape_policy=args.prefill_unknown_shape_policy,
+        prefill_compile_policy=args.prefill_compile_policy,
+        prefill_allowlist_warmup_manifest=args.prefill_allowlist_warmup_manifest,
+        prefill_allowlist_warmup_repeats=args.prefill_allowlist_warmup_repeats,
+        prefill_allowlist_max_entries=args.prefill_allowlist_max_entries,
+        prefill_allowlist_max_abs_threshold=(
+            args.prefill_allowlist_max_abs_threshold
+        ),
+        prefill_require_precompiled=args.prefill_require_precompiled,
         warmup_synthesis_enabled=args.warmup_synthesis,
         warmup_max_output_chunks=args.warmup_max_output_chunks,
         warmup_text=args.text,
@@ -134,6 +156,14 @@ def main() -> int:
             "prefill_compile_lengths": args.prefill_compile_lengths,
             "prefill_compile_on_miss": args.prefill_compile_on_miss,
             "prefill_unknown_shape_policy": args.prefill_unknown_shape_policy,
+            "prefill_compile_policy": args.prefill_compile_policy,
+            "prefill_allowlist_warmup_manifest": (
+                args.prefill_allowlist_warmup_manifest
+            ),
+            "prefill_allowlist_warmup_repeats": (
+                args.prefill_allowlist_warmup_repeats
+            ),
+            "prefill_require_precompiled": args.prefill_require_precompiled,
             "warmup_synthesis": args.warmup_synthesis,
             "warmup_max_output_chunks": args.warmup_max_output_chunks,
         },
@@ -313,6 +343,8 @@ def _validate_result(result: dict[str, Any], args: argparse.Namespace) -> None:
                 "strict worker smoke used unexpected shape policy: "
                 f"{first_metrics.get('prefill_shape_policy')!r}"
             )
+    if args.prefill_compile_policy == "exact_allowlist":
+        _validate_exact_allowlist_result(result, args, first_metrics)
     cache_after_request = result.get("cache_stats_after_request")
     if not isinstance(cache_after_request, dict):
         raise RuntimeError("strict worker smoke did not report request cache stats")
@@ -336,6 +368,53 @@ def _validate_result(result: dict[str, Any], args: argparse.Namespace) -> None:
         raise RuntimeError(
             "strict worker smoke left Python callable cache entries after close: "
             f"{cache_after_close!r}"
+        )
+
+
+def _validate_exact_allowlist_result(
+    result: dict[str, Any],
+    args: argparse.Namespace,
+    first_metrics: dict[str, Any],
+) -> None:
+    warmup = result.get("warmup")
+    if not isinstance(warmup, dict):
+        raise RuntimeError("exact allowlist smoke did not report warmup fields")
+    if warmup.get("prefill_allowlist_ready") is not True:
+        raise RuntimeError(
+            "exact allowlist smoke did not prewarm allowlisted shapes before ready"
+        )
+    if list(warmup.get("prefill_allowlist_lengths") or []) != list(
+        args.prefill_compile_lengths
+    ):
+        raise RuntimeError(
+            "exact allowlist smoke reported unexpected warmup lengths: "
+            f"{warmup.get('prefill_allowlist_lengths')!r}"
+        )
+    rows = warmup.get("prefill_allowlist_warmup_passes")
+    if not isinstance(rows, list) or len(rows) != len(args.prefill_compile_lengths):
+        raise RuntimeError(
+            "exact allowlist smoke did not report one warmup row per length"
+        )
+    min_ordinal = min(
+        int(row.get("prefill_shape_call_ordinal", 0))
+        for row in rows
+        if isinstance(row, dict)
+    )
+    if min_ordinal < args.prefill_allowlist_warmup_repeats:
+        raise RuntimeError(
+            "exact allowlist warmup did not reach the configured repeat count: "
+            f"min_ordinal={min_ordinal}"
+        )
+    if first_metrics.get("prefill_require_precompiled") is not True:
+        raise RuntimeError(
+            "exact allowlist first request did not run with require_precompiled=true"
+        )
+    if int(first_metrics.get("prefill_shape_call_ordinal", 0)) < (
+        args.prefill_allowlist_warmup_repeats + 1
+    ):
+        raise RuntimeError(
+            "exact allowlist first request did not use a prewarmed compiled entry: "
+            f"{first_metrics!r}"
         )
 
 

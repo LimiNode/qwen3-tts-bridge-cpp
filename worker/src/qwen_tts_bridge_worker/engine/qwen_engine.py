@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import gc
 import importlib
+import json
 import random
 import threading
 from collections.abc import Callable, Iterable, Iterator
+from pathlib import Path
 from typing import Any, cast
 
 from qwen_tts_bridge_worker.config import QwenEngineConfig
@@ -47,6 +49,7 @@ class QwenTtsEngine:
         self._synthesis_lock = threading.Lock()
         self._last_chunk_metrics: dict[str, object] | None = None
         self._profile_pair_range_open = False
+        self._prewarmed_prefill_lengths: set[int] = set()
 
     @property
     def capabilities(self) -> EngineCapabilities:
@@ -77,9 +80,15 @@ class QwenTtsEngine:
 
         if self._model is None:
             self.load()
+        warmup_fields: dict[str, object] = {}
+        if self._config.prefill_compile_policy == "exact_allowlist":
+            warmup_fields.update(
+                self._run_prefill_allowlist_warmup(self._require_model())
+            )
+            _set_prefill_require_precompiled(self._require_model(), True)
         if self._config.warmup_synthesis_enabled:
-            return self._run_warmup_synthesis()
-        return None
+            warmup_fields.update(self._run_warmup_synthesis())
+        return warmup_fields or None
 
     def validate_request(
         self,
@@ -293,6 +302,135 @@ class QwenTtsEngine:
             "inverse_rtf": round(inverse_real_time_factor, 6),
             "bounded": max_output_chunks is not None,
             "max_output_chunks": max_output_chunks,
+        }
+
+    def _run_prefill_allowlist_warmup(self, model: Any) -> dict[str, object]:
+        _set_prefill_require_precompiled(model, False)
+        entries = _load_prefill_allowlist_warmup_manifest(
+            Path(self._config.prefill_allowlist_warmup_manifest),
+            self._config.prefill_compile_lengths,
+        )
+        torch = importlib.import_module("torch")
+        streaming = importlib.import_module("faster_qwen3_tts.streaming")
+        prefill_call = streaming._run_talker_prefill
+        select_mask_mode = streaming.select_prefill_mask_mode
+
+        rows: list[dict[str, object]] = []
+        started_at = monotonic_seconds()
+        for expected_length in self._config.prefill_compile_lengths:
+            entry = entries[expected_length]
+            with torch.inference_mode():
+                prepared = model._prepare_generation_custom(
+                    text=str(entry["text"]),
+                    language=str(entry["language"]),
+                    speaker=str(entry.get("speaker") or self._config.warmup_speaker),
+                    instruct=_prefill_warmup_instruction(model, entry),
+                    non_streaming_mode=True,
+                    return_metadata=True,
+                )
+            _m, talker, _config, tie, tam, tth, tpe, metadata = prepared
+            actual_length = int(metadata.get("talker_prefill_length", tie.shape[1]))
+            if actual_length != expected_length:
+                raise QwenEngineError(
+                    "prefill warmup manifest length mismatch: "
+                    f"expected={expected_length}, actual={actual_length}"
+                )
+            mask_mode = select_mask_mode(metadata)
+            eager_out, _eager_profile = _call_prefill_for_warmup(
+                prefill_call,
+                talker,
+                tie,
+                tam,
+                tth,
+                tpe,
+                metadata,
+                backend="eager",
+                mask_mode=mask_mode,
+                config=self._config,
+            )
+            eager_snapshot = _snapshot_prefill_output(eager_out)
+            compiled_profiles: list[dict[str, object]] = []
+            compiled_snapshot: dict[str, Any] | None = None
+            for _repeat in range(self._config.prefill_allowlist_warmup_repeats):
+                out, profile = _call_prefill_for_warmup(
+                    prefill_call,
+                    talker,
+                    tie,
+                    tam,
+                    tth,
+                    tpe,
+                    metadata,
+                    backend=self._config.prefill_backend,
+                    mask_mode=mask_mode,
+                    config=self._config,
+                )
+                compiled_profiles.append(profile)
+                compiled_snapshot = _snapshot_prefill_output(out)
+            if compiled_snapshot is None:
+                raise QwenEngineError("prefill warmup compiled pass did not run")
+            max_abs = _prefill_snapshot_max_abs(eager_snapshot, compiled_snapshot)
+            last_profile = compiled_profiles[-1]
+            if max_abs > self._config.prefill_allowlist_max_abs_threshold:
+                raise QwenEngineError(
+                    "compiled prefill warmup drift exceeds threshold: "
+                    f"length={expected_length}, max_abs={max_abs:.6g}, "
+                    f"threshold={self._config.prefill_allowlist_max_abs_threshold}"
+                )
+            if last_profile.get("prefill_backend_used") != self._config.prefill_backend:
+                raise QwenEngineError(
+                    "compiled prefill warmup did not use requested backend: "
+                    f"length={expected_length}, profile={last_profile}"
+                )
+            if last_profile.get("prefill_compile_fallback") is not False:
+                raise QwenEngineError(
+                    "compiled prefill warmup fell back to eager: "
+                    f"length={expected_length}, profile={last_profile}"
+                )
+            if last_profile.get("prefill_shape_policy") != "compiled_allowlist":
+                raise QwenEngineError(
+                    "compiled prefill warmup did not use allowlist policy: "
+                    f"length={expected_length}, profile={last_profile}"
+                )
+            ordinal = _profile_int(last_profile, "prefill_shape_call_ordinal")
+            if ordinal < 3:
+                raise QwenEngineError(
+                    "compiled prefill warmup did not reach ordinal 3: "
+                    f"length={expected_length}, profile={last_profile}"
+                )
+            self._prewarmed_prefill_lengths.add(expected_length)
+            rows.append(
+                {
+                    "talker_prefill_length": expected_length,
+                    "mask_mode": mask_mode,
+                    "max_abs_observed": round(max_abs, 8),
+                    "prefill_shape_call_ordinal": ordinal,
+                    "prefill_compile_cache_hit": bool(
+                        last_profile.get("prefill_compile_cache_hit")
+                    ),
+                    "prefill_shape_talker_input_embeds": last_profile.get(
+                        "prefill_shape_talker_input_embeds"
+                    ),
+                    "prefill_shape_attention_mask": last_profile.get(
+                        "prefill_shape_attention_mask"
+                    ),
+                    "prefill_shape_trailing_text_hiddens": last_profile.get(
+                        "prefill_shape_trailing_text_hiddens"
+                    ),
+                    "prefill_shape_tts_pad_embed": last_profile.get(
+                        "prefill_shape_tts_pad_embed"
+                    ),
+                }
+            )
+
+        return {
+            "prefill_allowlist_warmup": True,
+            "prefill_allowlist_ready": True,
+            "prefill_allowlist_lengths": list(self._config.prefill_compile_lengths),
+            "prefill_allowlist_warmup_repeats": (
+                self._config.prefill_allowlist_warmup_repeats
+            ),
+            "prefill_allowlist_warmup_duration_ms": elapsed_milliseconds(started_at),
+            "prefill_allowlist_warmup_passes": rows,
         }
 
     def _require_model(self) -> Any:
@@ -519,6 +657,198 @@ def _loaded_talker_attention_implementation(model: Any) -> str:
         if value is not None:
             return str(value)
     return ""
+
+
+def _load_prefill_allowlist_warmup_manifest(
+    path: Path,
+    lengths: tuple[int, ...],
+) -> dict[int, dict[str, object]]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise QwenEngineError(
+            f"failed to read prefill warmup manifest: {path}"
+        ) from exc
+
+    try:
+        if text.lstrip().startswith("["):
+            payload: Any = json.loads(text)
+        elif text.lstrip().startswith("{"):
+            payload = json.loads(text)
+        else:
+            payload = [
+                json.loads(line)
+                for line in text.splitlines()
+                if line.strip()
+            ]
+    except json.JSONDecodeError as exc:
+        raise QwenEngineError(
+            f"prefill warmup manifest is not valid JSON/JSONL: {path}"
+        ) from exc
+
+    default_speaker = ""
+    rows: list[Any]
+    if isinstance(payload, dict):
+        rows_value = payload.get("rows")
+        if not isinstance(rows_value, list):
+            raise QwenEngineError("prefill warmup manifest dict must contain rows")
+        default_speaker = str(payload.get("speaker") or "")
+        rows = rows_value
+    elif isinstance(payload, list):
+        rows = payload
+    else:
+        raise QwenEngineError("prefill warmup manifest must be an object or list")
+
+    needed = set(lengths)
+    result: dict[int, dict[str, object]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        raw_length = row.get("talker_prefill_length")
+        if raw_length is None:
+            raw_length = row.get("prefill_shape_length")
+        if raw_length is None:
+            continue
+        try:
+            length = int(raw_length)
+        except (TypeError, ValueError):
+            continue
+        if length not in needed or length in result:
+            continue
+        text_value = row.get("text")
+        language = row.get("language", "Auto")
+        if not isinstance(text_value, str) or not text_value:
+            raise QwenEngineError(
+                f"prefill warmup row for length {length} must contain text"
+            )
+        result[length] = {
+            "text": text_value,
+            "language": str(language or "Auto"),
+            "speaker": str(row.get("speaker") or default_speaker),
+            "instruction": str(row.get("instruction") or ""),
+        }
+
+    missing = [length for length in lengths if length not in result]
+    if missing:
+        raise QwenEngineError(
+            "prefill warmup manifest missing allowlisted lengths: "
+            f"{missing}"
+        )
+    return result
+
+
+def _prefill_warmup_instruction(model: Any, entry: dict[str, object]) -> str | None:
+    instruction = str(entry.get("instruction") or "")
+    model_size = str(_nested_attr(model, ("model", "model", "tts_model_size")) or "")
+    if model_size.lower() in {"0b6", "0.6b", "0.6"}:
+        return None
+    return instruction or None
+
+
+def _call_prefill_for_warmup(
+    prefill_call: Any,
+    talker: Any,
+    tie: Any,
+    tam: Any,
+    tth: Any,
+    tpe: Any,
+    metadata: dict[str, Any],
+    *,
+    backend: str,
+    mask_mode: str,
+    config: QwenEngineConfig,
+) -> tuple[Any, dict[str, object]]:
+    torch = importlib.import_module("torch")
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+    with torch.inference_mode():
+        out, profile = prefill_call(
+            talker,
+            tie,
+            tam,
+            tth,
+            tpe,
+            prefill_backend=backend,
+            prefill_mask_mode=mask_mode,
+            prefill_compile_compat_mode=(
+                "none" if backend == "eager" else config.prefill_compile_compat_mode
+            ),
+            prefill_compile_lengths=config.prefill_compile_lengths,
+            prefill_compile_on_miss=config.prefill_compile_on_miss,
+            prefill_unknown_shape_policy=config.prefill_unknown_shape_policy,
+            input_metadata=metadata,
+        )
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+    return out, cast(dict[str, object], profile)
+
+
+def _snapshot_prefill_output(out: Any) -> dict[str, Any]:
+    return {
+        "logits": _snapshot_value(getattr(out, "logits", None)),
+        "past_hidden": _snapshot_value(getattr(out, "past_hidden", None)),
+        "past_key_values": _snapshot_value(getattr(out, "past_key_values", None)),
+    }
+
+
+def _snapshot_value(value: Any) -> Any:
+    if hasattr(value, "detach"):
+        return value.detach().float().cpu().clone()
+    if isinstance(value, tuple):
+        return tuple(_snapshot_value(item) for item in value)
+    if isinstance(value, list):
+        return [_snapshot_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _snapshot_value(item) for key, item in value.items()}
+    return value
+
+
+def _prefill_snapshot_max_abs(left: Any, right: Any) -> float:
+    if hasattr(left, "shape") and hasattr(right, "shape"):
+        if tuple(left.shape) != tuple(right.shape):
+            raise QwenEngineError(
+                "prefill warmup output shape mismatch: "
+                f"{tuple(left.shape)} != {tuple(right.shape)}"
+            )
+        return float((left - right).abs().max().item()) if left.numel() else 0.0
+    if isinstance(left, dict) and isinstance(right, dict):
+        keys = set(left) & set(right)
+        return max(
+            (_prefill_snapshot_max_abs(left[key], right[key]) for key in keys),
+            default=0.0,
+        )
+    if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
+        if len(left) != len(right):
+            raise QwenEngineError(
+                "prefill warmup output sequence length mismatch: "
+                f"{len(left)} != {len(right)}"
+            )
+        return max(
+            (
+                _prefill_snapshot_max_abs(left_item, right_item)
+                for left_item, right_item in zip(left, right, strict=True)
+            ),
+            default=0.0,
+        )
+    return 0.0
+
+
+def _set_prefill_require_precompiled(model: Any, enabled: bool) -> None:
+    if not hasattr(model, "prefill_require_precompiled"):
+        raise QwenEngineError(
+            "loaded faster model does not support prefill_require_precompiled; "
+            "reinstall the bridge-patched faster-qwen3-tts wheel"
+        )
+    model.prefill_require_precompiled = bool(enabled)
+
+
+def _profile_int(profile: dict[str, object], key: str) -> int:
+    value = profile.get(key, 0)
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float, str)):
+        return int(value)
+    return 0
 
 
 def _request_seed(config: QwenEngineConfig, request_id: int) -> int | None:
@@ -960,6 +1290,7 @@ def _first_chunk_timing_fields(
         "prefill_compile_cache_hit",
         "prefill_shape_allowlist_hit",
         "prefill_compile_on_miss",
+        "prefill_require_precompiled",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
@@ -967,6 +1298,15 @@ def _first_chunk_timing_fields(
     value = chunk_timing.get("prefill_compile_compat_patched_modules")
     if isinstance(value, dict):
         fields["prefill_compile_compat_patched_modules"] = dict(value)
+    for key in (
+        "prefill_shape_talker_input_embeds",
+        "prefill_shape_attention_mask",
+        "prefill_shape_trailing_text_hiddens",
+        "prefill_shape_tts_pad_embed",
+    ):
+        value = chunk_timing.get(key)
+        if isinstance(value, (list, tuple)):
+            fields[key] = value
     for key in (
         "tokenize_wall_ms",
         "build_talker_inputs_wall_ms",

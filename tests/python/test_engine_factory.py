@@ -121,12 +121,55 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual((16, 21, 24), config.prefill_compile_lengths)
         self.assertFalse(config.prefill_compile_on_miss)
         self.assertEqual("error", config.prefill_unknown_shape_policy)
+        self.assertEqual("diagnostic_dynamic", config.prefill_compile_policy)
+        self.assertEqual("", config.prefill_allowlist_warmup_manifest)
+        self.assertEqual(3, config.prefill_allowlist_warmup_repeats)
+        self.assertFalse(config.prefill_require_precompiled)
         self.assertFalse(config.do_sample)
         self.assertTrue(config.warmup_synthesis_enabled)
         self.assertEqual("Prime the engine.", config.warmup_text)
         self.assertEqual("English", config.warmup_language)
         self.assertEqual("ryan", config.warmup_speaker)
         self.assertEqual("Speak neutrally.", config.warmup_instruction)
+
+    def test_qwen_subcommand_builds_exact_allowlist_config(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--runtime-backend",
+                "faster",
+                "--dtype",
+                "bfloat16",
+                "--attn-implementation",
+                "sdpa",
+                "--prefill-backend",
+                "compile_reduce_overhead",
+                "--prefill-compile-compat-mode",
+                "strict_bf16_sdpa_v1",
+                "--prefill-compile-lengths",
+                "16,21",
+                "--no-prefill-compile-on-miss",
+                "--prefill-compile-policy",
+                "exact_allowlist",
+                "--prefill-allowlist-warmup-manifest",
+                "manifest.json",
+                "--prefill-allowlist-warmup-repeats",
+                "4",
+                "--prefill-require-precompiled",
+            ]
+        )
+
+        config = build_engine_config(args)
+
+        self.assertIsInstance(config, QwenEngineConfig)
+        assert isinstance(config, QwenEngineConfig)
+        self.assertEqual("exact_allowlist", config.prefill_compile_policy)
+        self.assertEqual("manifest.json", config.prefill_allowlist_warmup_manifest)
+        self.assertEqual(4, config.prefill_allowlist_warmup_repeats)
+        self.assertTrue(config.prefill_require_precompiled)
 
     def test_qwen_subcommand_requires_model_path(self) -> None:
         parser = build_parser()
@@ -298,6 +341,22 @@ class EngineFactoryTests(unittest.TestCase):
             },
             {
                 "model_path": "models/qwen",
+                "prefill_compile_policy": "anything",
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_allowlist_warmup_repeats": 2,
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_allowlist_max_entries": 0,
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_allowlist_max_abs_threshold": 0.0,
+            },
+            {
+                "model_path": "models/qwen",
                 "warmup_synthesis_enabled": True,
                 "warmup_text": "",
             },
@@ -325,6 +384,42 @@ class EngineFactoryTests(unittest.TestCase):
             {"prefill_backend": "eager"},
             {"prefill_backend": "compile_backend_eager"},
             {"warmup_synthesis_enabled": False},
+        )
+
+        for update in invalid_updates:
+            qwen_config = dict(valid)
+            qwen_config.update(update)
+            with self.subTest(update=update):
+                with self.assertRaises(ValueError):
+                    QwenEngineConfig(**qwen_config)
+
+        QwenEngineConfig(**valid)
+
+    def test_qwen_config_rejects_invalid_exact_allowlist_contract(self) -> None:
+        valid: dict[str, Any] = {
+            "model_path": "models/qwen",
+            "runtime_backend": "faster",
+            "dtype": "bfloat16",
+            "attn_implementation": "sdpa",
+            "prefill_backend": "compile_reduce_overhead",
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_lengths": (16, 21),
+            "prefill_compile_on_miss": False,
+            "prefill_unknown_shape_policy": "eager",
+            "prefill_compile_policy": "exact_allowlist",
+            "prefill_allowlist_warmup_manifest": "manifest.json",
+            "prefill_require_precompiled": True,
+        }
+        invalid_updates: tuple[dict[str, Any], ...] = (
+            {"runtime_backend": "upstream"},
+            {"prefill_compile_compat_mode": "none"},
+            {"prefill_backend": "eager"},
+            {"prefill_compile_lengths": ()},
+            {"prefill_compile_lengths": (1, 2, 3, 4, 5, 6, 7)},
+            {"prefill_compile_on_miss": True},
+            {"prefill_unknown_shape_policy": "error"},
+            {"prefill_allowlist_warmup_manifest": ""},
+            {"prefill_require_precompiled": False},
         )
 
         for update in invalid_updates:

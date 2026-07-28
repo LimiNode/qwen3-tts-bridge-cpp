@@ -1,0 +1,473 @@
+From 557a455cc4a11b82abac78db0cdf04e37b4d11d7 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Tue, 28 Jul 2026 20:20:02 +0300
+Subject: [PATCH 1/3] feat(prefill): add exact length compile policy
+
+---
+ faster_qwen3_tts/model.py     |  53 ++++++++++++--
+ faster_qwen3_tts/streaming.py |  83 +++++++++++++++++++++-
+ tests/test_sampling.py        | 129 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 260 insertions(+), 5 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 112a421..1701ea0 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -8,7 +8,7 @@ CUDA graphs for 6-10x speedup.
+ import logging
+ import time
+ from pathlib import Path
+-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
++from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
+ 
+ import numpy as np
+ import soundfile as sf
+@@ -19,7 +19,7 @@ from .prefill_compat import (
+     normalize_prefill_compile_compat_mode,
+     prefill_compile_compat_metadata,
+ )
+-from .streaming import clear_prefill_compile_cache
++from .streaming import _normalize_prefill_backend, clear_prefill_compile_cache
+ from .utils import suppress_flash_attn_warning
+ 
+ logger = logging.getLogger(__name__)
+@@ -42,7 +42,11 @@ class FasterQwen3TTS:
+         device: str = "cuda",
+         dtype: torch.dtype = torch.bfloat16,
+         max_seq_len: int = 2048,
++        prefill_backend: Optional[str] = None,
+         prefill_compile_compat_mode: Optional[str] = "none",
++        prefill_compile_lengths: Optional[Iterable[int]] = None,
++        prefill_compile_on_miss: bool = True,
++        prefill_unknown_shape_policy: str = "eager",
+     ):
+         self.model = base_model  # The qwen-tts Qwen3TTSModel instance
+         self.predictor_graph = predictor_graph
+@@ -51,11 +55,25 @@ class FasterQwen3TTS:
+         self.device = device
+         self.dtype = dtype
+         self.max_seq_len = max_seq_len
++        self.prefill_backend = (
++            _normalize_prefill_backend(prefill_backend)
++            if prefill_backend is not None
++            else None
++        )
+         self.prefill_compile_compat_mode = (
+             normalize_prefill_compile_compat_mode(prefill_compile_compat_mode)
+             if prefill_compile_compat_mode is not None
+             else "none"
+         )
++        self.prefill_compile_lengths = tuple(
++            sorted({int(value) for value in (prefill_compile_lengths or [])})
++        )
++        if any(value <= 0 for value in self.prefill_compile_lengths):
++            raise ValueError("prefill_compile_lengths values must be positive")
++        self.prefill_compile_on_miss = bool(prefill_compile_on_miss)
++        self.prefill_unknown_shape_policy = str(prefill_unknown_shape_policy or "eager")
++        if self.prefill_unknown_shape_policy not in {"eager", "error"}:
++            raise ValueError("prefill_unknown_shape_policy must be eager or error")
+         self.sample_rate = self._infer_sample_rate(base_model)
+         self._warmed_up = False
+         self._voice_prompt_cache = {}  # Cache (ref_audio, ref_text) -> (vcp, ref_ids)
+@@ -146,6 +164,17 @@ class FasterQwen3TTS:
+             )
+         return requested_mode
+ 
++    def _resolve_prefill_backend(self, requested_backend: Optional[str]) -> str:
++        if requested_backend is None:
++            return self.prefill_backend or "eager"
++        requested_backend = _normalize_prefill_backend(requested_backend)
++        if self.prefill_backend is not None and requested_backend != self.prefill_backend:
++            raise RuntimeError(
++                "prefill_backend is immutable for a loaded model: "
++                f"requested {requested_backend!r}, loaded {self.prefill_backend!r}."
++            )
++        return requested_backend
++
+     @property
+     def prefill_compile_compat_metadata(self) -> Dict[str, Any]:
+         """Return immutable Talker prefill compatibility metadata."""
+@@ -189,7 +218,11 @@ class FasterQwen3TTS:
+         qwentts_ref_cache_dir: Optional[Union[str, Path]] = None,
+         cache_dir: Optional[Union[str, Path]] = None,
+         local_files_only: bool = False,
++        prefill_backend: Optional[str] = None,
+         prefill_compile_compat_mode: Optional[str] = "none",
++        prefill_compile_lengths: Optional[Iterable[int]] = None,
++        prefill_compile_on_miss: bool = True,
++        prefill_unknown_shape_policy: str = "eager",
+     ):
+         """
+         Load Qwen3-TTS model and prepare CUDA graphs.
+@@ -337,6 +370,10 @@ class FasterQwen3TTS:
+             prefill_compile_compat_mode=(
+                 normalized_prefill_compile_compat_mode or "none"
+             ),
++            prefill_backend=prefill_backend,
++            prefill_compile_lengths=prefill_compile_lengths,
++            prefill_compile_on_miss=prefill_compile_on_miss,
++            prefill_unknown_shape_policy=prefill_unknown_shape_policy,
+         )
+ 
+     def warmup(self, prefill_len: int = 100) -> None:
+@@ -1472,7 +1509,7 @@ class FasterQwen3TTS:
+         profile_prefill: bool = False,
+         profile_nvtx: bool = False,
+         profile_request_role: Optional[str] = None,
+-        prefill_backend: str = "eager",
++        prefill_backend: Optional[str] = None,
+         prefill_compile_compat_mode: Optional[str] = None,
+     ) -> Generator[Tuple[np.ndarray, int, dict], None, None]:
+         if self.model.model.tts_model_type != "custom_voice":
+@@ -1480,6 +1517,7 @@ class FasterQwen3TTS:
+         prefill_compile_compat_mode = self._resolve_prefill_compile_compat_mode(
+             prefill_compile_compat_mode
+         )
++        prefill_backend = self._resolve_prefill_backend(prefill_backend)
+ 
+         self.model._validate_languages([language])
+         self.model._validate_speakers([speaker])
+@@ -1537,6 +1575,9 @@ class FasterQwen3TTS:
+             profile_nvtx=profile_nvtx,
+             prefill_backend=prefill_backend,
+             prefill_compile_compat_mode=prefill_compile_compat_mode,
++            prefill_compile_lengths=self.prefill_compile_lengths,
++            prefill_compile_on_miss=self.prefill_compile_on_miss,
++            prefill_unknown_shape_policy=self.prefill_unknown_shape_policy,
+         ):
+             all_codes.append(codec_chunk)
+             n_new = codec_chunk.shape[0]
+@@ -1679,7 +1720,7 @@ class FasterQwen3TTS:
+         profile_prefill: bool = False,
+         profile_nvtx: bool = False,
+         profile_request_role: Optional[str] = None,
+-        prefill_backend: str = "eager",
++        prefill_backend: Optional[str] = None,
+         prefill_compile_compat_mode: Optional[str] = None,
+     ) -> Generator[Tuple[np.ndarray, int, dict], None, None]:
+         if self.model.model.tts_model_type != "voice_design":
+@@ -1687,6 +1728,7 @@ class FasterQwen3TTS:
+         prefill_compile_compat_mode = self._resolve_prefill_compile_compat_mode(
+             prefill_compile_compat_mode
+         )
++        prefill_backend = self._resolve_prefill_backend(prefill_backend)
+ 
+         self.model._validate_languages([language])
+ 
+@@ -1740,6 +1782,9 @@ class FasterQwen3TTS:
+             profile_nvtx=profile_nvtx,
+             prefill_backend=prefill_backend,
+             prefill_compile_compat_mode=prefill_compile_compat_mode,
++            prefill_compile_lengths=self.prefill_compile_lengths,
++            prefill_compile_on_miss=self.prefill_compile_on_miss,
++            prefill_unknown_shape_policy=self.prefill_unknown_shape_policy,
+         ):
+             all_codes.append(codec_chunk)
+             n_new = codec_chunk.shape[0]
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 4feb623..8a23d10 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -10,7 +10,7 @@ import math
+ import threading
+ import time
+ from collections import OrderedDict
+-from typing import Any, Callable, Generator, Optional, Tuple
++from typing import Any, Callable, Generator, Iterable, Optional, Tuple
+ 
+ import torch
+ import torch.nn.functional as F
+@@ -78,6 +78,22 @@ def _normalize_prefill_backend(prefill_backend: str) -> str:
+     return backend
+ 
+ 
++def _normalize_prefill_unknown_shape_policy(policy: str) -> str:
++    policy = str(policy or "eager").strip().lower()
++    if policy not in {"eager", "error"}:
++        raise ValueError("prefill_unknown_shape_policy must be eager or error")
++    return policy
++
++
++def _normalize_prefill_compile_lengths(lengths: Optional[Iterable[int]]) -> frozenset[int]:
++    if lengths is None:
++        return frozenset()
++    normalized = frozenset(int(value) for value in lengths)
++    if any(value <= 0 for value in normalized):
++        raise ValueError("prefill_compile_lengths values must be positive")
++    return normalized
++
++
+ def _run_talker_prefill(
+     talker,
+     talker_input_embeds: torch.Tensor,
+@@ -88,6 +104,9 @@ def _run_talker_prefill(
+     prefill_backend: str,
+     prefill_mask_mode: str = "auto",
+     prefill_compile_compat_mode: str = "none",
++    prefill_compile_lengths: Optional[Iterable[int]] = None,
++    prefill_compile_on_miss: bool = True,
++    prefill_unknown_shape_policy: str = "eager",
+     input_metadata: Optional[dict] = None,
+ ):
+     prefill_backend = _normalize_prefill_backend(prefill_backend)
+@@ -95,6 +114,10 @@ def _run_talker_prefill(
+     prefill_compile_compat_mode = normalize_prefill_compile_compat_mode(
+         prefill_compile_compat_mode
+     )
++    compile_lengths = _normalize_prefill_compile_lengths(prefill_compile_lengths)
++    unknown_shape_policy = _normalize_prefill_unknown_shape_policy(
++        prefill_unknown_shape_policy
++    )
+     _validate_prefill_configuration(prefill_backend, prefill_mask_mode)
+     skip_prefill_causal_mask = prefill_mask_mode == "skip"
+     prefill_attention_mask = None if skip_prefill_causal_mask else attention_mask
+@@ -108,6 +131,8 @@ def _run_talker_prefill(
+     )
+     cache_stats = prefill_compile_cache_stats()
+     memory_before = _cuda_memory_stats("prefill_cuda_memory_before")
++    shape_length = int(talker_input_embeds.shape[1])
++    allowlist_hit = shape_length in compile_lengths if compile_lengths else False
+     profile = {
+         "prefill_backend_requested": prefill_backend,
+         "prefill_backend_used": "eager",
+@@ -125,6 +150,10 @@ def _run_talker_prefill(
+         "prefill_compile_cache_max_entries": cache_stats["max_entries"],
+         "prefill_compile_cache_evictions": cache_stats["evictions"],
+         "prefill_compile_cache_kind": "python_callable_lru",
++        "prefill_shape_length": shape_length,
++        "prefill_shape_policy": "eager",
++        "prefill_shape_allowlist_hit": allowlist_hit,
++        "prefill_compile_on_miss": bool(prefill_compile_on_miss),
+         "prefill_compile_wrapper_create_ms": 0.0,
+         "prefill_compile_wrapper_create_host_ms": 0.0,
+         "prefill_compiled_call_ms": 0.0,
+@@ -149,6 +178,48 @@ def _run_talker_prefill(
+             ),
+             profile,
+         )
++    if compile_lengths:
++        profile["prefill_shape_policy"] = (
++            "compiled_allowlist" if allowlist_hit else f"{unknown_shape_policy}_unknown"
++        )
++        if not allowlist_hit:
++            if unknown_shape_policy == "error":
++                raise UnsupportedPrefillConfiguration(
++                    "Compiled prefill shape is not in prefill_compile_lengths: "
++                    f"talker_prefill_length={shape_length}, "
++                    f"allowed={sorted(compile_lengths)}"
++                )
++            return (
++                _talker_prefill_eager(
++                    talker,
++                    talker_input_embeds,
++                    prefill_attention_mask,
++                    trailing_text_hiddens,
++                    tts_pad_embed,
++                    skip_prefill_causal_mask=skip_prefill_causal_mask,
++                ),
++                profile,
++            )
++    elif not prefill_compile_on_miss:
++        profile["prefill_shape_policy"] = f"{unknown_shape_policy}_unknown"
++        if unknown_shape_policy == "error":
++            raise UnsupportedPrefillConfiguration(
++                "Compiled prefill requires prefill_compile_lengths when "
++                "prefill_compile_on_miss is false"
++            )
++        return (
++            _talker_prefill_eager(
++                talker,
++                talker_input_embeds,
++                prefill_attention_mask,
++                trailing_text_hiddens,
++                tts_pad_embed,
++                skip_prefill_causal_mask=skip_prefill_causal_mask,
++            ),
++            profile,
++        )
++    else:
++        profile["prefill_shape_policy"] = "compile_on_miss"
+ 
+     cache_key = _prefill_compile_cache_key(
+         talker,
+@@ -559,6 +630,9 @@ def fast_generate_streaming(
+     prefill_backend: str = "eager",
+     prefill_mask_mode: str = "auto",
+     prefill_compile_compat_mode: str = "none",
++    prefill_compile_lengths: Optional[Iterable[int]] = None,
++    prefill_compile_on_miss: bool = True,
++    prefill_unknown_shape_policy: str = "eager",
+ ) -> Generator[Tuple[torch.Tensor, dict], None, None]:
+     """
+     Streaming autoregressive generation with CUDA-graphed predictor and talker.
+@@ -582,6 +656,10 @@ def fast_generate_streaming(
+     prefill_compile_compat_mode = normalize_prefill_compile_compat_mode(
+         prefill_compile_compat_mode
+     )
++    compile_lengths = _normalize_prefill_compile_lengths(prefill_compile_lengths)
++    unknown_shape_policy = _normalize_prefill_unknown_shape_policy(
++        prefill_unknown_shape_policy
++    )
+     if str(prefill_mask_mode or "auto").strip().lower() == "auto":
+         prefill_mask_mode = select_prefill_mask_mode(input_metadata)
+     else:
+@@ -612,6 +690,9 @@ def fast_generate_streaming(
+             prefill_backend=prefill_backend,
+             prefill_mask_mode=prefill_mask_mode,
+             prefill_compile_compat_mode=prefill_compile_compat_mode,
++            prefill_compile_lengths=compile_lengths,
++            prefill_compile_on_miss=prefill_compile_on_miss,
++            prefill_unknown_shape_policy=unknown_shape_policy,
+             input_metadata=input_metadata,
+         )
+     prefill_profile["talker_forward_launch_wall_ms"] = (
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index d743026..040d156 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -74,6 +74,30 @@ def test_faster_wrapper_uses_loaded_prefill_compile_compat_mode_by_default():
+         model._resolve_prefill_compile_compat_mode("none")
+ 
+ 
++def test_faster_wrapper_can_make_prefill_backend_immutable():
++    model = FasterQwen3TTS.__new__(FasterQwen3TTS)
++    model.prefill_backend = "compile_reduce_overhead"
++
++    assert model._resolve_prefill_backend(None) == "compile_reduce_overhead"
++    assert (
++        model._resolve_prefill_backend("compile_reduce_overhead")
++        == "compile_reduce_overhead"
++    )
++    with pytest.raises(RuntimeError, match="immutable"):
++        model._resolve_prefill_backend("compile_inductor_default")
++
++
++def test_faster_wrapper_without_loaded_prefill_backend_preserves_request_override():
++    model = FasterQwen3TTS.__new__(FasterQwen3TTS)
++    model.prefill_backend = None
++
++    assert model._resolve_prefill_backend(None) == "eager"
++    assert (
++        model._resolve_prefill_backend("compile_backend_eager")
++        == "compile_backend_eager"
++    )
++
++
+ @pytest.mark.parametrize(
+     ("metadata", "expected"),
+     [
+@@ -295,6 +319,111 @@ def test_run_talker_prefill_allows_compiled_verified_skip_masks():
+     )
+ 
+ 
++def test_run_talker_prefill_compiles_allowlisted_length(monkeypatch):
++    class DummyTalker:
++        def forward(self, **kwargs):
++            hidden = kwargs["inputs_embeds"]
++            return types.SimpleNamespace(
++                logits=torch.zeros(1, hidden.shape[1], 3),
++                past_hidden=hidden[:, -1:, :],
++                past_key_values=[],
++                generation_step=0,
++            )
++
++    compile_calls = []
++
++    def fake_compile(talker, backend):
++        compile_calls.append((talker, backend))
++
++        def compiled(*args):
++            return DummyTalker().forward(
++                inputs_embeds=args[0],
++                attention_mask=args[1],
++                trailing_text_hidden=args[2],
++                tts_pad_embed=args[3],
++                skip_prefill_causal_mask=args[4],
++            )
++
++        return compiled
++
++    monkeypatch.setattr(streaming, "_compile_talker_prefill", fake_compile)
++    tie, tam, tth, tpe = _dummy_prefill_inputs()
++    _out, profile = _run_talker_prefill(
++        DummyTalker(),
++        tie,
++        tam,
++        tth,
++        tpe,
++        prefill_backend="compile_backend_eager",
++        prefill_mask_mode="skip",
++        prefill_compile_lengths=[tie.shape[1]],
++        prefill_compile_on_miss=False,
++        prefill_unknown_shape_policy="eager",
++    )
++
++    assert len(compile_calls) == 1
++    assert profile["prefill_backend_used"] == "compile_backend_eager"
++    assert profile["prefill_shape_policy"] == "compiled_allowlist"
++    assert profile["prefill_shape_allowlist_hit"] is True
++
++
++def test_run_talker_prefill_unknown_length_uses_eager_before_compile(monkeypatch):
++    class DummyTalker:
++        def forward(self, **kwargs):
++            hidden = kwargs["inputs_embeds"]
++            return types.SimpleNamespace(
++                logits=torch.zeros(1, hidden.shape[1], 3),
++                past_hidden=hidden[:, -1:, :],
++                past_key_values=[],
++                generation_step=0,
++            )
++
++    def fail_compile(*_args, **_kwargs):
++        raise AssertionError("unknown shapes must not compile on user path")
++
++    monkeypatch.setattr(streaming, "_compile_talker_prefill", fail_compile)
++    tie, tam, tth, tpe = _dummy_prefill_inputs()
++    _out, profile = _run_talker_prefill(
++        DummyTalker(),
++        tie,
++        tam,
++        tth,
++        tpe,
++        prefill_backend="compile_backend_eager",
++        prefill_mask_mode="skip",
++        prefill_compile_lengths=[tie.shape[1] + 1],
++        prefill_compile_on_miss=False,
++        prefill_unknown_shape_policy="eager",
++    )
++
++    assert profile["prefill_backend_used"] == "eager"
++    assert profile["prefill_shape_policy"] == "eager_unknown"
++    assert profile["prefill_shape_allowlist_hit"] is False
++    assert profile["prefill_shape_length"] == tie.shape[1]
++
++
++def test_run_talker_prefill_unknown_length_can_fail_before_compile(monkeypatch):
++    def fail_compile(*_args, **_kwargs):
++        raise AssertionError("unknown shapes must fail before compile")
++
++    monkeypatch.setattr(streaming, "_compile_talker_prefill", fail_compile)
++    tie, tam, tth, tpe = _dummy_prefill_inputs()
++
++    with pytest.raises(UnsupportedPrefillConfiguration, match="not in"):
++        _run_talker_prefill(
++            _dummy_streaming_model(),
++            tie,
++            tam,
++            tth,
++            tpe,
++            prefill_backend="compile_backend_eager",
++            prefill_mask_mode="skip",
++            prefill_compile_lengths=[tie.shape[1] + 1],
++            prefill_compile_on_miss=False,
++            prefill_unknown_shape_policy="error",
++        )
++
++
+ def _verified_prefill_metadata():
+     return {
+         "prefill_attention_mask_all_valid": True,
+-- 
+2.53.0.windows.1
+
