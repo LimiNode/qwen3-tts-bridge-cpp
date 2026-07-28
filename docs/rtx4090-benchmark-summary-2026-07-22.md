@@ -2016,8 +2016,10 @@ uses the original model forwards.
 The transient replacement is guarded by a per-Talker `RLock`, so direct
 concurrent FasterQwen streaming calls serialize the strict prefill section
 instead of observing a half-restored `forward` state. Compiled prefill cache
-entries are bounded, expose hit/miss/size/compile-time telemetry, and are
-cleared for the model's Talker from `FasterQwen3TTS.close()`.
+Python callable entries are bounded, expose hit/miss/size/compile-time
+telemetry, and are cleared for the model's Talker from `FasterQwen3TTS.close()`.
+This LRU bounds FasterQwen's wrapper callable cache only; it does not bound
+PyTorch/Triton compiler memory.
 
 The lifecycle is now model-immutable in the public FasterQwen path:
 `FasterQwen3TTS.from_pretrained(..., prefill_compile_compat_mode=...)`
@@ -2101,6 +2103,23 @@ After concurrency/provenance/cache hardening:
     attention:33, expected_decoder_layers:33};
     request prefill_backend_used=compile_reduce_overhead, fallback=false,
     cache_hit=true; cache after close entries=0.
+  Wheel-only semantic context-gate smoke:
+    semantic_pass=true for all raw/strict/product contexts; prefill diff 0.0.
+After compile-cache telemetry clarification:
+  FasterQwen targeted suite: 55 passed, 1 warning.
+  FasterQwen selected suite: 112 passed, 1 warning.
+  FasterQwen full suite with Qwen fork: 126 passed, 18 warnings, 288.82s.
+  Bridge targeted unittest: 49 tests OK.
+  Bridge scripts/check-python.ps1 -UseVenv -VenvPath .venv: 158 tests OK, 2 skipped.
+  Bridge ctest --test-dir build\default --output-on-failure: 9/9 passed.
+  Wheel-only strict worker smoke:
+    faster_qwen3_tts imported from .venv-packaging site-packages, installed
+    wheel sha256=18875c6efde80888667c340051ce55e3bd3506d695ae4ef6e34b6be564629d9e;
+    request prefill_backend_used=compile_reduce_overhead, fallback=false,
+    cache_hit=true, cache_kind=python_callable_lru, shape_call_ordinal=2;
+    wrapper_create_ms=0.0, compiled_call_ms=102.417,
+    first_call_ms=0.0, warm_call_ms=102.417; cache after close entries=0;
+    CUDA memory snapshots were present before/after prefill and after close.
   Wheel-only semantic context-gate smoke:
     semantic_pass=true for all raw/strict/product contexts; prefill diff 0.0.
 ```

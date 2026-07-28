@@ -918,7 +918,16 @@ def _first_chunk_timing_fields(
         "generation_state_gpu_stream_id",
         "prefill_to_sync_gpu_stream_id",
         "prefill_compile_cache_entries",
+        "prefill_compile_cache_talker_entries",
         "prefill_compile_cache_max_entries",
+        "prefill_compile_cache_evictions",
+        "prefill_shape_call_ordinal",
+        "prefill_cuda_memory_before_allocated_bytes",
+        "prefill_cuda_memory_before_reserved_bytes",
+        "prefill_cuda_memory_before_max_reserved_bytes",
+        "prefill_cuda_memory_after_allocated_bytes",
+        "prefill_cuda_memory_after_reserved_bytes",
+        "prefill_cuda_memory_after_max_reserved_bytes",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:
@@ -931,6 +940,7 @@ def _first_chunk_timing_fields(
         "prefill_backend_used",
         "prefill_compile_error",
         "prefill_compile_compat_mode",
+        "prefill_compile_cache_kind",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -971,6 +981,10 @@ def _first_chunk_timing_fields(
         "prefill_gpu_partition_error_ms",
         "prefill_gpu_accounting_error_ms",
         "prefill_compile_wall_ms",
+        "prefill_compile_wrapper_create_ms",
+        "prefill_compiled_call_ms",
+        "prefill_compiled_first_call_ms",
+        "prefill_compiled_warm_call_ms",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:

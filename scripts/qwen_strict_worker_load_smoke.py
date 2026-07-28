@@ -61,6 +61,7 @@ def main() -> int:
     metadata_before_warmup: dict[str, Any] | None = None
     metadata_after_request: dict[str, Any] | None = None
     metadata_after_close: dict[str, Any] | None = None
+    cache_stats_after_request: dict[str, Any] | None = None
     provenance = _provenance(args)
     _validate_forbidden_import_paths(provenance, args.forbid_import_path)
     try:
@@ -97,6 +98,7 @@ def main() -> int:
             if callable(close):
                 close()
         metadata_after_request = _metadata(model)
+        cache_stats_after_request = _cache_stats()
     finally:
         engine.close()
         if model is not None:
@@ -117,13 +119,16 @@ def main() -> int:
         "metadata_before_warmup": metadata_before_warmup,
         "metadata_after_request": metadata_after_request,
         "metadata_after_close": metadata_after_close,
+        "cache_stats_after_request": cache_stats_after_request,
         "cache_stats_after_close": _cache_stats(),
+        "cuda_memory_after_close": _cuda_memory_stats(),
         "warmup": warmup,
         "chunks": chunks,
         "chunk_count": len(chunks),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+    _validate_result(result, args)
     return 0
 
 
@@ -193,12 +198,87 @@ def _validate_forbidden_import_paths(
             )
 
 
-def _cache_stats() -> dict[str, int] | None:
+def _cache_stats() -> dict[str, Any] | None:
     try:
         from faster_qwen3_tts.streaming import prefill_compile_cache_stats
     except Exception:
         return None
     return prefill_compile_cache_stats()
+
+
+def _cuda_memory_stats() -> dict[str, int] | None:
+    try:
+        import torch
+    except Exception:
+        return None
+    if not torch.cuda.is_available():
+        return None
+    return {
+        "allocated_bytes": int(torch.cuda.memory_allocated()),
+        "reserved_bytes": int(torch.cuda.memory_reserved()),
+        "max_reserved_bytes": int(torch.cuda.max_memory_reserved()),
+    }
+
+
+def _validate_result(result: dict[str, Any], args: argparse.Namespace) -> None:
+    provenance = result["provenance"]
+    if args.wheel_path is not None:
+        expected_sha = str(provenance["wheel_sha256"]).lower()
+        direct_url_sha = _direct_url_sha256(provenance.get("faster_qwen3_tts_direct_url"))
+        if direct_url_sha != expected_sha:
+            raise RuntimeError(
+                "installed faster_qwen3_tts archive SHA does not match wheel: "
+                f"installed={direct_url_sha!r}, wheel={expected_sha!r}"
+            )
+
+    if result["chunk_count"] <= 0:
+        raise RuntimeError("strict worker smoke produced no audio chunks")
+    first_metrics = result["chunks"][0].get("metrics") or {}
+    if first_metrics.get("prefill_backend_used") != args.prefill_backend:
+        raise RuntimeError(
+            "strict worker smoke used unexpected prefill backend: "
+            f"{first_metrics.get('prefill_backend_used')!r}"
+        )
+    if first_metrics.get("prefill_compile_fallback") is not False:
+        raise RuntimeError(
+            "strict worker smoke fell back from compiled prefill: "
+            f"{first_metrics.get('prefill_compile_error')!r}"
+        )
+    for label in ("metadata_after_request", "metadata_after_close"):
+        _validate_idle_metadata(label, result.get(label))
+    cache_after_close = result.get("cache_stats_after_close") or {}
+    if cache_after_close.get("entries") != 0:
+        raise RuntimeError(
+            "strict worker smoke left Python callable cache entries after close: "
+            f"{cache_after_close!r}"
+        )
+
+
+def _direct_url_sha256(value: Any) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    archive = value.get("archive_info")
+    if not isinstance(archive, dict):
+        return None
+    hashes = archive.get("hashes")
+    if isinstance(hashes, dict) and hashes.get("sha256"):
+        return str(hashes["sha256"]).lower()
+    digest = archive.get("hash")
+    if isinstance(digest, str) and digest.startswith("sha256="):
+        return digest.removeprefix("sha256=").lower()
+    return None
+
+
+def _validate_idle_metadata(label: str, metadata: Any) -> None:
+    if not isinstance(metadata, dict):
+        raise RuntimeError(f"{label} is missing strict compat metadata")
+    if metadata.get("prefill_compile_compat_applied") is not False:
+        raise RuntimeError(f"{label} reports active strict patch")
+    if metadata.get("prefill_compile_compat_patched_modules") != {}:
+        raise RuntimeError(f"{label} reports patched modules after request")
+    validated = metadata.get("prefill_compile_compat_validated_modules")
+    if not isinstance(validated, dict) or not validated:
+        raise RuntimeError(f"{label} missing validated module counts")
 
 
 if __name__ == "__main__":
