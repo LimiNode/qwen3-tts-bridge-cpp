@@ -98,6 +98,11 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "prefill_gpu_component_sum_ms": 11.0,
                 "prefill_gpu_partition_error_ms": 0.0,
                 "prefill_gpu_accounting_error_ms": 0.0,
+                "speech_tokenizer_decode_wall_ms": 7.0,
+                "speech_tokenizer_decode_gpu_ms": 6.5,
+                "d2h_ms": 0.3,
+                "first_sample_multinomial_gpu_ms": 0.7,
+                "ar_predictor_graph_gpu_ms": 18.0,
                 "talker_forward_gpu_stream_id": 1234,
             },
             {
@@ -159,6 +164,11 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(11.0, enriched["first_chunk_prefill_gpu_component_sum_ms"])
         self.assertEqual(0.0, enriched["first_chunk_prefill_gpu_partition_error_ms"])
         self.assertEqual(0.0, enriched["first_chunk_prefill_gpu_accounting_error_ms"])
+        self.assertEqual(7.0, enriched["first_chunk_speech_tokenizer_decode_wall_ms"])
+        self.assertEqual(6.5, enriched["first_chunk_speech_tokenizer_decode_gpu_ms"])
+        self.assertEqual(0.3, enriched["first_chunk_d2h_ms"])
+        self.assertEqual(0.7, enriched["first_chunk_first_sample_multinomial_gpu_ms"])
+        self.assertEqual(18.0, enriched["first_chunk_ar_predictor_graph_gpu_ms"])
         self.assertEqual(1234, enriched["first_chunk_talker_forward_gpu_stream_id"])
         self.assertEqual(
             1.0,
