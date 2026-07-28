@@ -2185,6 +2185,50 @@ because the local model is CustomVoice only. CMP 50HX compatibility remains a
 future hardware profile; the mode's fail-closed BF16/SDPA checks should help,
 but it still needs a real run on that card before being advertised.
 
+### Shape/Cache Matrix
+
+The first single-worker shape/cache matrix used FasterQwen `3daf26a`, the
+installed wheel SHA
+`3b32e0c39df07ae52591aadd7173fb7f22713344ef4e7dc899befa46beb011be`,
+CustomVoice 0.6B, BF16, SDPA, speaker `ryan`, and 10 real prompt lengths:
+
+```text
+16, 21, 23, 24, 29, 39, 40, 30, 32, 35
+```
+
+This matrix is not a cold-start benchmark; local PyTorch/Triton compiler caches
+were already warm from prior validation. It is a cache-behavior diagnostic.
+
+Key result: dynamic compile-on-miss is not product-safe for arbitrary prompt
+lengths. Both compiled modes successfully cache the first 8 observed shapes and
+then hit `torch._dynamo config.recompile_limit (8)` on later unseen lengths.
+The Python callable LRU itself behaves correctly, but it cannot bypass Dynamo's
+per-frame recompilation limit.
+
+Observed single-worker behavior:
+
+| Context | Rows | Compiled rows | Cache entries | Errors/Fallbacks | Host timing summary |
+| --- | ---: | ---: | ---: | ---: | --- |
+| eager | 69 | 0 | 0 | 0 / 0 | no compiled call telemetry |
+| strict Inductor default | 69 | 56 | 8 | 2 / 13 | call1 median `6381.734 ms`; call2 median `100.370 ms`; call3+ median `106.391 ms` |
+| strict reduce-overhead, fresh process | 69 | 56 | 8 | 2 / 13 | call1 median `6376.399 ms`; call2 median `163.535 ms`; call3+ median `2.832 ms` |
+
+The fast `reduce-overhead` path is real, but it appears only for already
+compiled shapes at ordinal `3+`. Ordinal `2` is still a CUDA Graph
+warmup/capture-ish call and should not be called steady replay.
+
+The eviction subtest with `max_entries=4` passed at the Python LRU layer:
+`L1_refresh` was a hit with ordinal `2`, `L5_cold` evicted one old entry,
+`L2_after_eviction_candidate` was cold again with ordinal `1`, and
+`L1_after_refresh` remained hot with ordinal `3`; final entries were `4` and
+eviction delta was `2`.
+
+Recommendation update: do not ship unbounded dynamic compile-on-miss. The next
+product direction should be a small static warmed bucket set for common
+`talker_prefill_length` ranges, plus eager fallback for unknown shapes. A
+separate diagnostic can test whether padded buckets preserve semantic parity
+and keep `reduce-overhead` in the ordinal `3+` replay regime.
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

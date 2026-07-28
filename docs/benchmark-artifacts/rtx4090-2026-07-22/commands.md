@@ -735,6 +735,83 @@ faster-qwen-strict-bf16-sdpa-lifecycle-patch/0006-fix-prefill-harden-compile-cal
 faster-qwen-strict-bf16-sdpa-lifecycle-patch/faster-qwen-prefill-compile-through-3daf26a.bundle  5E1B3779B22B6235B5542DB46E48A93EA87877A15EF70BAE07ED4917AF2466CD
 ```
 
+2026-07-28 initial single-worker shape/cache matrix:
+
+```powershell
+$env:PYTHONPATH='C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+.\.venv-packaging\Scripts\python.exe scripts\qwen_shape_cache_matrix.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --speaker ryan `
+    --max-shapes 10 `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\shape-cache-matrix-3daf26a-single-worker.json
+
+$env:PYTHONPATH='C:\_repoz\qwen3-tts-bridge-cpp\external\python\Qwen3-TTS-streaming'
+.\.venv-packaging\Scripts\python.exe scripts\qwen_shape_cache_matrix.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --device cuda `
+    --dtype bfloat16 `
+    --attn-implementation sdpa `
+    --speaker ryan `
+    --max-shapes 10 `
+    --contexts strict_reduce_overhead `
+    --output docs\benchmark-artifacts\rtx4090-2026-07-22\shape-cache-matrix-3daf26a-reduce-only-single-worker.json
+```
+
+Matrix result:
+
+```text
+shape lengths:
+  16, 21, 23, 24, 29, 39, 40, 30, 32, 35
+
+single-worker all-context run:
+  eager:
+    rows=69, cache_entries=0, fallbacks=0
+  strict_inductor_default:
+    rows=69, compiled_rows=56, cache_entries=8, errors=2, fallbacks=13
+    call1_host_ms median=6381.734, min=5970.804, max=8900.464
+    call2_host_ms median=100.370, min=96.841, max=102.215
+    call3plus_host_ms median=106.391, min=100.098, max=110.991
+  strict_reduce_overhead after default in the same process:
+    rows=69, compiled_rows=0, cache_entries=0, errors=10, fallbacks=69
+    first error: FailOnRecompileLimitHit: Hard failure due to fullgraph=True
+
+fresh-process reduce-only run:
+  strict_reduce_overhead:
+    rows=69, compiled_rows=56, cache_entries=8, errors=2, fallbacks=13
+    call1_host_ms median=6376.399, min=6078.865, max=8919.284
+    call2_host_ms median=163.535, min=151.942, max=170.631
+    call3plus_host_ms median=2.832, min=1.851, max=4.984
+    shapes 9 and 10 fail after torch._dynamo config.recompile_limit (8)
+  eviction subtest with max_entries=4:
+    final cache_entries=4, eviction_delta=2
+    L1_refresh hit=true ordinal=2
+    L5_cold evicts one entry
+    L2_after_eviction_candidate hit=false ordinal=1
+    L1_after_refresh hit=true ordinal=3
+```
+
+Interpretation:
+
+```text
+The Python callable LRU behaves correctly for cached and evicted entries, but
+dynamic compile-on-miss across many real prompt lengths is not product-safe.
+Both Inductor default and reduce-overhead compile only the first 8 observed
+shapes in this process before Dynamo's default recompile limit trips. The
+reduce-overhead 3+ replay bucket is the fast path, but only for already
+compiled shapes. Unknown shapes need eager fallback or a small warmed bucket
+set; do not ship unbounded dynamic compile-on-miss.
+```
+
+Matrix artifact SHA256:
+
+```text
+shape-cache-matrix-3daf26a-single-worker.json  3722EC417D210351BD0386EDDA1D21B8A70DC6D4A6E9F98E582D89C6474EDA9D
+shape-cache-matrix-3daf26a-reduce-only-single-worker.json  075393C8D178D59E96441BEFF983CA90ED7A632CBB476566562D25F71EEF5170
+```
+
 Diagnostic semantic gates:
 
 ```powershell
