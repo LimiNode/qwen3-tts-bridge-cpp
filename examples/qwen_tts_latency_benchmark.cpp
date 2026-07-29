@@ -55,6 +55,8 @@ struct ProgramOptions {
     std::uint32_t channels = 1;
     int warmups = 5;
     int requests = 30;
+    int cancel_every = 0;
+    std::optional<std::uint64_t> seed;
     int mock_chunks = 3;
     int mock_chunk_ms = 100;
     double mock_chunk_delay = 0.0;
@@ -67,6 +69,11 @@ struct RequestProbe {
     std::condition_variable condition;
     bool terminal = false;
     bool success = false;
+    bool cancelled = false;
+    bool cancel_after_first_audio = false;
+    bool cancellation_requested = false;
+    bool cancellation_dispatched = false;
+    RequestId request_id = 0;
     std::string error_category;
     std::string error_code;
     std::string error_message;
@@ -83,6 +90,7 @@ struct RequestResult {
     RequestId request_id = 0;
     bool warmup = false;
     bool success = false;
+    bool cancelled = false;
     std::optional<double> first_audio_ms;
     std::optional<double> completed_ms;
     double enqueue_ms = 0.0;
@@ -243,6 +251,8 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --warmups <count>              Warmup requests, default: 5.\n"
         << "  --requests <count>             Measured requests, default: 30.\n"
+        << "  --cancel-every <count>         Cancel every Nth measured request after first PCM.\n"
+        << "  --seed <value>                 Optional deterministic per-request seed.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --request-timeout-ms <ms>      Per-request timeout, default: 60000.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
@@ -286,6 +296,15 @@ int parse_int(const std::string& value, const std::string& option) {
         throw std::runtime_error("invalid integer for " + option + ": " + value);
     }
     return static_cast<int>(result);
+}
+
+std::uint64_t parse_u64(const std::string& value, const std::string& option) {
+    std::size_t parsed = 0;
+    const unsigned long long result = std::stoull(value, &parsed, 10);
+    if (parsed != value.size()) {
+        throw std::runtime_error("invalid integer for " + option + ": " + value);
+    }
+    return static_cast<std::uint64_t>(result);
 }
 
 double parse_double(const std::string& value, const std::string& option) {
@@ -344,6 +363,14 @@ ProgramOptions parse_options(int argc, char** argv) {
         else if (arg == "--requests" || arg.rfind("--requests=", 0) == 0) {
             options.requests = parse_int(require_value(index, argc, argv, "--requests"), "--requests");
         }
+        else if (arg == "--cancel-every" || arg.rfind("--cancel-every=", 0) == 0) {
+            options.cancel_every = parse_int(
+                require_value(index, argc, argv, "--cancel-every"),
+                "--cancel-every");
+        }
+        else if (arg == "--seed" || arg.rfind("--seed=", 0) == 0) {
+            options.seed = parse_u64(require_value(index, argc, argv, "--seed"), "--seed");
+        }
         else if (arg == "--request-timeout-ms" ||
                  arg.rfind("--request-timeout-ms=", 0) == 0) {
             options.request_timeout = std::chrono::milliseconds(parse_u32(
@@ -401,6 +428,9 @@ void validate_options(const ProgramOptions& options) {
     }
     if (options.requests <= 0) {
         throw std::runtime_error("--requests must be greater than zero");
+    }
+    if (options.cancel_every < 0) {
+        throw std::runtime_error("--cancel-every must be non-negative");
     }
     if (options.mock_chunks <= 0) {
         throw std::runtime_error("--mock-chunks must be greater than zero");
@@ -467,15 +497,32 @@ double elapsed_ms(Clock::time_point start) {
     return std::chrono::duration<double, std::milli>(Clock::now() - start).count();
 }
 
-TtsCallbacks make_latency_callbacks(RequestProbe& probe) {
+TtsCallbacks make_latency_callbacks(QwenTtsClient& client, RequestProbe& probe) {
     TtsCallbacks callbacks;
-    callbacks.on_audio = [&probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(probe.mutex);
-        if (!probe.first_audio_ms.has_value()) {
-            probe.first_audio_ms = elapsed_ms(probe.start);
+    callbacks.on_audio = [&client, &probe](const PcmChunk& chunk) {
+        RequestId request_id = 0;
+        bool cancel = false;
+        {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            if (!probe.first_audio_ms.has_value()) {
+                probe.first_audio_ms = elapsed_ms(probe.start);
+            }
+            probe.audio_chunks += 1;
+            probe.audio_bytes += chunk.bytes.size();
+            if (probe.cancel_after_first_audio && !probe.cancellation_requested) {
+                probe.cancellation_requested = true;
+            }
+            if (probe.cancellation_requested &&
+                !probe.cancellation_dispatched &&
+                probe.request_id != 0) {
+                probe.cancellation_dispatched = true;
+                request_id = probe.request_id;
+                cancel = true;
+            }
         }
-        probe.audio_chunks += 1;
-        probe.audio_bytes += chunk.bytes.size();
+        if (cancel) {
+            client.cancel(request_id);
+        }
     };
     callbacks.on_completed = [&probe]() {
         {
@@ -490,6 +537,7 @@ TtsCallbacks make_latency_callbacks(RequestProbe& probe) {
         {
             std::lock_guard<std::mutex> lock(probe.mutex);
             probe.completed_ms = elapsed_ms(probe.start);
+            probe.cancelled = true;
             probe.error_category = "request";
             probe.error_code = "cancelled";
             probe.error_message = "request was cancelled";
@@ -517,6 +565,10 @@ TtsRequest make_request(const ProgramOptions& options, const AudioFormat& audio_
     request.language = options.language;
     request.speaker = options.speaker;
     request.instruction = options.instruction;
+    if (options.seed.has_value()) {
+        request.has_seed = true;
+        request.seed = options.seed.value();
+    }
     request.output = audio_format;
     return request;
 }
@@ -528,14 +580,28 @@ RequestResult run_request(
     int index,
     bool warmup) {
     RequestProbe probe;
+    probe.cancel_after_first_audio =
+        !warmup && options.cancel_every > 0 && index % options.cancel_every == 0;
     probe.start = Clock::now();
     const RequestId request_id = client.synthesize_async(
         make_request(options, audio_format),
-        make_latency_callbacks(probe));
+        make_latency_callbacks(client, probe));
     probe.enqueue_ms = elapsed_ms(probe.start);
 
     if (request_id == 0) {
         throw std::runtime_error("failed to enqueue synthesis request");
+    }
+    RequestId immediate_cancel_id = 0;
+    {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.request_id = request_id;
+        if (probe.cancellation_requested && !probe.cancellation_dispatched) {
+            probe.cancellation_dispatched = true;
+            immediate_cancel_id = request_id;
+        }
+    }
+    if (immediate_cancel_id != 0) {
+        client.cancel(immediate_cancel_id);
     }
 
     {
@@ -557,6 +623,7 @@ RequestResult run_request(
         result.request_id = request_id;
         result.warmup = warmup;
         result.success = probe.success;
+        result.cancelled = probe.cancelled;
         result.first_audio_ms = probe.first_audio_ms;
         result.completed_ms = probe.completed_ms;
         result.enqueue_ms = probe.enqueue_ms;
@@ -734,11 +801,32 @@ void write_results_json(
         << "\"sample_rate\":" << options.sample_rate << ","
         << "\"channels\":" << options.channels << ","
         << "\"warmups\":" << options.warmups << ","
-        << "\"requests\":" << options.requests
+        << "\"requests\":" << options.requests << ","
+        << "\"cancel_every\":" << options.cancel_every << ","
+        << "\"seed\":";
+    if (options.seed.has_value()) {
+        out << options.seed.value();
+    }
+    else {
+        out << "null";
+    }
+    out
         << "},";
     out << "\"startup_ms\":" << std::fixed << std::setprecision(3) << startup_ms << ",";
 
     out << "\"summary\":{";
+    const auto cancelled_count = std::count_if(
+        measured.begin(),
+        measured.end(),
+        [](const RequestResult& result) { return result.cancelled; });
+    const auto failed_count = std::count_if(
+        measured.begin(),
+        measured.end(),
+        [](const RequestResult& result) {
+            return !result.success && !result.cancelled;
+        });
+    out << "\"cancelled_requests\":" << cancelled_count << ","
+        << "\"failed_requests\":" << failed_count << ",";
     write_metric_summary(out, "first_audio_ms", collect_metric(measured, &RequestResult::first_audio_ms));
     out << ",";
     write_metric_summary(out, "completed_ms", collect_metric(measured, &RequestResult::completed_ms));
@@ -761,6 +849,7 @@ void write_results_json(
                 << "\"index\":" << result.index << ","
                 << "\"request_id\":" << result.request_id << ","
                 << "\"success\":" << (result.success ? "true" : "false") << ","
+                << "\"cancelled\":" << (result.cancelled ? "true" : "false") << ","
                 << "\"enqueue_ms\":" << std::fixed << std::setprecision(3) << result.enqueue_ms
                 << ",\"first_audio_ms\":";
             write_number_or_null(out, result.first_audio_ms);
