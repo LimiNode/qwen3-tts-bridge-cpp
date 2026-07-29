@@ -1230,6 +1230,7 @@ def _qwen_stream_generate_audio(
                     "instruct": request.instruction or None,
                     "chunk_size": config.emit_every_frames,
                     "chunk_schedule": config.emit_chunk_schedule or None,
+                    "overlap_samples": config.overlap_samples,
                     "do_sample": config.do_sample,
                     "prefill_backend": config.prefill_backend,
                     "prefill_compile_compat_mode": (config.prefill_compile_compat_mode),

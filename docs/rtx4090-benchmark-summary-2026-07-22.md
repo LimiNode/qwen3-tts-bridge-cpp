@@ -3014,6 +3014,34 @@ release-soak-schedule-6-8-12-85a70c2-r63.json 949fadb8385ccfc675c4d30e47a9228d03
 0001-0002-faster-qwen-scheduler-hardening.patch 8a9e26b9f9003619429de000b755ee2db1c5cb1cb69f0083d58a864dabaa0431
 ```
 
+### Scheduler PCM Quality Update - 2026-07-29
+
+The original `40.125 ms` PCM-duration discrepancy was a real schedule-sensitive
+decoder slicing defect, not an acceptance tolerance to retain. FasterQwen
+commit `f62ae52` now uses the tokenizer's exact `1920` samples-per-code-frame
+contract and slices each emitted chunk by its actual scheduled frame count.
+Commit `5dba850` also adds an opt-in overlap facility, but it is not enabled in
+the measured profile because the initial 10 ms crossfade did not improve every
+boundary metric consistently.
+
+The same strict RTX 4090 configuration was rerun on nine deterministic cases:
+English and Russian, short/medium/long prompts, six speakers, all six compiled
+allowlist forms, and three unknown eager forms. Fixed-8 and `6,8,12` now have
+an exact `0.000 ms` PCM duration delta for every pair and matching codec trace
+fields. `scheduler-quality-matrix-v4.json` is a fail-closed quality gate: it
+requires exact duration, zero clipped S16 samples, and absolute jump, p95,
+RMS, DC and high-band spectral limits. The accompanying WAV pairs are kept as
+local review output rather than repository artifacts.
+
+```text
+scheduler-quality-matrix-v1.jsonl
+scheduler-quality-matrix-v4.json
+```
+
+```text
+scheduler-quality-matrix-v4.json 182802590866b515223a1d64b51b036af717c7958d35ce17717d63a44981f957
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

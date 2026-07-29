@@ -631,6 +631,7 @@ class QwenEngineTests(unittest.TestCase):
                 runtime_backend="faster",
                 emit_every_frames=8,
                 emit_chunk_schedule=(6, 8, 12),
+                overlap_samples=240,
             ),
             model_loader=lambda _config: fake_model,
         )
@@ -659,6 +660,7 @@ class QwenEngineTests(unittest.TestCase):
                 "instruct": "Speak warmly.",
                 "chunk_size": 8,
                 "chunk_schedule": (6, 8, 12),
+                "overlap_samples": 240,
                 "do_sample": True,
                 "prefill_backend": "eager",
                 "prefill_compile_compat_mode": "none",

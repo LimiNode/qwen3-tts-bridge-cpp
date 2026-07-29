@@ -13,6 +13,8 @@ def main() -> int:
     parser.add_argument("artifact", type=Path)
     parser.add_argument("--reserve-ms", type=float, default=50.0)
     parser.add_argument("--min-completed-requests", type=int, default=1)
+    parser.add_argument("--min-pre-arrival-buffer-ms", type=float, default=0.0)
+    parser.add_argument("--min-p05-pre-arrival-buffer-ms", type=float, default=0.0)
     parser.add_argument("--include-request-details", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -22,6 +24,8 @@ def main() -> int:
         artifact,
         reserve_ms=args.reserve_ms,
         min_completed_requests=args.min_completed_requests,
+        min_pre_arrival_buffer_ms=args.min_pre_arrival_buffer_ms,
+        min_p05_pre_arrival_buffer_ms=args.min_p05_pre_arrival_buffer_ms,
         include_request_details=args.include_request_details,
     )
     report["artifact"] = str(args.artifact)
@@ -36,6 +40,8 @@ def validate_playback_reserve(
     *,
     reserve_ms: float,
     min_completed_requests: int,
+    min_pre_arrival_buffer_ms: float = 0.0,
+    min_p05_pre_arrival_buffer_ms: float = 0.0,
     include_request_details: bool = False,
 ) -> dict[str, object]:
     failures: list[str] = []
@@ -43,6 +49,21 @@ def validate_playback_reserve(
         return {
             "acceptance_pass": False,
             "failures": ["reserve_ms must be finite and non-negative"],
+        }
+    if not math.isfinite(min_pre_arrival_buffer_ms) or min_pre_arrival_buffer_ms < 0.0:
+        return {
+            "acceptance_pass": False,
+            "failures": ["min_pre_arrival_buffer_ms must be finite and non-negative"],
+        }
+    if (
+        not math.isfinite(min_p05_pre_arrival_buffer_ms)
+        or min_p05_pre_arrival_buffer_ms < 0.0
+    ):
+        return {
+            "acceptance_pass": False,
+            "failures": [
+                "min_p05_pre_arrival_buffer_ms must be finite and non-negative"
+            ],
         }
     requests = artifact.get("requests")
     if not isinstance(requests, list):
@@ -101,6 +122,24 @@ def validate_playback_reserve(
         failures.append(
             f"minimum playback reserve {minimum_reserve:.3f} ms is negative"
         )
+    minimum_pre_arrival_buffer = min(all_pre_arrival_buffers, default=None)
+    p05_pre_arrival_buffer = _percentile(all_pre_arrival_buffers, 5.0)
+    if minimum_pre_arrival_buffer is None:
+        failures.append("no pre-arrival buffer observations")
+    elif minimum_pre_arrival_buffer < min_pre_arrival_buffer_ms:
+        failures.append(
+            "minimum pre-arrival buffer "
+            f"{minimum_pre_arrival_buffer:.3f} ms is below "
+            f"{min_pre_arrival_buffer_ms:.3f} ms"
+        )
+    if p05_pre_arrival_buffer is None:
+        failures.append("no p05 pre-arrival buffer observation")
+    elif p05_pre_arrival_buffer < min_p05_pre_arrival_buffer_ms:
+        failures.append(
+            "p05 pre-arrival buffer "
+            f"{p05_pre_arrival_buffer:.3f} ms is below "
+            f"{min_p05_pre_arrival_buffer_ms:.3f} ms"
+        )
 
     result: dict[str, object] = {
         "acceptance_pass": not failures,
@@ -109,7 +148,8 @@ def validate_playback_reserve(
         "underruns": underruns,
         "minimum_post_chunk_reserve_ms": minimum_reserve,
         "p05_post_chunk_reserve_ms": _percentile(all_post_chunk_reserves, 5.0),
-        "minimum_pre_arrival_buffer_ms": min(all_pre_arrival_buffers, default=None),
+        "minimum_pre_arrival_buffer_ms": minimum_pre_arrival_buffer,
+        "p05_pre_arrival_buffer_ms": p05_pre_arrival_buffer,
     }
     if include_request_details:
         result["requests"] = reports

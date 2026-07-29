@@ -20,12 +20,35 @@ class SchedulePcmParityTests(unittest.TestCase):
             _compare(_case(), candidate),
         )
 
+    def test_rejects_boundary_quality_above_absolute_limit(self) -> None:
+        candidate = _case()
+        quality = candidate["boundary_quality"]
+        self.assertIsInstance(quality, dict)
+        assert isinstance(quality, dict)
+        candidate["boundary_quality"] = {
+            **quality,
+            "max_boundary_jump_s16": 101,
+        }
+
+        self.assertIn(
+            "boundary_quality.max_boundary_jump_s16 exceeds maximum 100.000",
+            _compare(_case(), candidate, max_boundary_jump_s16=100.0),
+        )
+
 
 def _case() -> dict[str, object]:
     return {
         "pcm_sha256": "a" * 64,
         "audio_bytes": 96000,
         "audio_duration_ms": 2000.0,
+        "boundary_quality": {
+            "max_boundary_jump_s16": 100,
+            "p95_boundary_jump_s16": 90.0,
+            "max_rms_ratio": 1.1,
+            "max_dc_delta_s16": 20.0,
+            "max_spectral_high_ratio_delta": 0.1,
+            "clip_sample_count": 0,
+        },
         "generation_trace": {
             "codec_sha256": "c" * 64,
             "codec_frame_count": 24,
