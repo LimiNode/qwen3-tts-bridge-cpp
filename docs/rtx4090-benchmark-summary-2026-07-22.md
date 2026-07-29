@@ -2689,6 +2689,86 @@ fresh-process-matrix-discovery-r5.json 6b6c5b1f8d035ff5ffad374292dc8980cba5298cd
 fresh-process-matrix-discovery-r5-summary.json 3da0a6baa048ee5717cd574f955c9cb932b44706b16c3ef83b01bdeb8eea6bc1
 ```
 
+### Release Candidate Validation: Exact Allowlist And Long-Lived Worker
+
+The deployed release candidate uses `strict_bf16_sdpa_v1` with the exact
+prewarmed lengths `29, 30, 32, 33, 34, 35`. Known lengths use
+`compile_reduce_overhead`; unknown lengths are deliberately eager and may not
+create a graph or mutate the prewarmed cache. The validation wheel was built
+from FasterQwen commit `20fb8586348878257c99eb9d1ae7b6054ee2252e` and has
+SHA256 `142ba31dc7e3c8fa76a21007c89677ee4849385212f99bd2a7ea70db234d70e1`.
+It adds per-request observability for compile attempts, cache-entry and
+eviction deltas, and Dynamo unique-graph deltas. The bridge-side run used
+commit `881d2710cd9996cb331dd6f0e44889a435324a74`, Python 3.12, Torch
+`2.10.0+cu130`, CUDA 13.0, BF16 SDPA, CustomVoice 0.6B, and fixed seed `4242`.
+
+The shuffled `r20` fresh-process matrix contains 100 independent workers and
+400 requests: four workers for each of 20 language/speaker/length scenarios.
+Every completed request passed the terminal-trace validator. Every known
+length used the precompiled exact-allowlist route with no compile attempt;
+every unknown length stayed eager, also with no compile attempt. Cache and
+Dynamo counters had zero deltas after startup. The validator has separate
+latency acceptance for the two product routes: compiled p95 `<300 ms` and
+eager-unknown p95 `<450 ms`. It keeps an informational global `<300 ms` line,
+which is expected to be false for a mixed workload containing eager requests.
+
+| Route/category | Fresh workers | TTFA p50 | TTFA p95 | First-minus-steady p95 |
+| --- | ---: | ---: | ---: | ---: |
+| compiled allowlist 30 | 20 | 254.6 ms | 259.4 ms | 8.1 ms |
+| compiled allowlist 32 | 20 | 256.2 ms | 265.5 ms | 9.6 ms |
+| compiled allowlist 33 | 20 | 254.4 ms | 257.7 ms | 6.0 ms |
+| eager unknown short | 20 | 381.5 ms | 393.4 ms | 10.7 ms |
+| eager unknown long | 20 | 380.1 ms | 394.4 ms | 10.1 ms |
+
+The paired all-eager baseline uses the identical 100-worker schedule and the
+same installed FasterQwen wheel. For known compiled shapes, candidate TTFA
+improved from 382.2 ms median / 430.8 ms p95 to 254.9 ms median / 264.3 ms
+p95. The paired median candidate-minus-baseline TTFA is -128.4 ms and its p95
+is -113.9 ms. The tradeoff is startup: the compiled candidate has 62.98 s
+median startup versus 22.93 s for all-eager, a +40.19 s paired median cost.
+For unknown eager shapes, the candidate's median TTFA is 381.3 ms versus
+394.6 ms baseline; the paired p95 delta is +17.7 ms, so this route remains a
+separate diagnostic/product SLA rather than a claimed compile speedup.
+
+The long-lived-worker `r500` soak then reused one loaded worker for 500 mixed
+requests, cycling the same five categories. It completed 451 requests and
+cancelled 49 immediately after their first PCM frame. All 49 cancellations
+were followed by a completed request; no terminal trace, routing, cache, or
+Dynamo invariant failed. The prewarmed compiled-cache entry count remained
+exactly six. Worker RSS changed from 4,141,056 to 4,210,688 bytes (+0.066 MiB)
+and GPU memory from 4,404 to 4,405 MiB across 21 snapshots. Completed-request
+TTFA was 252.9 ms median / 377.6 ms p95; full completion was 2,758.5 ms median
+/ 5,066.2 ms p95 with real-time factor 0.3722 median / 0.4079 p95. Cancellation
+after first audio took 227.1 ms median / 231.1 ms p95.
+
+The FasterQwen real-model parity suite also passed in this configuration:
+`tests/test_e2e_parity.py` reported 14 passed in 244.82 s. It exercised Base,
+CustomVoice, and VoiceDesign parity on CUDA. The suite emitted 17 dependency
+deprecation warnings only.
+
+Artifacts:
+
+```text
+faster-qwen-provenance-v2.json
+faster-qwen-request-compile-telemetry-patch/0001-feat-prefill-expose-request-compile-telemetry.patch
+faster-qwen-request-compile-telemetry-patch/faster-qwen-request-compile-telemetry-through-20fb858.bundle
+compile-telemetry-clean-smoke.json
+compile-telemetry-clean-smoke-summary.json
+confirmatory-r20-scenarios.jsonl
+confirmatory-r20-schedule.jsonl
+confirmatory-r20.json
+confirmatory-r20-summary.json
+release-ab-all-eager-r20.json
+release-ab-summary.json
+mixed-soak-r500.json
+```
+
+Artifact SHA256:
+
+```text
+mixed-soak-r500.json c88dfdf7e3ca4a43a2d632a398f2f8dcf2e56539e4ce0536f4e1fd2590e6ce01
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
