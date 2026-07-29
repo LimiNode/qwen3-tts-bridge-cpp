@@ -1,0 +1,74 @@
+{
+  "acceptance": {
+    "compiled_latency_acceptance_pass": true,
+    "eager_latency_acceptance_pass": true,
+    "global_latency_acceptance_pass": false,
+    "routing_acceptance_pass": true,
+    "terminal_trace_acceptance_pass": true
+  },
+  "acceptance_pass": true,
+  "all_requests": {
+    "first_minus_steady_ms": {
+      "max": 3.0159999150782824,
+      "median": 0.7958499481901526,
+      "min": -1.424300018697977,
+      "p95": 2.7939849183894694
+    },
+    "first_ttfa_ms": {
+      "max": 385.77839999925345,
+      "median": 323.2634500018321,
+      "min": 260.74850000441074,
+      "p95": 379.5269049995113
+    },
+    "fresh_processes": 2
+  },
+  "artifact_schema_version": 2,
+  "categories": {
+    "allowlist_32": {
+      "first_minus_steady_ms": {
+        "max": -1.424300018697977,
+        "median": -1.424300018697977,
+        "min": -1.424300018697977,
+        "p95": -1.424300018697977
+      },
+      "first_ttfa_ms": {
+        "max": 260.74850000441074,
+        "median": 260.74850000441074,
+        "min": 260.74850000441074,
+        "p95": 260.74850000441074
+      },
+      "fresh_processes": 1
+    },
+    "unknown_short": {
+      "first_minus_steady_ms": {
+        "max": 3.0159999150782824,
+        "median": 3.0159999150782824,
+        "min": 3.0159999150782824,
+        "p95": 3.0159999150782824
+      },
+      "first_ttfa_ms": {
+        "max": 385.77839999925345,
+        "median": 385.77839999925345,
+        "min": 385.77839999925345,
+        "p95": 385.77839999925345
+      },
+      "fresh_processes": 1
+    }
+  },
+  "expected": {
+    "requests_per_run": 4,
+    "schedule_category_counts": {
+      "allowlist_32": 1,
+      "unknown_short": 1
+    }
+  },
+  "failures": [
+    "global: first TTFA p95 379.527 ms is not < 300.000 ms"
+  ],
+  "thresholds": {
+    "compiled_first_ttfa_p95_max_ms": 300.0,
+    "eager_first_ttfa_p95_max_ms": 450.0,
+    "first_minus_steady_p95_max_ms": 20.0,
+    "global_first_ttfa_p95_max_ms": 300.0
+  }
+}
