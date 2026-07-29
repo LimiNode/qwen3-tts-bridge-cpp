@@ -86,6 +86,7 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     target_link_libraries(qwen_tts_latency_benchmark
         PRIVATE
             QwenTTSBridge::qwen_tts_bridge
+            nlohmann_json::nlohmann_json
     )
 
     target_compile_definitions(qwen_tts_save_wav

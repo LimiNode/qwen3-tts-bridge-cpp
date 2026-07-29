@@ -1,12 +1,15 @@
 #include <qwen_tts_bridge/client.hpp>
 #include <qwen_tts_bridge/transport.hpp>
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
 #include <exception>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -51,6 +54,7 @@ struct ProgramOptions {
     std::string language = "auto";
     std::string speaker;
     std::string instruction;
+    std::string request_manifest;
     std::uint32_t sample_rate = 24000;
     std::uint32_t channels = 1;
     int warmups = 5;
@@ -62,6 +66,15 @@ struct ProgramOptions {
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
     std::chrono::milliseconds request_timeout{60000};
+};
+
+struct RequestSpec {
+    std::string label;
+    std::string text;
+    std::string language;
+    std::string speaker;
+    std::string instruction;
+    std::optional<std::uint64_t> seed;
 };
 
 struct ChunkResult {
@@ -95,6 +108,7 @@ struct RequestProbe {
 
 struct RequestResult {
     int index = 0;
+    std::string label;
     RequestId request_id = 0;
     bool warmup = false;
     bool success = false;
@@ -256,6 +270,7 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
+        << "  --request-manifest <jsonl>     Cycle measured requests through JSONL cases.\n"
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --warmups <count>              Warmup requests, default: 5.\n"
@@ -358,6 +373,9 @@ ProgramOptions parse_options(int argc, char** argv) {
         else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
             options.instruction = require_value(index, argc, argv, "--instruction");
         }
+        else if (arg == "--request-manifest" || arg.rfind("--request-manifest=", 0) == 0) {
+            options.request_manifest = require_value(index, argc, argv, "--request-manifest");
+        }
         else if (arg == "--sample-rate" || arg.rfind("--sample-rate=", 0) == 0) {
             options.sample_rate =
                 parse_u32(require_value(index, argc, argv, "--sample-rate"), "--sample-rate");
@@ -450,6 +468,47 @@ void validate_options(const ProgramOptions& options) {
     if (options.mock_chunk_delay < 0.0) {
         throw std::runtime_error("--mock-chunk-delay must be non-negative");
     }
+}
+
+std::vector<RequestSpec> load_request_manifest(const ProgramOptions& options) {
+    if (options.request_manifest.empty()) {
+        return {};
+    }
+
+    std::ifstream input(options.request_manifest);
+    if (!input) {
+        throw std::runtime_error("failed to open --request-manifest");
+    }
+
+    std::vector<RequestSpec> specs;
+    std::string line;
+    int line_number = 0;
+    while (std::getline(input, line)) {
+        ++line_number;
+        if (line.empty()) {
+            continue;
+        }
+        const nlohmann::json value = nlohmann::json::parse(line);
+        RequestSpec spec;
+        spec.label = value.at("label").get<std::string>();
+        spec.text = value.at("text").get<std::string>();
+        spec.language = value.value("language", options.language);
+        spec.speaker = value.value("speaker", options.speaker);
+        spec.instruction = value.value("instruction", options.instruction);
+        if (value.contains("seed")) {
+            spec.seed = value.at("seed").get<std::uint64_t>();
+        }
+        if (spec.label.empty() || spec.text.empty()) {
+            throw std::runtime_error(
+                "--request-manifest line " + std::to_string(line_number) +
+                " requires non-empty label and text");
+        }
+        specs.push_back(std::move(spec));
+    }
+    if (specs.empty()) {
+        throw std::runtime_error("--request-manifest contains no request cases");
+    }
+    return specs;
 }
 
 StdIoTransportOptions make_transport_options(
@@ -581,15 +640,19 @@ TtsCallbacks make_latency_callbacks(QwenTtsClient& client, RequestProbe& probe) 
     return callbacks;
 }
 
-TtsRequest make_request(const ProgramOptions& options, const AudioFormat& audio_format) {
+TtsRequest make_request(
+    const ProgramOptions& options,
+    const AudioFormat& audio_format,
+    const RequestSpec* spec) {
     TtsRequest request;
-    request.text = options.text;
-    request.language = options.language;
-    request.speaker = options.speaker;
-    request.instruction = options.instruction;
-    if (options.seed.has_value()) {
+    request.text = spec != nullptr ? spec->text : options.text;
+    request.language = spec != nullptr ? spec->language : options.language;
+    request.speaker = spec != nullptr ? spec->speaker : options.speaker;
+    request.instruction = spec != nullptr ? spec->instruction : options.instruction;
+    const std::optional<std::uint64_t> seed = spec != nullptr ? spec->seed : options.seed;
+    if (seed.has_value()) {
         request.has_seed = true;
-        request.seed = options.seed.value();
+        request.seed = seed.value();
     }
     request.output = audio_format;
     return request;
@@ -600,13 +663,14 @@ RequestResult run_request(
     const ProgramOptions& options,
     const AudioFormat& audio_format,
     int index,
-    bool warmup) {
+    bool warmup,
+    const RequestSpec* spec = nullptr) {
     RequestProbe probe;
     probe.cancel_after_first_audio =
         !warmup && options.cancel_every > 0 && index % options.cancel_every == 0;
     probe.start = Clock::now();
     const RequestId request_id = client.synthesize_async(
-        make_request(options, audio_format),
+        make_request(options, audio_format, spec),
         make_latency_callbacks(client, probe));
     probe.enqueue_ms = elapsed_ms(probe.start);
 
@@ -642,6 +706,7 @@ RequestResult run_request(
     {
         std::lock_guard<std::mutex> lock(probe.mutex);
         result.index = index;
+        result.label = spec != nullptr ? spec->label : "";
         result.request_id = request_id;
         result.warmup = warmup;
         result.success = probe.success;
@@ -870,6 +935,7 @@ void write_results_json(
             }
             out << "{"
                 << "\"index\":" << result.index << ","
+                << "\"label\":\"" << json_escape(result.label) << "\","
                 << "\"request_id\":" << result.request_id << ","
                 << "\"success\":" << (result.success ? "true" : "false") << ","
                 << "\"cancelled\":" << (result.cancelled ? "true" : "false") << ","
@@ -945,6 +1011,7 @@ int main(int argc, char** argv) {
             return 0;
         }
 
+        const std::vector<RequestSpec> request_specs = load_request_manifest(options);
         const AudioFormat audio_format = requested_audio_format(options);
 
         QwenTtsClientOptions client_options;
@@ -964,20 +1031,28 @@ int main(int argc, char** argv) {
         measured.reserve(static_cast<std::size_t>(options.requests));
 
         for (int index = 0; index < options.warmups; ++index) {
+            const RequestSpec* spec = request_specs.empty()
+                ? nullptr
+                : &request_specs[static_cast<std::size_t>(index) % request_specs.size()];
             warmups.push_back(run_request(
                 client,
                 options,
                 audio_format,
                 index + 1,
-                true));
+                true,
+                spec));
         }
         for (int index = 0; index < options.requests; ++index) {
+            const RequestSpec* spec = request_specs.empty()
+                ? nullptr
+                : &request_specs[static_cast<std::size_t>(index) % request_specs.size()];
             measured.push_back(run_request(
                 client,
                 options,
                 audio_format,
                 index + 1,
-                false));
+                false,
+                spec));
         }
 
         client.stop();
