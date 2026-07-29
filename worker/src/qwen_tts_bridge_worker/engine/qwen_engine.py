@@ -1545,6 +1545,7 @@ def _first_chunk_timing_fields(
         "prefill_dynamo_counter_available",
         "generation_state_mask_cache_hit",
         "generation_state_attention_mask_all_valid",
+        "is_final",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):

@@ -758,6 +758,7 @@ class StdioWorkerServer:
                         ),
                     )
                 first_audio_frame = slot.audio_chunks == 0
+                chunk_metrics = _pop_engine_chunk_metrics(self._engine)
                 if first_audio_frame:
                     started_at = slot.started_at
                     if started_at is not None:
@@ -769,13 +770,26 @@ class StdioWorkerServer:
                                 monotonic_seconds(),
                             ),
                         )
-                    chunk_metrics = _pop_engine_chunk_metrics(self._engine)
                     if chunk_metrics:
                         self._metrics.emit(
                             "request_first_chunk_engine_phases",
                             request_id=request_id,
                             **chunk_metrics,
                         )
+                started_at = slot.started_at
+                if started_at is not None:
+                    self._metrics.emit(
+                        "request_pcm_chunk",
+                        request_id=request_id,
+                        chunk_index=slot.audio_chunks,
+                        pcm_ready_ms=elapsed_milliseconds(started_at, chunk_time),
+                        pcm_bytes=len(pcm_chunk),
+                        pcm_duration_ms=_pcm_duration_ms(
+                            slot.request.output,
+                            len(pcm_chunk),
+                        ),
+                        **(chunk_metrics or {}),
+                    )
                 slot.audio_chunks += 1
                 slot.audio_bytes += len(pcm_chunk)
                 self._writer.send(
@@ -830,6 +844,10 @@ class StdioWorkerServer:
             "audio_chunks": slot.audio_chunks,
             "audio_bytes": slot.audio_bytes,
         }
+        if terminal_state == "completed" and slot.audio_chunks > 0:
+            # A full chunk can be yielded before deferred EOS is observable.
+            # Completion therefore authoritatively marks the final delivered PCM.
+            fields["final_pcm_chunk_index"] = slot.audio_chunks - 1
 
         if slot.started_at is not None:
             fields["queue_ms"] = elapsed_milliseconds(

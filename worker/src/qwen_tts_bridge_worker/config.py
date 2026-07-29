@@ -6,6 +6,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
+MAX_EMIT_CHUNK_SCHEDULE_FRAMES = 64
+
 
 @dataclass(frozen=True, slots=True)
 class MockEngineConfig:
@@ -110,6 +112,14 @@ class QwenEngineConfig:
             raise ValueError("qwen.emit_every_frames must be greater than zero")
         if any(frames <= 0 for frames in self.emit_chunk_schedule):
             raise ValueError("qwen.emit_chunk_schedule values must be positive")
+        if any(
+            frames > MAX_EMIT_CHUNK_SCHEDULE_FRAMES
+            for frames in self.emit_chunk_schedule
+        ):
+            raise ValueError(
+                "qwen.emit_chunk_schedule values must not exceed "
+                f"{MAX_EMIT_CHUNK_SCHEDULE_FRAMES}"
+            )
         if self.emit_chunk_schedule and self.runtime_backend != "faster":
             raise ValueError("qwen.emit_chunk_schedule requires runtime_backend=faster")
         if self.decode_window_frames <= 0:

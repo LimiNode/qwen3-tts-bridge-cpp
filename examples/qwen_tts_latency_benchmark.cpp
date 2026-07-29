@@ -64,6 +64,13 @@ struct ProgramOptions {
     std::chrono::milliseconds request_timeout{60000};
 };
 
+struct ChunkResult {
+    std::size_t index = 0;
+    double arrival_ms = 0.0;
+    std::uint64_t audio_bytes = 0;
+    double audio_duration_ms = 0.0;
+};
+
 struct RequestProbe {
     std::mutex mutex;
     std::condition_variable condition;
@@ -82,6 +89,7 @@ struct RequestProbe {
     double enqueue_ms = 0.0;
     std::size_t audio_chunks = 0;
     std::uint64_t audio_bytes = 0;
+    std::vector<ChunkResult> chunks;
     Clock::time_point start;
 };
 
@@ -96,6 +104,7 @@ struct RequestResult {
     double enqueue_ms = 0.0;
     std::size_t audio_chunks = 0;
     std::uint64_t audio_bytes = 0;
+    std::vector<ChunkResult> chunks;
     double audio_duration_ms = 0.0;
     std::optional<double> real_time_factor;
     std::optional<double> inverse_real_time_factor;
@@ -504,9 +513,22 @@ TtsCallbacks make_latency_callbacks(QwenTtsClient& client, RequestProbe& probe) 
         bool cancel = false;
         {
             std::lock_guard<std::mutex> lock(probe.mutex);
+            const double arrival_ms = elapsed_ms(probe.start);
             if (!probe.first_audio_ms.has_value()) {
-                probe.first_audio_ms = elapsed_ms(probe.start);
+                probe.first_audio_ms = arrival_ms;
             }
+            const double bytes_per_ms =
+                static_cast<double>(chunk.format.sample_rate) *
+                static_cast<double>(chunk.format.channels) *
+                2.0 / 1000.0;
+            probe.chunks.push_back(ChunkResult{
+                probe.audio_chunks,
+                arrival_ms,
+                static_cast<std::uint64_t>(chunk.bytes.size()),
+                bytes_per_ms > 0.0
+                    ? static_cast<double>(chunk.bytes.size()) / bytes_per_ms
+                    : 0.0,
+            });
             probe.audio_chunks += 1;
             probe.audio_bytes += chunk.bytes.size();
             if (probe.cancel_after_first_audio && !probe.cancellation_requested) {
@@ -629,6 +651,7 @@ RequestResult run_request(
         result.enqueue_ms = probe.enqueue_ms;
         result.audio_chunks = probe.audio_chunks;
         result.audio_bytes = probe.audio_bytes;
+        result.chunks = probe.chunks;
         result.error_category = probe.error_category;
         result.error_code = probe.error_code;
         result.error_message = probe.error_message;
@@ -857,6 +880,21 @@ void write_results_json(
             write_number_or_null(out, result.completed_ms);
             out << ",\"audio_bytes\":" << result.audio_bytes
                 << ",\"audio_chunks\":" << result.audio_chunks
+                << ",\"chunks\":[";
+            for (std::size_t chunk_index = 0; chunk_index < result.chunks.size(); ++chunk_index) {
+                const ChunkResult& chunk = result.chunks[chunk_index];
+                if (chunk_index != 0u) {
+                    out << ",";
+                }
+                out << "{"
+                    << "\"index\":" << chunk.index
+                    << ",\"arrival_ms\":" << std::fixed << std::setprecision(3)
+                    << chunk.arrival_ms
+                    << ",\"audio_bytes\":" << chunk.audio_bytes
+                    << ",\"audio_duration_ms\":" << chunk.audio_duration_ms
+                    << "}";
+            }
+            out << "]"
                 << ",\"audio_duration_ms\":" << result.audio_duration_ms
                 << ",\"real_time_factor\":";
             write_number_or_null(out, result.real_time_factor);

@@ -79,6 +79,7 @@ class Rtx4090ExperimentalProfileTests(unittest.TestCase):
         )
 
         self.assertEqual(config.emit_chunk_schedule, (6, 8, 12))
+        self.assertEqual(config.emit_every_frames, 12)
 
     def test_launcher_uses_module_entry_point_and_profile_path(self) -> None:
         launcher = (

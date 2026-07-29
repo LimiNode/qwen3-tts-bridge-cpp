@@ -16,6 +16,11 @@ def main() -> int:
     parser.add_argument("--expected-cancelled", type=int, required=True)
     parser.add_argument("--expected-cache-entries", type=int, default=6)
     parser.add_argument("--expected-first-chunk-steps", type=int)
+    parser.add_argument(
+        "--expected-chunk-schedule",
+        type=_parse_chunk_schedule,
+        default=(),
+    )
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -28,6 +33,7 @@ def main() -> int:
         expected_cancelled=args.expected_cancelled,
         expected_cache_entries=args.expected_cache_entries,
         expected_first_chunk_steps=args.expected_first_chunk_steps,
+        expected_chunk_schedule=args.expected_chunk_schedule,
     )
     report["artifact"] = str(args.artifact)
     report["worker_metrics"] = str(args.worker_metrics)
@@ -49,6 +55,7 @@ def validate_cpp_api_soak(
     expected_cancelled: int,
     expected_cache_entries: int,
     expected_first_chunk_steps: int | None = None,
+    expected_chunk_schedule: tuple[int, ...] = (),
 ) -> dict[str, object]:
     failures: list[str] = []
     requests = artifact.get("requests")
@@ -60,6 +67,7 @@ def validate_cpp_api_soak(
     completed = 0
     cancelled = 0
     request_ids: set[int] = set()
+    requests_by_id: dict[int, dict[str, object]] = {}
     for request in requests:
         if not isinstance(request, dict):
             failures.append("request entry is not an object")
@@ -69,6 +77,7 @@ def validate_cpp_api_soak(
             failures.append("request lacks numeric request_id")
             continue
         request_ids.add(request_id)
+        requests_by_id[request_id] = request
         if request.get("success") is True:
             completed += 1
             if request.get("cancelled") is not False:
@@ -91,6 +100,7 @@ def validate_cpp_api_soak(
         failures.append("terminal accounting does not cover all requests")
 
     metrics_by_request = _metrics_by_request(worker_metrics)
+    chunks_by_request = _chunk_metrics_by_request(worker_metrics)
     worker_pids: set[int] = set()
     cache_entries: set[int] = set()
     for request_id in sorted(request_ids):
@@ -107,6 +117,14 @@ def validate_cpp_api_soak(
                 cache_entries,
                 failures,
             )
+        _validate_chunk_schedule(
+            request_id,
+            requests_by_id[request_id],
+            chunks_by_request.get(request_id, []),
+            metrics.get("request_finished"),
+            expected_chunk_schedule,
+            failures,
+        )
         memory = metrics.get("worker_runtime_memory")
         if not isinstance(memory, dict):
             failures.append(f"request {request_id}: missing worker memory metric")
@@ -193,6 +211,20 @@ def _json_object_end(text: str, start: int) -> int | None:
     return None
 
 
+def _parse_chunk_schedule(value: str) -> tuple[int, ...]:
+    try:
+        schedule = tuple(int(item.strip()) for item in value.split(","))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "--expected-chunk-schedule must contain integers"
+        ) from exc
+    if not schedule or any(item <= 0 for item in schedule):
+        raise argparse.ArgumentTypeError(
+            "--expected-chunk-schedule must contain positive integers"
+        )
+    return schedule
+
+
 def _metrics_by_request(
     worker_metrics: list[dict[str, object]],
 ) -> dict[int, dict[str, dict[str, object]]]:
@@ -204,6 +236,82 @@ def _metrics_by_request(
             continue
         grouped.setdefault(request_id, {}).setdefault(event, metric)
     return grouped
+
+
+def _chunk_metrics_by_request(
+    worker_metrics: list[dict[str, object]],
+) -> dict[int, list[dict[str, object]]]:
+    grouped: dict[int, list[dict[str, object]]] = {}
+    for metric in worker_metrics:
+        if metric.get("event") != "request_pcm_chunk":
+            continue
+        request_id = metric.get("request_id")
+        chunk_index = metric.get("chunk_index")
+        if not isinstance(request_id, int) or not isinstance(chunk_index, int):
+            continue
+        grouped.setdefault(request_id, []).append(metric)
+    for metrics in grouped.values():
+        metrics.sort(key=lambda metric: int(metric["chunk_index"]))
+    return grouped
+
+
+def _validate_chunk_schedule(
+    request_id: int,
+    request: dict[str, object],
+    worker_chunks: list[dict[str, object]],
+    terminal_metric: object,
+    expected_schedule: tuple[int, ...],
+    failures: list[str],
+) -> None:
+    if not expected_schedule:
+        return
+    client_chunks = request.get("chunks")
+    audio_chunks = request.get("audio_chunks")
+    if not isinstance(client_chunks, list) or not isinstance(audio_chunks, int):
+        failures.append(f"request {request_id}: missing C++ chunk observations")
+        return
+    if len(client_chunks) != audio_chunks:
+        failures.append(f"request {request_id}: C++ chunk count does not match audio")
+    if len(worker_chunks) != audio_chunks:
+        failures.append(
+            f"request {request_id}: worker chunk count does not match audio"
+        )
+        return
+    if request.get("success") is True and audio_chunks < len(expected_schedule):
+        failures.append(f"request {request_id}: completion lacks scheduled prefix")
+
+    for index, chunk in enumerate(worker_chunks):
+        target = expected_schedule[min(index, len(expected_schedule) - 1)]
+        actual = chunk.get("chunk_steps")
+        reported_target = chunk.get("chunk_target_steps")
+        is_final = chunk.get("is_final")
+        if reported_target != target:
+            failures.append(f"request {request_id}: chunk {index} target != {target}")
+        if not isinstance(actual, int) or actual <= 0 or actual > target:
+            failures.append(f"request {request_id}: chunk {index} has invalid steps")
+            continue
+        is_terminal_audio = request.get("success") is True and index + 1 == audio_chunks
+        if is_terminal_audio:
+            terminal_index = (
+                terminal_metric.get("final_pcm_chunk_index")
+                if isinstance(terminal_metric, dict)
+                else None
+            )
+            if is_final is not True and terminal_index != index:
+                failures.append(
+                    f"request {request_id}: final chunk lacks terminal accounting"
+                )
+        elif actual != target:
+            failures.append(
+                f"request {request_id}: chunk {index} is short before terminal"
+            )
+        client_chunk = client_chunks[index] if index < len(client_chunks) else None
+        if not isinstance(client_chunk, dict):
+            continue
+        for key in ("arrival_ms", "audio_duration_ms"):
+            value = client_chunk.get(key)
+            if not isinstance(value, (int, float)) or value <= 0:
+                failures.append(f"request {request_id}: chunk {index} lacks {key}")
 
 
 def _validate_route(

@@ -16,23 +16,34 @@ class ValidateCppApiSoakTests(unittest.TestCase):
                     "request_id": 1,
                     "success": True,
                     "cancelled": False,
-                    "audio_chunks": 2,
+                    "audio_chunks": 3,
+                    "chunks": _client_chunks(3),
                 },
                 {
                     "request_id": 2,
                     "success": False,
                     "cancelled": True,
                     "audio_chunks": 1,
+                    "chunks": _client_chunks(1),
                 },
             ]
         }
         validation = validate_cpp_api_soak(
             cast(dict[str, object], artifact),
-            [_phases(1), _memory(1), _phases(2), _memory(2)],
+            [
+                _phases(1),
+                *_chunks(1, completed=True),
+                _finished(1, final_chunk_index=2),
+                _memory(1),
+                _phases(2),
+                *_chunks(2, completed=False),
+                _memory(2),
+            ],
             expected_requests=2,
             expected_cancelled=1,
             expected_cache_entries=6,
             expected_first_chunk_steps=6,
+            expected_chunk_schedule=(6, 8, 12),
         )
 
         self.assertEqual([], cast(list[str], validation["failures"]))
@@ -45,6 +56,7 @@ class ValidateCppApiSoakTests(unittest.TestCase):
                     "success": True,
                     "cancelled": False,
                     "audio_chunks": 2,
+                    "chunks": _client_chunks(2),
                 }
             ]
         }
@@ -52,7 +64,12 @@ class ValidateCppApiSoakTests(unittest.TestCase):
         phases["prefill_backend_used"] = "eager"
         validation = validate_cpp_api_soak(
             cast(dict[str, object], artifact),
-            [phases, _memory(1)],
+            [
+                phases,
+                *_chunks(1, completed=True),
+                _finished(1, final_chunk_index=2),
+                _memory(1),
+            ],
             expected_requests=1,
             expected_cancelled=0,
             expected_cache_entries=6,
@@ -70,7 +87,8 @@ class ValidateCppApiSoakTests(unittest.TestCase):
                     "request_id": 1,
                     "success": True,
                     "cancelled": False,
-                    "audio_chunks": 2,
+                    "audio_chunks": 3,
+                    "chunks": _client_chunks(3),
                 }
             ]
         }
@@ -78,11 +96,17 @@ class ValidateCppApiSoakTests(unittest.TestCase):
         phases["chunk_steps"] = 8
         validation = validate_cpp_api_soak(
             cast(dict[str, object], artifact),
-            [phases, _memory(1)],
+            [
+                phases,
+                *_chunks(1, completed=True),
+                _finished(1, final_chunk_index=2),
+                _memory(1),
+            ],
             expected_requests=1,
             expected_cancelled=0,
             expected_cache_entries=6,
             expected_first_chunk_steps=6,
+            expected_chunk_schedule=(6, 8, 12),
         )
 
         self.assertIn(
@@ -108,6 +132,32 @@ def _phases(request_id: int) -> dict[str, object]:
     }
 
 
+def _chunks(request_id: int, *, completed: bool) -> list[dict[str, object]]:
+    sizes = (6, 8, 12) if completed else (6,)
+    return [
+        {
+            "event": "request_pcm_chunk",
+            "request_id": request_id,
+            "chunk_index": index,
+            "chunk_steps": size,
+            "chunk_target_steps": size,
+            "is_final": completed and index + 1 == len(sizes),
+        }
+        for index, size in enumerate(sizes)
+    ]
+
+
+def _client_chunks(count: int) -> list[dict[str, object]]:
+    return [
+        {
+            "index": index,
+            "arrival_ms": 100.0 + index * 50.0,
+            "audio_duration_ms": 400.0,
+        }
+        for index in range(count)
+    ]
+
+
 def _memory(request_id: int) -> dict[str, object]:
     return {
         "event": "worker_runtime_memory",
@@ -116,6 +166,15 @@ def _memory(request_id: int) -> dict[str, object]:
         "cuda_memory_allocated_bytes": 1,
         "cuda_memory_reserved_bytes": 1,
         "cuda_memory_max_reserved_bytes": 1,
+    }
+
+
+def _finished(request_id: int, *, final_chunk_index: int) -> dict[str, object]:
+    return {
+        "event": "request_finished",
+        "request_id": request_id,
+        "terminal_state": "completed",
+        "final_pcm_chunk_index": final_chunk_index,
     }
 
 

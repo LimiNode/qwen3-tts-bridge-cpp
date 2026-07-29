@@ -259,7 +259,10 @@ def _add_qwen_subcommand(
         "--emit-chunk-schedule",
         type=_parse_emit_chunk_schedule,
         default=(),
-        help="Optional Faster-only first/second/steady PCM frame schedule.",
+        help=(
+            "Optional Faster-only first/second/steady PCM frame schedule; "
+            "its last value is reused for steady state."
+        ),
     )
     qwen_parser.add_argument("--decode-window-frames", type=int, default=80)
     qwen_parser.add_argument("--overlap-samples", type=int, default=0)

@@ -326,6 +326,7 @@ class EngineFactoryTests(unittest.TestCase):
             {"model_path": "models/qwen", "dtype": ""},
             {"model_path": "models/qwen", "emit_every_frames": 0},
             {"model_path": "models/qwen", "emit_chunk_schedule": (0,)},
+            {"model_path": "models/qwen", "emit_chunk_schedule": (65,)},
             {
                 "model_path": "models/qwen",
                 "emit_chunk_schedule": (6, 8, 12),
