@@ -49,6 +49,7 @@ class QwenTtsEngine:
         self._model: Any | None = None
         self._synthesis_lock = threading.Lock()
         self._last_chunk_metrics: dict[str, object] | None = None
+        self._last_generation_trace: dict[str, object] | None = None
         self._profile_pair_range_open = False
         self._prewarmed_prefill_lengths: set[int] = set()
 
@@ -74,7 +75,14 @@ class QwenTtsEngine:
             return
         _seed_runtime(self._config.seed)
         self._model = self._model_loader(self._config)
-        _validate_loaded_prefill_compile_compat(self._model, self._config)
+        model = self._require_model()
+        _validate_loaded_prefill_compile_compat(model, self._config)
+        if self._config.collect_generation_trace:
+            if not hasattr(model, "collect_generation_trace"):
+                raise QwenEngineError(
+                    "faster backend does not expose generation trace collection"
+                )
+            model.collect_generation_trace = True
 
     def warmup(self) -> dict[str, object] | None:
         """Ensure the model object exists before the worker sends ready."""
@@ -142,6 +150,7 @@ class QwenTtsEngine:
         model = self._require_model()
         self._maybe_open_profile_pair_range(request.request_id)
         with self._synthesis_lock:
+            self._last_generation_trace = None
             _seed_runtime(_request_seed(self._config, request.request_id))
             audio_stream = self._generate_audio_stream(model, request)
             close_stream = getattr(audio_stream, "close", None)
@@ -174,6 +183,8 @@ class QwenTtsEngine:
                             pcm_convert_ms=pcm_convert_ms,
                         )
                         yield pcm
+                if not cancel_event.is_set():
+                    self._capture_generation_trace(model)
             finally:
                 if callable(close_stream):
                     close_stream()
@@ -185,6 +196,21 @@ class QwenTtsEngine:
         metrics = self._last_chunk_metrics
         self._last_chunk_metrics = None
         return metrics
+
+    def pop_last_generation_trace(self) -> dict[str, object] | None:
+        """Return the completed diagnostic generation trace, if collected."""
+
+        trace = self._last_generation_trace
+        self._last_generation_trace = None
+        return trace
+
+    def _capture_generation_trace(self, model: Any) -> None:
+        if not self._config.collect_generation_trace:
+            return
+        trace = getattr(model, "last_generation_trace", None)
+        if not isinstance(trace, dict):
+            raise QwenEngineError("faster backend did not produce a generation trace")
+        self._last_generation_trace = {str(key): value for key, value in trace.items()}
 
     def close(self) -> None:
         """Release the loaded model reference."""

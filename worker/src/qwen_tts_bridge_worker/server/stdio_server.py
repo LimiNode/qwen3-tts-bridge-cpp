@@ -785,6 +785,13 @@ class StdioWorkerServer:
         else:
             with self._condition:
                 self._terminalize_locked(request_id)
+            generation_trace = _pop_engine_generation_trace(self._engine)
+            if generation_trace:
+                self._metrics.emit(
+                    "request_generation_trace",
+                    request_id=request_id,
+                    **generation_trace,
+                )
             self._emit_request_finished(slot, "completed")
             self._writer.send(control_frame(request_id, {"message_type": "completed"}))
 
@@ -883,6 +890,16 @@ def _pop_engine_chunk_metrics(engine: TtsEngine) -> dict[str, object] | None:
     if not isinstance(metrics, dict):
         return None
     return {str(key): value for key, value in metrics.items()}
+
+
+def _pop_engine_generation_trace(engine: TtsEngine) -> dict[str, object] | None:
+    pop_trace = getattr(engine, "pop_last_generation_trace", None)
+    if not callable(pop_trace):
+        return None
+    trace = pop_trace()
+    if not isinstance(trace, dict):
+        return None
+    return {str(key): value for key, value in trace.items()}
 
 
 def _thread_context_fields() -> dict[str, object]:

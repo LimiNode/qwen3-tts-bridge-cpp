@@ -393,6 +393,8 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.append("--profile-prefill")
     if getattr(args, "profile_nvtx", False):
         worker_args.append("--profile-nvtx")
+    if getattr(args, "collect_generation_trace", False):
+        worker_args.append("--collect-generation-trace")
     prefill_backend = str(getattr(args, "prefill_backend", "eager"))
     if prefill_backend:
         worker_args.extend(["--prefill-backend", prefill_backend])

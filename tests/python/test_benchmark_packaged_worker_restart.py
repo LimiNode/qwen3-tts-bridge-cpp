@@ -110,6 +110,20 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "request_id": 8,
                 "first_pcm_ready_ms": 1.0,
             },
+            {
+                "event": "request_generation_trace",
+                "request_id": 7,
+                "codec_sha256": "a" * 64,
+                "codec_frame_count": 8,
+                "termination_reason": "eos",
+                "terminal_token_id": 9,
+                "terminal_step_index": 8,
+                "generated_steps": 8,
+                "emitted_steps": 8,
+                "hit_eos": True,
+                "hit_max_new_tokens": False,
+                "hit_max_seq_len": False,
+            },
         ]
 
         enriched = _with_request_pipeline_metrics(request, metrics)
@@ -174,6 +188,11 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             1.0,
             enriched["first_chunk_talker_forward_stream_elapsed_ms"],
         )
+        trace = enriched["generation_trace"]
+        self.assertIsInstance(trace, dict)
+        assert isinstance(trace, dict)
+        self.assertEqual("eos", trace["termination_reason"])
+        self.assertEqual(8, trace["codec_frame_count"])
 
     def test_median_request_includes_pipeline_fields(self) -> None:
         median = _median_request(

@@ -266,6 +266,7 @@ def _build_report(
             "cpu_affinity": args.cpu_affinity,
             "profile_prefill": args.profile_prefill,
             "profile_nvtx": args.profile_nvtx,
+            "collect_generation_trace": args.collect_generation_trace,
             "prefill_backend": args.prefill_backend,
             "prefill_compile_compat_mode": args.prefill_compile_compat_mode,
             "prefill_compile_lengths": args.prefill_compile_lengths,
@@ -387,6 +388,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--profile-prefill", action="store_true")
     parser.add_argument("--profile-nvtx", action="store_true")
+    parser.add_argument("--collect-generation-trace", action="store_true")
     parser.add_argument(
         "--prefill-backend",
         choices=(
@@ -1686,6 +1688,7 @@ def _with_request_pipeline_metrics(
         "output_queue_ms",
     )
     first_chunk_phases = metrics.get("request_first_chunk_engine_phases", {})
+    generation_trace = metrics.get("request_generation_trace", {})
 
     _set_if_number(enriched, "worker_first_pcm_ready_ms", first_pcm_ready_ms)
     _set_if_number(enriched, "worker_first_frame_enqueued_ms", first_frame_enqueued_ms)
@@ -1696,6 +1699,12 @@ def _with_request_pipeline_metrics(
     )
     _set_if_number(enriched, "first_frame_flush_ms", first_frame_flush_ms)
     _set_if_number(enriched, "first_frame_output_queue_ms", first_frame_queue_ms)
+    if isinstance(generation_trace, dict):
+        enriched["generation_trace"] = {
+            key: value
+            for key, value in generation_trace.items()
+            if key not in {"event", "request_id"}
+        }
     _copy_metric_number(
         enriched,
         first_chunk_phases,

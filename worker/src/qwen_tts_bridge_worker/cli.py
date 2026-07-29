@@ -79,6 +79,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 matmul_precision=args.matmul_precision,
                 profile_prefill=args.profile_prefill,
                 profile_nvtx=args.profile_nvtx,
+                collect_generation_trace=args.collect_generation_trace,
                 prefill_backend=args.prefill_backend,
                 prefill_compile_compat_mode=args.prefill_compile_compat_mode,
                 prefill_compile_lengths=args.prefill_compile_lengths,
@@ -301,6 +302,11 @@ def _add_qwen_subcommand(
         "--profile-nvtx",
         action="store_true",
         help="Emit faster-backend NVTX ranges for external profilers.",
+    )
+    qwen_parser.add_argument(
+        "--collect-generation-trace",
+        action="store_true",
+        help="Emit complete faster-backend generation trace in worker metrics.",
     )
     qwen_parser.add_argument(
         "--prefill-backend",

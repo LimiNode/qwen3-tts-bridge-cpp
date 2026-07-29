@@ -157,6 +157,8 @@ class _FasterStreamingModel:
         self.custom_stream_calls: list[dict[str, object]] = []
         self.design_stream_calls: list[dict[str, object]] = []
         self.closed_streams = 0
+        self.collect_generation_trace = False
+        self.last_generation_trace: dict[str, object] = {}
 
     def _default_prefill_compile_compat_metadata(
         self,
@@ -686,6 +688,52 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(8, metrics["chunk_steps"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])
         self.assertIn("codec_wrapper_residual_ms", metrics)
+
+    def test_faster_generation_trace_is_captured_after_completed_stream(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        fake_model.last_generation_trace = {
+            "codec_sha256": "a" * 64,
+            "codec_frame_count": 2,
+            "termination_reason": "eos",
+            "terminal_token_id": 9,
+            "terminal_step_index": 2,
+            "generated_steps": 2,
+            "emitted_steps": 2,
+            "hit_eos": True,
+            "hit_max_new_tokens": False,
+            "hit_max_seq_len": False,
+        }
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+                collect_generation_trace=True,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    language="auto",
+                    speaker="Alice",
+                ),
+                threading.Event(),
+            )
+        )
+
+        self.assertTrue(fake_model.collect_generation_trace)
+        self.assertEqual(
+            fake_model.last_generation_trace,
+            engine.pop_last_generation_trace(),
+        )
+        self.assertIsNone(engine.pop_last_generation_trace())
 
     def test_faster_stream_preserves_timing_input_metadata(self) -> None:
         fake_model = _FasterStreamingModel(

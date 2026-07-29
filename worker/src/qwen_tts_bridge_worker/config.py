@@ -53,6 +53,7 @@ class QwenEngineConfig:
     matmul_precision: str = ""
     profile_prefill: bool = False
     profile_nvtx: bool = False
+    collect_generation_trace: bool = False
     prefill_backend: Literal[
         "eager",
         "compile_backend_eager",
@@ -96,6 +97,10 @@ class QwenEngineConfig:
             raise ValueError("qwen.model_path must not be empty")
         if self.runtime_backend not in {"upstream", "faster"}:
             raise ValueError("qwen.runtime_backend must be upstream or faster")
+        if self.collect_generation_trace and self.runtime_backend != "faster":
+            raise ValueError(
+                "qwen.collect_generation_trace requires runtime_backend=faster"
+            )
         if not self.device:
             raise ValueError("qwen.device must not be empty")
         if not self.dtype:
