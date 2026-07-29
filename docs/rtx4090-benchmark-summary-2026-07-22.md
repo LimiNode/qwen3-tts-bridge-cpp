@@ -2554,41 +2554,66 @@ scripts/qwen-first-chunk-warmup-semantic-ab.py
 
 It starts independent worker processes for warmup off and on, then compares the
 same user request. The trace contains PCM SHA-256, sample count, audio chunk
-count, cumulative codec-token SHA-256, codec frame count, and the terminal
-reason/token/step telemetry. Codec trace collection is opt-in in FasterQwen
-and does not run in the normal production path.
+count, cumulative codec-token SHA-256, codec frame count, and terminal
+reason/token/step/flag telemetry. Codec trace collection is opt-in in
+FasterQwen and does not run in the normal production path.
 
-Real-model result, CustomVoice 0.6B, RTX 4090, installed wheel SHA256
-`6f6a9310cb43e4a7152b209f883db0caa4c11411396d86d2e48bc48141d19eda`:
+The original `r20` run proved audio and codec parity, but it is not treated as
+full terminal parity: two sampling cases had absent terminal fields and the old
+comparison allowed `null == null`. FasterQwen commit `4f88107` now publishes
+terminal accounting through an explicit sink after the generator has completed,
+including paths where no final audio chunk is yielded. The semantic runner is
+fail-closed: it rejects missing termination reason, generated/emitted counts,
+or reason-specific terminal data; it verifies the installed wheel SHA-256 from
+`direct_url.json`; and every child report records the bridge, FasterQwen and
+Qwen-fork commits plus Torch, CUDA, GPU, and NVIDIA driver provenance.
 
-| Scenario | Fresh A/B pairs | Semantic mismatches |
-| --- | ---: | ---: |
-| true greedy, seed `4242` | 1 | 0 |
-| sampling, seeds `4242-4261` | 20 | 0 |
-| total | 21 | 0 |
+Full terminal-parity result, CustomVoice 0.6B, RTX 4090, bridge commit
+`d06988b`, FasterQwen commit `4f88107`, Qwen fork commit `4082363`, installed
+wheel SHA256
+`aff052c355a879dad12e2cff5be14780671a057ec6e7f25518f4f8213baa9485`,
+Torch `2.10.0+cu130`, CUDA `13.0`, NVIDIA driver `591.86`:
 
-All 21 pairs matched every recorded contract field. The greedy trace, for
-example, matched `2015` codec frames, `252` PCM chunks, the same PCM SHA-256,
-the same codec SHA-256, and `max_seq_len` termination at step `2014`. The
-FasterQwen import path in every artifact resolves to the installed
-`.venv-qwen-flash` wheel, not the external source worktree.
+| Scenario | Fresh A/B pairs | User reseed | Semantic mismatches | Incomplete terminal traces |
+| --- | ---: | --- | ---: | ---: |
+| greedy seed `4242` plus sampling seeds `4242-4246` | 6 | enabled | 0 | 0 / 12 |
+| greedy seed `4242` plus sampling seeds `4242-4246` | 6 | disabled | 0 | 0 / 12 |
+| total | 12 | both controls | 0 | 0 / 24 |
+
+For the normal fixed-seed control, greedy matched `2015` codec frames, `252`
+PCM chunks, identical PCM and codec SHA-256 values, and `max_seq_len` at step
+`2014`; all five sampling seeds reached the same EOS token and step on both
+arms. The no-user-reseed control sets the engine request seed to `None`, seeds
+Python/NumPy/Torch only after model load and before warmup, then leaves the user
+request unreseeded. Its six on/off pairs also matched every contract field. The
+two controls intentionally need not match each other, because their sampling
+RNG schedules differ. Every child imported FasterQwen from the installed
+`.venv-qwen-flash` wheel rather than the external source worktree.
 
 Correctness artifacts:
 
 ```text
 first-chunk-warmup-semantic-ab-r20.json
+first-chunk-semantic-ab-fixed-r5.json
+first-chunk-semantic-ab-no-reseed-r5.json
 faster-qwen-first-chunk-correctness-patch/0001-feat-streaming-add-partial-generation-reset-contract.patch
 faster-qwen-first-chunk-correctness-patch/0002-fix-streaming-reset-partial-state-in-inference-mode.patch
 faster-qwen-first-chunk-correctness-patch/faster-qwen-first-chunk-correctness-through-66fb5e9.bundle
+faster-qwen-terminal-trace-patch/0001-fix-streaming-publish-terminal-trace-after-final-yie.patch
+faster-qwen-terminal-trace-patch/faster-qwen-terminal-trace-through-4f88107.bundle
 ```
 
 Artifact SHA256:
 
 ```text
 first-chunk-warmup-semantic-ab-r20.json 571ce0cbce38806aff1f16a8ea619122df17391628ce75fdeff80b379c9791bc
+first-chunk-semantic-ab-fixed-r5.json 9d953196383298b39093b9e905102b5a9e18ae282a7a0f9f8fa069d0dca7e8d8
+first-chunk-semantic-ab-no-reseed-r5.json 5ecdacfbde70a88a64dec08f25c43945eb30f1751e41dfd5d41312618959b929
 0001-feat-streaming-add-partial-generation-reset-contract.patch b8824531eb13b5c691717d2e00f74314314e815d168988c8f0de08543fe5327b
 0002-fix-streaming-reset-partial-state-in-inference-mode.patch 3fb0fb3048eddf35ccccd998f38f35df30bba41b28c1acfd0efbe93cb665776e
 faster-qwen-first-chunk-correctness-through-66fb5e9.bundle 5648a46be8313bf190b2f98b27db1450d40f5bf1656c89fd332912526560b7a3
+0001-fix-streaming-publish-terminal-trace-after-final-yie.patch b4b95ccbc1193e611e8971944fc2ba41a5a769ef31f6b59a68aa6a7c4f08f4d8
+faster-qwen-terminal-trace-through-4f88107.bundle 83d7059f6c7fa585b70de3e9f479f86b10eeac9d1776db99c04a7faa93250702
 ```
 
 ## Sources

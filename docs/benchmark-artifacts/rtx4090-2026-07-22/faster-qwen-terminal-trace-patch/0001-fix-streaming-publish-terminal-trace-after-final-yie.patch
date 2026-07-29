@@ -1,0 +1,153 @@
+From 4f881073c7f841844745219ba5d9dd576c22b368 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 05:12:20 +0300
+Subject: [PATCH] fix(streaming): publish terminal trace after final yield
+
+---
+ faster_qwen3_tts/model.py     | 18 ++++++++++--------
+ faster_qwen3_tts/streaming.py | 29 +++++++++++++++++++++++++++++
+ tests/test_sampling.py        | 25 +++++++++++++++++++++++++
+ 3 files changed, 64 insertions(+), 8 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 077507b..ff284fd 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -1594,7 +1594,7 @@ class FasterQwen3TTS:
+         all_codes = []
+         codec_hasher = hashlib.sha256() if self.collect_generation_trace else None
+         codec_frame_count = 0
+-        last_timing: Optional[dict] = None
++        termination_trace: dict = {}
+         prev_audio_len = 0
+         samples_per_frame = None
+ 
+@@ -1616,6 +1616,7 @@ class FasterQwen3TTS:
+             repetition_penalty=repetition_penalty,
+             chunk_size=chunk_size,
+             input_metadata=input_metadata,
++            termination_sink=termination_trace,
+             profile_prefill=profile_prefill,
+             profile_nvtx=profile_nvtx,
+             prefill_backend=prefill_backend,
+@@ -1738,19 +1739,20 @@ class FasterQwen3TTS:
+                         speech_tokenizer_decode_gpu_ms
+                     )
+ 
+-            last_timing = timing
+             yield new_audio, sr, timing
+ 
+         if codec_hasher is not None:
+-            timing = last_timing or {}
+             self.last_generation_trace = {
+                 "codec_sha256": codec_hasher.hexdigest(),
+                 "codec_frame_count": codec_frame_count,
+-                "termination_reason": timing.get("termination_reason"),
+-                "terminal_token_id": timing.get("terminal_token_id"),
+-                "terminal_step_index": timing.get("terminal_step_index"),
+-                "generated_steps": timing.get("generated_steps"),
+-                "emitted_steps": timing.get("emitted_steps"),
++                "termination_reason": termination_trace.get("termination_reason"),
++                "terminal_token_id": termination_trace.get("terminal_token_id"),
++                "terminal_step_index": termination_trace.get("terminal_step_index"),
++                "generated_steps": termination_trace.get("generated_steps"),
++                "emitted_steps": termination_trace.get("emitted_steps"),
++                "hit_eos": termination_trace.get("hit_eos"),
++                "hit_max_new_tokens": termination_trace.get("hit_max_new_tokens"),
++                "hit_max_seq_len": termination_trace.get("hit_max_seq_len"),
+             }
+ 
+     @torch.inference_mode()
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 12cb874..8ca4f3f 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -684,6 +684,7 @@ def fast_generate_streaming(
+     repetition_penalty: float = 1.05,
+     chunk_size: int = 12,
+     input_metadata: Optional[dict] = None,
++    termination_sink: Optional[dict] = None,
+     profile_prefill: bool = False,
+     profile_nvtx: bool = False,
+     prefill_backend: str = "eager",
+@@ -1101,6 +1102,13 @@ def fast_generate_streaming(
+             ),
+         )
+ 
++    _publish_termination_sink(
++        termination_sink,
++        termination,
++        generated_steps=total_steps,
++        emitted_steps=total_steps,
++    )
++
+ 
+ def _profile_outer_nvtx_name(input_metadata: Optional[dict]) -> Optional[str]:
+     if not input_metadata:
+@@ -1402,6 +1410,27 @@ def _termination_telemetry(
+     return telemetry
+ 
+ 
++def _publish_termination_sink(
++    sink: Optional[dict],
++    termination: dict,
++    *,
++    generated_steps: int,
++    emitted_steps: int,
++) -> None:
++    """Expose terminal accounting even when no final audio chunk is yielded."""
++    if sink is None:
++        return
++    sink.clear()
++    sink.update(
++        _termination_telemetry(
++            termination,
++            generated_steps=generated_steps,
++            emitted_steps=emitted_steps,
++            include=True,
++        )
++    )
++
++
+ @torch.inference_mode()
+ def parity_generate_streaming(
+     talker,
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index 40f57a2..2d44549 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -46,6 +46,31 @@ def test_sample_logits_greedy_does_not_call_multinomial(monkeypatch):
+     assert token.tolist() == [1]
+ 
+ 
++def test_terminal_sink_is_complete_without_final_audio_chunk():
++    sink = {"stale": True}
++    termination = {
++        "termination_reason": "eos",
++        "hit_eos": True,
++        "hit_max_new_tokens": False,
++        "hit_max_seq_len": False,
++        "terminal_token_id": 9,
++        "terminal_step_index": 14,
++    }
++
++    streaming._publish_termination_sink(
++        sink,
++        termination,
++        generated_steps=14,
++        emitted_steps=13,
++    )
++
++    assert sink == {
++        **termination,
++        "generated_steps": 14,
++        "emitted_steps": 13,
++    }
++
++
+ def test_faster_wrapper_selects_greedy_predictor_graph():
+     sampling_graph = types.SimpleNamespace(do_sample=True)
+     greedy_graph = types.SimpleNamespace(do_sample=False)
+-- 
+2.53.0.windows.1
+
