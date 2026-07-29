@@ -114,12 +114,55 @@ class ValidateCppApiSoakTests(unittest.TestCase):
             cast(list[str], validation["failures"]),
         )
 
+    def test_accepts_self_contained_manifest_contract(self) -> None:
+        phases = _phases(1)
+        phases["talker_prefill_length"] = 32
+        artifact = {
+            "requests": [
+                {
+                    "request_id": 1,
+                    "label": "compiled_32",
+                    "success": True,
+                    "cancelled": False,
+                    "audio_chunks": 3,
+                    "chunks": _client_chunks(3),
+                    "manifest_contract": {"checked": True, "valid": True},
+                    "worker_telemetry": {
+                        "first_chunk_phases": phases,
+                        "pcm_chunks": _chunks(1, completed=True),
+                        "finished": _finished(1, final_chunk_index=2),
+                        "runtime_memory": _memory(1),
+                    },
+                }
+            ]
+        }
+
+        validation = validate_cpp_api_soak(
+            cast(dict[str, object], artifact),
+            [],
+            expected_requests=1,
+            expected_cancelled=0,
+            expected_cache_entries=6,
+            expected_contracts={
+                "compiled_32": {
+                    "prefill_length": 32,
+                    "route": "compiled_allowlist",
+                    "backend": "compile_reduce_overhead",
+                    "chunk_schedule": [6, 8, 12],
+                }
+            },
+        )
+
+        self.assertEqual([], cast(list[str], validation["failures"]))
+
 
 def _phases(request_id: int) -> dict[str, object]:
     return {
         "event": "request_first_chunk_engine_phases",
         "request_id": request_id,
         "prefill_backend_used": "compile_reduce_overhead",
+        "prefill_shape_policy": "compiled_allowlist",
+        "prefill_shape_allowlist_hit": True,
         "prefill_compile_attempted": False,
         "prefill_compile_fallback": False,
         "prefill_compile_cache_hit": True,

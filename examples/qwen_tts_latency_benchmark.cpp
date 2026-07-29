@@ -75,6 +75,14 @@ struct RequestSpec {
     std::string speaker;
     std::string instruction;
     std::optional<std::uint64_t> seed;
+    std::optional<int> expected_prefill_length;
+    std::string expected_route;
+    std::string expected_backend;
+    std::vector<int> expected_chunk_schedule;
+
+    bool has_contract() const {
+        return expected_prefill_length.has_value();
+    }
 };
 
 struct ChunkResult {
@@ -109,6 +117,10 @@ struct RequestProbe {
 struct RequestResult {
     int index = 0;
     std::string label;
+    std::optional<int> expected_prefill_length;
+    std::string expected_route;
+    std::string expected_backend;
+    std::vector<int> expected_chunk_schedule;
     RequestId request_id = 0;
     bool warmup = false;
     bool success = false;
@@ -133,6 +145,14 @@ struct RequestResult {
     std::string error_category;
     std::string error_code;
     std::string error_message;
+    nlohmann::json worker_first_chunk_phases;
+    std::vector<nlohmann::json> worker_pcm_chunks;
+    nlohmann::json worker_generation_trace;
+    nlohmann::json worker_finished;
+    nlohmann::json worker_runtime_memory;
+    bool contract_checked = false;
+    bool contract_valid = true;
+    std::vector<std::string> contract_failures;
 };
 
 struct WorkerRequestMetrics {
@@ -142,6 +162,11 @@ struct WorkerRequestMetrics {
     std::optional<double> writer_queue_ms;
     std::optional<double> writer_flush_ms;
     std::optional<double> writer_total_ms;
+    nlohmann::json first_chunk_phases;
+    std::vector<nlohmann::json> pcm_chunks;
+    nlohmann::json generation_trace;
+    nlohmann::json finished;
+    nlohmann::json runtime_memory;
 };
 
 class WorkerMetricCollector {
@@ -176,77 +201,56 @@ private:
             return;
         }
 
-        const std::string payload = line.substr(prefix_at + prefix.size());
-        const std::optional<std::string> event = json_string_field(payload, "event");
-        const std::optional<double> request_id_value =
-            json_number_field(payload, "request_id");
-        if (!event.has_value() || !request_id_value.has_value()) {
+        const nlohmann::json payload = nlohmann::json::parse(
+            line.substr(prefix_at + prefix.size()), nullptr, false);
+        if (payload.is_discarded() || !payload.is_object()) {
+            return;
+        }
+        const auto event = payload.find("event");
+        const auto request_id_value = payload.find("request_id");
+        if (event == payload.end() || !event->is_string() ||
+            request_id_value == payload.end() || !request_id_value->is_number_unsigned()) {
             return;
         }
 
-        const auto request_id = static_cast<RequestId>(request_id_value.value());
+        const auto request_id = request_id_value->get<RequestId>();
         WorkerRequestMetrics& metrics = request_metrics_[request_id];
-        if (event.value() == "request_engine_started") {
-            metrics.queue_ms = json_number_field(payload, "queue_ms");
-        }
-        else if (event.value() == "request_first_pcm_ready") {
-            metrics.first_pcm_ready_ms =
-                json_number_field(payload, "first_pcm_ready_ms");
-        }
-        else if (event.value() == "request_first_frame_enqueued") {
-            metrics.first_frame_enqueue_ms =
-                json_number_field(payload, "first_frame_enqueue_ms");
-        }
-        else if (event.value() == "request_first_frame_flushed") {
-            metrics.writer_queue_ms = json_number_field(payload, "output_queue_ms");
-            metrics.writer_flush_ms = json_number_field(payload, "flush_ms");
-            metrics.writer_total_ms = json_number_field(payload, "output_writer_ms");
-        }
-    }
-
-    static std::optional<std::string> json_string_field(
-        const std::string& payload,
-        const std::string& name) {
-        const std::string key = "\"" + name + "\":\"";
-        const std::size_t start = payload.find(key);
-        if (start == std::string::npos) {
-            return std::nullopt;
-        }
-        const std::size_t value_start = start + key.size();
-        const std::size_t value_end = payload.find('"', value_start);
-        if (value_end == std::string::npos) {
-            return std::nullopt;
-        }
-        return payload.substr(value_start, value_end - value_start);
-    }
-
-    static std::optional<double> json_number_field(
-        const std::string& payload,
-        const std::string& name) {
-        const std::string key = "\"" + name + "\":";
-        const std::size_t start = payload.find(key);
-        if (start == std::string::npos) {
-            return std::nullopt;
-        }
-        const std::size_t value_start = start + key.size();
-        std::size_t value_end = value_start;
-        while (value_end < payload.size()) {
-            const char ch = payload[value_end];
-            if ((ch >= '0' && ch <= '9') || ch == '-' || ch == '+' ||
-                ch == '.' || ch == 'e' || ch == 'E') {
-                ++value_end;
-                continue;
+        const auto number = [&payload](const char* name) -> std::optional<double> {
+            const auto value = payload.find(name);
+            if (value == payload.end() || !value->is_number()) {
+                return std::nullopt;
             }
-            break;
+            return value->get<double>();
+        };
+        const std::string event_name = event->get<std::string>();
+        if (event_name == "request_engine_started") {
+            metrics.queue_ms = number("queue_ms");
         }
-        if (value_end == value_start) {
-            return std::nullopt;
+        else if (event_name == "request_first_pcm_ready") {
+            metrics.first_pcm_ready_ms = number("first_pcm_ready_ms");
         }
-        try {
-            return std::stod(payload.substr(value_start, value_end - value_start));
+        else if (event_name == "request_first_frame_enqueued") {
+            metrics.first_frame_enqueue_ms = number("first_frame_enqueue_ms");
         }
-        catch (const std::exception&) {
-            return std::nullopt;
+        else if (event_name == "request_first_frame_flushed") {
+            metrics.writer_queue_ms = number("output_queue_ms");
+            metrics.writer_flush_ms = number("flush_ms");
+            metrics.writer_total_ms = number("output_writer_ms");
+        }
+        else if (event_name == "request_first_chunk_engine_phases") {
+            metrics.first_chunk_phases = payload;
+        }
+        else if (event_name == "request_pcm_chunk") {
+            metrics.pcm_chunks.push_back(payload);
+        }
+        else if (event_name == "request_generation_trace") {
+            metrics.generation_trace = payload;
+        }
+        else if (event_name == "request_finished") {
+            metrics.finished = payload;
+        }
+        else if (event_name == "worker_runtime_memory") {
+            metrics.runtime_memory = payload;
         }
     }
 
@@ -498,6 +502,44 @@ std::vector<RequestSpec> load_request_manifest(const ProgramOptions& options) {
         if (value.contains("seed")) {
             spec.seed = value.at("seed").get<std::uint64_t>();
         }
+        const bool has_any_contract_field =
+            value.contains("expected_prefill_length") ||
+            value.contains("expected_route") ||
+            value.contains("expected_backend") ||
+            value.contains("expected_chunk_schedule");
+        if (has_any_contract_field) {
+            if (!value.contains("expected_prefill_length") ||
+                !value.contains("expected_route") ||
+                !value.contains("expected_backend") ||
+                !value.contains("expected_chunk_schedule")) {
+                throw std::runtime_error(
+                    "--request-manifest line " + std::to_string(line_number) +
+                    " must provide all expected_* contract fields");
+            }
+            spec.expected_prefill_length =
+                value.at("expected_prefill_length").get<int>();
+            spec.expected_route = value.at("expected_route").get<std::string>();
+            spec.expected_backend = value.at("expected_backend").get<std::string>();
+            spec.expected_chunk_schedule =
+                value.at("expected_chunk_schedule").get<std::vector<int>>();
+            if (spec.expected_prefill_length.value() <= 0 ||
+                spec.expected_route.empty() || spec.expected_backend.empty() ||
+                spec.expected_chunk_schedule.empty() ||
+                std::any_of(
+                    spec.expected_chunk_schedule.begin(),
+                    spec.expected_chunk_schedule.end(),
+                    [](int steps) { return steps <= 0; })) {
+                throw std::runtime_error(
+                    "--request-manifest line " + std::to_string(line_number) +
+                    " has an invalid expected_* contract");
+            }
+            if (spec.expected_route != "compiled_allowlist" &&
+                spec.expected_route != "eager_unknown") {
+                throw std::runtime_error(
+                    "--request-manifest line " + std::to_string(line_number) +
+                    " has unsupported expected_route");
+            }
+        }
         if (spec.label.empty() || spec.text.empty()) {
             throw std::runtime_error(
                 "--request-manifest line " + std::to_string(line_number) +
@@ -707,6 +749,12 @@ RequestResult run_request(
         std::lock_guard<std::mutex> lock(probe.mutex);
         result.index = index;
         result.label = spec != nullptr ? spec->label : "";
+        if (spec != nullptr && spec->has_contract()) {
+            result.expected_prefill_length = spec->expected_prefill_length;
+            result.expected_route = spec->expected_route;
+            result.expected_backend = spec->expected_backend;
+            result.expected_chunk_schedule = spec->expected_chunk_schedule;
+        }
         result.request_id = request_id;
         result.warmup = warmup;
         result.success = probe.success;
@@ -751,6 +799,11 @@ void attach_worker_metrics(
         result.worker_writer_queue_ms = metrics.writer_queue_ms;
         result.worker_writer_flush_ms = metrics.writer_flush_ms;
         result.worker_writer_total_ms = metrics.writer_total_ms;
+        result.worker_first_chunk_phases = metrics.first_chunk_phases;
+        result.worker_pcm_chunks = metrics.pcm_chunks;
+        result.worker_generation_trace = metrics.generation_trace;
+        result.worker_finished = metrics.finished;
+        result.worker_runtime_memory = metrics.runtime_memory;
 
         if (metrics.first_frame_enqueue_ms.has_value() &&
             metrics.first_pcm_ready_ms.has_value()) {
@@ -772,6 +825,111 @@ void attach_worker_metrics(
                 metrics.writer_total_ms.value();
         }
     }
+}
+
+bool json_field_equals(
+    const nlohmann::json& value,
+    const char* field,
+    const nlohmann::json& expected) {
+    const auto found = value.find(field);
+    return found != value.end() && *found == expected;
+}
+
+void fail_contract(RequestResult& result, std::string message) {
+    result.contract_valid = false;
+    result.contract_failures.push_back(std::move(message));
+}
+
+void validate_request_contract(RequestResult& result) {
+    result.contract_checked = result.expected_prefill_length.has_value();
+    if (!result.contract_checked) {
+        return;
+    }
+    if (!result.success) {
+        fail_contract(result, "request did not complete successfully");
+        return;
+    }
+
+    const nlohmann::json& phases = result.worker_first_chunk_phases;
+    if (!phases.is_object()) {
+        fail_contract(result, "missing request_first_chunk_engine_phases telemetry");
+        return;
+    }
+    const auto require = [&result, &phases](const char* field, const nlohmann::json& expected) {
+        if (!json_field_equals(phases, field, expected)) {
+            fail_contract(
+                result,
+                std::string("expected ") + field + "=" + expected.dump());
+        }
+    };
+    require("talker_prefill_length", result.expected_prefill_length.value());
+    require("prefill_shape_policy", result.expected_route);
+    require("prefill_backend_used", result.expected_backend);
+    require("prefill_compile_attempted", false);
+    require("prefill_compile_fallback", false);
+    require("prefill_compile_cache_entries_delta", 0);
+    require("prefill_dynamo_unique_graphs_delta", 0);
+    require("prefill_require_precompiled", true);
+
+    if (result.expected_route == "compiled_allowlist") {
+        require("prefill_compile_cache_hit", true);
+        require("prefill_shape_allowlist_hit", true);
+        require("prefill_backend_used", "compile_reduce_overhead");
+        const auto ordinal = phases.find("prefill_shape_call_ordinal");
+        if (ordinal == phases.end() || !ordinal->is_number_integer() ||
+            ordinal->get<int>() < 4) {
+            fail_contract(result, "compiled route lacks warmed prefill shape ordinal");
+        }
+    }
+    else {
+        require("prefill_compile_cache_hit", false);
+        require("prefill_shape_allowlist_hit", false);
+        require("prefill_backend_used", "eager");
+    }
+
+    if (result.worker_pcm_chunks.size() != result.audio_chunks) {
+        fail_contract(result, "worker and C++ PCM chunk counts differ");
+    }
+    for (std::size_t index = 0; index < result.worker_pcm_chunks.size(); ++index) {
+        const nlohmann::json& chunk = result.worker_pcm_chunks[index];
+        if (!chunk.is_object()) {
+            fail_contract(result, "worker PCM telemetry entry is not an object");
+            continue;
+        }
+        const int target = result.expected_chunk_schedule[
+            std::min(index, result.expected_chunk_schedule.size() - 1u)];
+        if (!json_field_equals(chunk, "chunk_target_steps", target)) {
+            fail_contract(
+                result,
+                "chunk " + std::to_string(index) + " has unexpected target steps");
+        }
+        const auto steps = chunk.find("chunk_steps");
+        if (steps == chunk.end() || !steps->is_number_integer() ||
+            steps->get<int>() <= 0 || steps->get<int>() > target) {
+            fail_contract(result, "chunk " + std::to_string(index) + " has invalid step count");
+            continue;
+        }
+        const bool terminal_chunk = index + 1u == result.worker_pcm_chunks.size();
+        if (!terminal_chunk && steps->get<int>() != target) {
+            fail_contract(result, "non-terminal chunk is shorter than its target");
+        }
+    }
+    if (!result.worker_generation_trace.is_object()) {
+        fail_contract(result, "missing request_generation_trace telemetry");
+    }
+    if (!result.worker_finished.is_object() ||
+        !json_field_equals(result.worker_finished, "terminal_state", "completed")) {
+        fail_contract(result, "missing completed request_finished telemetry");
+    }
+}
+
+bool has_contract_failures(const std::vector<RequestResult>& results) {
+    return std::any_of(
+        results.begin(),
+        results.end(),
+        [](const RequestResult& result) {
+            return result.contract_checked && !result.contract_valid;
+        });
 }
 
 std::string json_escape(const std::string& value) {
@@ -829,7 +987,7 @@ std::vector<double> collect_metric(
     std::optional<double> RequestResult::*field) {
     std::vector<double> values;
     for (const RequestResult& result : results) {
-        if (!result.success) {
+        if (!result.success || (result.contract_checked && !result.contract_valid)) {
             continue;
         }
         const std::optional<double>& value = result.*field;
@@ -913,8 +1071,15 @@ void write_results_json(
         [](const RequestResult& result) {
             return !result.success && !result.cancelled;
         });
+    const auto excluded_contract_count = std::count_if(
+        measured.begin(),
+        measured.end(),
+        [](const RequestResult& result) {
+            return result.contract_checked && !result.contract_valid;
+        });
     out << "\"cancelled_requests\":" << cancelled_count << ","
-        << "\"failed_requests\":" << failed_count << ",";
+        << "\"failed_requests\":" << failed_count << ","
+        << "\"excluded_contract_requests\":" << excluded_contract_count << ",";
     write_metric_summary(out, "first_audio_ms", collect_metric(measured, &RequestResult::first_audio_ms));
     out << ",";
     write_metric_summary(out, "completed_ms", collect_metric(measured, &RequestResult::completed_ms));
@@ -984,6 +1149,32 @@ void write_results_json(
             write_number_or_null(out, result.worker_writer_total_ms);
             out << ",\"transport_dispatch_residual_ms\":";
             write_number_or_null(out, result.transport_dispatch_residual_ms);
+            out << ",\"manifest_contract\":{"
+                << "\"checked\":" << (result.contract_checked ? "true" : "false")
+                << ",\"valid\":" << (result.contract_valid ? "true" : "false")
+                << ",\"expected\":";
+            if (result.contract_checked) {
+                out << "{"
+                    << "\"prefill_length\":" << result.expected_prefill_length.value()
+                    << ",\"route\":\"" << json_escape(result.expected_route) << "\""
+                    << ",\"backend\":\"" << json_escape(result.expected_backend) << "\""
+                    << ",\"chunk_schedule\":"
+                    << nlohmann::json(result.expected_chunk_schedule).dump()
+                    << "}";
+            }
+            else {
+                out << "null";
+            }
+            out << ",\"failures\":"
+                << nlohmann::json(result.contract_failures).dump()
+                << "}"
+                << ",\"worker_telemetry\":{"
+                << "\"first_chunk_phases\":" << result.worker_first_chunk_phases.dump()
+                << ",\"pcm_chunks\":" << nlohmann::json(result.worker_pcm_chunks).dump()
+                << ",\"generation_trace\":" << result.worker_generation_trace.dump()
+                << ",\"finished\":" << result.worker_finished.dump()
+                << ",\"runtime_memory\":" << result.worker_runtime_memory.dump()
+                << "}";
             if (!result.success) {
                 out << ",\"error_category\":\"" << json_escape(result.error_category) << "\""
                     << ",\"error_code\":\"" << json_escape(result.error_code) << "\""
@@ -1059,8 +1250,11 @@ int main(int argc, char** argv) {
         const auto metrics_by_request = worker_metrics.request_metrics();
         attach_worker_metrics(warmups, metrics_by_request);
         attach_worker_metrics(measured, metrics_by_request);
+        for (RequestResult& result : measured) {
+            validate_request_contract(result);
+        }
         write_results_json(std::cout, options, startup_ms, warmups, measured);
-        return 0;
+        return has_contract_failures(measured) ? 2 : 0;
     }
     catch (const std::exception& exc) {
         std::cerr << "qwen_tts_latency_benchmark: " << exc.what() << '\n';

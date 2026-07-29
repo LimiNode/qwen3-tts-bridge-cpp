@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from typing import cast
 
 from scripts.validate_playback_reserve import validate_playback_reserve
 
@@ -43,6 +44,27 @@ class PlaybackReserveTests(unittest.TestCase):
         self.assertFalse(report["acceptance_pass"])
         self.assertEqual(1, report["underruns"])
 
+    def test_checks_each_manifest_category_and_contract(self) -> None:
+        artifact: dict[str, object] = {
+            "requests": [
+                _request(1, "compiled", [(100.0, 500.0), (300.0, 500.0)]),
+                _request(2, "eager", [(100.0, 500.0), (300.0, 500.0)]),
+            ]
+        }
+
+        report = validate_playback_reserve(
+            artifact,
+            reserve_ms=50.0,
+            min_completed_requests=2,
+            expected_categories={"compiled": 1, "eager": 1},
+            min_completed_per_category=1,
+            require_contract=True,
+        )
+
+        self.assertTrue(report["acceptance_pass"])
+        categories = cast(dict[str, dict[str, object]], report["categories"])
+        self.assertEqual(1, categories["compiled"]["completed_requests"])
+
 
 def _artifact(chunks: list[tuple[float, float]]) -> dict[str, object]:
     return {
@@ -61,6 +83,19 @@ def _artifact(chunks: list[tuple[float, float]]) -> dict[str, object]:
             }
         ]
     }
+
+
+def _request(
+    request_id: int,
+    label: str,
+    chunks: list[tuple[float, float]],
+) -> dict[str, object]:
+    requests = cast(list[object], _artifact(chunks)["requests"])
+    request = cast(dict[str, object], requests[0])
+    request["request_id"] = request_id
+    request["label"] = label
+    request["manifest_contract"] = {"checked": True, "valid": True}
+    return request
 
 
 if __name__ == "__main__":

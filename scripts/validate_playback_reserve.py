@@ -13,6 +13,8 @@ def main() -> int:
     parser.add_argument("artifact", type=Path)
     parser.add_argument("--reserve-ms", type=float, default=50.0)
     parser.add_argument("--min-completed-requests", type=int, default=1)
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--min-completed-per-category", type=int, default=0)
     parser.add_argument("--min-pre-arrival-buffer-ms", type=float, default=0.0)
     parser.add_argument("--min-p05-pre-arrival-buffer-ms", type=float, default=0.0)
     parser.add_argument("--include-request-details", action="store_true")
@@ -20,12 +22,16 @@ def main() -> int:
     args = parser.parse_args()
 
     artifact = json.loads(args.artifact.read_text(encoding="utf-8"))
+    expected_categories = _manifest_categories(args.manifest) if args.manifest else None
     report = validate_playback_reserve(
         artifact,
         reserve_ms=args.reserve_ms,
         min_completed_requests=args.min_completed_requests,
         min_pre_arrival_buffer_ms=args.min_pre_arrival_buffer_ms,
         min_p05_pre_arrival_buffer_ms=args.min_p05_pre_arrival_buffer_ms,
+        expected_categories=expected_categories,
+        min_completed_per_category=args.min_completed_per_category,
+        require_contract=args.manifest is not None,
         include_request_details=args.include_request_details,
     )
     report["artifact"] = str(args.artifact)
@@ -42,6 +48,9 @@ def validate_playback_reserve(
     min_completed_requests: int,
     min_pre_arrival_buffer_ms: float = 0.0,
     min_p05_pre_arrival_buffer_ms: float = 0.0,
+    expected_categories: dict[str, int] | None = None,
+    min_completed_per_category: int = 0,
+    require_contract: bool = False,
     include_request_details: bool = False,
 ) -> dict[str, object]:
     failures: list[str] = []
@@ -65,15 +74,29 @@ def validate_playback_reserve(
                 "min_p05_pre_arrival_buffer_ms must be finite and non-negative"
             ],
         }
+    if min_completed_per_category < 0:
+        return {
+            "acceptance_pass": False,
+            "failures": ["min_completed_per_category must be non-negative"],
+        }
     requests = artifact.get("requests")
     if not isinstance(requests, list):
         return {"acceptance_pass": False, "failures": ["artifact lacks requests"]}
 
-    completed = [
-        request
-        for request in requests
-        if isinstance(request, dict) and request.get("success") is True
-    ]
+    completed: list[dict[str, object]] = []
+    for request in requests:
+        if not isinstance(request, dict) or request.get("success") is not True:
+            continue
+        contract = request.get("manifest_contract")
+        if require_contract and (
+            not isinstance(contract, dict) or contract.get("checked") is not True
+            or contract.get("valid") is not True
+        ):
+            failures.append(
+                f"request {request.get('request_id')}: manifest contract is not valid"
+            )
+            continue
+        completed.append(request)
     if len(completed) < min_completed_requests:
         failures.append(
             f"expected at least {min_completed_requests} completed requests, "
@@ -84,6 +107,7 @@ def validate_playback_reserve(
     all_pre_arrival_buffers: list[float] = []
     underruns = 0
     reports: list[dict[str, object]] = []
+    reports_by_category: dict[str, list[dict[str, object]]] = {}
     for request in completed:
         request_id = request.get("request_id")
         chunks = request.get("chunks")
@@ -91,6 +115,14 @@ def validate_playback_reserve(
             failures.append("completed request lacks chunk observations")
             continue
         report = _analyze_request(request_id, chunks, reserve_ms)
+        label = request.get("label")
+        if expected_categories is not None:
+            if not isinstance(label, str) or label not in expected_categories:
+                failures.append(f"request {request_id}: unexpected manifest category")
+                continue
+        if isinstance(label, str):
+            report["label"] = label
+            reports_by_category.setdefault(label, []).append(report)
         reports.append(report)
         request_failures = report["failures"]
         if isinstance(request_failures, list):
@@ -141,6 +173,63 @@ def validate_playback_reserve(
             f"{min_p05_pre_arrival_buffer_ms:.3f} ms"
         )
 
+    categories: dict[str, dict[str, object]] = {}
+    if expected_categories is not None:
+        for label, expected_count in expected_categories.items():
+            category_reports = reports_by_category.get(label, [])
+            category_pre = [
+                float(value)
+                for report in category_reports
+                for value in report["pre_arrival_buffer_ms"]
+                if isinstance(value, (int, float))
+            ]
+            category_post = [
+                float(value)
+                for report in category_reports
+                for value in report["post_chunk_reserve_ms"]
+                if isinstance(value, (int, float))
+            ]
+            category_underruns = sum(
+                int(report["underruns"])
+                for report in category_reports
+                if isinstance(report.get("underruns"), int)
+            )
+            actual_count = len(category_reports)
+            required_count = max(expected_count, min_completed_per_category)
+            if actual_count < required_count:
+                failures.append(
+                    f"category {label}: expected at least {required_count} completed "
+                    f"requests, got {actual_count}"
+                )
+            category_minimum_pre = min(category_pre, default=None)
+            category_p05_pre = _percentile(category_pre, 5.0)
+            if category_underruns != 0:
+                failures.append(f"category {label}: observed {category_underruns} playback underruns")
+            if category_minimum_pre is None:
+                failures.append(f"category {label}: no pre-arrival buffer observations")
+            elif category_minimum_pre < min_pre_arrival_buffer_ms:
+                failures.append(
+                    f"category {label}: minimum pre-arrival buffer "
+                    f"{category_minimum_pre:.3f} ms is below "
+                    f"{min_pre_arrival_buffer_ms:.3f} ms"
+                )
+            if category_p05_pre is None:
+                failures.append(f"category {label}: no p05 pre-arrival buffer observation")
+            elif category_p05_pre < min_p05_pre_arrival_buffer_ms:
+                failures.append(
+                    f"category {label}: p05 pre-arrival buffer "
+                    f"{category_p05_pre:.3f} ms is below "
+                    f"{min_p05_pre_arrival_buffer_ms:.3f} ms"
+                )
+            categories[label] = {
+                "completed_requests": actual_count,
+                "minimum_post_chunk_reserve_ms": min(category_post, default=None),
+                "p05_post_chunk_reserve_ms": _percentile(category_post, 5.0),
+                "minimum_pre_arrival_buffer_ms": category_minimum_pre,
+                "p05_pre_arrival_buffer_ms": category_p05_pre,
+                "underruns": category_underruns,
+            }
+
     result: dict[str, object] = {
         "acceptance_pass": not failures,
         "failures": failures,
@@ -150,10 +239,26 @@ def validate_playback_reserve(
         "p05_post_chunk_reserve_ms": _percentile(all_post_chunk_reserves, 5.0),
         "minimum_pre_arrival_buffer_ms": minimum_pre_arrival_buffer,
         "p05_pre_arrival_buffer_ms": p05_pre_arrival_buffer,
+        "categories": categories,
     }
     if include_request_details:
         result["requests"] = reports
     return result
+
+
+def _manifest_categories(path: Path) -> dict[str, int]:
+    categories: dict[str, int] = {}
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        value = json.loads(line)
+        label = value.get("label") if isinstance(value, dict) else None
+        if not isinstance(label, str) or not label:
+            raise ValueError(f"manifest line {line_number} lacks label")
+        categories[label] = categories.get(label, 0) + 1
+    if not categories:
+        raise ValueError("manifest contains no categories")
+    return categories
 
 
 def _analyze_request(
