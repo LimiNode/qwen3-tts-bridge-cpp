@@ -722,6 +722,9 @@ def _load_run_shapes(path: Path | None) -> list[dict[str, object]]:
             raise ValueError(
                 f"shape JSONL line {line_number} has invalid talker_prefill_length"
             )
+        scenario_id = item.get("scenario_id", "")
+        if not isinstance(scenario_id, str):
+            raise ValueError(f"shape JSONL line {line_number} has invalid scenario_id")
         shapes.append(
             {
                 "label": label,
@@ -730,6 +733,7 @@ def _load_run_shapes(path: Path | None) -> list[dict[str, object]]:
                 "speaker": item.get("speaker", ""),
                 "instruction": item.get("instruction", ""),
                 "talker_prefill_length": talker_prefill_length,
+                "scenario_id": scenario_id,
             }
         )
     return shapes

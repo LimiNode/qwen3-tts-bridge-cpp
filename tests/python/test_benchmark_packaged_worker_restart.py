@@ -359,7 +359,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             path = Path(temp) / "shapes.jsonl"
             path.write_text(
                 '{"label":"short","text":"Short.","language":"English",'
-                '"talker_prefill_length":29}\n'
+                '"talker_prefill_length":29,"scenario_id":"short_en"}\n'
                 '{"label":"long","text":"Long text.","speaker":"ryan"}\n',
                 encoding="utf-8",
             )
@@ -369,6 +369,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual("short", shapes[0]["label"])
         self.assertEqual("English", shapes[0]["language"])
         self.assertEqual(29, shapes[0]["talker_prefill_length"])
+        self.assertEqual("short_en", shapes[0]["scenario_id"])
         self.assertEqual("", shapes[0]["speaker"])
         self.assertEqual("long", shapes[1]["label"])
         self.assertEqual("ryan", shapes[1]["speaker"])

@@ -20,7 +20,9 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     schedule_parser = subparsers.add_parser("schedule")
-    schedule_parser.add_argument("--manifest", type=Path, required=True)
+    schedule_source = schedule_parser.add_mutually_exclusive_group(required=True)
+    schedule_source.add_argument("--manifest", type=Path)
+    schedule_source.add_argument("--scenarios-jsonl", type=Path)
     schedule_parser.add_argument("--output", type=Path, required=True)
     schedule_parser.add_argument("--repeats", type=int, default=5)
     schedule_parser.add_argument("--unknown-lengths", default="31,38,45")
@@ -83,6 +85,14 @@ def main() -> int:
 def _build_schedule(args: argparse.Namespace) -> list[dict[str, object]]:
     if args.repeats <= 0:
         raise ValueError("--repeats must be positive")
+    if args.scenarios_jsonl is not None:
+        scenarios = _load_jsonl(args.scenarios_jsonl)
+        _validate_scenarios(scenarios)
+        rows = [dict(row) for row in scenarios for _ in range(args.repeats)]
+        random.Random(args.seed).shuffle(rows)
+        return rows
+
+    assert args.manifest is not None
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     selected = manifest.get("selected_exact_lengths")
     source_rows = manifest.get("rows")
@@ -108,6 +118,21 @@ def _build_schedule(args: argparse.Namespace) -> list[dict[str, object]]:
     rows = [dict(row) for row in categories for _ in range(args.repeats)]
     random.Random(args.seed).shuffle(rows)
     return rows
+
+
+def _validate_scenarios(rows: list[dict[str, object]]) -> None:
+    if not rows:
+        raise ValueError("--scenarios-jsonl must contain at least one scenario")
+    for row_number, row in enumerate(rows, 1):
+        label = row.get("label")
+        text = row.get("text")
+        length = row.get("talker_prefill_length")
+        if not isinstance(label, str) or not label:
+            raise ValueError(f"scenario {row_number} has invalid label")
+        if not isinstance(text, str) or not text:
+            raise ValueError(f"scenario {row_number} has invalid text")
+        if not isinstance(length, int) or length <= 0:
+            raise ValueError(f"scenario {row_number} has invalid talker_prefill_length")
 
 
 def _select_manifest_row(

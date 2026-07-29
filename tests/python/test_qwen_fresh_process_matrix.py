@@ -6,10 +6,11 @@ import argparse
 import copy
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 from typing import cast
 
-from scripts.qwen_fresh_process_matrix import _analyze_report
+from scripts.qwen_fresh_process_matrix import _analyze_report, _build_schedule
 
 
 class FreshProcessMatrixTests(unittest.TestCase):
@@ -48,6 +49,31 @@ class FreshProcessMatrixTests(unittest.TestCase):
 
         self.assertFalse(summary["acceptance_pass"])
         self.assertIn("schedule category counts differ", "\n".join(summary["failures"]))
+
+    def test_scenario_schedule_repeats_and_shuffles_validated_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "scenarios.jsonl"
+            path.write_text(
+                '{"label":"allowlist_32","text":"First.",'
+                '"talker_prefill_length":32}\n'
+                '{"label":"unknown_short","text":"Second.",'
+                '"talker_prefill_length":31}\n',
+                encoding="utf-8",
+            )
+            rows = _build_schedule(
+                argparse.Namespace(
+                    manifest=None,
+                    scenarios_jsonl=path,
+                    repeats=3,
+                    seed=17,
+                )
+            )
+
+        self.assertEqual(6, len(rows))
+        self.assertEqual(
+            Counter({"allowlist_32": 3, "unknown_short": 3}),
+            Counter(str(row["label"]) for row in rows),
+        )
 
 
 def _args(schedule: Path | None = None) -> argparse.Namespace:
