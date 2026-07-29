@@ -234,6 +234,7 @@ The `synthesize` payload keeps spoken text separate from style instructions:
   "language": "English",
   "speaker": "Alice",
   "instruction": "Speak with relief, but keep a little resentment.",
+  "seed": 4242,
   "output": {
     "sample_format": "s16le",
     "sample_rate": 24000,
@@ -248,6 +249,12 @@ engine-specific default or reject the request with `request_error` when the
 selected model requires a concrete speaker name. Clients should not use
 `"default"` as a universal magic value unless the model actually advertises a
 speaker with that exact name.
+
+`seed` is an optional non-negative integer for reproducible, diagnostic
+requests. It must not be used as a production quality guarantee: support and
+determinism remain engine- and runtime-dependent. A worker that cannot honour
+the control must return `request_error` instead of silently accepting a
+different seed.
 
 `output` is the client's requested output format. If the worker cannot satisfy
 it, the worker must return:

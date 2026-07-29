@@ -32,6 +32,8 @@ SynthesizeMessage to_control_message(const TtsRequest& request) {
     message.language = request.language;
     message.speaker = request.speaker;
     message.instruction = request.instruction;
+    message.has_seed = request.has_seed;
+    message.seed = request.seed;
     message.output = request.output;
     return message;
 }
@@ -304,7 +306,8 @@ std::size_t QwenTtsClient::outbound_command_size(
                     message.language.size() +
                     message.speaker.size() +
                     message.instruction.size() +
-                    message.output.sample_format.size();
+                    message.output.sample_format.size() +
+                    (message.has_seed ? 32u : 0u);
             }
             else if constexpr (std::is_same_v<Message, ShutdownMessage>) {
                 return outbound_command_fixed_overhead + message.mode.size();

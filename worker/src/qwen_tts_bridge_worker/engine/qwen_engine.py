@@ -148,7 +148,7 @@ class QwenTtsEngine:
         self._maybe_open_profile_pair_range(request.request_id)
         with self._synthesis_lock:
             self._last_generation_trace = None
-            _seed_runtime(_request_seed(self._config, request.request_id))
+            _seed_runtime(_request_seed(self._config, request))
             audio_stream = self._generate_audio_stream(model, request)
             close_stream = getattr(audio_stream, "close", None)
             try:
@@ -1024,7 +1024,13 @@ def _profile_int(profile: dict[str, object], key: str) -> int:
     return 0
 
 
-def _request_seed(config: QwenEngineConfig, request_id: int) -> int | None:
+def _request_seed(
+    config: QwenEngineConfig,
+    request: SynthesisRequest,
+) -> int | None:
+    if request.seed is not None:
+        return int(request.seed)
+    request_id = request.request_id
     base_seed = config.seed
     if request_id == 0 and config.warmup_seed is not None:
         return int(config.warmup_seed)

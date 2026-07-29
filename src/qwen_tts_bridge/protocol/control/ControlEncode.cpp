@@ -28,6 +28,9 @@ Json control_message_to_json(const ControlMessage& message) {
                 if (!value.speaker.empty()) {
                     out["speaker"] = value.speaker;
                 }
+                if (value.has_seed) {
+                    out["seed"] = value.seed;
+                }
                 return out;
             }
             else if constexpr (std::is_same_v<Message, CancelMessage>) {

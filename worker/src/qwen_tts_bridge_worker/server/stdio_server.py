@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import queue
 import threading
 import traceback
@@ -420,6 +421,7 @@ class StdioWorkerServer:
         language = message.get("language", "auto")
         speaker = message.get("speaker", "")
         instruction = message.get("instruction", "")
+        seed = message.get("seed")
         output_payload = message.get("output")
 
         if not isinstance(language, str) or not isinstance(speaker, str):
@@ -437,6 +439,17 @@ class StdioWorkerServer:
                 "request_error",
                 "invalid_field_type",
                 "instruction must be a string",
+            )
+            return None
+
+        if isinstance(seed, bool) or (
+            seed is not None and (not isinstance(seed, int) or seed < 0)
+        ):
+            self._send_error(
+                request_id,
+                "request_error",
+                "invalid_field_type",
+                "seed must be a non-negative integer when provided",
             )
             return None
 
@@ -466,6 +479,7 @@ class StdioWorkerServer:
             language=language,
             speaker=speaker,
             instruction=instruction,
+            seed=seed,
             output=output,
         )
         try:
@@ -672,6 +686,7 @@ class StdioWorkerServer:
             warmed_up=self._warmed_up,
             startup_mode=self._engine_startup_mode,
             **_thread_context_fields(),
+            **_runtime_memory_fields(),
         )
 
     def _wait_for_engine_startup(self) -> bool:
@@ -842,6 +857,12 @@ class StdioWorkerServer:
                 )
 
         self._metrics.emit("request_finished", **fields)
+        self._metrics.emit(
+            "worker_runtime_memory",
+            request_id=slot.request.request_id,
+            terminal_state=terminal_state,
+            **_runtime_memory_fields(),
+        )
 
     def _terminalize_locked(self, request_id: int) -> None:
         self._active.pop(request_id, None)
@@ -925,4 +946,44 @@ def _thread_context_fields() -> dict[str, object]:
                     fields["cuda_current_stream"] = int(stream_id)
     except Exception:
         pass
+    return fields
+
+
+def _runtime_memory_fields() -> dict[str, object]:
+    """Return process-local CPU and CUDA allocator metrics when available."""
+
+    fields: dict[str, object] = {"worker_pid": os.getpid()}
+    try:
+        torch = importlib.import_module("torch")
+        cuda = getattr(torch, "cuda", None)
+        is_available = getattr(cuda, "is_available", None)
+        if not callable(is_available) or not is_available():
+            return fields
+        memory_allocated = getattr(cuda, "memory_allocated", None)
+        memory_reserved = getattr(cuda, "memory_reserved", None)
+        max_memory_reserved = getattr(cuda, "max_memory_reserved", None)
+        if not callable(memory_allocated):
+            return fields
+        if not callable(memory_reserved):
+            return fields
+        if not callable(max_memory_reserved):
+            return fields
+        allocated = memory_allocated()
+        reserved = memory_reserved()
+        max_reserved = max_memory_reserved()
+        if not isinstance(allocated, (int, float)):
+            return fields
+        if not isinstance(reserved, (int, float)):
+            return fields
+        if not isinstance(max_reserved, (int, float)):
+            return fields
+        fields.update(
+            {
+                "cuda_memory_allocated_bytes": int(allocated),
+                "cuda_memory_reserved_bytes": int(reserved),
+                "cuda_memory_max_reserved_bytes": int(max_reserved),
+            }
+        )
+    except Exception:
+        return fields
     return fields

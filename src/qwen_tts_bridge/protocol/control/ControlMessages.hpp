@@ -87,6 +87,8 @@ struct SynthesizeMessage {
     std::string language = "auto";
     std::string speaker;
     std::string instruction;
+    bool has_seed = false;
+    std::uint64_t seed = 0;
     AudioFormat output;
 };
 

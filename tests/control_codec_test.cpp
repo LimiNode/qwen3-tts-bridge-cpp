@@ -99,6 +99,25 @@ void test_decode_synthesize_without_speaker() {
     CHECK(message.speaker.empty());
 }
 
+void test_synthesize_seed_round_trip() {
+    SynthesizeMessage message;
+    message.text = "Seeded synthesis.";
+    message.has_seed = true;
+    message.seed = 4242;
+
+    const auto encoded = encode_control_message(ControlMessage{message});
+    CHECK(encoded);
+    CHECK(string_from_bytes(encoded.payload).find("\"seed\":4242") != std::string::npos);
+
+    const auto decoded = decode_control_message(
+        encoded.payload,
+        ControlMessageDirection::ClientToWorker);
+    CHECK(decoded);
+    const auto& seeded = std::get<SynthesizeMessage>(decoded.message);
+    CHECK(seeded.has_seed);
+    CHECK(seeded.seed == 4242);
+}
+
 void test_encode_synthesize_omits_unspecified_speaker() {
     SynthesizeMessage message;
     message.text = "No explicit speaker.";
@@ -415,6 +434,7 @@ int main() {
     test_decode_hello();
     test_decode_synthesize_with_instruction_and_output();
     test_decode_synthesize_without_speaker();
+    test_synthesize_seed_round_trip();
     test_encode_synthesize_omits_unspecified_speaker();
     test_encode_synthesize_with_explicit_speaker();
     test_decode_ready();

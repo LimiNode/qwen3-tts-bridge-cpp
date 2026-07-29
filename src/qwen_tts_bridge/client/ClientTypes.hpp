@@ -4,6 +4,7 @@
 /// \brief Public request, callback, and error DTOs for QwenTtsClient.
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -31,6 +32,13 @@ struct TtsRequest {
 
     /// \brief Natural-language style, emotion, or prosody instruction.
     std::string instruction;
+
+    /// \brief Optional deterministic seed for reproducible engine diagnostics.
+    ///
+    /// The worker may reject this control when its selected engine does not
+    /// support deterministic request-level seeding.
+    bool has_seed = false;
+    std::uint64_t seed = 0;
 
     /// \brief Requested PCM output format.
     AudioFormat output;

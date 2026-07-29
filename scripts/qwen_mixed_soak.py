@@ -242,38 +242,90 @@ def _progress(message: str) -> None:
 
 
 def _snapshot(pid: int, *, completed_requests: int) -> dict[str, object]:
+    process_tree = _process_tree_memory(pid)
     snapshot: dict[str, object] = {
         "completed_requests": completed_requests,
         "monotonic_s": time.monotonic(),
-        "rss_bytes": _rss_bytes(pid),
-        "gpu_memory_used_mib": _gpu_memory_used_mib(),
+        "root_process_id": pid,
+        **process_tree,
     }
     return snapshot
 
 
-def _rss_bytes(pid: int) -> int | None:
+def _process_tree_memory(pid: int) -> dict[str, object]:
     try:
         import psutil  # type: ignore[import-not-found]
 
-        return int(psutil.Process(pid).memory_info().rss)
+        root = psutil.Process(pid)
+        processes = [root, *root.children(recursive=True)]
     except Exception:
-        return None
+        return {
+            "processes": None,
+            "rss_tree_bytes": None,
+            "private_tree_bytes": None,
+            "gpu_process_memory_mib": None,
+        }
+
+    records: list[dict[str, object]] = []
+    process_ids: list[int] = []
+    rss_tree_bytes = 0
+    private_tree_bytes = 0
+    private_available = True
+    for process in processes:
+        try:
+            memory = process.memory_info()
+            full_memory = process.memory_full_info()
+            private_bytes = getattr(full_memory, "private", None)
+            if not isinstance(private_bytes, int):
+                private_bytes = getattr(full_memory, "uss", None)
+            process_id = int(process.pid)
+            rss_bytes = int(memory.rss)
+            record: dict[str, object] = {
+                "pid": process_id,
+                "name": process.name(),
+                "rss_bytes": rss_bytes,
+                "private_bytes": private_bytes,
+            }
+            records.append(record)
+            process_ids.append(process_id)
+            rss_tree_bytes += rss_bytes
+            if isinstance(private_bytes, int):
+                private_tree_bytes += private_bytes
+            else:
+                private_available = False
+        except Exception:
+            continue
+
+    return {
+        "processes": records,
+        "rss_tree_bytes": rss_tree_bytes if records else None,
+        "private_tree_bytes": private_tree_bytes if private_available else None,
+        "gpu_process_memory_mib": _gpu_memory_by_pid_mib(process_ids),
+    }
 
 
-def _gpu_memory_used_mib() -> list[int] | None:
+def _gpu_memory_by_pid_mib(process_ids: list[int]) -> dict[str, int] | None:
     try:
         output = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
+            [
+                "nvidia-smi",
+                "--query-compute-apps=pid,used_gpu_memory",
+                "--format=csv,noheader,nounits",
+            ],
             stderr=subprocess.DEVNULL,
             text=True,
             timeout=5.0,
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    values: list[int] = []
+    expected = {str(process_id) for process_id in process_ids}
+    values: dict[str, int] = {}
     for line in output.splitlines():
+        parts = [part.strip() for part in line.split(",")]
+        if len(parts) != 2 or parts[0] not in expected:
+            continue
         try:
-            values.append(int(line.strip()))
+            values[parts[0]] = int(parts[1])
         except ValueError:
             return None
     return values
@@ -443,13 +495,39 @@ def _validate_route(
 def _memory_validation(
     snapshots: list[dict[str, object]],
     max_rss_growth_mb: float,
+    *,
+    require_telemetry: bool = False,
 ) -> dict[str, object]:
     failures: list[str] = []
     rss_values = [
-        int(snapshot["rss_bytes"])
+        int(snapshot["rss_tree_bytes"])
         for snapshot in snapshots
-        if isinstance(snapshot.get("rss_bytes"), int)
+        if isinstance(snapshot.get("rss_tree_bytes"), int)
     ]
+    private_values = [
+        int(snapshot["private_tree_bytes"])
+        for snapshot in snapshots
+        if isinstance(snapshot.get("private_tree_bytes"), int)
+    ]
+    gpu_values = [
+        sum(value for value in snapshot["gpu_process_memory_mib"].values())
+        for snapshot in snapshots
+        if isinstance(snapshot.get("gpu_process_memory_mib"), dict)
+        and snapshot["gpu_process_memory_mib"]
+        and all(
+            isinstance(value, int)
+            for value in snapshot["gpu_process_memory_mib"].values()
+        )
+    ]
+    if require_telemetry:
+        if len(rss_values) != len(snapshots):
+            failures.append("missing process-tree RSS telemetry")
+        if len(private_values) != len(snapshots):
+            failures.append("missing process-tree private-bytes telemetry")
+        if len(gpu_values) != len(snapshots):
+            failures.append("missing PID-specific GPU telemetry")
+        if any(not snapshot.get("processes") for snapshot in snapshots):
+            failures.append("missing process-tree process records")
     growth_mb = None
     monotonic_non_decreasing = None
     if len(rss_values) >= 2:
@@ -466,6 +544,15 @@ def _memory_validation(
         "failures": failures,
         "rss_growth_mib": growth_mb,
         "rss_monotonic_non_decreasing": monotonic_non_decreasing,
+        "private_growth_mib": (
+            (private_values[-1] - private_values[0]) / (1024.0 * 1024.0)
+            if len(private_values) >= 2
+            else None
+        ),
+        "rss_peak_mib": (
+            max(rss_values) / (1024.0 * 1024.0) if rss_values else None
+        ),
+        "gpu_peak_mib": max(gpu_values) if gpu_values else None,
         "snapshots": len(snapshots),
     }
 

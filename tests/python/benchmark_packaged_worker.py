@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import statistics
 import time
@@ -327,6 +328,7 @@ def _run_request(
     language: str,
     speaker: str,
     instruction: str,
+    seed: int | None = None,
 ) -> dict[str, object]:
     start = time.perf_counter()
     harness.send_control(
@@ -336,11 +338,13 @@ def _run_request(
             language=language,
             speaker=speaker,
             instruction=instruction,
+            seed=seed,
         ),
     )
 
     audio_bytes = 0
     audio_chunks = 0
+    pcm_digest = hashlib.sha256()
     first_audio_ms: float | None = None
     completed_ms: float | None = None
     while completed_ms is None:
@@ -353,6 +357,7 @@ def _run_request(
                 first_audio_ms = elapsed_ms
             audio_bytes += len(frame.payload)
             audio_chunks += 1
+            pcm_digest.update(frame.payload)
             continue
         if _control_payload(frame).get("message_type") == "completed":
             completed_ms = elapsed_ms
@@ -374,6 +379,7 @@ def _run_request(
         "completed_ms": completed_ms,
         "audio_bytes": audio_bytes,
         "audio_chunks": audio_chunks,
+        "pcm_sha256": pcm_digest.hexdigest(),
         "audio_duration_ms": audio_duration_ms,
         "real_time_factor": real_time_factor,
         "local_rtf": real_time_factor,
@@ -487,6 +493,7 @@ def _synthesize_payload(
     language: str,
     speaker: str,
     instruction: str,
+    seed: int | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "message_type": "synthesize",
@@ -502,6 +509,8 @@ def _synthesize_payload(
         payload["speaker"] = speaker
     if instruction:
         payload["instruction"] = instruction
+    if seed is not None:
+        payload["seed"] = seed
     return payload
 
 
