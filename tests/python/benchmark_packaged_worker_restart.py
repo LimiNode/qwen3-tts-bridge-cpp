@@ -276,9 +276,7 @@ def _build_report(
             "prefill_allowlist_warmup_manifest": (
                 args.prefill_allowlist_warmup_manifest
             ),
-            "prefill_allowlist_warmup_repeats": (
-                args.prefill_allowlist_warmup_repeats
-            ),
+            "prefill_allowlist_warmup_repeats": (args.prefill_allowlist_warmup_repeats),
             "prefill_allowlist_max_entries": args.prefill_allowlist_max_entries,
             "prefill_allowlist_max_abs_threshold": (
                 args.prefill_allowlist_max_abs_threshold
@@ -593,9 +591,7 @@ def _validate_runtime_provenance(
     if expected_sha:
         installed_sha = distribution.get("installed_archive_sha256")
         if not isinstance(installed_sha, str):
-            raise RuntimeError(
-                "faster_qwen3_tts installed archive SHA256 is missing"
-            )
+            raise RuntimeError("faster_qwen3_tts installed archive SHA256 is missing")
         if installed_sha.lower() != expected_sha.lower():
             raise RuntimeError(
                 "faster_qwen3_tts installed archive SHA256 mismatch: "
@@ -675,9 +671,7 @@ def _worker_process_args_for_run(
 
     run_args = argparse.Namespace(**vars(args))
     if run_args.seed is not None:
-        run_args.seed = int(run_args.seed) + (run_index - 1) * int(
-            args.run_seed_step
-        )
+        run_args.seed = int(run_args.seed) + (run_index - 1) * int(args.run_seed_step)
     if run_args.warmup_seed is not None:
         run_args.warmup_seed = int(run_args.warmup_seed) + (run_index - 1) * int(
             args.run_warmup_seed_step
@@ -721,6 +715,13 @@ def _load_run_shapes(path: Path | None) -> list[dict[str, object]]:
         label = item.get("label", f"shape_{line_number}")
         if not isinstance(label, str) or not label:
             raise ValueError(f"shape JSONL line {line_number} has invalid label")
+        talker_prefill_length = item.get("talker_prefill_length")
+        if talker_prefill_length is not None and (
+            not isinstance(talker_prefill_length, int) or talker_prefill_length <= 0
+        ):
+            raise ValueError(
+                f"shape JSONL line {line_number} has invalid talker_prefill_length"
+            )
         shapes.append(
             {
                 "label": label,
@@ -728,6 +729,7 @@ def _load_run_shapes(path: Path | None) -> list[dict[str, object]]:
                 "language": item.get("language", "auto"),
                 "speaker": item.get("speaker", ""),
                 "instruction": item.get("instruction", ""),
+                "talker_prefill_length": talker_prefill_length,
             }
         )
     return shapes
@@ -819,8 +821,7 @@ def _run_summary(
     after_requests_gpu: dict[str, object],
 ) -> dict[str, object]:
     enriched_requests = [
-        _with_request_pipeline_metrics(request, worker_metrics)
-        for request in requests
+        _with_request_pipeline_metrics(request, worker_metrics) for request in requests
     ]
     first_request = enriched_requests[0] if enriched_requests else {}
     steady_requests = enriched_requests[1:]
@@ -934,24 +935,16 @@ def _shape_summary(
                 ),
             },
             "slow_delta_count": sum(
-                1
-                for run in runs
-                if _is_slow_delta(run, threshold_ms=threshold_ms)
+                1 for run in runs if _is_slow_delta(run, threshold_ms=threshold_ms)
             ),
             "positive_tail_count": sum(
-                1
-                for run in runs
-                if _is_positive_tail(run, threshold_ms=threshold_ms)
+                1 for run in runs if _is_positive_tail(run, threshold_ms=threshold_ms)
             ),
             "negative_tail_count": sum(
-                1
-                for run in runs
-                if _is_negative_tail(run, threshold_ms=threshold_ms)
+                1 for run in runs if _is_negative_tail(run, threshold_ms=threshold_ms)
             ),
             "unstable_count": sum(
-                1
-                for run in runs
-                if _is_unstable_delta(run, threshold_ms=threshold_ms)
+                1 for run in runs if _is_unstable_delta(run, threshold_ms=threshold_ms)
             ),
         }
     return summary
@@ -1032,9 +1025,7 @@ def _paired_delta_residuals(
         paired_phase_delta.get("first_chunk_first_sample_gpu_ms")
     )
     if first_sample_delta is not None:
-        residuals["delta_without_first_sample_ms"] = (
-            paired_delta - first_sample_delta
-        )
+        residuals["delta_without_first_sample_ms"] = paired_delta - first_sample_delta
     talker_forward_delta = _number(
         paired_phase_delta.get("first_chunk_talker_forward_stream_elapsed_ms")
     )
@@ -1242,9 +1233,7 @@ def _paired_steady_residual_summary(
         rows = paired_steady.get("residuals")
         if not isinstance(rows, list):
             continue
-        residual_rows.extend(
-            row for row in rows if isinstance(row, dict)
-        )
+        residual_rows.extend(row for row in rows if isinstance(row, dict))
     return {
         "count": len(residual_rows),
         "total_delta_ms": _summary(residual_rows, "total_delta_ms"),
@@ -1373,9 +1362,7 @@ def _talker_forward_explained_outlier_summary(
     return {
         "threshold_ms": threshold_ms,
         "positive_outlier_count": count,
-        "declassified_below_threshold_after_talker_forward_count": (
-            declassified_count
-        ),
+        "declassified_below_threshold_after_talker_forward_count": (declassified_count),
         "declassified_below_threshold_after_talker_forward_fraction": (
             declassified_count / count if count else None
         ),
@@ -1400,9 +1387,7 @@ def _positive_outlier_talker_forward_attribution(
         if not isinstance(residuals, dict):
             continue
         talker_delta = _number(residuals.get("talker_explained_ms"))
-        unexplained = _number(
-            residuals.get("positive_unexplained_without_talker_ms")
-        )
+        unexplained = _number(residuals.get("positive_unexplained_without_talker_ms"))
         explained_fraction = _number(residuals.get("talker_explained_fraction"))
         rows.append(
             {
@@ -1771,12 +1756,49 @@ def _with_request_pipeline_metrics(
         ("prefill_shape_call_ordinal", "first_chunk_prefill_shape_call_ordinal"),
         ("prefill_compile_cache_entries", "first_chunk_prefill_compile_cache_entries"),
         (
+            "prefill_compile_cache_entries_before",
+            "first_chunk_prefill_compile_cache_entries_before",
+        ),
+        (
+            "prefill_compile_cache_entries_after",
+            "first_chunk_prefill_compile_cache_entries_after",
+        ),
+        (
+            "prefill_compile_cache_entries_delta",
+            "first_chunk_prefill_compile_cache_entries_delta",
+        ),
+        (
             "prefill_compile_cache_talker_entries",
             "first_chunk_prefill_compile_cache_talker_entries",
         ),
         (
             "prefill_compile_cache_evictions",
             "first_chunk_prefill_compile_cache_evictions",
+        ),
+        (
+            "prefill_compile_cache_evictions_before",
+            "first_chunk_prefill_compile_cache_evictions_before",
+        ),
+        (
+            "prefill_compile_cache_evictions_after",
+            "first_chunk_prefill_compile_cache_evictions_after",
+        ),
+        (
+            "prefill_compile_cache_evictions_delta",
+            "first_chunk_prefill_compile_cache_evictions_delta",
+        ),
+        ("prefill_compile_attempt_count", "first_chunk_prefill_compile_attempt_count"),
+        (
+            "prefill_dynamo_unique_graphs_before",
+            "first_chunk_prefill_dynamo_unique_graphs_before",
+        ),
+        (
+            "prefill_dynamo_unique_graphs_after",
+            "first_chunk_prefill_dynamo_unique_graphs_after",
+        ),
+        (
+            "prefill_dynamo_unique_graphs_delta",
+            "first_chunk_prefill_dynamo_unique_graphs_delta",
         ),
         ("tokenize_wall_ms", "first_chunk_tokenize_wall_ms"),
         ("build_talker_inputs_wall_ms", "first_chunk_build_talker_inputs_wall_ms"),
@@ -1946,6 +1968,7 @@ def _with_request_pipeline_metrics(
             "first_chunk_all_component_streams_equal",
         ),
         ("prefill_compile_fallback", "first_chunk_prefill_compile_fallback"),
+        ("prefill_compile_attempted", "first_chunk_prefill_compile_attempted"),
         (
             "prefill_compile_compat_applied",
             "first_chunk_prefill_compile_compat_applied",
@@ -1964,6 +1987,10 @@ def _with_request_pipeline_metrics(
             "prefill_require_precompiled",
             "first_chunk_prefill_require_precompiled",
         ),
+        (
+            "prefill_dynamo_counter_available",
+            "first_chunk_prefill_dynamo_counter_available",
+        ),
     ):
         _copy_metric_bool(enriched, first_chunk_phases, source_key, target_key)
 
@@ -1975,9 +2002,7 @@ def _with_request_pipeline_metrics(
     client_first_audio_ms = request.get("first_audio_ms")
     if isinstance(client_first_audio_ms, (int, float)):
         if first_pcm_ready_ms is not None:
-            residual_ms = (
-                float(client_first_audio_ms) - first_pcm_ready_ms
-            )
+            residual_ms = float(client_first_audio_ms) - first_pcm_ready_ms
             enriched["transport_and_dispatch_residual_ms"] = residual_ms
             enriched["client_minus_worker_first_pcm_ready_ms"] = residual_ms
         if first_frame_enqueued_ms is not None:
@@ -1986,9 +2011,9 @@ def _with_request_pipeline_metrics(
             )
         flushed_estimate = enriched.get("worker_first_frame_flushed_estimated_ms")
         if isinstance(flushed_estimate, (int, float)):
-            enriched["client_minus_worker_frame_flushed_estimated_ms"] = (
-                float(client_first_audio_ms) - float(flushed_estimate)
-            )
+            enriched["client_minus_worker_frame_flushed_estimated_ms"] = float(
+                client_first_audio_ms
+            ) - float(flushed_estimate)
 
     return enriched
 

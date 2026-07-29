@@ -57,10 +57,7 @@ class QwenTtsEngine:
     def capabilities(self) -> EngineCapabilities:
         """Return capabilities exposed by the Qwen adapter."""
 
-        streaming = (
-            self._model is not None
-            and _supports_qwen_streaming(self._model)
-        )
+        streaming = self._model is not None and _supports_qwen_streaming(self._model)
         return EngineCapabilities(
             streaming=streaming,
             cancellation=streaming,
@@ -265,8 +262,10 @@ class QwenTtsEngine:
             total_bytes += cast(int, pass_fields["audio_bytes"])
             passes.append(pass_fields)
 
-        audio_duration_ms = total_bytes * 1000.0 / (
-            request.output.sample_rate * request.output.channels * 2
+        audio_duration_ms = (
+            total_bytes
+            * 1000.0
+            / (request.output.sample_rate * request.output.channels * 2)
         )
         return {
             "warmup_synthesis": True,
@@ -317,8 +316,10 @@ class QwenTtsEngine:
                 f"(pass={pass_index}, chunks={audio_chunks}, bytes={audio_bytes})"
             )
 
-        audio_duration_ms = audio_bytes * 1000.0 / (
-            request.output.sample_rate * request.output.channels * 2
+        audio_duration_ms = (
+            audio_bytes
+            * 1000.0
+            / (request.output.sample_rate * request.output.channels * 2)
         )
         real_time_factor = completed_ms / audio_duration_ms
         inverse_real_time_factor = audio_duration_ms / completed_ms
@@ -578,9 +579,7 @@ def _default_model_loader(config: QwenEngineConfig) -> Any:
     try:
         return load_qwen_model(config)
     except QwenModelLoadError as exc:
-        raise QwenEngineError(
-            str(exc)
-        ) from exc
+        raise QwenEngineError(str(exc)) from exc
 
 
 def _qwen_model_type(model: Any) -> str:
@@ -767,11 +766,7 @@ def _load_prefill_allowlist_warmup_manifest(
         elif text.lstrip().startswith("{"):
             payload = json.loads(text)
         else:
-            payload = [
-                json.loads(line)
-                for line in text.splitlines()
-                if line.strip()
-            ]
+            payload = [json.loads(line) for line in text.splitlines() if line.strip()]
     except json.JSONDecodeError as exc:
         raise QwenEngineError(
             f"prefill warmup manifest is not valid JSON/JSONL: {path}"
@@ -822,8 +817,7 @@ def _load_prefill_allowlist_warmup_manifest(
     missing = [length for length in lengths if length not in result]
     if missing:
         raise QwenEngineError(
-            "prefill warmup manifest missing allowlisted lengths: "
-            f"{missing}"
+            f"prefill warmup manifest missing allowlisted lengths: {missing}"
         )
     return result
 
@@ -929,8 +923,7 @@ def _run_prefill_decode_state_warmup(
         )
     if profile_fields.get("generation_state_masks_built") != 0:
         raise QwenEngineError(
-            "prefill decode-state warmup rebuilt generation masks: "
-            f"{profile_fields}"
+            f"prefill decode-state warmup rebuilt generation masks: {profile_fields}"
         )
 
     return {
@@ -1207,10 +1200,9 @@ def _supports_qwen_streaming(model: Any) -> bool:
 
 def _supports_qwen_stream_generate_pcm(model: Any) -> bool:
     inner_model = getattr(model, "model", None)
-    return (
-        callable(getattr(inner_model, "stream_generate_pcm", None))
-        and _has_qwen_stream_helpers(model)
-    )
+    return callable(
+        getattr(inner_model, "stream_generate_pcm", None)
+    ) and _has_qwen_stream_helpers(model)
 
 
 def _qwen_stream_generate_audio(
@@ -1233,9 +1225,7 @@ def _qwen_stream_generate_audio(
                     "chunk_size": config.emit_every_frames,
                     "do_sample": config.do_sample,
                     "prefill_backend": config.prefill_backend,
-                    "prefill_compile_compat_mode": (
-                        config.prefill_compile_compat_mode
-                    ),
+                    "prefill_compile_compat_mode": (config.prefill_compile_compat_mode),
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
@@ -1285,9 +1275,7 @@ def _qwen_stream_generate_audio(
                     "chunk_size": config.emit_every_frames,
                     "do_sample": config.do_sample,
                     "prefill_backend": config.prefill_backend,
-                    "prefill_compile_compat_mode": (
-                        config.prefill_compile_compat_mode
-                    ),
+                    "prefill_compile_compat_mode": (config.prefill_compile_compat_mode),
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
@@ -1338,9 +1326,8 @@ def _qwen_stream_generate_pcm(
 ) -> Iterable[tuple[Any, int]] | None:
     inner_model = getattr(model, "model", None)
     stream_generate_pcm = getattr(inner_model, "stream_generate_pcm", None)
-    if (
-        not callable(stream_generate_pcm)
-        or not _supports_qwen_stream_generate_pcm(model)
+    if not callable(stream_generate_pcm) or not _supports_qwen_stream_generate_pcm(
+        model
     ):
         return None
 
@@ -1415,18 +1402,14 @@ def _qwen_input_metadata_from_ids(
     instruct_ids: list[Any] | None,
 ) -> dict[str, object]:
     text_token_count = _sequence_length(input_ids[0]) if input_ids else None
-    instruction_token_count = (
-        _sequence_length(instruct_ids[0]) if instruct_ids else 0
-    )
+    instruction_token_count = _sequence_length(instruct_ids[0]) if instruct_ids else 0
     metadata: dict[str, object] = {}
     if text_token_count is not None:
         metadata["text_token_count"] = text_token_count
     if instruction_token_count is not None:
         metadata["instruction_token_count"] = instruction_token_count
     if text_token_count is not None and instruction_token_count is not None:
-        metadata["prefill_sequence_length"] = (
-            text_token_count + instruction_token_count
-        )
+        metadata["prefill_sequence_length"] = text_token_count + instruction_token_count
     return metadata
 
 
@@ -1463,9 +1446,8 @@ def _first_chunk_timing_fields(
         "pcm_convert_ms": pcm_convert_ms,
     }
     prefill_ms = _number_field(chunk_timing, "prefill_ms")
-    decode_ms = (
-        _number_field(chunk_timing, "ar_decode_ms")
-        or _number_field(chunk_timing, "decode_ms")
+    decode_ms = _number_field(chunk_timing, "ar_decode_ms") or _number_field(
+        chunk_timing, "decode_ms"
     )
     chunk_steps = _number_field(chunk_timing, "chunk_steps")
 
@@ -1492,9 +1474,22 @@ def _first_chunk_timing_fields(
         "prefill_to_sync_gpu_stream_id",
         "generation_state_masks_built",
         "prefill_compile_cache_entries",
+        "prefill_compile_cache_entries_before",
+        "prefill_compile_cache_entries_after",
+        "prefill_compile_cache_entries_delta",
         "prefill_compile_cache_talker_entries",
+        "prefill_compile_cache_talker_entries_before",
+        "prefill_compile_cache_talker_entries_after",
+        "prefill_compile_cache_talker_entries_delta",
         "prefill_compile_cache_max_entries",
         "prefill_compile_cache_evictions",
+        "prefill_compile_cache_evictions_before",
+        "prefill_compile_cache_evictions_after",
+        "prefill_compile_cache_evictions_delta",
+        "prefill_compile_attempt_count",
+        "prefill_dynamo_unique_graphs_before",
+        "prefill_dynamo_unique_graphs_after",
+        "prefill_dynamo_unique_graphs_delta",
         "prefill_shape_call_ordinal",
         "prefill_shape_length",
         "prefill_cuda_memory_before_allocated_bytes",
@@ -1529,12 +1524,14 @@ def _first_chunk_timing_fields(
         "components_nonnegative",
         "all_component_streams_equal",
         "prefill_compile_fallback",
+        "prefill_compile_attempted",
         "prefill_compile_compat_applied",
         "prefill_compile_compat_reused",
         "prefill_compile_cache_hit",
         "prefill_shape_allowlist_hit",
         "prefill_compile_on_miss",
         "prefill_require_precompiled",
+        "prefill_dynamo_counter_available",
         "generation_state_mask_cache_hit",
         "generation_state_attention_mask_all_valid",
     ):

@@ -5,10 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import random
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from semantic_trace_contract import validate_generation_trace
+try:
+    from semantic_trace_contract import validate_generation_trace
+except ModuleNotFoundError:  # Imported as scripts.qwen_fresh_process_matrix in tests.
+    from scripts.semantic_trace_contract import validate_generation_trace
 
 
 def main() -> int:
@@ -25,9 +29,26 @@ def main() -> int:
     analyze_parser = subparsers.add_parser("analyze")
     analyze_parser.add_argument("--report", type=Path, required=True)
     analyze_parser.add_argument("--output", type=Path, required=True)
-    analyze_parser.add_argument("--first-ttfa-p95-max-ms", type=float, default=300.0)
+    analyze_parser.add_argument(
+        "--compiled-first-ttfa-p95-max-ms",
+        "--first-ttfa-p95-max-ms",
+        dest="compiled_first_ttfa_p95_max_ms",
+        type=float,
+        default=300.0,
+    )
+    analyze_parser.add_argument(
+        "--eager-first-ttfa-p95-max-ms", type=float, default=450.0
+    )
+    analyze_parser.add_argument(
+        "--global-first-ttfa-p95-max-ms", type=float, default=300.0
+    )
     analyze_parser.add_argument(
         "--first-minus-steady-p95-max-ms", type=float, default=20.0
+    )
+    analyze_parser.add_argument(
+        "--schedule",
+        type=Path,
+        help="Optional JSONL schedule used to validate exact category counts.",
     )
 
     args = parser.parse_args()
@@ -49,7 +70,11 @@ def main() -> int:
     )
     print(
         json.dumps(
-            {"acceptance_pass": summary["acceptance_pass"], "output": str(args.output)}
+            {
+                "acceptance_pass": summary["acceptance_pass"],
+                "acceptance": summary["acceptance"],
+                "output": str(args.output),
+            }
         )
     )
     return 0 if summary["acceptance_pass"] else 1
@@ -114,42 +139,133 @@ def _analyze_report(report: dict[str, Any], args: argparse.Namespace) -> dict[st
     if not isinstance(runs, list):
         raise ValueError("restart report lacks runs")
     by_category: dict[str, list[dict[str, Any]]] = {}
-    failures: list[str] = []
+    terminal_failures: list[str] = []
+    routing_failures: list[str] = []
+    schedule_failures: list[str] = []
+    expected_requests = _expected_requests_per_run(report)
     for run in runs:
         if not isinstance(run, dict):
-            failures.append("invalid run record")
+            schedule_failures.append("invalid run record")
             continue
         shape = run.get("shape")
         category = shape.get("label") if isinstance(shape, dict) else None
         requests = run.get("requests")
         if not isinstance(category, str) or not isinstance(requests, list):
-            failures.append("run lacks shape_label or requests")
+            schedule_failures.append("run lacks shape_label or requests")
             continue
+        if len(requests) != expected_requests:
+            schedule_failures.append(
+                f"{category}: expected {expected_requests} requests, "
+                f"got {len(requests)}"
+            )
         by_category.setdefault(category, []).append(run)
+        expected_length = _expected_talker_prefill_length(category, shape)
         for request in requests:
             if not isinstance(request, dict):
-                failures.append(f"{category}: invalid request record")
+                routing_failures.append(f"{category}: invalid request record")
                 continue
-            _validate_request(category, request, failures)
+            _validate_request(
+                category,
+                request,
+                expected_length,
+                terminal_failures,
+                routing_failures,
+            )
+
+    expected_categories = _schedule_category_counts(args.schedule)
+    observed_categories = Counter(
+        {
+            category: len(category_runs)
+            for category, category_runs in by_category.items()
+        }
+    )
+    if expected_categories and observed_categories != expected_categories:
+        schedule_failures.append(
+            "schedule category counts differ: "
+            f"expected {dict(sorted(expected_categories.items()))}, "
+            f"got {dict(sorted(observed_categories.items()))}"
+        )
 
     category_summaries = {
-        category: _category_summary(
-            category,
-            category_runs,
-            args.first_ttfa_p95_max_ms,
-            args.first_minus_steady_p95_max_ms,
-            failures,
-        )
+        category: _category_summary(category_runs)
         for category, category_runs in sorted(by_category.items())
     }
+    compiled_latency_failures = _latency_failures(
+        category_summaries,
+        lambda category: _allowlist_length(category) is not None,
+        args.compiled_first_ttfa_p95_max_ms,
+        args.first_minus_steady_p95_max_ms,
+        "compiled",
+    )
+    eager_latency_failures = _latency_failures(
+        category_summaries,
+        lambda category: _allowlist_length(category) is None,
+        args.eager_first_ttfa_p95_max_ms,
+        args.first_minus_steady_p95_max_ms,
+        "eager",
+    )
+    all_first = [
+        float(run["first_request"]["first_audio_ms"])
+        for category_runs in by_category.values()
+        for run in category_runs
+        if isinstance(run.get("first_request"), dict)
+    ]
+    all_deltas = [
+        float(run["paired_delta_first_audio_ms"])
+        for category_runs in by_category.values()
+        for run in category_runs
+        if isinstance(run.get("paired_delta_first_audio_ms"), (int, float))
+    ]
+    global_latency_failures = _aggregate_latency_failures(
+        all_first,
+        all_deltas,
+        args.global_first_ttfa_p95_max_ms,
+        args.first_minus_steady_p95_max_ms,
+        "global",
+    )
+    acceptance = {
+        "terminal_trace_acceptance_pass": not terminal_failures,
+        "routing_acceptance_pass": not routing_failures and not schedule_failures,
+        "compiled_latency_acceptance_pass": not compiled_latency_failures,
+        "eager_latency_acceptance_pass": not eager_latency_failures,
+        "global_latency_acceptance_pass": not global_latency_failures,
+    }
+    failures = (
+        terminal_failures
+        + routing_failures
+        + schedule_failures
+        + compiled_latency_failures
+        + eager_latency_failures
+        + global_latency_failures
+    )
     return {
-        "artifact_schema_version": 1,
-        "acceptance_pass": not failures,
+        "artifact_schema_version": 2,
+        "acceptance_pass": all(
+            acceptance[name]
+            for name in (
+                "terminal_trace_acceptance_pass",
+                "routing_acceptance_pass",
+                "compiled_latency_acceptance_pass",
+                "eager_latency_acceptance_pass",
+            )
+        ),
+        "acceptance": acceptance,
         "thresholds": {
-            "first_ttfa_p95_max_ms": args.first_ttfa_p95_max_ms,
+            "compiled_first_ttfa_p95_max_ms": args.compiled_first_ttfa_p95_max_ms,
+            "eager_first_ttfa_p95_max_ms": args.eager_first_ttfa_p95_max_ms,
+            "global_first_ttfa_p95_max_ms": args.global_first_ttfa_p95_max_ms,
             "first_minus_steady_p95_max_ms": args.first_minus_steady_p95_max_ms,
         },
+        "expected": {
+            "requests_per_run": expected_requests,
+            "schedule_category_counts": dict(sorted(expected_categories.items())),
+        },
         "categories": category_summaries,
+        "all_requests": {
+            "fresh_processes": len(all_first),
+            "first_ttfa_ms": _summary(all_first) if all_first else None,
+            "first_minus_steady_ms": _summary(all_deltas) if all_deltas else None,
+        },
         "failures": failures,
     }
 
@@ -157,90 +273,246 @@ def _analyze_report(report: dict[str, Any], args: argparse.Namespace) -> dict[st
 def _validate_request(
     category: str,
     request: dict[str, Any],
-    failures: list[str],
+    expected_length: int | None,
+    terminal_failures: list[str],
+    routing_failures: list[str],
 ) -> None:
     trace = request.get("generation_trace")
     if not isinstance(trace, dict):
-        failures.append(f"{category}: missing generation trace")
+        terminal_failures.append(f"{category}: missing generation trace")
     else:
         try:
             validate_generation_trace(trace)
         except RuntimeError as exc:
-            failures.append(f"{category}: {exc}")
+            terminal_failures.append(f"{category}: {exc}")
 
     known_length = _allowlist_length(category)
+    if expected_length is not None:
+        _expect(
+            category,
+            request,
+            "first_chunk_talker_prefill_length",
+            expected_length,
+            routing_failures,
+        )
     if known_length is None:
         _expect(
             category,
             request,
             "first_chunk_prefill_shape_policy",
             "eager_unknown",
-            failures,
+            routing_failures,
         )
         _expect(
             category,
             request,
             "first_chunk_prefill_shape_allowlist_hit",
             False,
-            failures,
+            routing_failures,
         )
         _expect(
-            category, request, "first_chunk_prefill_backend_used", "eager", failures
+            category,
+            request,
+            "first_chunk_prefill_backend_used",
+            "eager",
+            routing_failures,
         )
         _expect(
-            category, request, "first_chunk_prefill_compile_fallback", False, failures
+            category,
+            request,
+            "first_chunk_prefill_compile_fallback",
+            False,
+            routing_failures,
         )
+        _expect_no_dynamic_compile(category, request, routing_failures)
         return
 
     _expect(
-        category, request, "first_chunk_talker_prefill_length", known_length, failures
+        category,
+        request,
+        "first_chunk_talker_prefill_length",
+        known_length,
+        routing_failures,
     )
     _expect(
         category,
         request,
         "first_chunk_prefill_shape_policy",
         "compiled_allowlist",
-        failures,
+        routing_failures,
     )
     _expect(
-        category, request, "first_chunk_prefill_shape_allowlist_hit", True, failures
+        category,
+        request,
+        "first_chunk_prefill_shape_allowlist_hit",
+        True,
+        routing_failures,
     )
-    _expect(category, request, "first_chunk_prefill_compile_cache_hit", True, failures)
-    _expect(category, request, "first_chunk_prefill_compile_fallback", False, failures)
     _expect(
-        category, request, "first_chunk_prefill_require_precompiled", True, failures
+        category,
+        request,
+        "first_chunk_prefill_backend_used",
+        "compile_reduce_overhead",
+        routing_failures,
+    )
+    _expect(
+        category,
+        request,
+        "first_chunk_prefill_compile_cache_hit",
+        True,
+        routing_failures,
+    )
+    _expect(
+        category,
+        request,
+        "first_chunk_prefill_compile_fallback",
+        False,
+        routing_failures,
+    )
+    _expect(
+        category,
+        request,
+        "first_chunk_prefill_require_precompiled",
+        True,
+        routing_failures,
     )
     ordinal = request.get("first_chunk_prefill_shape_call_ordinal")
     if not isinstance(ordinal, (int, float)) or ordinal < 4:
-        failures.append(f"{category}: expected prefill ordinal >= 4, got {ordinal!r}")
+        routing_failures.append(
+            f"{category}: expected prefill ordinal >= 4, got {ordinal!r}"
+        )
+    _expect_no_dynamic_compile(category, request, routing_failures)
 
 
 def _category_summary(
-    category: str,
     runs: list[dict[str, Any]],
-    first_max_ms: float,
-    delta_max_ms: float,
-    failures: list[str],
 ) -> dict[str, object]:
     first = [float(run["first_request"]["first_audio_ms"]) for run in runs]
     deltas = [float(run["paired_delta_first_audio_ms"]) for run in runs]
-    first_p95 = _percentile(first, 95.0)
-    delta_p95 = _percentile(deltas, 95.0)
-    if first_p95 >= first_max_ms:
-        failures.append(
-            f"{category}: first TTFA p95 {first_p95:.3f} ms is not < "
-            f"{first_max_ms:.3f} ms"
-        )
-    if delta_p95 >= delta_max_ms:
-        failures.append(
-            f"{category}: first-minus-steady p95 {delta_p95:.3f} ms is not < "
-            f"{delta_max_ms:.3f} ms"
-        )
     return {
         "fresh_processes": len(runs),
         "first_ttfa_ms": _summary(first),
         "first_minus_steady_ms": _summary(deltas),
     }
+
+
+def _expect_no_dynamic_compile(
+    category: str,
+    request: dict[str, Any],
+    failures: list[str],
+) -> None:
+    for key, expected in (
+        ("first_chunk_prefill_compile_attempted", False),
+        ("first_chunk_prefill_compile_attempt_count", 0),
+        ("first_chunk_prefill_compile_cache_entries_delta", 0),
+        ("first_chunk_prefill_compile_cache_evictions_delta", 0),
+        ("first_chunk_prefill_dynamo_counter_available", True),
+        ("first_chunk_prefill_dynamo_unique_graphs_delta", 0),
+    ):
+        _expect(category, request, key, expected, failures)
+
+
+def _latency_failures(
+    categories: dict[str, dict[str, object]],
+    include_category: Any,
+    first_max_ms: float,
+    delta_max_ms: float,
+    route: str,
+) -> list[str]:
+    failures: list[str] = []
+    included = [
+        (category, summary)
+        for category, summary in categories.items()
+        if include_category(category)
+    ]
+    if not included:
+        return [f"{route}: no categories were measured"]
+    for category, summary in included:
+        first = summary["first_ttfa_ms"]
+        delta = summary["first_minus_steady_ms"]
+        assert isinstance(first, dict)
+        assert isinstance(delta, dict)
+        first_p95 = float(first["p95"])
+        delta_p95 = float(delta["p95"])
+        if first_p95 >= first_max_ms:
+            failures.append(
+                f"{route} {category}: first TTFA p95 {first_p95:.3f} ms is not < "
+                f"{first_max_ms:.3f} ms"
+            )
+        if delta_p95 >= delta_max_ms:
+            failures.append(
+                f"{route} {category}: first-minus-steady p95 {delta_p95:.3f} ms "
+                f"is not < {delta_max_ms:.3f} ms"
+            )
+    return failures
+
+
+def _aggregate_latency_failures(
+    first: list[float],
+    deltas: list[float],
+    first_max_ms: float,
+    delta_max_ms: float,
+    route: str,
+) -> list[str]:
+    if not first or not deltas:
+        return [f"{route}: no complete runs were measured"]
+    first_p95 = _percentile(first, 95.0)
+    delta_p95 = _percentile(deltas, 95.0)
+    failures: list[str] = []
+    if first_p95 >= first_max_ms:
+        failures.append(
+            f"{route}: first TTFA p95 {first_p95:.3f} ms is not < {first_max_ms:.3f} ms"
+        )
+    if delta_p95 >= delta_max_ms:
+        failures.append(
+            f"{route}: first-minus-steady p95 {delta_p95:.3f} ms is not < "
+            f"{delta_max_ms:.3f} ms"
+        )
+    return failures
+
+
+def _expected_requests_per_run(report: dict[str, Any]) -> int:
+    config = report.get("config")
+    value = config.get("requests_per_run") if isinstance(config, dict) else None
+    if not isinstance(value, int) or value <= 0:
+        raise ValueError("restart report lacks a positive config.requests_per_run")
+    return value
+
+
+def _schedule_category_counts(path: Path | None) -> Counter[str]:
+    if path is None:
+        return Counter()
+    rows = _load_jsonl(path)
+    counts = Counter()
+    for row in rows:
+        label = row.get("label")
+        if not isinstance(label, str) or not label:
+            raise ValueError("schedule row lacks label")
+        counts[label] += 1
+    return counts
+
+
+def _load_jsonl(path: Path) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
+    for line_number, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        item = json.loads(line)
+        if not isinstance(item, dict):
+            raise ValueError(f"JSONL row {line_number} must be an object")
+        rows.append(item)
+    return rows
+
+
+def _expected_talker_prefill_length(
+    category: str,
+    shape: dict[str, Any],
+) -> int | None:
+    configured = shape.get("talker_prefill_length")
+    if isinstance(configured, int) and configured > 0:
+        return configured
+    return _allowlist_length(category)
 
 
 def _expect(

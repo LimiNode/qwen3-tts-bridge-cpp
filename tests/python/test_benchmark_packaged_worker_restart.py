@@ -76,12 +76,24 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "prefill_backend_requested": "compile_default",
                 "prefill_backend_used": "compile_default",
                 "prefill_compile_fallback": False,
+                "prefill_compile_attempted": False,
+                "prefill_compile_attempt_count": 0,
                 "prefill_compile_cache_hit": True,
                 "prefill_require_precompiled": True,
                 "prefill_shape_call_ordinal": 4,
                 "prefill_compile_cache_entries": 6,
+                "prefill_compile_cache_entries_before": 6,
+                "prefill_compile_cache_entries_after": 6,
+                "prefill_compile_cache_entries_delta": 0,
                 "prefill_compile_cache_talker_entries": 6,
                 "prefill_compile_cache_evictions": 0,
+                "prefill_compile_cache_evictions_before": 0,
+                "prefill_compile_cache_evictions_after": 0,
+                "prefill_compile_cache_evictions_delta": 0,
+                "prefill_dynamo_counter_available": True,
+                "prefill_dynamo_unique_graphs_before": 4,
+                "prefill_dynamo_unique_graphs_after": 4,
+                "prefill_dynamo_unique_graphs_delta": 0,
                 "profile_prefill_enabled": True,
                 "profile_complete": True,
                 "events_complete": True,
@@ -169,15 +181,30 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             enriched["first_chunk_prefill_backend_used"],
         )
         self.assertFalse(enriched["first_chunk_prefill_compile_fallback"])
+        self.assertFalse(enriched["first_chunk_prefill_compile_attempted"])
+        self.assertEqual(0, enriched["first_chunk_prefill_compile_attempt_count"])
         self.assertTrue(enriched["first_chunk_prefill_compile_cache_hit"])
         self.assertTrue(enriched["first_chunk_prefill_require_precompiled"])
         self.assertEqual(4, enriched["first_chunk_prefill_shape_call_ordinal"])
         self.assertEqual(6, enriched["first_chunk_prefill_compile_cache_entries"])
         self.assertEqual(
+            0,
+            enriched["first_chunk_prefill_compile_cache_entries_delta"],
+        )
+        self.assertEqual(
             6,
             enriched["first_chunk_prefill_compile_cache_talker_entries"],
         )
         self.assertEqual(0, enriched["first_chunk_prefill_compile_cache_evictions"])
+        self.assertEqual(
+            0,
+            enriched["first_chunk_prefill_compile_cache_evictions_delta"],
+        )
+        self.assertTrue(enriched["first_chunk_prefill_dynamo_counter_available"])
+        self.assertEqual(
+            0,
+            enriched["first_chunk_prefill_dynamo_unique_graphs_delta"],
+        )
         self.assertTrue(enriched["first_chunk_profile_prefill_enabled"])
         self.assertTrue(enriched["first_chunk_profile_complete"])
         self.assertTrue(enriched["first_chunk_events_complete"])
@@ -331,7 +358,8 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "shapes.jsonl"
             path.write_text(
-                '{"label":"short","text":"Short.","language":"English"}\n'
+                '{"label":"short","text":"Short.","language":"English",'
+                '"talker_prefill_length":29}\n'
                 '{"label":"long","text":"Long text.","speaker":"ryan"}\n',
                 encoding="utf-8",
             )
@@ -340,6 +368,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
 
         self.assertEqual("short", shapes[0]["label"])
         self.assertEqual("English", shapes[0]["language"])
+        self.assertEqual(29, shapes[0]["talker_prefill_length"])
         self.assertEqual("", shapes[0]["speaker"])
         self.assertEqual("long", shapes[1]["label"])
         self.assertEqual("ryan", shapes[1]["speaker"])
