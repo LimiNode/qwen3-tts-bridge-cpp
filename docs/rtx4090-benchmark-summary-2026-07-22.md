@@ -2746,6 +2746,39 @@ The FasterQwen real-model parity suite also passed in this configuration:
 CustomVoice, and VoiceDesign parity on CUDA. The suite emitted 17 dependency
 deprecation warnings only.
 
+### Semantic Cancellation Smoke: All Shapes
+
+The original `r500` memory line measured the launcher process and global GPU
+usage, so it is retained only as historical evidence. The replacement gate
+walks the worker process tree, records its model PID in every snapshot, and
+requires CUDA allocator metrics from that exact PID for every terminal request.
+On this Windows WDDM host, `nvidia-smi --query-compute-apps` identifies that
+PID but reports its memory as `[N/A]`; the artifact records that limitation
+explicitly instead of substituting global GPU usage.
+
+The `r63` semantic smoke used the same strict CustomVoice configuration and
+wheel, but the current runtime was Python 3.12.10 with Torch `2.10.0+cu130`
+(CUDA 13.0). It covered all six exact allowlist lengths (`29, 30, 32, 33, 34,
+35`) plus unknown lengths `31, 38, 45`. Each category ran one deterministic
+reference, one cancellation at each of `before_first_audio`,
+`after_first_audio`, and `after_third_audio`, and a fixed-seed post-cancel
+audit. The audit compares complete PCM SHA256, byte/chunk totals, and the
+terminal codec trace. All 63 requests passed: 36 completed, 27 cancelled,
+the exact compile cache stayed at six entries, and no semantic fingerprint
+changed after cancellation.
+
+| Measure | Result |
+| --- | ---: |
+| Completed TTFA median / p95 | 259.3 / 383.7 ms |
+| Completed RTF median / p95 | 0.3766 / 0.3997 |
+| Cancellation latency median / p95 | 230.5 / 255.4 ms |
+| Process-tree RSS growth | +32.3 MiB |
+| Process-tree private-byte growth | +38.7 MiB |
+
+This smoke is a correctness and lifecycle gate, not a production workload
+forecast. Its weighted operation order is deterministic and deliberately
+contains more cancellation/audit traffic than typical application traffic.
+
 Artifacts:
 
 ```text
@@ -2761,12 +2794,14 @@ confirmatory-r20-summary.json
 release-ab-all-eager-r20.json
 release-ab-summary.json
 mixed-soak-r500.json
+release-soak-smoke-r63.json
 ```
 
 Artifact SHA256:
 
 ```text
 mixed-soak-r500.json c88dfdf7e3ca4a43a2d632a398f2f8dcf2e56539e4ce0536f4e1fd2590e6ce01
+release-soak-smoke-r63.json e841893045d589739cb88b00fffecee0eacb421552d00fa9fbe714a288ce9cba
 ```
 
 ## Sources
