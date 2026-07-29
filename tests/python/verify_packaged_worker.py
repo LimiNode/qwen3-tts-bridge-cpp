@@ -67,13 +67,18 @@ class PackagedWorkerHarness:
     def read_frame(
         self,
         predicate: Callable[[Frame], bool] | None = None,
+        *,
+        timeout_seconds: float | None = None,
     ) -> Frame:
         """Read the next matching protocol frame."""
 
+        timeout = (
+            self._timeout_seconds if timeout_seconds is None else timeout_seconds
+        )
         while True:
             self._raise_reader_error_if_any()
             try:
-                frame = self._frames.get(timeout=self._timeout_seconds)
+                frame = self._frames.get(timeout=timeout)
             except queue.Empty as exc:
                 self._raise_reader_error_if_any()
                 if self._process.poll() is not None:
