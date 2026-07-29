@@ -1,0 +1,2 @@
+{"instruction": "", "label": "allowlist_32", "language": "Auto", "speaker": "ryan", "talker_prefill_length": 32, "text": "In a relaxed tone, say: Measure the first chunk, the total duration, and the real time factor."}
+{"instruction": "", "label": "unknown_short", "language": "Auto", "speaker": "ryan", "talker_prefill_length": 31, "text": "For the demo, say: When the prompt is bilingual, the bridge should still report the same metrics."}
