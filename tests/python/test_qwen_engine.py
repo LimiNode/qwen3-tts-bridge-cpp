@@ -1,7 +1,9 @@
+import importlib
 import random
 import struct
 import threading
 import unittest
+from types import SimpleNamespace
 from typing import Any, cast
 
 from qwen_tts_bridge_worker.config import QwenEngineConfig
@@ -16,6 +18,7 @@ from qwen_tts_bridge_worker.engine import (
 from qwen_tts_bridge_worker.engine.qwen_engine import (
     _prefill_snapshot_max_abs,
     _preserved_rng_state,
+    _reset_after_partial_generation,
 )
 
 
@@ -1036,15 +1039,69 @@ class QwenEngineTests(unittest.TestCase):
                 )
             )
 
-    def test_preserved_rng_state_restores_python_random(self) -> None:
+    def test_preserved_rng_state_restores_python_numpy_and_torch_cpu(self) -> None:
+        try:
+            numpy = importlib.import_module("numpy")
+            torch = importlib.import_module("torch")
+        except ModuleNotFoundError:
+            self.skipTest("NumPy and torch are required for RNG state coverage")
         random.seed(4242)
-        expected = random.random()
+        numpy.random.seed(4242)
+        torch.manual_seed(4242)
+        expected_python = random.random()
+        expected_numpy = numpy.random.random()
+        expected_torch = torch.rand(4)
         random.seed(4242)
+        numpy.random.seed(4242)
+        torch.manual_seed(4242)
+
+        with _preserved_rng_state(require_cuda=False):
+            random.random()
+            numpy.random.random()
+            torch.rand(4)
+
+        self.assertEqual(expected_python, random.random())
+        self.assertEqual(expected_numpy, numpy.random.random())
+        self.assertTrue(torch.equal(expected_torch, torch.rand(4)))
+
+    def test_preserved_rng_state_restores_torch_cuda(self) -> None:
+        try:
+            torch = importlib.import_module("torch")
+        except ModuleNotFoundError:
+            self.skipTest("torch is required for CUDA RNG state coverage")
+        if not torch.cuda.is_available():
+            self.skipTest("CUDA is required to test CUDA RNG preservation")
+
+        torch.manual_seed(4242)
+        torch.cuda.manual_seed_all(4242)
+        expected = torch.rand(4, device="cuda")
+        torch.manual_seed(4242)
+        torch.cuda.manual_seed_all(4242)
 
         with _preserved_rng_state():
-            random.random()
+            torch.rand(4, device="cuda")
 
-        self.assertEqual(expected, random.random())
+        self.assertTrue(torch.equal(expected, torch.rand(4, device="cuda")))
+
+    def test_partial_generation_reset_requires_contract(self) -> None:
+        with self.assertRaisesRegex(
+            QwenEngineError,
+            "reset_after_partial_generation",
+        ):
+            _reset_after_partial_generation(SimpleNamespace())
+
+    def test_partial_generation_reset_accepts_complete_contract(self) -> None:
+        metadata = {
+            "reset_api_version": 1,
+            "talker_graph_reset": True,
+            "predictor_graphs_reset": 2,
+            "compiled_prefill_cache_preserved": True,
+            "cuda_graphs_preserved": True,
+            "generation_mask_cache_preserved": True,
+        }
+        model = SimpleNamespace(reset_after_partial_generation=lambda: metadata)
+
+        self.assertEqual(metadata, _reset_after_partial_generation(model))
 
 
 if __name__ == "__main__":

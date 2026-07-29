@@ -361,6 +361,10 @@ class EngineFactoryTests(unittest.TestCase):
             },
             {
                 "model_path": "models/qwen",
+                "prefill_first_chunk_warmup_length": 16,
+            },
+            {
+                "model_path": "models/qwen",
                 "warmup_synthesis_enabled": True,
                 "warmup_text": "",
             },
@@ -414,7 +418,28 @@ class EngineFactoryTests(unittest.TestCase):
             prefill_allowlist_warmup_manifest="manifest.json",
             prefill_require_precompiled=True,
             prefill_first_chunk_warmup_enabled=True,
+            prefill_first_chunk_warmup_length=16,
         )
+
+    def test_qwen_config_rejects_first_chunk_and_full_synthesis_warmup(self) -> None:
+        with self.assertRaises(ValueError):
+            QwenEngineConfig(
+                model_path="models/qwen",
+                runtime_backend="faster",
+                dtype="bfloat16",
+                attn_implementation="sdpa",
+                prefill_backend="compile_reduce_overhead",
+                prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                prefill_compile_lengths=(16,),
+                prefill_compile_on_miss=False,
+                prefill_unknown_shape_policy="eager",
+                prefill_compile_policy="exact_allowlist",
+                prefill_allowlist_warmup_manifest="manifest.json",
+                prefill_require_precompiled=True,
+                prefill_first_chunk_warmup_enabled=True,
+                prefill_first_chunk_warmup_length=16,
+                warmup_synthesis_enabled=True,
+            )
 
     def test_qwen_config_rejects_invalid_exact_allowlist_contract(self) -> None:
         valid: dict[str, Any] = {

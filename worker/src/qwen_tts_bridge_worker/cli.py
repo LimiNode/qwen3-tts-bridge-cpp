@@ -99,6 +99,9 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 prefill_first_chunk_warmup_enabled=(
                     args.prefill_first_chunk_warmup
                 ),
+                prefill_first_chunk_warmup_length=(
+                    args.prefill_first_chunk_warmup_length
+                ),
                 do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
@@ -376,6 +379,12 @@ def _add_qwen_subcommand(
         "--prefill-first-chunk-warmup",
         action="store_true",
         help="Prewarm one representative audio chunk before reporting ready.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-first-chunk-warmup-length",
+        type=int,
+        default=None,
+        help="Exact allowlisted length used by first-chunk startup warmup.",
     )
     qwen_parser.add_argument(
         "--no-sample",

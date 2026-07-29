@@ -76,6 +76,7 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
             prefill_allowlist_max_abs_threshold=0.0,
             prefill_require_precompiled=True,
             prefill_first_chunk_warmup=True,
+            prefill_first_chunk_warmup_length=32,
             no_sample=True,
             seed=4242,
             seed_mode="fixed",
@@ -108,6 +109,8 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
         self.assertIn("allowlist.json", worker_args)
         self.assertIn("--prefill-require-precompiled", worker_args)
         self.assertIn("--prefill-first-chunk-warmup", worker_args)
+        self.assertIn("--prefill-first-chunk-warmup-length", worker_args)
+        self.assertIn("32", worker_args)
         self.assertIn("--no-sample", worker_args)
 
 

@@ -449,6 +449,15 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.append("--prefill-require-precompiled")
     if getattr(args, "prefill_first_chunk_warmup", False):
         worker_args.append("--prefill-first-chunk-warmup")
+        warmup_length = getattr(args, "prefill_first_chunk_warmup_length", None)
+        if warmup_length is None:
+            raise ValueError(
+                "prefill_first_chunk_warmup requires "
+                "prefill_first_chunk_warmup_length"
+            )
+        worker_args.extend(
+            ["--prefill-first-chunk-warmup-length", str(warmup_length)]
+        )
     if getattr(args, "no_sample", False):
         worker_args.append("--no-sample")
     seed = getattr(args, "seed", None)

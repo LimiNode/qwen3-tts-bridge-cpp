@@ -56,6 +56,7 @@ def main() -> int:
     )
     parser.add_argument("--prefill-require-precompiled", action="store_true")
     parser.add_argument("--prefill-first-chunk-warmup", action="store_true")
+    parser.add_argument("--prefill-first-chunk-warmup-length", type=int, default=None)
     parser.add_argument("--text", default="I am your robot, I am your worker.")
     parser.add_argument("--language", default="English")
     parser.add_argument("--speaker", default="ryan")
@@ -98,6 +99,7 @@ def main() -> int:
         ),
         prefill_require_precompiled=args.prefill_require_precompiled,
         prefill_first_chunk_warmup_enabled=args.prefill_first_chunk_warmup,
+        prefill_first_chunk_warmup_length=args.prefill_first_chunk_warmup_length,
         warmup_synthesis_enabled=args.warmup_synthesis,
         warmup_max_output_chunks=args.warmup_max_output_chunks,
         warmup_text=args.text,
@@ -175,6 +177,7 @@ def main() -> int:
             ),
             "prefill_require_precompiled": args.prefill_require_precompiled,
             "prefill_first_chunk_warmup": args.prefill_first_chunk_warmup,
+            "prefill_first_chunk_warmup_length": args.prefill_first_chunk_warmup_length,
             "warmup_synthesis": args.warmup_synthesis,
             "warmup_max_output_chunks": args.warmup_max_output_chunks,
         },

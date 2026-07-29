@@ -314,7 +314,11 @@ class QwenTtsEngine:
             Path(self._config.prefill_allowlist_warmup_manifest),
             self._config.prefill_compile_lengths,
         )
-        length = self._config.prefill_compile_lengths[0]
+        length = self._config.prefill_first_chunk_warmup_length
+        if length is None:
+            raise QwenEngineError(
+                "first-chunk warmup requires an explicit allowlisted length"
+            )
         entry = entries[length]
         model = self._require_model()
         request = SynthesisRequest(
@@ -335,15 +339,8 @@ class QwenTtsEngine:
                 output_chunk_limit=1,
             )
         reset_started = monotonic_seconds()
-        talker_graph = getattr(model, "talker_graph", None)
-        if talker_graph is None:
-            raise QwenEngineError(
-                "loaded faster model does not expose talker_graph "
-                "for first-chunk warmup"
-            )
+        reset_metadata = _reset_after_partial_generation(model)
         torch = importlib.import_module("torch")
-        with torch.inference_mode():
-            talker_graph.reset(0)
         if torch.cuda.is_available():
             torch.cuda.synchronize()
         self._last_chunk_metrics = None
@@ -354,6 +351,7 @@ class QwenTtsEngine:
             "prefill_first_chunk_warmup_length": length,
             "prefill_first_chunk_warmup_duration_ms": elapsed_milliseconds(started_at),
             "prefill_first_chunk_warmup_reset_ms": elapsed_milliseconds(reset_started),
+            "prefill_first_chunk_warmup_reset": reset_metadata,
             "prefill_first_chunk_warmup_first_audio_ms": pass_fields["first_audio_ms"],
             "prefill_first_chunk_warmup_audio_chunks": pass_fields["audio_chunks"],
         }
@@ -1064,35 +1062,67 @@ def _seed_runtime(seed: int | None) -> None:
         pass
 
 
+def _reset_after_partial_generation(model: Any) -> dict[str, object]:
+    reset = getattr(model, "reset_after_partial_generation", None)
+    if not callable(reset):
+        raise QwenEngineError(
+            "loaded faster model does not expose reset_after_partial_generation()"
+        )
+    try:
+        metadata = reset()
+    except Exception as exc:
+        raise QwenEngineError("failed to reset partial faster generation") from exc
+    if not isinstance(metadata, dict):
+        raise QwenEngineError("partial faster generation reset returned no metadata")
+    if metadata.get("reset_api_version") != 1:
+        raise QwenEngineError("partial faster generation reset API version mismatch")
+    if metadata.get("talker_graph_reset") is not True:
+        raise QwenEngineError("partial faster generation did not reset TalkerGraph")
+    predictor_count = metadata.get("predictor_graphs_reset")
+    if not isinstance(predictor_count, int) or predictor_count <= 0:
+        raise QwenEngineError("partial faster generation did not reset PredictorGraph")
+    for name in (
+        "compiled_prefill_cache_preserved",
+        "cuda_graphs_preserved",
+        "generation_mask_cache_preserved",
+    ):
+        if metadata.get(name) is not True:
+            raise QwenEngineError(
+                f"partial faster generation reset did not preserve {name}"
+            )
+    return metadata
+
+
 @contextmanager
-def _preserved_rng_state() -> Iterator[None]:
+def _preserved_rng_state(*, require_cuda: bool = True) -> Iterator[None]:
     python_state = random.getstate()
-    numpy_state: object | None = None
-    torch = None
-    torch_cpu_state = None
-    torch_cuda_states = None
     try:
         numpy = importlib.import_module("numpy")
         numpy_state = numpy.random.get_state()
-    except Exception:
-        numpy = None
+    except Exception as exc:
+        raise QwenEngineError("failed to capture NumPy RNG state") from exc
     try:
         torch = importlib.import_module("torch")
         torch_cpu_state = torch.get_rng_state()
-        if torch.cuda.is_available():
-            torch_cuda_states = torch.cuda.get_rng_state_all()
-    except Exception:
-        torch = None
+        cuda_available = bool(torch.cuda.is_available())
+        if require_cuda and not cuda_available:
+            raise QwenEngineError("strict first-chunk warmup requires CUDA RNG state")
+        torch_cuda_states = torch.cuda.get_rng_state_all() if cuda_available else None
+    except QwenEngineError:
+        raise
+    except Exception as exc:
+        raise QwenEngineError("failed to capture torch RNG state") from exc
     try:
         yield
     finally:
-        random.setstate(python_state)
-        if numpy_state is not None and numpy is not None:
+        try:
+            random.setstate(python_state)
             numpy.random.set_state(numpy_state)
-        if torch is not None and torch_cpu_state is not None:
             torch.set_rng_state(torch_cpu_state)
             if torch_cuda_states is not None:
                 torch.cuda.set_rng_state_all(torch_cuda_states)
+        except Exception as exc:
+            raise QwenEngineError("failed to restore strict warmup RNG state") from exc
 
 
 def _nested_attr(obj: Any, path: tuple[str, ...]) -> Any | None:

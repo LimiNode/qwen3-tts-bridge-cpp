@@ -74,6 +74,7 @@ class QwenEngineConfig:
     prefill_allowlist_max_abs_threshold: float = 0.0
     prefill_require_precompiled: bool = False
     prefill_first_chunk_warmup_enabled: bool = False
+    prefill_first_chunk_warmup_length: int | None = None
     do_sample: bool = True
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"
@@ -171,6 +172,33 @@ class QwenEngineConfig:
             raise ValueError(
                 "qwen.prefill_first_chunk_warmup_enabled requires "
                 "prefill_compile_policy=exact_allowlist"
+            )
+        if self.prefill_first_chunk_warmup_enabled:
+            if self.prefill_first_chunk_warmup_length is None:
+                raise ValueError(
+                    "qwen.prefill_first_chunk_warmup_length is required when "
+                    "prefill_first_chunk_warmup_enabled=true"
+                )
+            if (
+                self.prefill_first_chunk_warmup_length
+                not in self.prefill_compile_lengths
+            ):
+                raise ValueError(
+                    "qwen.prefill_first_chunk_warmup_length must be in "
+                    "prefill_compile_lengths"
+                )
+        elif self.prefill_first_chunk_warmup_length is not None:
+            raise ValueError(
+                "qwen.prefill_first_chunk_warmup_length requires "
+                "prefill_first_chunk_warmup_enabled=true"
+            )
+        if (
+            self.prefill_first_chunk_warmup_enabled
+            and self.warmup_synthesis_enabled
+        ):
+            raise ValueError(
+                "qwen.prefill_first_chunk_warmup_enabled and "
+                "warmup_synthesis_enabled cannot both be true"
             )
         self._validate_prefill_compile_compat_contract()
         if self.seed_mode not in {"request_id", "fixed"}:

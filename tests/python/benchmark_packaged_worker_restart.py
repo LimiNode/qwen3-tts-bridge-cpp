@@ -284,6 +284,7 @@ def _build_report(
             ),
             "prefill_require_precompiled": args.prefill_require_precompiled,
             "prefill_first_chunk_warmup": args.prefill_first_chunk_warmup,
+            "prefill_first_chunk_warmup_length": args.prefill_first_chunk_warmup_length,
             "expected_faster_wheel_sha256": args.expected_faster_wheel_sha256,
             "allow_unverified_faster_wheel": args.allow_unverified_faster_wheel,
             "do_sample": not args.no_sample,
@@ -434,6 +435,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--prefill-require-precompiled", action="store_true")
     parser.add_argument("--prefill-first-chunk-warmup", action="store_true")
+    parser.add_argument("--prefill-first-chunk-warmup-length", type=int, default=None)
     parser.add_argument(
         "--expected-faster-wheel-sha256",
         default="",
