@@ -3042,6 +3042,51 @@ scheduler-quality-matrix-v4.json
 scheduler-quality-matrix-v4.json 182802590866b515223a1d64b51b036af717c7958d35ce17717d63a44981f957
 ```
 
+### Route-Aware Scheduler Update - 2026-07-30
+
+The original `6,8,12` schedule is not safe as a global policy. A new
+manifest-backed C++ benchmark records the requested route and schedule together
+with the worker's first-chunk phases, every PCM chunk, terminal trace, and
+runtime memory metric. A request with a route, cache, shape, or schedule
+mismatch is excluded from latency summaries and makes the benchmark exit with
+a non-zero contract status.
+
+On the RTX 4090 strict exact-allowlist configuration, the eager-only r54 A/B
+reproduced the risk: global `6,8,12` produced one playback underrun for
+`unknown_38` (`-177.027 ms` pre-arrival buffer), while fixed-8 completed all
+54 requests with no underruns (`326.360 ms` minimum pre-arrival buffer).
+The route-aware policy also rejected compiled `6,8,12` and `8,12` after each
+showed a `compiled_29` underrun in mixed r108 validation.
+
+The current experimental candidate is therefore deliberately conservative:
+compiled exact-allowlist requests use `8,8,12`; verified eager-unknown requests
+use fixed `8`. The full mixed r108 run completed all nine categories twelve
+times each with zero underruns. It passed the self-contained C++ contract,
+kept the compiled cache at six entries, and passed per-category reserve gates
+with a `332.761 ms` global minimum and `386.121 ms` global p05 pre-arrival
+buffer. This remains an experimental RTX 4090 profile, not a product default.
+The run used FasterQwen companion commit `58b0637` and wheel SHA256
+`3b8fb11282072ac79323f696ed1b621bc1a7c676b3d7844c6bd47b4f10297113`.
+
+```text
+scheduler-mixed-route-manifest-v1.jsonl
+route-aware-8-8-12-mixed-r108.json
+route-aware-8-8-12-mixed-r108-validation.json
+route-aware-8-8-12-mixed-r108-playback.json
+eager-unknown-schedule-6-8-12-r54-validation.json
+eager-unknown-schedule-6-8-12-r54-playback.json
+eager-unknown-fixed-8-r54-validation.json
+eager-unknown-fixed-8-r54-playback.json
+```
+
+Key artifact SHA256:
+
+```text
+route-aware-8-8-12-mixed-r108.json fda96f2d1e30a83a55a142af1535f64d709cb73f84a41df46eb9e4584fb0c232
+route-aware-8-8-12-mixed-r108-validation.json b2eff6bc59fa4a1b6f5c50cc9e2e4cfa85fb923a4007d5a1d139c4d9c1ad0715
+route-aware-8-8-12-mixed-r108-playback.json 3fc9403cd7974cf797eda62dc8e84ea100862f6a505035f5b1277718659c5711
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
