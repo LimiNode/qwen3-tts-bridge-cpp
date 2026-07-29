@@ -2809,6 +2809,28 @@ for all 200 measured C++ requests. The C++ completion TTFA was 257.0 ms median
 Startup was 66.5 s. This is a public-API lifecycle check, not an estimate of
 multi-request application throughput.
 
+### Experimental Runtime Profile and Wheel Gates
+
+`config/rtx4090-faster-customvoice-experimental.json` records the measured
+strict CustomVoice configuration, while
+`scripts/start-rtx4090-faster-customvoice.ps1` turns that profile into the
+worker's existing CLI arguments. The profile is intentionally explicit rather
+than a new runtime configuration format: it uses BF16 SDPA,
+`compile_reduce_overhead`, the exact six-shape allowlist, fail-closed compiled
+cache misses, and the first-chunk warmup at length 32. Unknown prompt shapes
+remain eager by design.
+
+Two independent post-soak checks used the installed immutable FasterQwen wheel
+from `site-packages`, with the Faster source worktree forbidden from the import
+path. The strict worker smoke prewarmed all six shapes, then hit compiled
+allowlist length 32 on its first real PCM request. Its wheel archive and the
+installed `direct_url.json` both have SHA256
+`142ba31dc7e3c8fa76a21007c89677ee4849385212f99bd2a7ea70db234d70e1`.
+The independent context gate compared raw eager, strict eager, strict compiled,
+and product-compatibility compiled prefill on the same prompt. Every comparison
+had zero prefill max-absolute difference and equal codec tokens, waveform,
+frame count, and termination through 64 generated tokens.
+
 Artifacts:
 
 ```text
@@ -2829,6 +2851,8 @@ release-soak-r900.json
 cpp-api-soak-r200.json
 cpp-api-soak-r200-validation.json
 cpp-api-soak-r200-worker-metrics.log
+strict-worker-load-smoke-r900-wheel-only.json
+context-gate-r900-wheel-only.json
 ```
 
 Artifact SHA256:
@@ -2840,6 +2864,8 @@ release-soak-r900.json 3c11e8b12201db28421c098e28e6f840ad182eb2f078c54f2847e19a3
 cpp-api-soak-r200.json 6c9b966c077557cfa8b0b47c68d89eab42d674d9a630331795393042fb605e4a
 cpp-api-soak-r200-validation.json 4ec5a8a86ac56853de8ec861e4e364997b68efa0282b5f8b6741de19100ccfd3
 cpp-api-soak-r200-worker-metrics.log e8f0a0bbf468682398ec879174199356996d072eb77d0545f3a79d6e8fe4ee6f
+strict-worker-load-smoke-r900-wheel-only.json b04fd32d8269314bc165e06755489f803094f537434a0f79ed9471d0c8f7ef44
+context-gate-r900-wheel-only.json e7b5463c60c46ae47b528aa7ee48e72f5d199bf67306ef7a471798a3c0e5c608
 ```
 
 ## Sources
