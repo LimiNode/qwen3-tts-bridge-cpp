@@ -1,0 +1,122 @@
+{
+  "acceptance": {
+    "compiled_latency_acceptance_pass": true,
+    "eager_latency_acceptance_pass": true,
+    "global_latency_acceptance_pass": false,
+    "routing_acceptance_pass": true,
+    "terminal_trace_acceptance_pass": true
+  },
+  "acceptance_pass": true,
+  "all_requests": {
+    "first_minus_steady_ms": {
+      "max": 52.39250010345131,
+      "median": 3.825700026936829,
+      "min": -4.237499902956188,
+      "p95": 10.213435045443475
+    },
+    "first_ttfa_ms": {
+      "max": 429.6962000662461,
+      "median": 257.85949995042756,
+      "min": 250.0711000757292,
+      "p95": 388.42514507705346
+    },
+    "fresh_processes": 100
+  },
+  "artifact_schema_version": 2,
+  "categories": {
+    "allowlist_30": {
+      "first_minus_steady_ms": {
+        "max": 9.363999939523637,
+        "median": 2.684200066141784,
+        "min": -3.289500018581748,
+        "p95": 8.125200017821046
+      },
+      "first_ttfa_ms": {
+        "max": 266.16340002510697,
+        "median": 254.57250006729737,
+        "min": 251.14760000724345,
+        "p95": 259.3837249383796
+      },
+      "fresh_processes": 20
+    },
+    "allowlist_32": {
+      "first_minus_steady_ms": {
+        "max": 23.87030015233904,
+        "median": 3.892199893016368,
+        "min": -4.237499902956188,
+        "p95": 9.606620034901436
+      },
+      "first_ttfa_ms": {
+        "max": 273.52660009637475,
+        "median": 256.2219500541687,
+        "min": 250.0711000757292,
+        "p95": 265.5103099939879
+      },
+      "fresh_processes": 20
+    },
+    "allowlist_33": {
+      "first_minus_steady_ms": {
+        "max": 6.062199943698943,
+        "median": 4.047799971885979,
+        "min": -2.482100040651858,
+        "p95": 6.043579912511632
+      },
+      "first_ttfa_ms": {
+        "max": 258.0586998956278,
+        "median": 254.44029999198392,
+        "min": 252.09139997605234,
+        "p95": 257.7354149776511
+      },
+      "fresh_processes": 20
+    },
+    "unknown_long": {
+      "first_minus_steady_ms": {
+        "max": 52.39250010345131,
+        "median": 3.275449969805777,
+        "min": -4.222899908199906,
+        "p95": 10.077695059590074
+      },
+      "first_ttfa_ms": {
+        "max": 429.6962000662461,
+        "median": 380.12764998711646,
+        "min": 370.63439993653446,
+        "p95": 394.43885001237504
+      },
+      "fresh_processes": 20
+    },
+    "unknown_short": {
+      "first_minus_steady_ms": {
+        "max": 13.805800001136959,
+        "median": 4.698750097304583,
+        "min": 0.22529996931552887,
+        "p95": 10.685715021099897
+      },
+      "first_ttfa_ms": {
+        "max": 414.55780004616827,
+        "median": 381.53420004528016,
+        "min": 374.75620000623167,
+        "p95": 393.42163002002053
+      },
+      "fresh_processes": 20
+    }
+  },
+  "expected": {
+    "requests_per_run": 4,
+    "schedule_category_counts": {
+      "allowlist_30": 20,
+      "allowlist_32": 20,
+      "allowlist_33": 20,
+      "unknown_long": 20,
+      "unknown_short": 20
+    }
+  },
+  "failures": [
+    "global: first TTFA p95 388.425 ms is not < 300.000 ms"
+  ],
+  "thresholds": {
+    "compiled_first_ttfa_p95_max_ms": 300.0,
+    "eager_first_ttfa_p95_max_ms": 450.0,
+    "first_minus_steady_p95_max_ms": 20.0,
+    "global_first_ttfa_p95_max_ms": 300.0
+  }
+}
