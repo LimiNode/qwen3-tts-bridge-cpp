@@ -1,0 +1,176 @@
+From 11ada6c2a8f503e86e503facda43368c6c8a62e9 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 03:38:10 +0300
+Subject: [PATCH 1/2] feat(streaming): add partial generation reset contract
+
+---
+ faster_qwen3_tts/model.py           | 63 +++++++++++++++++++++++++++++
+ faster_qwen3_tts/predictor_graph.py |  4 ++
+ tests/test_sampling.py              | 28 +++++++++++++
+ 3 files changed, 95 insertions(+)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 1ae1a92..24897aa 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -5,6 +5,7 @@ Wrapper class that provides a Qwen3-TTS API while using
+ CUDA graphs for 6-10x speedup.
+ """
+ 
++import hashlib
+ import logging
+ import time
+ from pathlib import Path
+@@ -79,6 +80,8 @@ class FasterQwen3TTS:
+         self.sample_rate = self._infer_sample_rate(base_model)
+         self._warmed_up = False
+         self._voice_prompt_cache = {}  # Cache (ref_audio, ref_text) -> (vcp, ref_ids)
++        self.collect_generation_trace = False
++        self.last_generation_trace: Optional[Dict[str, Any]] = None
+ 
+     @staticmethod
+     def _get_speech_tokenizer(base_model):
+@@ -408,6 +411,40 @@ class FasterQwen3TTS:
+         except Exception:
+             logger.debug("Failed to clear prefill compile cache", exc_info=True)
+ 
++    def reset_after_partial_generation(self) -> Dict[str, Any]:
++        """Reset request-local graph state after a caller closes a partial stream.
++
++        This deliberately preserves captured CUDA graphs, generation-mask tables,
++        and compiled prefill cache entries. Callers must close the active streaming
++        generator before invoking this method.
++        """
++        talker_reset = getattr(self.talker_graph, "reset", None)
++        if not callable(talker_reset):
++            raise RuntimeError("TalkerGraph does not expose reset()")
++
++        predictor_reset_count = 0
++        for predictor_graph in (
++            self.predictor_graph,
++            self.predictor_graph_greedy,
++        ):
++            if predictor_graph is None:
++                continue
++            predictor_reset = getattr(predictor_graph, "reset", None)
++            if not callable(predictor_reset):
++                raise RuntimeError("PredictorGraph does not expose reset()")
++            predictor_reset()
++            predictor_reset_count += 1
++
++        talker_reset(0)
++        return {
++            "reset_api_version": 1,
++            "talker_graph_reset": True,
++            "predictor_graphs_reset": predictor_reset_count,
++            "compiled_prefill_cache_preserved": True,
++            "cuda_graphs_preserved": True,
++            "generation_mask_cache_preserved": True,
++        }
++
+     def generate(
+         self,
+         text: str,
+@@ -1554,6 +1591,9 @@ class FasterQwen3TTS:
+         context_frames = 25
+         min_calibration_frames = max(context_frames, chunk_size)
+         all_codes = []
++        codec_hasher = hashlib.sha256() if self.collect_generation_trace else None
++        codec_frame_count = 0
++        last_timing: Optional[dict] = None
+         prev_audio_len = 0
+         samples_per_frame = None
+ 
+@@ -1588,6 +1628,16 @@ class FasterQwen3TTS:
+             context_started = time.perf_counter()
+             all_codes.append(codec_chunk)
+             n_new = codec_chunk.shape[0]
++            if codec_hasher is not None:
++                codec_bytes = (
++                    codec_chunk.detach()
++                    .to(device="cpu", dtype=torch.int32)
++                    .contiguous()
++                    .numpy()
++                    .tobytes()
++                )
++                codec_hasher.update(codec_bytes)
++                codec_frame_count += int(n_new)
+             all_flat = torch.cat(all_codes, dim=0)
+             n_total = all_flat.shape[0]
+ 
+@@ -1687,8 +1737,21 @@ class FasterQwen3TTS:
+                         speech_tokenizer_decode_gpu_ms
+                     )
+ 
++            last_timing = timing
+             yield new_audio, sr, timing
+ 
++        if codec_hasher is not None:
++            timing = last_timing or {}
++            self.last_generation_trace = {
++                "codec_sha256": codec_hasher.hexdigest(),
++                "codec_frame_count": codec_frame_count,
++                "termination_reason": timing.get("termination_reason"),
++                "terminal_token_id": timing.get("terminal_token_id"),
++                "terminal_step_index": timing.get("terminal_step_index"),
++                "generated_steps": timing.get("generated_steps"),
++                "emitted_steps": timing.get("emitted_steps"),
++            }
++
+     @torch.inference_mode()
+     def generate_voice_design(
+         self,
+diff --git a/faster_qwen3_tts/predictor_graph.py b/faster_qwen3_tts/predictor_graph.py
+index 9aee208..1f2b7ca 100644
+--- a/faster_qwen3_tts/predictor_graph.py
++++ b/faster_qwen3_tts/predictor_graph.py
+@@ -214,3 +214,7 @@ class PredictorGraph:
+         # before any attention reads them, so stale values are never attended.
+         self.graph.replay()
+         return self.output_tokens.clone()
++
++    def reset(self) -> None:
++        """Clear request-local cache metadata without recapturing the CUDA graph."""
++        self.static_cache.reset()
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index 040d156..40f57a2 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -61,6 +61,34 @@ def test_faster_wrapper_selects_greedy_predictor_graph():
+         model._select_predictor_graph(False)
+ 
+ 
++def test_faster_wrapper_resets_partial_generation_graph_state():
++    class ResetGraph:
++        def __init__(self):
++            self.reset_calls = []
++
++        def reset(self, *args):
++            self.reset_calls.append(args)
++
++    model = FasterQwen3TTS.__new__(FasterQwen3TTS)
++    model.talker_graph = ResetGraph()
++    model.predictor_graph = ResetGraph()
++    model.predictor_graph_greedy = ResetGraph()
++
++    metadata = model.reset_after_partial_generation()
++
++    assert model.talker_graph.reset_calls == [(0,)]
++    assert model.predictor_graph.reset_calls == [()]
++    assert model.predictor_graph_greedy.reset_calls == [()]
++    assert metadata == {
++        "reset_api_version": 1,
++        "talker_graph_reset": True,
++        "predictor_graphs_reset": 2,
++        "compiled_prefill_cache_preserved": True,
++        "cuda_graphs_preserved": True,
++        "generation_mask_cache_preserved": True,
++    }
++
++
+ def test_faster_wrapper_uses_loaded_prefill_compile_compat_mode_by_default():
+     model = FasterQwen3TTS.__new__(FasterQwen3TTS)
+     model.prefill_compile_compat_mode = "strict_bf16_sdpa_v1"
+-- 
+2.53.0.windows.1
+

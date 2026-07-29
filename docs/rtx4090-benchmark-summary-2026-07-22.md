@@ -2527,6 +2527,70 @@ exact-allowlist-first-chunk-warmup-instrumented-r30x4.json 3bb51009e25e8b7cd99c6
 faster-qwen-first-chunk-profile-through-656b9cb.bundle cd749f13157e9e2b54eee127b5a0c9bfeba73e44b8d999fc18397da70d76f1cf
 ```
 
+### First-Chunk Correctness Hardening
+
+The first-chunk latency result above did not by itself prove that partial
+generation warmup was semantically neutral. The startup path is now
+fail-closed for the exact-allowlist product mode:
+
+- `prefill_first_chunk_warmup_length` is required, must be one of the exact
+  allowlisted lengths, and is resolved from the manifest by that explicit key.
+  Reordering the allowlist no longer changes the warmup request.
+- First-chunk warmup and ordinary `warmup_synthesis` are mutually exclusive.
+- Python, NumPy, Torch CPU, and all available CUDA RNG states are captured and
+  restored around the partial generation. In strict first-chunk mode, capture
+  or restore failure is a startup error; the worker does not report ready.
+- The bridge no longer accesses `model.talker_graph` directly. It requires
+  FasterQwen's public `reset_after_partial_generation()` contract after it has
+  closed the partial stream. API version `1` resets TalkerGraph and both
+  PredictorGraph caches under `torch.inference_mode()` while preserving CUDA
+  Graph capture, generation-mask tables, and compiled prefill cache entries.
+
+The wheel-only semantic A/B script is:
+
+```text
+scripts/qwen-first-chunk-warmup-semantic-ab.py
+```
+
+It starts independent worker processes for warmup off and on, then compares the
+same user request. The trace contains PCM SHA-256, sample count, audio chunk
+count, cumulative codec-token SHA-256, codec frame count, and the terminal
+reason/token/step telemetry. Codec trace collection is opt-in in FasterQwen
+and does not run in the normal production path.
+
+Real-model result, CustomVoice 0.6B, RTX 4090, installed wheel SHA256
+`6f6a9310cb43e4a7152b209f883db0caa4c11411396d86d2e48bc48141d19eda`:
+
+| Scenario | Fresh A/B pairs | Semantic mismatches |
+| --- | ---: | ---: |
+| true greedy, seed `4242` | 1 | 0 |
+| sampling, seeds `4242-4261` | 20 | 0 |
+| total | 21 | 0 |
+
+All 21 pairs matched every recorded contract field. The greedy trace, for
+example, matched `2015` codec frames, `252` PCM chunks, the same PCM SHA-256,
+the same codec SHA-256, and `max_seq_len` termination at step `2014`. The
+FasterQwen import path in every artifact resolves to the installed
+`.venv-qwen-flash` wheel, not the external source worktree.
+
+Correctness artifacts:
+
+```text
+first-chunk-warmup-semantic-ab-r20.json
+faster-qwen-first-chunk-correctness-patch/0001-feat-streaming-add-partial-generation-reset-contract.patch
+faster-qwen-first-chunk-correctness-patch/0002-fix-streaming-reset-partial-state-in-inference-mode.patch
+faster-qwen-first-chunk-correctness-patch/faster-qwen-first-chunk-correctness-through-66fb5e9.bundle
+```
+
+Artifact SHA256:
+
+```text
+first-chunk-warmup-semantic-ab-r20.json 571ce0cbce38806aff1f16a8ea619122df17391628ce75fdeff80b379c9791bc
+0001-feat-streaming-add-partial-generation-reset-contract.patch b8824531eb13b5c691717d2e00f74314314e815d168988c8f0de08543fe5327b
+0002-fix-streaming-reset-partial-state-in-inference-mode.patch 3fb0fb3048eddf35ccccd998f38f35df30bba41b28c1acfd0efbe93cb665776e
+faster-qwen-first-chunk-correctness-through-66fb5e9.bundle 5648a46be8313bf190b2f98b27db1450d40f5bf1656c89fd332912526560b7a3
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

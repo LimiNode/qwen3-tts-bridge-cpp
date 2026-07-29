@@ -1,0 +1,50 @@
+From 66fb5e9676c480c9c75dd220e815f5923e2135a7 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 03:43:55 +0300
+Subject: [PATCH 2/2] fix(streaming): reset partial state in inference mode
+
+---
+ faster_qwen3_tts/model.py | 27 ++++++++++++++-------------
+ 1 file changed, 14 insertions(+), 13 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 24897aa..077507b 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -423,19 +423,20 @@ class FasterQwen3TTS:
+             raise RuntimeError("TalkerGraph does not expose reset()")
+ 
+         predictor_reset_count = 0
+-        for predictor_graph in (
+-            self.predictor_graph,
+-            self.predictor_graph_greedy,
+-        ):
+-            if predictor_graph is None:
+-                continue
+-            predictor_reset = getattr(predictor_graph, "reset", None)
+-            if not callable(predictor_reset):
+-                raise RuntimeError("PredictorGraph does not expose reset()")
+-            predictor_reset()
+-            predictor_reset_count += 1
+-
+-        talker_reset(0)
++        with torch.inference_mode():
++            for predictor_graph in (
++                self.predictor_graph,
++                self.predictor_graph_greedy,
++            ):
++                if predictor_graph is None:
++                    continue
++                predictor_reset = getattr(predictor_graph, "reset", None)
++                if not callable(predictor_reset):
++                    raise RuntimeError("PredictorGraph does not expose reset()")
++                predictor_reset()
++                predictor_reset_count += 1
++
++            talker_reset(0)
+         return {
+             "reset_api_version": 1,
+             "talker_graph_reset": True,
+-- 
+2.53.0.windows.1
+
