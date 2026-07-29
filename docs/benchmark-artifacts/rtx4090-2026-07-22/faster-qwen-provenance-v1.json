@@ -1,0 +1,7 @@
+{
+  "bundle_path": "faster-qwen-terminal-contract-patch/faster-qwen-terminal-contract-through-db6361d.bundle",
+  "bundle_sha256": "0d63656c407a39dda2bb58136beb97834ba9053f345e1b94a95572656914c00d",
+  "schema_version": 1,
+  "source_commit": "db6361d69386b345c2d2a415d3b9dc080de4ecfd",
+  "wheel_sha256": "d08691143ae8ab30f6199f091326e58a9c518d1ab60008fff2849060d23ee9ce"
+}

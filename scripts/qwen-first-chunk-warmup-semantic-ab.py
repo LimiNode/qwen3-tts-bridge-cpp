@@ -17,6 +17,8 @@ from typing import Any
 
 from qwen_tts_bridge_worker.config import QwenEngineConfig
 from qwen_tts_bridge_worker.engine import AudioFormat, QwenTtsEngine, SynthesisRequest
+from faster_qwen_provenance import load_faster_qwen_provenance
+from semantic_trace_contract import validate_generation_trace
 
 
 TRACE_KEYS = (
@@ -35,15 +37,6 @@ TRACE_KEYS = (
     "hit_max_seq_len",
 )
 
-REQUIRED_TRACE_KEYS = (
-    "codec_sha256",
-    "codec_frame_count",
-    "termination_reason",
-    "generated_steps",
-    "emitted_steps",
-)
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--child", action="store_true")
@@ -61,8 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=4242)
     parser.add_argument("--sampling-count", type=int, default=20)
     parser.add_argument("--no-user-reseed", action="store_true")
-    parser.add_argument("--expected-faster-wheel-sha256", default="")
-    parser.add_argument("--faster-qwen-commit", default="")
+    parser.add_argument("--faster-qwen-provenance", type=Path, required=True)
     parser.add_argument("--first-chunk-warmup", action="store_true")
     parser.add_argument("--no-sample", action="store_true")
     return parser.parse_args()
@@ -79,10 +71,7 @@ def main() -> None:
 def _run_parent(args: argparse.Namespace) -> None:
     if args.sampling_count <= 0:
         raise ValueError("--sampling-count must be positive")
-    if not args.expected_faster_wheel_sha256:
-        raise ValueError("--expected-faster-wheel-sha256 is required")
-    if not args.faster_qwen_commit:
-        raise ValueError("--faster-qwen-commit is required")
+    faster_provenance = load_faster_qwen_provenance(args.faster_qwen_provenance)
 
     scenarios = [("greedy", args.seed, True)]
     scenarios.extend(
@@ -124,10 +113,10 @@ def _run_parent(args: argparse.Namespace) -> None:
             )
 
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "sampling_count": args.sampling_count,
         "no_user_reseed": args.no_user_reseed,
-        "expected_faster_wheel_sha256": args.expected_faster_wheel_sha256,
+        "faster_qwen_provenance": faster_provenance,
         "trace_keys": list(TRACE_KEYS),
         "semantic_pass": all(row["semantic_pass"] for row in results),
         "results": results,
@@ -171,10 +160,8 @@ def _run_child_process(
         str(seed),
         "--sampling-count",
         "1",
-        "--expected-faster-wheel-sha256",
-        args.expected_faster_wheel_sha256,
-        "--faster-qwen-commit",
-        args.faster_qwen_commit,
+        "--faster-qwen-provenance",
+        str(args.faster_qwen_provenance),
     ]
     if no_sample:
         command.append("--no-sample")
@@ -237,11 +224,17 @@ def _run_child(args: argparse.Namespace) -> None:
         trace = getattr(model, "last_generation_trace", None)
         if not isinstance(trace, dict):
             raise RuntimeError("FasterQwen did not produce a generation trace")
-        _validate_generation_trace(trace)
+        validate_generation_trace(trace)
         pcm = b"".join(pcm_chunks)
         provenance = {
-            **_wheel_provenance(args.expected_faster_wheel_sha256),
-            **_runtime_provenance(args.faster_qwen_commit),
+            **_wheel_provenance(args.faster_qwen_provenance),
+            **_runtime_provenance(
+                str(
+                    load_faster_qwen_provenance(args.faster_qwen_provenance)[
+                        "source_commit"
+                    ]
+                )
+            ),
         }
         report: dict[str, Any] = {
             "seed": args.seed,
@@ -281,39 +274,9 @@ def _seed_all_rngs(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
-def _validate_generation_trace(trace: dict[str, Any]) -> None:
-    for key in REQUIRED_TRACE_KEYS:
-        if trace.get(key) is None:
-            raise RuntimeError(f"incomplete generation trace: {key}")
-
-    reason = trace["termination_reason"]
-    if reason == "eos":
-        for key in ("terminal_token_id", "terminal_step_index"):
-            if trace.get(key) is None:
-                raise RuntimeError(f"incomplete eos generation trace: {key}")
-        if trace.get("hit_eos") is not True:
-            raise RuntimeError("eos generation trace is missing hit_eos")
-        return
-
-    if reason == "max_new_tokens":
-        if trace.get("terminal_step_index") is None:
-            raise RuntimeError("max_new_tokens trace is missing terminal_step_index")
-        if trace.get("hit_max_new_tokens") is not True:
-            raise RuntimeError("max_new_tokens trace is missing its terminal flag")
-        return
-
-    if reason == "max_seq_len":
-        if trace.get("terminal_step_index") is None:
-            raise RuntimeError("max_seq_len trace is missing terminal_step_index")
-        if trace.get("hit_max_seq_len") is not True:
-            raise RuntimeError("max_seq_len trace is missing its terminal flag")
-        return
-
-    raise RuntimeError(f"unsupported generation termination reason: {reason!r}")
-
-
-def _wheel_provenance(expected_sha256: str) -> dict[str, object]:
-    expected = expected_sha256.removeprefix("sha256=").lower()
+def _wheel_provenance(provenance_path: Path) -> dict[str, object]:
+    provenance = load_faster_qwen_provenance(provenance_path)
+    expected = str(provenance["wheel_sha256"])
     distribution = importlib.metadata.distribution("faster-qwen3-tts")
     direct_url_text = distribution.read_text("direct_url.json")
     if direct_url_text is None:
@@ -335,6 +298,10 @@ def _wheel_provenance(expected_sha256: str) -> dict[str, object]:
         "faster_qwen3_tts_version": distribution.version,
         "faster_qwen3_tts_wheel_sha256": actual,
         "faster_qwen3_tts_wheel_match_verified": True,
+        "faster_qwen3_tts_source_commit": provenance["source_commit"],
+        "faster_qwen3_tts_bundle_sha256": provenance["bundle_sha256"],
+        "faster_qwen_provenance_manifest": str(provenance_path),
+        "faster_qwen_provenance_manifest_sha256": provenance["manifest_sha256"],
     }
 
 

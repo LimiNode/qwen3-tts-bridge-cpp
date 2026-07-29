@@ -1,0 +1,46 @@
+From db6361d69386b345c2d2a415d3b9dc080de4ecfd Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 07:01:23 +0300
+Subject: [PATCH] fix(streaming): define completed frame accounting
+
+---
+ faster_qwen3_tts/streaming.py | 2 +-
+ tests/test_sampling.py        | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 8ca4f3f..3edd067 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -1417,7 +1417,7 @@ def _publish_termination_sink(
+     generated_steps: int,
+     emitted_steps: int,
+ ) -> None:
+-    """Expose terminal accounting even when no final audio chunk is yielded."""
++    """Expose completed non-EOS codec-frame accounting after stream exhaustion."""
+     if sink is None:
+         return
+     sink.clear()
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index 2d44549..d3655a4 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -60,13 +60,13 @@ def test_terminal_sink_is_complete_without_final_audio_chunk():
+     streaming._publish_termination_sink(
+         sink,
+         termination,
+-        generated_steps=14,
++        generated_steps=13,
+         emitted_steps=13,
+     )
+ 
+     assert sink == {
+         **termination,
+-        "generated_steps": 14,
++        "generated_steps": 13,
+         "emitted_steps": 13,
+     }
+ 
+-- 
+2.53.0.windows.1
+
