@@ -1,0 +1,1 @@
+{"acceptance_pass": true, "artifact": "docs\\benchmark-artifacts\\rtx4090-2026-07-22\\cpp-api-soak-r200.json", "cache_entries_observed": [6], "cancelled_requests": 20, "completed_requests": 180, "failures": [], "worker_metrics": "tmp\\cpp-api-soak-r200.stderr.log", "worker_metrics_sha256": "fded168ab5f094597ca21309417bd27e52f573bd02b9c21d5b3131b41710964d", "worker_pids": [23860]}

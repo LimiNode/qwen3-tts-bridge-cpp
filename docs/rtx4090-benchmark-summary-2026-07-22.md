@@ -2793,6 +2793,22 @@ explicit: PID presence was observed in every snapshot, while per-PID GPU memory
 values were unavailable; the worker's CUDA allocator metrics were present for
 all 900 terminal events.
 
+### Public C++ API Soak
+
+The native `qwen_tts_latency_benchmark` was extended with explicit per-request
+seed and first-PCM cancellation controls, then exercised against the same real
+worker through `QwenTtsClient` and `StdIoTransport`. The run used the compiled
+allowlist-32 scenario, three warmups, 200 measured requests, fixed seed `4242`,
+and cancelled every tenth measured request from the C++ audio callback.
+
+The independent artifact validator accepted the result: 180 completed requests,
+20 first-PCM cancellations, zero failed terminal states, one worker PID, cache
+entry count six, zero compile/cache/Dynamo deltas, and compiled route selection
+for all 200 measured C++ requests. The C++ completion TTFA was 257.0 ms median
+/ 261.4 ms p95; completion was 2940.3 / 2953.8 ms; and RTF was 0.378 / 0.380.
+Startup was 66.5 s. This is a public-API lifecycle check, not an estimate of
+multi-request application throughput.
+
 Artifacts:
 
 ```text
@@ -2810,6 +2826,9 @@ release-ab-summary.json
 mixed-soak-r500.json
 release-soak-smoke-r63.json
 release-soak-r900.json
+cpp-api-soak-r200.json
+cpp-api-soak-r200-validation.json
+cpp-api-soak-r200-worker-metrics.log
 ```
 
 Artifact SHA256:
@@ -2818,6 +2837,9 @@ Artifact SHA256:
 mixed-soak-r500.json c88dfdf7e3ca4a43a2d632a398f2f8dcf2e56539e4ce0536f4e1fd2590e6ce01
 release-soak-smoke-r63.json e841893045d589739cb88b00fffecee0eacb421552d00fa9fbe714a288ce9cba
 release-soak-r900.json 3c11e8b12201db28421c098e28e6f840ad182eb2f078c54f2847e19a3b70c1e5
+cpp-api-soak-r200.json 6c9b966c077557cfa8b0b47c68d89eab42d674d9a630331795393042fb605e4a
+cpp-api-soak-r200-validation.json 8e740eeedf7ea44b2fc8eb2c90dcb17de7ceaebce3c6a9d3c4d378ba45ffe8ed
+cpp-api-soak-r200-worker-metrics.log 62ff398e17c84701634706d64291d43f7a66137887204d876c89d7c2f1eefb83
 ```
 
 ## Sources
