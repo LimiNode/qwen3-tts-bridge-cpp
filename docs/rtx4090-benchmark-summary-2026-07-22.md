@@ -2839,7 +2839,7 @@ release-soak-smoke-r63.json e841893045d589739cb88b00fffecee0eacb421552d00fa9fbe7
 release-soak-r900.json 3c11e8b12201db28421c098e28e6f840ad182eb2f078c54f2847e19a3b70c1e5
 cpp-api-soak-r200.json 6c9b966c077557cfa8b0b47c68d89eab42d674d9a630331795393042fb605e4a
 cpp-api-soak-r200-validation.json 8e740eeedf7ea44b2fc8eb2c90dcb17de7ceaebce3c6a9d3c4d378ba45ffe8ed
-cpp-api-soak-r200-worker-metrics.log 62ff398e17c84701634706d64291d43f7a66137887204d876c89d7c2f1eefb83
+cpp-api-soak-r200-worker-metrics.log e8f0a0bbf468682398ec879174199356996d072eb77d0545f3a79d6e8fe4ee6f
 ```
 
 ## Sources
