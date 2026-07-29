@@ -2779,6 +2779,20 @@ This smoke is a correctness and lifecycle gate, not a production workload
 forecast. Its weighted operation order is deterministic and deliberately
 contains more cancellation/audit traffic than typical application traffic.
 
+The follow-up `r900` run used the identical immutable wheel and configuration.
+It completed with `acceptance_pass = true`: 792 completed requests and 108
+cancelled requests. Every one of the nine categories received four
+cancellations at each stage, for 12 cancellations per category. All nine
+reference/audit pairs retained their PCM and terminal-codec fingerprints; no
+route, graph, cache, allocator, or process-identity gate failed. The cache
+remained exactly six entries. Completed TTFA was 257.5 ms median / 386.5 ms
+p95, completion 3240.3 / 4841.4 ms, RTF 0.3748 / 0.3954, and cancellation
+latency 232.1 / 378.1 ms (median / p95). Process-tree RSS grew 34.4 MiB and
+private bytes 40.3 MiB, with a 2454.6 MiB RSS peak. The WDDM limitation remains
+explicit: PID presence was observed in every snapshot, while per-PID GPU memory
+values were unavailable; the worker's CUDA allocator metrics were present for
+all 900 terminal events.
+
 Artifacts:
 
 ```text
@@ -2795,6 +2809,7 @@ release-ab-all-eager-r20.json
 release-ab-summary.json
 mixed-soak-r500.json
 release-soak-smoke-r63.json
+release-soak-r900.json
 ```
 
 Artifact SHA256:
@@ -2802,6 +2817,7 @@ Artifact SHA256:
 ```text
 mixed-soak-r500.json c88dfdf7e3ca4a43a2d632a398f2f8dcf2e56539e4ce0536f4e1fd2590e6ce01
 release-soak-smoke-r63.json e841893045d589739cb88b00fffecee0eacb421552d00fa9fbe714a288ce9cba
+release-soak-r900.json 3c11e8b12201db28421c098e28e6f840ad182eb2f078c54f2847e19a3b70c1e5
 ```
 
 ## Sources
