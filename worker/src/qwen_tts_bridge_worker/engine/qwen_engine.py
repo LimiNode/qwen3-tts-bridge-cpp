@@ -1235,6 +1235,14 @@ def _qwen_stream_generate_audio(
                     "prefill_backend": config.prefill_backend,
                     "prefill_compile_compat_mode": (config.prefill_compile_compat_mode),
                 }
+                if config.compiled_emit_chunk_schedule:
+                    stream_kwargs["compiled_chunk_schedule"] = (
+                        config.compiled_emit_chunk_schedule
+                    )
+                if config.eager_emit_chunk_schedule:
+                    stream_kwargs["eager_chunk_schedule"] = (
+                        config.eager_emit_chunk_schedule
+                    )
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
                 if config.profile_nvtx:
@@ -1355,6 +1363,8 @@ def _qwen_stream_generate_pcm(
         "non_streaming_mode": False,
         "emit_every_frames": config.emit_every_frames,
         "emit_chunk_schedule": list(config.emit_chunk_schedule),
+        "compiled_emit_chunk_schedule": list(config.compiled_emit_chunk_schedule),
+        "eager_emit_chunk_schedule": list(config.eager_emit_chunk_schedule),
         "decode_window_frames": config.decode_window_frames,
         "overlap_samples": config.overlap_samples,
         "max_frames": _STREAM_MAX_FRAMES,
@@ -1524,6 +1534,7 @@ def _first_chunk_timing_fields(
         "prefill_compile_compat_mode",
         "prefill_compile_cache_kind",
         "prefill_shape_policy",
+        "chunk_schedule_decision",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -1555,6 +1566,7 @@ def _first_chunk_timing_fields(
     if isinstance(value, dict):
         fields["prefill_compile_compat_patched_modules"] = dict(value)
     for key in (
+        "selected_chunk_schedule",
         "prefill_shape_talker_input_embeds",
         "prefill_shape_attention_mask",
         "prefill_shape_trailing_text_hiddens",

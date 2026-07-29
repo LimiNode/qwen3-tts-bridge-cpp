@@ -91,6 +91,28 @@ class Rtx4090ExperimentalProfileTests(unittest.TestCase):
         self.assertIn("--prefill-require-precompiled", launcher)
         self.assertIn("--emit-chunk-schedule", launcher)
 
+    def test_route_aware_scheduler_profile_keeps_unknown_shapes_fixed(self) -> None:
+        profile = json.loads(
+            (
+                _ROOT
+                / "config"
+                / "rtx4090-faster-customvoice-route-aware-scheduler-experimental.json"
+            ).read_text(encoding="utf-8")
+        )
+
+        config = QwenEngineConfig(
+            model_path=profile["model_path"],
+            runtime_backend=profile["runtime_backend"],
+            emit_every_frames=profile["emit_every_frames"],
+            compiled_emit_chunk_schedule=tuple(
+                profile["compiled_emit_chunk_schedule"]
+            ),
+            eager_emit_chunk_schedule=tuple(profile["eager_emit_chunk_schedule"]),
+        )
+
+        self.assertEqual(config.compiled_emit_chunk_schedule, (8, 8, 12))
+        self.assertEqual(config.eager_emit_chunk_schedule, (8,))
+
 
 if __name__ == "__main__":
     unittest.main()

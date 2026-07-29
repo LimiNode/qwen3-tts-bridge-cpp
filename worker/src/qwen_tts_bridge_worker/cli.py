@@ -68,6 +68,8 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 max_seq_len=args.max_seq_len,
                 emit_every_frames=args.emit_every_frames,
                 emit_chunk_schedule=args.emit_chunk_schedule,
+                compiled_emit_chunk_schedule=args.compiled_emit_chunk_schedule,
+                eager_emit_chunk_schedule=args.eager_emit_chunk_schedule,
                 decode_window_frames=args.decode_window_frames,
                 overlap_samples=args.overlap_samples,
                 enable_streaming_optimizations=args.enable_streaming_optimizations,
@@ -263,6 +265,21 @@ def _add_qwen_subcommand(
             "Optional Faster-only first/second/steady PCM frame schedule; "
             "its last value is reused for steady state."
         ),
+    )
+    qwen_parser.add_argument(
+        "--compiled-emit-chunk-schedule",
+        type=_parse_emit_chunk_schedule,
+        default=(),
+        help=(
+            "Optional Faster-only schedule selected after a compiled allowlist "
+            "prefill."
+        ),
+    )
+    qwen_parser.add_argument(
+        "--eager-emit-chunk-schedule",
+        type=_parse_emit_chunk_schedule,
+        default=(),
+        help="Optional Faster-only schedule selected after an eager unknown prefill.",
     )
     qwen_parser.add_argument("--decode-window-frames", type=int, default=80)
     qwen_parser.add_argument("--overlap-samples", type=int, default=0)

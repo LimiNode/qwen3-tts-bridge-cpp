@@ -63,6 +63,18 @@ if ($profile.emit_chunk_schedule -and $profile.emit_chunk_schedule.Count -gt 0) 
         ($profile.emit_chunk_schedule -join ",")
     )
 }
+if ($profile.compiled_emit_chunk_schedule -and $profile.compiled_emit_chunk_schedule.Count -gt 0) {
+    $arguments += @(
+        "--compiled-emit-chunk-schedule",
+        ($profile.compiled_emit_chunk_schedule -join ",")
+    )
+}
+if ($profile.eager_emit_chunk_schedule -and $profile.eager_emit_chunk_schedule.Count -gt 0) {
+    $arguments += @(
+        "--eager-emit-chunk-schedule",
+        ($profile.eager_emit_chunk_schedule -join ",")
+    )
+}
 
 & $pythonPath @arguments @AdditionalArguments
 exit $LASTEXITCODE

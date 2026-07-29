@@ -44,6 +44,8 @@ class QwenEngineConfig:
     max_seq_len: int = 2048
     emit_every_frames: int = 8
     emit_chunk_schedule: tuple[int, ...] = ()
+    compiled_emit_chunk_schedule: tuple[int, ...] = ()
+    eager_emit_chunk_schedule: tuple[int, ...] = ()
     decode_window_frames: int = 80
     overlap_samples: int = 0
     enable_streaming_optimizations: bool = False
@@ -110,18 +112,24 @@ class QwenEngineConfig:
             raise ValueError("qwen.dtype must not be empty")
         if self.emit_every_frames <= 0:
             raise ValueError("qwen.emit_every_frames must be greater than zero")
-        if any(frames <= 0 for frames in self.emit_chunk_schedule):
-            raise ValueError("qwen.emit_chunk_schedule values must be positive")
+        schedules = {
+            "emit_chunk_schedule": self.emit_chunk_schedule,
+            "compiled_emit_chunk_schedule": self.compiled_emit_chunk_schedule,
+            "eager_emit_chunk_schedule": self.eager_emit_chunk_schedule,
+        }
+        if any(frames <= 0 for schedule in schedules.values() for frames in schedule):
+            raise ValueError("qwen chunk schedule values must be positive")
         if any(
             frames > MAX_EMIT_CHUNK_SCHEDULE_FRAMES
-            for frames in self.emit_chunk_schedule
+            for schedule in schedules.values()
+            for frames in schedule
         ):
             raise ValueError(
                 "qwen.emit_chunk_schedule values must not exceed "
                 f"{MAX_EMIT_CHUNK_SCHEDULE_FRAMES}"
             )
-        if self.emit_chunk_schedule and self.runtime_backend != "faster":
-            raise ValueError("qwen.emit_chunk_schedule requires runtime_backend=faster")
+        if any(schedules.values()) and self.runtime_backend != "faster":
+            raise ValueError("qwen chunk schedules require runtime_backend=faster")
         if self.decode_window_frames <= 0:
             raise ValueError("qwen.decode_window_frames must be greater than zero")
         if self.max_seq_len <= 0:
