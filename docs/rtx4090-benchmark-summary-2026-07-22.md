@@ -2616,6 +2616,79 @@ faster-qwen-first-chunk-correctness-through-66fb5e9.bundle 5648a46be8313bf190b2f
 faster-qwen-terminal-trace-through-4f88107.bundle 83d7059f6c7fa585b70de3e9f479f86b10eeac9d1776db99c04a7faa93250702
 ```
 
+### Fresh-Process Exact-Allowlist Discovery And Terminal Trace Contract
+
+The terminal trace has a single explicit normal-completion contract. Both
+`generated_steps` and `emitted_steps` count accepted non-EOS codec frames in a
+fully consumed normal stream, so they must equal `codec_frame_count`. For an
+EOS termination, `terminal_step_index` identifies the rejected EOS candidate
+and therefore equals those counts. For `max_new_tokens` and `max_seq_len`, it
+identifies the last emitted codec frame and therefore equals the count minus
+one. Exactly one terminal flag is set and it must agree with
+`termination_reason`.
+
+The reusable validator rejects absent or contradictory terminal fields,
+negative counters, mismatched frame counts, and impossible terminal indices.
+Future semantic A/B reports use schema version 2 and take a provenance manifest
+rather than separately supplied source and wheel identifiers. The manifest
+binds the installed FasterQwen wheel SHA256
+`d08691143ae8ab30f6199f091326e58a9c518d1ab60008fff2849060d23ee9ce` to
+source commit `db6361d69386b345c2d2a415d3b9dc080de4ecfd` and the exported
+companion bundle. The wheel hash remains the executable identity; the source
+commit is a declared, reviewable provenance link.
+
+A shuffled fresh-process discovery matrix then ran 45 source-worker processes
+with four requests each: five processes for every exact allowlist length
+`29, 30, 32, 33, 34, 35`, and five each for eager unknown lengths `31`, `38`,
+and `45`. It used CustomVoice 0.6B, speaker `ryan`, BF16 SDPA,
+`compile_reduce_overhead + strict_bf16_sdpa_v1`, fail-closed startup prewarm,
+first-chunk warmup, fixed seed `4242`, and completed-generation trace capture.
+Every one of the 180 requests passed the terminal trace contract. All selected
+lengths reported compiled-allowlist routing with a precompiled cache hit; all
+unknown lengths reported eager routing without an accidental compile fallback.
+
+| Category | Fresh processes | First TTFA p50 | First TTFA p95 | First-minus-steady p95 |
+| --- | ---: | ---: | ---: | ---: |
+| allowlist 29 | 5 | 254.1 ms | 257.7 ms | 3.5 ms |
+| allowlist 30 | 5 | 256.9 ms | 261.5 ms | 7.4 ms |
+| allowlist 32 | 5 | 257.3 ms | 258.3 ms | 4.7 ms |
+| allowlist 33 | 5 | 257.6 ms | 264.6 ms | 6.5 ms |
+| allowlist 34 | 5 | 253.6 ms | 257.0 ms | 2.2 ms |
+| allowlist 35 | 5 | 255.0 ms | 258.2 ms | 2.9 ms |
+| unknown 31 | 5 | 386.1 ms | 393.0 ms | 12.2 ms |
+| unknown 38 | 5 | 385.5 ms | 391.8 ms | 9.7 ms |
+| unknown 45 | 5 | 393.2 ms | 397.8 ms | 9.9 ms |
+
+The discovery validator intentionally applies a provisional `<300 ms` first
+TTFA threshold to every category. Consequently the aggregate result is marked
+failed only for the three eager unknown categories; their p95 values are
+`393.0`, `391.8`, and `397.8 ms`. This is not a trace, warmup-neutrality, or
+routing failure. It demonstrates the expected product boundary: the exact
+prewarmed allowlist is consistently below 300 ms, while unknown exact lengths
+take the eager path at roughly 0.38-0.40 s. All categories satisfy the separate
+`<20 ms` p95 first-minus-steady criterion. A future product decision should
+either define a separate eager-unknown latency target or expand the allowlist
+only after correctness and startup-cost review.
+
+Artifacts:
+
+```text
+faster-qwen-provenance-v1.json
+faster-qwen-terminal-contract-patch/faster-qwen-terminal-contract-through-db6361d.bundle
+fresh-process-matrix-discovery-r5-schedule.jsonl
+fresh-process-matrix-discovery-r5.json
+fresh-process-matrix-discovery-r5-summary.json
+```
+
+Artifact SHA256:
+
+```text
+faster-qwen-terminal-contract-through-db6361d.bundle 0d63656c407a39dda2bb58136beb97834ba9053f345e1b94a95572656914c00d
+fresh-process-matrix-discovery-r5-schedule.jsonl 0ada5f6e9b1403e8e6f09b27cb420293d31b5ef247d3a4331a50506996147969
+fresh-process-matrix-discovery-r5.json 6b6c5b1f8d035ff5ffad374292dc8980cba5298cd2af695d2e06f1282ea84fc3
+fresh-process-matrix-discovery-r5-summary.json 3da0a6baa048ee5717cd574f955c9cb932b44706b16c3ef83b01bdeb8eea6bc1
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
