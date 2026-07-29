@@ -2442,6 +2442,91 @@ strict-worker-load-smoke-exact-allowlist-decode-state-wheel.json 88487b1bfe41e6a
 faster-qwen-decode-state-through-d6aac14.bundle 218ba6ffc38eb4273cbe06b40d7e4e3fc9ba70bac0276358ff7836abb5a3eb83
 ```
 
+### First-Chunk Startup Prewarm
+
+Phase instrumentation in FasterQwen commit `656b9cb` separated the remaining
+first-PCM work into prefill, first sampling, AR decode, codec decode, and
+wrapper residual. It confirmed that the large post-startup cold class was no
+longer compiled prefill or generation-mask construction. With the decode-state
+gate only, the first measured request took `546.42 ms`; its speech-tokenizer
+codec decode was `303.06 ms`, versus `64.73-66.12 ms` on the following three
+requests. AR decode was also slightly colder (`179.74 ms` versus
+`162.87-167.33 ms`).
+
+The bridge therefore has an opt-in `--prefill-first-chunk-warmup` startup gate.
+It uses the first exact-allowlist manifest row, generates exactly one PCM chunk
+before `ready`, restores Python/NumPy/Torch CPU and CUDA RNG states, resets the
+TalkerGraph cache under `torch.inference_mode()`, and clears internal chunk
+metrics. It is valid only with the existing fail-closed exact allowlist mode.
+Thus the user-visible stochastic request starts from the same RNG state it
+would have had without this service warmup.
+
+Wheel-only strict smoke, CustomVoice 0.6B, speaker `ryan`, BF16/SDPA,
+`compile_reduce_overhead + strict_bf16_sdpa_v1`:
+
+| Metric | Result |
+| --- | ---: |
+| FasterQwen commit / wheel SHA256 | `656b9cb` / `b12ed98d...a017d0` |
+| exact prewarmed lengths | `32, 29, 35, 34, 33, 30` |
+| allowlist warmup | `49165.314 ms` |
+| decode-state warmup | `125.272 ms` |
+| first-chunk warmup | `554.132 ms` |
+| first-chunk generated audio | `551.643 ms` |
+| reset after first chunk | `1.577 ms` |
+| next user first PCM | `245.548 ms` |
+| user prefill / AR decode / codec residual | `14.173 / 162.836 / 68.538 ms` |
+| user compiled prefill fallback | `false` |
+| user all-valid generation-mask cache hit | `true` |
+
+The tested wheel remained installed from the wheel path recorded in the smoke
+artifact, rather than importing the FasterQwen source worktree. Its request
+used an allowlist cache hit at ordinal `5`, with `max_abs=0.0` during all six
+strict warmup validations.
+
+The representative restart benchmark uses the same CustomVoice model and
+speaker, a fixed seed `4242`, 94-character English text, exact prefill length
+`32`, `4` requests per fresh worker process, and a `20 ms` paired-tail
+threshold. It measures worker startup separately from the post-ready client
+request path.
+
+| Metric | 30 fresh workers / 120 requests |
+| --- | ---: |
+| startup to ready p50 / p95 | `63609.831 / 64743.813 ms` |
+| first request first PCM p50 / p95 / max | `256.009 / 267.553 / 269.883 ms` |
+| steady request first PCM p50 / p95 / max | `252.359 / 259.570 / 265.861 ms` |
+| paired first-minus-steady median / p95 / max | `+3.333 / +12.475 / +17.424 ms` |
+| positive tails above `20 ms` | `0 / 30` |
+| unstable runs | `0 / 30` |
+
+This closes the observed user-visible first-chunk cold class for this exact
+RTX 4090 configuration. It does not claim a universal startup latency: the
+roughly 64-second startup cost is deliberately paid before the worker reports
+ready, and the compiled shapes, model family, runtime, driver mode, and GPU
+remain part of the measured contract. Unknown prompt lengths still use the
+configured eager fallback rather than silently compiling during a request.
+
+Artifacts:
+
+```text
+strict-worker-load-smoke-exact-allowlist-first-chunk-wheel.json
+exact-allowlist-first-chunk-warmup-instrumented-r1x4.json
+exact-allowlist-first-chunk-warmup-instrumented-r30x4.json
+faster-qwen-first-chunk-profile-patch/0001-fix-prefill-reject-contradictory-all-valid-masks.patch
+faster-qwen-first-chunk-profile-patch/0002-feat-profile-split-first-chunk-decode-phases.patch
+faster-qwen-first-chunk-profile-patch/faster-qwen-first-chunk-profile-through-656b9cb.bundle
+```
+
+Artifact SHA256:
+
+```text
+strict-worker-load-smoke-exact-allowlist-first-chunk-wheel.json fdada10a129af93ad35cbff53a860e291219201f1d0430d31933894d9f1ffdc1
+exact-allowlist-first-chunk-warmup-instrumented-r1x4.json a85574c869b334219d859ad799c414dec380271555694147b3b4256af60404c4
+exact-allowlist-first-chunk-warmup-instrumented-r30x4.json 3bb51009e25e8b7cd99c65201765c43d074096af2a39b93247c0e29e503cc943
+0001-fix-prefill-reject-contradictory-all-valid-masks.patch 3668f6e7731d26d0f0b2ef0e4af2f57495c97f9ef6abb7e1257b54ecded7dd0e
+0002-feat-profile-split-first-chunk-decode-phases.patch 50ea169a4a97832971b5e626f6c559b4b00a5fa07cffed3f81b255eda59b3d0e
+faster-qwen-first-chunk-profile-through-656b9cb.bundle cd749f13157e9e2b54eee127b5a0c9bfeba73e44b8d999fc18397da70d76f1cf
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

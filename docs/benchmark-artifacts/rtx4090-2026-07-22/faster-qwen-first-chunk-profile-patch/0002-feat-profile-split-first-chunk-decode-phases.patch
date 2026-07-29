@@ -1,0 +1,397 @@
+From 656b9cbf1c66e6c38fcfebe507d398e4e030f88a Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 02:11:48 +0300
+Subject: [PATCH 2/2] feat(profile): split first chunk decode phases
+
+---
+ faster_qwen3_tts/model.py     | 101 +++++++++++++++++++++++++++-------
+ faster_qwen3_tts/sampling.py  |  51 +++++++++++++++--
+ faster_qwen3_tts/streaming.py |  55 +++++++++++++++++-
+ 3 files changed, 183 insertions(+), 24 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index cbe14e1..1ae1a92 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -1584,39 +1584,70 @@ class FasterQwen3TTS:
+             prefill_unknown_shape_policy=self.prefill_unknown_shape_policy,
+             prefill_require_precompiled=self.prefill_require_precompiled,
+         ):
++            wrapper_started = time.perf_counter()
++            context_started = time.perf_counter()
+             all_codes.append(codec_chunk)
+             n_new = codec_chunk.shape[0]
+             all_flat = torch.cat(all_codes, dim=0)
+             n_total = all_flat.shape[0]
+ 
+             if samples_per_frame is None:
+-                audio_list, sr = speech_tokenizer.decode(
+-                    {"audio_codes": all_flat.unsqueeze(0)}
++                decode_input = all_flat
++            else:
++                ctx_start = max(0, n_total - n_new - context_frames)
++                decode_input = all_flat[ctx_start:]
++            codec_context_assembly_ms = (time.perf_counter() - context_started) * 1000
++
++            codec_start_event = None
++            if profile_prefill and codec_chunk.device.type == "cuda":
++                codec_start_event = torch.cuda.Event(enable_timing=True)
++                codec_start_event.record()
++            codec_decode_started = time.perf_counter()
++            audio_list, sr = speech_tokenizer.decode(
++                {"audio_codes": decode_input.unsqueeze(0)}
++            )
++            speech_tokenizer_decode_wall_ms = (
++                time.perf_counter() - codec_decode_started
++            ) * 1000
++            codec_end_event = None
++            if codec_start_event is not None:
++                codec_end_event = torch.cuda.Event(enable_timing=True)
++                codec_end_event.record()
++
++            audio = audio_list[0]
++            d2h_ms = 0.0
++            numpy_ms = 0.0
++            audio_flatten_ms = 0.0
++            if hasattr(audio, "cpu"):
++                flatten_started = time.perf_counter()
++                audio = audio.flatten()
++                audio_flatten_ms = (time.perf_counter() - flatten_started) * 1000
++                d2h_started = time.perf_counter()
++                audio = audio.cpu()
++                d2h_ms = (time.perf_counter() - d2h_started) * 1000
++                numpy_started = time.perf_counter()
++                audio = audio.numpy()
++                numpy_ms = (time.perf_counter() - numpy_started) * 1000
++            else:
++                flatten_started = time.perf_counter()
++                audio = audio.flatten() if hasattr(audio, "flatten") else audio
++                audio_flatten_ms = (time.perf_counter() - flatten_started) * 1000
++
++            speech_tokenizer_decode_gpu_ms = None
++            if codec_start_event is not None and codec_end_event is not None:
++                speech_tokenizer_decode_gpu_ms = codec_start_event.elapsed_time(
++                    codec_end_event
+                 )
+-                audio = audio_list[0]
+-                if hasattr(audio, "cpu"):
+-                    audio = audio.flatten().cpu().numpy()
+-                else:
+-                    audio = audio.flatten() if hasattr(audio, "flatten") else audio
+ 
++            audio_slice_started = time.perf_counter()
++            if samples_per_frame is None:
+                 new_audio = audio[prev_audio_len:]
+                 prev_audio_len = len(audio)
+ 
+                 if n_total >= min_calibration_frames:
+                     samples_per_frame = len(audio) / n_total
+             else:
+-                ctx_start = max(0, n_total - n_new - context_frames)
+-                window = all_flat[ctx_start:]
+-                n_ctx = window.shape[0] - n_new
+-
+-                audio_list, sr = speech_tokenizer.decode(
+-                    {"audio_codes": window.unsqueeze(0)}
+-                )
+-                audio = audio_list[0]
+-                if hasattr(audio, "cpu"):
+-                    audio = audio.flatten().cpu().numpy()
+-                else:
+-                    audio = audio.flatten() if hasattr(audio, "flatten") else audio
++                n_ctx = decode_input.shape[0] - n_new
+ 
+                 if n_ctx > 0:
+                     ctx_samples = int(round(n_ctx * samples_per_frame))
+@@ -1624,6 +1655,38 @@ class FasterQwen3TTS:
+                 else:
+                     new_audio = audio
+ 
++            audio_slice_ms = (time.perf_counter() - audio_slice_started) * 1000
++            codec_wrapper_wall_ms = (time.perf_counter() - wrapper_started) * 1000
++            codec_wrapper_other_ms = codec_wrapper_wall_ms - sum(
++                (
++                    codec_context_assembly_ms,
++                    speech_tokenizer_decode_wall_ms,
++                    d2h_ms,
++                    numpy_ms,
++                    audio_flatten_ms,
++                    audio_slice_ms,
++                )
++            )
++            if profile_prefill:
++                timing.update(
++                    {
++                        "codec_context_assembly_ms": codec_context_assembly_ms,
++                        "speech_tokenizer_decode_wall_ms": (
++                            speech_tokenizer_decode_wall_ms
++                        ),
++                        "d2h_ms": d2h_ms,
++                        "numpy_ms": numpy_ms,
++                        "audio_flatten_ms": audio_flatten_ms,
++                        "audio_slice_ms": audio_slice_ms,
++                        "codec_wrapper_wall_ms": codec_wrapper_wall_ms,
++                        "codec_wrapper_other_ms": codec_wrapper_other_ms,
++                    }
++                )
++                if speech_tokenizer_decode_gpu_ms is not None:
++                    timing["speech_tokenizer_decode_gpu_ms"] = (
++                        speech_tokenizer_decode_gpu_ms
++                    )
++
+             yield new_audio, sr, timing
+ 
+     @torch.inference_mode()
+diff --git a/faster_qwen3_tts/sampling.py b/faster_qwen3_tts/sampling.py
+index 40d4817..db19e87 100644
+--- a/faster_qwen3_tts/sampling.py
++++ b/faster_qwen3_tts/sampling.py
+@@ -1,7 +1,7 @@
+ """Shared sampling helpers for talker and predictor generation."""
+ from __future__ import annotations
+ 
+-from typing import Iterable, Optional
++from typing import Any, Iterable, Optional
+ 
+ import torch
+ import torch.nn.functional as F
+@@ -55,6 +55,8 @@ def sample_logits(
+     do_sample: bool,
+     suppress_mask: Optional[torch.Tensor] = None,
+     suppress_tokens: Optional[Iterable[int] | torch.Tensor] = None,
++    phase_timer: Any | None = None,
++    phase_prefix: str = "",
+ ) -> torch.Tensor:
+     """Sample a token from logits.
+ 
+@@ -63,6 +65,7 @@ def sample_logits(
+     suppress_tokens may be a 1-D index tensor (preferred in hot loops — avoids a
+     host-to-device copy per call) or any iterable of ints.
+     """
++    clone_suppress = _begin_phase(phase_timer, phase_prefix, "clone_suppress")
+     logits = logits.clone()
+     if suppress_mask is not None:
+         logits[..., suppress_mask] = float("-inf")
+@@ -71,13 +74,26 @@ def sample_logits(
+             suppress_tokens = torch.tensor(list(suppress_tokens), dtype=torch.long, device=logits.device)
+         if suppress_tokens.numel() > 0:
+             logits[..., suppress_tokens] = float("-inf")
++    _end_phase(phase_timer, phase_prefix, "clone_suppress", clone_suppress)
+     if not do_sample:
+-        return torch.argmax(logits, dim=-1)
++        argmax = _begin_phase(phase_timer, phase_prefix, "argmax")
++        token = torch.argmax(logits, dim=-1)
++        _end_phase(phase_timer, phase_prefix, "argmax", argmax)
++        return token
++    temperature_phase = _begin_phase(phase_timer, phase_prefix, "temperature")
+     logits = logits / temperature
++    _end_phase(phase_timer, phase_prefix, "temperature", temperature_phase)
+     if top_k > 0:
++        top_k_phase = _begin_phase(phase_timer, phase_prefix, "top_k")
+         topk_vals, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+-        logits = torch.where(logits < topk_vals[..., -1:], torch.full_like(logits, float("-inf")), logits)
++        logits = torch.where(
++            logits < topk_vals[..., -1:],
++            torch.full_like(logits, float("-inf")),
++            logits,
++        )
++        _end_phase(phase_timer, phase_prefix, "top_k", top_k_phase)
+     if top_p < 1.0:
++        top_p_phase = _begin_phase(phase_timer, phase_prefix, "top_p")
+         sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+         probs = F.softmax(sorted_logits, dim=-1)
+         cumulative_probs = torch.cumsum(probs, dim=-1)
+@@ -86,4 +102,31 @@ def sample_logits(
+         sorted_logits[sorted_indices_to_remove] = float("-inf")
+         logits = torch.full_like(logits, float("-inf"))
+         logits.scatter_(-1, sorted_indices, sorted_logits)
+-    return torch.multinomial(F.softmax(logits, dim=-1), 1).squeeze(-1)
++        _end_phase(phase_timer, phase_prefix, "top_p", top_p_phase)
++    softmax_phase = _begin_phase(phase_timer, phase_prefix, "softmax")
++    probabilities = F.softmax(logits, dim=-1)
++    _end_phase(phase_timer, phase_prefix, "softmax", softmax_phase)
++    multinomial_phase = _begin_phase(phase_timer, phase_prefix, "multinomial")
++    token = torch.multinomial(probabilities, 1).squeeze(-1)
++    _end_phase(phase_timer, phase_prefix, "multinomial", multinomial_phase)
++    return token
++
++
++def _begin_phase(phase_timer: Any | None, prefix: str, name: str) -> Any | None:
++    if phase_timer is None:
++        return None
++    return phase_timer.begin(_phase_name(prefix, name))
++
++
++def _end_phase(
++    phase_timer: Any | None,
++    prefix: str,
++    name: str,
++    start: Any | None,
++) -> None:
++    if phase_timer is not None:
++        phase_timer.end(_phase_name(prefix, name), start)
++
++
++def _phase_name(prefix: str, name: str) -> str:
++    return f"{prefix}_{name}" if prefix else name
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index b4c6833..12cb874 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -67,6 +67,34 @@ class _CudaNvtxRange:
+         return False
+ 
+ 
++class _DecodePhaseTimer:
++    """Collect optional GPU timings without adding a synchronization boundary."""
++
++    def __init__(self, device: torch.device, enabled: bool) -> None:
++        self._enabled = bool(enabled and device.type == "cuda")
++        self._pairs: dict[str, list[tuple[torch.cuda.Event, torch.cuda.Event]]] = {}
++
++    def begin(self, name: str) -> torch.cuda.Event | None:
++        if not self._enabled:
++            return None
++        event = torch.cuda.Event(enable_timing=True)
++        event.record()
++        return event
++
++    def end(self, name: str, start: torch.cuda.Event | None) -> None:
++        if start is None:
++            return
++        end = torch.cuda.Event(enable_timing=True)
++        end.record()
++        self._pairs.setdefault(name, []).append((start, end))
++
++    def metrics(self) -> dict[str, float]:
++        return {
++            f"{name}_gpu_ms": sum(start.elapsed_time(end) for start, end in pairs)
++            for name, pairs in self._pairs.items()
++        }
++
++
+ def _normalize_prefill_backend(prefill_backend: str) -> str:
+     backend = str(prefill_backend or "eager").strip().lower()
+     backend = _PREFILL_BACKEND_ALIASES.get(backend, backend)
+@@ -677,8 +705,11 @@ def fast_generate_streaming(
+     vocab_size = config.vocab_size
+     device = talker_input_embeds.device
+ 
++    decode_phase_timer = _DecodePhaseTimer(device, profile_prefill)
++    first_sample_setup = decode_phase_timer.begin("first_sample_setup")
+     suppress_mask = build_suppress_mask(vocab_size, eos_id, device)
+     eos_suppress_ids = torch.tensor([eos_id], dtype=torch.long, device=device)
++    decode_phase_timer.end("first_sample_setup", first_sample_setup)
+ 
+     predictor = talker.code_predictor
+     talker_codec_embed = talker.get_input_embeddings()
+@@ -739,8 +770,10 @@ def fast_generate_streaming(
+     gen_step = out.generation_step
+ 
+     sample_started = time.perf_counter()
++    first_sample_logits = decode_phase_timer.begin("first_sample_logits_prepare")
++    logits = out.logits[:, -1, :]
++    decode_phase_timer.end("first_sample_logits_prepare", first_sample_logits)
+     with _CudaNvtxRange("qtb_prefill_first_sample", nvtx_enabled):
+-        logits = out.logits[:, -1, :]
+         suppress_eos = min_new_tokens > 0
+         token = sample_logits(
+             logits,
+@@ -750,6 +783,8 @@ def fast_generate_streaming(
+             do_sample=do_sample,
+             suppress_mask=suppress_mask,
+             suppress_tokens=eos_suppress_ids if suppress_eos else None,
++            phase_timer=decode_phase_timer,
++            phase_prefix="first_sample",
+         )
+     prefill_profile["first_sample_launch_wall_ms"] = (
+         time.perf_counter() - sample_started
+@@ -874,18 +909,23 @@ def fast_generate_streaming(
+             break
+ 
+         # --- CUDA-Graphed Code Predictor ---
++        predictor_phase = decode_phase_timer.begin("ar_predictor_graph")
+         last_id_hidden = talker_codec_embed(token.unsqueeze(1))
+         pred_input = torch.cat((past_hidden, last_id_hidden), dim=1)
+         codebook_token_ids = predictor_graph.run(pred_input)
++        decode_phase_timer.end("ar_predictor_graph", predictor_phase)
+ 
+         all_cb = torch.cat([token.view(1), codebook_token_ids])
+         chunk_buffer.append(all_cb.detach())
++        history_phase = decode_phase_timer.begin("ar_history_update")
+         if rep_history is not None:
+             rep_history[step_idx : step_idx + 1] = token
++        decode_phase_timer.end("ar_history_update", history_phase)
+ 
+         # --- Build input embedding for talker ---
+         # One fused gather over all 15 codebook tables; the cat+sum keeps the
+         # exact reduction order of the previous per-table loop for parity.
++        embedding_phase = decode_phase_timer.begin("ar_codebook_embed_gather")
+         codebook_embeds = F.embedding(
+             codebook_token_ids + fused_codec_offsets, fused_codec_weights
+         ).unsqueeze(0)  # [1, 15, H]
+@@ -899,6 +939,7 @@ def fast_generate_streaming(
+             ].unsqueeze(1)
+         else:
+             inputs_embeds = inputs_embeds + tts_pad_embed
++        decode_phase_timer.end("ar_codebook_embed_gather", embedding_phase)
+ 
+         # --- CUDA-Graphed Talker decode step ---
+         current_pos = prefill_len + step_idx
+@@ -912,14 +953,18 @@ def fast_generate_streaming(
+             )
+             break
+ 
++        talker_phase = decode_phase_timer.begin("ar_talker_graph_replay")
+         hidden_states = talker_graph.run(inputs_embeds, position=current_pos)
++        decode_phase_timer.end("ar_talker_graph_replay", talker_phase)
+ 
++        logits_phase = decode_phase_timer.begin("ar_logits_prepare")
+         logits = talker_codec_head(hidden_states[:, -1, :]).unsqueeze(0)
+ 
+         if rep_history is not None:
+             logits = apply_repetition_penalty(
+                 logits, rep_history[: step_idx + 1], repetition_penalty
+             )
++        decode_phase_timer.end("ar_logits_prepare", logits_phase)
+ 
+         suppress_eos = step_idx + 1 < min_new_tokens
+         token = sample_logits(
+@@ -930,12 +975,16 @@ def fast_generate_streaming(
+             do_sample=do_sample,
+             suppress_mask=suppress_mask,
+             suppress_tokens=eos_suppress_ids if suppress_eos else None,
++            phase_timer=decode_phase_timer,
++            phase_prefix="ar_sample",
+         )
++        state_phase = decode_phase_timer.begin("ar_state_update")
+         next_slot = (step_idx + 1) % 2
+         token_cpu[next_slot : next_slot + 1].copy_(token, non_blocking=True)
+         token_events[next_slot].record()
+         past_hidden = hidden_states[:, -1:, :].clone()
+         gen_step += 1
++        decode_phase_timer.end("ar_state_update", state_phase)
+ 
+         # --- Yield chunk when buffer is full ---
+         if len(chunk_buffer) >= chunk_size:
+@@ -966,6 +1015,8 @@ def fast_generate_streaming(
+             chunk_decode_time = time.time() - chunk_start
+             total_steps += len(chunk_buffer)
+             is_final_chunk = eos_found or step_idx + 1 >= max_new_tokens
++            if chunk_count == 0:
++                prefill_profile.update(decode_phase_timer.metrics())
+ 
+             yield (
+                 torch.stack(chunk_buffer),
+@@ -1025,6 +1076,8 @@ def fast_generate_streaming(
+     if chunk_buffer:
+         chunk_decode_time = time.time() - chunk_start
+         total_steps += len(chunk_buffer)
++        if chunk_count == 0:
++            prefill_profile.update(decode_phase_timer.metrics())
+ 
+         yield (
+             torch.stack(chunk_buffer),
+-- 
+2.53.0.windows.1
+

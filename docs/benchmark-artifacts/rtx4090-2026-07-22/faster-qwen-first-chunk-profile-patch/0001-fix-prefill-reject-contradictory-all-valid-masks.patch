@@ -1,0 +1,60 @@
+From 7396b8cb501d35a292de0c321ea5af54ebdd9cf2 Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 01:58:30 +0300
+Subject: [PATCH 1/2] fix(prefill): reject contradictory all-valid masks
+
+---
+ faster_qwen3_tts/talker_graph.py            |  4 ++++
+ tests/test_talker_graph_generation_state.py | 13 +++++++++++--
+ 2 files changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/faster_qwen3_tts/talker_graph.py b/faster_qwen3_tts/talker_graph.py
+index 9316836..1b6dcc2 100644
+--- a/faster_qwen3_tts/talker_graph.py
++++ b/faster_qwen3_tts/talker_graph.py
+@@ -188,6 +188,10 @@ class TalkerGraph:
+         attention_mask_all_valid: bool = False,
+     ):
+         """Set padding-aware attention mask and rope deltas for decode parity."""
++        if attention_mask_all_valid and attention_mask is not None:
++            raise ValueError(
++                "verified all-valid generation state must use attention_mask=None"
++            )
+         total_started = time.perf_counter()
+         key_started = time.perf_counter()
+         mask_key = None
+diff --git a/tests/test_talker_graph_generation_state.py b/tests/test_talker_graph_generation_state.py
+index 3b14149..a235f4e 100644
+--- a/tests/test_talker_graph_generation_state.py
++++ b/tests/test_talker_graph_generation_state.py
+@@ -9,9 +9,8 @@ from faster_qwen3_tts.talker_graph import TalkerGraph
+ class TalkerGraphGenerationStateTests(unittest.TestCase):
+     def test_none_then_verified_all_valid_reuses_mask_table(self) -> None:
+         graph = _graph_with_mask_table(mask_key=None)
+-        mask = torch.ones(1, 32, dtype=torch.long)
+ 
+-        graph.set_generation_state(mask, None, attention_mask_all_valid=True)
++        graph.set_generation_state(None, None, attention_mask_all_valid=True)
+ 
+         self.assertEqual([], graph._build_calls)
+         self.assertIsNone(graph._mask_key)
+@@ -24,6 +23,16 @@ class TalkerGraphGenerationStateTests(unittest.TestCase):
+             ]
+         )
+ 
++    def test_verified_all_valid_rejects_contradictory_mask(self) -> None:
++        graph = _graph_with_mask_table(mask_key=None)
++
++        with self.assertRaisesRegex(ValueError, "attention_mask=None"):
++            graph.set_generation_state(
++                torch.ones(1, 32, dtype=torch.long),
++                None,
++                attention_mask_all_valid=True,
++            )
++
+     def test_repeated_all_valid_reuses_mask_table(self) -> None:
+         graph = _graph_with_mask_table(mask_key=None)
+         mask = torch.ones(1, 32, dtype=torch.long)
+-- 
+2.53.0.windows.1
+
