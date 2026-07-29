@@ -450,7 +450,12 @@ def _validate_release_soak(
         require_telemetry=True,
     )
     failures.extend(memory["failures"])
-    _validate_worker_memory_metrics(results, worker_metrics, failures)
+    _validate_worker_memory_metrics(
+        results,
+        worker_metrics,
+        snapshots,
+        failures,
+    )
     return {
         "failures": failures,
         "semantic_references": len(references),
@@ -480,6 +485,7 @@ def _fingerprint(result: dict[str, object]) -> dict[str, object]:
 def _validate_worker_memory_metrics(
     results: list[dict[str, object]],
     worker_metrics: list[dict[str, object]],
+    snapshots: list[dict[str, object]],
     failures: list[str],
 ) -> None:
     memory_by_request = {
@@ -508,6 +514,20 @@ def _validate_worker_memory_metrics(
                 failures.append(f"request {request_id}: missing {key}")
     if len(worker_pids) != 1:
         failures.append(f"expected one worker model PID, got {sorted(worker_pids)}")
+        return
+    worker_pid = next(iter(worker_pids))
+    for snapshot in snapshots:
+        process_ids = {
+            process.get("pid")
+            for process in snapshot.get("processes", [])
+            if isinstance(process, dict)
+        }
+        if worker_pid not in process_ids:
+            completed_requests = snapshot.get("completed_requests")
+            failures.append(
+                "worker model PID is absent from process tree at "
+                f"request {completed_requests}"
+            )
 
 
 def _report(

@@ -304,7 +304,7 @@ def _process_tree_memory(pid: int) -> dict[str, object]:
     }
 
 
-def _gpu_memory_by_pid_mib(process_ids: list[int]) -> dict[str, int] | None:
+def _gpu_memory_by_pid_mib(process_ids: list[int]) -> dict[str, int | None] | None:
     try:
         output = subprocess.check_output(
             [
@@ -319,10 +319,13 @@ def _gpu_memory_by_pid_mib(process_ids: list[int]) -> dict[str, int] | None:
     except (OSError, subprocess.SubprocessError):
         return None
     expected = {str(process_id) for process_id in process_ids}
-    values: dict[str, int] = {}
+    values: dict[str, int | None] = {}
     for line in output.splitlines():
         parts = [part.strip() for part in line.split(",")]
         if len(parts) != 2 or parts[0] not in expected:
+            continue
+        if parts[1] in {"[N/A]", "N/A"}:
+            values[parts[0]] = None
             continue
         try:
             values[parts[0]] = int(parts[1])
@@ -509,23 +512,24 @@ def _memory_validation(
         for snapshot in snapshots
         if isinstance(snapshot.get("private_tree_bytes"), int)
     ]
-    gpu_values = [
-        sum(value for value in snapshot["gpu_process_memory_mib"].values())
+    gpu_process_snapshots = [
+        snapshot["gpu_process_memory_mib"]
         for snapshot in snapshots
         if isinstance(snapshot.get("gpu_process_memory_mib"), dict)
         and snapshot["gpu_process_memory_mib"]
-        and all(
-            isinstance(value, int)
-            for value in snapshot["gpu_process_memory_mib"].values()
-        )
+    ]
+    gpu_values = [
+        sum(value for value in snapshot.values())
+        for snapshot in gpu_process_snapshots
+        if all(isinstance(value, int) for value in snapshot.values())
     ]
     if require_telemetry:
         if len(rss_values) != len(snapshots):
             failures.append("missing process-tree RSS telemetry")
         if len(private_values) != len(snapshots):
             failures.append("missing process-tree private-bytes telemetry")
-        if len(gpu_values) != len(snapshots):
-            failures.append("missing PID-specific GPU telemetry")
+        if len(gpu_process_snapshots) != len(snapshots):
+            failures.append("missing PID-specific GPU process telemetry")
         if any(not snapshot.get("processes") for snapshot in snapshots):
             failures.append("missing process-tree process records")
     growth_mb = None
@@ -553,6 +557,12 @@ def _memory_validation(
             max(rss_values) / (1024.0 * 1024.0) if rss_values else None
         ),
         "gpu_peak_mib": max(gpu_values) if gpu_values else None,
+        "gpu_pid_memory_available": (
+            len(gpu_values) == len(snapshots) if snapshots else False
+        ),
+        "gpu_pid_presence_observed": (
+            len(gpu_process_snapshots) == len(snapshots) if snapshots else False
+        ),
         "snapshots": len(snapshots),
     }
 

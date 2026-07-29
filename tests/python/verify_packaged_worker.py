@@ -7,6 +7,7 @@ import json
 import queue
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Callable, cast
 
@@ -75,10 +76,20 @@ class PackagedWorkerHarness:
         timeout = (
             self._timeout_seconds if timeout_seconds is None else timeout_seconds
         )
+        deadline = time.monotonic() + timeout
         while True:
             self._raise_reader_error_if_any()
+            if self._process.poll() is not None:
+                self._join_reader_threads()
+                stderr = self.stderr_text()
+                raise RuntimeError(
+                    "packaged worker exited before expected frame"
+                    + (f"; stderr:\n{stderr}" if stderr else "")
+                )
             try:
-                frame = self._frames.get(timeout=timeout)
+                frame = self._frames.get(
+                    timeout=min(0.1, max(0.0, deadline - time.monotonic()))
+                )
             except queue.Empty as exc:
                 self._raise_reader_error_if_any()
                 if self._process.poll() is not None:
@@ -88,6 +99,8 @@ class PackagedWorkerHarness:
                         "packaged worker exited before expected frame"
                         + (f"; stderr:\n{stderr}" if stderr else "")
                     ) from exc
+                if time.monotonic() < deadline:
+                    continue
                 raise RuntimeError(
                     "timed out waiting for packaged worker frame"
                 ) from exc

@@ -122,13 +122,13 @@ def _snapshots() -> list[dict[str, object]]:
             "rss_tree_bytes": 100,
             "private_tree_bytes": 100,
             "processes": [{"pid": 42}],
-            "gpu_process_memory_mib": {"42": 100},
+            "gpu_process_memory_mib": {"42": None},
         },
         {
             "rss_tree_bytes": 110,
             "private_tree_bytes": 110,
             "processes": [{"pid": 42}],
-            "gpu_process_memory_mib": {"42": 100},
+            "gpu_process_memory_mib": {"42": None},
         },
     ]
 
