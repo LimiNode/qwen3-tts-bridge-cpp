@@ -62,6 +62,11 @@ def main() -> int:
     parser.add_argument("--speaker", default="ryan")
     parser.add_argument("--instruction", default="")
     parser.add_argument("--emit-every-frames", type=int, default=8)
+    parser.add_argument(
+        "--emit-chunk-schedule",
+        type=_parse_emit_chunk_schedule,
+        default=(),
+    )
     parser.add_argument("--max-chunks", type=int, default=1)
     parser.add_argument("--warmup-synthesis", action="store_true")
     parser.add_argument("--warmup-max-output-chunks", type=int, default=1)
@@ -85,6 +90,7 @@ def main() -> int:
         dtype=args.dtype,
         attn_implementation=args.attn_implementation,
         emit_every_frames=args.emit_every_frames,
+        emit_chunk_schedule=args.emit_chunk_schedule,
         prefill_backend=args.prefill_backend,
         prefill_compile_compat_mode="strict_bf16_sdpa_v1",
         prefill_compile_lengths=args.prefill_compile_lengths,
@@ -163,6 +169,12 @@ def main() -> int:
             "device": args.device,
             "dtype": args.dtype,
             "attn_implementation": args.attn_implementation,
+            "text": args.text,
+            "language": args.language,
+            "speaker": args.speaker,
+            "instruction": args.instruction,
+            "emit_every_frames": args.emit_every_frames,
+            "emit_chunk_schedule": args.emit_chunk_schedule,
             "prefill_backend": args.prefill_backend,
             "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
             "prefill_compile_lengths": args.prefill_compile_lengths,
@@ -234,6 +246,31 @@ def _parse_prefill_compile_lengths(value: str) -> tuple[int, ...]:
             "--prefill-compile-lengths must not contain duplicates"
         )
     return tuple(lengths)
+
+
+def _parse_emit_chunk_schedule(value: str) -> tuple[int, ...]:
+    text = value.strip()
+    if not text:
+        return ()
+    frames: list[int] = []
+    for part in text.split(","):
+        item = part.strip()
+        if not item:
+            raise argparse.ArgumentTypeError(
+                "--emit-chunk-schedule must not contain empty items"
+            )
+        try:
+            frame_count = int(item)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "--emit-chunk-schedule must contain integers"
+            ) from exc
+        if frame_count <= 0:
+            raise argparse.ArgumentTypeError(
+                "--emit-chunk-schedule must contain positive integers"
+            )
+        frames.append(frame_count)
+    return tuple(frames)
 
 
 def _provenance(args: argparse.Namespace) -> dict[str, Any]:
@@ -331,6 +368,25 @@ def _validate_result(result: dict[str, Any], args: argparse.Namespace) -> None:
     if result["chunk_count"] <= 0:
         raise RuntimeError("strict worker smoke produced no audio chunks")
     first_metrics = result["chunks"][0].get("metrics") or {}
+    if args.emit_chunk_schedule:
+        for index, chunk in enumerate(result["chunks"]):
+            metrics = chunk.get("metrics") or {}
+            expected_steps = args.emit_chunk_schedule[
+                min(index, len(args.emit_chunk_schedule) - 1)
+            ]
+            for key in ("chunk_steps", "chunk_target_steps"):
+                if metrics.get(key) != expected_steps:
+                    raise RuntimeError(
+                        "strict worker smoke reported unexpected scheduled "
+                        f"{key} for chunk {index + 1}: {metrics!r}"
+                    )
+            if metrics.get("chunk_schedule_index") != min(
+                index, len(args.emit_chunk_schedule) - 1
+            ):
+                raise RuntimeError(
+                    "strict worker smoke reported unexpected schedule index "
+                    f"for chunk {index + 1}: {metrics!r}"
+                )
     if first_metrics.get("prefill_backend_used") != args.prefill_backend:
         raise RuntimeError(
             "strict worker smoke used unexpected prefill backend: "

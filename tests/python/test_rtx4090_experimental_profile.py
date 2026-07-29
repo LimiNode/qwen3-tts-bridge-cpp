@@ -59,6 +59,27 @@ class Rtx4090ExperimentalProfileTests(unittest.TestCase):
         self.assertTrue(config.prefill_require_precompiled)
         self.assertEqual(config.prefill_compile_lengths, (32, 29, 35, 34, 33, 30))
 
+    def test_scheduler_profile_constructs_the_first_chunk_schedule(self) -> None:
+        profile = json.loads(
+            (
+                _ROOT
+                / "config"
+                / "rtx4090-faster-customvoice-scheduler-6-8-12-experimental.json"
+            ).read_text(encoding="utf-8")
+        )
+
+        config = QwenEngineConfig(
+            model_path=profile["model_path"],
+            runtime_backend=profile["runtime_backend"],
+            device=profile["device"],
+            dtype=profile["dtype"],
+            attn_implementation=profile["attn_implementation"],
+            emit_every_frames=profile["emit_every_frames"],
+            emit_chunk_schedule=tuple(profile["emit_chunk_schedule"]),
+        )
+
+        self.assertEqual(config.emit_chunk_schedule, (6, 8, 12))
+
     def test_launcher_uses_module_entry_point_and_profile_path(self) -> None:
         launcher = (
             _ROOT / "scripts" / "start-rtx4090-faster-customvoice.ps1"
@@ -67,6 +88,7 @@ class Rtx4090ExperimentalProfileTests(unittest.TestCase):
         self.assertIn("qwen_tts_bridge_worker", launcher)
         self.assertIn("rtx4090-faster-customvoice-experimental.json", launcher)
         self.assertIn("--prefill-require-precompiled", launcher)
+        self.assertIn("--emit-chunk-schedule", launcher)
 
 
 if __name__ == "__main__":

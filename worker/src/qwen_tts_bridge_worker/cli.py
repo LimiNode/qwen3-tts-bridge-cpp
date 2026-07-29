@@ -67,6 +67,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 attn_implementation=args.attn_implementation,
                 max_seq_len=args.max_seq_len,
                 emit_every_frames=args.emit_every_frames,
+                emit_chunk_schedule=args.emit_chunk_schedule,
                 decode_window_frames=args.decode_window_frames,
                 overlap_samples=args.overlap_samples,
                 enable_streaming_optimizations=args.enable_streaming_optimizations,
@@ -254,6 +255,12 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--attn-implementation", default="")
     qwen_parser.add_argument("--max-seq-len", type=int, default=2048)
     qwen_parser.add_argument("--emit-every-frames", type=int, default=8)
+    qwen_parser.add_argument(
+        "--emit-chunk-schedule",
+        type=_parse_emit_chunk_schedule,
+        default=(),
+        help="Optional Faster-only first/second/steady PCM frame schedule.",
+    )
     qwen_parser.add_argument("--decode-window-frames", type=int, default=80)
     qwen_parser.add_argument("--overlap-samples", type=int, default=0)
     qwen_parser.add_argument(
@@ -496,6 +503,31 @@ def _parse_prefill_compile_lengths(value: str) -> tuple[int, ...]:
             "--prefill-compile-lengths must not contain duplicates"
         )
     return tuple(lengths)
+
+
+def _parse_emit_chunk_schedule(value: str) -> tuple[int, ...]:
+    text = value.strip()
+    if not text:
+        return ()
+    frames: list[int] = []
+    for part in text.split(","):
+        item = part.strip()
+        if not item:
+            raise argparse.ArgumentTypeError(
+                "--emit-chunk-schedule must not contain empty items"
+            )
+        try:
+            frame_count = int(item)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "--emit-chunk-schedule must contain integers"
+            ) from exc
+        if frame_count <= 0:
+            raise argparse.ArgumentTypeError(
+                "--emit-chunk-schedule must contain positive integers"
+            )
+        frames.append(frame_count)
+    return tuple(frames)
 
 
 def _selected_worker_version(args: argparse.Namespace) -> str:

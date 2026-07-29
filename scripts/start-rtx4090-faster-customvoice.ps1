@@ -57,6 +57,12 @@ if ($profile.collect_generation_trace) {
 if ($profile.profile_prefill) {
     $arguments += "--profile-prefill"
 }
+if ($profile.emit_chunk_schedule -and $profile.emit_chunk_schedule.Count -gt 0) {
+    $arguments += @(
+        "--emit-chunk-schedule",
+        ($profile.emit_chunk_schedule -join ",")
+    )
+}
 
 & $pythonPath @arguments @AdditionalArguments
 exit $LASTEXITCODE

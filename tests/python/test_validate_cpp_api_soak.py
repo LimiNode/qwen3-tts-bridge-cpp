@@ -32,6 +32,7 @@ class ValidateCppApiSoakTests(unittest.TestCase):
             expected_requests=2,
             expected_cancelled=1,
             expected_cache_entries=6,
+            expected_first_chunk_steps=6,
         )
 
         self.assertEqual([], cast(list[str], validation["failures"]))
@@ -62,6 +63,33 @@ class ValidateCppApiSoakTests(unittest.TestCase):
             cast(list[str], validation["failures"]),
         )
 
+    def test_rejects_first_chunk_schedule_regression(self) -> None:
+        artifact = {
+            "requests": [
+                {
+                    "request_id": 1,
+                    "success": True,
+                    "cancelled": False,
+                    "audio_chunks": 2,
+                }
+            ]
+        }
+        phases = _phases(1)
+        phases["chunk_steps"] = 8
+        validation = validate_cpp_api_soak(
+            cast(dict[str, object], artifact),
+            [phases, _memory(1)],
+            expected_requests=1,
+            expected_cancelled=0,
+            expected_cache_entries=6,
+            expected_first_chunk_steps=6,
+        )
+
+        self.assertIn(
+            "request 1: expected chunk_steps=6",
+            cast(list[str], validation["failures"]),
+        )
+
 
 def _phases(request_id: int) -> dict[str, object]:
     return {
@@ -75,6 +103,8 @@ def _phases(request_id: int) -> dict[str, object]:
         "prefill_dynamo_unique_graphs_delta": 0,
         "prefill_compile_cache_entries_delta": 0,
         "prefill_compile_cache_entries": 6,
+        "chunk_steps": 6,
+        "chunk_target_steps": 6,
     }
 
 

@@ -15,6 +15,7 @@ def main() -> int:
     parser.add_argument("--expected-requests", type=int, required=True)
     parser.add_argument("--expected-cancelled", type=int, required=True)
     parser.add_argument("--expected-cache-entries", type=int, default=6)
+    parser.add_argument("--expected-first-chunk-steps", type=int)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -26,6 +27,7 @@ def main() -> int:
         expected_requests=args.expected_requests,
         expected_cancelled=args.expected_cancelled,
         expected_cache_entries=args.expected_cache_entries,
+        expected_first_chunk_steps=args.expected_first_chunk_steps,
     )
     report["artifact"] = str(args.artifact)
     report["worker_metrics"] = str(args.worker_metrics)
@@ -46,6 +48,7 @@ def validate_cpp_api_soak(
     expected_requests: int,
     expected_cancelled: int,
     expected_cache_entries: int,
+    expected_first_chunk_steps: int | None = None,
 ) -> dict[str, object]:
     failures: list[str] = []
     requests = artifact.get("requests")
@@ -70,7 +73,8 @@ def validate_cpp_api_soak(
             completed += 1
             if request.get("cancelled") is not False:
                 failures.append(f"request {request_id}: completed request is cancelled")
-            if not isinstance(request.get("audio_chunks"), int) or request["audio_chunks"] < 2:
+            audio_chunks = request.get("audio_chunks")
+            if not isinstance(audio_chunks, int) or audio_chunks < 2:
                 failures.append(f"request {request_id}: completion lacks streaming PCM")
         elif request.get("cancelled") is True:
             cancelled += 1
@@ -99,6 +103,7 @@ def validate_cpp_api_soak(
                 request_id,
                 phases,
                 expected_cache_entries,
+                expected_first_chunk_steps,
                 cache_entries,
                 failures,
             )
@@ -186,7 +191,6 @@ def _json_object_end(text: str, start: int) -> int | None:
             if depth == 0:
                 return index + 1
     return None
-    return metrics
 
 
 def _metrics_by_request(
@@ -206,6 +210,7 @@ def _validate_route(
     request_id: int,
     phases: dict[str, object],
     expected_cache_entries: int,
+    expected_first_chunk_steps: int | None,
     cache_entries: set[int],
     failures: list[str],
 ) -> None:
@@ -226,6 +231,13 @@ def _validate_route(
         cache_entries.add(entries)
     else:
         failures.append(f"request {request_id}: missing cache entry count")
+    if expected_first_chunk_steps is not None:
+        for key in ("chunk_steps", "chunk_target_steps"):
+            if phases.get(key) != expected_first_chunk_steps:
+                failures.append(
+                    f"request {request_id}: expected {key}="
+                    f"{expected_first_chunk_steps!r}"
+                )
 
 
 if __name__ == "__main__":

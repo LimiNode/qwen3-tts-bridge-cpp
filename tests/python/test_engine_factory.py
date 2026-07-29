@@ -54,6 +54,8 @@ class EngineFactoryTests(unittest.TestCase):
                 "1024",
                 "--emit-every-frames",
                 "4",
+                "--emit-chunk-schedule",
+                "6,8,12",
                 "--decode-window-frames",
                 "96",
                 "--overlap-samples",
@@ -101,6 +103,7 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("sdpa", config.attn_implementation)
         self.assertEqual(1024, config.max_seq_len)
         self.assertEqual(4, config.emit_every_frames)
+        self.assertEqual((6, 8, 12), config.emit_chunk_schedule)
         self.assertEqual(96, config.decode_window_frames)
         self.assertEqual(32, config.overlap_samples)
         self.assertTrue(config.enable_streaming_optimizations)
@@ -322,6 +325,11 @@ class EngineFactoryTests(unittest.TestCase):
             {"model_path": "models/qwen", "device": ""},
             {"model_path": "models/qwen", "dtype": ""},
             {"model_path": "models/qwen", "emit_every_frames": 0},
+            {"model_path": "models/qwen", "emit_chunk_schedule": (0,)},
+            {
+                "model_path": "models/qwen",
+                "emit_chunk_schedule": (6, 8, 12),
+            },
             {"model_path": "models/qwen", "decode_window_frames": 0},
             {"model_path": "models/qwen", "max_seq_len": 0},
             {"model_path": "models/qwen", "overlap_samples": -1},

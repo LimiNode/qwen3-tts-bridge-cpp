@@ -215,6 +215,8 @@ class _FasterStreamingModel:
                     "prefill_ms": 12.0,
                     "decode_ms": 80.0,
                     "chunk_steps": 8,
+                    "chunk_target_steps": 8,
+                    "chunk_schedule_index": 1,
                     "profile_schema_version": 3,
                     "profile_path": "fast",
                     "profile_request_role": "first_user",
@@ -628,6 +630,7 @@ class QwenEngineTests(unittest.TestCase):
                 model_path="models/qwen-custom",
                 runtime_backend="faster",
                 emit_every_frames=8,
+                emit_chunk_schedule=(6, 8, 12),
             ),
             model_loader=lambda _config: fake_model,
         )
@@ -655,6 +658,7 @@ class QwenEngineTests(unittest.TestCase):
                 "speaker": "Alice",
                 "instruct": "Speak warmly.",
                 "chunk_size": 8,
+                "chunk_schedule": (6, 8, 12),
                 "do_sample": True,
                 "prefill_backend": "eager",
                 "prefill_compile_compat_mode": "none",
@@ -686,6 +690,8 @@ class QwenEngineTests(unittest.TestCase):
         self.assertFalse(metrics["prefill_compile_on_miss"])
         self.assertEqual(80.0, metrics["ar_decode_ms"])
         self.assertEqual(8, metrics["chunk_steps"])
+        self.assertEqual(8, metrics["chunk_target_steps"])
+        self.assertEqual(1, metrics["chunk_schedule_index"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])
         self.assertIn("codec_wrapper_residual_ms", metrics)
 
@@ -989,6 +995,7 @@ class QwenEngineTests(unittest.TestCase):
                 model_path="models/qwen-design",
                 runtime_backend="faster",
                 emit_every_frames=12,
+                emit_chunk_schedule=(6, 8, 12),
             ),
             model_loader=lambda _config: fake_model,
         )
@@ -1012,6 +1019,7 @@ class QwenEngineTests(unittest.TestCase):
                 "language": "English",
                 "instruct": "Low calm voice.",
                 "chunk_size": 12,
+                "chunk_schedule": (6, 8, 12),
                 "do_sample": True,
                 "prefill_backend": "eager",
                 "prefill_compile_compat_mode": "none",
