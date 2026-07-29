@@ -1768,6 +1768,16 @@ def _with_request_pipeline_metrics(
     for source_key, target_key in (
         ("talker_prefill_length", "first_chunk_talker_prefill_length"),
         ("prefill_shape_length", "first_chunk_prefill_shape_length"),
+        ("prefill_shape_call_ordinal", "first_chunk_prefill_shape_call_ordinal"),
+        ("prefill_compile_cache_entries", "first_chunk_prefill_compile_cache_entries"),
+        (
+            "prefill_compile_cache_talker_entries",
+            "first_chunk_prefill_compile_cache_talker_entries",
+        ),
+        (
+            "prefill_compile_cache_evictions",
+            "first_chunk_prefill_compile_cache_evictions",
+        ),
         ("tokenize_wall_ms", "first_chunk_tokenize_wall_ms"),
         ("build_talker_inputs_wall_ms", "first_chunk_build_talker_inputs_wall_ms"),
         ("prefill_total_gpu_ms", "first_chunk_prefill_total_gpu_ms"),
@@ -1949,6 +1959,11 @@ def _with_request_pipeline_metrics(
             "first_chunk_prefill_shape_allowlist_hit",
         ),
         ("prefill_compile_on_miss", "first_chunk_prefill_compile_on_miss"),
+        ("prefill_compile_cache_hit", "first_chunk_prefill_compile_cache_hit"),
+        (
+            "prefill_require_precompiled",
+            "first_chunk_prefill_require_precompiled",
+        ),
     ):
         _copy_metric_bool(enriched, first_chunk_phases, source_key, target_key)
 

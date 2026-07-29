@@ -76,6 +76,12 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "prefill_backend_requested": "compile_default",
                 "prefill_backend_used": "compile_default",
                 "prefill_compile_fallback": False,
+                "prefill_compile_cache_hit": True,
+                "prefill_require_precompiled": True,
+                "prefill_shape_call_ordinal": 4,
+                "prefill_compile_cache_entries": 6,
+                "prefill_compile_cache_talker_entries": 6,
+                "prefill_compile_cache_evictions": 0,
                 "profile_prefill_enabled": True,
                 "profile_complete": True,
                 "events_complete": True,
@@ -163,6 +169,15 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
             enriched["first_chunk_prefill_backend_used"],
         )
         self.assertFalse(enriched["first_chunk_prefill_compile_fallback"])
+        self.assertTrue(enriched["first_chunk_prefill_compile_cache_hit"])
+        self.assertTrue(enriched["first_chunk_prefill_require_precompiled"])
+        self.assertEqual(4, enriched["first_chunk_prefill_shape_call_ordinal"])
+        self.assertEqual(6, enriched["first_chunk_prefill_compile_cache_entries"])
+        self.assertEqual(
+            6,
+            enriched["first_chunk_prefill_compile_cache_talker_entries"],
+        )
+        self.assertEqual(0, enriched["first_chunk_prefill_compile_cache_evictions"])
         self.assertTrue(enriched["first_chunk_profile_prefill_enabled"])
         self.assertTrue(enriched["first_chunk_profile_complete"])
         self.assertTrue(enriched["first_chunk_events_complete"])
