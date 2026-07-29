@@ -1,0 +1,225 @@
+From 0f85465419ad6787caf1e0db140a088634213b1c Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 21:06:47 +0300
+Subject: [PATCH] feat(streaming): schedule first PCM chunks
+
+---
+ faster_qwen3_tts/model.py     | 14 ++++++--
+ faster_qwen3_tts/streaming.py | 61 ++++++++++++++++++++++++++++++++---
+ tests/test_sampling.py        | 25 ++++++++++++++
+ 3 files changed, 94 insertions(+), 6 deletions(-)
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index ff284fd..b93e47f 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -1548,6 +1548,7 @@ class FasterQwen3TTS:
+         do_sample: bool = True,
+         repetition_penalty: float = 1.05,
+         chunk_size: int = 12,
++        chunk_schedule: Optional[Iterable[int]] = None,
+         profile_prefill: bool = False,
+         profile_nvtx: bool = False,
+         profile_request_role: Optional[str] = None,
+@@ -1590,7 +1591,10 @@ class FasterQwen3TTS:
+         speech_tokenizer = m.speech_tokenizer
+ 
+         context_frames = 25
+-        min_calibration_frames = max(context_frames, chunk_size)
++        min_calibration_frames = max(
++            context_frames,
++            *(chunk_schedule or (chunk_size,)),
++        )
+         all_codes = []
+         codec_hasher = hashlib.sha256() if self.collect_generation_trace else None
+         codec_frame_count = 0
+@@ -1615,6 +1619,7 @@ class FasterQwen3TTS:
+             do_sample=do_sample,
+             repetition_penalty=repetition_penalty,
+             chunk_size=chunk_size,
++            chunk_schedule=chunk_schedule,
+             input_metadata=input_metadata,
+             termination_sink=termination_trace,
+             profile_prefill=profile_prefill,
+@@ -1851,6 +1856,7 @@ class FasterQwen3TTS:
+         do_sample: bool = True,
+         repetition_penalty: float = 1.05,
+         chunk_size: int = 12,
++        chunk_schedule: Optional[Iterable[int]] = None,
+         profile_prefill: bool = False,
+         profile_nvtx: bool = False,
+         profile_request_role: Optional[str] = None,
+@@ -1889,7 +1895,10 @@ class FasterQwen3TTS:
+         speech_tokenizer = m.speech_tokenizer
+ 
+         context_frames = 25
+-        min_calibration_frames = max(context_frames, chunk_size)
++        min_calibration_frames = max(
++            context_frames,
++            *(chunk_schedule or (chunk_size,)),
++        )
+         all_codes = []
+         prev_audio_len = 0
+         samples_per_frame = None
+@@ -1911,6 +1920,7 @@ class FasterQwen3TTS:
+             do_sample=do_sample,
+             repetition_penalty=repetition_penalty,
+             chunk_size=chunk_size,
++            chunk_schedule=chunk_schedule,
+             input_metadata=input_metadata,
+             profile_prefill=profile_prefill,
+             profile_nvtx=profile_nvtx,
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index e50049c..4df3509 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -124,6 +124,33 @@ def _normalize_prefill_compile_lengths(
+     return normalized
+ 
+ 
++def _normalize_chunk_schedule(
++    chunk_schedule: Optional[Iterable[int]],
++) -> tuple[int, ...]:
++    """Return a validated finite prefix of per-chunk emission sizes."""
++
++    if chunk_schedule is None:
++        return ()
++    normalized = tuple(int(value) for value in chunk_schedule)
++    if any(value <= 0 for value in normalized):
++        raise ValueError("chunk_schedule values must be positive")
++    return normalized
++
++
++def _chunk_target_steps(
++    chunk_size: int,
++    chunk_schedule: tuple[int, ...],
++    chunk_index: int,
++) -> int:
++    """Select the scheduled size or preserve the legacy fixed chunk size."""
++
++    if chunk_size <= 0:
++        raise ValueError("chunk_size must be positive")
++    if not chunk_schedule:
++        return chunk_size
++    return chunk_schedule[min(chunk_index, len(chunk_schedule) - 1)]
++
++
+ def _run_talker_prefill(
+     talker,
+     talker_input_embeds: torch.Tensor,
+@@ -763,6 +790,7 @@ def fast_generate_streaming(
+     do_sample: bool = True,
+     repetition_penalty: float = 1.05,
+     chunk_size: int = 12,
++    chunk_schedule: Optional[Iterable[int]] = None,
+     input_metadata: Optional[dict] = None,
+     termination_sink: Optional[dict] = None,
+     profile_prefill: bool = False,
+@@ -778,9 +806,9 @@ def fast_generate_streaming(
+     """
+     Streaming autoregressive generation with CUDA-graphed predictor and talker.
+ 
+-    Yields (codec_chunk, timing_info) tuples every chunk_size steps.
++    Yields (codec_chunk, timing_info) tuples every scheduled chunk size.
+     codec_chunk: [chunk_steps, 16] tensor of codec IDs.
+-    The final chunk may be shorter than chunk_size.
++    The final chunk may be shorter than its scheduled size.
+     """
+     eos_id = config.codec_eos_token_id
+     vocab_size = config.vocab_size
+@@ -804,6 +832,7 @@ def fast_generate_streaming(
+     unknown_shape_policy = _normalize_prefill_unknown_shape_policy(
+         prefill_unknown_shape_policy
+     )
++    normalized_chunk_schedule = _normalize_chunk_schedule(chunk_schedule)
+     if str(prefill_mask_mode or "auto").strip().lower() == "auto":
+         prefill_mask_mode = select_prefill_mask_mode(input_metadata)
+     else:
+@@ -1067,8 +1096,14 @@ def fast_generate_streaming(
+         gen_step += 1
+         decode_phase_timer.end("ar_state_update", state_phase)
+ 
+-        # --- Yield chunk when buffer is full ---
+-        if len(chunk_buffer) >= chunk_size:
++        # The optional schedule lowers time to first PCM without permanently
++        # paying the smaller-chunk decode overhead in steady state.
++        chunk_target_steps = _chunk_target_steps(
++            chunk_size,
++            normalized_chunk_schedule,
++            chunk_count,
++        )
++        if len(chunk_buffer) >= chunk_target_steps:
+             torch.cuda.synchronize()
+             # This chunk's tail entry hasn't been EOS-checked yet (that happens
+             # at the top of the next iteration); validate it now that we're synced.
+@@ -1105,6 +1140,13 @@ def fast_generate_streaming(
+                     {
+                         "chunk_index": chunk_count,
+                         "chunk_steps": len(chunk_buffer),
++                        "chunk_target_steps": chunk_target_steps,
++                        "chunk_schedule_index": min(
++                            chunk_count,
++                            len(normalized_chunk_schedule) - 1,
++                        )
++                        if normalized_chunk_schedule
++                        else None,
+                         "prefill_ms": t_prefill * 1000 if chunk_count == 0 else 0,
+                         "decode_ms": chunk_decode_time * 1000,
+                         "total_steps_so_far": total_steps,
+@@ -1166,6 +1208,17 @@ def fast_generate_streaming(
+                 {
+                     "chunk_index": chunk_count,
+                     "chunk_steps": len(chunk_buffer),
++                    "chunk_target_steps": _chunk_target_steps(
++                        chunk_size,
++                        normalized_chunk_schedule,
++                        chunk_count,
++                    ),
++                    "chunk_schedule_index": min(
++                        chunk_count,
++                        len(normalized_chunk_schedule) - 1,
++                    )
++                    if normalized_chunk_schedule
++                    else None,
+                     "prefill_ms": t_prefill * 1000 if chunk_count == 0 else 0,
+                     "decode_ms": chunk_decode_time * 1000,
+                     "total_steps_so_far": total_steps,
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index 161cfdb..ced7d2b 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -71,6 +71,31 @@ def test_terminal_sink_is_complete_without_final_audio_chunk():
+     }
+ 
+ 
++def test_chunk_schedule_uses_its_last_size_for_steady_state():
++    schedule = streaming._normalize_chunk_schedule([6, 8, 12])
++
++    assert [streaming._chunk_target_steps(8, schedule, index) for index in range(5)] == [
++        6,
++        8,
++        12,
++        12,
++        12,
++    ]
++
++
++def test_empty_chunk_schedule_preserves_fixed_chunk_size():
++    schedule = streaming._normalize_chunk_schedule(None)
++
++    assert streaming._chunk_target_steps(8, schedule, 0) == 8
++    assert streaming._chunk_target_steps(8, schedule, 4) == 8
++
++
++@pytest.mark.parametrize("schedule", ([0], [-1], [6, 0, 12]))
++def test_chunk_schedule_rejects_non_positive_sizes(schedule):
++    with pytest.raises(ValueError, match="chunk_schedule values must be positive"):
++        streaming._normalize_chunk_schedule(schedule)
++
++
+ def test_faster_wrapper_selects_greedy_predictor_graph():
+     sampling_graph = types.SimpleNamespace(do_sample=True)
+     greedy_graph = types.SimpleNamespace(do_sample=False)
+-- 
+2.53.0.windows.1
+

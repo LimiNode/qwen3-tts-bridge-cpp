@@ -2868,6 +2868,78 @@ strict-worker-load-smoke-r900-wheel-only.json b04fd32d8269314bc165e06755489f8030
 context-gate-r900-wheel-only.json e7b5463c60c46ae47b528aa7ee48e72f5d199bf67306ef7a471798a3c0e5c608
 ```
 
+### Scheduled First PCM Candidate
+
+FasterQwen commit `0f85465` adds an opt-in frame scheduler for streaming PCM:
+the first chunk is emitted after 6 codec frames, the second after 8, and the
+third and every later chunk after 12. The bridge exposes it only on the Faster
+backend through `--emit-chunk-schedule 6,8,12`; the existing fixed
+`--emit-every-frames` behavior remains the default. The companion wheel used
+for this candidate has SHA256
+`34a56cbde0ef00850404caac5ec818e4533096a5567bf7732bffdbc88d9a6752`.
+
+`config/rtx4090-faster-customvoice-scheduler-6-8-12-experimental.json` is the
+explicit RTX 4090 CustomVoice profile for that opt-in. The existing launcher
+reads `emit_chunk_schedule` when present, so the profile can be selected with
+its `-ProfilePath` argument without inventing a second worker configuration
+format.
+
+The strict wheel-only smoke passed with the Faster source worktree forbidden
+from imports. It prewarmed all six exact prefill forms, then used compiled
+allowlist length 32 on the first real request. Its three observed chunk tuples
+were `(chunk_steps, chunk_target_steps, chunk_schedule_index) = (6, 6, 0),
+(8, 8, 1), (12, 12, 2)`.
+
+The 63-request semantic/cancellation soak also passed: all nine shape classes
+completed their reference and post-cancellation fingerprint checks; 36
+requests completed and 27 were cancelled. This run's first audio median/p95
+was `216.1 / 344.5 ms`, completion `2830.2 / 4316.7 ms`, and RTF
+`0.3447 / 0.3629`. The previous fixed-8 r63 run measured `259.3 / 383.7 ms`,
+`3082.6 / 4738.0 ms`, and `0.3766 / 0.3997` respectively. This is encouraging
+but intentionally not presented as a paired performance claim: the two runs
+use different immutable FasterQwen wheels and have independent samples.
+
+The public C++ API soak passed with the scheduled profile through
+`QwenTtsClient` and `StdIoTransport`: 3 warmups, 50 measured requests, fixed
+seed `4242`, and cancellation every tenth request from the audio callback. The
+validator checked that all 50 first PCM metrics reported both `chunk_steps` and
+`chunk_target_steps` equal to 6. It accepted 45 completions and 5 first-PCM
+cancellations, with one worker PID and exactly six prewarmed cache entries;
+there were no failed requests. C++ completion metrics were:
+
+| Measure | Median | p95 |
+| --- | ---: | ---: |
+| First audio | 216.4 ms | 225.3 ms |
+| Completion | 2687.5 ms | 2749.5 ms |
+| RTF | 0.344 | 0.352 |
+| Transport/dispatch residual | 0.756 ms | 0.886 ms |
+
+Scheduler artifacts:
+
+```text
+release-soak-schedule-r900.jsonl
+release-soak-schedule-6-8-12-r63.json
+strict-worker-load-smoke-schedule-6-8-12-wheel.json
+cpp-api-soak-schedule-6-8-12-r50.json
+cpp-api-soak-schedule-6-8-12-r50-validation.json
+cpp-api-soak-schedule-6-8-12-r50-worker-metrics.log
+faster-qwen-first-chunk-scheduler-patch/0001-feat-streaming-schedule-first-PCM-chunks.patch
+faster-qwen-first-chunk-scheduler-patch/faster-qwen-first-chunk-scheduler-through-0f85465.bundle
+```
+
+Scheduler artifact SHA256:
+
+```text
+release-soak-schedule-r900.jsonl 018b6be15af4cc9aa4db19e3d54de2ca9b6abde1685f593a26b98e16ad429d4f
+release-soak-schedule-6-8-12-r63.json b08705fe4c5714a416046bfd757ead3320d2ebc275eeda4637ed5bc3cb6e3242
+strict-worker-load-smoke-schedule-6-8-12-wheel.json e3c80101f973b381a1d78d229f6b941c526a651f3cc51fc0f51c242e0a8feb6c
+cpp-api-soak-schedule-6-8-12-r50.json c73f908ff8643442c4f7e939538c4273345a14cb6f07c435d3385ff121eb95d1
+cpp-api-soak-schedule-6-8-12-r50-validation.json a34fc6fe087db39c5b692e495d37bb1aa4d7a8c2d79711f5e409f1b98862ef01
+cpp-api-soak-schedule-6-8-12-r50-worker-metrics.log 5bfa16211fe243f9067de073161711a7d5b659972cc82c73de0e1d8d47d31f79
+0001-feat-streaming-schedule-first-PCM-chunks.patch 82caa9e97aad640d4f1e9a66371aed98a351932cecbccbafe56bb3f512d03991
+faster-qwen-first-chunk-scheduler-through-0f85465.bundle 80fb1bcc1eff831293084f342ce67db0aa7b978311932a4edc513afbc1cec0d6
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
