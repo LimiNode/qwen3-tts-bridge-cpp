@@ -338,7 +338,8 @@ class QwenTtsEngine:
         talker_graph = getattr(model, "talker_graph", None)
         if talker_graph is None:
             raise QwenEngineError(
-                "loaded faster model does not expose talker_graph for first-chunk warmup"
+                "loaded faster model does not expose talker_graph "
+                "for first-chunk warmup"
             )
         torch = importlib.import_module("torch")
         with torch.inference_mode():
@@ -1052,6 +1053,15 @@ def _seed_runtime(seed: int | None) -> None:
         numpy.random.seed(seed % (2**32))
     except Exception:
         pass
+    try:
+        torch = importlib.import_module("torch")
+        torch.manual_seed(seed)
+        cuda = getattr(torch, "cuda", None)
+        manual_seed_all = getattr(cuda, "manual_seed_all", None)
+        if callable(manual_seed_all):
+            manual_seed_all(seed)
+    except Exception:
+        pass
 
 
 @contextmanager
@@ -1083,15 +1093,6 @@ def _preserved_rng_state() -> Iterator[None]:
             torch.set_rng_state(torch_cpu_state)
             if torch_cuda_states is not None:
                 torch.cuda.set_rng_state_all(torch_cuda_states)
-    try:
-        torch = importlib.import_module("torch")
-        torch.manual_seed(seed)
-        cuda = getattr(torch, "cuda", None)
-        manual_seed_all = getattr(cuda, "manual_seed_all", None)
-        if callable(manual_seed_all):
-            manual_seed_all(seed)
-    except Exception:
-        pass
 
 
 def _nested_attr(obj: Any, path: tuple[str, ...]) -> Any | None:

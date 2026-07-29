@@ -1,3 +1,4 @@
+import random
 import struct
 import threading
 import unittest
@@ -12,7 +13,10 @@ from qwen_tts_bridge_worker.engine import (
     SynthesisRequest,
     UnsupportedAudioFormatError,
 )
-from qwen_tts_bridge_worker.engine.qwen_engine import _prefill_snapshot_max_abs
+from qwen_tts_bridge_worker.engine.qwen_engine import (
+    _prefill_snapshot_max_abs,
+    _preserved_rng_state,
+)
 
 
 class _InnerModel:
@@ -1031,6 +1035,16 @@ class QwenEngineTests(unittest.TestCase):
                     output=AudioFormat(sample_rate=48000),
                 )
             )
+
+    def test_preserved_rng_state_restores_python_random(self) -> None:
+        random.seed(4242)
+        expected = random.random()
+        random.seed(4242)
+
+        with _preserved_rng_state():
+            random.random()
+
+        self.assertEqual(expected, random.random())
 
 
 if __name__ == "__main__":
