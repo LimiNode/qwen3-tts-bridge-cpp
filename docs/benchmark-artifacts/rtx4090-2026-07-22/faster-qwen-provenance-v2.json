@@ -1,0 +1,7 @@
+{
+  "bundle_path": "faster-qwen-request-compile-telemetry-patch/faster-qwen-request-compile-telemetry-through-20fb858.bundle",
+  "bundle_sha256": "c3b4bf1194213252d81c0ff4075b91eec93b92b6a029e04797d3543f9fa6ca9d",
+  "schema_version": 1,
+  "source_commit": "20fb8586348878257c99eb9d1ae7b6054ee2252e",
+  "wheel_sha256": "142ba31dc7e3c8fa76a21007c89677ee4849385212f99bd2a7ea70db234d70e1"
+}

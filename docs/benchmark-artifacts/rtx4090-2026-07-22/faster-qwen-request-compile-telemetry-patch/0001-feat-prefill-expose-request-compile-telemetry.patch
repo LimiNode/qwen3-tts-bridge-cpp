@@ -1,0 +1,346 @@
+From 20fb8586348878257c99eb9d1ae7b6054ee2252e Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Wed, 29 Jul 2026 08:45:04 +0300
+Subject: [PATCH] feat(prefill): expose request compile telemetry
+
+---
+ faster_qwen3_tts/streaming.py | 124 +++++++++++++++++++++++++++-------
+ tests/test_sampling.py        |  66 +++++++++++++-----
+ 2 files changed, 148 insertions(+), 42 deletions(-)
+
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 3edd067..e50049c 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -113,7 +113,9 @@ def _normalize_prefill_unknown_shape_policy(policy: str) -> str:
+     return policy
+ 
+ 
+-def _normalize_prefill_compile_lengths(lengths: Optional[Iterable[int]]) -> frozenset[int]:
++def _normalize_prefill_compile_lengths(
++    lengths: Optional[Iterable[int]],
++) -> frozenset[int]:
+     if lengths is None:
+         return frozenset()
+     normalized = frozenset(int(value) for value in lengths)
+@@ -159,6 +161,7 @@ def _run_talker_prefill(
+         input_metadata=input_metadata,
+     )
+     cache_stats = prefill_compile_cache_stats()
++    dynamo_unique_graphs_before = _dynamo_unique_graphs()
+     memory_before = _cuda_memory_stats("prefill_cuda_memory_before")
+     shape_length = int(talker_input_embeds.shape[1])
+     allowlist_hit = shape_length in compile_lengths if compile_lengths else False
+@@ -171,13 +174,32 @@ def _run_talker_prefill(
+         "prefill_skip_causal_mask": skip_prefill_causal_mask,
+         "prefill_compile_compat_mode": prefill_compile_compat_mode,
+         "prefill_compile_cache_hit": False,
++        "prefill_compile_attempted": False,
++        "prefill_compile_attempt_count": 0,
+         "prefill_compile_cache_entries": cache_stats["entries"],
++        "prefill_compile_cache_entries_before": cache_stats["entries"],
++        "prefill_compile_cache_entries_after": cache_stats["entries"],
++        "prefill_compile_cache_entries_delta": 0,
+         "prefill_compile_cache_talker_entries": cache_stats["talker_entries"].get(
+             id(talker),
+             0,
+         ),
++        "prefill_compile_cache_talker_entries_before": cache_stats[
++            "talker_entries"
++        ].get(id(talker), 0),
++        "prefill_compile_cache_talker_entries_after": cache_stats["talker_entries"].get(
++            id(talker), 0
++        ),
++        "prefill_compile_cache_talker_entries_delta": 0,
+         "prefill_compile_cache_max_entries": cache_stats["max_entries"],
+         "prefill_compile_cache_evictions": cache_stats["evictions"],
++        "prefill_compile_cache_evictions_before": cache_stats["evictions"],
++        "prefill_compile_cache_evictions_after": cache_stats["evictions"],
++        "prefill_compile_cache_evictions_delta": 0,
++        "prefill_dynamo_counter_available": dynamo_unique_graphs_before is not None,
++        "prefill_dynamo_unique_graphs_before": dynamo_unique_graphs_before,
++        "prefill_dynamo_unique_graphs_after": dynamo_unique_graphs_before,
++        "prefill_dynamo_unique_graphs_delta": 0,
+         "prefill_compile_cache_kind": "python_callable_lru",
+         "prefill_shape_length": shape_length,
+         "prefill_shape_talker_input_embeds": _jsonable_tensor_signature(
+@@ -218,7 +240,7 @@ def _run_talker_prefill(
+                 tts_pad_embed,
+                 skip_prefill_causal_mask=skip_prefill_causal_mask,
+             ),
+-            profile,
++            _finalize_prefill_observability(profile, talker),
+         )
+     if compile_lengths:
+         profile["prefill_shape_policy"] = (
+@@ -240,7 +262,7 @@ def _run_talker_prefill(
+                     tts_pad_embed,
+                     skip_prefill_causal_mask=skip_prefill_causal_mask,
+                 ),
+-                profile,
++                _finalize_prefill_observability(profile, talker),
+             )
+     elif not prefill_compile_on_miss:
+         profile["prefill_shape_policy"] = f"{unknown_shape_policy}_unknown"
+@@ -258,7 +280,7 @@ def _run_talker_prefill(
+                 tts_pad_embed,
+                 skip_prefill_causal_mask=skip_prefill_causal_mask,
+             ),
+-            profile,
++            _finalize_prefill_observability(profile, talker),
+         )
+     else:
+         profile["prefill_shape_policy"] = "compile_on_miss"
+@@ -286,7 +308,7 @@ def _run_talker_prefill(
+                 tts_pad_embed,
+                 skip_prefill_causal_mask=skip_prefill_causal_mask,
+             ),
+-            profile,
++            _finalize_prefill_observability(profile, talker),
+         )
+ 
+     try:
+@@ -308,6 +330,8 @@ def _run_talker_prefill(
+                         f"talker_prefill_length={shape_length}"
+                     )
+                 compile_started = time.perf_counter()
++                profile["prefill_compile_attempted"] = True
++                profile["prefill_compile_attempt_count"] += 1
+                 compiled = _compile_talker_prefill(talker, prefill_backend)
+                 profile["prefill_compile_wrapper_create_ms"] = round(
+                     (time.perf_counter() - compile_started) * 1000.0,
+@@ -322,9 +346,9 @@ def _run_talker_prefill(
+             )
+             cache_stats = prefill_compile_cache_stats()
+             profile["prefill_compile_cache_entries"] = cache_stats["entries"]
+-            profile["prefill_compile_cache_talker_entries"] = (
+-                cache_stats["talker_entries"].get(id(talker), 0)
+-            )
++            profile["prefill_compile_cache_talker_entries"] = cache_stats[
++                "talker_entries"
++            ].get(id(talker), 0)
+             profile["prefill_compile_cache_max_entries"] = cache_stats["max_entries"]
+             profile["prefill_compile_cache_evictions"] = cache_stats["evictions"]
+             call_started = time.perf_counter()
+@@ -360,12 +384,64 @@ def _run_talker_prefill(
+                 tts_pad_embed,
+                 skip_prefill_causal_mask=skip_prefill_causal_mask,
+             ),
+-            profile,
++            _finalize_prefill_observability(profile, talker),
+         )
+ 
+     profile["prefill_backend_used"] = prefill_backend
+     profile.update(_cuda_memory_stats("prefill_cuda_memory_after"))
+-    return out, profile
++    return out, _finalize_prefill_observability(profile, talker)
++
++
++def _finalize_prefill_observability(profile: dict[str, Any], talker) -> dict[str, Any]:
++    """Record request-local compile/cache deltas for fail-closed benchmarking."""
++
++    cache_stats = prefill_compile_cache_stats()
++    entries_after = cache_stats["entries"]
++    talker_entries_after = cache_stats["talker_entries"].get(id(talker), 0)
++    evictions_after = cache_stats["evictions"]
++    profile.update(
++        {
++            "prefill_compile_cache_entries": entries_after,
++            "prefill_compile_cache_entries_after": entries_after,
++            "prefill_compile_cache_entries_delta": (
++                entries_after - profile["prefill_compile_cache_entries_before"]
++            ),
++            "prefill_compile_cache_talker_entries": talker_entries_after,
++            "prefill_compile_cache_talker_entries_after": talker_entries_after,
++            "prefill_compile_cache_talker_entries_delta": (
++                talker_entries_after
++                - profile["prefill_compile_cache_talker_entries_before"]
++            ),
++            "prefill_compile_cache_evictions": evictions_after,
++            "prefill_compile_cache_evictions_after": evictions_after,
++            "prefill_compile_cache_evictions_delta": (
++                evictions_after - profile["prefill_compile_cache_evictions_before"]
++            ),
++        }
++    )
++    dynamo_unique_graphs_after = _dynamo_unique_graphs()
++    dynamo_unique_graphs_before = profile["prefill_dynamo_unique_graphs_before"]
++    if dynamo_unique_graphs_before is None or dynamo_unique_graphs_after is None:
++        profile["prefill_dynamo_counter_available"] = False
++        profile["prefill_dynamo_unique_graphs_after"] = None
++        profile["prefill_dynamo_unique_graphs_delta"] = None
++    else:
++        profile["prefill_dynamo_unique_graphs_after"] = dynamo_unique_graphs_after
++        profile["prefill_dynamo_unique_graphs_delta"] = (
++            dynamo_unique_graphs_after - profile["prefill_dynamo_unique_graphs_before"]
++        )
++    return profile
++
++
++def _dynamo_unique_graphs() -> int | None:
++    """Read the version-pinned Dynamo graph counter without mutating it."""
++
++    try:
++        counters = torch._dynamo.utils.counters
++        value = counters.get("stats", {}).get("unique_graphs", 0)
++    except (AttributeError, TypeError):
++        return None
++    return int(value) if isinstance(value, int) else None
+ 
+ 
+ def prefill_compile_cache_stats() -> dict[str, Any]:
+@@ -400,7 +476,9 @@ def clear_prefill_compile_cache(talker=None) -> dict[str, Any]:
+     }
+ 
+ 
+-def configure_prefill_compile_cache(*, max_entries: int | None = None) -> dict[str, Any]:
++def configure_prefill_compile_cache(
++    *, max_entries: int | None = None
++) -> dict[str, Any]:
+     global _PREFILL_COMPILE_CACHE_MAX_ENTRIES
+     with _PREFILL_COMPILE_CACHE_LOCK:
+         if max_entries is not None:
+@@ -518,7 +596,9 @@ def _normalize_prefill_mask_mode(prefill_mask_mode: str) -> str:
+     return mode
+ 
+ 
+-def _validate_prefill_configuration(prefill_backend: str, prefill_mask_mode: str) -> None:
++def _validate_prefill_configuration(
++    prefill_backend: str, prefill_mask_mode: str
++) -> None:
+     if prefill_backend == "eager":
+         return
+     if prefill_mask_mode != "skip":
+@@ -1133,10 +1213,11 @@ class _PrefillEvents:
+ 
+     def __init__(self, device, enabled: bool):
+         self._enabled = enabled and device.type == "cuda"
+-        self._events = {
+-            name: torch.cuda.Event(enable_timing=True)
+-            for name in self._KNOWN_EVENTS
+-        } if self._enabled else {}
++        self._events = (
++            {name: torch.cuda.Event(enable_timing=True) for name in self._KNOWN_EVENTS}
++            if self._enabled
++            else {}
++        )
+         self._stream_ids = {}
+ 
+     def record(self, name: str) -> None:
+@@ -1161,9 +1242,7 @@ class _PrefillEvents:
+             "talker_forward_gpu_stream_id": self._stream_id("start"),
+             "first_sample_gpu_stream_id": self._stream_id("after_forward"),
+             "generation_state_gpu_stream_id": self._stream_id("after_sample"),
+-            "prefill_to_sync_gpu_stream_id": self._stream_id(
+-                "after_generation_state"
+-            ),
++            "prefill_to_sync_gpu_stream_id": self._stream_id("after_generation_state"),
+         }
+         if profile_path == "fast":
+             event_profile.update(
+@@ -1298,8 +1377,7 @@ def _finalize_prefill_profile(
+         profile.setdefault(f"{name}_event_recorded", False)
+ 
+     profile["events_complete"] = all(
+-        profile.get(f"{name}_event_recorded") is True
+-        for name in required_event_names
++        profile.get(f"{name}_event_recorded") is True for name in required_event_names
+     )
+     component_values = [profile.get(key) for key in component_keys]
+     components_complete = all(
+@@ -1312,9 +1390,7 @@ def _finalize_prefill_profile(
+         float(value) >= 0.0 for value in component_values
+     )
+     stream_ids = [profile.get(key) for key in stream_id_keys]
+-    present_stream_ids = [
+-        int(value) for value in stream_ids if isinstance(value, int)
+-    ]
++    present_stream_ids = [int(value) for value in stream_ids if isinstance(value, int)]
+     profile["all_component_streams_equal"] = (
+         len(present_stream_ids) == len(stream_id_keys)
+         and len(set(present_stream_ids)) == 1
+diff --git a/tests/test_sampling.py b/tests/test_sampling.py
+index d3655a4..161cfdb 100644
+--- a/tests/test_sampling.py
++++ b/tests/test_sampling.py
+@@ -399,25 +399,50 @@ def test_run_talker_prefill_compiles_allowlisted_length(monkeypatch):
+ 
+         return compiled
+ 
+-    monkeypatch.setattr(streaming, "_compile_talker_prefill", fake_compile)
+-    tie, tam, tth, tpe = _dummy_prefill_inputs()
+-    _out, profile = _run_talker_prefill(
+-        DummyTalker(),
+-        tie,
+-        tam,
+-        tth,
+-        tpe,
+-        prefill_backend="compile_backend_eager",
+-        prefill_mask_mode="skip",
+-        prefill_compile_lengths=[tie.shape[1]],
+-        prefill_compile_on_miss=False,
+-        prefill_unknown_shape_policy="eager",
+-    )
++    streaming.clear_prefill_compile_cache()
++    try:
++        monkeypatch.setattr(streaming, "_compile_talker_prefill", fake_compile)
++        tie, tam, tth, tpe = _dummy_prefill_inputs()
++        talker = DummyTalker()
++        _out, profile = _run_talker_prefill(
++            talker,
++            tie,
++            tam,
++            tth,
++            tpe,
++            prefill_backend="compile_backend_eager",
++            prefill_mask_mode="skip",
++            prefill_compile_lengths=[tie.shape[1]],
++            prefill_compile_on_miss=False,
++            prefill_unknown_shape_policy="eager",
++        )
++        _out, replay_profile = _run_talker_prefill(
++            talker,
++            tie,
++            tam,
++            tth,
++            tpe,
++            prefill_backend="compile_backend_eager",
++            prefill_mask_mode="skip",
++            prefill_compile_lengths=[tie.shape[1]],
++            prefill_compile_on_miss=False,
++            prefill_unknown_shape_policy="eager",
++        )
+ 
+-    assert len(compile_calls) == 1
+-    assert profile["prefill_backend_used"] == "compile_backend_eager"
+-    assert profile["prefill_shape_policy"] == "compiled_allowlist"
+-    assert profile["prefill_shape_allowlist_hit"] is True
++        assert len(compile_calls) == 1
++        assert profile["prefill_backend_used"] == "compile_backend_eager"
++        assert profile["prefill_shape_policy"] == "compiled_allowlist"
++        assert profile["prefill_shape_allowlist_hit"] is True
++        assert profile["prefill_compile_attempted"] is True
++        assert profile["prefill_compile_attempt_count"] == 1
++        assert profile["prefill_compile_cache_entries_delta"] == 1
++        assert replay_profile["prefill_compile_cache_hit"] is True
++        assert replay_profile["prefill_compile_attempted"] is False
++        assert replay_profile["prefill_compile_attempt_count"] == 0
++        assert replay_profile["prefill_compile_cache_entries_delta"] == 0
++        assert replay_profile["prefill_compile_cache_evictions_delta"] == 0
++    finally:
++        streaming.clear_prefill_compile_cache()
+ 
+ 
+ def test_run_talker_prefill_unknown_length_uses_eager_before_compile(monkeypatch):
+@@ -453,6 +478,11 @@ def test_run_talker_prefill_unknown_length_uses_eager_before_compile(monkeypatch
+     assert profile["prefill_shape_policy"] == "eager_unknown"
+     assert profile["prefill_shape_allowlist_hit"] is False
+     assert profile["prefill_shape_length"] == tie.shape[1]
++    assert profile["prefill_compile_attempted"] is False
++    assert profile["prefill_compile_attempt_count"] == 0
++    assert profile["prefill_compile_cache_entries_delta"] == 0
++    assert profile["prefill_compile_cache_evictions_delta"] == 0
++    assert profile["prefill_dynamo_unique_graphs_delta"] == 0
+ 
+ 
+ def test_run_talker_prefill_unknown_length_can_fail_before_compile(monkeypatch):
