@@ -1,0 +1,8 @@
+{
+    "schema_version":  1,
+    "source_commit":  "85a70c24845fbbb6ae77fa9c9886880b103c38bc",
+    "base_commit":  "20fb8586348878257c99eb9d1ae7b6054ee2252e",
+    "wheel_sha256":  "607ee8248ac703f10c9e60d24e1d509fcb410f2010b3cadb67a997eb4ab34d18",
+    "patch_path":  "faster-qwen-first-chunk-scheduler-hardening-patch/0001-0002-faster-qwen-scheduler-hardening.patch",
+    "patch_sha256":  "8a9e26b9f9003619429de000b755ee2db1c5cb1cb69f0083d58a864dabaa0431"
+}

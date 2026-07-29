@@ -1,0 +1,1 @@
+{"acceptance_pass": true, "artifact": "tmp\\cpp-scheduler-telemetry-r20.json", "cache_entries_observed": [6], "cancelled_requests": 4, "completed_requests": 16, "failures": [], "worker_metrics": "tmp\\cpp-scheduler-telemetry-r20.log", "worker_metrics_sha256": "e02bb0025a45700c2b3935a0cb9eda015a36316211d06f21ba500a28381abfc0", "worker_pids": [27768]}

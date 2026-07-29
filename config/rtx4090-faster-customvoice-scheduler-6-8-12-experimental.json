@@ -1,7 +1,7 @@
 {
   "profile_schema_version": 1,
   "name": "rtx4090-faster-customvoice-scheduler-6-8-12-experimental",
-  "description": "Measured experimental RTX 4090 CustomVoice profile with a FasterQwen 6/8/12 first/second/steady PCM schedule. emit_every_frames is the legacy fallback when no schedule is provided. It is consumed by scripts/start-rtx4090-faster-customvoice.ps1, not directly by the worker.",
+  "description": "Measured experimental RTX 4090 CustomVoice profile with a FasterQwen 6/8/12 first/second/steady PCM schedule. It is not a product default: keep 5/8/12 deferred until 6/8/12 passes the broader playback-reserve and PCM-quality matrix. emit_every_frames is the legacy fallback when no schedule is provided. It is consumed by scripts/start-rtx4090-faster-customvoice.ps1, not directly by the worker.",
   "model_path": "models/Qwen3-TTS-12Hz-0.6B-CustomVoice",
   "runtime_backend": "faster",
   "device": "cuda",

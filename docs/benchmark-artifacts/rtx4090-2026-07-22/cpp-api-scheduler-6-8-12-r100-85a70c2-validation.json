@@ -1,0 +1,1 @@
+{"acceptance_pass": true, "artifact": "tmp\\cpp-schedule-6-8-12-reserve-r100.json", "cache_entries_observed": [6], "cancelled_requests": 0, "completed_requests": 100, "failures": [], "worker_metrics": "tmp\\cpp-schedule-6-8-12-reserve-r100.log", "worker_metrics_sha256": "ee12bb99a5de116fda79666d1a0c481f8ba5ca72e66a8c8a453080338c21e708", "worker_pids": [28268]}

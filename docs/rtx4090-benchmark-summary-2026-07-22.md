@@ -2940,6 +2940,80 @@ cpp-api-soak-schedule-6-8-12-r50-worker-metrics.log 5bfa16211fe243f9067de0731617
 faster-qwen-first-chunk-scheduler-through-0f85465.bundle 80fb1bcc1eff831293084f342ce67db0aa7b978311932a4edc513afbc1cec0d6
 ```
 
+### Scheduler Hardening Update - 2026-07-29
+
+The scheduler was hardened in FasterQwen commit `85a70c2`: public wrappers
+materialize an iterable schedule once, targets above 64 frames are rejected,
+and every emitted chunk is checked against its scheduled target. The bridge now
+records every delivered PCM callback, validates the `6,8,12` sequence, and
+uses `request_finished.final_pcm_chunk_index` to account for a full final
+chunk whose EOS is only known on the following decode step.
+
+The same immutable wheel (`607ee824...ab34d18`) was used for a profile-off,
+same-prompt C++ A/B: 3 warmups, 20 measured requests, 4 first-audio
+cancellations, fixed seed 4242, and the same six prewarmed exact-prefill
+forms. The scheduled run improved first-audio p95 from `267.168 ms` to
+`217.069 ms` (a `50.099 ms` reduction). Its completion p95 was `2657.135 ms`
+versus `2981.182 ms` and RTF p95 was `0.340` versus `0.384`. This is a narrow
+same-wheel measurement, not a general hardware claim.
+
+Both A/B sides passed the simulated 50 ms playback-reserve gate without an
+underrun. The fixed-8 minimum post-chunk reserve was `566.875 ms`; the
+scheduled minimum was `406.875 ms`. A scheduled C++ r100 follow-up also passed
+all protocol, sequence, cache and reserve checks in one worker process:
+first-audio median/p95 `211.826 / 222.398 ms`, completion median/p95
+`2592.578 / 2711.997 ms`, RTF median/p95 `0.332 / 0.347`, minimum reserve
+`406.875 ms`, and no underruns.
+
+A direct fixed-8 versus 6/8/12 PCM diagnostic used the same deterministic
+codec trace: `98` codec frames and identical codec SHA256. The PCM byte hashes
+are intentionally not equal because FasterQwen's decoder uses a different
+context window at different chunk boundaries. The resulting duration delta was
+`40.125 ms` (within the explicit 50 ms diagnostic limit), while candidate
+boundary jump p95/max was `3937 / 4910` S16 compared with fixed-8
+`6362 / 6630`. This is a boundary-continuity diagnostic, not a substitute for
+human listening evaluation.
+
+The fresh 63-operation semantic soak passed on all nine mixed prompt shapes:
+36 completed requests, 27 cancellations across before-first, after-first and
+after-third-audio stages, nine reference/post-cancellation fingerprints, one
+worker model PID, and no validation failures. It measured first-audio
+median/p95 `214.391 / 340.510 ms`, completion `2820.695 / 4299.761 ms`, and
+RTF `0.3424 / 0.3642`. Unknown shapes correctly use eager prefill, so the
+observed cache values are `6` for allowlisted forms and `0` for eager forms.
+
+`6 -> 8 -> 12` remains an experimental profile. Do not experiment with
+`5 -> 8 -> 12` yet: it is explicitly deferred until the current schedule has
+passed the broader shape/cache, p95 playback-reserve and PCM-quality matrix.
+
+Current hardening artifacts:
+
+```text
+faster-qwen-provenance-scheduler-hardening-v1.json
+faster-qwen-first-chunk-scheduler-hardening-patch/0001-0002-faster-qwen-scheduler-hardening.patch
+cpp-api-fixed8-r20-85a70c2.json
+cpp-api-fixed8-r20-85a70c2-validation.json
+cpp-api-fixed8-r20-85a70c2-playback.json
+cpp-api-scheduler-6-8-12-r20-85a70c2.json
+cpp-api-scheduler-6-8-12-r20-85a70c2-validation.json
+cpp-api-scheduler-6-8-12-r20-85a70c2-playback.json
+cpp-api-scheduler-6-8-12-r100-85a70c2.json
+cpp-api-scheduler-6-8-12-r100-85a70c2-validation.json
+cpp-api-scheduler-6-8-12-r100-85a70c2-playback.json
+scheduler-pcm-parity-fixed8-vs-6-8-12-85a70c2.json
+release-soak-schedule-6-8-12-85a70c2-r63.json
+```
+
+Key artifact SHA256:
+
+```text
+faster-qwen-provenance-scheduler-hardening-v1.json c3bf297f5a2be9a1e8a4e02451bc9f79643dfc69762ad38cd1e05e7fcd0d1e1f
+cpp-api-scheduler-6-8-12-r100-85a70c2.json 86048e3de01a6da82af0c9d0bf7a563b5ed8cd6f2214f65d3879a5e193cb1780
+scheduler-pcm-parity-fixed8-vs-6-8-12-85a70c2.json 8a2f815006857b6accede139fed1196de5b1b5bda76430c0296b45ae07c62bf0
+release-soak-schedule-6-8-12-85a70c2-r63.json 949fadb8385ccfc675c4d30e47a9228d0388fc5d390acdfe3711696ed0955221
+0001-0002-faster-qwen-scheduler-hardening.patch 8a9e26b9f9003619429de000b755ee2db1c5cb1cb69f0083d58a864dabaa0431
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`

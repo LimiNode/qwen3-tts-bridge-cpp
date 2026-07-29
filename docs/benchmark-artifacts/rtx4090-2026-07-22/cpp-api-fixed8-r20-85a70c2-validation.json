@@ -1,0 +1,1 @@
+{"acceptance_pass": true, "artifact": "tmp\\cpp-fixed8-ab-r20.json", "cache_entries_observed": [6], "cancelled_requests": 4, "completed_requests": 16, "failures": [], "worker_metrics": "tmp\\cpp-fixed8-ab-r20.log", "worker_metrics_sha256": "97e3a550cd38283c5d6ccc95482fa24b2a0a2ec219dd234db062548b4e915646", "worker_pids": [30156]}

@@ -1,0 +1,1 @@
+{"acceptance_pass": true, "artifact": "tmp\\cpp-schedule-6-8-12-reserve-r100.json", "completed_requests": 100, "failures": [], "minimum_post_chunk_reserve_ms": 406.875, "minimum_pre_arrival_buffer_ms": 214.61800000000002, "p05_post_chunk_reserve_ms": 406.875, "underruns": 0}
