@@ -21,6 +21,17 @@ class PlaybackReserveTests(unittest.TestCase):
         self.assertIsInstance(minimum_reserve, float)
         assert isinstance(minimum_reserve, float)
         self.assertGreater(minimum_reserve, 0.0)
+        self.assertNotIn("requests", report)
+
+    def test_includes_request_details_only_on_demand(self) -> None:
+        report = validate_playback_reserve(
+            _artifact([(100.0, 450.0), (300.0, 600.0)]),
+            reserve_ms=50.0,
+            min_completed_requests=1,
+            include_request_details=True,
+        )
+
+        self.assertIn("requests", report)
 
     def test_rejects_underrun(self) -> None:
         report = validate_playback_reserve(

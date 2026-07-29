@@ -13,6 +13,7 @@ def main() -> int:
     parser.add_argument("artifact", type=Path)
     parser.add_argument("--reserve-ms", type=float, default=50.0)
     parser.add_argument("--min-completed-requests", type=int, default=1)
+    parser.add_argument("--include-request-details", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -21,6 +22,7 @@ def main() -> int:
         artifact,
         reserve_ms=args.reserve_ms,
         min_completed_requests=args.min_completed_requests,
+        include_request_details=args.include_request_details,
     )
     report["artifact"] = str(args.artifact)
     if args.output:
@@ -34,6 +36,7 @@ def validate_playback_reserve(
     *,
     reserve_ms: float,
     min_completed_requests: int,
+    include_request_details: bool = False,
 ) -> dict[str, object]:
     failures: list[str] = []
     if not math.isfinite(reserve_ms) or reserve_ms < 0.0:
@@ -71,9 +74,23 @@ def validate_playback_reserve(
         request_failures = report["failures"]
         if isinstance(request_failures, list):
             failures.extend(str(value) for value in request_failures)
-        underruns += int(report["underruns"])
-        all_post_chunk_reserves.extend(report["post_chunk_reserve_ms"])
-        all_pre_arrival_buffers.extend(report["pre_arrival_buffer_ms"])
+        request_underruns = report["underruns"]
+        if isinstance(request_underruns, int):
+            underruns += request_underruns
+        post_chunk_reserves = report["post_chunk_reserve_ms"]
+        if isinstance(post_chunk_reserves, list):
+            all_post_chunk_reserves.extend(
+                float(value)
+                for value in post_chunk_reserves
+                if isinstance(value, (int, float))
+            )
+        pre_arrival_buffers = report["pre_arrival_buffer_ms"]
+        if isinstance(pre_arrival_buffers, list):
+            all_pre_arrival_buffers.extend(
+                float(value)
+                for value in pre_arrival_buffers
+                if isinstance(value, (int, float))
+            )
 
     if underruns != 0:
         failures.append(f"observed {underruns} playback underruns")
@@ -93,8 +110,9 @@ def validate_playback_reserve(
         "minimum_post_chunk_reserve_ms": minimum_reserve,
         "p05_post_chunk_reserve_ms": _percentile(all_post_chunk_reserves, 5.0),
         "minimum_pre_arrival_buffer_ms": min(all_pre_arrival_buffers, default=None),
-        "requests": reports,
     }
+    if include_request_details:
+        result["requests"] = reports
     return result
 
 
