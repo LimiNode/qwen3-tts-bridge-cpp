@@ -3099,11 +3099,14 @@ keeps it disabled.
 Same-wheel, profile-off A/B used the FasterQwen `58b0637` wheel above, the same
 nine texts and seeds, no cancellations, and the mixed run order
 fixed-8, route-aware, route-aware, fixed-8. Each side completed 108 requests.
-Route-aware `8,8,12` improved median completion from `3060.794 ms` to
-`2838.758 ms` (`7.25%`) and median inverse RTF from `2.6975` to `2.9370`
-(`8.88%`). It did not improve TTFA, as expected: `254.315 ms` versus
-`253.850 ms`. Completion p95 changed only from `5591.810 ms` to `5558.993 ms`,
-so this remains an RTX 4090 experimental opt-in rather than the default.
+The checked-in raw reports are now paired by label, occurrence, prefill length,
+route, and backend, then analysed with a deterministic 10,000-sample bootstrap.
+For the 72 compiled exact-allowlist pairs, `8,8,12` improved median completion
+by `8.273%` (95% bootstrap CI `6.677%` to `8.970%`) and inverse RTF by
+`9.037%` (CI `7.141%` to `9.854%`). The 36 eager-fallback controls show no
+reliable completion gain: `-1.096%` (CI `-3.011%` to `1.519%`). TTFA is not a
+benefit claim for this mode. This remains an RTX 4090 internal experimental
+opt-in rather than the default.
 
 The paired PCM matrix uses the six exact compiled forms and three verified
 eager-unknown forms. The candidate's selected route, backend and schedule are
@@ -3117,11 +3120,13 @@ The long wheel-only release soak ran 504 operations in one persistent worker:
 396 completed requests, 108 cancellations, and four cancellations per label at
 each of before-first-audio, after-first-audio, and after-third-audio. Semantic
 audits passed after every cancellation. The cache remained at six entries;
-process-tree RSS grew `37.695 MiB` and private bytes `83.980 MiB`. The raw run
-retains its original failed validator result: it predates the explicit
-`compiled_*` label contract and treated those labels as eager. The checked-in
-sidecar reruns the corrected validator against the raw artifact SHA-256 and
-passes without rerunning inference.
+process-tree RSS grew `37.695 MiB` and private bytes `83.980 MiB`. Its schema-v2
+sidecar reruns the corrected validator against the raw artifact SHA-256 and the
+checked-in schedule and seed manifest, rather than deriving expectations from
+observed requests. CUDA allocator growth and tail-slope gates pass. NVIDIA
+PID-memory telemetry was unavailable on this run, so the historical artifact
+is explicitly recorded with `allow_unsupported`; a future release soak must use
+the default required policy on a platform that exposes it.
 
 `5 -> 8 -> 12` remains intentionally deferred. It should only be reconsidered
 after a separate route-aware quality and long-soak experiment.
@@ -3131,8 +3136,14 @@ rtx4090-faster-customvoice-route-aware-scheduler-experimental.json
 rtx4090-faster-customvoice-route-aware-scheduler-release-experimental.json
 scheduler-mixed-fixed8-manifest-v1.jsonl
 same-wheel-profile-off-ab-r108-summary.json
+same-wheel-profile-off-ab-r108-fixed8-block1.json
+same-wheel-profile-off-ab-r108-route-aware-block1.json
+same-wheel-profile-off-ab-r108-fixed8-block2.json
+same-wheel-profile-off-ab-r108-route-aware-block2.json
+same-wheel-profile-off-ab-r108-paired.json
 scheduler-route-aware-quality-matrix-v1.jsonl
 scheduler-route-aware-quality-matrix-fixed8-vs-8-8-12.json
+scheduler-route-aware-quality-matrix-fixed8-vs-8-8-12-validation.json
 route-aware-release-soak-r504.json
 route-aware-release-soak-r504-validation.json
 ```
@@ -3141,8 +3152,23 @@ route-aware-release-soak-r504-validation.json
 same-wheel-profile-off-ab-r108-summary.json 5c077867e74f4ad2bae26a1557a6f6f37438c591d94bb99c2ef8b7b2f08f1291
 scheduler-route-aware-quality-matrix-fixed8-vs-8-8-12.json 95a9e107c57615f8cb375cf537d95e8eb4fcacf2e765a2eea29b143801ee77bf
 route-aware-release-soak-r504.json 59758263ead970129907a898a90133892faf8b8161002d7f3acf83259e7d11ea
-route-aware-release-soak-r504-validation.json 31e54e30958366c2374494b0159b58304a6aa02f0bb2cb5c344cbdc019357aed
+same-wheel-profile-off-ab-r108-paired.json 2510daebe40764ef1ddff5ec191051a8088b4acdf77045047cb9e399ade786b6
+scheduler-route-aware-quality-matrix-fixed8-vs-8-8-12-validation.json 9423744416d818ce96fe59078caf14d371c5a2e1e8eccea023c772d3c8df982d
+route-aware-release-soak-r504-validation.json 6be62fdc3fa65853a3d48ef1a152fff1f81c19f6a0800410306d7cfd7c588e8a
 ```
+
+### Canary Coverage Plan - 2026-07-30
+
+Do not change the exact allowlist or enable padded buckets from a benchmark
+guess. The internal canary schema in `route-aware-canary-telemetry.md` permits
+only prefill length, selected route/backend/schedule, and optional numeric
+latency values; it rejects text and all request-identifying fields. The local
+coverage summarizer requires at least 500 anonymous samples and 30 observations
+per unknown length. Only if exact-allowlist coverage remains below 90% after
+that gate may it recommend a separate padded-bucket correctness investigation.
+That investigation must include exact PCM/semantic checks, playback reserve
+validation, cache/memory soak, and a fresh RTX 4090 A/B. It does not authorize
+either padded compilation or `5 -> 8 -> 12` rollout.
 
 ## Sources
 
