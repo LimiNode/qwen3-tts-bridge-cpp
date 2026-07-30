@@ -89,6 +89,51 @@ _FREQUENCY_LIMITS = {
     "semantic_intent_id": 10,
     "key_phrase_id": 4,
 }
+_COMPATIBILITY = {
+    "game_commentary": {
+        "contexts": {"gameplay_stream"},
+        "intents": {
+            "spontaneous_reaction",
+            "game_commentary",
+            "coordination_instruction",
+            "explanation",
+        },
+    },
+    "live_chat": {
+        "contexts": {"just_chatting_stream", "community_event"},
+        "intents": {
+            "spontaneous_reaction",
+            "audience_reply",
+            "casual_discussion",
+            "story_anecdote",
+        },
+    },
+    "conversation": {
+        "contexts": {"offline_conversation"},
+        "intents": {
+            "casual_discussion",
+            "story_anecdote",
+            "explanation",
+            "opinion_review",
+        },
+    },
+    "game_review": {
+        "contexts": {"offline_conversation", "technical_stream"},
+        "intents": {"casual_discussion", "opinion_review", "explanation"},
+    },
+    "game_dialogue": {
+        "contexts": {"scripted_character"},
+        "intents": {"character_dialogue"},
+    },
+    "stream_event": {
+        "contexts": {"technical_stream", "community_event"},
+        "intents": {"spontaneous_reaction", "moderation_or_technical", "explanation"},
+    },
+    "transition": {
+        "contexts": {"gameplay_stream", "just_chatting_stream", "technical_stream"},
+        "intents": {"transition", "coordination_instruction", "explanation"},
+    },
+}
 _WORD_RE = re.compile(r"\S+")
 _BATCH_ID_RE = re.compile(r"v4-b(0[1-9]|10)")
 _RECORD_ID_RE = re.compile(r"v4-b(0[1-9]|10)-(?:00[1-9]|0[1-9]\d|1\d\d|200)")
@@ -110,88 +155,113 @@ def main() -> int:
 
 
 def _validate(paths: list[Path], expected_batches: int) -> dict[str, object]:
-    batches = [_load_batch(path) for path in paths]
+    loaded = [_load_batch(path) for path in paths]
+    batches = [batch for batch, _ in loaded]
+    parse_failures = [failure for _, failures in loaded for failure in failures]
     records = [record for batch in batches for record in batch]
-    repetition = _audit(records)
+    record_failures = _record_failures(records)
+    valid_records = [record for record in records if _record_valid(record)]
+    valid_batches = [
+        [record for record in batch if _record_valid(record)] for batch in batches
+    ]
+    repetition = _audit(valid_records) if valid_records else {"passed": True}
     failures = {
         "batch_record_count": [
             str(path)
             for path, batch in zip(paths, batches, strict=True)
             if len(batch) != _BATCH_RECORDS
         ],
-        "record_contract": _record_failures(records),
-        "batch_identity": _batch_identity_failures(batches),
+        "parse": parse_failures,
+        "record_contract": record_failures,
+        "batch_identity": _batch_identity_failures(valid_batches),
+        "contiguous_batch_prefix": _contiguous_prefix_failures(valid_batches),
         "duplicate_record_id": _duplicate_values(records, "record_id"),
-        "duplicate_text": _duplicate_texts(records),
-        "quota_ceiling": _quota_failures(records),
-        "metadata_frequency": _metadata_frequency_failures(records),
+        "duplicate_text": _duplicate_texts(valid_records),
+        "quota_ceiling": _quota_failures(valid_records),
+        "metadata_frequency": _metadata_frequency_failures(valid_records),
         "repetition": repetition["violations"] if not repetition["passed"] else {},
     }
     complete = len(paths) == expected_batches
     if complete:
-        failures["quota_completion"] = _quota_completion_failures(records)
+        failures["quota_completion"] = _quota_completion_failures(valid_records)
     passed = not any(failures.values())
     return {
         "corpus_v4_batch_validation_schema_version": 1,
         "batch_count": len(paths),
         "expected_batch_count": expected_batches,
         "record_count": len(records),
+        "valid_record_count": len(valid_records),
         "complete": complete,
         "input_sha256": {
             str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths
         },
         "distributions": {
-            key: dict(sorted(Counter(str(record[key]) for record in records).items()))
+            key: dict(
+                sorted(Counter(str(record[key]) for record in valid_records).items())
+            )
             for key in _GLOBAL_QUOTAS
         },
-        "remaining_quotas": _remaining_quotas(records),
+        "remaining_quotas": _remaining_quotas(valid_records),
         "failures": failures,
         "passed": passed,
     }
 
 
-def _load_batch(path: Path) -> list[dict[str, object]]:
+def _load_batch(path: Path) -> tuple[list[dict[str, object]], list[str]]:
     records = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    failures = []
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), 1
+    ):
         if line.strip():
-            value = json.loads(line)
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError:
+                failures.append(f"{path}:{line_number}:invalid_json")
+                continue
             if not isinstance(value, dict):
-                raise RuntimeError(f"{path} has a non-object record")
+                failures.append(f"{path}:{line_number}:non_object")
+                continue
             records.append(value)
-    return records
+    if not records and not failures:
+        failures.append(f"{path}:empty_file")
+    return records, failures
 
 
 def _record_failures(records: list[dict[str, object]]) -> list[str]:
     failures = []
     for index, record in enumerate(records, 1):
-        if _REQUIRED.difference(record):
-            failures.append(str(index))
-            continue
-        if any(
-            not isinstance(record[field], str) or not str(record[field]).strip()
-            for field in _REQUIRED
-        ):
-            failures.append(str(index))
-            continue
-        if any(record[field] not in values for field, values in _ENUMS.items()):
-            failures.append(str(index))
-            continue
-        text = str(record["text"])
-        length_class = str(record["intended_length_class"])
-        batch_id = str(record["batch_id"])
-        record_id = str(record["record_id"])
-        if not _BATCH_ID_RE.fullmatch(batch_id) or not _RECORD_ID_RE.fullmatch(
-            record_id
-        ):
-            failures.append(str(index))
-            continue
-        if not record_id.startswith(f"{batch_id}-"):
-            failures.append(str(index))
-            continue
-        minimum, maximum = _WORD_RANGES[str(length_class)]
-        if not minimum <= len(_WORD_RE.findall(text)) <= maximum:
+        if not _record_valid(record):
             failures.append(str(index))
     return failures
+
+
+def _record_valid(record: dict[str, object]) -> bool:
+    if _REQUIRED.difference(record):
+        return False
+    if any(
+        not isinstance(record[field], str) or not str(record[field]).strip()
+        for field in _REQUIRED
+    ):
+        return False
+    if any(record[field] not in values for field, values in _ENUMS.items()):
+        return False
+    category = str(record["category"])
+    compatibility = _COMPATIBILITY[category]
+    if str(record["scene_context"]) not in compatibility["contexts"]:
+        return False
+    if str(record["speech_intent"]) not in compatibility["intents"]:
+        return False
+    text = str(record["text"])
+    length_class = str(record["intended_length_class"])
+    batch_id = str(record["batch_id"])
+    record_id = str(record["record_id"])
+    if not _BATCH_ID_RE.fullmatch(batch_id) or not _RECORD_ID_RE.fullmatch(record_id):
+        return False
+    if not record_id.startswith(f"{batch_id}-"):
+        return False
+    minimum, maximum = _WORD_RANGES[length_class]
+    return minimum <= len(_WORD_RE.findall(text)) <= maximum
 
 
 def _duplicate_texts(records: list[dict[str, object]]) -> dict[str, int]:
@@ -217,6 +287,16 @@ def _batch_identity_failures(batches: list[list[dict[str, object]]]) -> list[str
         if record_ids != expected:
             failures.append(str(index))
     return failures
+
+
+def _contiguous_prefix_failures(batches: list[list[dict[str, object]]]) -> list[str]:
+    batch_ids = {str(record["batch_id"]) for batch in batches for record in batch}
+    expected = {f"v4-b{index:02d}" for index in range(1, len(batches) + 1)}
+    return (
+        []
+        if batch_ids == expected
+        else sorted(batch_ids.symmetric_difference(expected))
+    )
 
 
 def _metadata_frequency_failures(

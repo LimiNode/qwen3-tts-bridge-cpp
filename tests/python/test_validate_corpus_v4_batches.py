@@ -31,12 +31,33 @@ class CorpusV4BatchValidationTests(unittest.TestCase):
         self.assertEqual(["1"], result["failures"]["record_contract"])
         self.assertTrue(result["failures"]["duplicate_record_id"])
 
+    def test_missing_text_returns_failure_report_without_traceback(self) -> None:
+        records = _records()
+        del records[0]["text"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = _write(Path(directory), records)
+            result = _validate([path], 10)
 
-def _records() -> list[dict[str, object]]:
+        self.assertFalse(result["passed"])
+        self.assertEqual(["1"], result["failures"]["record_contract"])
+        self.assertEqual({}, result["failures"]["repetition"])
+
+    def test_non_contiguous_batch_prefix_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = _write(root / "first", _records("v4-b01"))
+            seventh = _write(root / "seventh", _records("v4-b07"))
+            result = _validate([first, seventh], 10)
+
+        self.assertFalse(result["passed"])
+        self.assertTrue(result["failures"]["contiguous_batch_prefix"])
+
+
+def _records(batch_id: str = "v4-b01") -> list[dict[str, object]]:
     return [
         {
-            "batch_id": "v4-b01",
-            "record_id": f"v4-b01-{index:03d}",
+            "batch_id": batch_id,
+            "record_id": f"{batch_id}-{index:03d}",
             "text": f"Фраза номер {index}.",
             "language_class": "ru",
             "category": "game_commentary",
@@ -52,6 +73,7 @@ def _records() -> list[dict[str, object]]:
 
 
 def _write(directory: Path, records: list[dict[str, object]]) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
     path = directory / "batch.jsonl"
     path.write_text(
         "".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records),
