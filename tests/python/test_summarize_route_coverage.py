@@ -146,7 +146,7 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
             min_samples_per_length=30,
         )
         self.assertTrue(bucket["evidence_gate_pass"])
-        self.assertEqual("prototype_padded_bucket_correctness", bucket["decision"])
+        self.assertEqual("investigate_exact_lengths", bucket["decision"])
 
         release = _summary(
             [
@@ -161,10 +161,7 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
             min_unknown_requests=100,
             min_samples_per_length=30,
         )
-        self.assertEqual(
-            "evaluate_padded_bucket_release_candidate",
-            release["decision"],
-        )
+        self.assertEqual("investigate_exact_lengths", release["decision"])
 
         insufficient = _summary(exact + unknown[:-1], min_requests=500)
         self.assertFalse(insufficient["evidence_gate_pass"])
@@ -198,7 +195,7 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
                 self.assertEqual(0, main())
             required_arguments = arguments + [
                 "--require-decision",
-                "prototype_padded_bucket_correctness",
+                "investigate_exact_lengths",
             ]
             with patch.object(sys, "argv", required_arguments):
                 self.assertEqual(1, main())
@@ -247,12 +244,9 @@ def _summary(
         min_unknown_requests=cast(int, defaults["min_unknown_requests"]),
         min_samples_per_length=cast(int, defaults["min_samples_per_length"]),
         min_eligible_unknown_coverage_percent=cast(
-            float,
-            defaults["min_eligible_unknown_coverage_percent"]
+            float, defaults["min_eligible_unknown_coverage_percent"]
         ),
-        min_exact_coverage_percent=cast(
-            float, defaults["min_exact_coverage_percent"]
-        ),
+        min_exact_coverage_percent=cast(float, defaults["min_exact_coverage_percent"]),
     )
 
 

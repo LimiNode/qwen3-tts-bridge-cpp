@@ -113,16 +113,12 @@ def main() -> int:
             "validator_schema_version": _VALIDATOR_SCHEMA_VERSION,
             "validator_commit": _validator_commit(),
             "runtime_profile_manifest": provenance["runtime_profile_manifest"],
-            "compiled_allowlist_manifest": provenance[
-                "compiled_allowlist_manifest"
-            ],
+            "compiled_allowlist_manifest": provenance["compiled_allowlist_manifest"],
         }
     )
     if args.require_decision is not None:
         summary["required_decision"] = args.require_decision
-        summary["required_decision_pass"] = (
-            summary["decision"] == args.require_decision
-        )
+        summary["required_decision_pass"] = summary["decision"] == args.require_decision
     if args.require_evidence_source is not None:
         summary["required_evidence_source"] = args.require_evidence_source
         summary["required_evidence_source_pass"] = (
@@ -139,8 +135,7 @@ def _decision_choices() -> tuple[str, ...]:
     return (
         "collect_more_anonymous_coverage",
         "keep_exact_allowlist",
-        "prototype_padded_bucket_correctness",
-        "evaluate_padded_bucket_release_candidate",
+        "investigate_exact_lengths",
     )
 
 
@@ -476,9 +471,7 @@ def _summarize(
         min_requests=min_requests,
         min_unknown_requests=min_unknown_requests,
         min_exact_coverage_percent=min_exact_coverage_percent,
-        min_eligible_unknown_coverage_percent=(
-            min_eligible_unknown_coverage_percent
-        ),
+        min_eligible_unknown_coverage_percent=(min_eligible_unknown_coverage_percent),
     )
     decision = _decision(
         input_valid=input_valid,
@@ -556,8 +549,7 @@ def _evidence_gate_pass(
         return True
     return (
         unknown_count >= min_unknown_requests
-        and eligible_unknown_coverage_percent
-        >= min_eligible_unknown_coverage_percent
+        and eligible_unknown_coverage_percent >= min_eligible_unknown_coverage_percent
     )
 
 
@@ -575,9 +567,7 @@ def _decision(
         return "collect_more_anonymous_coverage"
     if exact_coverage_percent >= min_exact_coverage_percent:
         return "keep_exact_allowlist"
-    if evidence_source == "synthetic_proxy":
-        return "prototype_padded_bucket_correctness"
-    return "evaluate_padded_bucket_release_candidate"
+    return "investigate_exact_lengths"
 
 
 def _histogram(values: dict[int, int] | Counter[int]) -> dict[str, int]:
@@ -638,8 +628,7 @@ def _exit_success(summary: dict[str, object]) -> bool:
         return False
     required_source = summary.get("required_evidence_source")
     return (
-        required_source is None
-        or summary.get("required_evidence_source_pass") is True
+        required_source is None or summary.get("required_evidence_source_pass") is True
     )
 
 
