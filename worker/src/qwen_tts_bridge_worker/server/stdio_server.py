@@ -364,6 +364,7 @@ class StdioWorkerServer:
 
         request = self._parse_synthesis_request(request_id, message)
         if request is None:
+            self._emit_rejected_request_finished(request_id, received_at)
             return
 
         with self._condition:
@@ -893,6 +894,20 @@ class StdioWorkerServer:
             request_id=slot.request.request_id,
             terminal_state=terminal_state,
             **_runtime_memory_fields(),
+        )
+
+    def _emit_rejected_request_finished(
+        self,
+        request_id: int,
+        received_at: float,
+    ) -> None:
+        self._metrics.emit(
+            "request_finished",
+            request_id=request_id,
+            terminal_state="failed",
+            total_ms=elapsed_milliseconds(received_at),
+            audio_chunks=0,
+            audio_bytes=0,
         )
 
     def _terminalize_locked(self, request_id: int) -> None:

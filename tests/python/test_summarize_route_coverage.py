@@ -47,6 +47,12 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
             summary["outcome_histogram"],
         )
         self.assertEqual(1, summary["completed_latency_record_count"])
+        self.assertEqual(
+            10.0,
+            summary["completed_latency_by_route"]["compiled_allowlist"][
+                "first_audio_ms"
+            ]["median"],
+        )
 
     def test_rejects_route_contract_violations(self) -> None:
         mutations = {

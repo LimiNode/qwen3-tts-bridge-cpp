@@ -308,10 +308,11 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             )
         )
         output_stream = io.BytesIO()
+        error_stream = io.StringIO()
         server = StdioWorkerServer(
             input_stream=input_stream,
             output_stream=output_stream,
-            error_stream=io.StringIO(),
+            error_stream=error_stream,
             engine=RequestValidationEngine(),
         )
 
@@ -331,6 +332,17 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             },
             _payload(frames[1]),
         )
+        metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in error_stream.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+        ]
+        terminal = next(
+            metric
+            for metric in metrics
+            if metric["event"] == "request_finished" and metric["request_id"] == 1
+        )
+        self.assertEqual("failed", terminal["terminal_state"])
 
     def test_warmup_metrics_are_emitted(self) -> None:
         input_stream = io.BytesIO(

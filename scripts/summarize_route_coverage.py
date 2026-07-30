@@ -512,6 +512,7 @@ def _summarize(
         "invalid_route_count": sum(invalid_routes.values()),
         "invalid_route_reasons": dict(sorted(invalid_routes.items())),
         "completed_latency_record_count": len(completed_records),
+        "completed_latency_by_route": _latency_by_route(completed_records),
         "compiled_lengths": sorted(compiled_lengths),
         "exact_allowlist_count": exact_count,
         "exact_allowlist_coverage_percent": exact_coverage_percent,
@@ -576,6 +577,52 @@ def _decision(
 
 def _histogram(values: dict[int, int] | Counter[int]) -> dict[str, int]:
     return {str(length): count for length, count in sorted(values.items())}
+
+
+def _latency_by_route(
+    completed_records: list[dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for record in completed_records:
+        route = str(record["prefill_shape_policy"])
+        grouped.setdefault(route, []).append(record)
+    summaries: dict[str, dict[str, object]] = {}
+    for route, records in sorted(grouped.items()):
+        summary: dict[str, object] = {"count": len(records)}
+        for metric in ("first_audio_ms", "completed_ms", "inverse_rtf"):
+            summary[metric] = _numeric_summary(
+                [_completed_metric(record, metric) for record in records]
+            )
+        summaries[route] = summary
+    return summaries
+
+
+def _completed_metric(record: dict[str, object], metric: str) -> float:
+    value = record[metric]
+    assert isinstance(value, (int, float))
+    assert not isinstance(value, bool)
+    return float(value)
+
+
+def _numeric_summary(values: list[float]) -> dict[str, float]:
+    ordered = sorted(values)
+    return {
+        "min": ordered[0],
+        "median": _percentile(ordered, 0.5),
+        "p95": _percentile(ordered, 0.95),
+        "max": ordered[-1],
+        "mean": sum(ordered) / len(ordered),
+    }
+
+
+def _percentile(values: list[float], quantile: float) -> float:
+    if len(values) == 1:
+        return values[0]
+    position = (len(values) - 1) * quantile
+    lower = int(position)
+    upper = min(lower + 1, len(values) - 1)
+    fraction = position - lower
+    return values[lower] + (values[upper] - values[lower]) * fraction
 
 
 def _exit_success(summary: dict[str, object]) -> bool:
