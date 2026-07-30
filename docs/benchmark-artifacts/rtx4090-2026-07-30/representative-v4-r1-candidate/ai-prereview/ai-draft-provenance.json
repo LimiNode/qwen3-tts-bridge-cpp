@@ -1,0 +1,12 @@
+{
+    "ai_draft_provenance_schema_version":  1,
+    "draft_status":  "ai_draft_pending_human_authoring",
+    "draft_author":  "codex_ai_draft",
+    "proposals_sha256":  "3178c058db7659f1e4863f0aa38c79edccd7030bf0730067c789c287a444e2b4",
+    "targeted_authoring_source_sha256":  "1560f4a7249c78825d6803d0e82648eeac4e8856dfb2c5ce3554869e6ffb29c5",
+    "general_authoring_source_sha256":  "4957ab6383e1db4889045c2641d6efbeaf3e3e3281bfa25bde0ac39929795b5c",
+    "targeted_draft_sha256":  "c699fd7cebd6bdd4f1949bfdb87c33ac88b6afacd86b5a5ca0ca15959b0b2370",
+    "general_draft_sha256":  "6df87eaee6ca13b9dad87f0e4d757eebec8d3c75b801a501445397c8a51340d0",
+    "targeted_draft_count":  52,
+    "general_draft_count":  12
+}

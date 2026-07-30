@@ -15,3 +15,8 @@ The authoring forms are intentionally not accepted by either overlay
 materializer. Preserve their identity fields, write a natural replacement into
 `proposed_replacement_text`, give the author a non-empty `author_id`, and use a
 new provenance-pinned repair workflow to validate any completed proposals.
+
+`ai-draft-proposals-64.json` and the two `*.ai-draft.jsonl` files are draft
+wording proposed by Codex. They are deliberately marked
+`ai_draft_pending_human_authoring`; they do not overwrite the blank forms and
+must be reviewed, amended, or rejected by a human author before use.
