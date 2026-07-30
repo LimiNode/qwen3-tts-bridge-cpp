@@ -1,0 +1,66 @@
+{
+    "policy_order":  [
+                         "fixed8",
+                         "route-aware",
+                         "route-aware",
+                         "fixed8"
+                     ],
+    "same_wheel_commit":  "58b0637",
+    "fixed8":  {
+                   "completed_requests":  108,
+                   "ttfa_ms":  {
+                                   "p50":  254.3145,
+                                   "p95":  388.0602
+                               },
+                   "completion_ms":  {
+                                         "p50":  3060.794,
+                                         "p95":  5591.8097499999985
+                                     },
+                   "rtf":  {
+                               "p50":  0.371,
+                               "p95":  0.392
+                           },
+                   "inverse_rtf":  {
+                                       "p50":  2.6975,
+                                       "p95":  2.81025
+                                   },
+                   "audio_chunks":  {
+                                        "mean":  15.111111111111111,
+                                        "p50":  14
+                                    },
+                   "codec_decode_wall_ms":  {
+                                                "mean":  0,
+                                                "p50":  0
+                                            }
+               },
+    "route_aware":  {
+                        "completed_requests":  108,
+                        "ttfa_ms":  {
+                                        "p50":  253.8495,
+                                        "p95":  394.2534
+                                    },
+                        "completion_ms":  {
+                                              "p50":  2838.758,
+                                              "p95":  5558.9928
+                                          },
+                        "rtf":  {
+                                    "p50":  0.3405,
+                                    "p95":  0.3893
+                                },
+                        "inverse_rtf":  {
+                                            "p50":  2.937,
+                                            "p95":  3.03465
+                                        },
+                        "audio_chunks":  {
+                                             "mean":  12.555555555555555,
+                                             "p50":  10
+                                         },
+                        "codec_decode_wall_ms":  {
+                                                     "mean":  0,
+                                                     "p50":  0
+                                                 }
+                    },
+    "completion_p50_improvement_percent":  7.254196133421587,
+    "completion_p95_improvement_percent":  0.58687529560530471,
+    "inverse_rtf_p50_improvement_percent":  8.8785912882298526
+}

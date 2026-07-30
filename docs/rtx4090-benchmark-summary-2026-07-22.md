@@ -3087,6 +3087,63 @@ route-aware-8-8-12-mixed-r108-validation.json b2eff6bc59fa4a1b6f5c50cc9e2e4cfa85
 route-aware-8-8-12-mixed-r108-playback.json 3fc9403cd7974cf797eda62dc8e84ea100862f6a505035f5b1277718659c5711
 ```
 
+### Route-Aware Release Validation - 2026-07-30
+
+The route-aware scheduler is now guarded as a cross-field configuration
+contract. It may not be combined with a global schedule and requires the
+strict exact-allowlist setup: `exact_allowlist`, eager unknown-shape fallback,
+no compile-on-miss, and precompiled warmup coverage. The diagnostic profile
+keeps prefill profiling enabled; the release experimental profile explicitly
+keeps it disabled.
+
+Same-wheel, profile-off A/B used the FasterQwen `58b0637` wheel above, the same
+nine texts and seeds, no cancellations, and the mixed run order
+fixed-8, route-aware, route-aware, fixed-8. Each side completed 108 requests.
+Route-aware `8,8,12` improved median completion from `3060.794 ms` to
+`2838.758 ms` (`7.25%`) and median inverse RTF from `2.6975` to `2.9370`
+(`8.88%`). It did not improve TTFA, as expected: `254.315 ms` versus
+`253.850 ms`. Completion p95 changed only from `5591.810 ms` to `5558.993 ms`,
+so this remains an RTX 4090 experimental opt-in rather than the default.
+
+The paired PCM matrix uses the six exact compiled forms and three verified
+eager-unknown forms. The candidate's selected route, backend and schedule are
+part of the fail-closed contract: compiled forms selected `8,8,12`, eager forms
+selected `8`. All nine pairs have exact PCM duration equality, equal codec
+terminal traces, and zero clipped S16 samples. The `unknown_45` control PCM has
+an inherent `1845.504` S16 DC window delta under fixed-8 on both sides, so the
+matrix's absolute DC guard is `2000`; it is not a route-aware regression.
+
+The long wheel-only release soak ran 504 operations in one persistent worker:
+396 completed requests, 108 cancellations, and four cancellations per label at
+each of before-first-audio, after-first-audio, and after-third-audio. Semantic
+audits passed after every cancellation. The cache remained at six entries;
+process-tree RSS grew `37.695 MiB` and private bytes `83.980 MiB`. The raw run
+retains its original failed validator result: it predates the explicit
+`compiled_*` label contract and treated those labels as eager. The checked-in
+sidecar reruns the corrected validator against the raw artifact SHA-256 and
+passes without rerunning inference.
+
+`5 -> 8 -> 12` remains intentionally deferred. It should only be reconsidered
+after a separate route-aware quality and long-soak experiment.
+
+```text
+rtx4090-faster-customvoice-route-aware-scheduler-experimental.json
+rtx4090-faster-customvoice-route-aware-scheduler-release-experimental.json
+scheduler-mixed-fixed8-manifest-v1.jsonl
+same-wheel-profile-off-ab-r108-summary.json
+scheduler-route-aware-quality-matrix-v1.jsonl
+scheduler-route-aware-quality-matrix-fixed8-vs-8-8-12.json
+route-aware-release-soak-r504.json
+route-aware-release-soak-r504-validation.json
+```
+
+```text
+same-wheel-profile-off-ab-r108-summary.json 5c077867e74f4ad2bae26a1557a6f6f37438c591d94bb99c2ef8b7b2f08f1291
+scheduler-route-aware-quality-matrix-fixed8-vs-8-8-12.json 95a9e107c57615f8cb375cf537d95e8eb4fcacf2e765a2eea29b143801ee77bf
+route-aware-release-soak-r504.json 59758263ead970129907a898a90133892faf8b8161002d7f3acf83259e7d11ea
+route-aware-release-soak-r504-validation.json 31e54e30958366c2374494b0159b58304a6aa02f0bb2cb5c344cbdc019357aed
+```
+
 ## Sources
 
 - `external/python/Qwen3-TTS-streaming/examples/test_streaming_optimized.py`
