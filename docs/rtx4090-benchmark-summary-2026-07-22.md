@@ -3163,12 +3163,17 @@ Do not change the exact allowlist or enable padded buckets from a benchmark
 guess. The internal canary schema in `route-aware-canary-telemetry.md` permits
 only prefill length, selected route/backend/schedule, and optional numeric
 latency values; it rejects text and all request-identifying fields. The local
-coverage summarizer requires at least 500 anonymous samples and 30 observations
-per unknown length. Only if exact-allowlist coverage remains below 90% after
-that gate may it recommend a separate padded-bucket correctness investigation.
-That investigation must include exact PCM/semantic checks, playback reserve
-validation, cache/memory soak, and a fresh RTX 4090 A/B. It does not authorize
-either padded compilation or `5 -> 8 -> 12` rollout.
+coverage summarizer is schema-v2 and requires one anonymous runtime-profile
+fingerprint, a full verified route/cache contract, at least 500 valid samples,
+and at least 100 valid unknown-shape samples. It treats 30-observation unknown
+lengths as eligible candidates and requires them to cover 80% of unknown
+traffic; the rare long tail is reported but does not block a decision forever.
+Only if exact-allowlist coverage remains below 90% after that gate may it
+recommend a separate padded-bucket correctness investigation. Invalid route,
+backend, schedule, cache, fallback, or profile records fail the summary rather
+than affecting coverage. That investigation must include exact PCM/semantic
+checks, playback reserve validation, cache/memory soak, and a fresh RTX 4090
+A/B. It does not authorize either padded compilation or `5 -> 8 -> 12` rollout.
 
 ## Sources
 
