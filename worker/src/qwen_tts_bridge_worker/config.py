@@ -193,6 +193,7 @@ class QwenEngineConfig:
                 "non-negative"
             )
         self._validate_exact_allowlist_contract()
+        self._validate_route_aware_schedule_contract()
         if (
             self.prefill_first_chunk_warmup_enabled
             and self.prefill_compile_policy != "exact_allowlist"
@@ -337,6 +338,38 @@ class QwenEngineConfig:
                 "qwen.prefill_compile_policy=exact_allowlist with "
                 "strict_bf16_sdpa_v1 requires "
                 "prefill_allowlist_max_abs_threshold=0.0"
+            )
+
+    def _validate_route_aware_schedule_contract(self) -> None:
+        route_aware_enabled = bool(
+            self.compiled_emit_chunk_schedule or self.eager_emit_chunk_schedule
+        )
+        if not route_aware_enabled:
+            return
+        if self.emit_chunk_schedule:
+            raise ValueError(
+                "qwen.emit_chunk_schedule cannot be combined with route-aware "
+                "chunk schedules"
+            )
+        if self.prefill_compile_policy != "exact_allowlist":
+            raise ValueError(
+                "route-aware chunk schedules require "
+                "prefill_compile_policy=exact_allowlist"
+            )
+        if self.prefill_unknown_shape_policy != "eager":
+            raise ValueError(
+                "route-aware chunk schedules require "
+                "prefill_unknown_shape_policy=eager"
+            )
+        if self.prefill_compile_on_miss:
+            raise ValueError(
+                "route-aware chunk schedules require "
+                "prefill_compile_on_miss=false"
+            )
+        if not self.prefill_require_precompiled:
+            raise ValueError(
+                "route-aware chunk schedules require "
+                "prefill_require_precompiled=true"
             )
 
 

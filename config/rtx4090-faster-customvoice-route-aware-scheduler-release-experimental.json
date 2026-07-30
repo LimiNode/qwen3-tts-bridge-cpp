@@ -1,7 +1,7 @@
 {
   "profile_schema_version": 1,
-  "name": "rtx4090-faster-customvoice-route-aware-scheduler-experimental",
-  "description": "Diagnostic RTX 4090 CustomVoice profile. The worker selects 8/8/12 only after a verified compiled allowlist prefill and keeps unknown eager shapes on fixed 8 frames. Profiling is enabled for investigation only; use the release experimental profile for performance policy validation. Compiled 6/8/12 and 8/12 candidates were rejected after mixed r108 playback underruns.",
+  "name": "rtx4090-faster-customvoice-route-aware-scheduler-release-experimental",
+  "description": "Experimental release-mode RTX 4090 CustomVoice profile. Compiled exact-allowlist requests use 8/8/12 and verified eager unknown-shape requests use fixed 8. Profiling is disabled so this profile is suitable for release-policy safety and performance validation, but it is not a product default.",
   "model_path": "models/Qwen3-TTS-12Hz-0.6B-CustomVoice",
   "runtime_backend": "faster",
   "device": "cuda",
@@ -26,5 +26,5 @@
   "prefill_first_chunk_warmup": true,
   "prefill_first_chunk_warmup_length": 32,
   "collect_generation_trace": true,
-  "profile_prefill": true
+  "profile_prefill": false
 }

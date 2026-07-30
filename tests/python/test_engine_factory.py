@@ -487,6 +487,40 @@ class EngineFactoryTests(unittest.TestCase):
 
         QwenEngineConfig(**valid)
 
+    def test_qwen_config_rejects_invalid_route_aware_schedule_contract(self) -> None:
+        valid: dict[str, Any] = {
+            "model_path": "models/qwen",
+            "runtime_backend": "faster",
+            "dtype": "bfloat16",
+            "attn_implementation": "sdpa",
+            "prefill_backend": "compile_reduce_overhead",
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_lengths": (32,),
+            "prefill_compile_on_miss": False,
+            "prefill_unknown_shape_policy": "eager",
+            "prefill_compile_policy": "exact_allowlist",
+            "prefill_allowlist_warmup_manifest": "manifest.json",
+            "prefill_require_precompiled": True,
+            "compiled_emit_chunk_schedule": (8, 8, 12),
+            "eager_emit_chunk_schedule": (8,),
+        }
+        invalid_updates: tuple[dict[str, Any], ...] = (
+            {"emit_chunk_schedule": (8,)},
+            {"prefill_compile_policy": "diagnostic_dynamic"},
+            {"prefill_unknown_shape_policy": "error"},
+            {"prefill_compile_on_miss": True},
+            {"prefill_require_precompiled": False},
+        )
+
+        for update in invalid_updates:
+            qwen_config = dict(valid)
+            qwen_config.update(update)
+            with self.subTest(update=update):
+                with self.assertRaises(ValueError):
+                    QwenEngineConfig(**qwen_config)
+
+        QwenEngineConfig(**valid)
+
     def test_reject_invalid_mock_delay(self) -> None:
         for value in (-1.0, math.inf, math.nan):
             with self.subTest(value=value):

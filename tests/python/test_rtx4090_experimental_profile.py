@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 from pathlib import Path
+from typing import cast
 
 from qwen_tts_bridge_worker.config import QwenEngineConfig
 
@@ -100,18 +101,60 @@ class Rtx4090ExperimentalProfileTests(unittest.TestCase):
             ).read_text(encoding="utf-8")
         )
 
-        config = QwenEngineConfig(
-            model_path=profile["model_path"],
-            runtime_backend=profile["runtime_backend"],
-            emit_every_frames=profile["emit_every_frames"],
-            compiled_emit_chunk_schedule=tuple(
-                profile["compiled_emit_chunk_schedule"]
-            ),
-            eager_emit_chunk_schedule=tuple(profile["eager_emit_chunk_schedule"]),
-        )
+        config = _route_aware_config(profile)
 
         self.assertEqual(config.compiled_emit_chunk_schedule, (8, 8, 12))
         self.assertEqual(config.eager_emit_chunk_schedule, (8,))
+        self.assertTrue(config.profile_prefill)
+
+    def test_release_route_aware_profile_disables_profiling(self) -> None:
+        profile_name = (
+            "rtx4090-faster-customvoice-route-aware-scheduler-"
+            "release-experimental.json"
+        )
+        profile = json.loads(
+            (
+                _ROOT
+                / "config"
+                / profile_name
+            ).read_text(encoding="utf-8")
+        )
+
+        config = _route_aware_config(profile)
+
+        self.assertEqual(config.compiled_emit_chunk_schedule, (8, 8, 12))
+        self.assertEqual(config.eager_emit_chunk_schedule, (8,))
+        self.assertFalse(config.profile_prefill)
+
+
+def _route_aware_config(profile: dict[str, object]) -> QwenEngineConfig:
+    return QwenEngineConfig(
+        model_path=str(profile["model_path"]),
+        runtime_backend=str(profile["runtime_backend"]),  # type: ignore[arg-type]
+        device=str(profile["device"]),
+        dtype=str(profile["dtype"]),
+        attn_implementation=str(profile["attn_implementation"]),
+        emit_every_frames=cast(int, profile["emit_every_frames"]),
+        compiled_emit_chunk_schedule=tuple(
+            cast(list[int], profile["compiled_emit_chunk_schedule"])
+        ),
+        eager_emit_chunk_schedule=tuple(
+            cast(list[int], profile["eager_emit_chunk_schedule"])
+        ),
+        prefill_backend=str(profile["prefill_backend"]),  # type: ignore[arg-type]
+        prefill_compile_compat_mode=str(profile["prefill_compile_compat_mode"]),  # type: ignore[arg-type]
+        prefill_compile_lengths=tuple(
+            cast(list[int], profile["prefill_compile_lengths"])
+        ),
+        prefill_compile_on_miss=bool(profile["prefill_compile_on_miss"]),
+        prefill_unknown_shape_policy=str(profile["prefill_unknown_shape_policy"]),  # type: ignore[arg-type]
+        prefill_compile_policy=str(profile["prefill_compile_policy"]),  # type: ignore[arg-type]
+        prefill_allowlist_warmup_manifest=str(
+            profile["prefill_allowlist_warmup_manifest"]
+        ),
+        prefill_require_precompiled=bool(profile["prefill_require_precompiled"]),
+        profile_prefill=bool(profile["profile_prefill"]),
+    )
 
 
 if __name__ == "__main__":

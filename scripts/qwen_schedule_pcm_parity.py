@@ -77,7 +77,12 @@ def main() -> int:
     )
     pairs = []
     failures: list[str] = []
-    for case, baseline, candidate in zip(cases, baseline_results, candidate_results):
+    for case, baseline, candidate in zip(
+        cases,
+        baseline_results,
+        candidate_results,
+        strict=True,
+    ):
         _write_pair_wavs(args.wav_dir, str(case["label"]), baseline, candidate)
         pair_failures = _compare(
             baseline,
@@ -90,6 +95,7 @@ def main() -> int:
             max_spectral_high_ratio_delta=args.max_spectral_high_ratio_delta,
             max_clip_sample_count=args.max_clip_sample_count,
         )
+        pair_failures.extend(_validate_candidate_contract(case, candidate))
         failures.extend(f"{case['label']}: {failure}" for failure in pair_failures)
         pairs.append(
             {
@@ -192,6 +198,7 @@ def _run_cases(
         harness.close()
     for request_id, result in enumerate(results, 1):
         result["generation_trace"] = _generation_trace(metrics, request_id=request_id)
+        result["stream_metadata"] = _stream_metadata(metrics, request_id=request_id)
         result["worker_label"] = label
     return results
 
@@ -268,6 +275,60 @@ def _generation_trace(
                 if key not in {"event", "request_id"}
             }
     return None
+
+
+def _stream_metadata(
+    metrics: list[dict[str, object]],
+    *,
+    request_id: int,
+) -> dict[str, object] | None:
+    """Return route and schedule metadata from the request's first PCM chunk."""
+
+    for metric in metrics:
+        if (
+            metric.get("event") == "request_pcm_chunk"
+            and metric.get("request_id") == request_id
+            and metric.get("chunk_index") == 0
+        ):
+            return {
+                key: metric[key]
+                for key in (
+                    "prefill_backend_used",
+                    "prefill_shape_policy",
+                    "selected_chunk_schedule",
+                )
+                if key in metric
+            }
+    return None
+
+
+def _validate_candidate_contract(
+    case: dict[str, object],
+    candidate: dict[str, object],
+) -> list[str]:
+    """Fail closed when an optional case route/schedule contract is not observed."""
+
+    expected = {
+        "expected_candidate_route": "prefill_shape_policy",
+        "expected_candidate_backend": "prefill_backend_used",
+        "expected_candidate_chunk_schedule": "selected_chunk_schedule",
+    }
+    if not any(key in case for key in expected):
+        return []
+    metadata = candidate.get("stream_metadata")
+    if not isinstance(metadata, dict):
+        return ["candidate is missing first PCM route/schedule metadata"]
+    failures: list[str] = []
+    for expected_key, metadata_key in expected.items():
+        if expected_key not in case:
+            continue
+        expected_value = case[expected_key]
+        actual_value = metadata.get(metadata_key)
+        if actual_value != expected_value:
+            failures.append(
+                f"candidate {metadata_key} {actual_value!r} != {expected_value!r}"
+            )
+    return failures
 
 
 def _boundary_quality(

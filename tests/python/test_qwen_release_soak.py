@@ -61,6 +61,63 @@ class ReleaseSoakTests(unittest.TestCase):
             cast(list[str], validation["failures"]),
         )
 
+    def test_accepts_explicit_compiled_route_contract(self) -> None:
+        result = _completed(1, "compiled_32", "normal")
+        result["shape"] = {
+            "label": "compiled_32",
+            "expected_backend": "compile_reduce_overhead",
+            "expected_route": "compiled_allowlist",
+            "expected_chunk_schedule": [8, 8, 12],
+        }
+        result.update(
+            {
+                "first_chunk_prefill_backend_used": "compile_reduce_overhead",
+                "first_chunk_prefill_shape_policy": "compiled_allowlist",
+                "first_chunk_selected_chunk_schedule": [8, 8, 12],
+                "first_chunk_prefill_compile_cache_hit": True,
+                "first_chunk_prefill_require_precompiled": True,
+            }
+        )
+
+        validation = _validate_release_soak(
+            [result],
+            _snapshots(),
+            _worker_memory_metrics([result]),
+            expected_cache_entries=6,
+            expected_requests=1,
+            expected_cancellations=0,
+            expected_labels={"compiled_32"},
+            cancellations_per_stage=0,
+            max_rss_growth_mb=1.0,
+        )
+
+        self.assertEqual([], cast(list[str], validation["failures"]))
+
+    def test_accepts_compiled_label_legacy_artifact(self) -> None:
+        result = _completed(1, "compiled_32", "normal")
+        result["shape"] = {"label": "compiled_32"}
+        result.update(
+            {
+                "first_chunk_prefill_backend_used": "compile_reduce_overhead",
+                "first_chunk_prefill_compile_cache_hit": True,
+                "first_chunk_prefill_require_precompiled": True,
+            }
+        )
+
+        validation = _validate_release_soak(
+            [result],
+            _snapshots(),
+            _worker_memory_metrics([result]),
+            expected_cache_entries=6,
+            expected_requests=1,
+            expected_cancellations=0,
+            expected_labels={"compiled_32"},
+            cancellations_per_stage=0,
+            max_rss_growth_mb=1.0,
+        )
+
+        self.assertEqual([], cast(list[str], validation["failures"]))
+
 
 def _completed(request_id: int, label: str, role: str) -> dict[str, object]:
     return {

@@ -725,6 +725,28 @@ def _load_run_shapes(path: Path | None) -> list[dict[str, object]]:
         scenario_id = item.get("scenario_id", "")
         if not isinstance(scenario_id, str):
             raise ValueError(f"shape JSONL line {line_number} has invalid scenario_id")
+        expected_route = item.get("expected_route")
+        expected_backend = item.get("expected_backend")
+        expected_chunk_schedule = item.get("expected_chunk_schedule")
+        if expected_route is not None and not isinstance(expected_route, str):
+            raise ValueError(
+                f"shape JSONL line {line_number} has invalid expected_route"
+            )
+        if expected_backend is not None and not isinstance(expected_backend, str):
+            raise ValueError(
+                f"shape JSONL line {line_number} has invalid expected_backend"
+            )
+        if expected_chunk_schedule is not None and (
+            not isinstance(expected_chunk_schedule, list)
+            or not expected_chunk_schedule
+            or any(
+                not isinstance(value, int) or value <= 0
+                for value in expected_chunk_schedule
+            )
+        ):
+            raise ValueError(
+                f"shape JSONL line {line_number} has invalid expected_chunk_schedule"
+            )
         shapes.append(
             {
                 "label": label,
@@ -734,6 +756,9 @@ def _load_run_shapes(path: Path | None) -> list[dict[str, object]]:
                 "instruction": item.get("instruction", ""),
                 "talker_prefill_length": talker_prefill_length,
                 "scenario_id": scenario_id,
+                "expected_route": expected_route,
+                "expected_backend": expected_backend,
+                "expected_chunk_schedule": expected_chunk_schedule,
             }
         )
     return shapes

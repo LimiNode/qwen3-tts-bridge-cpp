@@ -467,8 +467,21 @@ def _validate_route(
 ) -> None:
     shape = result.get("shape")
     label = shape.get("label") if isinstance(shape, dict) else ""
-    known = isinstance(label, str) and label.startswith("allowlist_")
+    known = isinstance(label, str) and label.startswith(("allowlist_", "compiled_"))
     expected_backend = "compile_reduce_overhead" if known else "eager"
+    expected_route: str | None = None
+    expected_schedule: list[int] | None = None
+    if isinstance(shape, dict):
+        configured_backend = shape.get("expected_backend")
+        configured_route = shape.get("expected_route")
+        configured_schedule = shape.get("expected_chunk_schedule")
+        if isinstance(configured_backend, str):
+            expected_backend = configured_backend
+            known = configured_backend == "compile_reduce_overhead"
+        if isinstance(configured_route, str):
+            expected_route = configured_route
+        if isinstance(configured_schedule, list):
+            expected_schedule = configured_schedule
     for key, expected in (
         ("first_chunk_prefill_backend_used", expected_backend),
         ("first_chunk_prefill_compile_fallback", False),
@@ -493,6 +506,19 @@ def _validate_route(
         ):
             if result.get(key) != expected:
                 failures.append(f"{prefix}: expected {key}={expected!r}")
+    if expected_route is not None and (
+        result.get("first_chunk_prefill_shape_policy") != expected_route
+    ):
+        failures.append(
+            f"{prefix}: expected first_chunk_prefill_shape_policy={expected_route!r}"
+        )
+    if expected_schedule is not None and (
+        result.get("first_chunk_selected_chunk_schedule") != expected_schedule
+    ):
+        failures.append(
+            f"{prefix}: expected first_chunk_selected_chunk_schedule="
+            f"{expected_schedule!r}"
+        )
 
 
 def _memory_validation(

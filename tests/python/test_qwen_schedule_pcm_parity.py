@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from scripts.qwen_schedule_pcm_parity import _compare
+from scripts.qwen_schedule_pcm_parity import _compare, _validate_candidate_contract
 
 
 class SchedulePcmParityTests(unittest.TestCase):
@@ -34,6 +34,23 @@ class SchedulePcmParityTests(unittest.TestCase):
             "boundary_quality.max_boundary_jump_s16 exceeds maximum 100.000",
             _compare(_case(), candidate, max_boundary_jump_s16=100.0),
         )
+
+    def test_rejects_candidate_route_or_schedule_contract_mismatch(self) -> None:
+        case = {
+            "expected_candidate_route": "compiled_allowlist",
+            "expected_candidate_backend": "compile_reduce_overhead",
+            "expected_candidate_chunk_schedule": [8, 8, 12],
+        }
+        candidate = _case()
+        candidate["stream_metadata"] = {
+            "prefill_shape_policy": "eager_unknown",
+            "prefill_backend_used": "eager",
+            "selected_chunk_schedule": [8],
+        }
+
+        failures = _validate_candidate_contract(case, candidate)
+
+        self.assertEqual(3, len(failures))
 
 
 def _case() -> dict[str, object]:
