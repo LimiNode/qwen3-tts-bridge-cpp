@@ -83,3 +83,11 @@ but does not claim a global minimum. Then re-run the full ten-batch validator,
 review. Keep the source batches immutable; commit the repair-set, reviewed
 overlay, materialization report, and resulting validation artifacts together
 only after all gates pass.
+
+Create the 98-row targeted replacement-review form with
+`scripts/prepare_corpus_v4_targeted_review.py` and evaluate a completed form
+with `scripts/evaluate_corpus_v4_targeted_review.py`. The gate checks the exact
+authoring, repair-set, overlay, source/replacement text, and target metadata;
+it passes only when one named human reviewer has completed every replacement
+without a negative quality or metadata-only finding. A pending form, an AI
+pre-review, or a blanket approval is not a completed human-review result.

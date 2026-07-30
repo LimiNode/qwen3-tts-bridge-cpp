@@ -25,6 +25,22 @@ class CorpusV4BatchValidationTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertEqual(1100, result["remaining_quotas"]["language_class"]["ru"])
 
+    def test_explicit_input_label_makes_report_portable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = _write(Path(directory), _records())
+            result = _validate([path], 10, ["materialized-batches/v4-b01.jsonl"])
+
+        self.assertEqual(
+            ["materialized-batches/v4-b01.jsonl"],
+            list(result["input_sha256"]),
+        )
+
+    def test_input_labels_must_match_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = _write(Path(directory), _records())
+            with self.assertRaisesRegex(RuntimeError, "once for every input"):
+                _validate([path], 10, ["one", "two"])
+
     def test_unknown_enum_and_duplicate_record_id_fail(self) -> None:
         records = _records()
         records[0]["category"] = "unknown"

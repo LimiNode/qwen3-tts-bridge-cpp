@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import unittest
 
-from scripts.split_corpus_v4_runtime import _select_review_sample, _split_records
+from scripts.split_corpus_v4_runtime import (
+    _batch_coverage,
+    _select_review_sample,
+    _split_records,
+    _validate_batch_coverage,
+)
 
 
 class SplitCorpusV4RuntimeTests(unittest.TestCase):
@@ -43,6 +48,16 @@ class SplitCorpusV4RuntimeTests(unittest.TestCase):
             .issubset({record["record_id"] for record in discovery})
         )
         self.assertTrue(all(record["corpus_split"] == "discovery" for record in review))
+        self.assertEqual(
+            [f"v4-b{index:02d}" for index in range(1, 11)],
+            _batch_coverage(review),
+        )
+
+    def test_batch_coverage_rejects_missing_batch(self) -> None:
+        records = _records()[:1800]
+
+        with self.assertRaisesRegex(RuntimeError, "missing=.*v4-b10"):
+            _validate_batch_coverage(records, "test")
 
 
 def _records() -> list[dict[str, object]]:

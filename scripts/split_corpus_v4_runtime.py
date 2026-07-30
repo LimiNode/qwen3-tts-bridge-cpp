@@ -33,6 +33,7 @@ _REQUIRED_FIELDS = {
     "semantic_intent_id",
     "key_phrase_id",
 }
+_EXPECTED_BATCH_IDS = frozenset(f"v4-b{index:02d}" for index in range(1, 11))
 
 
 def main() -> int:
@@ -49,6 +50,9 @@ def main() -> int:
     records = _load_records(source)
     discovery, holdout = _split_records(records, args.seed)
     review = _select_review_sample(discovery, args.seed)
+    _validate_batch_coverage(discovery, "discovery")
+    _validate_batch_coverage(holdout, "runtime measurement holdout")
+    _validate_batch_coverage(review, "manual review")
     _write_jsonl(args.discovery_output, discovery)
     _write_jsonl(args.holdout_output, holdout)
     _write_jsonl(args.review_sample_output, review)
@@ -206,14 +210,40 @@ def _audit(
             "runtime_measurement_holdout": _distributions(holdout),
             "manual_review": _distributions(review),
         },
+        "batch_coverage": {
+            "source": _batch_coverage(records),
+            "discovery": _batch_coverage(discovery),
+            "runtime_measurement_holdout": _batch_coverage(holdout),
+            "manual_review": _batch_coverage(review),
+        },
     }
 
 
 def _distributions(records: list[dict[str, object]]) -> dict[str, dict[str, int]]:
     return {
         field: dict(sorted(Counter(str(record[field]) for record in records).items()))
-        for field in ("category", "language_class", "intended_length_class")
+        for field in (
+            "category",
+            "language_class",
+            "intended_length_class",
+            "batch_id",
+        )
     }
+
+
+def _batch_coverage(records: list[dict[str, object]]) -> list[str]:
+    return sorted({str(record["batch_id"]) for record in records})
+
+
+def _validate_batch_coverage(records: list[dict[str, object]], name: str) -> None:
+    coverage = set(_batch_coverage(records))
+    if coverage != _EXPECTED_BATCH_IDS:
+        missing = sorted(_EXPECTED_BATCH_IDS.difference(coverage))
+        unexpected = sorted(coverage.difference(_EXPECTED_BATCH_IDS))
+        raise RuntimeError(
+            f"{name} does not cover every corpus batch: "
+            f"missing={missing}, unexpected={unexpected}"
+        )
 
 
 def _write_jsonl(path: Path, records: list[dict[str, object]]) -> None:

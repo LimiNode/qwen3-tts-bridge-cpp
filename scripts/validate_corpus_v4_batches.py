@@ -152,17 +152,21 @@ def main() -> int:
     parser.add_argument("inputs", type=Path, nargs="+")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--expected-batches", type=int, default=10)
+    parser.add_argument("--input-label", action="append", default=[])
     args = parser.parse_args()
     if args.expected_batches <= 0:
         parser.error("--expected-batches must be positive")
-    result = _validate(args.inputs, args.expected_batches)
+    result = _validate(args.inputs, args.expected_batches, args.input_label)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, sort_keys=True), encoding="utf-8")
     print(json.dumps(result, sort_keys=True))
     return 0 if result["passed"] else 1
 
 
-def _validate(paths: list[Path], expected_batches: int) -> dict[str, Any]:
+def _validate(
+    paths: list[Path], expected_batches: int, input_labels: list[str] | None = None
+) -> dict[str, Any]:
+    labels = _input_labels(paths, input_labels)
     loaded = [_load_batch(path) for path in paths]
     batches = [batch for batch, _ in loaded]
     parse_failures = [failure for _, failures in loaded for failure in failures]
@@ -205,7 +209,8 @@ def _validate(paths: list[Path], expected_batches: int) -> dict[str, Any]:
         "valid_record_count": len(valid_records),
         "complete": complete,
         "input_sha256": {
-            str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths
+            label: hashlib.sha256(path.read_bytes()).hexdigest()
+            for path, label in zip(paths, labels, strict=True)
         },
         "distributions": {
             key: dict(
@@ -217,6 +222,18 @@ def _validate(paths: list[Path], expected_batches: int) -> dict[str, Any]:
         "failures": failures,
         "passed": passed,
     }
+
+
+def _input_labels(paths: list[Path], input_labels: list[str] | None) -> list[str]:
+    if input_labels is None or not input_labels:
+        return [str(path) for path in paths]
+    if len(input_labels) != len(paths):
+        raise RuntimeError("--input-label must be supplied once for every input")
+    if any(not label.strip() for label in input_labels):
+        raise RuntimeError("--input-label values must not be empty")
+    if len(set(input_labels)) != len(input_labels):
+        raise RuntimeError("--input-label values must be unique")
+    return input_labels
 
 
 def _load_batch(path: Path) -> tuple[list[dict[str, object]], list[str]]:
