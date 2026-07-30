@@ -35,6 +35,7 @@ class PaddedBucketMechanismGateTests(unittest.TestCase):
 def _route() -> dict[str, object]:
     return {
         "corpus_id": "v4",
+        "runtime_profile_id": "strict_bf16_sdpa_v1",
         "input_valid": True,
         "input_record_count": 1500,
         "evidence_source": "synthetic_proxy",
@@ -53,6 +54,7 @@ def _route() -> dict[str, object]:
 def _audit() -> dict[str, object]:
     return {
         "corpus_id": "v4",
+        "automated_preflight_status": "passed",
         "generator_source_sha256": "generator",
         "generation_config_sha256": "config",
     }
@@ -69,7 +71,10 @@ def _manual(audit: dict[str, object]) -> dict[str, object]:
 
 
 def _args() -> argparse.Namespace:
-    return argparse.Namespace(minimum_discovery_records=1500)
+    return argparse.Namespace(
+        minimum_discovery_records=1500,
+        runtime_profile_id="strict_bf16_sdpa_v1",
+    )
 
 
 def _sha(value: dict[str, object]) -> str:

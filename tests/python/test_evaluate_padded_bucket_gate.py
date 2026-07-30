@@ -60,6 +60,7 @@ def _route() -> dict[str, object]:
 def _audit() -> dict[str, object]:
     return {
         "corpus_id": "v4",
+        "automated_preflight_status": "passed",
         "generator_source_sha256": "generator",
         "generation_config_sha256": "config",
     }

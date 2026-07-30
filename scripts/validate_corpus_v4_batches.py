@@ -16,6 +16,8 @@ except ModuleNotFoundError:
 
 _BATCH_RECORDS = 200
 _REQUIRED = {
+    "batch_id",
+    "record_id",
     "text",
     "language_class",
     "category",
@@ -42,8 +44,54 @@ _GLOBAL_QUOTAS = {
         "long": 400,
         "extended": 200,
     },
+    "category": {
+        "game_commentary": 490,
+        "live_chat": 380,
+        "conversation": 320,
+        "game_review": 260,
+        "game_dialogue": 100,
+        "stream_event": 330,
+        "transition": 120,
+    },
+}
+_ENUMS = {
+    "language_class": frozenset(_GLOBAL_QUOTAS["language_class"]),
+    "category": frozenset(_GLOBAL_QUOTAS["category"]),
+    "intended_length_class": frozenset(_WORD_RANGES),
+    "scene_context": frozenset(
+        {
+            "gameplay_stream",
+            "just_chatting_stream",
+            "technical_stream",
+            "offline_conversation",
+            "scripted_character",
+            "community_event",
+        }
+    ),
+    "speech_intent": frozenset(
+        {
+            "spontaneous_reaction",
+            "audience_reply",
+            "game_commentary",
+            "casual_discussion",
+            "opinion_review",
+            "character_dialogue",
+            "coordination_instruction",
+            "moderation_or_technical",
+            "story_anecdote",
+            "transition",
+            "explanation",
+        }
+    ),
+}
+_FREQUENCY_LIMITS = {
+    "template_family_id": 20,
+    "semantic_intent_id": 10,
+    "key_phrase_id": 4,
 }
 _WORD_RE = re.compile(r"\S+")
+_BATCH_ID_RE = re.compile(r"v4-b(0[1-9]|10)")
+_RECORD_ID_RE = re.compile(r"v4-b(0[1-9]|10)-(?:00[1-9]|0[1-9]\d|1\d\d|200)")
 
 
 def main() -> int:
@@ -72,8 +120,11 @@ def _validate(paths: list[Path], expected_batches: int) -> dict[str, object]:
             if len(batch) != _BATCH_RECORDS
         ],
         "record_contract": _record_failures(records),
+        "batch_identity": _batch_identity_failures(batches),
+        "duplicate_record_id": _duplicate_values(records, "record_id"),
         "duplicate_text": _duplicate_texts(records),
         "quota_ceiling": _quota_failures(records),
+        "metadata_frequency": _metadata_frequency_failures(records),
         "repetition": repetition["violations"] if not repetition["passed"] else {},
     }
     complete = len(paths) == expected_batches
@@ -93,6 +144,7 @@ def _validate(paths: list[Path], expected_batches: int) -> dict[str, object]:
             key: dict(sorted(Counter(str(record[key]) for record in records).items()))
             for key in _GLOBAL_QUOTAS
         },
+        "remaining_quotas": _remaining_quotas(records),
         "failures": failures,
         "passed": passed,
     }
@@ -115,9 +167,25 @@ def _record_failures(records: list[dict[str, object]]) -> list[str]:
         if _REQUIRED.difference(record):
             failures.append(str(index))
             continue
-        text = record["text"]
-        length_class = record["intended_length_class"]
-        if not isinstance(text, str) or length_class not in _WORD_RANGES:
+        if any(
+            not isinstance(record[field], str) or not str(record[field]).strip()
+            for field in _REQUIRED
+        ):
+            failures.append(str(index))
+            continue
+        if any(record[field] not in values for field, values in _ENUMS.items()):
+            failures.append(str(index))
+            continue
+        text = str(record["text"])
+        length_class = str(record["intended_length_class"])
+        batch_id = str(record["batch_id"])
+        record_id = str(record["record_id"])
+        if not _BATCH_ID_RE.fullmatch(batch_id) or not _RECORD_ID_RE.fullmatch(
+            record_id
+        ):
+            failures.append(str(index))
+            continue
+        if not record_id.startswith(f"{batch_id}-"):
             failures.append(str(index))
             continue
         minimum, maximum = _WORD_RANGES[str(length_class)]
@@ -129,6 +197,49 @@ def _record_failures(records: list[dict[str, object]]) -> list[str]:
 def _duplicate_texts(records: list[dict[str, object]]) -> dict[str, int]:
     counts = Counter(str(record.get("text", "")).casefold() for record in records)
     return dict(sorted((text, count) for text, count in counts.items() if count > 1))
+
+
+def _duplicate_values(records: list[dict[str, object]], field: str) -> dict[str, int]:
+    counts = Counter(str(record.get(field, "")) for record in records)
+    return dict(sorted((value, count) for value, count in counts.items() if count > 1))
+
+
+def _batch_identity_failures(batches: list[list[dict[str, object]]]) -> list[str]:
+    failures = []
+    for index, batch in enumerate(batches, 1):
+        batch_ids = {record.get("batch_id") for record in batch}
+        record_ids = {record.get("record_id") for record in batch}
+        if len(batch_ids) != 1 or len(record_ids) != _BATCH_RECORDS:
+            failures.append(str(index))
+            continue
+        batch_id = next(iter(batch_ids))
+        expected = {f"{batch_id}-{record:03d}" for record in range(1, 201)}
+        if record_ids != expected:
+            failures.append(str(index))
+    return failures
+
+
+def _metadata_frequency_failures(
+    records: list[dict[str, object]],
+) -> dict[str, dict[str, int]]:
+    failures = {}
+    for field, limit in _FREQUENCY_LIMITS.items():
+        counts = Counter(str(record.get(field, "")) for record in records)
+        over = {value: count for value, count in counts.items() if count > limit}
+        if over:
+            failures[field] = over
+    return failures
+
+
+def _remaining_quotas(records: list[dict[str, object]]) -> dict[str, dict[str, int]]:
+    return {
+        field: {
+            value: quota
+            - Counter(str(record.get(field)) for record in records).get(value, 0)
+            for value, quota in quotas.items()
+        }
+        for field, quotas in _GLOBAL_QUOTAS.items()
+    }
 
 
 def _quota_failures(records: list[dict[str, object]]) -> dict[str, dict[str, int]]:

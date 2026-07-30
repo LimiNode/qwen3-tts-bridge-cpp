@@ -19,6 +19,7 @@ def main() -> int:
     parser.add_argument("--audit", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--minimum-discovery-records", type=int, default=1500)
+    parser.add_argument("--runtime-profile-id", default="strict_bf16_sdpa_v1")
     args = parser.parse_args()
     if args.minimum_discovery_records <= 0:
         parser.error("--minimum-discovery-records must be positive")
@@ -64,6 +65,7 @@ def _evaluate(
     controls = _control_groups(histogram)
     checks = {
         "manual_review_passed": manual_review.get("passed") is True,
+        "audit_passed": audit.get("automated_preflight_status") == "passed",
         "corpus_id": route_summary.get("corpus_id") == manual_review.get("corpus_id")
         and route_summary.get("corpus_id") == audit.get("corpus_id"),
         "manual_review_audit": manual_review.get("audit_sha256") == audit_sha256,
@@ -71,6 +73,8 @@ def _evaluate(
         == audit.get("generator_source_sha256"),
         "generation_config": manual_review.get("generation_config_sha256")
         == audit.get("generation_config_sha256"),
+        "runtime_profile": route_summary.get("runtime_profile_id")
+        == args.runtime_profile_id,
         "synthetic_evidence": route_summary.get("evidence_source") == "synthetic_proxy",
         "route_input_valid": route_summary.get("input_valid") is True,
         "minimum_discovery_records": _integer(route_summary.get("input_record_count"))

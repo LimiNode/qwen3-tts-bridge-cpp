@@ -92,6 +92,7 @@ def _evaluate(
     reasons = []
     checks = {
         "manual_review_passed": manual_review.get("passed") is True,
+        "audit_passed": audit.get("automated_preflight_status") == "passed",
         **_provenance_checks(
             route_summary,
             manual_review,
