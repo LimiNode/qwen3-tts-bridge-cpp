@@ -24,6 +24,8 @@ class Operation:
 
     outcome: str
     text: str | None
+    speaker: str = "ryan"
+    seed: int | None = None
 
 
 class WorkerHarness:
@@ -128,9 +130,9 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=float, default=180.0)
     args = parser.parse_args()
     _validate_args(parser, args)
-    texts = _load_texts(args.request_manifest)
+    request_specs = _load_request_specs(args.request_manifest)
     operations = _operations(
-        texts,
+        request_specs,
         completed=args.completed,
         cancelled_before_audio=args.cancelled_before_audio,
         cancelled_after_audio=args.cancelled_after_audio,
@@ -209,8 +211,8 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("--timeout-seconds must be positive")
 
 
-def _load_texts(path: Path) -> list[str]:
-    texts = []
+def _load_request_specs(path: Path) -> list[Operation]:
+    request_specs = []
     for line_number, line in enumerate(
         path.read_text(encoding="utf-8").splitlines(),
         1,
@@ -221,27 +223,37 @@ def _load_texts(path: Path) -> list[str]:
         text = value.get("text") if isinstance(value, dict) else None
         if not isinstance(text, str) or not text:
             raise RuntimeError(f"request manifest line {line_number} has invalid text")
-        texts.append(text)
-    if not texts:
+        speaker = value.get("speaker", "ryan")
+        seed = value.get("seed")
+        if not isinstance(speaker, str) or not speaker:
+            raise RuntimeError(
+                f"request manifest line {line_number} has invalid speaker"
+            )
+        if not isinstance(seed, int) and seed is not None:
+            raise RuntimeError(f"request manifest line {line_number} has invalid seed")
+        request_specs.append(
+            Operation(outcome="", text=text, speaker=speaker, seed=seed)
+        )
+    if not request_specs:
         raise RuntimeError("request manifest contains no texts")
-    return texts
+    return request_specs
 
 
 def _operations(
-    texts: list[str],
+    request_specs: list[Operation],
     *,
     completed: int,
     cancelled_before_audio: int,
     cancelled_after_audio: int,
     failed: int,
 ) -> list[Operation]:
-    normal_texts = iter(texts)
+    normal_specs = iter(request_specs)
 
     def normal(outcome: str, count: int) -> list[Operation]:
         return [
-            Operation(
-                outcome=outcome,
-                text=next(normal_texts, texts[index % len(texts)]),
+            _with_outcome(
+                next(normal_specs, request_specs[index % len(request_specs)]),
+                outcome,
             )
             for index in range(count)
         ]
@@ -251,6 +263,15 @@ def _operations(
         + normal("cancelled_before_audio", cancelled_before_audio)
         + normal("cancelled_after_audio", cancelled_after_audio)
         + [Operation(outcome="failed", text=None) for _ in range(failed)]
+    )
+
+
+def _with_outcome(specification: Operation, outcome: str) -> Operation:
+    return Operation(
+        outcome=outcome,
+        text=specification.text,
+        speaker=specification.speaker,
+        seed=specification.seed,
     )
 
 
@@ -270,16 +291,16 @@ def _run_operation(
         )
         return "failed"
     assert operation.text is not None
-    harness.send_control(
-        request_id,
-        {
-            "message_type": "synthesize",
-            "text": operation.text,
-            "language": "auto",
-            "speaker": "ryan",
-            "output": {"sample_rate": 24000, "channels": 1, "sample_format": "s16le"},
-        },
-    )
+    message: dict[str, object] = {
+        "message_type": "synthesize",
+        "text": operation.text,
+        "language": "auto",
+        "speaker": operation.speaker,
+        "output": {"sample_rate": 24000, "channels": 1, "sample_format": "s16le"},
+    }
+    if operation.seed is not None:
+        message["seed"] = operation.seed
+    harness.send_control(request_id, message)
     harness.read_frame(lambda frame: _is_control(frame, request_id, "queued"))
     harness.read_frame(lambda frame: _is_control(frame, request_id, "started"))
     if operation.outcome == "cancelled_before_audio":
