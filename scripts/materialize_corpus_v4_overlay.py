@@ -156,7 +156,7 @@ def main() -> int:
         for record in materialized
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(output, encoding="utf-8")
+    args.output.write_bytes(output.encode("utf-8"))
     report = {
         "corpus_v4_overlay_materialization_schema_version": 2,
         "corpus_id": repair_set["corpus_id"],
