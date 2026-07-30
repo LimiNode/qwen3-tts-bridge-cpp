@@ -1,0 +1,3 @@
+/docs/benchmark-artifacts/rtx4090-2026-07-30/representative-v4-r1-candidate/** -text -diff
+/docs/benchmark-artifacts/rtx4090-2026-07-30/representative-v4-r1-candidate/README.md text eol=lf diff
+/docs/benchmark-artifacts/rtx4090-2026-07-30/representative-v4-r1-candidate/SHA256SUMS.json text eol=lf diff

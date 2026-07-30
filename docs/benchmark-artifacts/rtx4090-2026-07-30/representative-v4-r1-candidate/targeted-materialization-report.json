@@ -1,0 +1,13 @@
+{
+  "corpus_id": "representative-v4",
+  "corpus_v4_overlay_materialization_schema_version": 2,
+  "output_sha256": "ef11a6d4db1b9c2cefd705d13122b0cda2b74cf0b3effd82c127f92cecc9f01a",
+  "overlay_sha256": "8a73b873f88f277ffa75258aa4d5cb663d71aaa6ee12711154cf8b7e6d26276f",
+  "record_count": 2000,
+  "repair_policy_sha256": "816c95e33eea2010bb20c202ce7d06280f4e6d575b8aa2565e7794037ff1e79c",
+  "repair_set_sha256": "bac38b53182770ccc47ca4a10b9a754be4ad82a2c4ea8a0092b1ee4e3ab73e4b",
+  "replacement_record_count": 98,
+  "source_audit_sha256": "41d6ca0b17ff89d484611cff99e601d3a52d82ed4b7a199e3a43aff970bf75e5",
+  "source_record_id_set_sha256": "f5aa31058353d80c4efeca0f620ae299b63e523347e2b6ccfc9677ab66e91c0f",
+  "source_records_sha256": "db7d6ba23f88ba9b9dd39bf10a8ec9b12769d5767a3fa10765606b96ca00f894"
+}

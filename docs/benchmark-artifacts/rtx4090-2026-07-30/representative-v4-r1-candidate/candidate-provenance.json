@@ -1,0 +1,28 @@
+{
+    "candidate_provenance_schema_version":  1,
+    "corpus_id":  "representative-v4-r1-candidate",
+    "baseline_git_commit":  "ba3af285745667bc4b1ce320fed71b1c51d82b48",
+    "tooling_git_commit":  "e164a6d4989db31e2846ce99d135b20d3bf5d8f0",
+    "baseline_inputs_sha256":  {
+                                   "../representative-v4/materialized.jsonl":  "87c7eb5c5a2a527d0f6a9912c5c300ec8e41a84d91f6e2f9d217169f03f93518",
+                                   "../representative-v4/repair-set.json":  "bac38b53182770ccc47ca4a10b9a754be4ad82a2c4ea8a0092b1ee4e3ab73e4b",
+                                   "../representative-v4/manual-review-form-100.jsonl":  "1e4dabff21c4084487b164901f15905dfa91e4947d1fe6ee2fd40cd2ac2ad8e5",
+                                   "../representative-v4/manual-review-form-100-corrected.jsonl":  "85bd037feb4bf9d457a6770e7879fc0093728fcc148f4aaee7c8138d0a84399e",
+                                   "../representative-v4/reviewed-authoring-98-corrected.jsonl":  "94540f4970e9aa9bba4b000cb52e6e2c9878fa9f191fc6c2e6de8911f98a2864",
+                                   "../representative-v4/v4-ai-prereview-general-100.jsonl":  "cbf7ee430b6181f3387e21e6692c0a425f47d2b9617c79f93cc56ac224352ed0",
+                                   "../representative-v4/v4-ai-prereview-targeted-98.jsonl":  "b90f33eaf817dbf67bfe7223e9b98a967d05a36d8c3fe7a667443d77d6c313be",
+                                   "../representative-v4/v4-corrected-prereview-change-manifest.json":  "3172e9a2cfab3a899b8515e25538ffdb23e9b587e122dc578473eff08b13b9dc"
+                               },
+    "construction":  [
+                         "materialize corrected 98-record repair overlay over frozen materialized.jsonl",
+                         "apply 31-record text-only quality overlay that excludes existing repair-set IDs",
+                         "run full batch validation and repetition audit",
+                         "create fresh deterministic split and pending human-review forms"
+                     ],
+    "human_review_gates":  {
+                               "targeted_review":  "pending_human_review",
+                               "general_review":  "pending_human_review",
+                               "ai_prereview":  "not_human_gate",
+                               "runtime_discovery":  "blocked"
+                           }
+}

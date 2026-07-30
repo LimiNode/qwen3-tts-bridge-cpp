@@ -1,0 +1,9 @@
+{
+  "base_record_id_set_sha256": "f5aa31058353d80c4efeca0f620ae299b63e523347e2b6ccfc9677ab66e91c0f",
+  "base_records_sha256": "ef11a6d4db1b9c2cefd705d13122b0cda2b74cf0b3effd82c127f92cecc9f01a",
+  "corpus_v4_quality_overlay_materialization_schema_version": 1,
+  "output_sha256": "d6a95a5142415e24bef128b835d9495045f7e45026faff12d0a01af0570add25",
+  "quality_overlay_sha256": "48b2b4ace9ef701b0334f735d2d4ee0c1c8268d407ff41387dcfac255f11d3d4",
+  "record_count": 2000,
+  "replacement_record_count": 31
+}
