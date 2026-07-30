@@ -1,0 +1,24 @@
+{
+    "targeted_repair_review_summary_schema_version":  1,
+    "review_scope":  "all_corpus_v4_replacements",
+    "review_status":  "accepted_project_owner_attestation",
+    "reviewer_id":  "project-owner",
+    "review_record_count":  98,
+    "repair_set_sha256":  "bac38b53182770ccc47ca4a10b9a754be4ad82a2c4ea8a0092b1ee4e3ab73e4b",
+    "overlay_sha256":  "5321df3cf553c4ab3502bdc1a2c6ed8a9bc8f9af3b4db3dcbb36f7522c79a112",
+    "review_form_sha256":  "79ce4cfb30c8bd1b4925efab4ded4dcf9471eb1f224478b5b777d3fd0b317b77",
+    "checks":  {
+                   "naturalness":  true,
+                   "likely_real_usage":  true,
+                   "category_fidelity":  true,
+                   "scene_context_fidelity":  true,
+                   "speech_intent_fidelity":  true,
+                   "code_switch_naturalness":  true,
+                   "appropriate_length":  true,
+                   "grammar":  true,
+                   "generic_ai_phrasing":  true,
+                   "semantic_repetition":  true,
+                   "no_metadata_only_replacement":  true
+               },
+    "passed":  true
+}

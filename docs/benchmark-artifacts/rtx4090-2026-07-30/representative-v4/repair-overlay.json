@@ -1,0 +1,3732 @@
+{
+  "corpus_id": "representative-v4",
+  "corpus_v4_repair_overlay_schema_version": 3,
+  "records": [
+    {
+      "original_record_sha256": "7606d81d22ba680a0d14be3f1bd03a0d43cc2637d2b8920a9b43578e694ffe46",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "ru",
+        "record_id": "v4-b01-001"
+      },
+      "record_id": "v4-b01-001",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-stable-picture",
+        "semantic_intent_id": "stable-picture",
+        "template_family_id": "micro-opinion-review-001",
+        "text": "Картинка стабильная."
+      },
+      "replacement_text_sha256": "1df8ecbf51eddd649789adac6dfa8f37be2ae5a9d6e21df9ca19dd175fa45cf4",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "0bb42e6b553216bf02f5b7792c3c32f94a2a1afcd24fb363e4d6e8a0736d4eac",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "ru",
+        "record_id": "v4-b01-002"
+      },
+      "record_id": "v4-b01-002",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-cleaner-audio",
+        "semantic_intent_id": "cleaner-audio",
+        "template_family_id": "micro-opinion-review-002",
+        "text": "Звук чище."
+      },
+      "replacement_text_sha256": "7c35488fea3e04398439601c15c61a3d514958144e860db6223a2be97a677c61",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "27c6a0445712677161723e242bcd58a6bb952277ff68aba31e0744f7e64b9405",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "ru",
+        "record_id": "v4-b01-004"
+      },
+      "record_id": "v4-b01-004",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-visible-latency",
+        "semantic_intent_id": "visible-latency",
+        "template_family_id": "micro-opinion-review-003",
+        "text": "Задержка заметна."
+      },
+      "replacement_text_sha256": "09f11f80c1052184a792738544130bc8a40948a0e9711abaa7872e70a3624529",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "902d0063994457bb771586f1e92cece031b2cada0c25e794058d3a95b9bb7f16",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "ru",
+        "record_id": "v4-b01-005"
+      },
+      "record_id": "v4-b01-005",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-open-measurement",
+        "semantic_intent_id": "open-measurement",
+        "template_family_id": "micro-transition-004",
+        "text": "Перейдём к замеру."
+      },
+      "replacement_text_sha256": "e8e344163f93460c4dc99ba67c9a33703204aace819b531d34ad3a6e81947128",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "6da2a7c3fbc9020c2f2e0f3c97c99d53b2c390e6a1e9a7815167914b6505ada3",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "en",
+        "record_id": "v4-b01-011"
+      },
+      "record_id": "v4-b01-011",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-crisp-audio",
+        "semantic_intent_id": "crisp-audio",
+        "template_family_id": "micro-opinion-review-005",
+        "text": "Audio feels crisp."
+      },
+      "replacement_text_sha256": "16bda75d00338e594b2015a1edcb6f922379ab6fcd53777bc646ef65c4e63e38",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "13d6dce3da938d146917d7378945d23b48792221f3910594f509a9f95ee24c62",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "en",
+        "record_id": "v4-b01-013"
+      },
+      "record_id": "v4-b01-013",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-acceptable-latency",
+        "semantic_intent_id": "acceptable-latency",
+        "template_family_id": "micro-opinion-review-006",
+        "text": "Latency seems acceptable."
+      },
+      "replacement_text_sha256": "d57b43f36fb7471a5c5f776658ebf3ec9febf0179209e0e384b91a77697b6a7d",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "4c9c7bea2b6154cf692fb98095cc4afc2eb0440d62d9291855179fe82ae7b066",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "en",
+        "record_id": "v4-b01-014"
+      },
+      "record_id": "v4-b01-014",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-cramped-framing",
+        "semantic_intent_id": "cramped-framing",
+        "template_family_id": "micro-opinion-review-007",
+        "text": "Framing looks cramped."
+      },
+      "replacement_text_sha256": "4158d5bddc6c1678de44dc8b2fd790d6a8723a9f67bef5ec50c2d9670be28697",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "9b18077d9c7c173216a70bd3adb67682816ada45bad70268b1129946f428a786",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b01-017"
+      },
+      "record_id": "v4-b01-017",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-dry-voice-filter",
+        "semantic_intent_id": "dry-voice-filter",
+        "template_family_id": "short-opinion-review-008",
+        "text": "Этот фильтр слишком сушит голос."
+      },
+      "replacement_text_sha256": "62b31c152a988eeced313c7c6e6172d5805090e9c8613129be9998c4454b4e84",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "be7bbc07960dec5dd400d81cc5ca72be616ae5f4bb3b891dd0f057a4756a8849",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b01-020"
+      },
+      "record_id": "v4-b01-020",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-natural-old-scene",
+        "semantic_intent_id": "natural-old-scene",
+        "template_family_id": "short-opinion-review-009",
+        "text": "Старая сцена звучала естественнее."
+      },
+      "replacement_text_sha256": "938153bf6f3f9ac662384f5d2f8b12f0d05e6f5b0ae9381c6d8098e8992750aa",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "18ed36c573aedb736262fbcac9bd68e1a365fcd2bb83f95b2a94a809dd10bcb6",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b01-022"
+      },
+      "record_id": "v4-b01-022",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-backup-recording",
+        "semantic_intent_id": "backup-recording",
+        "template_family_id": "short-transition-010",
+        "text": "Сначала проверю резервную запись."
+      },
+      "replacement_text_sha256": "cfdcc7e5ac59bf168612372bd57af20653a5295a0aba25c380c46533670a620e",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "e70d78f468633f4da1d822a59e95237e6ff4c19509ecb425f9fe372e8aa3fc59",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b01-025"
+      },
+      "record_id": "v4-b01-025",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-compare-options",
+        "semantic_intent_id": "compare-options",
+        "template_family_id": "short-transition-011",
+        "text": "Теперь сравним оба варианта."
+      },
+      "replacement_text_sha256": "5d67f1eb1432f20d77ddd495ec9806897454c6fbd588516afb74466a57dfbb4d",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "298a36821c9621ca599b18935f4ea54a19c052f8f93b275abed6d67ce6ad181a",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "en",
+        "record_id": "v4-b01-029"
+      },
+      "record_id": "v4-b01-029",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-delayed-checkpoint-audio",
+        "semantic_intent_id": "delayed-checkpoint-audio",
+        "template_family_id": "short-opinion-review-012",
+        "text": "The checkpoint audio sounds delayed."
+      },
+      "replacement_text_sha256": "ac6c97e6ba00fd456ae7d8904fc7847d211a2776636d3b71120bc3d36ddee435",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "e90250ecdaae1a1f3ab8f718074d94edae47e4fd6a7d4da2e8b80be0736a7af5",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "en",
+        "record_id": "v4-b01-030"
+      },
+      "record_id": "v4-b01-030",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-compressed-mix",
+        "semantic_intent_id": "compressed-mix",
+        "template_family_id": "short-opinion-review-013",
+        "text": "This mix feels overly compressed."
+      },
+      "replacement_text_sha256": "58417f4839d61794fcdfc13f65488f196782bfe81272da72472e278c7bd1b768",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "16b4072761651c62856f8503d965f3bcb587fe5327a7fd1b80303483b9351125",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "en",
+        "record_id": "v4-b01-033"
+      },
+      "record_id": "v4-b01-033",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-waveform-switch",
+        "semantic_intent_id": "waveform-switch",
+        "template_family_id": "short-transition-014",
+        "text": "Let us switch to the waveform."
+      },
+      "replacement_text_sha256": "86698acb5bc4b6bfcac988e2028fb3b9ca27b82481cd1b4e87c2fb06282cb8e6",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "d3f85d0b09290a1c48756ae580b520af505b67884a5b315c2a0e24aadf7cf39e",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b01-045"
+      },
+      "record_id": "v4-b01-045",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-latency-graph",
+        "semantic_intent_id": "latency-graph",
+        "template_family_id": "medium-transition-015",
+        "text": "С этим разобрались; теперь открою график и покажу, где появляется лишняя задержка."
+      },
+      "replacement_text_sha256": "4b238682e2dc82661c01d224583e3ca3f59d63d94f34ebd8ba93e97a04f7740e",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "79e25bb996ce41eadb4c9a96e902d98ce6d6d630991dad88907da6bdd9fa3601",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b01-057"
+      },
+      "record_id": "v4-b01-057",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-microphone-check",
+        "semantic_intent_id": "microphone-check",
+        "template_family_id": "medium-transition-016",
+        "text": "Историю оставим на потом, а сейчас вернёмся к проверке микрофона и уровней."
+      },
+      "replacement_text_sha256": "2ce950e4f2bbe4227b45469221b58f5e611e72f2b3829085f90d050720f06c4f",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "5315ecc921bc681b8ad3cf601de9518d2de42db250f74fe40df1198fc1760acc",
+      "preserve": {
+        "batch_id": "v4-b02",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b02-028"
+      },
+      "record_id": "v4-b02-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_7:0c3a0f99552729d1"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-safe-game-switch",
+        "semantic_intent_id": "safe-game-switch",
+        "template_family_id": "long-transition-017",
+        "text": "После этой миссии сделаем fresh save, убедимся, что новый slot читается, и переключимся на другую игру без риска потерять выбор."
+      },
+      "replacement_text_sha256": "588bb95088a925c81fe9b0755e24576a7b082c5623041ee92e9757a9f2caad3d",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "0eb3cec470add2a5d5f304475f0d80eca1e584c58f6625dce30bc76213155c6e",
+      "preserve": {
+        "batch_id": "v4-b02",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b02-162"
+      },
+      "record_id": "v4-b02-162",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:a57798c3a686c52a"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-late-collapse-cue",
+        "semantic_intent_id": "late-collapse-cue",
+        "template_family_id": "medium-opinion-review-018",
+        "text": "Технически сцена собрана эффектно, хотя момент обрушения читается слишком поздно."
+      },
+      "replacement_text_sha256": "92302dfbf3c815d371fb9b8ba63f8c308ccf1d5c965b90ae47ed873b26f9a88e",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "556ef464af8689d897ba6e67a325fd41b7e82f549b10e519695ada67f949c3bf",
+      "preserve": {
+        "batch_id": "v4-b02",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b02-166"
+      },
+      "record_id": "v4-b02-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-release-date-fix",
+        "semantic_intent_id": "release-date-fix",
+        "template_family_id": "medium-audience-reply-019",
+        "text": "Thanks for catching the release date; I have corrected the note now."
+      },
+      "replacement_text_sha256": "c81603967dba0a34712c75a19237994cf6a36abfc5ca2f516f2ea38e335dd89f",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "01e09f63630f77c345ad8199df69f6a641d0168054550e6dbb2dac1f7c958c64",
+      "preserve": {
+        "batch_id": "v4-b02",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b02-180"
+      },
+      "record_id": "v4-b02-180",
+      "repair_reasons": [
+        "ngram_4:0d525ab79e1a4ffe"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-agent-memory-answer",
+        "semantic_intent_id": "agent-memory-answer",
+        "template_family_id": "extended-audience-reply-020",
+        "text": "Вопрос про память агента вижу. Дойду до безопасного места и разберу его отдельно: что именно сохраняется, как выбираются релевантные записи, когда сведения устаревают и чем ловить противоречия. Быстрый ответ здесь только запутает, потому что допустимые ошибки зависят от задач системы."
+      },
+      "replacement_text_sha256": "3294bfee88c029e62946177e06cdc62df9f24dcde9f9d7255aa0db509122dc6d",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "27f262ff538049c06db27cfdc2d0a431936eac4a319221514eba0c32c1ec5d4d",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b03-051"
+      },
+      "record_id": "v4-b03-051",
+      "repair_reasons": [
+        "ngram_4:096ab0301b9a2ee1",
+        "ngram_4:14ac1566eea0cf3a",
+        "ngram_4:64234939dab9192f",
+        "ngram_4:98df8044b807a51d",
+        "ngram_5:0d18acfbb285b594",
+        "ngram_5:d3a146b96a15111e"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-controller-question",
+        "semantic_intent_id": "controller-question",
+        "template_family_id": "medium-audience-reply-021",
+        "text": "Your controller question was behind the poll; I can answer it now."
+      },
+      "replacement_text_sha256": "dc25b9ec1e6a9b0a01d1b16408462afa8bad8e75a7a0b94ce11f15a9be348cad",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "0b66396fddf0fc1ed0f9421e9d841526f19635747e7ada5ca6b304ed53202458",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b03-081"
+      },
+      "record_id": "v4-b03-081",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:62a95088c708225a"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-save-file-test",
+        "semantic_intent_id": "save-file-test",
+        "template_family_id": "long-transition-022",
+        "text": "На этом закончим воспоминания и перейдём к тесту сохранений: сначала сравню два файла, затем покажу, какой из них игра действительно загружает."
+      },
+      "replacement_text_sha256": "d53795ab9d9bf3d6a56f83917a28f3d36f9d8ace2d32ada877326b3b9abbbdb5",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "bd7f453d8c6fbb6b2be6f7ec012c1750ac922a6f355bc37fb8028c09a0f70900",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b03-108"
+      },
+      "record_id": "v4-b03-108",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:33f6db0785f31a07",
+        "ngram_5:351d221c57fdf4fd",
+        "ngram_5:783a452d72eab9d2",
+        "ngram_5:a6dbfc259ca9ffd4",
+        "ngram_5:b8922409c998b7e0",
+        "ngram_5:c34f75318592a589",
+        "ngram_5:f442fa0d16ca7410",
+        "ngram_6:115f67b59a593663",
+        "ngram_6:25967f3a2dc3e202",
+        "ngram_6:279e3622df061b9f",
+        "ngram_6:55d517b5b38642e5",
+        "ngram_6:91f971909fd10954",
+        "ngram_6:a250da854834ecaf",
+        "ngram_6:a6d11fa14a27e5f8",
+        "ngram_6:b3f945ded149dfd6",
+        "ngram_6:b443ba6066ad96af",
+        "ngram_6:f20c4bc36d22153e",
+        "ngram_6:f2c66a091ef314b9",
+        "ngram_7:094073625e66f55e",
+        "ngram_7:141aa91bab2481e0",
+        "ngram_7:17e1d2d25e2f1a22",
+        "ngram_7:1b3b9417f0a8a9cd",
+        "ngram_7:29962bd54c33ecc1",
+        "ngram_7:44294d2708cbba27",
+        "ngram_7:6d6e3072c3404b6f",
+        "ngram_7:dadc5152a1d61c2c",
+        "ngram_7:eff6106978931f51",
+        "ngram_8:057bd09aa75f03a3",
+        "ngram_8:0742c661d92449cf",
+        "ngram_8:71d456f7cbd8de90",
+        "ngram_8:71f2c49aa3573cb8",
+        "ngram_8:74bed16c2d3bcd05",
+        "ngram_8:80a0d87c9fec9ec4",
+        "ngram_8:8a0662244164c78b",
+        "ngram_8:bff9ecc5f6dd2da8",
+        "sentence:7960f27e3c8b455e"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-fundraiser-stream-check",
+        "semantic_intent_id": "fundraiser-stream-check",
+        "template_family_id": "extended-transition-023",
+        "text": "С итогами сбора всё ясно, поэтому закрываю панель и перехожу к проверке трансляции. Сначала сверю задержку уведомлений, затем посмотрю уровни звука и только после этого вернусь к игре. Старое число на виджете можно пока игнорировать: оно обновится само."
+      },
+      "replacement_text_sha256": "233d9a6848559ff07f23d774b1044e2e82f2d8bf32967ec87d33b6b2a8a00169",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "c20a31371fd8cf6777cd50e601f575e40f61a408075b4621a4b2ceecc9f41d7e",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b03-160"
+      },
+      "record_id": "v4-b03-160",
+      "repair_reasons": [
+        "ngram_6:460a6ddd9c35b64d",
+        "ngram_6:fb35d444b1a1b6ff",
+        "ngram_7:8f06f198a9c50142",
+        "ngram_8:2f60404d68898aec",
+        "ngram_8:6da099e79c12889e",
+        "sentence:8f06f198a9c50142"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-moderation-boundary",
+        "semantic_intent_id": "moderation-boundary",
+        "template_family_id": "long-audience-reply-024",
+        "text": "That is a reasonable question. People may challenge my argument or interpretation, but repeated attacks on another viewer are not discussion. After one warning, I will remove further personal remarks."
+      },
+      "replacement_text_sha256": "38e5df5cdba4c872267967a0b76041e6aa569171de355c235a0e5a2da46a113f",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "7b8b8c3979062b2e43fb73eabc8d1f571b94fb619c212c2d08238d2ffd8c95c0",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b03-161"
+      },
+      "record_id": "v4-b03-161",
+      "repair_reasons": [
+        "ngram_4:7dce6c8f05f36af5",
+        "ngram_4:8adcaea0796655e0",
+        "ngram_5:b0287377095d8d40"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-latency-chart-break",
+        "semantic_intent_id": "latency-chart-break",
+        "template_family_id": "medium-transition-025",
+        "text": "После этой попытки быстро покажу график задержки и продолжу прохождение."
+      },
+      "replacement_text_sha256": "f0b1b859145d90460f544a0d49c52cdbb3fd29f8096564d429fc8965ba06965e",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "3a6a4cd33c2d1079bdfa3896206329692e2c1845e03cee6acad8882c54dfab5a",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b03-162"
+      },
+      "record_id": "v4-b03-162",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:a57798c3a686c52a"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-unreadable-bridge-motion",
+        "semantic_intent_id": "unreadable-bridge-motion",
+        "template_family_id": "medium-opinion-review-026",
+        "text": "Вращающийся мост выглядит эффектно, но начало движения почти невозможно прочитать."
+      },
+      "replacement_text_sha256": "f1b6e0078dac9e50731ec6d952fe8dd6a0c2ee5df39fd95665230a9767f09b01",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "9e137a59ef5471473e67a6d7791f5edb28db3e5a7ec5051ed3b2155b81ade520",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b03-171"
+      },
+      "record_id": "v4-b03-171",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_6:bafe78d2d51e4dad",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_7:b0e133a802366fc7",
+        "ngram_8:5127afbf22da73a6",
+        "ngram_8:6eadbbe5345f962d"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-clean-audio-comparison",
+        "semantic_intent_id": "clean-audio-comparison",
+        "template_family_id": "medium-transition-027",
+        "text": "Уберу лишний источник, затем перейдём к чистому сравнению звука."
+      },
+      "replacement_text_sha256": "a4dd0c4742b89a0d8d46867d41262dee89b56fb34202e79f844c83e40f48887e",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "ab21305be340dc1dc16509dbd1866cd22da13c250955122f50705991fcd218c8",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b03-178"
+      },
+      "record_id": "v4-b03-178",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:8068483971b24ea5"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-structured-question-answer",
+        "semantic_intent_id": "structured-question-answer",
+        "template_family_id": "long-transition-028",
+        "text": "Спасибо за подробный вопрос. Сначала закончу текущую сцену, затем открою схему и разберу ограничения по порядку, чтобы не свести ответ к общей формуле."
+      },
+      "replacement_text_sha256": "4c9b808154e98600215f393cae07ebde2ea6bb891baacdb6e502fa1649457140",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "33b9c248aed7d6684efb18b29c8856d758852352b6952347bde2cba88064c6ec",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b03-180"
+      },
+      "record_id": "v4-b03-180",
+      "repair_reasons": [
+        "ngram_4:0d525ab79e1a4ffe"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-streaming-synthesis-breakdown",
+        "semantic_intent_id": "streaming-synthesis-breakdown",
+        "template_family_id": "extended-audience-reply-029",
+        "text": "Вопрос про потоковый синтез вижу. После миссии разложу задержку на отдельные этапы: генерацию первых фрагментов, передачу, накопление стартового буфера и фактическое начало воспроизведения. Показатель первого байта сам по себе мало говорит о слышимом отклике, поэтому сравним несколько метрик и посмотрим, какая из них мешает именно здесь."
+      },
+      "replacement_text_sha256": "2e14097de7d6fcd19832ec383ab316022a55c52ac0e10381e2a99ef85377faad",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "019d3276ce780fc3cdf04b0f75b439c63957f3ecf792294ed672e18d633acc8e",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b03-181"
+      },
+      "record_id": "v4-b03-181",
+      "repair_reasons": [
+        "ngram_4:baa6e7acd59648fd"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-screenshot-hotkey-story",
+        "semantic_intent_id": "screenshot-hotkey-story",
+        "template_family_id": "medium-story-anecdote-030",
+        "text": "Однажды я час проверял запись, хотя всё это время делал только скриншоты."
+      },
+      "replacement_text_sha256": "de6df5324cf10e0aaf79d5c183229e3c5c70ad10447d4f0828a415bdd25a2a3e",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      }
+    },
+    {
+      "original_record_sha256": "22e4d2521e345998bac85968faacbcf1805ad82022559a9e7066e87bfefd6949",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "short",
+        "language_class": "en",
+        "record_id": "v4-b04-057"
+      },
+      "record_id": "v4-b04-057",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:6299e86718965a65"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-clean-capture-inspection",
+        "semantic_intent_id": "clean-capture-inspection",
+        "template_family_id": "short-transition-031",
+        "text": "Let us inspect the clean capture."
+      },
+      "replacement_text_sha256": "95142a2f9c7e980220db67d6c240673cfcf006e22858f7ca651d4a0ab6af60d5",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "150e2dfb2af33dcfa81faef16d6b19a75eacc47f4e711fd091cad63169fc6cd2",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b04-073"
+      },
+      "record_id": "v4-b04-073",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_6:01849df0afe40def",
+        "ngram_6:082b498b7c21f382",
+        "ngram_6:2cbf8f221d3227e7",
+        "ngram_6:42fb9ca20407ed55",
+        "ngram_6:4895f7b750f8faab",
+        "ngram_6:4daa5143b511fdea",
+        "ngram_6:dbab9cae57af0313",
+        "ngram_6:fdaacb99c91b6ab3",
+        "ngram_7:07421438e8c0cb74",
+        "ngram_7:09abdd236cd0fb6a",
+        "ngram_7:237da63221109648",
+        "ngram_7:647bafe6065ae9fc",
+        "ngram_7:77aa482d69204bed",
+        "ngram_7:7c416920705a3781",
+        "ngram_7:bc8aa38348c37346",
+        "ngram_8:03dd439799b4b77f",
+        "ngram_8:1384ad342dcc862f",
+        "ngram_8:17492c8d2cc7fbee",
+        "ngram_8:3f3970d4c8dc3ba6",
+        "ngram_8:8f7a21822d351a88",
+        "ngram_8:b40a532b29a12602",
+        "ngram_8:f21719fffbff92de"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-alert-name-verification",
+        "semantic_intent_id": "alert-name-verification",
+        "template_family_id": "long-transition-032",
+        "text": "Raid alert подтянул чужое имя, поэтому сначала сверю event log и время, затем обновлю панель и только после этого продолжу эфир."
+      },
+      "replacement_text_sha256": "5437a57c72cdeb7a59bd5b688d71a7fa0106f15385ad2ce17ffec71f53c42a24",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "e66a1e0a94cec0ed35525fd504c37bb5a2aaa77debe928fb7886e2ad0a926294",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b04-077"
+      },
+      "record_id": "v4-b04-077",
+      "repair_reasons": [
+        "ngram_4:752745558b638eb2",
+        "ngram_4:87064e4b5d2fdd11",
+        "ngram_5:222281f501dea8fe"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-switch-after-solution",
+        "semantic_intent_id": "switch-after-solution",
+        "template_family_id": "short-transition-033",
+        "text": "Решение найдено, теперь сменим игру."
+      },
+      "replacement_text_sha256": "15bb8cd7fcf1213a88304146dca82f88da11246ca076a840650989d085ed3f47",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "dd4b3ecd37c202c10adae5d4f9c1027a9e0b56e44e6765200a4b5fb9fa745435",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b04-100"
+      },
+      "record_id": "v4-b04-100",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_6:7acbca218ffbf46c",
+        "ngram_6:7f477d9fa6767f3f",
+        "ngram_7:0b98e7c6e87b9ef9"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-reset-capture-level",
+        "semantic_intent_id": "reset-capture-level",
+        "template_family_id": "medium-transition-034",
+        "text": "I will reset the capture level, then continue with the comparison."
+      },
+      "replacement_text_sha256": "761f5039aa9a49aa098d599f12d9ca03c191e8544b32fe6d3ee01f842740d434",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "5b5dec0742ef6ff6d895155566a92d881fad75aa6386a8af3d4464e9c646adc0",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b04-108"
+      },
+      "record_id": "v4-b04-108",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:c34f75318592a589",
+        "ngram_8:067c7702dfc2a3bf",
+        "ngram_8:338a7212dd5f07a8",
+        "ngram_8:7dc2c2d89bb00623",
+        "ngram_8:ef6e8ccf0fd77bdf",
+        "ngram_8:f30568ec1c15dfcb"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-poll-route-transition",
+        "semantic_intent_id": "poll-route-transition",
+        "template_family_id": "extended-transition-035",
+        "text": "Голосование завершилось, и выбран северный проход. Я закрою панель, сохраню текущую позицию и перейду к выбранному маршруту. Процент на экране может ещё немного отставать, но новые голоса уже не учитываются, поэтому перезапускать опрос или ждать обновления виджета не требуется."
+      },
+      "replacement_text_sha256": "b76c81dd6d3b8b82323cefc15224b359f70bc622ce5f940a153ea6d7b7877208",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "e4a98e091abe52769d3564e8008db60b81c925590b2ebce03f1442c9040db86c",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b04-121"
+      },
+      "record_id": "v4-b04-121",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:34e83d59996ca6e0",
+        "ngram_5:b09527a44a7b7176",
+        "ngram_6:c2bbcc25cd2005e7",
+        "ngram_8:ce224f4d0250e574",
+        "ngram_8:f9491ee721cb49d0"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-puzzle-state-reset",
+        "semantic_intent_id": "puzzle-state-reset",
+        "template_family_id": "long-opinion-review-036",
+        "text": "Statue puzzle интересно устроен, но после cutscene его state сбрасывается без предупреждения; из-за этого manual save перед сценой кажется обязательной страховкой."
+      },
+      "replacement_text_sha256": "b54fbdd0593464704461b2d0a12c383b128dc06ba883a1ef7f4121f1c60b7aa3",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "190e6e244a60d5e9ac923e6aab512cc1d5d3982252f97aefe2ef6bd2af0f6096",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b04-153"
+      },
+      "record_id": "v4-b04-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:460f78b181d7814c",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:74b21c82677dd190",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:0e664f3c2fdc75f8",
+        "ngram_7:861cd84eedbc6e29",
+        "ngram_8:0c8695dd3a4a18e2",
+        "ngram_8:70833852515c80a5",
+        "ngram_8:7e734c0b21668be4",
+        "ngram_8:a3bdb4ff95d975cb",
+        "ngram_8:d95364b1d44797f0"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-plot-technical-transition",
+        "semantic_intent_id": "plot-technical-transition",
+        "template_family_id": "long-transition-037",
+        "text": "На этом остановим разговор о сюжете. После короткой паузы отвечу на два технических вопроса, а к теориям вернёмся ближе к финалу главы."
+      },
+      "replacement_text_sha256": "23b2fe1570498eea62138d0009b5c89b37c82dc82cf93b14cd453ccc2152fa02",
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "b9d7a8bb9bc6fcf63f95d80b2df8cdf1d1ab58c0e33c746b3550bd0cfd096ba6",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b04-159"
+      },
+      "record_id": "v4-b04-159",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_8:28e2eff181d91e71"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-statue-rule-clarity",
+        "semantic_intent_id": "statue-rule-clarity",
+        "template_family_id": "long-opinion-review-038",
+        "text": "Механика статуи читается не сразу: задержка перед ударом полезна, но повтор последнего поворота выглядит скорее ошибкой, чем понятным правилом."
+      },
+      "replacement_text_sha256": "b4413e8a65edfdffc7f4f09bfe0b76b689ac9f9e47e5e9b3ef8b2a8e3fe42073",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "4b6953cede38107712f2d1dae4e2d9d60f7d91771e8b8506bfab711820abf183",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b04-161"
+      },
+      "record_id": "v4-b04-161",
+      "repair_reasons": [
+        "ngram_4:7dce6c8f05f36af5",
+        "ngram_4:8adcaea0796655e0",
+        "ngram_5:b0287377095d8d40"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-clue-map-transition",
+        "semantic_intent_id": "clue-map-transition",
+        "template_family_id": "medium-transition-039",
+        "text": "После этой комнаты разберём улики на схеме и продолжим прохождение."
+      },
+      "replacement_text_sha256": "f2d7471edffe997a92ee9825f6398ba120b5ac4c766b670f1336d39e18488f72",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "a6ef3a76d3f02474e8f18c4c52ae4e244a2542e5297c7ba38eb84c964ad84b96",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b04-166"
+      },
+      "record_id": "v4-b04-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-chapter-caption-fix",
+        "semantic_intent_id": "chapter-caption-fix",
+        "template_family_id": "medium-audience-reply-040",
+        "text": "You were right about the chapter number; I have fixed the caption."
+      },
+      "replacement_text_sha256": "2b021d3d3ed8a09a1dbaa4c88a35a95d2f3591d1828d75591263162ee6985e2c",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "813c1c47419efb36397e3b1646d9d13e72b8d32ea687baf9f01b13533a617d69",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "medium",
+        "language_class": "mixed",
+        "record_id": "v4-b04-197"
+      },
+      "record_id": "v4-b04-197",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_8:9bb2ff3477206cb8",
+        "ngram_8:f28c3a02d17d5af6"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-disable-cloud-sync",
+        "semantic_intent_id": "disable-cloud-sync",
+        "template_family_id": "medium-transition-041",
+        "text": "Вернул local save; теперь отключу cloud sync и продолжу проверку."
+      },
+      "replacement_text_sha256": "0b2b35c1e4f69d838e0c5c951c4e3f902e1b7cc6a1410e448eaa1f5381f66a8f",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "19080f84254b6604c805ddbcc8cf820ff5d7fe0de00ae7f3a098f0ebb1c8c760",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b05-028"
+      },
+      "record_id": "v4-b05-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:859564dd9fe8f722",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:061fb2330233a4ef",
+        "ngram_5:0d4ffa93de0fe077",
+        "ngram_5:0f3f579c5ac17c17",
+        "ngram_5:484a5b941d390d0f",
+        "ngram_5:79549ce93ebc3b6b",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:05c9de65f9189876",
+        "ngram_6:1e64461449cf0f49",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_6:6ea1bb1abe8e83b6",
+        "ngram_6:a3bba11184e35c4a",
+        "ngram_6:a46dd28e2d562010",
+        "ngram_6:ad6cdc71ec4ae345",
+        "ngram_7:069bec3417e3e718",
+        "ngram_7:0c3a0f99552729d1",
+        "ngram_7:2b9cb2d1defeb990",
+        "ngram_7:a1a8e1a7cd710c4b",
+        "ngram_7:a32545a560a90504",
+        "ngram_7:a673f55f63acef78",
+        "ngram_7:e1d8ae343c46e027",
+        "ngram_8:041b2045fa86f46c",
+        "ngram_8:4e65b674489a85dd",
+        "ngram_8:5b1fdf70ca16bed7",
+        "ngram_8:5c478f3736a2038a",
+        "ngram_8:7cadad8b3582f7d8",
+        "ngram_8:7f7794c74712c97f"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-settlement-save-transition",
+        "semantic_intent_id": "settlement-save-transition",
+        "template_family_id": "long-transition-042",
+        "text": "Когда закончится harvest season, создадим отдельный save slot, убедимся, что загрузка работает, и откроем другую игру, сохранив последнее решение поселения."
+      },
+      "replacement_text_sha256": "9a42729c12df07c1d0af2ef510c40f652e3e02db584b598adfe0cd8b39d6bcaf",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "a72ea8217747fff86f63b37c775a8883e41c8f51f1c215de2ae707c85f3556f5",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b05-077"
+      },
+      "record_id": "v4-b05-077",
+      "repair_reasons": [
+        "ngram_4:752745558b638eb2",
+        "ngram_4:87064e4b5d2fdd11",
+        "ngram_5:222281f501dea8fe"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-report-game-switch",
+        "semantic_intent_id": "report-game-switch",
+        "template_family_id": "short-transition-043",
+        "text": "Отчёт закончен, пора сменить игру."
+      },
+      "replacement_text_sha256": "8afc929777df444ae01f3fa07573f7f0bb6ddf1a6c3285ab7dbcd69056d43e01",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "ad6f2c3b4258ec69c14fbecae48eba71699025b4923065dbf69b486e9b40efa3",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b05-108"
+      },
+      "record_id": "v4-b05-108",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:33f6db0785f31a07",
+        "ngram_5:351d221c57fdf4fd",
+        "ngram_5:783a452d72eab9d2",
+        "ngram_5:a6dbfc259ca9ffd4",
+        "ngram_5:b8922409c998b7e0",
+        "ngram_5:c34f75318592a589",
+        "ngram_5:f442fa0d16ca7410",
+        "ngram_6:25967f3a2dc3e202",
+        "ngram_6:279e3622df061b9f",
+        "ngram_6:4493d6b8405daf21",
+        "ngram_6:55d517b5b38642e5",
+        "ngram_6:91f971909fd10954",
+        "ngram_6:a6d11fa14a27e5f8",
+        "ngram_6:f20c4bc36d22153e",
+        "ngram_7:17e1d2d25e2f1a22",
+        "ngram_7:44294d2708cbba27",
+        "ngram_7:6d6e3072c3404b6f",
+        "ngram_7:dadc5152a1d61c2c",
+        "ngram_8:057bd09aa75f03a3",
+        "ngram_8:281c4a69a75c3b43",
+        "ngram_8:8a0662244164c78b",
+        "ngram_8:bff9ecc5f6dd2da8",
+        "ngram_8:e242ed3bd5858310"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-completed-goal-transition",
+        "semantic_intent_id": "completed-goal-transition",
+        "template_family_id": "extended-transition-044",
+        "text": "Сумма собрана, поэтому дополнительную цель сегодня не открываем. Я закрою виджет, проверю итоговые данные после сезона и перейду к следующему разделу эфира. Старое значение может задержаться на экране, но это только обновление панели; завтра отдельно покажу расходы и результаты."
+      },
+      "replacement_text_sha256": "365b846ded28f9387aa60891d22f9db1c713fce84c5817225a79fa814224c814",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "06f63c5203dcd840774cddc5bb3be6879d1b9be56132348b3f6a8d26015e61ef",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b05-149"
+      },
+      "record_id": "v4-b05-149",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:9b4ddb22975f67a8",
+        "ngram_6:05988530e53dadb5",
+        "ngram_6:90350bdb66296a0d",
+        "ngram_7:71c13dbbcb4abb98"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-buffer-threshold-test",
+        "semantic_intent_id": "buffer-threshold-test",
+        "template_family_id": "extended-transition-045",
+        "text": "Причину позднего старта нашли: воспроизведение ждёт слишком большой фрагмент, хотя синтез уже выдаёт начало. Теперь уменьшу порог буфера и перейду к серии одинаковых тестов. Отдельно проверим паузы, ровность громкости и поведение устройства, чтобы выигрыш в скорости не обернулся щелчками или обрывами."
+      },
+      "replacement_text_sha256": "df1073a4d8081059095cd31514fad06159672e6ea2826f404f681b4551e6776e",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "0ad2e6b9f20aef74ed54f6adff22ce28f67a0803ca77b2899ffd15bd666f8f02",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b05-153"
+      },
+      "record_id": "v4-b05-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:460f78b181d7814c",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:74b21c82677dd190",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:0e664f3c2fdc75f8",
+        "ngram_7:861cd84eedbc6e29",
+        "ngram_8:0c8695dd3a4a18e2"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-economy-calculation-transition",
+        "semantic_intent_id": "economy-calculation-transition",
+        "template_family_id": "long-transition-046",
+        "text": "С обсуждением экономики закончили. После паузы разберём два технических расчёта, а затем вернёмся к стратегии перед началом нового сезона."
+      },
+      "replacement_text_sha256": "f3ae72f87c68b0f8580fc072560fad40e07ff804f1921c0725306d539c26a5cf",
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "933d54e806dd5c2201c0e3b92da36cbf1d1ac1f83f1e35440fa2ee6a446a2aea",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b05-161"
+      },
+      "record_id": "v4-b05-161",
+      "repair_reasons": [
+        "ngram_4:7dce6c8f05f36af5",
+        "ngram_4:8adcaea0796655e0",
+        "ngram_5:b0287377095d8d40"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-expense-table-transition",
+        "semantic_intent_id": "expense-table-transition",
+        "template_family_id": "medium-transition-047",
+        "text": "После сезона покажу расходы в таблице и продолжу обычное прохождение."
+      },
+      "replacement_text_sha256": "886cd70a07d175849c5252a14937260daa5f3a799a395fd38c2ec40f265d6c00",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "db2f399496e155f3a103a347913b56c2a3aa2e9293dfd40c989fb6b269a96376",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b05-166"
+      },
+      "record_id": "v4-b05-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-resource-limit-fix",
+        "semantic_intent_id": "resource-limit-fix",
+        "template_family_id": "medium-audience-reply-048",
+        "text": "Good catch on the resource limit; I have updated the note."
+      },
+      "replacement_text_sha256": "9a4f3476e3b2a05c585ea8362c45f7648a7fbfefdac1fccf1f07e7b95c7c23e0",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "9a7825b2f5608cfb039ae28fe9b4dc3b213c0837be6178096aaf2f0ec98d8cf1",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b05-168"
+      },
+      "record_id": "v4-b05-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_6:0a00d1b03393af6f",
+        "ngram_6:38a08eba8dc9a0ff",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:59f2ad55a61a192b",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:19131a38bcaa89d2",
+        "ngram_8:5b5d0f8277fc3d6f",
+        "ngram_8:ff84d1a7c373daa4"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-city-sync-anecdote",
+        "semantic_intent_id": "city-sync-anecdote",
+        "template_family_id": "extended-story-anecdote-049",
+        "text": "Однажды cloud save вернул старую схему города поверх новой. Я решил, что свежий update удалил квартал, и начал перестраивать улицы, пока в журнале не увидел старый timestamp. С тех пор перед крупными изменениями создаю отдельный slot, а sync включаю только после проверки локальной версии."
+      },
+      "replacement_text_sha256": "e1efaa2b759b611f9d0e6e20b0f22991db6797321fe6cc3873d3dac002416b74",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      }
+    },
+    {
+      "original_record_sha256": "3631c2d57c724021b08202c718f9e9e043ef50d5477291b821a70cb227a68041",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b06-016"
+      },
+      "record_id": "v4-b06-016",
+      "repair_reasons": [
+        "ngram_8:ba96287238f40530"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-delayed-donation-question",
+        "semantic_intent_id": "delayed-donation-question",
+        "template_family_id": "medium-audience-reply-050",
+        "text": "Your donation question arrived late; I will read it after this scene."
+      },
+      "replacement_text_sha256": "5239ef65050b58636d4d2055c389264797cbd819550006ed70d9bd1d24e982d6",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "86346debf8b38585f10d876a7bf27b65f8da24ff2b33fde03d22a94396c93014",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b06-028"
+      },
+      "record_id": "v4-b06-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:859564dd9fe8f722",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:061fb2330233a4ef",
+        "ngram_5:0d4ffa93de0fe077",
+        "ngram_5:0f3f579c5ac17c17",
+        "ngram_5:484a5b941d390d0f",
+        "ngram_5:79549ce93ebc3b6b",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:05c9de65f9189876",
+        "ngram_6:1e64461449cf0f49",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_6:6ea1bb1abe8e83b6",
+        "ngram_6:a3bba11184e35c4a",
+        "ngram_6:a46dd28e2d562010",
+        "ngram_6:ad6cdc71ec4ae345",
+        "ngram_7:069bec3417e3e718",
+        "ngram_7:0c3a0f99552729d1",
+        "ngram_7:2b9cb2d1defeb990",
+        "ngram_7:a1a8e1a7cd710c4b",
+        "ngram_7:a32545a560a90504",
+        "ngram_7:a673f55f63acef78",
+        "ngram_7:e1d8ae343c46e027",
+        "ngram_8:041b2045fa86f46c",
+        "ngram_8:4e65b674489a85dd",
+        "ngram_8:5b1fdf70ca16bed7",
+        "ngram_8:5c478f3736a2038a",
+        "ngram_8:7cadad8b3582f7d8",
+        "ngram_8:7f7794c74712c97f"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-preserve-dialogue-branch",
+        "semantic_intent_id": "preserve-dialogue-branch",
+        "template_family_id": "long-transition-051",
+        "text": "Когда разговор закончится, зафиксируем branch state в отдельном save, убедимся, что загрузка видит выбор, и только потом откроем другую игру."
+      },
+      "replacement_text_sha256": "6b11129e6de840a0ac28f407943526788059caab61903dd92b9df6a24f0554ae",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "439ba4db09681188a1139fd502dd94cb9e43322b0b3343449af28e3a5a06c9f4",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b06-051"
+      },
+      "record_id": "v4-b06-051",
+      "repair_reasons": [
+        "ngram_4:096ab0301b9a2ee1",
+        "ngram_4:14ac1566eea0cf3a",
+        "ngram_4:64234939dab9192f",
+        "ngram_4:98df8044b807a51d",
+        "ngram_5:0d18acfbb285b594",
+        "ngram_5:d3a146b96a15111e",
+        "ngram_6:9dffab34df469e33"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-companion-question",
+        "semantic_intent_id": "companion-question",
+        "template_family_id": "medium-audience-reply-052",
+        "text": "Your companion question was hidden under the poll; I see it now."
+      },
+      "replacement_text_sha256": "5ccc75ab7bf56f101e89723ce46a5aba00373fc9aa8efc6a9f7ffb6a920357e9",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "75e79ee77d4c90976532e409359e7c7b28b4a455ce77d3f6d5bcaf3d22e69c14",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b06-077"
+      },
+      "record_id": "v4-b06-077",
+      "repair_reasons": [
+        "ngram_4:752745558b638eb2",
+        "ngram_4:87064e4b5d2fdd11",
+        "ngram_5:222281f501dea8fe"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-council-game-switch",
+        "semantic_intent_id": "council-game-switch",
+        "template_family_id": "short-transition-053",
+        "text": "Совет окончен, переключаемся на другую игру."
+      },
+      "replacement_text_sha256": "82545c2426168c09fadd7d71f21c15fd24b6f1ce0c8343795d84a036faf132b7",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "5d355bf6ab518af073b66bdb4e953d875023bb1cbaadc8493255ac42377327eb",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b06-078"
+      },
+      "record_id": "v4-b06-078",
+      "repair_reasons": [
+        "ngram_6:41e94a2f3bcf387c",
+        "ngram_8:10c174787070a009",
+        "ngram_8:288612331906d311",
+        "ngram_8:2f1ad7b8b16203ea",
+        "ngram_8:427be0ada07e4c86",
+        "ngram_8:552e5d6aa93dbd75",
+        "ngram_8:6727250bb66464fb",
+        "ngram_8:6a064f7b8995bd4c",
+        "ngram_8:74005fa1458b53dc",
+        "ngram_8:ac1294077df08012",
+        "ngram_8:b43fba0ad1bc3505",
+        "ngram_8:cee4564e8512588e",
+        "ngram_8:ea9af97e922e0e0d",
+        "ngram_8:fb9ac53901636499"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-legacy-eq-recording",
+        "semantic_intent_id": "legacy-eq-recording",
+        "template_family_id": "long-moderation-or-technical-054",
+        "text": "The broadcast mix is clean, yet the recorder inherits a legacy EQ whenever this scene opens. I will bypass that chain, capture one reference line, and avoid changing input gain until both files are compared."
+      },
+      "replacement_text_sha256": "cfd53d74902b8426289c8a590fd5a54279e2f28e754479804d0cf845406a5d90",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "881808b1dc776976276b2fc4bbe6c881cb99899dd10f865964feeb2be38f49b7",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b06-100"
+      },
+      "record_id": "v4-b06-100",
+      "repair_reasons": [
+        "ngram_6:072db0c4cc8b32d4",
+        "ngram_6:c42376f1e7d5d826",
+        "ngram_7:e3aabb1527a6aab8"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-outdated-audio-preset",
+        "semantic_intent_id": "outdated-audio-preset",
+        "template_family_id": "medium-moderation-or-technical-055",
+        "text": "The scene keeps loading an outdated audio preset; I am replacing it."
+      },
+      "replacement_text_sha256": "14c5f9d29e3629f961902fdb0286d2a6f4321a242d3f192477b8586a6bd58554",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "ff30c00c12b0a5c8234d38ea587f88352e58cb529fc54b02c23d9a5c44738689",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b06-109"
+      },
+      "record_id": "v4-b06-109",
+      "repair_reasons": [
+        "ngram_4:77b2d3c4d4bdc1e3",
+        "ngram_5:0178f1120a167e09",
+        "ngram_5:139c576a5c8415a5",
+        "ngram_5:2f2e156b64f10c84",
+        "ngram_5:57bcc9f563ad4ae9",
+        "ngram_5:5bbed7a7f85be71f",
+        "ngram_5:84b4ec8848c0a7a5",
+        "ngram_5:9c6dcfdc347b45c3",
+        "ngram_5:a7555ea4171ace14",
+        "ngram_5:c241aea04fadf075",
+        "ngram_6:122da76e807a84dc",
+        "ngram_6:12f180dee749853d",
+        "ngram_6:17bf0643ff0e3376",
+        "ngram_6:25c92ee4b2ba8eb8",
+        "ngram_6:4e8b6ae9844bb488",
+        "ngram_6:57fa740b1c80e1e8",
+        "ngram_6:8a2171923e4b776f",
+        "ngram_6:8ca61d60b242f046",
+        "ngram_6:936d95c3f8ff0612",
+        "ngram_6:a489f365e6803cab",
+        "ngram_6:c8cc470c3bcfc238",
+        "ngram_6:cc7fd3b3e8af2a86",
+        "ngram_6:d4090c19c889d9f5",
+        "ngram_6:f91882366f312f66",
+        "ngram_7:03398e17eede0d49",
+        "ngram_7:2edeac586e446dc1",
+        "ngram_7:30e639709b7f4d1b",
+        "ngram_7:39f8d55ad6f9c064",
+        "ngram_7:b45b02345077628c",
+        "ngram_7:c4c27267e57065f6",
+        "ngram_7:c6de759d0d6dfa7a",
+        "ngram_7:ddbadf46c617d187",
+        "ngram_7:e075956c168c3b06",
+        "ngram_7:e8fe499bc099834a",
+        "ngram_7:eec41457374276d4",
+        "ngram_7:f8ca9e60b4b3a148",
+        "ngram_8:0e267356e0b81513",
+        "ngram_8:359fa8a4c7d30346",
+        "ngram_8:44a8924d6f73f793",
+        "ngram_8:4a52a3f50198d2f0",
+        "ngram_8:4c4fe7384143131b",
+        "ngram_8:76494efff60a0ab0",
+        "ngram_8:7700985c8678e8f1",
+        "ngram_8:8a88d4507e419d76",
+        "ngram_8:90139e9ce94d8f84",
+        "ngram_8:ab7d20742384bfe0",
+        "ngram_8:b595b63cfcaa5a14",
+        "ngram_8:c2215dfbeb8e4194",
+        "ngram_8:d7f08b1e507443fa",
+        "ngram_8:ddad82457f628391",
+        "ngram_8:e30c25792d6927c7",
+        "ngram_8:f85efaf6d6d26682"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-stale-discord-alert",
+        "semantic_intent_id": "stale-discord-alert",
+        "template_family_id": "extended-moderation-or-technical-056",
+        "text": "Discord alert panel показывает прежнее имя после reload. Я сверю event log, время и платёж, затем обновлю только widget. Restart трансляции не потребуется: соединение и звук стабильны, а ошибка затрагивает лишь подпись уведомления в текущей scene."
+      },
+      "replacement_text_sha256": "dd65c4c40f002eab778dc5c82f7948042d349a5e48267867cf503026881951fb",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "ac1276e6c08eb36f25cc875efc9b5d97f2b01b916a36bd585554f1d343696f5a",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b06-121"
+      },
+      "record_id": "v4-b06-121",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:34e83d59996ca6e0",
+        "ngram_5:b09527a44a7b7176",
+        "ngram_6:c2bbcc25cd2005e7",
+        "ngram_8:ce224f4d0250e574",
+        "ngram_8:f9491ee721cb49d0"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-opaque-dialogue-flags",
+        "semantic_intent_id": "opaque-dialogue-flags",
+        "template_family_id": "long-opinion-review-057",
+        "text": "Dialogue system хорошо хранит последствия выбора, но после cutscene flags обновляются непрозрачно; без manual save легко принять задержку интерфейса за потерянный прогресс."
+      },
+      "replacement_text_sha256": "19767026d0abcf5de21eccf9682d6b0676ff96051cf6604929ac63fc4f2ea263",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "427e0e5afbf00d804511b9d91278bffdb8de4a8b6e4ff3693e73c5c49eb592ef",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b06-153"
+      },
+      "record_id": "v4-b06-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:861cd84eedbc6e29"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-character-talk-transition",
+        "semantic_intent_id": "character-talk-transition",
+        "template_family_id": "long-transition-058",
+        "text": "Обсуждение персонажей завершаем. После перерыва разберу пару важных технических вопросов, затем вернёмся к отношениям героев перед важной сценой совета."
+      },
+      "replacement_text_sha256": "e510ed6d10ccab6b47e8d8b0dbaa7ccd126c540b7d81c505bf34e97dc3d23cf9",
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "0ec62316d8deb2bdf73040999f6123499c4a3a2126b5b2a0f74f3215408900ca",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "extended",
+        "language_class": "en",
+        "record_id": "v4-b06-156"
+      },
+      "record_id": "v4-b06-156",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_6:7c68d47fc7dabce0",
+        "ngram_6:943d809813b2f52f",
+        "ngram_7:ea082e7d5b1badbe"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-council-route-review",
+        "semantic_intent_id": "council-route-review",
+        "template_family_id": "extended-opinion-review-059",
+        "text": "This council sequence creates strong tension by closing routes after each bell, but the objective language is too vague. The player must infer that the kitchen is the safe exit and preserve a disguise token, while optional documents near the captain's desk punish anyone who explores at the wrong moment."
+      },
+      "replacement_text_sha256": "528112ca197640edf12db32d5efb0d4fd7b7a691d4408458851e9b94e077682d",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "36d989ee2e1dc07aadb8fb184c1d9a49cb00312bd3894180e8ae143e821b3c58",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b06-160"
+      },
+      "record_id": "v4-b06-160",
+      "repair_reasons": [
+        "ngram_5:3183f22c0ab58df2",
+        "ngram_5:c936320ef6014b99",
+        "ngram_6:29a66173f7b406b2",
+        "ngram_6:2dcd123bef63ab7e"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-character-discussion-boundary",
+        "semantic_intent_id": "character-discussion-boundary",
+        "template_family_id": "long-audience-reply-060",
+        "text": "That boundary question is fair. Criticism of the characters is welcome, but repeated attacks on viewers or actors will be removed after a warning."
+      },
+      "replacement_text_sha256": "ebe990d1672c0c77fb427a1353a2a0b40c5d46151eccba4239771d5e13e7b238",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "7ff2a180e37a0039924abab76886c8a206712127c545647ea338ab3dcc9a6b55",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b06-161"
+      },
+      "record_id": "v4-b06-161",
+      "repair_reasons": [
+        "ngram_4:7dce6c8f05f36af5",
+        "ngram_4:8adcaea0796655e0",
+        "ngram_5:b0287377095d8d40"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-relationship-log-transition",
+        "semantic_intent_id": "relationship-log-transition",
+        "template_family_id": "medium-transition-061",
+        "text": "После этой сцены открою журнал отношений и продолжу прохождение."
+      },
+      "replacement_text_sha256": "60890ba6c7db2eeb896209edc415e2feafc60ed08fcdde769e7776cbbe306f6e",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "56fbc4fd4a0941fb538d03ece9e04a48eeed58d5b325d4a93bd821d341c9f0e0",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b06-166"
+      },
+      "record_id": "v4-b06-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-companion-caption-fix",
+        "semantic_intent_id": "companion-caption-fix",
+        "template_family_id": "medium-audience-reply-062",
+        "text": "The companion name correction was accurate; the caption is fixed now."
+      },
+      "replacement_text_sha256": "6193a579ff9b1daac46a12714144416a60a87c44896652fdb6749b5eed322d78",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "834029389b90d28658e20c65089d620cf3997d11c3249f05b0966537268b8d51",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b06-168"
+      },
+      "record_id": "v4-b06-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:606b72b579b514e7",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:2ef59a3c4eabc3e2",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_5:892e2453900d36a7",
+        "ngram_6:0a00d1b03393af6f",
+        "ngram_6:38a08eba8dc9a0ff",
+        "ngram_6:44cff2922bea1c90",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_6:83139c3dc5735e35",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:59f2ad55a61a192b",
+        "ngram_7:9ab179541530ddc5",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:19131a38bcaa89d2",
+        "ngram_8:5b5d0f8277fc3d6f"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-dialogue-sync-anecdote",
+        "semantic_intent_id": "dialogue-sync-anecdote",
+        "template_family_id": "extended-story-anecdote-063",
+        "text": "Был эфир, где после запуска игры NPC внезапно отвечали так, будто я выбрал другую ветку. Сначала я обвинил свежий patch и заново прошёл разговор, но виноват оказался cloud sync, подтянувший старый save. Теперь для важных сцен держу отдельный local slot и включаю синхронизацию только после проверки."
+      },
+      "replacement_text_sha256": "8cb92ff923460cfe793ea55c4a658f3487510a87b2478ff48a8737a501719e23",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      }
+    },
+    {
+      "original_record_sha256": "925e482ae6d7602c3a0d4368b0b7592ac1fb1962c04918316558bbd6deaf0558",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b06-171"
+      },
+      "record_id": "v4-b06-171",
+      "repair_reasons": [
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_6:ee10aa1d03c4d056",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_7:7c89e253659555a0",
+        "ngram_8:6eadbbe5345f962d",
+        "ngram_8:91e17ca1de2f4904"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-duplicate-voice-source",
+        "semantic_intent_id": "duplicate-voice-source",
+        "template_family_id": "medium-moderation-or-technical-064",
+        "text": "После переподключения голос идёт дважды; отключаю забытый источник в старой сцене."
+      },
+      "replacement_text_sha256": "8b0b0cb87f26bca38205f1c6223f82d7832aa30c866c2660af48e196221e1b4f",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "f7b1f24d09b9596aedda7bc0b8c172dbe496ff694b09b89bf2ce7581291cab90",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "extended",
+        "language_class": "en",
+        "record_id": "v4-b07-029"
+      },
+      "record_id": "v4-b07-029",
+      "repair_reasons": [
+        "ngram_6:e1e6fbb18cc44f28",
+        "ngram_8:15cc0466a42a623f",
+        "ngram_8:1dd9f93c311fd746",
+        "ngram_8:29da7495876549c8",
+        "ngram_8:3a89ef5b5ebe9a94",
+        "ngram_8:908afc9cd3441f9a",
+        "ngram_8:9a47e31f617d17cb",
+        "ngram_8:acc353dce7543c74",
+        "ngram_8:d3721aee3b7785f8",
+        "ngram_8:e331e4eb693524a3"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-hidden-audio-channel",
+        "semantic_intent_id": "hidden-audio-channel",
+        "template_family_id": "extended-moderation-or-technical-065",
+        "text": "The video feed is stable, but reloading the gameplay scene activates a hidden audio channel and doubles my voice. I will mute that source, make a short local recording, and test one scene change before restoring alerts. Please keep the page open; only the microphone may disappear briefly."
+      },
+      "replacement_text_sha256": "b909dd99cf2f4f5eefad8abdb1f45d7f5a4577f6e9fbc918529af1e785b82044",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "18e4abe2bb9cf558749e8a9514d81eeb0378625e74e511562b88206d57b73803",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b07-051"
+      },
+      "record_id": "v4-b07-051",
+      "repair_reasons": [
+        "ngram_4:096ab0301b9a2ee1",
+        "ngram_4:14ac1566eea0cf3a",
+        "ngram_4:64234939dab9192f",
+        "ngram_4:98df8044b807a51d",
+        "ngram_5:0d18acfbb285b594",
+        "ngram_5:d3a146b96a15111e"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-polling-question",
+        "semantic_intent_id": "polling-question",
+        "template_family_id": "medium-audience-reply-066",
+        "text": "Your polling question was behind the timer panel; I can see it now."
+      },
+      "replacement_text_sha256": "383ce9e930a6f702dbb77508ce2d5a1337c615ee3cafff89c810b49ab1fd8af3",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "5e716e0ce1cf3d0a7696acf89756bd19af790dddbd6be4aa6e9559316a862459",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b07-120"
+      },
+      "record_id": "v4-b07-120",
+      "repair_reasons": [
+        "ngram_6:2259c5d445c5b6fd",
+        "ngram_6:c3dd85d8fc311ffc",
+        "ngram_6:de598c642e9f49f2",
+        "ngram_7:4897a696f270aef3",
+        "ngram_7:501541711ad9c78e",
+        "ngram_8:4ab7281d860ffff2",
+        "ngram_8:4fb9448b7373d3fb",
+        "ngram_8:f7630f4de3b87147"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-limiter-click-explanation",
+        "semantic_intent_id": "limiter-click-explanation",
+        "template_family_id": "long-explanation-067",
+        "text": "Щелчок возникает после ограничителя: восстановление слишком быстрое, и усиление скачет между слогами. Увеличу время возврата, повторю одинаковые фразы и пока не трону предусилитель."
+      },
+      "replacement_text_sha256": "abfeda4c58c19245e7d95a7efd6fb33734605a1b77d5a0ceed39a0a2393256e8",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "explanation"
+      }
+    },
+    {
+      "original_record_sha256": "eecd2a8442f6a94fe505718f03b8a040f8aebf5db1523b7a122f53a02efd8ec7",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b07-153"
+      },
+      "record_id": "v4-b07-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:460f78b181d7814c",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:74b21c82677dd190",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:0e664f3c2fdc75f8",
+        "ngram_7:861cd84eedbc6e29",
+        "ngram_8:0c8695dd3a4a18e2"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-replay-analysis-transition",
+        "semantic_intent_id": "replay-analysis-transition",
+        "template_family_id": "long-transition-068",
+        "text": "С механикой закончили. Сделаем короткий перерыв, затем посмотрим два повтора и обсудим технические детали; после этого продолжим забег с последней контрольной точки."
+      },
+      "replacement_text_sha256": "d5fad514eeb38465a65b199c278d467530a77fc614ce32afe103e3ce78a0667a",
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "24daa898cc4068833cc29c832fd2b121d0c8e1c1c7a696a4f2d807f61b7097dc",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b07-166"
+      },
+      "record_id": "v4-b07-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-split-time-fix",
+        "semantic_intent_id": "split-time-fix",
+        "template_family_id": "medium-audience-reply-069",
+        "text": "Thanks for the split-time correction; the note now shows the right value."
+      },
+      "replacement_text_sha256": "ab4055499ed130aff2195cc0739d4afabd691c72e3e3a0973accf5bf3746b094",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "c1269ecbef749ef9c75c83ceeaa3105886f34ccd8843fdbd8bb105b4e00f681c",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b07-168"
+      },
+      "record_id": "v4-b07-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:606b72b579b514e7",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:2ef59a3c4eabc3e2",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_5:892e2453900d36a7",
+        "ngram_6:44cff2922bea1c90",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:5d403b8e2b807e2d",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_6:83139c3dc5735e35",
+        "ngram_6:93dc27777ff0f751",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:9ab179541530ddc5",
+        "ngram_7:a608fdb5d037eca8",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:5b5d0f8277fc3d6f",
+        "ngram_8:d2a17812a7506a9c",
+        "ngram_8:d8a68a7972ffc98f"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-control-sync-anecdote",
+        "semantic_intent_id": "control-sync-anecdote",
+        "template_family_id": "extended-story-anecdote-070",
+        "text": "Как-то перед забегом игра показала прежние кнопки, хотя я точно менял раскладку. Я долго искал ошибку в update, переназначил controls второй раз и лишь затем заметил, что cloud sync загрузил старый profile. Теперь настройки экспортирую локально, а синхронизацию запускаю после сессии."
+      },
+      "replacement_text_sha256": "45bfffe14ebab394d5897b6cdea9f8cdc8658d4c8c273afd15064c677e8c8bb6",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      }
+    },
+    {
+      "original_record_sha256": "dffe3ad4b9db1db8156f63776a1156df28cf665b5adbf296e8a52cdd4ba9e922",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b07-171"
+      },
+      "record_id": "v4-b07-171",
+      "repair_reasons": [
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_6:bafe78d2d51e4dad",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_7:b0e133a802366fc7",
+        "ngram_8:02372aac2fad1e93",
+        "ngram_8:5127afbf22da73a6",
+        "ngram_8:5f72ad7c35679cd7",
+        "ngram_8:6eadbbe5345f962d",
+        "ngram_8:a3859182ce42b91d"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-duplicate-game-audio",
+        "semantic_intent_id": "duplicate-game-audio",
+        "template_family_id": "medium-moderation-or-technical-071",
+        "text": "После переподключения игровой звук задвоился; выключаю скрытый канал в старой сцене."
+      },
+      "replacement_text_sha256": "d3d733482e72e53fc071103991849529fbcb6afb55e901d779575a698ea1e6d6",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "f1ea9d978552d1f2a206760de8d0a9883af40df80f574dd225d7962e1aa0a9ab",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b08-028"
+      },
+      "record_id": "v4-b08-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:859564dd9fe8f722",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:061fb2330233a4ef",
+        "ngram_5:0d4ffa93de0fe077",
+        "ngram_5:0f3f579c5ac17c17",
+        "ngram_5:484a5b941d390d0f",
+        "ngram_5:79549ce93ebc3b6b",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:05c9de65f9189876",
+        "ngram_6:1e64461449cf0f49",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_6:6ea1bb1abe8e83b6",
+        "ngram_6:a3bba11184e35c4a",
+        "ngram_6:a46dd28e2d562010",
+        "ngram_6:ad6cdc71ec4ae345",
+        "ngram_7:069bec3417e3e718",
+        "ngram_7:0c3a0f99552729d1",
+        "ngram_7:2b9cb2d1defeb990",
+        "ngram_7:a1a8e1a7cd710c4b",
+        "ngram_7:a32545a560a90504",
+        "ngram_7:a673f55f63acef78",
+        "ngram_7:e1d8ae343c46e027",
+        "ngram_8:041b2045fa86f46c",
+        "ngram_8:4e65b674489a85dd",
+        "ngram_8:5b1fdf70ca16bed7",
+        "ngram_8:5c478f3736a2038a",
+        "ngram_8:7cadad8b3582f7d8",
+        "ngram_8:7f7794c74712c97f"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-orbit-save-transition",
+        "semantic_intent_id": "orbit-save-transition",
+        "template_family_id": "long-transition-072",
+        "text": "После текущей orbit запишем маршрут в новый save slot, проверим загрузку и перейдём к другой игре до следующего запуска экспедиции."
+      },
+      "replacement_text_sha256": "1fa29412651c9e57f45c06558bf1d95cfe7402ff97817fcb551b259e2ffc3f6a",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "7e4801e4f011392176159d866cbbd2fe157ca8bfcbccd9d6c9306339dc5145c6",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b08-058"
+      },
+      "record_id": "v4-b08-058",
+      "repair_reasons": [
+        "ngram_8:fffe6f1c7604fce8"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-stream-denoiser-tone",
+        "semantic_intent_id": "stream-denoiser-tone",
+        "template_family_id": "medium-moderation-or-technical-073",
+        "text": "На записи голос чистый; металлический оттенок добавляет только потоковое шумоподавление."
+      },
+      "replacement_text_sha256": "631f8344239bc74be7f124804d1f85f7598c85b807720a09858046ef5f8fb566",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "e222852a93d665dcd31a65fc8a523fe128dbf5fbad150571e451bafa4f7e2d01",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b08-073"
+      },
+      "record_id": "v4-b08-073",
+      "repair_reasons": [
+        "ngram_6:01849df0afe40def",
+        "ngram_6:082b498b7c21f382",
+        "ngram_6:2cbf8f221d3227e7",
+        "ngram_6:42fb9ca20407ed55",
+        "ngram_6:4895f7b750f8faab",
+        "ngram_6:4daa5143b511fdea",
+        "ngram_6:dbab9cae57af0313",
+        "ngram_6:fdaacb99c91b6ab3",
+        "ngram_7:07421438e8c0cb74",
+        "ngram_7:09abdd236cd0fb6a",
+        "ngram_7:237da63221109648",
+        "ngram_7:647bafe6065ae9fc",
+        "ngram_7:77aa482d69204bed",
+        "ngram_7:7c416920705a3781",
+        "ngram_7:bc8aa38348c37346",
+        "ngram_8:03dd439799b4b77f",
+        "ngram_8:054db9012880465a",
+        "ngram_8:1384ad342dcc862f",
+        "ngram_8:172b8d83b3ecfa7a",
+        "ngram_8:17492c8d2cc7fbee",
+        "ngram_8:3f3970d4c8dc3ba6",
+        "ngram_8:8f7a21822d351a88",
+        "ngram_8:97c40f36078b571f",
+        "ngram_8:b40a532b29a12602",
+        "ngram_8:dba2a157da2ee743",
+        "ngram_8:f21719fffbff92de"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-raid-name-check",
+        "semantic_intent_id": "raid-name-check",
+        "template_family_id": "long-moderation-or-technical-074",
+        "text": "Raid alert снова вывел старое имя; перед благодарностью внимательно сравню очередь, timestamp и запись события, чтобы выбрать нужного человека."
+      },
+      "replacement_text_sha256": "01d72288e0d152db833bdd119c6e88c678e7cccda09afa59493b2e99387ebd13",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "7492244a18514c059594c75c2b5e2de01ff15f8bafd21385dce1c640fbe78167",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b08-096"
+      },
+      "record_id": "v4-b08-096",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_8:811cdfe3edbeaa85"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-airlock-route-review",
+        "semantic_intent_id": "airlock-route-review",
+        "template_family_id": "long-opinion-review-075",
+        "text": "The airlock sequence is tense, but its route logic is poorly signposted. Players can lose both doors by using thrusters near the relay without understanding that the maintenance arm preserves the return path."
+      },
+      "replacement_text_sha256": "17daf307eea4eab16240d88087bb1428b316ec75c8eefef5b713e930a6832e60",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "8914cfc20a459f776d31e74da86f330eadd6675281f9c3ae1642d54c3ef1d718",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b08-109"
+      },
+      "record_id": "v4-b08-109",
+      "repair_reasons": [
+        "ngram_4:77b2d3c4d4bdc1e3",
+        "ngram_5:0178f1120a167e09",
+        "ngram_5:139c576a5c8415a5",
+        "ngram_5:2f2e156b64f10c84",
+        "ngram_5:57bcc9f563ad4ae9",
+        "ngram_5:5bbed7a7f85be71f",
+        "ngram_5:84b4ec8848c0a7a5",
+        "ngram_5:9c6dcfdc347b45c3",
+        "ngram_5:a7555ea4171ace14",
+        "ngram_5:c241aea04fadf075",
+        "ngram_6:0044df6a781c25e5",
+        "ngram_6:122da76e807a84dc",
+        "ngram_6:12f180dee749853d",
+        "ngram_6:17bf0643ff0e3376",
+        "ngram_6:35768c0fcfe74d55",
+        "ngram_6:3be449e69e06c209",
+        "ngram_6:4e8b6ae9844bb488",
+        "ngram_6:57fa740b1c80e1e8",
+        "ngram_6:5e8ffd09f1b53e67",
+        "ngram_6:6587fcdf763d9946",
+        "ngram_6:73c3f9b3b3fff9eb",
+        "ngram_6:83f020a9f6dbcfdc",
+        "ngram_6:8a2171923e4b776f",
+        "ngram_6:8ca61d60b242f046",
+        "ngram_6:8ea2dabf13a2b54c",
+        "ngram_6:936d95c3f8ff0612",
+        "ngram_6:a489f365e6803cab",
+        "ngram_6:b6f917b7b6e096c9",
+        "ngram_6:bb3b87387265b7cb",
+        "ngram_6:c8cc470c3bcfc238",
+        "ngram_6:d1081de1cc41149e",
+        "ngram_6:d4090c19c889d9f5",
+        "ngram_6:dc9d486719eae565",
+        "ngram_6:e8268f673a596178",
+        "ngram_6:eb763f8799dc8934",
+        "ngram_6:f91882366f312f66",
+        "ngram_7:03398e17eede0d49",
+        "ngram_7:0a20698b42014504",
+        "ngram_7:0ec86f9b4d6de059",
+        "ngram_7:1bbbb2d96bf637c6",
+        "ngram_7:29beaa4ae6912478",
+        "ngram_7:2edeac586e446dc1",
+        "ngram_7:39f8d55ad6f9c064",
+        "ngram_7:50a9455af8769d79",
+        "ngram_7:52eea439c2d7bbbe",
+        "ngram_7:728cc75c13e0e2de",
+        "ngram_7:79578343d3cfb763",
+        "ngram_7:7b8e5c5bcc71e87f",
+        "ngram_7:9b8edcf5953fa9e0",
+        "ngram_7:9b8f634dfef03752",
+        "ngram_7:b45b02345077628c",
+        "ngram_7:c4c27267e57065f6",
+        "ngram_7:c6de759d0d6dfa7a",
+        "ngram_7:d028357eac39260b",
+        "ngram_7:d9abac7e1d79c7ff",
+        "ngram_7:ddbadf46c617d187",
+        "ngram_7:e8fe499bc099834a",
+        "ngram_7:eec41457374276d4",
+        "ngram_7:f00856d342cf0e51",
+        "ngram_7:f8ca9e60b4b3a148",
+        "ngram_8:0e267356e0b81513",
+        "ngram_8:169bfedcbae5a8f6",
+        "ngram_8:359fa8a4c7d30346",
+        "ngram_8:3605bb873798df45",
+        "ngram_8:3a0c90a16bfb7ea1",
+        "ngram_8:44a8924d6f73f793",
+        "ngram_8:45f7953cba623fc1",
+        "ngram_8:481d8af4e24f8195",
+        "ngram_8:4c4fe7384143131b",
+        "ngram_8:5453d6b48417abb3",
+        "ngram_8:70ee6a13880c40f4",
+        "ngram_8:78eac84688d97825",
+        "ngram_8:7dcdbadf2b0a9d69",
+        "ngram_8:7ed8d50d60caaa7b",
+        "ngram_8:8a88d4507e419d76",
+        "ngram_8:8c01fdd7101fa294",
+        "ngram_8:90139e9ce94d8f84",
+        "ngram_8:9ba83c8effe8b97e",
+        "ngram_8:a733a51a733d76ea",
+        "ngram_8:d9a4d1417b140856",
+        "ngram_8:e0313fd99d0914e9",
+        "ngram_8:e30c25792d6927c7",
+        "ngram_8:f85efaf6d6d26682",
+        "sentence:fbbf9d50b18dec0c"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-delayed-youtube-alert",
+        "semantic_intent_id": "delayed-youtube-alert",
+        "template_family_id": "extended-moderation-or-technical-076",
+        "text": "YouTube alert overlay отстаёт на одно событие от backend. Я сверю transaction ID, время и имя, затем перезагружу только widget. Полный restart не нужен: трансляция и HDR работают стабильно, а ошибка видна только в подписи активного alert."
+      },
+      "replacement_text_sha256": "2b052977c88f54047d300c03ed5af4937484b53edd4ea49c7ed51f94e16c6d35",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "6786f4e1bdb2e4f2f63ef1cd5547c0e8185ab9c2294f8588618e8f0eef17068f",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b08-120"
+      },
+      "record_id": "v4-b08-120",
+      "repair_reasons": [
+        "ngram_6:2259c5d445c5b6fd",
+        "ngram_6:c3dd85d8fc311ffc",
+        "ngram_6:de598c642e9f49f2",
+        "ngram_7:4897a696f270aef3",
+        "ngram_7:501541711ad9c78e",
+        "ngram_8:18401a5e1c8551ea",
+        "ngram_8:4ab7281d860ffff2",
+        "ngram_8:4fb9448b7373d3fb",
+        "ngram_8:ece9d30b2bb2cfd1",
+        "ngram_8:f7630f4de3b87147"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-denoiser-spectrum-test",
+        "semantic_intent_id": "denoiser-spectrum-test",
+        "template_family_id": "long-explanation-077",
+        "text": "Металлический призвук создаёт шумоподавление, которое по-разному реагирует на фон между слогами. Уменьшу степень подавления, запишу одинаковые фразы и не стану менять микрофон до сравнения спектров."
+      },
+      "replacement_text_sha256": "a41be1a52278617a54a4328508b551123dd86d8d48487f6e8e636a236673072a",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "explanation"
+      }
+    },
+    {
+      "original_record_sha256": "f878f573a5ec1f3ca6f102b160f0d0cef8ecbcede62ddbd03d24e6057ed995c1",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b08-121"
+      },
+      "record_id": "v4-b08-121",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:34e83d59996ca6e0",
+        "ngram_5:b09527a44a7b7176",
+        "ngram_6:5a686fd1174ba7d7",
+        "ngram_6:c2bbcc25cd2005e7"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-navigation-state-review",
+        "semantic_intent_id": "navigation-state-review",
+        "template_family_id": "long-opinion-review-078",
+        "text": "Navigation system выглядит надёжно, но после cutscene state обновляется слишком поздно; поэтому manual save, проверка fuel margin и версии route становятся частью обязательной рутины."
+      },
+      "replacement_text_sha256": "4a5f3876a7ca344a35ed60017150f2760646da7e21bc60d23f22458c17292435",
+      "target": {
+        "category": "game_review",
+        "scene_context": "technical_stream",
+        "speech_intent": "opinion_review"
+      }
+    },
+    {
+      "original_record_sha256": "a9fa33970c9b0f393ca58ddce33509a3cbb2b12cadd437f691180860e0e99559",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b08-153"
+      },
+      "record_id": "v4-b08-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:460f78b181d7814c",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:74b21c82677dd190",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:0e664f3c2fdc75f8",
+        "ngram_7:861cd84eedbc6e29",
+        "ngram_8:0c8695dd3a4a18e2"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-telemetry-transition",
+        "semantic_intent_id": "telemetry-transition",
+        "template_family_id": "long-transition-079",
+        "text": "На этом остановимся с протоколами. После перерыва открою пару журналов телеметрии, отвечу на вопросы по данным, а затем продолжим подготовку к прыжку."
+      },
+      "replacement_text_sha256": "5d4c7bfeee5aa977fb694dfc0c141c7b9f7b50d5c2c1426a90bb70d597021c4d",
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "dae982dd59f35950a209f3d3dab247167697e39d2e0abbb8a3be264121b9e9e6",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b08-160"
+      },
+      "record_id": "v4-b08-160",
+      "repair_reasons": [
+        "ngram_5:3183f22c0ab58df2",
+        "ngram_5:c936320ef6014b99",
+        "ngram_6:29a66173f7b406b2",
+        "ngram_6:2dcd123bef63ab7e",
+        "ngram_6:ca6696802443673b",
+        "ngram_6:e0b2830cad8385dc",
+        "ngram_6:eb9231e9b7d9e891",
+        "ngram_7:0873a5a014e3676b",
+        "ngram_7:cc763ed63b669aa6",
+        "ngram_7:dc6e73947f2ffb4e",
+        "ngram_8:68f3596053bbba14",
+        "ngram_8:6b3cb989259bf7ea",
+        "ngram_8:73a791aa2d2d1ab1",
+        "ngram_8:7e9d5ea271fed2ad",
+        "ngram_8:97f1ca22f3f798c8"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-technical-moderation-boundary",
+        "semantic_intent_id": "technical-moderation-boundary",
+        "template_family_id": "long-audience-reply-080",
+        "text": "That is a sensible moderation question. Competing technical views are fine; once someone starts targeting another person instead of the argument, further remarks will be deleted after the warning."
+      },
+      "replacement_text_sha256": "a5a2c4de89b13d823d86f723c983d42ba3cd5a02d23458a71b526b9a75ff0b24",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "ad9cf101273f8d91ebc7509de807f7b7d588e7d162a431972125db1c7fac8872",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b08-166"
+      },
+      "record_id": "v4-b08-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-packet-timestamp-fix",
+        "semantic_intent_id": "packet-timestamp-fix",
+        "template_family_id": "medium-audience-reply-081",
+        "text": "The packet timestamp correction was right; I changed the note accordingly."
+      },
+      "replacement_text_sha256": "4cb46a6abe9507dbb88763b7b38bc0f961e0142e6972c5fc215bf2b87b10bac1",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "7118f90d04b9333c808f18a901669b266b18f343dd3f53da5210045fe3b60110",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b08-168"
+      },
+      "record_id": "v4-b08-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:606b72b579b514e7",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:2ef59a3c4eabc3e2",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_5:892e2453900d36a7",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:5d403b8e2b807e2d",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_6:83139c3dc5735e35",
+        "ngram_6:93dc27777ff0f751",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:a608fdb5d037eca8",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:5b5d0f8277fc3d6f"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-navigation-sync-anecdote",
+        "semantic_intent_id": "navigation-sync-anecdote",
+        "template_family_id": "extended-story-anecdote-082",
+        "text": "Во время экспедиции маршрут внезапно откатился к прошлой версии, и я решил, что navigation patch испортил координаты. Уже после повторного ввода заметил, что cloud sync подхватил старый profile. Теперь перед стартом экспортирую route локально и разрешаю синхронизацию только после возвращения."
+      },
+      "replacement_text_sha256": "fc9ef2adfb3ff1ce7ceb50f8a4091da9a5467c2fec3855a05acfa8d416828d0c",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      }
+    },
+    {
+      "original_record_sha256": "9a882f469395f5d62c3d3af33681d0b4e259d98ae95836e93218a8484dd6d396",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b08-171"
+      },
+      "record_id": "v4-b08-171",
+      "repair_reasons": [
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_6:ee10aa1d03c4d056",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_7:7c89e253659555a0",
+        "ngram_8:6eadbbe5345f962d",
+        "ngram_8:91e17ca1de2f4904"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-duplicate-comms-source",
+        "semantic_intent_id": "duplicate-comms-source",
+        "template_family_id": "medium-moderation-or-technical-083",
+        "text": "После переподключения канал связи задвоился; убираю лишний источник из прежней сцены."
+      },
+      "replacement_text_sha256": "d1d880f946e418c08010a4cf43e2b0142a20cad2e647b870533b08894c1e7e77",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "46ec79cb6a8d3163833b82702bf209523cae9908e8159997ad1a6175486cece8",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b09-028"
+      },
+      "record_id": "v4-b09-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:859564dd9fe8f722",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:061fb2330233a4ef",
+        "ngram_5:0d4ffa93de0fe077",
+        "ngram_5:0f3f579c5ac17c17",
+        "ngram_5:484a5b941d390d0f",
+        "ngram_5:79549ce93ebc3b6b",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:05c9de65f9189876",
+        "ngram_6:1e64461449cf0f49",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_6:6ea1bb1abe8e83b6",
+        "ngram_6:a3bba11184e35c4a",
+        "ngram_6:a46dd28e2d562010",
+        "ngram_6:ad6cdc71ec4ae345",
+        "ngram_7:069bec3417e3e718",
+        "ngram_7:0c3a0f99552729d1",
+        "ngram_7:2b9cb2d1defeb990",
+        "ngram_7:a1a8e1a7cd710c4b",
+        "ngram_7:a32545a560a90504",
+        "ngram_7:a673f55f63acef78",
+        "ngram_7:e1d8ae343c46e027",
+        "ngram_8:041b2045fa86f46c",
+        "ngram_8:4e65b674489a85dd",
+        "ngram_8:5b1fdf70ca16bed7",
+        "ngram_8:5c478f3736a2038a",
+        "ngram_8:7cadad8b3582f7d8",
+        "ngram_8:7f7794c74712c97f"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-farm-save-transition",
+        "semantic_intent_id": "farm-save-transition",
+        "template_family_id": "long-transition-084",
+        "text": "Когда игровой день закончится, запишем прогресс в новый manual slot, проверим загрузку и затем перейдём к другой игре, оставив обновлённую планировку фермы для следующего эфира."
+      },
+      "replacement_text_sha256": "269cf5cc7e0b40d0340d7bdceccff9dbc7b3e812e279a3339c93052d34f071cc",
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "1f36b14e558b9e5142c31dbd37808c7434096f1bb7276f245ccabe30c59f0928",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b09-070"
+      },
+      "record_id": "v4-b09-070",
+      "repair_reasons": [
+        "ngram_8:73ba4958c901506a",
+        "ngram_8:cd47e7f70db625e1"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-stale-gain-filter",
+        "semantic_intent_id": "stale-gain-filter",
+        "template_family_id": "medium-moderation-or-technical-085",
+        "text": "После смены сцены остаётся прежнее усиление; пересоберу цепочку фильтров без остановки."
+      },
+      "replacement_text_sha256": "18e58acaaebb0beb8a0f7145f8725249bf0c5c227ada987497ac41d6ef3fc64e",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "cddd9f5801c9fdd0e60182b6f308e005398eaf3950c067f2002323dbec7d88cd",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b09-073"
+      },
+      "record_id": "v4-b09-073",
+      "repair_reasons": [
+        "ngram_8:edac947c986a9235",
+        "ngram_8:fce910789ce90d94"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-gift-identity-check",
+        "semantic_intent_id": "gift-identity-check",
+        "template_family_id": "long-moderation-or-technical-086",
+        "text": "Gift alert снова показал прежнее имя, поэтому перед благодарностью сопоставлю платёжную запись, timestamp и transaction ID, чтобы не перепутать очередь."
+      },
+      "replacement_text_sha256": "4c267dd58cf24cdd86d6daeb0397bcba2dc9e0938ab08e71ca739099fcb4827a",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "4842e44327ab307626177ea8fee6a5e035e9c15f8345f7470fe6e157873dcf8f",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b09-108"
+      },
+      "record_id": "v4-b09-108",
+      "repair_reasons": [
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:33f6db0785f31a07",
+        "ngram_5:351d221c57fdf4fd",
+        "ngram_5:783a452d72eab9d2",
+        "ngram_5:a6dbfc259ca9ffd4",
+        "ngram_5:b8922409c998b7e0",
+        "ngram_5:c34f75318592a589",
+        "ngram_5:f442fa0d16ca7410",
+        "ngram_6:115f67b59a593663",
+        "ngram_6:25967f3a2dc3e202",
+        "ngram_6:279e3622df061b9f",
+        "ngram_6:29ed0610d7b2a2b7",
+        "ngram_6:4493d6b8405daf21",
+        "ngram_6:55d517b5b38642e5",
+        "ngram_6:91f971909fd10954",
+        "ngram_6:a250da854834ecaf",
+        "ngram_6:a6d11fa14a27e5f8",
+        "ngram_6:b3f945ded149dfd6",
+        "ngram_6:b443ba6066ad96af",
+        "ngram_6:f20c4bc36d22153e",
+        "ngram_6:f2c66a091ef314b9",
+        "ngram_7:094073625e66f55e",
+        "ngram_7:141aa91bab2481e0",
+        "ngram_7:17e1d2d25e2f1a22",
+        "ngram_7:1b3b9417f0a8a9cd",
+        "ngram_7:29962bd54c33ecc1",
+        "ngram_7:37932a3a26a505d4",
+        "ngram_7:44294d2708cbba27",
+        "ngram_7:6d6e3072c3404b6f",
+        "ngram_7:dadc5152a1d61c2c",
+        "ngram_7:eb7d62b0ba519262",
+        "ngram_7:eff6106978931f51",
+        "ngram_8:057bd09aa75f03a3",
+        "ngram_8:0742c661d92449cf",
+        "ngram_8:1de4ea7f6bdc96f2",
+        "ngram_8:269c849839f0e6d7",
+        "ngram_8:436792dd0a17dca8",
+        "ngram_8:59e7033f9ff9dddc",
+        "ngram_8:5a69191d1a4cb940",
+        "ngram_8:6552f9f8384e2370",
+        "ngram_8:71d456f7cbd8de90",
+        "ngram_8:71f2c49aa3573cb8",
+        "ngram_8:74bed16c2d3bcd05",
+        "ngram_8:80a0d87c9fec9ec4",
+        "ngram_8:8a0662244164c78b",
+        "ngram_8:8f9e9025e5315e1b",
+        "ngram_8:bff9ecc5f6dd2da8",
+        "sentence:7960f27e3c8b455e"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-garden-fundraiser-close",
+        "semantic_intent_id": "garden-fundraiser-close",
+        "template_family_id": "extended-moderation-or-technical-087",
+        "text": "Работы для общественного сада уже профинансированы, поэтому второй сбор сегодня не открываем. Счётчик на экране может обновиться позже, но итог я проверю после игрового дня. Завтра покажу смету и дальнейший план, а сейчас спокойно продолжим эфир без новых просьб о поддержке."
+      },
+      "replacement_text_sha256": "2dc4b101e7c8b834b5401b70c7edc34b3e71a94a8b4c2f765fa2992ba164188b",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "911169303f467fdc55018b4620b9c02c524d35686645a28d78fccce7d486e215",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b09-109"
+      },
+      "record_id": "v4-b09-109",
+      "repair_reasons": [
+        "ngram_4:77b2d3c4d4bdc1e3",
+        "ngram_5:0178f1120a167e09",
+        "ngram_5:139c576a5c8415a5",
+        "ngram_5:2f2e156b64f10c84",
+        "ngram_5:57bcc9f563ad4ae9",
+        "ngram_5:5bbed7a7f85be71f",
+        "ngram_5:84b4ec8848c0a7a5",
+        "ngram_5:9c6dcfdc347b45c3",
+        "ngram_5:a7555ea4171ace14",
+        "ngram_5:c241aea04fadf075",
+        "ngram_6:0044df6a781c25e5",
+        "ngram_6:122da76e807a84dc",
+        "ngram_6:12f180dee749853d",
+        "ngram_6:17bf0643ff0e3376",
+        "ngram_6:25c92ee4b2ba8eb8",
+        "ngram_6:35768c0fcfe74d55",
+        "ngram_6:3be449e69e06c209",
+        "ngram_6:4e8b6ae9844bb488",
+        "ngram_6:57fa740b1c80e1e8",
+        "ngram_6:5e8ffd09f1b53e67",
+        "ngram_6:6587fcdf763d9946",
+        "ngram_6:73c3f9b3b3fff9eb",
+        "ngram_6:83f020a9f6dbcfdc",
+        "ngram_6:8a2171923e4b776f",
+        "ngram_6:8ca61d60b242f046",
+        "ngram_6:8ea2dabf13a2b54c",
+        "ngram_6:936d95c3f8ff0612",
+        "ngram_6:a489f365e6803cab",
+        "ngram_6:b6f917b7b6e096c9",
+        "ngram_6:bb3b87387265b7cb",
+        "ngram_6:c8cc470c3bcfc238",
+        "ngram_6:cc7fd3b3e8af2a86",
+        "ngram_6:d1081de1cc41149e",
+        "ngram_6:d4090c19c889d9f5",
+        "ngram_6:dc9d486719eae565",
+        "ngram_6:e8268f673a596178",
+        "ngram_6:eb763f8799dc8934",
+        "ngram_6:f91882366f312f66",
+        "ngram_7:03398e17eede0d49",
+        "ngram_7:0a20698b42014504",
+        "ngram_7:0ec86f9b4d6de059",
+        "ngram_7:1bbbb2d96bf637c6",
+        "ngram_7:29beaa4ae6912478",
+        "ngram_7:2edeac586e446dc1",
+        "ngram_7:30e639709b7f4d1b",
+        "ngram_7:39f8d55ad6f9c064",
+        "ngram_7:50a9455af8769d79",
+        "ngram_7:52eea439c2d7bbbe",
+        "ngram_7:728cc75c13e0e2de",
+        "ngram_7:79578343d3cfb763",
+        "ngram_7:7b8e5c5bcc71e87f",
+        "ngram_7:9b8edcf5953fa9e0",
+        "ngram_7:9b8f634dfef03752",
+        "ngram_7:b45b02345077628c",
+        "ngram_7:c4c27267e57065f6",
+        "ngram_7:c6de759d0d6dfa7a",
+        "ngram_7:d028357eac39260b",
+        "ngram_7:d9abac7e1d79c7ff",
+        "ngram_7:ddbadf46c617d187",
+        "ngram_7:e075956c168c3b06",
+        "ngram_7:e8fe499bc099834a",
+        "ngram_7:eec41457374276d4",
+        "ngram_7:f00856d342cf0e51",
+        "ngram_7:f8ca9e60b4b3a148",
+        "ngram_8:0e267356e0b81513",
+        "ngram_8:169bfedcbae5a8f6",
+        "ngram_8:359fa8a4c7d30346",
+        "ngram_8:3605bb873798df45",
+        "ngram_8:3a0c90a16bfb7ea1",
+        "ngram_8:44a8924d6f73f793",
+        "ngram_8:45f7953cba623fc1",
+        "ngram_8:481d8af4e24f8195",
+        "ngram_8:4a52a3f50198d2f0",
+        "ngram_8:4c4fe7384143131b",
+        "ngram_8:5453d6b48417abb3",
+        "ngram_8:70ee6a13880c40f4",
+        "ngram_8:76494efff60a0ab0",
+        "ngram_8:7700985c8678e8f1",
+        "ngram_8:78eac84688d97825",
+        "ngram_8:7ed8d50d60caaa7b",
+        "ngram_8:8a88d4507e419d76",
+        "ngram_8:8c01fdd7101fa294",
+        "ngram_8:90139e9ce94d8f84",
+        "ngram_8:9ba83c8effe8b97e",
+        "ngram_8:a733a51a733d76ea",
+        "ngram_8:ab7d20742384bfe0",
+        "ngram_8:b595b63cfcaa5a14",
+        "ngram_8:c2215dfbeb8e4194",
+        "ngram_8:d7f08b1e507443fa",
+        "ngram_8:d9a4d1417b140856",
+        "ngram_8:ddad82457f628391",
+        "ngram_8:e0313fd99d0914e9",
+        "ngram_8:e30c25792d6927c7",
+        "ngram_8:f85efaf6d6d26682",
+        "sentence:fbbf9d50b18dec0c"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-shifted-gift-queue",
+        "semantic_intent_id": "shifted-gift-queue",
+        "template_family_id": "extended-moderation-or-technical-088",
+        "text": "Twitch gift overlay сдвинул очередь на одну позицию. Сопоставлю имя, timestamp и платёж, после чего перезагружу сам widget. Останавливать весь stream не придётся: эфир звучит нормально, соединение держится, а неверным остаётся только текст активного уведомления сейчас."
+      },
+      "replacement_text_sha256": "d413ec64a1c4975ac6dd09740bb8c664878666b292cca869f5845a7349cb49ae",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "4cb7e919332d1f4c8ca7aa558da5c4058e2815e7290bff439620aadd78be64bf",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b09-149"
+      },
+      "record_id": "v4-b09-149",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:9b4ddb22975f67a8",
+        "ngram_6:05988530e53dadb5",
+        "ngram_6:3f32621ab565b648",
+        "ngram_6:90350bdb66296a0d",
+        "ngram_7:71c13dbbcb4abb98",
+        "ngram_8:5ed6be141d21f96e",
+        "ngram_8:8cc3d79946cf6808",
+        "ngram_8:8f5fb4a052f40ee1",
+        "ngram_8:b6befa2b82708ae6"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-startup-buffer-transition",
+        "semantic_intent_id": "startup-buffer-transition",
+        "template_family_id": "extended-transition-089",
+        "text": "Причина задержки найдена: проигрыватель ждёт завершения всей фразы, хотя синтез уже отправляет первые звуковые данные. Теперь уменьшу стартовый буфер и перейду к повторным тестам. Отдельно проверим паузы между фрагментами, ровность громкости и повторное открытие устройства, чтобы быстрый запуск не ухудшил стабильность."
+      },
+      "replacement_text_sha256": "335cd19c35633ee664db8be57e5e83307e31e6a6191592dad89b2f71e2fbc5a2",
+      "target": {
+        "category": "transition",
+        "scene_context": "technical_stream",
+        "speech_intent": "transition"
+      }
+    },
+    {
+      "original_record_sha256": "bd93a612a8b79b3199a5777de76b699e093847f71de5b1aae9d10974b67aeece",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b09-160"
+      },
+      "record_id": "v4-b09-160",
+      "repair_reasons": [
+        "ngram_5:3183f22c0ab58df2",
+        "ngram_5:c936320ef6014b99",
+        "ngram_6:29a66173f7b406b2",
+        "ngram_6:2dcd123bef63ab7e",
+        "ngram_6:460a6ddd9c35b64d",
+        "ngram_6:ca6696802443673b",
+        "ngram_6:e0b2830cad8385dc",
+        "ngram_6:eb9231e9b7d9e891",
+        "ngram_6:fb35d444b1a1b6ff",
+        "ngram_7:0873a5a014e3676b",
+        "ngram_7:8f06f198a9c50142",
+        "ngram_7:cc763ed63b669aa6",
+        "ngram_7:dc6e73947f2ffb4e",
+        "ngram_8:2f60404d68898aec",
+        "ngram_8:68f3596053bbba14",
+        "ngram_8:6b3cb989259bf7ea",
+        "ngram_8:73a791aa2d2d1ab1",
+        "ngram_8:7e9d5ea271fed2ad",
+        "ngram_8:97f1ca22f3f798c8",
+        "sentence:8f06f198a9c50142"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-design-discussion-boundary",
+        "semantic_intent_id": "design-discussion-boundary",
+        "template_family_id": "long-audience-reply-090",
+        "text": "The rule is simple: discuss the game's design as sharply as needed, but stop addressing other viewers personally. If that continues after a warning, I will remove those messages."
+      },
+      "replacement_text_sha256": "2f5540c879df1e4bd9b293492c5e0c747938de2ba8804d45aa237df6265f5e79",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "f57963cbff0b27df6b0dd0a57fcdac60ec8b2367564a242ce8424ea761e8b8c8",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b09-166"
+      },
+      "record_id": "v4-b09-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-festival-date-fix",
+        "semantic_intent_id": "festival-date-fix",
+        "template_family_id": "medium-audience-reply-091",
+        "text": "The festival date was wrong; thanks for helping me correct it."
+      },
+      "replacement_text_sha256": "f5eafeb6877ab47d7b859b7ba518ab6b0385f99c1b5fd45147c9d74db89f7863",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      }
+    },
+    {
+      "original_record_sha256": "c6c20e572fd6c1953c4090359c55faf591eaa1003f7695fa2f183bd53b4202f5",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b09-168"
+      },
+      "record_id": "v4-b09-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:606b72b579b514e7",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:2ef59a3c4eabc3e2",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_5:892e2453900d36a7",
+        "ngram_6:0a00d1b03393af6f",
+        "ngram_6:38a08eba8dc9a0ff",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_6:83139c3dc5735e35",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:59f2ad55a61a192b",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:5b5d0f8277fc3d6f",
+        "ngram_8:ff84d1a7c373daa4"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-farm-sync-anecdote",
+        "semantic_intent_id": "farm-sync-anecdote",
+        "template_family_id": "extended-story-anecdote-092",
+        "text": "На прошлом эфире я загрузил ферму и увидел исчезнувшие дорожки вокруг амбара. Решил, что update повредил карту, начал всё расставлять заново, а потом обнаружил: cloud sync открыл прежний slot. Теперь крупные изменения сначала сохраняю локально и проверяю повторной загрузкой."
+      },
+      "replacement_text_sha256": "e912771f59a3f929d4b67161bcb2435417b7403af6614169bc609d3f63f8e643",
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      }
+    },
+    {
+      "original_record_sha256": "f75e34ae760ac2becf4d6feb362299152d9ba9adb9ab1bd4496c61f20ae93348",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b09-171"
+      },
+      "record_id": "v4-b09-171",
+      "repair_reasons": [
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_8:6eadbbe5345f962d"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-duplicate-room-tone",
+        "semantic_intent_id": "duplicate-room-tone",
+        "template_family_id": "medium-moderation-or-technical-093",
+        "text": "После переподключения фон удвоился; отключаю забытый источник в прежней сцене."
+      },
+      "replacement_text_sha256": "0c971cf7a34955b7e01ee1f0d25ad0c15d11b9abc81b7e9f8aeca9f9042bc2c6",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "edfff8dcaba904224de164670eb41f144e68960f4babba963c5e9bd8440ddcbd",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b09-194"
+      },
+      "record_id": "v4-b09-194",
+      "repair_reasons": [
+        "ngram_8:22ce389517bb2ed0",
+        "ngram_8:6e1b8d6c9be507e0",
+        "ngram_8:9129f05c65cfe246",
+        "ngram_8:dbfbe2023349ea0e"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-whole-phrase-delay",
+        "semantic_intent_id": "whole-phrase-delay",
+        "template_family_id": "medium-explanation-094",
+        "text": "Воспроизведение запаздывает: проигрыватель ждёт всю фразу, хотя начало звука уже готово."
+      },
+      "replacement_text_sha256": "e445571f44a0c8d8506d5c26fd8a445d2268079ad31f26af49f89b48a550d75c",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "explanation"
+      }
+    },
+    {
+      "original_record_sha256": "0d1291f0a93552150f82ccce2faac26095b3b0bf217b9672c1c1f829afeb9b86",
+      "preserve": {
+        "batch_id": "v4-b10",
+        "intended_length_class": "extended",
+        "language_class": "en",
+        "record_id": "v4-b10-029"
+      },
+      "record_id": "v4-b10-029",
+      "repair_reasons": [
+        "ngram_8:0af117763077b134",
+        "ngram_8:2323dfb9e6115fb9",
+        "ngram_8:286509294407d714",
+        "ngram_8:4b4b6569570ca2be",
+        "ngram_8:854ef0be04cf655b",
+        "ngram_8:90120692859f6339",
+        "ngram_8:9857b21e909031af",
+        "ngram_8:c17bf5263da239a8",
+        "ngram_8:cab28c1b0bd7bb59",
+        "ngram_8:de374419ff15213b"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-night-scene-denoiser",
+        "semantic_intent_id": "night-scene-denoiser",
+        "template_family_id": "extended-moderation-or-technical-095",
+        "text": "The broadcast remains steady, yet opening the night scene enables a legacy noise-reduction chain. I will bypass it, record one quiet reference line, and leave the mic untouched while comparing results. Viewers should stay connected; for a moment, the voice may carry more room noise than usual."
+      },
+      "replacement_text_sha256": "6967b40d79cf3972a116b84feac57e8b53abb302d0be978cc0e363c594cb3cd3",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "b613968959262b7c02049bd9f5f6f1c426fe99ce5650c7a329eb5f93da566e45",
+      "preserve": {
+        "batch_id": "v4-b10",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b10-108"
+      },
+      "record_id": "v4-b10-108",
+      "repair_reasons": [
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:33f6db0785f31a07",
+        "ngram_5:351d221c57fdf4fd",
+        "ngram_5:783a452d72eab9d2",
+        "ngram_5:a6dbfc259ca9ffd4",
+        "ngram_5:b8922409c998b7e0",
+        "ngram_5:c34f75318592a589",
+        "ngram_5:f442fa0d16ca7410",
+        "ngram_6:115f67b59a593663",
+        "ngram_6:25967f3a2dc3e202",
+        "ngram_6:279e3622df061b9f",
+        "ngram_6:29ed0610d7b2a2b7",
+        "ngram_6:4493d6b8405daf21",
+        "ngram_6:55d517b5b38642e5",
+        "ngram_6:91f971909fd10954",
+        "ngram_6:a250da854834ecaf",
+        "ngram_6:a6d11fa14a27e5f8",
+        "ngram_6:b3f945ded149dfd6",
+        "ngram_6:b443ba6066ad96af",
+        "ngram_6:f20c4bc36d22153e",
+        "ngram_6:f2c66a091ef314b9",
+        "ngram_7:094073625e66f55e",
+        "ngram_7:141aa91bab2481e0",
+        "ngram_7:17e1d2d25e2f1a22",
+        "ngram_7:1b3b9417f0a8a9cd",
+        "ngram_7:29962bd54c33ecc1",
+        "ngram_7:37932a3a26a505d4",
+        "ngram_7:44294d2708cbba27",
+        "ngram_7:6d6e3072c3404b6f",
+        "ngram_7:dadc5152a1d61c2c",
+        "ngram_7:eb7d62b0ba519262",
+        "ngram_7:eff6106978931f51",
+        "ngram_8:057bd09aa75f03a3",
+        "ngram_8:0742c661d92449cf",
+        "ngram_8:1de4ea7f6bdc96f2",
+        "ngram_8:281c4a69a75c3b43",
+        "ngram_8:35e8bd926b0f3e48",
+        "ngram_8:436792dd0a17dca8",
+        "ngram_8:71d456f7cbd8de90",
+        "ngram_8:71f2c49aa3573cb8",
+        "ngram_8:74bed16c2d3bcd05",
+        "ngram_8:80a0d87c9fec9ec4",
+        "ngram_8:8a0662244164c78b",
+        "ngram_8:a0a581885b0bd97b",
+        "ngram_8:bff9ecc5f6dd2da8",
+        "ngram_8:e242ed3bd5858310",
+        "ngram_8:f17de0a0a636c42c",
+        "sentence:7960f27e3c8b455e"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-fundraiser-close",
+        "semantic_intent_id": "fundraiser-close",
+        "template_family_id": "extended-moderation-or-technical-096",
+        "text": "Цель сбора выполнена, и поднимать новую планку сегодня не будем. Виджет может ещё показывать старую сумму из-за задержки обновления. После главы я сверю результат, отмечу помощь зрителей, а завтра отдельно представлю итоги, чтобы не прерывать напряжённую сцену повторным обращением за поддержкой."
+      },
+      "replacement_text_sha256": "79a7f0202dcff4538458c00091fe722365dda303586b284749e9006f7d7146b3",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "a95b54fc4834428b6ab2b443b0e436f3242535c3925c957a5a247fb19ff13248",
+      "preserve": {
+        "batch_id": "v4-b10",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b10-109"
+      },
+      "record_id": "v4-b10-109",
+      "repair_reasons": [
+        "ngram_4:77b2d3c4d4bdc1e3",
+        "ngram_5:0178f1120a167e09",
+        "ngram_5:139c576a5c8415a5",
+        "ngram_5:2f2e156b64f10c84",
+        "ngram_5:57bcc9f563ad4ae9",
+        "ngram_5:5bbed7a7f85be71f",
+        "ngram_5:84b4ec8848c0a7a5",
+        "ngram_5:9c6dcfdc347b45c3",
+        "ngram_5:a7555ea4171ace14",
+        "ngram_5:c241aea04fadf075",
+        "ngram_6:0044df6a781c25e5",
+        "ngram_6:122da76e807a84dc",
+        "ngram_6:12f180dee749853d",
+        "ngram_6:17bf0643ff0e3376",
+        "ngram_6:35768c0fcfe74d55",
+        "ngram_6:3be449e69e06c209",
+        "ngram_6:4e8b6ae9844bb488",
+        "ngram_6:57fa740b1c80e1e8",
+        "ngram_6:5e8ffd09f1b53e67",
+        "ngram_6:6587fcdf763d9946",
+        "ngram_6:73c3f9b3b3fff9eb",
+        "ngram_6:83f020a9f6dbcfdc",
+        "ngram_6:8a2171923e4b776f",
+        "ngram_6:8ca61d60b242f046",
+        "ngram_6:8ea2dabf13a2b54c",
+        "ngram_6:936d95c3f8ff0612",
+        "ngram_6:a489f365e6803cab",
+        "ngram_6:b6f917b7b6e096c9",
+        "ngram_6:bb3b87387265b7cb",
+        "ngram_6:c8cc470c3bcfc238",
+        "ngram_6:d1081de1cc41149e",
+        "ngram_6:d4090c19c889d9f5",
+        "ngram_6:dc9d486719eae565",
+        "ngram_6:e8268f673a596178",
+        "ngram_6:eb763f8799dc8934",
+        "ngram_6:f91882366f312f66",
+        "ngram_7:03398e17eede0d49",
+        "ngram_7:0a20698b42014504",
+        "ngram_7:0ec86f9b4d6de059",
+        "ngram_7:1bbbb2d96bf637c6",
+        "ngram_7:29beaa4ae6912478",
+        "ngram_7:2edeac586e446dc1",
+        "ngram_7:39f8d55ad6f9c064",
+        "ngram_7:50a9455af8769d79",
+        "ngram_7:52eea439c2d7bbbe",
+        "ngram_7:728cc75c13e0e2de",
+        "ngram_7:79578343d3cfb763",
+        "ngram_7:7b8e5c5bcc71e87f",
+        "ngram_7:9b8edcf5953fa9e0",
+        "ngram_7:9b8f634dfef03752",
+        "ngram_7:b45b02345077628c",
+        "ngram_7:c4c27267e57065f6",
+        "ngram_7:c6de759d0d6dfa7a",
+        "ngram_7:d028357eac39260b",
+        "ngram_7:d9abac7e1d79c7ff",
+        "ngram_7:ddbadf46c617d187",
+        "ngram_7:e8fe499bc099834a",
+        "ngram_7:eec41457374276d4",
+        "ngram_7:f00856d342cf0e51",
+        "ngram_7:f8ca9e60b4b3a148",
+        "ngram_8:0e267356e0b81513",
+        "ngram_8:169bfedcbae5a8f6",
+        "ngram_8:359fa8a4c7d30346",
+        "ngram_8:3605bb873798df45",
+        "ngram_8:3a0c90a16bfb7ea1",
+        "ngram_8:44a8924d6f73f793",
+        "ngram_8:45f7953cba623fc1",
+        "ngram_8:481d8af4e24f8195",
+        "ngram_8:4c4fe7384143131b",
+        "ngram_8:5453d6b48417abb3",
+        "ngram_8:70ee6a13880c40f4",
+        "ngram_8:78eac84688d97825",
+        "ngram_8:7dcdbadf2b0a9d69",
+        "ngram_8:7ed8d50d60caaa7b",
+        "ngram_8:8a88d4507e419d76",
+        "ngram_8:8c01fdd7101fa294",
+        "ngram_8:90139e9ce94d8f84",
+        "ngram_8:9ba83c8effe8b97e",
+        "ngram_8:a733a51a733d76ea",
+        "ngram_8:d9a4d1417b140856",
+        "ngram_8:e0313fd99d0914e9",
+        "ngram_8:e30c25792d6927c7",
+        "ngram_8:f85efaf6d6d26682",
+        "sentence:fbbf9d50b18dec0c"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-stale-twitch-alert",
+        "semantic_intent_id": "stale-twitch-alert",
+        "template_family_id": "extended-moderation-or-technical-097",
+        "text": "Очередь Twitch отстаёт на один alert. Сопоставлю показанное имя с timestamp и transaction ID, затем перезагружу сам overlay. Перезапускать stream не придётся: эфир и голос идут штатно, устарела только подпись текущего уведомления. Зрителям ничего обновлять у себя не требуется."
+      },
+      "replacement_text_sha256": "529ead89d2a80d7587e77523cc511f680510f92940df9591194e027d76a36b06",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    },
+    {
+      "original_record_sha256": "625043353c562e80e49b6b70e7c5313130ea6557cff05efa089a9f97482c38bd",
+      "preserve": {
+        "batch_id": "v4-b10",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b10-110"
+      },
+      "record_id": "v4-b10-110",
+      "repair_reasons": [
+        "ngram_6:ccdafdf09445693b",
+        "ngram_6:d6806bf8ebee24e1",
+        "ngram_8:4c2b49df5cc24b79",
+        "ngram_8:65a1d2696cd4a7bc"
+      ],
+      "replacement": {
+        "key_phrase_id": "key-duplicate-raid-alert",
+        "semantic_intent_id": "duplicate-raid-alert",
+        "template_family_id": "medium-moderation-or-technical-098",
+        "text": "Оба уведомления относятся к одному рейду; второе повторилось после перезапуска источника."
+      },
+      "replacement_text_sha256": "67f672af25ac9206f90543e80debe48fc543bdd9f3ec72b1ae3054b44e85ac33",
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      }
+    }
+  ],
+  "repair_policy_id": "representative-v4",
+  "repair_policy_sha256": "816c95e33eea2010bb20c202ce7d06280f4e6d575b8aa2565e7794037ff1e79c",
+  "repair_set_sha256": "bac38b53182770ccc47ca4a10b9a754be4ad82a2c4ea8a0092b1ee4e3ab73e4b",
+  "source_audit_sha256": "41d6ca0b17ff89d484611cff99e601d3a52d82ed4b7a199e3a43aff970bf75e5",
+  "source_record_id_set_sha256": "f5aa31058353d80c4efeca0f620ae299b63e523347e2b6ccfc9677ab66e91c0f",
+  "source_records_sha256": "db7d6ba23f88ba9b9dd39bf10a8ec9b12769d5767a3fa10765606b96ca00f894"
+}

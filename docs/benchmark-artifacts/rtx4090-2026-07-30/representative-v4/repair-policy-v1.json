@@ -1,0 +1,20 @@
+{
+  "allowed_category_replacements": {
+    "conversation": {
+      "transition": 9
+    },
+    "game_commentary": {
+      "game_review": 18
+    },
+    "stream_event": {
+      "transition": 9
+    }
+  },
+  "corpus_id": "representative-v4",
+  "corpus_v4_repair_policy_schema_version": 1,
+  "selection_priority": [
+    "game_commentary",
+    "conversation",
+    "stream_event"
+  ]
+}

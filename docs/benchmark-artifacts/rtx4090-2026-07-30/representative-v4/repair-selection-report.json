@@ -1,0 +1,60 @@
+{
+  "corpus_id": "representative-v4",
+  "corpus_v4_repair_report_schema_version": 2,
+  "implicated_record_count": 188,
+  "repair_policy_sha256": "816c95e33eea2010bb20c202ce7d06280f4e6d575b8aa2565e7794037ff1e79c",
+  "selected_by_batch": {
+    "v4-b01": 16,
+    "v4-b02": 4,
+    "v4-b03": 10,
+    "v4-b04": 11,
+    "v4-b05": 8,
+    "v4-b06": 15,
+    "v4-b07": 7,
+    "v4-b08": 12,
+    "v4-b09": 11,
+    "v4-b10": 4
+  },
+  "selected_by_category": {
+    "conversation": 9,
+    "game_commentary": 18,
+    "live_chat": 22,
+    "stream_event": 32,
+    "transition": 17
+  },
+  "selected_by_language": {
+    "en": 29,
+    "mixed": 21,
+    "ru": 48
+  },
+  "selected_by_length": {
+    "extended": 21,
+    "long": 27,
+    "medium": 32,
+    "micro": 7,
+    "short": 11
+  },
+  "selected_by_target_category": {
+    "game_review": 18,
+    "live_chat": 22,
+    "stream_event": 23,
+    "transition": 35
+  },
+  "selected_record_count": 98,
+  "selection_metrics": {
+    "bounded_local_improvement_count": 0,
+    "bounded_local_improvement_trial_count": 25000,
+    "category_rebalance_record_count": 36,
+    "fixed_slot_swap_count": 0,
+    "fixed_slot_swap_selected_count": 98,
+    "fixed_slot_swap_trial_count": 5000,
+    "greedy_repetition_selected_count": 82,
+    "local_improved_selected_count": 98,
+    "post_rebalance_selected_count": 98,
+    "repetition_only_record_count": 62,
+    "reverse_pruned_selected_count": 98
+  },
+  "selection_policy": "deterministic_greedy_multicover_fixed_slot_swap_reverse_delete_bounded_local_search",
+  "source_audit_sha256": "41d6ca0b17ff89d484611cff99e601d3a52d82ed4b7a199e3a43aff970bf75e5",
+  "source_records_sha256": "db7d6ba23f88ba9b9dd39bf10a8ec9b12769d5767a3fa10765606b96ca00f894"
+}

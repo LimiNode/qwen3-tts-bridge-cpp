@@ -1,0 +1,3186 @@
+{
+  "corpus_id": "representative-v4",
+  "corpus_v4_repair_set_schema_version": 3,
+  "implicated_record_count": 188,
+  "records": [
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "7606d81d22ba680a0d14be3f1bd03a0d43cc2637d2b8920a9b43578e694ffe46",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "ru",
+        "record_id": "v4-b01-001"
+      },
+      "record_id": "v4-b01-001",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "0bb42e6b553216bf02f5b7792c3c32f94a2a1afcd24fb363e4d6e8a0736d4eac",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "ru",
+        "record_id": "v4-b01-002"
+      },
+      "record_id": "v4-b01-002",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "27c6a0445712677161723e242bcd58a6bb952277ff68aba31e0744f7e64b9405",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "ru",
+        "record_id": "v4-b01-004"
+      },
+      "record_id": "v4-b01-004",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "902d0063994457bb771586f1e92cece031b2cada0c25e794058d3a95b9bb7f16",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "ru",
+        "record_id": "v4-b01-005"
+      },
+      "record_id": "v4-b01-005",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "6da2a7c3fbc9020c2f2e0f3c97c99d53b2c390e6a1e9a7815167914b6505ada3",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "en",
+        "record_id": "v4-b01-011"
+      },
+      "record_id": "v4-b01-011",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "13d6dce3da938d146917d7378945d23b48792221f3910594f509a9f95ee24c62",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "en",
+        "record_id": "v4-b01-013"
+      },
+      "record_id": "v4-b01-013",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "4c9c7bea2b6154cf692fb98095cc4afc2eb0440d62d9291855179fe82ae7b066",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "micro",
+        "language_class": "en",
+        "record_id": "v4-b01-014"
+      },
+      "record_id": "v4-b01-014",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "9b18077d9c7c173216a70bd3adb67682816ada45bad70268b1129946f428a786",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b01-017"
+      },
+      "record_id": "v4-b01-017",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "be7bbc07960dec5dd400d81cc5ca72be616ae5f4bb3b891dd0f057a4756a8849",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b01-020"
+      },
+      "record_id": "v4-b01-020",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "18ed36c573aedb736262fbcac9bd68e1a365fcd2bb83f95b2a94a809dd10bcb6",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b01-022"
+      },
+      "record_id": "v4-b01-022",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "e70d78f468633f4da1d822a59e95237e6ff4c19509ecb425f9fe372e8aa3fc59",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b01-025"
+      },
+      "record_id": "v4-b01-025",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "298a36821c9621ca599b18935f4ea54a19c052f8f93b275abed6d67ce6ad181a",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "en",
+        "record_id": "v4-b01-029"
+      },
+      "record_id": "v4-b01-029",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "e90250ecdaae1a1f3ab8f718074d94edae47e4fd6a7d4da2e8b80be0736a7af5",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "en",
+        "record_id": "v4-b01-030"
+      },
+      "record_id": "v4-b01-030",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "16b4072761651c62856f8503d965f3bcb587fe5327a7fd1b80303483b9351125",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "short",
+        "language_class": "en",
+        "record_id": "v4-b01-033"
+      },
+      "record_id": "v4-b01-033",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "d3f85d0b09290a1c48756ae580b520af505b67884a5b315c2a0e24aadf7cf39e",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b01-045"
+      },
+      "record_id": "v4-b01-045",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "79e25bb996ce41eadb4c9a96e902d98ce6d6d630991dad88907da6bdd9fa3601",
+      "preserve": {
+        "batch_id": "v4-b01",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b01-057"
+      },
+      "record_id": "v4-b01-057",
+      "repair_reasons": [
+        "category_quota_rebalance"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "5315ecc921bc681b8ad3cf601de9518d2de42db250f74fe40df1198fc1760acc",
+      "preserve": {
+        "batch_id": "v4-b02",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b02-028"
+      },
+      "record_id": "v4-b02-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_7:0c3a0f99552729d1"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "0eb3cec470add2a5d5f304475f0d80eca1e584c58f6625dce30bc76213155c6e",
+      "preserve": {
+        "batch_id": "v4-b02",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b02-162"
+      },
+      "record_id": "v4-b02-162",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:a57798c3a686c52a"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "556ef464af8689d897ba6e67a325fd41b7e82f549b10e519695ada67f949c3bf",
+      "preserve": {
+        "batch_id": "v4-b02",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b02-166"
+      },
+      "record_id": "v4-b02-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "01e09f63630f77c345ad8199df69f6a641d0168054550e6dbb2dac1f7c958c64",
+      "preserve": {
+        "batch_id": "v4-b02",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b02-180"
+      },
+      "record_id": "v4-b02-180",
+      "repair_reasons": [
+        "ngram_4:0d525ab79e1a4ffe"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "27f262ff538049c06db27cfdc2d0a431936eac4a319221514eba0c32c1ec5d4d",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b03-051"
+      },
+      "record_id": "v4-b03-051",
+      "repair_reasons": [
+        "ngram_4:096ab0301b9a2ee1",
+        "ngram_4:14ac1566eea0cf3a",
+        "ngram_4:64234939dab9192f",
+        "ngram_4:98df8044b807a51d",
+        "ngram_5:0d18acfbb285b594",
+        "ngram_5:d3a146b96a15111e"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "0b66396fddf0fc1ed0f9421e9d841526f19635747e7ada5ca6b304ed53202458",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b03-081"
+      },
+      "record_id": "v4-b03-081",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:62a95088c708225a"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "bd7f453d8c6fbb6b2be6f7ec012c1750ac922a6f355bc37fb8028c09a0f70900",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b03-108"
+      },
+      "record_id": "v4-b03-108",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:33f6db0785f31a07",
+        "ngram_5:351d221c57fdf4fd",
+        "ngram_5:783a452d72eab9d2",
+        "ngram_5:a6dbfc259ca9ffd4",
+        "ngram_5:b8922409c998b7e0",
+        "ngram_5:c34f75318592a589",
+        "ngram_5:f442fa0d16ca7410",
+        "ngram_6:115f67b59a593663",
+        "ngram_6:25967f3a2dc3e202",
+        "ngram_6:279e3622df061b9f",
+        "ngram_6:55d517b5b38642e5",
+        "ngram_6:91f971909fd10954",
+        "ngram_6:a250da854834ecaf",
+        "ngram_6:a6d11fa14a27e5f8",
+        "ngram_6:b3f945ded149dfd6",
+        "ngram_6:b443ba6066ad96af",
+        "ngram_6:f20c4bc36d22153e",
+        "ngram_6:f2c66a091ef314b9",
+        "ngram_7:094073625e66f55e",
+        "ngram_7:141aa91bab2481e0",
+        "ngram_7:17e1d2d25e2f1a22",
+        "ngram_7:1b3b9417f0a8a9cd",
+        "ngram_7:29962bd54c33ecc1",
+        "ngram_7:44294d2708cbba27",
+        "ngram_7:6d6e3072c3404b6f",
+        "ngram_7:dadc5152a1d61c2c",
+        "ngram_7:eff6106978931f51",
+        "ngram_8:057bd09aa75f03a3",
+        "ngram_8:0742c661d92449cf",
+        "ngram_8:71d456f7cbd8de90",
+        "ngram_8:71f2c49aa3573cb8",
+        "ngram_8:74bed16c2d3bcd05",
+        "ngram_8:80a0d87c9fec9ec4",
+        "ngram_8:8a0662244164c78b",
+        "ngram_8:bff9ecc5f6dd2da8",
+        "sentence:7960f27e3c8b455e"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "c20a31371fd8cf6777cd50e601f575e40f61a408075b4621a4b2ceecc9f41d7e",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b03-160"
+      },
+      "record_id": "v4-b03-160",
+      "repair_reasons": [
+        "ngram_6:460a6ddd9c35b64d",
+        "ngram_6:fb35d444b1a1b6ff",
+        "ngram_7:8f06f198a9c50142",
+        "ngram_8:2f60404d68898aec",
+        "ngram_8:6da099e79c12889e",
+        "sentence:8f06f198a9c50142"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "7b8b8c3979062b2e43fb73eabc8d1f571b94fb619c212c2d08238d2ffd8c95c0",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b03-161"
+      },
+      "record_id": "v4-b03-161",
+      "repair_reasons": [
+        "ngram_4:7dce6c8f05f36af5",
+        "ngram_4:8adcaea0796655e0",
+        "ngram_5:b0287377095d8d40"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "3a6a4cd33c2d1079bdfa3896206329692e2c1845e03cee6acad8882c54dfab5a",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b03-162"
+      },
+      "record_id": "v4-b03-162",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:a57798c3a686c52a"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "9e137a59ef5471473e67a6d7791f5edb28db3e5a7ec5051ed3b2155b81ade520",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b03-171"
+      },
+      "record_id": "v4-b03-171",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_6:bafe78d2d51e4dad",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_7:b0e133a802366fc7",
+        "ngram_8:5127afbf22da73a6",
+        "ngram_8:6eadbbe5345f962d"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "ab21305be340dc1dc16509dbd1866cd22da13c250955122f50705991fcd218c8",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b03-178"
+      },
+      "record_id": "v4-b03-178",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:8068483971b24ea5"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "33b9c248aed7d6684efb18b29c8856d758852352b6952347bde2cba88064c6ec",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b03-180"
+      },
+      "record_id": "v4-b03-180",
+      "repair_reasons": [
+        "ngram_4:0d525ab79e1a4ffe"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "019d3276ce780fc3cdf04b0f75b439c63957f3ecf792294ed672e18d633acc8e",
+      "preserve": {
+        "batch_id": "v4-b03",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b03-181"
+      },
+      "record_id": "v4-b03-181",
+      "repair_reasons": [
+        "ngram_4:baa6e7acd59648fd"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "22e4d2521e345998bac85968faacbcf1805ad82022559a9e7066e87bfefd6949",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "short",
+        "language_class": "en",
+        "record_id": "v4-b04-057"
+      },
+      "record_id": "v4-b04-057",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:6299e86718965a65"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "150e2dfb2af33dcfa81faef16d6b19a75eacc47f4e711fd091cad63169fc6cd2",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b04-073"
+      },
+      "record_id": "v4-b04-073",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_6:01849df0afe40def",
+        "ngram_6:082b498b7c21f382",
+        "ngram_6:2cbf8f221d3227e7",
+        "ngram_6:42fb9ca20407ed55",
+        "ngram_6:4895f7b750f8faab",
+        "ngram_6:4daa5143b511fdea",
+        "ngram_6:dbab9cae57af0313",
+        "ngram_6:fdaacb99c91b6ab3",
+        "ngram_7:07421438e8c0cb74",
+        "ngram_7:09abdd236cd0fb6a",
+        "ngram_7:237da63221109648",
+        "ngram_7:647bafe6065ae9fc",
+        "ngram_7:77aa482d69204bed",
+        "ngram_7:7c416920705a3781",
+        "ngram_7:bc8aa38348c37346",
+        "ngram_8:03dd439799b4b77f",
+        "ngram_8:1384ad342dcc862f",
+        "ngram_8:17492c8d2cc7fbee",
+        "ngram_8:3f3970d4c8dc3ba6",
+        "ngram_8:8f7a21822d351a88",
+        "ngram_8:b40a532b29a12602",
+        "ngram_8:f21719fffbff92de"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "e66a1e0a94cec0ed35525fd504c37bb5a2aaa77debe928fb7886e2ad0a926294",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b04-077"
+      },
+      "record_id": "v4-b04-077",
+      "repair_reasons": [
+        "ngram_4:752745558b638eb2",
+        "ngram_4:87064e4b5d2fdd11",
+        "ngram_5:222281f501dea8fe"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "dd4b3ecd37c202c10adae5d4f9c1027a9e0b56e44e6765200a4b5fb9fa745435",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b04-100"
+      },
+      "record_id": "v4-b04-100",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_6:7acbca218ffbf46c",
+        "ngram_6:7f477d9fa6767f3f",
+        "ngram_7:0b98e7c6e87b9ef9"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "5b5dec0742ef6ff6d895155566a92d881fad75aa6386a8af3d4464e9c646adc0",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b04-108"
+      },
+      "record_id": "v4-b04-108",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:c34f75318592a589",
+        "ngram_8:067c7702dfc2a3bf",
+        "ngram_8:338a7212dd5f07a8",
+        "ngram_8:7dc2c2d89bb00623",
+        "ngram_8:ef6e8ccf0fd77bdf",
+        "ngram_8:f30568ec1c15dfcb"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "e4a98e091abe52769d3564e8008db60b81c925590b2ebce03f1442c9040db86c",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b04-121"
+      },
+      "record_id": "v4-b04-121",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:34e83d59996ca6e0",
+        "ngram_5:b09527a44a7b7176",
+        "ngram_6:c2bbcc25cd2005e7",
+        "ngram_8:ce224f4d0250e574",
+        "ngram_8:f9491ee721cb49d0"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "190e6e244a60d5e9ac923e6aab512cc1d5d3982252f97aefe2ef6bd2af0f6096",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b04-153"
+      },
+      "record_id": "v4-b04-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:460f78b181d7814c",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:74b21c82677dd190",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:0e664f3c2fdc75f8",
+        "ngram_7:861cd84eedbc6e29",
+        "ngram_8:0c8695dd3a4a18e2",
+        "ngram_8:70833852515c80a5",
+        "ngram_8:7e734c0b21668be4",
+        "ngram_8:a3bdb4ff95d975cb",
+        "ngram_8:d95364b1d44797f0"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "b9d7a8bb9bc6fcf63f95d80b2df8cdf1d1ab58c0e33c746b3550bd0cfd096ba6",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b04-159"
+      },
+      "record_id": "v4-b04-159",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_8:28e2eff181d91e71"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "4b6953cede38107712f2d1dae4e2d9d60f7d91771e8b8506bfab711820abf183",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b04-161"
+      },
+      "record_id": "v4-b04-161",
+      "repair_reasons": [
+        "ngram_4:7dce6c8f05f36af5",
+        "ngram_4:8adcaea0796655e0",
+        "ngram_5:b0287377095d8d40"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "a6ef3a76d3f02474e8f18c4c52ae4e244a2542e5297c7ba38eb84c964ad84b96",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b04-166"
+      },
+      "record_id": "v4-b04-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "813c1c47419efb36397e3b1646d9d13e72b8d32ea687baf9f01b13533a617d69",
+      "preserve": {
+        "batch_id": "v4-b04",
+        "intended_length_class": "medium",
+        "language_class": "mixed",
+        "record_id": "v4-b04-197"
+      },
+      "record_id": "v4-b04-197",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_8:9bb2ff3477206cb8",
+        "ngram_8:f28c3a02d17d5af6"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "19080f84254b6604c805ddbcc8cf820ff5d7fe0de00ae7f3a098f0ebb1c8c760",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b05-028"
+      },
+      "record_id": "v4-b05-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:859564dd9fe8f722",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:061fb2330233a4ef",
+        "ngram_5:0d4ffa93de0fe077",
+        "ngram_5:0f3f579c5ac17c17",
+        "ngram_5:484a5b941d390d0f",
+        "ngram_5:79549ce93ebc3b6b",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:05c9de65f9189876",
+        "ngram_6:1e64461449cf0f49",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_6:6ea1bb1abe8e83b6",
+        "ngram_6:a3bba11184e35c4a",
+        "ngram_6:a46dd28e2d562010",
+        "ngram_6:ad6cdc71ec4ae345",
+        "ngram_7:069bec3417e3e718",
+        "ngram_7:0c3a0f99552729d1",
+        "ngram_7:2b9cb2d1defeb990",
+        "ngram_7:a1a8e1a7cd710c4b",
+        "ngram_7:a32545a560a90504",
+        "ngram_7:a673f55f63acef78",
+        "ngram_7:e1d8ae343c46e027",
+        "ngram_8:041b2045fa86f46c",
+        "ngram_8:4e65b674489a85dd",
+        "ngram_8:5b1fdf70ca16bed7",
+        "ngram_8:5c478f3736a2038a",
+        "ngram_8:7cadad8b3582f7d8",
+        "ngram_8:7f7794c74712c97f"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "a72ea8217747fff86f63b37c775a8883e41c8f51f1c215de2ae707c85f3556f5",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b05-077"
+      },
+      "record_id": "v4-b05-077",
+      "repair_reasons": [
+        "ngram_4:752745558b638eb2",
+        "ngram_4:87064e4b5d2fdd11",
+        "ngram_5:222281f501dea8fe"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "ad6f2c3b4258ec69c14fbecae48eba71699025b4923065dbf69b486e9b40efa3",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b05-108"
+      },
+      "record_id": "v4-b05-108",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:33f6db0785f31a07",
+        "ngram_5:351d221c57fdf4fd",
+        "ngram_5:783a452d72eab9d2",
+        "ngram_5:a6dbfc259ca9ffd4",
+        "ngram_5:b8922409c998b7e0",
+        "ngram_5:c34f75318592a589",
+        "ngram_5:f442fa0d16ca7410",
+        "ngram_6:25967f3a2dc3e202",
+        "ngram_6:279e3622df061b9f",
+        "ngram_6:4493d6b8405daf21",
+        "ngram_6:55d517b5b38642e5",
+        "ngram_6:91f971909fd10954",
+        "ngram_6:a6d11fa14a27e5f8",
+        "ngram_6:f20c4bc36d22153e",
+        "ngram_7:17e1d2d25e2f1a22",
+        "ngram_7:44294d2708cbba27",
+        "ngram_7:6d6e3072c3404b6f",
+        "ngram_7:dadc5152a1d61c2c",
+        "ngram_8:057bd09aa75f03a3",
+        "ngram_8:281c4a69a75c3b43",
+        "ngram_8:8a0662244164c78b",
+        "ngram_8:bff9ecc5f6dd2da8",
+        "ngram_8:e242ed3bd5858310"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "06f63c5203dcd840774cddc5bb3be6879d1b9be56132348b3f6a8d26015e61ef",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b05-149"
+      },
+      "record_id": "v4-b05-149",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:9b4ddb22975f67a8",
+        "ngram_6:05988530e53dadb5",
+        "ngram_6:90350bdb66296a0d",
+        "ngram_7:71c13dbbcb4abb98"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "0ad2e6b9f20aef74ed54f6adff22ce28f67a0803ca77b2899ffd15bd666f8f02",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b05-153"
+      },
+      "record_id": "v4-b05-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:460f78b181d7814c",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:74b21c82677dd190",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:0e664f3c2fdc75f8",
+        "ngram_7:861cd84eedbc6e29",
+        "ngram_8:0c8695dd3a4a18e2"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "933d54e806dd5c2201c0e3b92da36cbf1d1ac1f83f1e35440fa2ee6a446a2aea",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b05-161"
+      },
+      "record_id": "v4-b05-161",
+      "repair_reasons": [
+        "ngram_4:7dce6c8f05f36af5",
+        "ngram_4:8adcaea0796655e0",
+        "ngram_5:b0287377095d8d40"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "db2f399496e155f3a103a347913b56c2a3aa2e9293dfd40c989fb6b269a96376",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b05-166"
+      },
+      "record_id": "v4-b05-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "9a7825b2f5608cfb039ae28fe9b4dc3b213c0837be6178096aaf2f0ec98d8cf1",
+      "preserve": {
+        "batch_id": "v4-b05",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b05-168"
+      },
+      "record_id": "v4-b05-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_6:0a00d1b03393af6f",
+        "ngram_6:38a08eba8dc9a0ff",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:59f2ad55a61a192b",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:19131a38bcaa89d2",
+        "ngram_8:5b5d0f8277fc3d6f",
+        "ngram_8:ff84d1a7c373daa4"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "3631c2d57c724021b08202c718f9e9e043ef50d5477291b821a70cb227a68041",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b06-016"
+      },
+      "record_id": "v4-b06-016",
+      "repair_reasons": [
+        "ngram_8:ba96287238f40530"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "86346debf8b38585f10d876a7bf27b65f8da24ff2b33fde03d22a94396c93014",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b06-028"
+      },
+      "record_id": "v4-b06-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:859564dd9fe8f722",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:061fb2330233a4ef",
+        "ngram_5:0d4ffa93de0fe077",
+        "ngram_5:0f3f579c5ac17c17",
+        "ngram_5:484a5b941d390d0f",
+        "ngram_5:79549ce93ebc3b6b",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:05c9de65f9189876",
+        "ngram_6:1e64461449cf0f49",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_6:6ea1bb1abe8e83b6",
+        "ngram_6:a3bba11184e35c4a",
+        "ngram_6:a46dd28e2d562010",
+        "ngram_6:ad6cdc71ec4ae345",
+        "ngram_7:069bec3417e3e718",
+        "ngram_7:0c3a0f99552729d1",
+        "ngram_7:2b9cb2d1defeb990",
+        "ngram_7:a1a8e1a7cd710c4b",
+        "ngram_7:a32545a560a90504",
+        "ngram_7:a673f55f63acef78",
+        "ngram_7:e1d8ae343c46e027",
+        "ngram_8:041b2045fa86f46c",
+        "ngram_8:4e65b674489a85dd",
+        "ngram_8:5b1fdf70ca16bed7",
+        "ngram_8:5c478f3736a2038a",
+        "ngram_8:7cadad8b3582f7d8",
+        "ngram_8:7f7794c74712c97f"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "439ba4db09681188a1139fd502dd94cb9e43322b0b3343449af28e3a5a06c9f4",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b06-051"
+      },
+      "record_id": "v4-b06-051",
+      "repair_reasons": [
+        "ngram_4:096ab0301b9a2ee1",
+        "ngram_4:14ac1566eea0cf3a",
+        "ngram_4:64234939dab9192f",
+        "ngram_4:98df8044b807a51d",
+        "ngram_5:0d18acfbb285b594",
+        "ngram_5:d3a146b96a15111e",
+        "ngram_6:9dffab34df469e33"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "75e79ee77d4c90976532e409359e7c7b28b4a455ce77d3f6d5bcaf3d22e69c14",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "short",
+        "language_class": "ru",
+        "record_id": "v4-b06-077"
+      },
+      "record_id": "v4-b06-077",
+      "repair_reasons": [
+        "ngram_4:752745558b638eb2",
+        "ngram_4:87064e4b5d2fdd11",
+        "ngram_5:222281f501dea8fe"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "5d355bf6ab518af073b66bdb4e953d875023bb1cbaadc8493255ac42377327eb",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b06-078"
+      },
+      "record_id": "v4-b06-078",
+      "repair_reasons": [
+        "ngram_6:41e94a2f3bcf387c",
+        "ngram_8:10c174787070a009",
+        "ngram_8:288612331906d311",
+        "ngram_8:2f1ad7b8b16203ea",
+        "ngram_8:427be0ada07e4c86",
+        "ngram_8:552e5d6aa93dbd75",
+        "ngram_8:6727250bb66464fb",
+        "ngram_8:6a064f7b8995bd4c",
+        "ngram_8:74005fa1458b53dc",
+        "ngram_8:ac1294077df08012",
+        "ngram_8:b43fba0ad1bc3505",
+        "ngram_8:cee4564e8512588e",
+        "ngram_8:ea9af97e922e0e0d",
+        "ngram_8:fb9ac53901636499"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "881808b1dc776976276b2fc4bbe6c881cb99899dd10f865964feeb2be38f49b7",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b06-100"
+      },
+      "record_id": "v4-b06-100",
+      "repair_reasons": [
+        "ngram_6:072db0c4cc8b32d4",
+        "ngram_6:c42376f1e7d5d826",
+        "ngram_7:e3aabb1527a6aab8"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "ff30c00c12b0a5c8234d38ea587f88352e58cb529fc54b02c23d9a5c44738689",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b06-109"
+      },
+      "record_id": "v4-b06-109",
+      "repair_reasons": [
+        "ngram_4:77b2d3c4d4bdc1e3",
+        "ngram_5:0178f1120a167e09",
+        "ngram_5:139c576a5c8415a5",
+        "ngram_5:2f2e156b64f10c84",
+        "ngram_5:57bcc9f563ad4ae9",
+        "ngram_5:5bbed7a7f85be71f",
+        "ngram_5:84b4ec8848c0a7a5",
+        "ngram_5:9c6dcfdc347b45c3",
+        "ngram_5:a7555ea4171ace14",
+        "ngram_5:c241aea04fadf075",
+        "ngram_6:122da76e807a84dc",
+        "ngram_6:12f180dee749853d",
+        "ngram_6:17bf0643ff0e3376",
+        "ngram_6:25c92ee4b2ba8eb8",
+        "ngram_6:4e8b6ae9844bb488",
+        "ngram_6:57fa740b1c80e1e8",
+        "ngram_6:8a2171923e4b776f",
+        "ngram_6:8ca61d60b242f046",
+        "ngram_6:936d95c3f8ff0612",
+        "ngram_6:a489f365e6803cab",
+        "ngram_6:c8cc470c3bcfc238",
+        "ngram_6:cc7fd3b3e8af2a86",
+        "ngram_6:d4090c19c889d9f5",
+        "ngram_6:f91882366f312f66",
+        "ngram_7:03398e17eede0d49",
+        "ngram_7:2edeac586e446dc1",
+        "ngram_7:30e639709b7f4d1b",
+        "ngram_7:39f8d55ad6f9c064",
+        "ngram_7:b45b02345077628c",
+        "ngram_7:c4c27267e57065f6",
+        "ngram_7:c6de759d0d6dfa7a",
+        "ngram_7:ddbadf46c617d187",
+        "ngram_7:e075956c168c3b06",
+        "ngram_7:e8fe499bc099834a",
+        "ngram_7:eec41457374276d4",
+        "ngram_7:f8ca9e60b4b3a148",
+        "ngram_8:0e267356e0b81513",
+        "ngram_8:359fa8a4c7d30346",
+        "ngram_8:44a8924d6f73f793",
+        "ngram_8:4a52a3f50198d2f0",
+        "ngram_8:4c4fe7384143131b",
+        "ngram_8:76494efff60a0ab0",
+        "ngram_8:7700985c8678e8f1",
+        "ngram_8:8a88d4507e419d76",
+        "ngram_8:90139e9ce94d8f84",
+        "ngram_8:ab7d20742384bfe0",
+        "ngram_8:b595b63cfcaa5a14",
+        "ngram_8:c2215dfbeb8e4194",
+        "ngram_8:d7f08b1e507443fa",
+        "ngram_8:ddad82457f628391",
+        "ngram_8:e30c25792d6927c7",
+        "ngram_8:f85efaf6d6d26682"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "ac1276e6c08eb36f25cc875efc9b5d97f2b01b916a36bd585554f1d343696f5a",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b06-121"
+      },
+      "record_id": "v4-b06-121",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:34e83d59996ca6e0",
+        "ngram_5:b09527a44a7b7176",
+        "ngram_6:c2bbcc25cd2005e7",
+        "ngram_8:ce224f4d0250e574",
+        "ngram_8:f9491ee721cb49d0"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "427e0e5afbf00d804511b9d91278bffdb8de4a8b6e4ff3693e73c5c49eb592ef",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b06-153"
+      },
+      "record_id": "v4-b06-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:861cd84eedbc6e29"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "0ec62316d8deb2bdf73040999f6123499c4a3a2126b5b2a0f74f3215408900ca",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "extended",
+        "language_class": "en",
+        "record_id": "v4-b06-156"
+      },
+      "record_id": "v4-b06-156",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_6:7c68d47fc7dabce0",
+        "ngram_6:943d809813b2f52f",
+        "ngram_7:ea082e7d5b1badbe"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "36d989ee2e1dc07aadb8fb184c1d9a49cb00312bd3894180e8ae143e821b3c58",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b06-160"
+      },
+      "record_id": "v4-b06-160",
+      "repair_reasons": [
+        "ngram_5:3183f22c0ab58df2",
+        "ngram_5:c936320ef6014b99",
+        "ngram_6:29a66173f7b406b2",
+        "ngram_6:2dcd123bef63ab7e"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "7ff2a180e37a0039924abab76886c8a206712127c545647ea338ab3dcc9a6b55",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b06-161"
+      },
+      "record_id": "v4-b06-161",
+      "repair_reasons": [
+        "ngram_4:7dce6c8f05f36af5",
+        "ngram_4:8adcaea0796655e0",
+        "ngram_5:b0287377095d8d40"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "56fbc4fd4a0941fb538d03ece9e04a48eeed58d5b325d4a93bd821d341c9f0e0",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b06-166"
+      },
+      "record_id": "v4-b06-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "834029389b90d28658e20c65089d620cf3997d11c3249f05b0966537268b8d51",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b06-168"
+      },
+      "record_id": "v4-b06-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:606b72b579b514e7",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:2ef59a3c4eabc3e2",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_5:892e2453900d36a7",
+        "ngram_6:0a00d1b03393af6f",
+        "ngram_6:38a08eba8dc9a0ff",
+        "ngram_6:44cff2922bea1c90",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_6:83139c3dc5735e35",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:59f2ad55a61a192b",
+        "ngram_7:9ab179541530ddc5",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:19131a38bcaa89d2",
+        "ngram_8:5b5d0f8277fc3d6f"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "925e482ae6d7602c3a0d4368b0b7592ac1fb1962c04918316558bbd6deaf0558",
+      "preserve": {
+        "batch_id": "v4-b06",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b06-171"
+      },
+      "record_id": "v4-b06-171",
+      "repair_reasons": [
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_6:ee10aa1d03c4d056",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_7:7c89e253659555a0",
+        "ngram_8:6eadbbe5345f962d",
+        "ngram_8:91e17ca1de2f4904"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "f7b1f24d09b9596aedda7bc0b8c172dbe496ff694b09b89bf2ce7581291cab90",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "extended",
+        "language_class": "en",
+        "record_id": "v4-b07-029"
+      },
+      "record_id": "v4-b07-029",
+      "repair_reasons": [
+        "ngram_6:e1e6fbb18cc44f28",
+        "ngram_8:15cc0466a42a623f",
+        "ngram_8:1dd9f93c311fd746",
+        "ngram_8:29da7495876549c8",
+        "ngram_8:3a89ef5b5ebe9a94",
+        "ngram_8:908afc9cd3441f9a",
+        "ngram_8:9a47e31f617d17cb",
+        "ngram_8:acc353dce7543c74",
+        "ngram_8:d3721aee3b7785f8",
+        "ngram_8:e331e4eb693524a3"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "18e4abe2bb9cf558749e8a9514d81eeb0378625e74e511562b88206d57b73803",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b07-051"
+      },
+      "record_id": "v4-b07-051",
+      "repair_reasons": [
+        "ngram_4:096ab0301b9a2ee1",
+        "ngram_4:14ac1566eea0cf3a",
+        "ngram_4:64234939dab9192f",
+        "ngram_4:98df8044b807a51d",
+        "ngram_5:0d18acfbb285b594",
+        "ngram_5:d3a146b96a15111e"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "5e716e0ce1cf3d0a7696acf89756bd19af790dddbd6be4aa6e9559316a862459",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b07-120"
+      },
+      "record_id": "v4-b07-120",
+      "repair_reasons": [
+        "ngram_6:2259c5d445c5b6fd",
+        "ngram_6:c3dd85d8fc311ffc",
+        "ngram_6:de598c642e9f49f2",
+        "ngram_7:4897a696f270aef3",
+        "ngram_7:501541711ad9c78e",
+        "ngram_8:4ab7281d860ffff2",
+        "ngram_8:4fb9448b7373d3fb",
+        "ngram_8:f7630f4de3b87147"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "explanation"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "eecd2a8442f6a94fe505718f03b8a040f8aebf5db1523b7a122f53a02efd8ec7",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b07-153"
+      },
+      "record_id": "v4-b07-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:460f78b181d7814c",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:74b21c82677dd190",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:0e664f3c2fdc75f8",
+        "ngram_7:861cd84eedbc6e29",
+        "ngram_8:0c8695dd3a4a18e2"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "24daa898cc4068833cc29c832fd2b121d0c8e1c1c7a696a4f2d807f61b7097dc",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b07-166"
+      },
+      "record_id": "v4-b07-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "c1269ecbef749ef9c75c83ceeaa3105886f34ccd8843fdbd8bb105b4e00f681c",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b07-168"
+      },
+      "record_id": "v4-b07-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:606b72b579b514e7",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:2ef59a3c4eabc3e2",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_5:892e2453900d36a7",
+        "ngram_6:44cff2922bea1c90",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:5d403b8e2b807e2d",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_6:83139c3dc5735e35",
+        "ngram_6:93dc27777ff0f751",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:9ab179541530ddc5",
+        "ngram_7:a608fdb5d037eca8",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:5b5d0f8277fc3d6f",
+        "ngram_8:d2a17812a7506a9c",
+        "ngram_8:d8a68a7972ffc98f"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "dffe3ad4b9db1db8156f63776a1156df28cf665b5adbf296e8a52cdd4ba9e922",
+      "preserve": {
+        "batch_id": "v4-b07",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b07-171"
+      },
+      "record_id": "v4-b07-171",
+      "repair_reasons": [
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_6:bafe78d2d51e4dad",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_7:b0e133a802366fc7",
+        "ngram_8:02372aac2fad1e93",
+        "ngram_8:5127afbf22da73a6",
+        "ngram_8:5f72ad7c35679cd7",
+        "ngram_8:6eadbbe5345f962d",
+        "ngram_8:a3859182ce42b91d"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "f1ea9d978552d1f2a206760de8d0a9883af40df80f574dd225d7962e1aa0a9ab",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b08-028"
+      },
+      "record_id": "v4-b08-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:859564dd9fe8f722",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:061fb2330233a4ef",
+        "ngram_5:0d4ffa93de0fe077",
+        "ngram_5:0f3f579c5ac17c17",
+        "ngram_5:484a5b941d390d0f",
+        "ngram_5:79549ce93ebc3b6b",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:05c9de65f9189876",
+        "ngram_6:1e64461449cf0f49",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_6:6ea1bb1abe8e83b6",
+        "ngram_6:a3bba11184e35c4a",
+        "ngram_6:a46dd28e2d562010",
+        "ngram_6:ad6cdc71ec4ae345",
+        "ngram_7:069bec3417e3e718",
+        "ngram_7:0c3a0f99552729d1",
+        "ngram_7:2b9cb2d1defeb990",
+        "ngram_7:a1a8e1a7cd710c4b",
+        "ngram_7:a32545a560a90504",
+        "ngram_7:a673f55f63acef78",
+        "ngram_7:e1d8ae343c46e027",
+        "ngram_8:041b2045fa86f46c",
+        "ngram_8:4e65b674489a85dd",
+        "ngram_8:5b1fdf70ca16bed7",
+        "ngram_8:5c478f3736a2038a",
+        "ngram_8:7cadad8b3582f7d8",
+        "ngram_8:7f7794c74712c97f"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "7e4801e4f011392176159d866cbbd2fe157ca8bfcbccd9d6c9306339dc5145c6",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b08-058"
+      },
+      "record_id": "v4-b08-058",
+      "repair_reasons": [
+        "ngram_8:fffe6f1c7604fce8"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "e222852a93d665dcd31a65fc8a523fe128dbf5fbad150571e451bafa4f7e2d01",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b08-073"
+      },
+      "record_id": "v4-b08-073",
+      "repair_reasons": [
+        "ngram_6:01849df0afe40def",
+        "ngram_6:082b498b7c21f382",
+        "ngram_6:2cbf8f221d3227e7",
+        "ngram_6:42fb9ca20407ed55",
+        "ngram_6:4895f7b750f8faab",
+        "ngram_6:4daa5143b511fdea",
+        "ngram_6:dbab9cae57af0313",
+        "ngram_6:fdaacb99c91b6ab3",
+        "ngram_7:07421438e8c0cb74",
+        "ngram_7:09abdd236cd0fb6a",
+        "ngram_7:237da63221109648",
+        "ngram_7:647bafe6065ae9fc",
+        "ngram_7:77aa482d69204bed",
+        "ngram_7:7c416920705a3781",
+        "ngram_7:bc8aa38348c37346",
+        "ngram_8:03dd439799b4b77f",
+        "ngram_8:054db9012880465a",
+        "ngram_8:1384ad342dcc862f",
+        "ngram_8:172b8d83b3ecfa7a",
+        "ngram_8:17492c8d2cc7fbee",
+        "ngram_8:3f3970d4c8dc3ba6",
+        "ngram_8:8f7a21822d351a88",
+        "ngram_8:97c40f36078b571f",
+        "ngram_8:b40a532b29a12602",
+        "ngram_8:dba2a157da2ee743",
+        "ngram_8:f21719fffbff92de"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "7492244a18514c059594c75c2b5e2de01ff15f8bafd21385dce1c640fbe78167",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b08-096"
+      },
+      "record_id": "v4-b08-096",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_8:811cdfe3edbeaa85"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "8914cfc20a459f776d31e74da86f330eadd6675281f9c3ae1642d54c3ef1d718",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b08-109"
+      },
+      "record_id": "v4-b08-109",
+      "repair_reasons": [
+        "ngram_4:77b2d3c4d4bdc1e3",
+        "ngram_5:0178f1120a167e09",
+        "ngram_5:139c576a5c8415a5",
+        "ngram_5:2f2e156b64f10c84",
+        "ngram_5:57bcc9f563ad4ae9",
+        "ngram_5:5bbed7a7f85be71f",
+        "ngram_5:84b4ec8848c0a7a5",
+        "ngram_5:9c6dcfdc347b45c3",
+        "ngram_5:a7555ea4171ace14",
+        "ngram_5:c241aea04fadf075",
+        "ngram_6:0044df6a781c25e5",
+        "ngram_6:122da76e807a84dc",
+        "ngram_6:12f180dee749853d",
+        "ngram_6:17bf0643ff0e3376",
+        "ngram_6:35768c0fcfe74d55",
+        "ngram_6:3be449e69e06c209",
+        "ngram_6:4e8b6ae9844bb488",
+        "ngram_6:57fa740b1c80e1e8",
+        "ngram_6:5e8ffd09f1b53e67",
+        "ngram_6:6587fcdf763d9946",
+        "ngram_6:73c3f9b3b3fff9eb",
+        "ngram_6:83f020a9f6dbcfdc",
+        "ngram_6:8a2171923e4b776f",
+        "ngram_6:8ca61d60b242f046",
+        "ngram_6:8ea2dabf13a2b54c",
+        "ngram_6:936d95c3f8ff0612",
+        "ngram_6:a489f365e6803cab",
+        "ngram_6:b6f917b7b6e096c9",
+        "ngram_6:bb3b87387265b7cb",
+        "ngram_6:c8cc470c3bcfc238",
+        "ngram_6:d1081de1cc41149e",
+        "ngram_6:d4090c19c889d9f5",
+        "ngram_6:dc9d486719eae565",
+        "ngram_6:e8268f673a596178",
+        "ngram_6:eb763f8799dc8934",
+        "ngram_6:f91882366f312f66",
+        "ngram_7:03398e17eede0d49",
+        "ngram_7:0a20698b42014504",
+        "ngram_7:0ec86f9b4d6de059",
+        "ngram_7:1bbbb2d96bf637c6",
+        "ngram_7:29beaa4ae6912478",
+        "ngram_7:2edeac586e446dc1",
+        "ngram_7:39f8d55ad6f9c064",
+        "ngram_7:50a9455af8769d79",
+        "ngram_7:52eea439c2d7bbbe",
+        "ngram_7:728cc75c13e0e2de",
+        "ngram_7:79578343d3cfb763",
+        "ngram_7:7b8e5c5bcc71e87f",
+        "ngram_7:9b8edcf5953fa9e0",
+        "ngram_7:9b8f634dfef03752",
+        "ngram_7:b45b02345077628c",
+        "ngram_7:c4c27267e57065f6",
+        "ngram_7:c6de759d0d6dfa7a",
+        "ngram_7:d028357eac39260b",
+        "ngram_7:d9abac7e1d79c7ff",
+        "ngram_7:ddbadf46c617d187",
+        "ngram_7:e8fe499bc099834a",
+        "ngram_7:eec41457374276d4",
+        "ngram_7:f00856d342cf0e51",
+        "ngram_7:f8ca9e60b4b3a148",
+        "ngram_8:0e267356e0b81513",
+        "ngram_8:169bfedcbae5a8f6",
+        "ngram_8:359fa8a4c7d30346",
+        "ngram_8:3605bb873798df45",
+        "ngram_8:3a0c90a16bfb7ea1",
+        "ngram_8:44a8924d6f73f793",
+        "ngram_8:45f7953cba623fc1",
+        "ngram_8:481d8af4e24f8195",
+        "ngram_8:4c4fe7384143131b",
+        "ngram_8:5453d6b48417abb3",
+        "ngram_8:70ee6a13880c40f4",
+        "ngram_8:78eac84688d97825",
+        "ngram_8:7dcdbadf2b0a9d69",
+        "ngram_8:7ed8d50d60caaa7b",
+        "ngram_8:8a88d4507e419d76",
+        "ngram_8:8c01fdd7101fa294",
+        "ngram_8:90139e9ce94d8f84",
+        "ngram_8:9ba83c8effe8b97e",
+        "ngram_8:a733a51a733d76ea",
+        "ngram_8:d9a4d1417b140856",
+        "ngram_8:e0313fd99d0914e9",
+        "ngram_8:e30c25792d6927c7",
+        "ngram_8:f85efaf6d6d26682",
+        "sentence:fbbf9d50b18dec0c"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "6786f4e1bdb2e4f2f63ef1cd5547c0e8185ab9c2294f8588618e8f0eef17068f",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b08-120"
+      },
+      "record_id": "v4-b08-120",
+      "repair_reasons": [
+        "ngram_6:2259c5d445c5b6fd",
+        "ngram_6:c3dd85d8fc311ffc",
+        "ngram_6:de598c642e9f49f2",
+        "ngram_7:4897a696f270aef3",
+        "ngram_7:501541711ad9c78e",
+        "ngram_8:18401a5e1c8551ea",
+        "ngram_8:4ab7281d860ffff2",
+        "ngram_8:4fb9448b7373d3fb",
+        "ngram_8:ece9d30b2bb2cfd1",
+        "ngram_8:f7630f4de3b87147"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "explanation"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "game_commentary",
+      "original_record_sha256": "f878f573a5ec1f3ca6f102b160f0d0cef8ecbcede62ddbd03d24e6057ed995c1",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b08-121"
+      },
+      "record_id": "v4-b08-121",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:34e83d59996ca6e0",
+        "ngram_5:b09527a44a7b7176",
+        "ngram_6:5a686fd1174ba7d7",
+        "ngram_6:c2bbcc25cd2005e7"
+      ],
+      "target": {
+        "category": "game_review"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "a9fa33970c9b0f393ca58ddce33509a3cbb2b12cadd437f691180860e0e99559",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "ru",
+        "record_id": "v4-b08-153"
+      },
+      "record_id": "v4-b08-153",
+      "repair_reasons": [
+        "ngram_4:082d53dc5259cb35",
+        "ngram_4:65cea524040e124b",
+        "ngram_4:e6d53a10c9847a2e",
+        "ngram_5:2122ee0223c0c26d",
+        "ngram_5:460f78b181d7814c",
+        "ngram_5:57748033d3860f78",
+        "ngram_5:b5b2cf843d24b7dc",
+        "ngram_6:74b21c82677dd190",
+        "ngram_6:7efd1840621aa66b",
+        "ngram_6:cf91895e476ddeab",
+        "ngram_7:0e664f3c2fdc75f8",
+        "ngram_7:861cd84eedbc6e29",
+        "ngram_8:0c8695dd3a4a18e2"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "dae982dd59f35950a209f3d3dab247167697e39d2e0abbb8a3be264121b9e9e6",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b08-160"
+      },
+      "record_id": "v4-b08-160",
+      "repair_reasons": [
+        "ngram_5:3183f22c0ab58df2",
+        "ngram_5:c936320ef6014b99",
+        "ngram_6:29a66173f7b406b2",
+        "ngram_6:2dcd123bef63ab7e",
+        "ngram_6:ca6696802443673b",
+        "ngram_6:e0b2830cad8385dc",
+        "ngram_6:eb9231e9b7d9e891",
+        "ngram_7:0873a5a014e3676b",
+        "ngram_7:cc763ed63b669aa6",
+        "ngram_7:dc6e73947f2ffb4e",
+        "ngram_8:68f3596053bbba14",
+        "ngram_8:6b3cb989259bf7ea",
+        "ngram_8:73a791aa2d2d1ab1",
+        "ngram_8:7e9d5ea271fed2ad",
+        "ngram_8:97f1ca22f3f798c8"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "ad9cf101273f8d91ebc7509de807f7b7d588e7d162a431972125db1c7fac8872",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b08-166"
+      },
+      "record_id": "v4-b08-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "7118f90d04b9333c808f18a901669b266b18f343dd3f53da5210045fe3b60110",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b08-168"
+      },
+      "record_id": "v4-b08-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:606b72b579b514e7",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:2ef59a3c4eabc3e2",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_5:892e2453900d36a7",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:5d403b8e2b807e2d",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_6:83139c3dc5735e35",
+        "ngram_6:93dc27777ff0f751",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:a608fdb5d037eca8",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:5b5d0f8277fc3d6f"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "9a882f469395f5d62c3d3af33681d0b4e259d98ae95836e93218a8484dd6d396",
+      "preserve": {
+        "batch_id": "v4-b08",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b08-171"
+      },
+      "record_id": "v4-b08-171",
+      "repair_reasons": [
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_6:ee10aa1d03c4d056",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_7:7c89e253659555a0",
+        "ngram_8:6eadbbe5345f962d",
+        "ngram_8:91e17ca1de2f4904"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "transition",
+      "original_record_sha256": "46ec79cb6a8d3163833b82702bf209523cae9908e8159997ad1a6175486cece8",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b09-028"
+      },
+      "record_id": "v4-b09-028",
+      "repair_reasons": [
+        "ngram_4:2d037ffb7c3169ed",
+        "ngram_4:762349d8008139ce",
+        "ngram_4:859564dd9fe8f722",
+        "ngram_4:ea74e57b9e257d6e",
+        "ngram_4:f4eaedda71809143",
+        "ngram_5:061fb2330233a4ef",
+        "ngram_5:0d4ffa93de0fe077",
+        "ngram_5:0f3f579c5ac17c17",
+        "ngram_5:484a5b941d390d0f",
+        "ngram_5:79549ce93ebc3b6b",
+        "ngram_5:b8b5ef0493019fe3",
+        "ngram_5:e0fc28a0b62b186e",
+        "ngram_5:e1af0362caef7e85",
+        "ngram_6:05c9de65f9189876",
+        "ngram_6:1e64461449cf0f49",
+        "ngram_6:2ded55447158a3e8",
+        "ngram_6:61f997bbd95ceaf5",
+        "ngram_6:6ea1bb1abe8e83b6",
+        "ngram_6:a3bba11184e35c4a",
+        "ngram_6:a46dd28e2d562010",
+        "ngram_6:ad6cdc71ec4ae345",
+        "ngram_7:069bec3417e3e718",
+        "ngram_7:0c3a0f99552729d1",
+        "ngram_7:2b9cb2d1defeb990",
+        "ngram_7:a1a8e1a7cd710c4b",
+        "ngram_7:a32545a560a90504",
+        "ngram_7:a673f55f63acef78",
+        "ngram_7:e1d8ae343c46e027",
+        "ngram_8:041b2045fa86f46c",
+        "ngram_8:4e65b674489a85dd",
+        "ngram_8:5b1fdf70ca16bed7",
+        "ngram_8:5c478f3736a2038a",
+        "ngram_8:7cadad8b3582f7d8",
+        "ngram_8:7f7794c74712c97f"
+      ],
+      "target": {
+        "category": "transition",
+        "scene_context": "gameplay_stream",
+        "speech_intent": "transition"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "1f36b14e558b9e5142c31dbd37808c7434096f1bb7276f245ccabe30c59f0928",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b09-070"
+      },
+      "record_id": "v4-b09-070",
+      "repair_reasons": [
+        "ngram_8:73ba4958c901506a",
+        "ngram_8:cd47e7f70db625e1"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "cddd9f5801c9fdd0e60182b6f308e005398eaf3950c067f2002323dbec7d88cd",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "long",
+        "language_class": "mixed",
+        "record_id": "v4-b09-073"
+      },
+      "record_id": "v4-b09-073",
+      "repair_reasons": [
+        "ngram_8:edac947c986a9235",
+        "ngram_8:fce910789ce90d94"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "4842e44327ab307626177ea8fee6a5e035e9c15f8345f7470fe6e157873dcf8f",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b09-108"
+      },
+      "record_id": "v4-b09-108",
+      "repair_reasons": [
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:33f6db0785f31a07",
+        "ngram_5:351d221c57fdf4fd",
+        "ngram_5:783a452d72eab9d2",
+        "ngram_5:a6dbfc259ca9ffd4",
+        "ngram_5:b8922409c998b7e0",
+        "ngram_5:c34f75318592a589",
+        "ngram_5:f442fa0d16ca7410",
+        "ngram_6:115f67b59a593663",
+        "ngram_6:25967f3a2dc3e202",
+        "ngram_6:279e3622df061b9f",
+        "ngram_6:29ed0610d7b2a2b7",
+        "ngram_6:4493d6b8405daf21",
+        "ngram_6:55d517b5b38642e5",
+        "ngram_6:91f971909fd10954",
+        "ngram_6:a250da854834ecaf",
+        "ngram_6:a6d11fa14a27e5f8",
+        "ngram_6:b3f945ded149dfd6",
+        "ngram_6:b443ba6066ad96af",
+        "ngram_6:f20c4bc36d22153e",
+        "ngram_6:f2c66a091ef314b9",
+        "ngram_7:094073625e66f55e",
+        "ngram_7:141aa91bab2481e0",
+        "ngram_7:17e1d2d25e2f1a22",
+        "ngram_7:1b3b9417f0a8a9cd",
+        "ngram_7:29962bd54c33ecc1",
+        "ngram_7:37932a3a26a505d4",
+        "ngram_7:44294d2708cbba27",
+        "ngram_7:6d6e3072c3404b6f",
+        "ngram_7:dadc5152a1d61c2c",
+        "ngram_7:eb7d62b0ba519262",
+        "ngram_7:eff6106978931f51",
+        "ngram_8:057bd09aa75f03a3",
+        "ngram_8:0742c661d92449cf",
+        "ngram_8:1de4ea7f6bdc96f2",
+        "ngram_8:269c849839f0e6d7",
+        "ngram_8:436792dd0a17dca8",
+        "ngram_8:59e7033f9ff9dddc",
+        "ngram_8:5a69191d1a4cb940",
+        "ngram_8:6552f9f8384e2370",
+        "ngram_8:71d456f7cbd8de90",
+        "ngram_8:71f2c49aa3573cb8",
+        "ngram_8:74bed16c2d3bcd05",
+        "ngram_8:80a0d87c9fec9ec4",
+        "ngram_8:8a0662244164c78b",
+        "ngram_8:8f9e9025e5315e1b",
+        "ngram_8:bff9ecc5f6dd2da8",
+        "sentence:7960f27e3c8b455e"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "911169303f467fdc55018b4620b9c02c524d35686645a28d78fccce7d486e215",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b09-109"
+      },
+      "record_id": "v4-b09-109",
+      "repair_reasons": [
+        "ngram_4:77b2d3c4d4bdc1e3",
+        "ngram_5:0178f1120a167e09",
+        "ngram_5:139c576a5c8415a5",
+        "ngram_5:2f2e156b64f10c84",
+        "ngram_5:57bcc9f563ad4ae9",
+        "ngram_5:5bbed7a7f85be71f",
+        "ngram_5:84b4ec8848c0a7a5",
+        "ngram_5:9c6dcfdc347b45c3",
+        "ngram_5:a7555ea4171ace14",
+        "ngram_5:c241aea04fadf075",
+        "ngram_6:0044df6a781c25e5",
+        "ngram_6:122da76e807a84dc",
+        "ngram_6:12f180dee749853d",
+        "ngram_6:17bf0643ff0e3376",
+        "ngram_6:25c92ee4b2ba8eb8",
+        "ngram_6:35768c0fcfe74d55",
+        "ngram_6:3be449e69e06c209",
+        "ngram_6:4e8b6ae9844bb488",
+        "ngram_6:57fa740b1c80e1e8",
+        "ngram_6:5e8ffd09f1b53e67",
+        "ngram_6:6587fcdf763d9946",
+        "ngram_6:73c3f9b3b3fff9eb",
+        "ngram_6:83f020a9f6dbcfdc",
+        "ngram_6:8a2171923e4b776f",
+        "ngram_6:8ca61d60b242f046",
+        "ngram_6:8ea2dabf13a2b54c",
+        "ngram_6:936d95c3f8ff0612",
+        "ngram_6:a489f365e6803cab",
+        "ngram_6:b6f917b7b6e096c9",
+        "ngram_6:bb3b87387265b7cb",
+        "ngram_6:c8cc470c3bcfc238",
+        "ngram_6:cc7fd3b3e8af2a86",
+        "ngram_6:d1081de1cc41149e",
+        "ngram_6:d4090c19c889d9f5",
+        "ngram_6:dc9d486719eae565",
+        "ngram_6:e8268f673a596178",
+        "ngram_6:eb763f8799dc8934",
+        "ngram_6:f91882366f312f66",
+        "ngram_7:03398e17eede0d49",
+        "ngram_7:0a20698b42014504",
+        "ngram_7:0ec86f9b4d6de059",
+        "ngram_7:1bbbb2d96bf637c6",
+        "ngram_7:29beaa4ae6912478",
+        "ngram_7:2edeac586e446dc1",
+        "ngram_7:30e639709b7f4d1b",
+        "ngram_7:39f8d55ad6f9c064",
+        "ngram_7:50a9455af8769d79",
+        "ngram_7:52eea439c2d7bbbe",
+        "ngram_7:728cc75c13e0e2de",
+        "ngram_7:79578343d3cfb763",
+        "ngram_7:7b8e5c5bcc71e87f",
+        "ngram_7:9b8edcf5953fa9e0",
+        "ngram_7:9b8f634dfef03752",
+        "ngram_7:b45b02345077628c",
+        "ngram_7:c4c27267e57065f6",
+        "ngram_7:c6de759d0d6dfa7a",
+        "ngram_7:d028357eac39260b",
+        "ngram_7:d9abac7e1d79c7ff",
+        "ngram_7:ddbadf46c617d187",
+        "ngram_7:e075956c168c3b06",
+        "ngram_7:e8fe499bc099834a",
+        "ngram_7:eec41457374276d4",
+        "ngram_7:f00856d342cf0e51",
+        "ngram_7:f8ca9e60b4b3a148",
+        "ngram_8:0e267356e0b81513",
+        "ngram_8:169bfedcbae5a8f6",
+        "ngram_8:359fa8a4c7d30346",
+        "ngram_8:3605bb873798df45",
+        "ngram_8:3a0c90a16bfb7ea1",
+        "ngram_8:44a8924d6f73f793",
+        "ngram_8:45f7953cba623fc1",
+        "ngram_8:481d8af4e24f8195",
+        "ngram_8:4a52a3f50198d2f0",
+        "ngram_8:4c4fe7384143131b",
+        "ngram_8:5453d6b48417abb3",
+        "ngram_8:70ee6a13880c40f4",
+        "ngram_8:76494efff60a0ab0",
+        "ngram_8:7700985c8678e8f1",
+        "ngram_8:78eac84688d97825",
+        "ngram_8:7ed8d50d60caaa7b",
+        "ngram_8:8a88d4507e419d76",
+        "ngram_8:8c01fdd7101fa294",
+        "ngram_8:90139e9ce94d8f84",
+        "ngram_8:9ba83c8effe8b97e",
+        "ngram_8:a733a51a733d76ea",
+        "ngram_8:ab7d20742384bfe0",
+        "ngram_8:b595b63cfcaa5a14",
+        "ngram_8:c2215dfbeb8e4194",
+        "ngram_8:d7f08b1e507443fa",
+        "ngram_8:d9a4d1417b140856",
+        "ngram_8:ddad82457f628391",
+        "ngram_8:e0313fd99d0914e9",
+        "ngram_8:e30c25792d6927c7",
+        "ngram_8:f85efaf6d6d26682",
+        "sentence:fbbf9d50b18dec0c"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "conversation",
+      "original_record_sha256": "4cb7e919332d1f4c8ca7aa558da5c4058e2815e7290bff439620aadd78be64bf",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b09-149"
+      },
+      "record_id": "v4-b09-149",
+      "repair_reasons": [
+        "category_quota_rebalance",
+        "ngram_5:9b4ddb22975f67a8",
+        "ngram_6:05988530e53dadb5",
+        "ngram_6:3f32621ab565b648",
+        "ngram_6:90350bdb66296a0d",
+        "ngram_7:71c13dbbcb4abb98",
+        "ngram_8:5ed6be141d21f96e",
+        "ngram_8:8cc3d79946cf6808",
+        "ngram_8:8f5fb4a052f40ee1",
+        "ngram_8:b6befa2b82708ae6"
+      ],
+      "target": {
+        "category": "transition"
+      },
+      "target_metadata_policy": "compatible_author_required"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "bd93a612a8b79b3199a5777de76b699e093847f71de5b1aae9d10974b67aeece",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "long",
+        "language_class": "en",
+        "record_id": "v4-b09-160"
+      },
+      "record_id": "v4-b09-160",
+      "repair_reasons": [
+        "ngram_5:3183f22c0ab58df2",
+        "ngram_5:c936320ef6014b99",
+        "ngram_6:29a66173f7b406b2",
+        "ngram_6:2dcd123bef63ab7e",
+        "ngram_6:460a6ddd9c35b64d",
+        "ngram_6:ca6696802443673b",
+        "ngram_6:e0b2830cad8385dc",
+        "ngram_6:eb9231e9b7d9e891",
+        "ngram_6:fb35d444b1a1b6ff",
+        "ngram_7:0873a5a014e3676b",
+        "ngram_7:8f06f198a9c50142",
+        "ngram_7:cc763ed63b669aa6",
+        "ngram_7:dc6e73947f2ffb4e",
+        "ngram_8:2f60404d68898aec",
+        "ngram_8:68f3596053bbba14",
+        "ngram_8:6b3cb989259bf7ea",
+        "ngram_8:73a791aa2d2d1ab1",
+        "ngram_8:7e9d5ea271fed2ad",
+        "ngram_8:97f1ca22f3f798c8",
+        "sentence:8f06f198a9c50142"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "f57963cbff0b27df6b0dd0a57fcdac60ec8b2367564a242ce8424ea761e8b8c8",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "medium",
+        "language_class": "en",
+        "record_id": "v4-b09-166"
+      },
+      "record_id": "v4-b09-166",
+      "repair_reasons": [
+        "ngram_4:04807b6b9d0b4bec",
+        "ngram_4:3ca7a97bcd595f5d",
+        "ngram_4:49a11cb824727399",
+        "ngram_4:6ef817d6c7fc9bc2",
+        "ngram_4:7e340d27b63545fa",
+        "ngram_4:a3abf261e6f13b11",
+        "ngram_4:d83ab66f06931ec9",
+        "ngram_5:233005859012e192",
+        "ngram_5:35716058689a1008",
+        "ngram_5:40df1a4b57bb1485",
+        "ngram_5:7c28feb73d257738",
+        "ngram_5:7e6f028ca66e644d",
+        "ngram_5:88e636103b83e838",
+        "ngram_5:fe4c2dfeab77b93f",
+        "ngram_6:136de1ab50e6adde",
+        "ngram_6:24f048c3c8743ef1",
+        "ngram_6:39082b980473231b",
+        "ngram_6:4a5b18758bb9f1af",
+        "ngram_6:80620f564febb937",
+        "ngram_6:e5d62969383b06d6",
+        "ngram_7:12c76acf89b3eb38",
+        "ngram_7:56a09e9ce7f45dab",
+        "ngram_7:bb7a85ca75883524",
+        "ngram_7:df245a64b3202c57",
+        "ngram_7:e2c75e48f6b64d52",
+        "ngram_8:3a413a7ddca52749",
+        "ngram_8:5ba42093ec399f01",
+        "ngram_8:a7b254484603c160",
+        "ngram_8:acdf62f1892336f3"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "audience_reply"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "live_chat",
+      "original_record_sha256": "c6c20e572fd6c1953c4090359c55faf591eaa1003f7695fa2f183bd53b4202f5",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b09-168"
+      },
+      "record_id": "v4-b09-168",
+      "repair_reasons": [
+        "ngram_4:217b441040a6b276",
+        "ngram_4:55415c86dab51433",
+        "ngram_4:606b72b579b514e7",
+        "ngram_4:6e5965c4f4eb5d77",
+        "ngram_4:7682aea782c07c24",
+        "ngram_4:b140b6a65a6ee6ec",
+        "ngram_5:04f4f691ebe44d8b",
+        "ngram_5:2ef59a3c4eabc3e2",
+        "ngram_5:32d27fd8b7b34ded",
+        "ngram_5:615de8e05a759745",
+        "ngram_5:77dc62c1ba7b471b",
+        "ngram_5:892e2453900d36a7",
+        "ngram_6:0a00d1b03393af6f",
+        "ngram_6:38a08eba8dc9a0ff",
+        "ngram_6:5cf7a5724c6cda86",
+        "ngram_6:6d466a796fa62030",
+        "ngram_6:73565eb16a294ebd",
+        "ngram_6:83139c3dc5735e35",
+        "ngram_7:4befbd782e2b66b4",
+        "ngram_7:59f2ad55a61a192b",
+        "ngram_7:a7d437d3f08fe444",
+        "ngram_8:5b5d0f8277fc3d6f",
+        "ngram_8:ff84d1a7c373daa4"
+      ],
+      "target": {
+        "category": "live_chat",
+        "scene_context": "just_chatting_stream",
+        "speech_intent": "story_anecdote"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "f75e34ae760ac2becf4d6feb362299152d9ba9adb9ab1bd4496c61f20ae93348",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b09-171"
+      },
+      "record_id": "v4-b09-171",
+      "repair_reasons": [
+        "ngram_4:5635dde79f31072c",
+        "ngram_4:61c2e06490c245a9",
+        "ngram_4:d346b8dbd3025bad",
+        "ngram_5:4923206015960152",
+        "ngram_5:632c280063f2a64d",
+        "ngram_5:d33ec76b5801f0ef",
+        "ngram_5:e49b44cc0d6c9699",
+        "ngram_6:0b11f7b7c8fc67b0",
+        "ngram_6:3f4527e0fb6b0f9b",
+        "ngram_6:b4ce42d15c4af4e3",
+        "ngram_7:0686a8eb46bcefb7",
+        "ngram_7:09df0eb2b60b01ee",
+        "ngram_8:6eadbbe5345f962d"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "edfff8dcaba904224de164670eb41f144e68960f4babba963c5e9bd8440ddcbd",
+      "preserve": {
+        "batch_id": "v4-b09",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b09-194"
+      },
+      "record_id": "v4-b09-194",
+      "repair_reasons": [
+        "ngram_8:22ce389517bb2ed0",
+        "ngram_8:6e1b8d6c9be507e0",
+        "ngram_8:9129f05c65cfe246",
+        "ngram_8:dbfbe2023349ea0e"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "explanation"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "0d1291f0a93552150f82ccce2faac26095b3b0bf217b9672c1c1f829afeb9b86",
+      "preserve": {
+        "batch_id": "v4-b10",
+        "intended_length_class": "extended",
+        "language_class": "en",
+        "record_id": "v4-b10-029"
+      },
+      "record_id": "v4-b10-029",
+      "repair_reasons": [
+        "ngram_8:0af117763077b134",
+        "ngram_8:2323dfb9e6115fb9",
+        "ngram_8:286509294407d714",
+        "ngram_8:4b4b6569570ca2be",
+        "ngram_8:854ef0be04cf655b",
+        "ngram_8:90120692859f6339",
+        "ngram_8:9857b21e909031af",
+        "ngram_8:c17bf5263da239a8",
+        "ngram_8:cab28c1b0bd7bb59",
+        "ngram_8:de374419ff15213b"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "technical_stream",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "b613968959262b7c02049bd9f5f6f1c426fe99ce5650c7a329eb5f93da566e45",
+      "preserve": {
+        "batch_id": "v4-b10",
+        "intended_length_class": "extended",
+        "language_class": "ru",
+        "record_id": "v4-b10-108"
+      },
+      "record_id": "v4-b10-108",
+      "repair_reasons": [
+        "ngram_4:17a89e4131df1ee7",
+        "ngram_4:369b02bfa4060057",
+        "ngram_5:33f6db0785f31a07",
+        "ngram_5:351d221c57fdf4fd",
+        "ngram_5:783a452d72eab9d2",
+        "ngram_5:a6dbfc259ca9ffd4",
+        "ngram_5:b8922409c998b7e0",
+        "ngram_5:c34f75318592a589",
+        "ngram_5:f442fa0d16ca7410",
+        "ngram_6:115f67b59a593663",
+        "ngram_6:25967f3a2dc3e202",
+        "ngram_6:279e3622df061b9f",
+        "ngram_6:29ed0610d7b2a2b7",
+        "ngram_6:4493d6b8405daf21",
+        "ngram_6:55d517b5b38642e5",
+        "ngram_6:91f971909fd10954",
+        "ngram_6:a250da854834ecaf",
+        "ngram_6:a6d11fa14a27e5f8",
+        "ngram_6:b3f945ded149dfd6",
+        "ngram_6:b443ba6066ad96af",
+        "ngram_6:f20c4bc36d22153e",
+        "ngram_6:f2c66a091ef314b9",
+        "ngram_7:094073625e66f55e",
+        "ngram_7:141aa91bab2481e0",
+        "ngram_7:17e1d2d25e2f1a22",
+        "ngram_7:1b3b9417f0a8a9cd",
+        "ngram_7:29962bd54c33ecc1",
+        "ngram_7:37932a3a26a505d4",
+        "ngram_7:44294d2708cbba27",
+        "ngram_7:6d6e3072c3404b6f",
+        "ngram_7:dadc5152a1d61c2c",
+        "ngram_7:eb7d62b0ba519262",
+        "ngram_7:eff6106978931f51",
+        "ngram_8:057bd09aa75f03a3",
+        "ngram_8:0742c661d92449cf",
+        "ngram_8:1de4ea7f6bdc96f2",
+        "ngram_8:281c4a69a75c3b43",
+        "ngram_8:35e8bd926b0f3e48",
+        "ngram_8:436792dd0a17dca8",
+        "ngram_8:71d456f7cbd8de90",
+        "ngram_8:71f2c49aa3573cb8",
+        "ngram_8:74bed16c2d3bcd05",
+        "ngram_8:80a0d87c9fec9ec4",
+        "ngram_8:8a0662244164c78b",
+        "ngram_8:a0a581885b0bd97b",
+        "ngram_8:bff9ecc5f6dd2da8",
+        "ngram_8:e242ed3bd5858310",
+        "ngram_8:f17de0a0a636c42c",
+        "sentence:7960f27e3c8b455e"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "a95b54fc4834428b6ab2b443b0e436f3242535c3925c957a5a247fb19ff13248",
+      "preserve": {
+        "batch_id": "v4-b10",
+        "intended_length_class": "extended",
+        "language_class": "mixed",
+        "record_id": "v4-b10-109"
+      },
+      "record_id": "v4-b10-109",
+      "repair_reasons": [
+        "ngram_4:77b2d3c4d4bdc1e3",
+        "ngram_5:0178f1120a167e09",
+        "ngram_5:139c576a5c8415a5",
+        "ngram_5:2f2e156b64f10c84",
+        "ngram_5:57bcc9f563ad4ae9",
+        "ngram_5:5bbed7a7f85be71f",
+        "ngram_5:84b4ec8848c0a7a5",
+        "ngram_5:9c6dcfdc347b45c3",
+        "ngram_5:a7555ea4171ace14",
+        "ngram_5:c241aea04fadf075",
+        "ngram_6:0044df6a781c25e5",
+        "ngram_6:122da76e807a84dc",
+        "ngram_6:12f180dee749853d",
+        "ngram_6:17bf0643ff0e3376",
+        "ngram_6:35768c0fcfe74d55",
+        "ngram_6:3be449e69e06c209",
+        "ngram_6:4e8b6ae9844bb488",
+        "ngram_6:57fa740b1c80e1e8",
+        "ngram_6:5e8ffd09f1b53e67",
+        "ngram_6:6587fcdf763d9946",
+        "ngram_6:73c3f9b3b3fff9eb",
+        "ngram_6:83f020a9f6dbcfdc",
+        "ngram_6:8a2171923e4b776f",
+        "ngram_6:8ca61d60b242f046",
+        "ngram_6:8ea2dabf13a2b54c",
+        "ngram_6:936d95c3f8ff0612",
+        "ngram_6:a489f365e6803cab",
+        "ngram_6:b6f917b7b6e096c9",
+        "ngram_6:bb3b87387265b7cb",
+        "ngram_6:c8cc470c3bcfc238",
+        "ngram_6:d1081de1cc41149e",
+        "ngram_6:d4090c19c889d9f5",
+        "ngram_6:dc9d486719eae565",
+        "ngram_6:e8268f673a596178",
+        "ngram_6:eb763f8799dc8934",
+        "ngram_6:f91882366f312f66",
+        "ngram_7:03398e17eede0d49",
+        "ngram_7:0a20698b42014504",
+        "ngram_7:0ec86f9b4d6de059",
+        "ngram_7:1bbbb2d96bf637c6",
+        "ngram_7:29beaa4ae6912478",
+        "ngram_7:2edeac586e446dc1",
+        "ngram_7:39f8d55ad6f9c064",
+        "ngram_7:50a9455af8769d79",
+        "ngram_7:52eea439c2d7bbbe",
+        "ngram_7:728cc75c13e0e2de",
+        "ngram_7:79578343d3cfb763",
+        "ngram_7:7b8e5c5bcc71e87f",
+        "ngram_7:9b8edcf5953fa9e0",
+        "ngram_7:9b8f634dfef03752",
+        "ngram_7:b45b02345077628c",
+        "ngram_7:c4c27267e57065f6",
+        "ngram_7:c6de759d0d6dfa7a",
+        "ngram_7:d028357eac39260b",
+        "ngram_7:d9abac7e1d79c7ff",
+        "ngram_7:ddbadf46c617d187",
+        "ngram_7:e8fe499bc099834a",
+        "ngram_7:eec41457374276d4",
+        "ngram_7:f00856d342cf0e51",
+        "ngram_7:f8ca9e60b4b3a148",
+        "ngram_8:0e267356e0b81513",
+        "ngram_8:169bfedcbae5a8f6",
+        "ngram_8:359fa8a4c7d30346",
+        "ngram_8:3605bb873798df45",
+        "ngram_8:3a0c90a16bfb7ea1",
+        "ngram_8:44a8924d6f73f793",
+        "ngram_8:45f7953cba623fc1",
+        "ngram_8:481d8af4e24f8195",
+        "ngram_8:4c4fe7384143131b",
+        "ngram_8:5453d6b48417abb3",
+        "ngram_8:70ee6a13880c40f4",
+        "ngram_8:78eac84688d97825",
+        "ngram_8:7dcdbadf2b0a9d69",
+        "ngram_8:7ed8d50d60caaa7b",
+        "ngram_8:8a88d4507e419d76",
+        "ngram_8:8c01fdd7101fa294",
+        "ngram_8:90139e9ce94d8f84",
+        "ngram_8:9ba83c8effe8b97e",
+        "ngram_8:a733a51a733d76ea",
+        "ngram_8:d9a4d1417b140856",
+        "ngram_8:e0313fd99d0914e9",
+        "ngram_8:e30c25792d6927c7",
+        "ngram_8:f85efaf6d6d26682",
+        "sentence:fbbf9d50b18dec0c"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    },
+    {
+      "original_category": "stream_event",
+      "original_record_sha256": "625043353c562e80e49b6b70e7c5313130ea6557cff05efa089a9f97482c38bd",
+      "preserve": {
+        "batch_id": "v4-b10",
+        "intended_length_class": "medium",
+        "language_class": "ru",
+        "record_id": "v4-b10-110"
+      },
+      "record_id": "v4-b10-110",
+      "repair_reasons": [
+        "ngram_6:ccdafdf09445693b",
+        "ngram_6:d6806bf8ebee24e1",
+        "ngram_8:4c2b49df5cc24b79",
+        "ngram_8:65a1d2696cd4a7bc"
+      ],
+      "target": {
+        "category": "stream_event",
+        "scene_context": "community_event",
+        "speech_intent": "moderation_or_technical"
+      },
+      "target_metadata_policy": "preserve_exact"
+    }
+  ],
+  "repair_policy_id": "representative-v4",
+  "repair_policy_sha256": "816c95e33eea2010bb20c202ce7d06280f4e6d575b8aa2565e7794037ff1e79c",
+  "selected_record_count": 98,
+  "selection_metrics": {
+    "bounded_local_improvement_count": 0,
+    "bounded_local_improvement_trial_count": 25000,
+    "category_rebalance_record_count": 36,
+    "fixed_slot_swap_count": 0,
+    "fixed_slot_swap_selected_count": 98,
+    "fixed_slot_swap_trial_count": 5000,
+    "greedy_repetition_selected_count": 82,
+    "local_improved_selected_count": 98,
+    "post_rebalance_selected_count": 98,
+    "repetition_only_record_count": 62,
+    "reverse_pruned_selected_count": 98
+  },
+  "selection_policy": "deterministic_greedy_multicover_fixed_slot_swap_reverse_delete_bounded_local_search",
+  "source_audit_sha256": "41d6ca0b17ff89d484611cff99e601d3a52d82ed4b7a199e3a43aff970bf75e5",
+  "source_record_count": 2000,
+  "source_record_id_set_sha256": "f5aa31058353d80c4efeca0f620ae299b63e523347e2b6ccfc9677ab66e91c0f",
+  "source_records_sha256": "db7d6ba23f88ba9b9dd39bf10a8ec9b12769d5767a3fa10765606b96ca00f894"
+}
