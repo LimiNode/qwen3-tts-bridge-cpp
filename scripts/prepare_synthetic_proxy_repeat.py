@@ -1,4 +1,4 @@
-"""Derive a deterministic shuffled synthetic-proxy manifest for repeatability runs."""
+"""Derive a deterministic shuffled manifest for repeatability runs."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def main() -> int:
     for index, record in enumerate(records, 1):
         record["source_corpus_sha256"] = source_sha256
         record["source_label"] = record["label"]
-        record["label"] = f"synthetic-proxy-repeat-{index:03d}"
+        record["label"] = _repeat_label(record, index)
         record["repeat_order_seed"] = args.order_seed
         record["seed"] = args.request_seed
         record["speaker"] = args.speaker
@@ -59,6 +59,13 @@ def _read_records(path: Path, source_bytes: bytes) -> list[dict[str, object]]:
     if not records:
         raise RuntimeError(f"input manifest {path} contains no records")
     return records
+
+
+def _repeat_label(record: dict[str, object], index: int) -> str:
+    corpus_id = record.get("corpus_id")
+    if isinstance(corpus_id, str) and corpus_id:
+        return f"{corpus_id}-repeat-{index:04d}"
+    return f"repeat-{index:04d}"
 
 
 if __name__ == "__main__":
