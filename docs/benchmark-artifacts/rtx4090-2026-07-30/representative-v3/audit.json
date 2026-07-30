@@ -1,0 +1,98 @@
+{
+  "audit_schema_version": 2,
+  "automated_preflight_status": "passed",
+  "corpus_id": "streamer-game-voice-representative-v3",
+  "discovery_count": 1500,
+  "discovery_distribution": {
+    "categories": {
+      "game_commentary": 360,
+      "game_dialogue": 211,
+      "game_review": 240,
+      "live_chat": 481,
+      "stream_event": 120,
+      "transition": 88
+    },
+    "languages": {
+      "en": 376,
+      "mixed": 148,
+      "ru": 976
+    },
+    "length_classes": {
+      "extended": 152,
+      "long": 298,
+      "medium": 524,
+      "micro": 226,
+      "short": 300
+    }
+  },
+  "discovery_sha256": "8b43d7e9443fae500e3a93243049e5caf9304c6eb6ec4ce0398b7c22c3203cc7",
+  "family_max_count": 6,
+  "filler_strategy": "none",
+  "generation_config_sha256": "f766111377be0b3975744a56ef632563ac8a02a6248035211662e653a3d047bb",
+  "generation_seed": 20260801,
+  "generator_source_sha256": "7f2e92ad3302bb73f16e08a590617b4c08d99b502ec4c837e05543f1de238474",
+  "holdout_count": 500,
+  "holdout_distribution": {
+    "categories": {
+      "game_commentary": 120,
+      "game_dialogue": 69,
+      "game_review": 80,
+      "live_chat": 159,
+      "stream_event": 40,
+      "transition": 32
+    },
+    "languages": {
+      "en": 124,
+      "mixed": 52,
+      "ru": 324
+    },
+    "length_classes": {
+      "extended": 48,
+      "long": 102,
+      "medium": 176,
+      "micro": 74,
+      "short": 100
+    }
+  },
+  "holdout_sha256": "fb92f8732c35c7471133d9612df0d33eff753b3cc19510f988a85a1e0a094ef1",
+  "intent_max_count": 9,
+  "key_phrase_max_count": 2,
+  "manual_review_count": 100,
+  "manual_review_sha256": "4a341e84a96d776597289a0fab82b372ca554f4dc0c108ccf78740f70819649f",
+  "manual_review_status": "pending_human_review",
+  "overall_distribution": {
+    "categories": {
+      "game_commentary": 480,
+      "game_dialogue": 280,
+      "game_review": 320,
+      "live_chat": 640,
+      "stream_event": 160,
+      "transition": 120
+    },
+    "languages": {
+      "en": 500,
+      "mixed": 200,
+      "ru": 1300
+    },
+    "length_classes": {
+      "extended": 200,
+      "long": 400,
+      "medium": 700,
+      "micro": 300,
+      "short": 400
+    }
+  },
+  "record_count": 2000,
+  "unique_text_count": 2000,
+  "validation_failures": {
+    "key_phrase": [],
+    "language": [],
+    "length_class": [],
+    "semantic_intent": [],
+    "template_family": []
+  },
+  "word_count": {
+    "max": 47,
+    "min": 2
+  }
+}
