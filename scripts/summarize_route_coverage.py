@@ -139,7 +139,8 @@ def _decision_choices() -> tuple[str, ...]:
     return (
         "collect_more_anonymous_coverage",
         "keep_exact_allowlist",
-        "evaluate_padded_bucket_correctness",
+        "prototype_padded_bucket_correctness",
+        "evaluate_padded_bucket_release_candidate",
     )
 
 
@@ -484,6 +485,7 @@ def _summarize(
         evidence_gate_pass=evidence_gate_pass,
         exact_coverage_percent=exact_coverage_percent,
         min_exact_coverage_percent=min_exact_coverage_percent,
+        evidence_source=evidence_source,
     )
     completed_records = [
         record
@@ -565,6 +567,7 @@ def _decision(
     evidence_gate_pass: bool,
     exact_coverage_percent: float,
     min_exact_coverage_percent: float,
+    evidence_source: str,
 ) -> str:
     if not input_valid:
         return "reject_invalid_canary"
@@ -572,7 +575,9 @@ def _decision(
         return "collect_more_anonymous_coverage"
     if exact_coverage_percent >= min_exact_coverage_percent:
         return "keep_exact_allowlist"
-    return "evaluate_padded_bucket_correctness"
+    if evidence_source == "synthetic_proxy":
+        return "prototype_padded_bucket_correctness"
+    return "evaluate_padded_bucket_release_candidate"
 
 
 def _histogram(values: dict[int, int] | Counter[int]) -> dict[str, int]:

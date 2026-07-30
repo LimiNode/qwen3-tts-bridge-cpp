@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from hashlib import sha256
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 from unittest.mock import patch
 
 from scripts.summarize_route_coverage import (
@@ -47,11 +47,13 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
             summary["outcome_histogram"],
         )
         self.assertEqual(1, summary["completed_latency_record_count"])
+        latency_by_route = cast(
+            dict[str, Any],
+            summary["completed_latency_by_route"],
+        )
         self.assertEqual(
             10.0,
-            summary["completed_latency_by_route"]["compiled_allowlist"][
-                "first_audio_ms"
-            ]["median"],
+            latency_by_route["compiled_allowlist"]["first_audio_ms"]["median"],
         )
 
     def test_rejects_route_contract_violations(self) -> None:
@@ -144,7 +146,25 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
             min_samples_per_length=30,
         )
         self.assertTrue(bucket["evidence_gate_pass"])
-        self.assertEqual("evaluate_padded_bucket_correctness", bucket["decision"])
+        self.assertEqual("prototype_padded_bucket_correctness", bucket["decision"])
+
+        release = _summary(
+            [
+                _record("completed", 32, evidence_source="internal_real_traffic")
+                for _ in range(449)
+            ]
+            + [
+                _record("failed", 31, evidence_source="internal_real_traffic")
+                for _ in range(100)
+            ],
+            min_requests=500,
+            min_unknown_requests=100,
+            min_samples_per_length=30,
+        )
+        self.assertEqual(
+            "evaluate_padded_bucket_release_candidate",
+            release["decision"],
+        )
 
         insufficient = _summary(exact + unknown[:-1], min_requests=500)
         self.assertFalse(insufficient["evidence_gate_pass"])
@@ -178,7 +198,7 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
                 self.assertEqual(0, main())
             required_arguments = arguments + [
                 "--require-decision",
-                "evaluate_padded_bucket_correctness",
+                "prototype_padded_bucket_correctness",
             ]
             with patch.object(sys, "argv", required_arguments):
                 self.assertEqual(1, main())
@@ -241,11 +261,12 @@ def _record(
     prefill_length: int | None = None,
     *,
     route_decision_made: bool = True,
+    evidence_source: str = "synthetic_proxy",
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "schema_version": 3,
         "runtime_profile_id": _PROFILE,
-        "evidence_source": "synthetic_proxy",
+        "evidence_source": evidence_source,
         "request_outcome": outcome,
         "route_decision_made": route_decision_made,
     }
