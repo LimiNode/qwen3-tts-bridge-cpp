@@ -7,6 +7,7 @@ from typing import Any
 
 from scripts.audit_corpus_repetition import _record_id_set_sha256
 from scripts.build_corpus_v4_repair_set import (
+    _bounded_fixed_slot_swap_improvement,
     _bounded_local_improvement,
     _build_repair_set,
     _reverse_prune,
@@ -27,7 +28,8 @@ class CorpusV4RepairSetTests(unittest.TestCase):
 
         self.assertEqual(2, result["selected_record_count"])
         self.assertEqual(
-            "deterministic_greedy_multicover_reverse_delete_bounded_local_search",
+            "deterministic_greedy_multicover_fixed_slot_swap_reverse_delete_"
+            "bounded_local_search",
             result["selection_policy"],
         )
         self.assertEqual(
@@ -96,6 +98,25 @@ class CorpusV4RepairSetTests(unittest.TestCase):
 
         self.assertEqual({"c"}, selected)
         self.assertEqual(1, metrics["bounded_local_improvement_count"])
+
+    def test_fixed_slot_swap_can_remove_redundant_rebalance_record(self) -> None:
+        records = {
+            "a": _record("a", "game_commentary"),
+            "b": _record("b", "game_commentary"),
+            "d": _record("d", "live_chat"),
+        }
+        groups = [
+            {"id": "sentence:first", "limit": 1, "occurrences": {"a": 1, "b": 1}},
+            {"id": "sentence:second", "limit": 1, "occurrences": {"b": 1, "d": 1}},
+        ]
+
+        selected, targets, metrics = _bounded_fixed_slot_swap_improvement(
+            {"a", "b"}, {"a": "game_review"}, groups, records
+        )
+
+        self.assertEqual({"b"}, selected)
+        self.assertEqual({"b": "game_review"}, targets)
+        self.assertEqual(1, metrics["fixed_slot_swap_count"])
 
 
 def _build(
@@ -176,6 +197,8 @@ def _record(record_id: str, category: str) -> dict[str, object]:
         "language_class": "ru",
         "intended_length_class": "micro",
         "category": category,
+        "scene_context": "gameplay_stream",
+        "speech_intent": "game_commentary",
     }
 
 

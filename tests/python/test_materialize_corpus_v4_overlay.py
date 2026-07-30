@@ -88,9 +88,46 @@ class MaterializeCorpusV4OverlayTests(unittest.TestCase):
         records = [_record()]
         repair_set = _repair_set(records)
         overlay = _overlay(records, repair_set)
-        overlay["corpus_v4_repair_overlay_schema_version"] = 1
+        overlay["corpus_v4_repair_overlay_schema_version"] = 2
 
         with self.assertRaisesRegex(RuntimeError, "overlay schema version"):
+            _materialize_fixture(records, repair_set, overlay)
+
+    def test_rejects_repetition_only_context_drift(self) -> None:
+        records = [_record()]
+        repair_set = _repair_set(records)
+        repair_set["records"][0]["target"] = {
+            "category": "game_commentary",
+            "scene_context": "gameplay_stream",
+            "speech_intent": "game_commentary",
+        }
+        repair_set["records"][0]["target_metadata_policy"] = "preserve_exact"
+        overlay = _overlay(records, repair_set)
+        overlay["records"][0]["target"] = {
+            "category": "game_commentary",
+            "scene_context": "gameplay_stream",
+            "speech_intent": "explanation",
+        }
+
+        with self.assertRaisesRegex(RuntimeError, "metadata drifted"):
+            _materialize_fixture(records, repair_set, overlay)
+
+    def test_rejects_extra_entry_fields(self) -> None:
+        records = [_record()]
+        repair_set = _repair_set(records)
+        overlay = _overlay(records, repair_set)
+        overlay["records"][0]["unexpected"] = True
+
+        with self.assertRaisesRegex(RuntimeError, "entry schema"):
+            _materialize_fixture(records, repair_set, overlay)
+
+    def test_rejects_missing_entry_fields(self) -> None:
+        records = [_record()]
+        repair_set = _repair_set(records)
+        overlay = _overlay(records, repair_set)
+        del overlay["records"][0]["replacement_text_sha256"]
+
+        with self.assertRaisesRegex(RuntimeError, "entry schema"):
             _materialize_fixture(records, repair_set, overlay)
 
     def test_repair_materialize_audit_round_trip_passes(self) -> None:
@@ -179,7 +216,7 @@ def _record(record_id: str = "v4-b01-001") -> dict[str, object]:
 def _repair_set(records: list[dict[str, object]]) -> dict[str, Any]:
     record = records[0]
     return {
-        "corpus_v4_repair_set_schema_version": 2,
+        "corpus_v4_repair_set_schema_version": 3,
         "corpus_id": "test-v4",
         "source_audit_sha256": _AUDIT_SHA,
         "source_records_sha256": _SOURCE_SHA,
@@ -190,7 +227,8 @@ def _repair_set(records: list[dict[str, object]]) -> dict[str, Any]:
         "implicated_record_count": 1,
         "selected_record_count": 1,
         "selection_policy": (
-            "deterministic_greedy_multicover_reverse_delete_bounded_local_search"
+            "deterministic_greedy_multicover_fixed_slot_swap_reverse_delete_"
+            "bounded_local_search"
         ),
         "selection_metrics": {},
         "records": [_plan(record)],
@@ -210,6 +248,7 @@ def _plan(record: dict[str, object]) -> dict[str, object]:
             "intended_length_class": "short",
         },
         "target": {"category": "game_review"},
+        "target_metadata_policy": "compatible_author_required",
     }
 
 
@@ -219,7 +258,7 @@ def _overlay(
     record = records[0]
     text = "A focused review checks the sound mix."
     return {
-        "corpus_v4_repair_overlay_schema_version": 2,
+        "corpus_v4_repair_overlay_schema_version": 3,
         "corpus_id": "test-v4",
         "source_audit_sha256": _AUDIT_SHA,
         "source_records_sha256": _SOURCE_SHA,
@@ -290,7 +329,7 @@ def _round_trip_overlay(
             }
         )
     return {
-        "corpus_v4_repair_overlay_schema_version": 2,
+        "corpus_v4_repair_overlay_schema_version": 3,
         "corpus_id": "test-v4",
         "source_audit_sha256": _AUDIT_SHA,
         "source_records_sha256": _SOURCE_SHA,

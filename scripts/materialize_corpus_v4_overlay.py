@@ -11,14 +11,16 @@ from typing import Any
 try:
     from scripts.audit_corpus_repetition import _is_sha256, _record_id_set_sha256
     from scripts.build_corpus_v4_repair_set import _record_sha256
+    from scripts.validate_corpus_v4_batches import _COMPATIBILITY
 except ModuleNotFoundError:
     from audit_corpus_repetition import _is_sha256, _record_id_set_sha256
     from build_corpus_v4_repair_set import _record_sha256
+    from validate_corpus_v4_batches import _COMPATIBILITY
 
 _AUDIT_SCHEMA_VERSION = 4
 _POLICY_SCHEMA_VERSION = 1
-_REPAIR_SET_SCHEMA_VERSION = 2
-_OVERLAY_SCHEMA_VERSION = 2
+_REPAIR_SET_SCHEMA_VERSION = 3
+_OVERLAY_SCHEMA_VERSION = 3
 _REPLACEMENT_FIELDS = {
     "text",
     "template_family_id",
@@ -47,6 +49,15 @@ _REPAIR_SET_FIELDS = {
     "selection_metrics",
     "records",
 }
+_REPAIR_PLAN_ENTRY_FIELDS = {
+    "record_id",
+    "original_record_sha256",
+    "original_category",
+    "repair_reasons",
+    "preserve",
+    "target",
+    "target_metadata_policy",
+}
 _OVERLAY_FIELDS = {
     "corpus_v4_repair_overlay_schema_version",
     "corpus_id",
@@ -57,6 +68,15 @@ _OVERLAY_FIELDS = {
     "repair_policy_sha256",
     "repair_policy_id",
     "records",
+}
+_OVERLAY_ENTRY_FIELDS = {
+    "record_id",
+    "original_record_sha256",
+    "repair_reasons",
+    "preserve",
+    "target",
+    "replacement",
+    "replacement_text_sha256",
 }
 _AUDIT_FIELDS = {
     "corpus_repetition_audit_schema_version",
@@ -182,8 +202,10 @@ def _materialize(
         repair_policy_sha256,
         repair_set_sha256,
     )
-    plan_by_id = _entries_by_id(repair_set, "repair set")
-    overlay_by_id = _entries_by_id(overlay, "overlay")
+    plan_by_id = _entries_by_id(
+        repair_set, "repair set", _REPAIR_PLAN_ENTRY_FIELDS
+    )
+    overlay_by_id = _entries_by_id(overlay, "overlay", _OVERLAY_ENTRY_FIELDS)
     if set(plan_by_id) != set(overlay_by_id):
         raise RuntimeError("overlay record IDs do not match the repair set")
     source_ids = {
@@ -339,7 +361,7 @@ def _validate_provenance_value(
 
 
 def _entries_by_id(
-    document: dict[str, Any], name: str
+    document: dict[str, Any], name: str, expected_fields: set[str]
 ) -> dict[str, dict[str, Any]]:
     entries = document.get("records")
     if not isinstance(entries, list):
@@ -348,6 +370,8 @@ def _entries_by_id(
     for entry in entries:
         if not isinstance(entry, dict):
             raise RuntimeError(f"{name} has a non-object entry")
+        if set(entry) != expected_fields:
+            raise RuntimeError(f"{name} entry schema is invalid")
         record_id = entry.get("record_id")
         if not isinstance(record_id, str) or not record_id:
             raise RuntimeError(f"{name} entry has no record_id")
@@ -362,6 +386,7 @@ def _validate_replacement(
     plan: dict[str, Any],
     replacement: dict[str, Any],
 ) -> None:
+    _validate_plan_entry(plan, original)
     if replacement.get("original_record_sha256") != _record_sha256(original):
         raise RuntimeError(
             f"{original['record_id']}: original record SHA does not match"
@@ -394,6 +419,13 @@ def _validate_replacement(
         raise RuntimeError(
             f"{original['record_id']}: target category does not match plan"
         )
+    if plan["target_metadata_policy"] == "preserve_exact":
+        if target != plan_target:
+            raise RuntimeError(
+                f"{original['record_id']}: repetition-only target metadata drifted"
+            )
+    elif not _is_compatible_target(target):
+        raise RuntimeError(f"{original['record_id']}: target metadata is incompatible")
     payload = _validate_mapping(
         replacement.get("replacement"), _REPLACEMENT_FIELDS, "replacement"
     )
@@ -405,6 +437,44 @@ def _validate_replacement(
         raise RuntimeError(
             f"{original['record_id']}: replacement text SHA does not match"
         )
+
+
+def _validate_plan_entry(
+    plan: dict[str, Any], original: dict[str, object]
+) -> None:
+    if plan.get("original_category") != original.get("category"):
+        raise RuntimeError(f"{original['record_id']}: repair plan category does not match")
+    _validate_mapping(plan.get("preserve"), _PRESERVED_FIELDS, "repair plan preserve")
+    target = plan.get("target")
+    policy = plan.get("target_metadata_policy")
+    if policy == "preserve_exact":
+        if not isinstance(target, dict) or set(target) != _TARGET_FIELDS:
+            raise RuntimeError(f"{original['record_id']}: repair plan target is invalid")
+        if target != {
+            "category": original.get("category"),
+            "scene_context": original.get("scene_context"),
+            "speech_intent": original.get("speech_intent"),
+        }:
+            raise RuntimeError(
+                f"{original['record_id']}: repair plan repetition target does not match"
+            )
+    elif policy == "compatible_author_required":
+        if not isinstance(target, dict) or set(target) != {"category"}:
+            raise RuntimeError(f"{original['record_id']}: repair plan target is invalid")
+        if not isinstance(target["category"], str) or not target["category"].strip():
+            raise RuntimeError(f"{original['record_id']}: repair plan target is invalid")
+    else:
+        raise RuntimeError(f"{original['record_id']}: repair plan target policy is invalid")
+
+
+def _is_compatible_target(target: dict[str, Any]) -> bool:
+    category = target["category"]
+    compatibility = _COMPATIBILITY.get(category)
+    return (
+        compatibility is not None
+        and target["scene_context"] in compatibility["contexts"]
+        and target["speech_intent"] in compatibility["intents"]
+    )
 
 
 def _validate_mapping(value: object, fields: set[str], name: str) -> dict[str, Any]:

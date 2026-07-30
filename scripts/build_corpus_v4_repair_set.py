@@ -19,8 +19,9 @@ except ModuleNotFoundError:
 
 _AUDIT_SCHEMA_VERSION = 4
 _POLICY_SCHEMA_VERSION = 1
-_REPAIR_SET_SCHEMA_VERSION = 2
+_REPAIR_SET_SCHEMA_VERSION = 3
 _MAX_LOCAL_IMPROVEMENT_TRIALS = 25_000
+_MAX_FIXED_SLOT_SWAP_TRIALS = 5_000
 
 
 def main() -> int:
@@ -104,6 +105,13 @@ def _build_repair_set(
     post_rebalance_selected_count = len(selected)
     selected = _reverse_prune(selected, target_by_id, groups)
     reverse_pruned_selected_count = len(selected)
+    selected, target_by_id, fixed_slot_metrics = _bounded_fixed_slot_swap_improvement(
+        selected,
+        target_by_id,
+        groups,
+        records_by_id,
+    )
+    fixed_slot_swap_selected_count = len(selected)
     selected, local_metrics = _bounded_local_improvement(
         selected,
         target_by_id,
@@ -120,9 +128,11 @@ def _build_repair_set(
         "greedy_repetition_selected_count": greedy_selected_count,
         "post_rebalance_selected_count": post_rebalance_selected_count,
         "reverse_pruned_selected_count": reverse_pruned_selected_count,
+        "fixed_slot_swap_selected_count": fixed_slot_swap_selected_count,
         "local_improved_selected_count": len(selected),
         "category_rebalance_record_count": category_rebalance_record_count,
         "repetition_only_record_count": len(selected) - category_rebalance_record_count,
+        **fixed_slot_metrics,
         **local_metrics,
     }
     return {
@@ -139,7 +149,8 @@ def _build_repair_set(
         ),
         "selected_record_count": len(entries),
         "selection_policy": (
-            "deterministic_greedy_multicover_reverse_delete_bounded_local_search"
+            "deterministic_greedy_multicover_fixed_slot_swap_reverse_delete_"
+            "bounded_local_search"
         ),
         "selection_metrics": metrics,
         "records": entries,
@@ -496,6 +507,64 @@ def _bounded_local_improvement(
     }
 
 
+def _bounded_fixed_slot_swap_improvement(
+    selected: set[str],
+    target_by_id: dict[str, str],
+    groups: list[dict[str, Any]],
+    records_by_id: dict[str, dict[str, object]],
+) -> tuple[set[str], dict[str, str], dict[str, int]]:
+    """Try category-slot assignments that let reverse deletion remove repairs."""
+    result = set(selected)
+    targets = dict(target_by_id)
+    trials = 0
+    improvements = 0
+    while trials < _MAX_FIXED_SLOT_SWAP_TRIALS:
+        current_count = len(result)
+        best: tuple[set[str], dict[str, str]] | None = None
+        for fixed_id in sorted(targets):
+            source_category = records_by_id[fixed_id].get("category")
+            available = sorted(
+                record_id
+                for record_id, record in records_by_id.items()
+                if record.get("category") == source_category
+                and record_id != fixed_id
+                and record_id not in targets
+            )
+            candidates = [record_id for record_id in available if record_id in result]
+            candidates.extend(record_id for record_id in available if record_id not in result)
+            for candidate_id in candidates:
+                trials += 1
+                candidate_targets = dict(targets)
+                target_category = candidate_targets.pop(fixed_id)
+                candidate_targets[candidate_id] = target_category
+                candidate_selected = _reverse_prune(
+                    result.union({candidate_id}), candidate_targets, groups
+                )
+                candidate_score = (
+                    len(candidate_selected),
+                    tuple(sorted(candidate_selected)),
+                    tuple(sorted(candidate_targets.items())),
+                )
+                if best is None or candidate_score < (
+                    len(best[0]),
+                    tuple(sorted(best[0])),
+                    tuple(sorted(best[1].items())),
+                ):
+                    best = (candidate_selected, candidate_targets)
+                if trials >= _MAX_FIXED_SLOT_SWAP_TRIALS:
+                    break
+            if trials >= _MAX_FIXED_SLOT_SWAP_TRIALS:
+                break
+        if best is None or len(best[0]) >= current_count:
+            break
+        result, targets = best
+        improvements += 1
+    return result, targets, {
+        "fixed_slot_swap_trial_count": trials,
+        "fixed_slot_swap_count": improvements,
+    }
+
+
 def _find_local_move(
     selected: set[str],
     removable: list[str],
@@ -542,7 +611,17 @@ def _entry(
     reasons: set[str],
     target_by_id: dict[str, str],
 ) -> dict[str, Any]:
-    target_category = target_by_id.get(record_id, record["category"])
+    target_category = target_by_id.get(record_id)
+    if target_category is None:
+        target = {
+            "category": record["category"],
+            "scene_context": record["scene_context"],
+            "speech_intent": record["speech_intent"],
+        }
+        target_metadata_policy = "preserve_exact"
+    else:
+        target = {"category": target_category}
+        target_metadata_policy = "compatible_author_required"
     return {
         "record_id": record_id,
         "original_record_sha256": _record_sha256(record),
@@ -554,7 +633,8 @@ def _entry(
             "language_class": record["language_class"],
             "intended_length_class": record["intended_length_class"],
         },
-        "target": {"category": target_category},
+        "target": target,
+        "target_metadata_policy": target_metadata_policy,
     }
 
 

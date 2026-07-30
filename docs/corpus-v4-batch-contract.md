@@ -44,9 +44,19 @@ each selection stage and the local-search trial count.
 Run the audit with `--corpus-id representative-v4`. The audit, repair policy,
 repair-set, and overlay are linked by SHA-256 values for the complete source
 JSONL, its `record_id` set, the audit, and the policy. The repair-set stores
-every immutable field that a replacement must preserve.
+every immutable field that a replacement must preserve. Repetition-only entries
+pin the exact category, scene context, and speech intent. Category-rebalance
+entries pin the target category and require a newly authored metadata pair that
+passes the corpus compatibility matrix.
 
-Author one natural replacement per repair-set record in a separate overlay.
+Author one natural replacement per repair-set record in JSONL. Use
+`scripts/build_corpus_v4_repair_overlay.py` to validate the reviewed authoring
+rows and build the provenance-pinned overlay; it takes generated repair reasons
+from the repair-set, so a form created before a later audit rebuild does not
+need manual updates to those opaque identifiers. Authoring source, preserved
+fields, word range, semantic target, and replacement metadata remain strict.
+The builder rejects duplicate replacement metadata IDs across the authoring set.
+
 Each overlay entry must preserve `batch_id`, `record_id`, `language_class`, and
 `intended_length_class`; it must include a new `text`, new semantic metadata,
 the target category/context/intent, and the source and replacement hashes. A
@@ -56,8 +66,12 @@ metadata-only reclassification.
 Run `scripts/materialize_corpus_v4_overlay.py` to build the candidate JSONL.
 Pass the same source JSONL, audit, repair policy, and repair-set used to build
 the plan. It refuses incomplete overlays, altered source records, changed
-immutable fields, target mismatches, incorrect hashes, schema-version drift,
-or a broken provenance chain. Then re-run the full ten-batch validator,
+immutable fields, semantic-target drift, target mismatches, incorrect hashes,
+schema-version drift, or a broken provenance chain. Repair-set and overlay
+entries use exact fail-closed schemas. The deterministic selector applies
+greedy multicover, bounded category-slot swap search, reverse deletion, and
+bounded local improvement; it reports local-search and slot-swap trial counts
+but does not claim a global minimum. Then re-run the full ten-batch validator,
 `scripts/audit_corpus_repetition.py --corpus-id representative-v4`, and human
 review. Keep the source batches immutable; commit the repair-set, reviewed
 overlay, materialization report, and resulting validation artifacts together
