@@ -23,10 +23,11 @@ completion of both quota tables. Final category quotas are 490
 `game_dialogue`, 330 `stream_event`, and 120 `transition` records.
 
 Review one new batch at a time. Run its validator and repetition audit together
-with every previously accepted batch before asking for the next batch. After ten
-batches pass, split each batch deterministically into 150 discovery records and
-50 blind-holdout records. The formal 100-record human review must draw ten
-records from each discovery partition only.
+with every previously accepted batch before asking for the next batch. After
+materialization passes the complete corpus contract, use
+`scripts/split_corpus_v4_runtime.py` to create 1,500 discovery records, a
+closed 500-record runtime-measurement holdout, and a deterministic
+discovery-only stratified 100-record human-review sample.
 
 ## Repair Workflow
 
