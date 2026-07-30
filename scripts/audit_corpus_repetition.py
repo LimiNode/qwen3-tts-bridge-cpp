@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import re
+import unicodedata
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -43,7 +44,7 @@ def _load_records(path: Path) -> list[dict[str, object]]:
 
 
 def _audit(records: list[dict[str, object]]) -> dict[str, Any]:
-    texts = Counter(str(record["text"]).strip().casefold() for record in records)
+    texts = Counter(normalize_exact_text(str(record["text"])) for record in records)
     sentences = Counter()
     closings = Counter()
     ngrams = {size: Counter() for size in range(4, 9)}
@@ -55,7 +56,7 @@ def _audit(records: list[dict[str, object]]) -> dict[str, Any]:
     }
     for index, record in enumerate(records, 1):
         label = _record_label(record, index)
-        normalized_text = str(record["text"]).strip().casefold()
+        normalized_text = normalize_exact_text(str(record["text"]))
         exact_occurrences.setdefault(normalized_text, []).append(label)
         normalized_sentences = _sentences(str(record["text"]))
         sentences.update(normalized_sentences)
@@ -128,6 +129,11 @@ def _audit(records: list[dict[str, object]]) -> dict[str, Any]:
 
 def _tokens(text: str) -> list[str]:
     return _TOKEN_RE.findall(text.casefold())
+
+
+def normalize_exact_text(text: str) -> str:
+    """Return the canonical exact-duplicate key for a corpus text."""
+    return " ".join(unicodedata.normalize("NFKC", text).split()).casefold()
 
 
 def _sentences(text: str) -> list[str]:

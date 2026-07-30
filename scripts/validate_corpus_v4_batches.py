@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from scripts.audit_corpus_repetition import _audit
+    from scripts.audit_corpus_repetition import _audit, normalize_exact_text
 except ModuleNotFoundError:
-    from audit_corpus_repetition import _audit
+    from audit_corpus_repetition import _audit, normalize_exact_text
 
 _BATCH_RECORDS = 200
 _REQUIRED = {
@@ -304,7 +304,9 @@ def _record_label(record: dict[str, object], index: int) -> str:
 
 
 def _duplicate_texts(records: list[dict[str, object]]) -> dict[str, int]:
-    counts = Counter(str(record.get("text", "")).casefold() for record in records)
+    counts = Counter(
+        normalize_exact_text(str(record.get("text", ""))) for record in records
+    )
     return dict(sorted((text, count) for text, count in counts.items() if count > 1))
 
 

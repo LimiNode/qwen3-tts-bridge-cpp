@@ -38,6 +38,20 @@ class CorpusRepetitionAuditTests(unittest.TestCase):
         self.assertTrue(result["passed"])
         self.assertEqual({}, result["violations"]["sentence"])
 
+    def test_exact_text_uses_unicode_and_whitespace_normalization(self) -> None:
+        result = _audit(
+            [
+                {"text": "  \u0420\u0435\u0436\u0438\u043c\u00a0turbo \uff11  "},
+                {"text": "\u0440\u0435\u0436\u0438\u043c turbo 1"},
+            ]
+        )
+
+        self.assertFalse(result["passed"])
+        self.assertEqual(
+            {"\u0440\u0435\u0436\u0438\u043c turbo 1": 2},
+            result["frequencies"]["duplicate_exact_text"],
+        )
+
     def test_shared_closing_block_over_share_fails(self) -> None:
         result = _audit(
             [

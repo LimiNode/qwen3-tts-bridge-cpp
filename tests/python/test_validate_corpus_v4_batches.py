@@ -67,6 +67,50 @@ class CorpusV4BatchValidationTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertTrue(result["failures"]["contiguous_batch_prefix"])
 
+    def test_parse_failures_are_reported_without_a_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "invalid.jsonl"
+            path.write_text("{\n[]\n", encoding="utf-8")
+            result = _validate([path], 10)
+
+        self.assertEqual(
+            [f"{path}:1:invalid_json", f"{path}:2:non_object"],
+            result["failures"]["parse"],
+        )
+
+    def test_empty_file_is_reported_without_a_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "empty.jsonl"
+            path.write_text("", encoding="utf-8")
+            result = _validate([path], 10)
+
+        self.assertEqual([f"{path}:empty_file"], result["failures"]["parse"])
+
+    def test_incompatible_context_has_an_actionable_reason(self) -> None:
+        records = _records()
+        records[0]["scene_context"] = "offline_conversation"
+        with tempfile.TemporaryDirectory() as directory:
+            path = _write(Path(directory), records)
+            result = _validate([path], 10)
+
+        self.assertEqual(
+            ["incompatible_scene_context"],
+            result["failures"]["record_contract_details"]["v4-b01-001"],
+        )
+
+    def test_duplicate_text_uses_unicode_and_whitespace_normalization(self) -> None:
+        records = _records()
+        records[0]["text"] = "\u0420\u0435\u0436\u0438\u043c turbo \uff11"
+        records[1]["text"] = "  \u0440\u0435\u0436\u0438\u043c\u00a0turbo 1  "
+        with tempfile.TemporaryDirectory() as directory:
+            path = _write(Path(directory), records)
+            result = _validate([path], 10)
+
+        self.assertEqual(
+            {"\u0440\u0435\u0436\u0438\u043c turbo 1": 2},
+            result["failures"]["duplicate_text"],
+        )
+
 
 def _records(batch_id: str = "v4-b01") -> list[dict[str, object]]:
     return [

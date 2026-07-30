@@ -11,7 +11,8 @@ Every record requires `text`, `language_class`, `category`, `scene_context`,
 Batch IDs are `v4-b01` through `v4-b10`; record IDs must be exactly
 `v4-bNN-001` through `v4-bNN-200`. Use
 `scripts/prepare_corpus_v4_batch.py` to assign these immutable IDs to a
-candidate JSONL file before validation.
+candidate JSONL file before validation. The preparer refuses to overwrite an
+existing output or its SHA sidecar unless `--overwrite-output` is explicit.
 
 The final 2,000 records must contain 1,300 `ru`, 500 `en`, and 200 `mixed`
 records. Length quotas are 300 `micro`, 400 `short`, 700 `medium`, 400 `long`,
