@@ -30,10 +30,20 @@ class SplitCorpusV4RuntimeTests(unittest.TestCase):
         self.assertTrue(
             all(record["corpus_split"] == "discovery" for record in first_discovery)
         )
+
+    def test_custom_corpus_id_is_written_to_both_partitions(self) -> None:
+        discovery, holdout = _split_records(_records(), 123, "representative-v4-r1")
+
+        self.assertEqual(
+            {"representative-v4-r1"}, {row["corpus_id"] for row in discovery}
+        )
+        self.assertEqual(
+            {"representative-v4-r1"}, {row["corpus_id"] for row in holdout}
+        )
         self.assertTrue(
             all(
                 record["corpus_split"] == "runtime_measurement_holdout"
-                for record in first_holdout
+                for record in holdout
             )
         )
 

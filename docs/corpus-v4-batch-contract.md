@@ -91,3 +91,23 @@ authoring, repair-set, overlay, source/replacement text, and target metadata;
 it passes only when one named human reviewer has completed every replacement
 without a negative quality or metadata-only finding. A pending form, an AI
 pre-review, or a blanket approval is not a completed human-review result.
+
+## Candidate Quality Revisions
+
+Keep an accepted corpus immutable. When a later AI pre-review identifies text
+quality concerns, build a separate candidate rather than editing the frozen
+source or relabelling records. Use
+`scripts/prepare_corpus_v4_quality_overlay.py` with the frozen and corrected
+general review forms, the explicit AI pre-review, and the existing repair set.
+It produces a text-only overlay for records not already covered by the repair
+set; the overlay pins the base corpus, every review input, source/replacement
+hashes, and all preserved metadata. Then use
+`scripts/materialize_corpus_v4_quality_overlay.py` to materialize the
+candidate. The materializer independently rechecks provenance, preserved
+metadata, word ranges, source/replacement hashes, and final canonical-text
+uniqueness.
+
+Re-run the complete ten-batch validation, full repetition audit, runtime split,
+and create fresh targeted and general pending human-review forms for the
+candidate. AI pre-review can identify repair candidates, but it never satisfies
+either human-review gate or authorizes a runtime benchmark.

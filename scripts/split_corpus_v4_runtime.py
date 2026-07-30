@@ -44,11 +44,12 @@ def main() -> int:
     parser.add_argument("--review-sample-output", type=Path, required=True)
     parser.add_argument("--audit-output", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=20260731)
+    parser.add_argument("--corpus-id", default=_CORPUS_ID)
     args = parser.parse_args()
 
     source = args.input.read_bytes()
     records = _load_records(source)
-    discovery, holdout = _split_records(records, args.seed)
+    discovery, holdout = _split_records(records, args.seed, args.corpus_id)
     review = _select_review_sample(discovery, args.seed)
     _validate_batch_coverage(discovery, "discovery")
     _validate_batch_coverage(holdout, "runtime measurement holdout")
@@ -63,6 +64,7 @@ def main() -> int:
         holdout,
         review,
         args.seed,
+        args.corpus_id,
         args.discovery_output,
         args.holdout_output,
         args.review_sample_output,
@@ -92,7 +94,7 @@ def _load_records(source: bytes) -> list[dict[str, object]]:
 
 
 def _split_records(
-    records: list[dict[str, object]], seed: int
+    records: list[dict[str, object]], seed: int, corpus_id: str = _CORPUS_ID
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
     grouped: dict[str, list[dict[str, object]]] = defaultdict(list)
     for record in records:
@@ -104,11 +106,11 @@ def _split_records(
         candidates = list(grouped[category])
         random.Random(f"{seed}:holdout:{category}").shuffle(candidates)
         holdout.extend(
-            _with_split(record, "runtime_measurement_holdout")
+            _with_split(record, "runtime_measurement_holdout", corpus_id)
             for record in candidates[: requested[category]]
         )
         discovery.extend(
-            _with_split(record, "discovery")
+            _with_split(record, "discovery", corpus_id)
             for record in candidates[requested[category] :]
         )
     return _sort_records(discovery), _sort_records(holdout)
@@ -163,10 +165,12 @@ def _select_review_sample(
     return _sort_records(selected)
 
 
-def _with_split(record: dict[str, object], split: str) -> dict[str, object]:
+def _with_split(
+    record: dict[str, object], split: str, corpus_id: str
+) -> dict[str, object]:
     return {
         **record,
-        "corpus_id": _CORPUS_ID,
+        "corpus_id": corpus_id,
         "label": record["record_id"],
         "corpus_split": split,
     }
@@ -183,13 +187,14 @@ def _audit(
     holdout: list[dict[str, object]],
     review: list[dict[str, object]],
     seed: int,
+    corpus_id: str,
     discovery_path: Path,
     holdout_path: Path,
     review_path: Path,
 ) -> dict[str, Any]:
     return {
         "corpus_v4_runtime_split_schema_version": 1,
-        "corpus_id": _CORPUS_ID,
+        "corpus_id": corpus_id,
         "source_records_sha256": hashlib.sha256(source).hexdigest(),
         "source_record_id_set_sha256": _record_id_set_sha256(records),
         "record_count": len(records),
