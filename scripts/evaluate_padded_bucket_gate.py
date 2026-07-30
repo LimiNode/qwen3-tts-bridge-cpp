@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -11,6 +12,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--route-summary", type=Path, required=True)
     parser.add_argument("--manual-review-summary", type=Path, required=True)
+    parser.add_argument("--audit", type=Path, required=True)
     parser.add_argument("--candidate-artifact", type=Path, required=True)
     parser.add_argument("--candidate-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -28,11 +30,16 @@ def main() -> int:
     parser.add_argument("--maximum-graphs", type=int, default=6)
     args = parser.parse_args()
     _validate_args(parser, args)
+    route_bytes = args.route_summary.read_bytes()
+    audit_bytes = args.audit.read_bytes()
     result = _evaluate(
-        _load_object(args.route_summary, "route summary"),
+        _load_object_bytes(route_bytes, "route summary"),
         _load_object(args.manual_review_summary, "manual review summary"),
         _load_object(args.candidate_artifact, "candidate artifact"),
+        _load_object_bytes(audit_bytes, "audit"),
         args,
+        hashlib.sha256(route_bytes).hexdigest(),
+        hashlib.sha256(audit_bytes).hexdigest(),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, sort_keys=True), encoding="utf-8")
@@ -62,7 +69,11 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
 
 
 def _load_object(path: Path, name: str) -> dict[str, object]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    return _load_object_bytes(path.read_bytes(), name)
+
+
+def _load_object_bytes(value: bytes, name: str) -> dict[str, object]:
+    value = json.loads(value.decode("utf-8"))
     if not isinstance(value, dict):
         raise RuntimeError(f"{name} must be a JSON object")
     return value
@@ -72,12 +83,23 @@ def _evaluate(
     route_summary: dict[str, object],
     manual_review: dict[str, object],
     candidate_artifact: dict[str, object],
+    audit: dict[str, object],
     args: argparse.Namespace,
+    route_summary_sha256: str,
+    audit_sha256: str,
 ) -> dict[str, object]:
     candidate = _candidate(candidate_artifact, args.candidate_id)
     reasons = []
     checks = {
         "manual_review_passed": manual_review.get("passed") is True,
+        **_provenance_checks(
+            route_summary,
+            manual_review,
+            candidate_artifact,
+            audit,
+            route_summary_sha256,
+            audit_sha256,
+        ),
         "synthetic_evidence": route_summary.get("evidence_source") == "synthetic_proxy",
         "route_input_valid": route_summary.get("input_valid") is True,
         "minimum_discovery_records": _integer(route_summary.get("input_record_count"))
@@ -116,7 +138,45 @@ def _evaluate(
             "release profile. The mechanism gate separately permits only one "
             "16..32-to-32 correctness prototype."
         ),
+        "input_sha256": {
+            "route_summary": route_summary_sha256,
+            "manual_review": _canonical_sha256(manual_review),
+            "candidate_artifact": _canonical_sha256(candidate_artifact),
+            "audit": audit_sha256,
+        },
     }
+
+
+def _provenance_checks(
+    route_summary: dict[str, object],
+    manual_review: dict[str, object],
+    candidate_artifact: dict[str, object],
+    audit: dict[str, object],
+    route_summary_sha256: str,
+    audit_sha256: str,
+) -> dict[str, bool]:
+    corpus_id = route_summary.get("corpus_id")
+    runtime_profile = route_summary.get("runtime_profile_id")
+    return {
+        "candidate_input_summary": candidate_artifact.get("input_summary_sha256")
+        == route_summary_sha256,
+        "corpus_id": isinstance(corpus_id, str)
+        and corpus_id == manual_review.get("corpus_id")
+        and corpus_id == audit.get("corpus_id"),
+        "manual_review_audit": manual_review.get("audit_sha256") == audit_sha256,
+        "generator_source": manual_review.get("generator_source_sha256")
+        == audit.get("generator_source_sha256"),
+        "generation_config": manual_review.get("generation_config_sha256")
+        == audit.get("generation_config_sha256"),
+        "runtime_profile": isinstance(runtime_profile, str)
+        and runtime_profile == candidate_artifact.get("runtime_profile_id"),
+    }
+
+
+def _canonical_sha256(value: dict[str, object]) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
 
 
 def _candidate(artifact: dict[str, object], candidate_id: str) -> dict[str, object]:

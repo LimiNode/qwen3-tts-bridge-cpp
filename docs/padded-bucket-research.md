@@ -24,6 +24,10 @@ It requires all of the following:
 - maximum padding ratio at most 40 percent;
 - bootstrap ceiling stability of at least 80 percent within two frames.
 
+The gate also verifies a provenance chain: the candidate input SHA must equal
+the supplied route-summary SHA, and route summary, audit, manual review, and
+candidate must agree on corpus, generator/config, and runtime-profile identity.
+
 `scripts/optimize_padded_buckets_v2.py` produces the required candidate
 fields. It may leave sparse leading, trailing, or internal observed lengths on
 the eager path; it does not force a prefix of the histogram into compiled
@@ -34,8 +38,10 @@ actual worker.
 
 `scripts/evaluate_padded_bucket_mechanism_gate.py` owns the separate mechanism
 decision. It requires a completed human review and at least 1,500 valid route
-records with real representation in the approved actual-length range. It can
-authorize exactly one research implementation:
+records with real representation in the approved actual-length range. The
+range needs at least 100 requests across lower, middle, and upper control
+groups, including large-padding `16/17` and zero-padding `31/32` controls. It
+can authorize exactly one research implementation:
 
 ```text
 actual prefill length 16..32 -> padded compiled shape 32

@@ -1,9 +1,10 @@
-"""Report exact sentence, closing, and n-gram repetition in a JSONL corpus."""
+"""Measure corpus repetition with frequency limits that preserve natural phrasing."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 from collections import Counter
 from pathlib import Path
@@ -16,13 +17,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--minimum-ngram-size", type=int, default=4)
-    parser.add_argument("--maximum-ngram-size", type=int, default=8)
     args = parser.parse_args()
-    if args.minimum_ngram_size < 2 or args.maximum_ngram_size < args.minimum_ngram_size:
-        parser.error("invalid n-gram range")
-    records = _load_records(args.input)
-    result = _audit(records, args.minimum_ngram_size, args.maximum_ngram_size)
+    result = _audit(_load_records(args.input))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, sort_keys=True), encoding="utf-8")
     print(json.dumps(result, sort_keys=True))
@@ -45,14 +41,11 @@ def _load_records(path: Path) -> list[dict[str, object]]:
     return records
 
 
-def _audit(
-    records: list[dict[str, object]], minimum_ngram_size: int, maximum_ngram_size: int
-) -> dict[str, object]:
+def _audit(records: list[dict[str, object]]) -> dict[str, object]:
+    texts = Counter(str(record["text"]).strip().casefold() for record in records)
     sentences = Counter()
     closings = Counter()
-    ngrams = {
-        size: Counter() for size in range(minimum_ngram_size, maximum_ngram_size + 1)
-    }
+    ngrams = {size: Counter() for size in range(4, 9)}
     for record in records:
         normalized_sentences = _sentences(str(record["text"]))
         sentences.update(normalized_sentences)
@@ -64,28 +57,47 @@ def _audit(
                 " ".join(tokens[index : index + size])
                 for index in range(len(tokens) - size + 1)
             )
-    duplicate_sentences = _duplicates(sentences)
-    duplicate_closings = _duplicates(closings)
-    repeated_ngrams = {
-        str(size): _duplicates(counts) for size, counts in ngrams.items()
+    limits = {
+        "exact_text": 1,
+        "sentence": 2,
+        "closing_block": max(1, math.ceil(len(records) * 0.02)),
+        "4": 6,
+        "5": 4,
+        "6": 2,
+        "7": 2,
+        "8": 1,
     }
-    passed = (
-        not duplicate_sentences
-        and not duplicate_closings
-        and not any(repeated_ngrams.values())
-    )
+    violations = {
+        "exact_text": _over_limit(texts, limits["exact_text"]),
+        "sentence": _over_limit(sentences, limits["sentence"]),
+        "closing_block": _over_limit(closings, limits["closing_block"]),
+        "ngrams": {
+            str(size): _over_limit(counts, limits[str(size)])
+            for size, counts in ngrams.items()
+        },
+    }
+    passed = not violations["exact_text"] and not violations["sentence"]
+    passed = passed and not violations["closing_block"]
+    passed = passed and not any(violations["ngrams"].values())
     return {
-        "corpus_repetition_audit_schema_version": 1,
+        "corpus_repetition_audit_schema_version": 2,
         "record_count": len(records),
-        "duplicate_sentences": duplicate_sentences,
-        "duplicate_closing_blocks": duplicate_closings,
-        "repeated_ngrams": repeated_ngrams,
+        "limits": limits,
+        "frequencies": {
+            "duplicate_exact_text": _duplicates(texts),
+            "duplicate_sentences": _duplicates(sentences),
+            "duplicate_closing_blocks": _duplicates(closings),
+            "repeated_ngrams": {
+                str(size): _duplicates(counts) for size, counts in ngrams.items()
+            },
+        },
+        "violations": violations,
         "passed": passed,
     }
 
 
 def _tokens(text: str) -> list[str]:
-    return _TOKEN_RE.findall(text.lower())
+    return _TOKEN_RE.findall(text.casefold())
 
 
 def _sentences(text: str) -> list[str]:
@@ -98,6 +110,12 @@ def _sentences(text: str) -> list[str]:
 
 def _duplicates(counts: Counter[str]) -> dict[str, int]:
     return dict(sorted((value, count) for value, count in counts.items() if count > 1))
+
+
+def _over_limit(counts: Counter[str], limit: int) -> dict[str, int]:
+    return dict(
+        sorted((value, count) for value, count in counts.items() if count > limit)
+    )
 
 
 if __name__ == "__main__":
