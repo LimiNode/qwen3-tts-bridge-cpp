@@ -10,6 +10,7 @@ from scripts.build_corpus_v4_repair_set import (
     _bounded_fixed_slot_swap_improvement,
     _bounded_local_improvement,
     _build_repair_set,
+    _rebuild_reasons,
     _reverse_prune,
 )
 
@@ -117,6 +118,17 @@ class CorpusV4RepairSetTests(unittest.TestCase):
         self.assertEqual({"b"}, selected)
         self.assertEqual({"b": "game_review"}, targets)
         self.assertEqual(1, metrics["fixed_slot_swap_count"])
+
+    def test_reason_rebuild_tracks_final_fixed_slot_after_swap(self) -> None:
+        groups = [
+            {"id": "sentence:first", "limit": 1, "occurrences": {"a": 1, "b": 1}}
+        ]
+
+        reasons = _rebuild_reasons({"b"}, {"b": "game_review"}, groups)
+
+        self.assertEqual(
+            {"b": {"category_quota_rebalance", "sentence:first"}}, reasons
+        )
 
 
 def _build(

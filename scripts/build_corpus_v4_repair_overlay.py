@@ -10,20 +10,25 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from scripts.audit_corpus_repetition import _record_id_set_sha256
+    from scripts.audit_corpus_repetition import (
+        _record_id_set_sha256,
+        normalize_exact_text,
+    )
     from scripts.materialize_corpus_v4_overlay import (
-        _OVERLAY_ENTRY_FIELDS,
         _REPAIR_PLAN_ENTRY_FIELDS,
         _entries_by_id,
         _validate_audit_document,
         _validate_policy_document,
         _validate_repair_set_document,
     )
-    from scripts.validate_corpus_v4_batches import _COMPATIBILITY, _WORD_RANGES, _WORD_RE
+    from scripts.validate_corpus_v4_batches import (
+        _COMPATIBILITY,
+        _WORD_RANGES,
+        _WORD_RE,
+    )
 except ModuleNotFoundError:
-    from audit_corpus_repetition import _record_id_set_sha256
+    from audit_corpus_repetition import _record_id_set_sha256, normalize_exact_text
     from materialize_corpus_v4_overlay import (
-        _OVERLAY_ENTRY_FIELDS,
         _REPAIR_PLAN_ENTRY_FIELDS,
         _entries_by_id,
         _validate_audit_document,
@@ -149,14 +154,19 @@ def _build_overlay(
     if set(plan_by_id) != set(authoring_by_id):
         raise RuntimeError("authoring record IDs do not match the repair set")
     source_by_id = _records_by_id(records)
-    entries = []
     for record_id in sorted(plan_by_id):
         record = source_by_id.get(record_id)
         if record is None:
             raise RuntimeError(f"repair set references unknown record ID: {record_id}")
+        _validate_authoring_row(
+            authoring_by_id[record_id], record, plan_by_id[record_id]
+        )
+    _validate_replacement_texts(source_by_id, plan_by_id, authoring_by_id)
+    entries = []
+    for record_id in sorted(plan_by_id):
+        record = source_by_id.get(record_id)
         plan = plan_by_id[record_id]
         authored = authoring_by_id[record_id]
-        _validate_authoring_row(authored, record, plan)
         text = authored["replacement"]["text"]
         entries.append(
             {
@@ -182,6 +192,33 @@ def _build_overlay(
         "repair_policy_id": repair_set["repair_policy_id"],
         "records": entries,
     }
+
+
+def _validate_replacement_texts(
+    source_by_id: dict[str, dict[str, object]],
+    plan_by_id: dict[str, dict[str, Any]],
+    authoring_by_id: dict[str, dict[str, Any]],
+) -> None:
+    unchanged_texts = {
+        normalize_exact_text(str(record["text"]))
+        for record_id, record in source_by_id.items()
+        if record_id not in plan_by_id
+    }
+    replacement_texts: dict[str, str] = {}
+    for record_id in sorted(plan_by_id):
+        text = str(authoring_by_id[record_id]["replacement"]["text"])
+        normalized_text = normalize_exact_text(text)
+        if normalized_text in replacement_texts:
+            previous_record_id = replacement_texts[normalized_text]
+            raise RuntimeError(
+                f"{record_id}: replacement text duplicates {previous_record_id}"
+            )
+        if normalized_text in unchanged_texts:
+            raise RuntimeError(
+                f"{record_id}: replacement text collides with an unchanged source "
+                "record"
+            )
+        replacement_texts[normalized_text] = record_id
 
 
 def _validate_authoring_row(
@@ -228,6 +265,12 @@ def _validate_authoring_row(
         expected_range[0], expected_range[1] + 1
     ):
         raise RuntimeError(f"{record['record_id']}: replacement word count is invalid")
+    if normalize_exact_text(replacement["text"]) == normalize_exact_text(
+        str(record["text"])
+    ):
+        raise RuntimeError(
+            f"{record['record_id']}: replacement text does not change source"
+        )
 
 
 def _authoring_by_id(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:

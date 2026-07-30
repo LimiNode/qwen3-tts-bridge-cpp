@@ -118,7 +118,7 @@ def _build_repair_set(
         groups,
     )
     selected = _reverse_prune(selected, target_by_id, groups)
-    _add_missing_reasons(selected, reasons, groups)
+    reasons = _rebuild_reasons(selected, target_by_id, groups)
     entries = [
         _entry(record_id, records_by_id[record_id], reasons[record_id], target_by_id)
         for record_id in sorted(selected)
@@ -597,12 +597,19 @@ def _repetition_satisfied(selected: set[str], groups: list[dict[str, Any]]) -> b
     )
 
 
-def _add_missing_reasons(
-    selected: set[str], reasons: dict[str, set[str]], groups: list[dict[str, Any]]
-) -> None:
+def _rebuild_reasons(
+    selected: set[str], target_by_id: dict[str, str], groups: list[dict[str, Any]]
+) -> dict[str, set[str]]:
+    """Derive reasons from the final selected and category-target state."""
+    if not set(target_by_id).issubset(selected):
+        raise RuntimeError("category rebalance targets must remain selected")
+    reasons: dict[str, set[str]] = defaultdict(set)
+    for record_id in target_by_id:
+        reasons[record_id].add("category_quota_rebalance")
     for group in groups:
         for record_id in selected.intersection(group["occurrences"]):
             reasons[record_id].add(group["id"])
+    return reasons
 
 
 def _entry(

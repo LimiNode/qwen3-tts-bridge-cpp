@@ -130,6 +130,28 @@ class MaterializeCorpusV4OverlayTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "entry schema"):
             _materialize_fixture(records, repair_set, overlay)
 
+    def test_rejects_canonically_unchanged_replacement_text(self) -> None:
+        records = [_record()]
+        repair_set = _repair_set(records)
+        overlay = _overlay(records, repair_set)
+        text = "  HOLD   THE BRIDGE.  "
+        overlay["records"][0]["replacement"]["text"] = text
+        overlay["records"][0]["replacement_text_sha256"] = hashlib.sha256(
+            text.encode("utf-8")
+        ).hexdigest()
+
+        with self.assertRaisesRegex(RuntimeError, "does not change source"):
+            _materialize_fixture(records, repair_set, overlay)
+
+    def test_rejects_final_text_collision_with_unchanged_source(self) -> None:
+        records = [_record(), _record("v4-b01-002")]
+        records[1]["text"] = "A focused review checks the sound mix."
+        repair_set = _repair_set(records)
+        overlay = _overlay(records, repair_set)
+
+        with self.assertRaisesRegex(RuntimeError, "duplicates v4-b01-001"):
+            _materialize_fixture(records, repair_set, overlay)
+
     def test_repair_materialize_audit_round_trip_passes(self) -> None:
         records = [_record(f"v4-b01-00{index}") for index in range(1, 4)]
         for record in records:

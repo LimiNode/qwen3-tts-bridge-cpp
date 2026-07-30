@@ -9,11 +9,19 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from scripts.audit_corpus_repetition import _is_sha256, _record_id_set_sha256
+    from scripts.audit_corpus_repetition import (
+        _is_sha256,
+        _record_id_set_sha256,
+        normalize_exact_text,
+    )
     from scripts.build_corpus_v4_repair_set import _record_sha256
     from scripts.validate_corpus_v4_batches import _COMPATIBILITY
 except ModuleNotFoundError:
-    from audit_corpus_repetition import _is_sha256, _record_id_set_sha256
+    from audit_corpus_repetition import (
+        _is_sha256,
+        _record_id_set_sha256,
+        normalize_exact_text,
+    )
     from build_corpus_v4_repair_set import _record_sha256
     from validate_corpus_v4_batches import _COMPATIBILITY
 
@@ -236,6 +244,7 @@ def _materialize(
         )
     if len(result) != len(records):
         raise RuntimeError("materialized record count changed")
+    _validate_final_text_uniqueness(result)
     return result
 
 
@@ -432,11 +441,28 @@ def _validate_replacement(
     text = payload.get("text")
     if not isinstance(text, str) or not text.strip():
         raise RuntimeError(f"{original['record_id']}: replacement text is invalid")
+    if normalize_exact_text(text) == normalize_exact_text(str(original["text"])):
+        raise RuntimeError(
+            f"{original['record_id']}: replacement text does not change source"
+        )
     expected_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
     if replacement.get("replacement_text_sha256") != expected_sha:
         raise RuntimeError(
             f"{original['record_id']}: replacement text SHA does not match"
         )
+
+
+def _validate_final_text_uniqueness(records: list[dict[str, object]]) -> None:
+    seen: dict[str, str] = {}
+    for record in records:
+        record_id = str(record["record_id"])
+        normalized_text = normalize_exact_text(str(record["text"]))
+        previous = seen.get(normalized_text)
+        if previous is not None:
+            raise RuntimeError(
+                f"materialized replacement text duplicates {previous}: {record_id}"
+            )
+        seen[normalized_text] = record_id
 
 
 def _validate_plan_entry(

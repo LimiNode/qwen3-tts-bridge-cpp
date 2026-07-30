@@ -37,7 +37,8 @@ contract and do not repair the difference by relabelling existing text.
 Use `scripts/build_corpus_v4_repair_set.py` with the full audit JSON and the
 combined, ID-assigned JSONL. Pass the immutable
 `config/corpus-v4-repair-policy-v1.json` explicitly. The builder uses a
-deterministic greedy multicover, reverse-delete pass, and bounded local search;
+deterministic greedy multicover, bounded category-slot swap, reverse-delete
+pass, and bounded local search;
 its selected count is not claimed to be a global minimum. Its report exposes
 each selection stage and the local-search trial count.
 
@@ -56,6 +57,10 @@ from the repair-set, so a form created before a later audit rebuild does not
 need manual updates to those opaque identifiers. Authoring source, preserved
 fields, word range, semantic target, and replacement metadata remain strict.
 The builder rejects duplicate replacement metadata IDs across the authoring set.
+It also rejects a replacement whose canonical text is unchanged, duplicates
+another replacement, or collides with an unchanged source record. Canonical
+text is Unicode NFKC normalization, whitespace collapse and trim, then
+casefold.
 
 Each overlay entry must preserve `batch_id`, `record_id`, `language_class`, and
 `intended_length_class`; it must include a new `text`, new semantic metadata,
@@ -67,7 +72,8 @@ Run `scripts/materialize_corpus_v4_overlay.py` to build the candidate JSONL.
 Pass the same source JSONL, audit, repair policy, and repair-set used to build
 the plan. It refuses incomplete overlays, altered source records, changed
 immutable fields, semantic-target drift, target mismatches, incorrect hashes,
-schema-version drift, or a broken provenance chain. Repair-set and overlay
+schema-version drift, a duplicate final canonical text, or a broken provenance
+chain. Repair-set and overlay
 entries use exact fail-closed schemas. The deterministic selector applies
 greedy multicover, bounded category-slot swap search, reverse deletion, and
 bounded local improvement; it reports local-search and slot-swap trial counts
