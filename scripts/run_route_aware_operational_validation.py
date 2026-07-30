@@ -80,7 +80,8 @@ class WorkerHarness:
     def close(self) -> int:
         try:
             if self._process.poll() is None:
-                self.send_control(0, {"message_type": "shutdown", "mode": "drain"})
+                # Protocol v1 supports cooperative shutdown only through cancel.
+                self.send_control(0, {"message_type": "shutdown", "mode": "cancel"})
                 self.read_frame(lambda frame: _is_control(frame, 0, "shutdown_ack"))
             return self._process.wait(timeout=self._timeout_seconds)
         finally:
