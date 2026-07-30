@@ -1,0 +1,1 @@
+{"compiled_backend":"compile_reduce_overhead","compiled_lengths":[29,30,32,33,34,35],"compiled_route":"compiled_allowlist","compiled_schedule":[8,8,12],"eager_backend":"eager","eager_route":"eager_unknown","eager_schedule":[8],"manifest_schema_version":1,"runtime_profile_id":"rtx4090-cv06-bf16-sdpa-strict-v2-80bfc06"}

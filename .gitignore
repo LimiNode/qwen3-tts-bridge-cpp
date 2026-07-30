@@ -44,3 +44,7 @@ CMakeUserPresets.json
 # Logs and temporary local files
 *.log
 /tmp/
+
+# Local benchmark captures; compact anonymized summaries are versioned instead.
+/docs/benchmark-artifacts/**/*-result.json
+/docs/benchmark-artifacts/**/*-check.jsonl

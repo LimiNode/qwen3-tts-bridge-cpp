@@ -1,0 +1,28 @@
+{
+  "category_histogram": {
+    "game_commentary": 120,
+    "game_dialogue": 70,
+    "game_review": 80,
+    "live_chat": 160,
+    "stream_event": 40,
+    "transition": 30
+  },
+  "corpus_id": "streamer-game-voice-proxy-v1",
+  "corpus_schema_version": 1,
+  "intended_length_histogram": {
+    "extended": 75,
+    "long": 125,
+    "medium": 200,
+    "short": 100
+  },
+  "language_histogram": {
+    "en": 100,
+    "mixed": 50,
+    "ru": 350
+  },
+  "record_count": 500,
+  "sha256": "a6d072eedb22caffdafe7b0a0008b9e0dfa081c57b362f24fd7713af1903f347",
+  "unique_text_count": 429,
+  "word_count_max": 60,
+  "word_count_min": 3
+}
