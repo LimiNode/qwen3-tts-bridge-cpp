@@ -48,9 +48,40 @@ class SchedulePcmParityTests(unittest.TestCase):
             "selected_chunk_schedule": [8],
         }
 
-        failures = _validate_candidate_contract(case, candidate)
+        failures = _validate_candidate_contract(case, _case(), candidate)
 
         self.assertEqual(3, len(failures))
+
+    def test_rejects_relative_boundary_regression(self) -> None:
+        candidate = _case()
+        candidate["boundary_quality"] = {
+            **candidate["boundary_quality"],
+            "max_dc_delta_s16": 600.0,
+        }
+
+        failures = _compare(
+            _case(),
+            candidate,
+            max_dc_delta_s16=1000.0,
+            max_dc_regression_s16=100.0,
+        )
+
+        self.assertIn(
+            "boundary_quality.max_dc_delta_s16 regressed by more than 100.000",
+            failures,
+        )
+
+    def test_requires_exact_pcm_for_fixed_eager_control(self) -> None:
+        candidate = _case()
+        candidate["pcm_sha256"] = "b" * 64
+
+        failures = _validate_candidate_contract(
+            {"require_exact_pcm_sha256": True},
+            _case(),
+            candidate,
+        )
+
+        self.assertIn("candidate PCM SHA differs from fixed control", failures)
 
 
 def _case() -> dict[str, object]:

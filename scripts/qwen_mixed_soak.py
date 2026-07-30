@@ -525,6 +525,8 @@ def _memory_validation(
     snapshots: list[dict[str, object]],
     max_rss_growth_mb: float,
     *,
+    max_private_growth_mb: float | None = None,
+    gpu_pid_telemetry_policy: str = "allow_unsupported",
     require_telemetry: bool = False,
 ) -> dict[str, object]:
     failures: list[str] = []
@@ -554,7 +556,10 @@ def _memory_validation(
             failures.append("missing process-tree RSS telemetry")
         if len(private_values) != len(snapshots):
             failures.append("missing process-tree private-bytes telemetry")
-        if len(gpu_process_snapshots) != len(snapshots):
+        if (
+            gpu_pid_telemetry_policy == "required"
+            and len(gpu_values) != len(snapshots)
+        ):
             failures.append("missing PID-specific GPU process telemetry")
         if any(not snapshot.get("processes") for snapshot in snapshots):
             failures.append("missing process-tree process records")
@@ -570,21 +575,36 @@ def _memory_validation(
             failures.append(
                 f"RSS grew {growth_mb:.3f} MiB, above {max_rss_growth_mb:.3f} MiB"
             )
+    private_growth_mb = None
+    if len(private_values) >= 2:
+        private_growth_mb = (private_values[-1] - private_values[0]) / (
+            1024.0 * 1024.0
+        )
+        if (
+            max_private_growth_mb is not None
+            and private_growth_mb > max_private_growth_mb
+        ):
+            failures.append(
+                "private bytes grew "
+                f"{private_growth_mb:.3f} MiB, above {max_private_growth_mb:.3f} MiB"
+            )
     return {
         "failures": failures,
         "rss_growth_mib": growth_mb,
         "rss_monotonic_non_decreasing": monotonic_non_decreasing,
-        "private_growth_mib": (
-            (private_values[-1] - private_values[0]) / (1024.0 * 1024.0)
-            if len(private_values) >= 2
-            else None
-        ),
+        "private_growth_mib": private_growth_mb,
         "rss_peak_mib": (
             max(rss_values) / (1024.0 * 1024.0) if rss_values else None
         ),
         "gpu_peak_mib": max(gpu_values) if gpu_values else None,
         "gpu_pid_memory_available": (
             len(gpu_values) == len(snapshots) if snapshots else False
+        ),
+        "gpu_pid_telemetry_policy": gpu_pid_telemetry_policy,
+        "gpu_pid_telemetry_status": (
+            "available"
+            if len(gpu_values) == len(snapshots) and snapshots
+            else "unsupported"
         ),
         "gpu_pid_presence_observed": (
             len(gpu_process_snapshots) == len(snapshots) if snapshots else False

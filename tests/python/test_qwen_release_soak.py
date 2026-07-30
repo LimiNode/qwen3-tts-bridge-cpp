@@ -118,6 +118,32 @@ class ReleaseSoakTests(unittest.TestCase):
 
         self.assertEqual([], cast(list[str], validation["failures"]))
 
+    def test_rejects_allocator_growth_above_limit(self) -> None:
+        results = [
+            _completed(1, "allowlist_29", "normal"),
+            _completed(2, "allowlist_29", "normal"),
+        ]
+        metrics = _worker_memory_metrics(results)
+        metrics[1]["cuda_memory_reserved_bytes"] = 20 * 1024 * 1024
+
+        validation = _validate_release_soak(
+            results,
+            _snapshots(),
+            metrics,
+            expected_cache_entries=6,
+            expected_requests=2,
+            expected_cancellations=0,
+            expected_labels={"allowlist_29"},
+            cancellations_per_stage=0,
+            max_rss_growth_mb=1.0,
+            max_cuda_reserved_growth_mb=0.1,
+        )
+
+        self.assertIn(
+            "CUDA reserved memory growth exceeds configured limit",
+            cast(list[str], validation["failures"]),
+        )
+
 
 def _completed(request_id: int, label: str, role: str) -> dict[str, object]:
     return {

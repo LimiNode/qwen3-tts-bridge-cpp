@@ -121,6 +121,13 @@ def main() -> int:
             args.cancellations_per_category // len(_CANCEL_STAGES)
         ),
         max_rss_growth_mb=args.max_rss_growth_mb,
+        max_private_growth_mb=args.max_private_growth_mb,
+        max_cuda_allocated_growth_mb=args.max_cuda_allocated_growth_mb,
+        max_cuda_reserved_growth_mb=args.max_cuda_reserved_growth_mb,
+        max_cuda_reserved_tail_slope_bytes_per_request=(
+            args.max_cuda_reserved_tail_slope_bytes_per_request
+        ),
+        gpu_pid_telemetry_policy=args.gpu_pid_telemetry_policy,
     )
     report = _report(args, runtime, ready, results, snapshots, worker_metrics)
     report["validation"] = validation
@@ -147,6 +154,19 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout-seconds", type=float, default=1200.0)
     parser.add_argument("--cancel-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--max-rss-growth-mb", type=float, default=512.0)
+    parser.add_argument("--max-private-growth-mb", type=float, default=512.0)
+    parser.add_argument("--max-cuda-allocated-growth-mb", type=float, default=128.0)
+    parser.add_argument("--max-cuda-reserved-growth-mb", type=float, default=128.0)
+    parser.add_argument(
+        "--max-cuda-reserved-tail-slope-bytes-per-request",
+        type=float,
+        default=1048576.0,
+    )
+    parser.add_argument(
+        "--gpu-pid-telemetry-policy",
+        choices=("required", "allow_unsupported"),
+        default="required",
+    )
     parser.add_argument("--expected-prefill-cache-entries", type=int, default=6)
     parser.add_argument("--expected-faster-wheel-sha256", required=True)
     return parser
@@ -159,8 +179,16 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("--cancellations-per-category must be positive")
     if args.cancellations_per_category % len(_CANCEL_STAGES) != 0:
         parser.error("--cancellations-per-category must divide evenly across stages")
-    if args.expected_prefill_cache_entries <= 0:
-        parser.error("--expected-prefill-cache-entries must be positive")
+    for key in (
+        "expected_prefill_cache_entries",
+        "max_rss_growth_mb",
+        "max_private_growth_mb",
+        "max_cuda_allocated_growth_mb",
+        "max_cuda_reserved_growth_mb",
+        "max_cuda_reserved_tail_slope_bytes_per_request",
+    ):
+        if getattr(args, key) <= 0:
+            parser.error(f"--{key.replace('_', '-')} must be positive")
     if "--engine" in args.worker_arg or not any(
         item in {"mock", "qwen"} for item in args.worker_arg
     ):
@@ -388,6 +416,11 @@ def _validate_release_soak(
     expected_labels: set[str],
     cancellations_per_stage: int,
     max_rss_growth_mb: float,
+    max_private_growth_mb: float = 512.0,
+    max_cuda_allocated_growth_mb: float = 128.0,
+    max_cuda_reserved_growth_mb: float = 128.0,
+    max_cuda_reserved_tail_slope_bytes_per_request: float = 1048576.0,
+    gpu_pid_telemetry_policy: str = "allow_unsupported",
 ) -> dict[str, object]:
     failures: list[str] = []
     references: dict[str, dict[str, object]] = {}
@@ -447,14 +480,21 @@ def _validate_release_soak(
     memory = _memory_validation(
         snapshots,
         max_rss_growth_mb=max_rss_growth_mb,
+        max_private_growth_mb=max_private_growth_mb,
+        gpu_pid_telemetry_policy=gpu_pid_telemetry_policy,
         require_telemetry=True,
     )
     failures.extend(memory["failures"])
-    _validate_worker_memory_metrics(
+    allocator = _validate_worker_memory_metrics(
         results,
         worker_metrics,
         snapshots,
         failures,
+        max_cuda_allocated_growth_mb=max_cuda_allocated_growth_mb,
+        max_cuda_reserved_growth_mb=max_cuda_reserved_growth_mb,
+        max_cuda_reserved_tail_slope_bytes_per_request=(
+            max_cuda_reserved_tail_slope_bytes_per_request
+        ),
     )
     return {
         "failures": failures,
@@ -463,6 +503,7 @@ def _validate_release_soak(
         "cancelled_by_label": cancelled_by_label,
         "cache_entries_observed": sorted(cache_entries),
         "memory": memory,
+        "allocator": allocator,
     }
 
 
@@ -487,7 +528,11 @@ def _validate_worker_memory_metrics(
     worker_metrics: list[dict[str, object]],
     snapshots: list[dict[str, object]],
     failures: list[str],
-) -> None:
+    *,
+    max_cuda_allocated_growth_mb: float,
+    max_cuda_reserved_growth_mb: float,
+    max_cuda_reserved_tail_slope_bytes_per_request: float,
+) -> dict[str, object]:
     memory_by_request = {
         metric.get("request_id"): metric
         for metric in worker_metrics
@@ -514,7 +559,7 @@ def _validate_worker_memory_metrics(
                 failures.append(f"request {request_id}: missing {key}")
     if len(worker_pids) != 1:
         failures.append(f"expected one worker model PID, got {sorted(worker_pids)}")
-        return
+        return {"available": False}
     worker_pid = next(iter(worker_pids))
     for snapshot in snapshots:
         process_ids = {
@@ -528,6 +573,66 @@ def _validate_worker_memory_metrics(
                 "worker model PID is absent from process tree at "
                 f"request {completed_requests}"
             )
+    allocated = _metric_series(memory_by_request, "cuda_memory_allocated_bytes")
+    reserved = _metric_series(memory_by_request, "cuda_memory_reserved_bytes")
+    if allocated is None or reserved is None:
+        failures.append("worker allocator telemetry is incomplete")
+        return {"available": False}
+    allocated_summary = _memory_series_summary(allocated)
+    reserved_summary = _memory_series_summary(reserved)
+    if allocated_summary["growth_mib"] > max_cuda_allocated_growth_mb:
+        failures.append("CUDA allocated memory growth exceeds configured limit")
+    if reserved_summary["growth_mib"] > max_cuda_reserved_growth_mb:
+        failures.append("CUDA reserved memory growth exceeds configured limit")
+    if (
+        reserved_summary["tail_slope_bytes_per_request"]
+        > max_cuda_reserved_tail_slope_bytes_per_request
+    ):
+        failures.append("CUDA reserved memory tail slope exceeds configured limit")
+    return {
+        "available": True,
+        "allocated": allocated_summary,
+        "reserved": reserved_summary,
+    }
+
+
+def _metric_series(
+    metrics: dict[object, dict[str, object]],
+    key: str,
+) -> list[int] | None:
+    values = []
+    for request_id in sorted(metrics):
+        value = metrics[request_id].get(key)
+        if not isinstance(value, int):
+            return None
+        values.append(value)
+    return values
+
+
+def _memory_series_summary(values: list[int]) -> dict[str, float | int]:
+    first = values[0]
+    last = values[-1]
+    tail = values[len(values) // 2 :]
+    return {
+        "first_bytes": first,
+        "last_bytes": last,
+        "max_bytes": max(values),
+        "growth_mib": (last - first) / (1024.0 * 1024.0),
+        "tail_slope_bytes_per_request": _tail_slope(tail),
+    }
+
+
+def _tail_slope(values: list[int]) -> float:
+    if len(values) < 2:
+        return 0.0
+    mean_x = (len(values) - 1) / 2.0
+    mean_y = sum(values) / len(values)
+    numerator = sum(
+        (index - mean_x) * (value - mean_y)
+        for index, value in enumerate(values)
+    )
+    denominator = sum((index - mean_x) ** 2 for index in range(len(values)))
+    return numerator / denominator if denominator else 0.0
 
 
 def _report(

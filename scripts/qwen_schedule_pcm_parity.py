@@ -40,6 +40,15 @@ def main() -> int:
     parser.add_argument("--max-dc-delta-s16", type=float, default=1200.0)
     parser.add_argument("--max-spectral-high-ratio-delta", type=float, default=0.7)
     parser.add_argument("--max-clip-sample-count", type=int, default=0)
+    parser.add_argument("--max-boundary-jump-regression-s16", type=float, default=4000.0)
+    parser.add_argument(
+        "--max-p95-boundary-jump-regression-s16", type=float, default=3000.0
+    )
+    parser.add_argument("--max-rms-regression-multiplier", type=float, default=2.5)
+    parser.add_argument("--max-dc-regression-s16", type=float, default=500.0)
+    parser.add_argument(
+        "--max-spectral-high-ratio-regression", type=float, default=0.3
+    )
     parser.add_argument("--wav-dir", type=Path)
     parser.add_argument("--cases-jsonl", type=Path)
     parser.add_argument("--timeout-seconds", type=float, default=1200.0)
@@ -94,8 +103,17 @@ def main() -> int:
             max_dc_delta_s16=args.max_dc_delta_s16,
             max_spectral_high_ratio_delta=args.max_spectral_high_ratio_delta,
             max_clip_sample_count=args.max_clip_sample_count,
+            max_boundary_jump_regression_s16=args.max_boundary_jump_regression_s16,
+            max_p95_boundary_jump_regression_s16=(
+                args.max_p95_boundary_jump_regression_s16
+            ),
+            max_rms_regression_multiplier=args.max_rms_regression_multiplier,
+            max_dc_regression_s16=args.max_dc_regression_s16,
+            max_spectral_high_ratio_regression=(
+                args.max_spectral_high_ratio_regression
+            ),
         )
-        pair_failures.extend(_validate_candidate_contract(case, candidate))
+        pair_failures.extend(_validate_candidate_contract(case, baseline, candidate))
         failures.extend(f"{case['label']}: {failure}" for failure in pair_failures)
         pairs.append(
             {
@@ -110,6 +128,7 @@ def main() -> int:
         "acceptance_pass": not failures,
         "failures": failures,
         "pairs": pairs,
+        "quality_limits": _quality_limits(args),
     }
     if len(pairs) == 1:
         report["baseline"] = pairs[0]["baseline"]
@@ -153,16 +172,47 @@ def _load_cases(path: Path | None, args: argparse.Namespace) -> list[dict[str, o
             "instruction": value.get("instruction", args.instruction),
             "seed": value.get("seed", args.seed),
         }
+        for key in (
+            "expected_candidate_route",
+            "expected_candidate_backend",
+            "expected_candidate_chunk_schedule",
+            "require_exact_pcm_sha256",
+        ):
+            if key in value:
+                case[key] = value[key]
         if not isinstance(case["language"], str) or not isinstance(case["speaker"], str):
             raise RuntimeError(f"{path}:{line_number}: language and speaker must be strings")
         if not isinstance(case["instruction"], str) or not isinstance(case["seed"], int):
             raise RuntimeError(f"{path}:{line_number}: instruction and seed are invalid")
+        _validate_case_contract(path, line_number, case)
         cases.append(case)
     if not cases:
         raise RuntimeError(f"{path}: no cases")
     if len({str(case["label"]) for case in cases}) != len(cases):
         raise RuntimeError(f"{path}: case labels must be unique")
     return cases
+
+
+def _validate_case_contract(
+    path: Path,
+    line_number: int,
+    case: dict[str, object],
+) -> None:
+    for key in ("expected_candidate_route", "expected_candidate_backend"):
+        if key in case and not isinstance(case[key], str):
+            raise RuntimeError(f"{path}:{line_number}: {key} must be a string")
+    schedule = case.get("expected_candidate_chunk_schedule")
+    if schedule is not None and (
+        not isinstance(schedule, list)
+        or not schedule
+        or any(not isinstance(value, int) or value <= 0 for value in schedule)
+    ):
+        raise RuntimeError(
+            f"{path}:{line_number}: expected_candidate_chunk_schedule is invalid"
+        )
+    exact = case.get("require_exact_pcm_sha256")
+    if exact is not None and not isinstance(exact, bool):
+        raise RuntimeError(f"{path}:{line_number}: require_exact_pcm_sha256 is invalid")
 
 
 def _run_cases(
@@ -304,6 +354,7 @@ def _stream_metadata(
 
 def _validate_candidate_contract(
     case: dict[str, object],
+    baseline: dict[str, object],
     candidate: dict[str, object],
 ) -> list[str]:
     """Fail closed when an optional case route/schedule contract is not observed."""
@@ -313,21 +364,29 @@ def _validate_candidate_contract(
         "expected_candidate_backend": "prefill_backend_used",
         "expected_candidate_chunk_schedule": "selected_chunk_schedule",
     }
-    if not any(key in case for key in expected):
+    has_route_contract = any(key in case for key in expected)
+    if not has_route_contract and not case.get("require_exact_pcm_sha256"):
         return []
-    metadata = candidate.get("stream_metadata")
-    if not isinstance(metadata, dict):
-        return ["candidate is missing first PCM route/schedule metadata"]
     failures: list[str] = []
-    for expected_key, metadata_key in expected.items():
-        if expected_key not in case:
-            continue
-        expected_value = case[expected_key]
-        actual_value = metadata.get(metadata_key)
-        if actual_value != expected_value:
-            failures.append(
-                f"candidate {metadata_key} {actual_value!r} != {expected_value!r}"
-            )
+    if has_route_contract:
+        metadata = candidate.get("stream_metadata")
+        if not isinstance(metadata, dict):
+            failures.append("candidate is missing first PCM route/schedule metadata")
+        else:
+            for expected_key, metadata_key in expected.items():
+                if expected_key not in case:
+                    continue
+                expected_value = case[expected_key]
+                actual_value = metadata.get(metadata_key)
+                if actual_value != expected_value:
+                    failures.append(
+                        f"candidate {metadata_key} {actual_value!r} != "
+                        f"{expected_value!r}"
+                    )
+    if case.get("require_exact_pcm_sha256") and (
+        baseline.get("pcm_sha256") != candidate.get("pcm_sha256")
+    ):
+        failures.append("candidate PCM SHA differs from fixed control")
     return failures
 
 
@@ -477,6 +536,11 @@ def _compare(
     max_dc_delta_s16: float = 1200.0,
     max_spectral_high_ratio_delta: float = 0.7,
     max_clip_sample_count: int = 0,
+    max_boundary_jump_regression_s16: float = 4000.0,
+    max_p95_boundary_jump_regression_s16: float = 3000.0,
+    max_rms_regression_multiplier: float = 2.5,
+    max_dc_regression_s16: float = 500.0,
+    max_spectral_high_ratio_regression: float = 0.3,
 ) -> list[str]:
     failures: list[str] = []
     baseline_duration = baseline.get("audio_duration_ms")
@@ -500,6 +564,13 @@ def _compare(
         max_dc_delta_s16=max_dc_delta_s16,
         max_spectral_high_ratio_delta=max_spectral_high_ratio_delta,
         max_clip_sample_count=max_clip_sample_count,
+        max_boundary_jump_regression_s16=max_boundary_jump_regression_s16,
+        max_p95_boundary_jump_regression_s16=(
+            max_p95_boundary_jump_regression_s16
+        ),
+        max_rms_regression_multiplier=max_rms_regression_multiplier,
+        max_dc_regression_s16=max_dc_regression_s16,
+        max_spectral_high_ratio_regression=max_spectral_high_ratio_regression,
     )
     baseline_trace = baseline.get("generation_trace")
     candidate_trace = candidate.get("generation_trace")
@@ -529,19 +600,24 @@ def _compare_boundary_quality(
     max_dc_delta_s16: float,
     max_spectral_high_ratio_delta: float,
     max_clip_sample_count: int,
+    max_boundary_jump_regression_s16: float,
+    max_p95_boundary_jump_regression_s16: float,
+    max_rms_regression_multiplier: float,
+    max_dc_regression_s16: float,
+    max_spectral_high_ratio_regression: float,
 ) -> None:
     baseline_quality = baseline.get("boundary_quality")
     candidate_quality = candidate.get("boundary_quality")
     if not isinstance(baseline_quality, dict) or not isinstance(candidate_quality, dict):
         failures.append("both workers must report boundary_quality")
         return
-    for key, maximum in (
-        ("max_boundary_jump_s16", max_boundary_jump_s16),
-        ("p95_boundary_jump_s16", max_p95_boundary_jump_s16),
-        ("max_rms_ratio", max_rms_ratio),
-        ("max_dc_delta_s16", max_dc_delta_s16),
-        ("max_spectral_high_ratio_delta", max_spectral_high_ratio_delta),
-        ("clip_sample_count", max_clip_sample_count),
+    for key, maximum, regression, multiplier in (
+        ("max_boundary_jump_s16", max_boundary_jump_s16, max_boundary_jump_regression_s16, None),
+        ("p95_boundary_jump_s16", max_p95_boundary_jump_s16, max_p95_boundary_jump_regression_s16, None),
+        ("max_rms_ratio", max_rms_ratio, None, max_rms_regression_multiplier),
+        ("max_dc_delta_s16", max_dc_delta_s16, max_dc_regression_s16, None),
+        ("max_spectral_high_ratio_delta", max_spectral_high_ratio_delta, max_spectral_high_ratio_regression, None),
+        ("clip_sample_count", max_clip_sample_count, 0.0, None),
     ):
         baseline_value = baseline_quality.get(key)
         candidate_value = candidate_quality.get(key)
@@ -554,6 +630,34 @@ def _compare_boundary_quality(
             failures.append(
                 f"boundary_quality.{key} exceeds maximum {maximum:.3f}"
             )
+        if regression is not None and float(candidate_value) > float(baseline_value) + regression:
+            failures.append(
+                f"boundary_quality.{key} regressed by more than {regression:.3f}"
+            )
+        if multiplier is not None and float(candidate_value) > max(float(baseline_value), 1.0) * multiplier:
+            failures.append(
+                f"boundary_quality.{key} exceeds baseline multiplier {multiplier:.3f}"
+            )
+
+
+def _quality_limits(args: argparse.Namespace) -> dict[str, float | int]:
+    return {
+        key: getattr(args, key)
+        for key in (
+            "max_duration_delta_ms",
+            "max_boundary_jump_s16",
+            "max_p95_boundary_jump_s16",
+            "max_rms_ratio",
+            "max_dc_delta_s16",
+            "max_spectral_high_ratio_delta",
+            "max_clip_sample_count",
+            "max_boundary_jump_regression_s16",
+            "max_p95_boundary_jump_regression_s16",
+            "max_rms_regression_multiplier",
+            "max_dc_regression_s16",
+            "max_spectral_high_ratio_regression",
+        )
+    }
 
 
 if __name__ == "__main__":
