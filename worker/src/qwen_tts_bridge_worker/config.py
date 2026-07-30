@@ -4,9 +4,64 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Literal, TypeAlias
+from typing import Literal, Mapping, TypeAlias
 
 MAX_EMIT_CHUNK_SCHEDULE_FRAMES = 64
+
+
+@dataclass(frozen=True, slots=True)
+class CanaryRuntimeProvenance:
+    """Pinned runtime identity emitted with local canary diagnostics."""
+
+    runtime_profile_id: str
+    bridge_commit: str
+    faster_wheel_sha256: str
+    compiled_allowlist_manifest_sha256: str
+    compiled_lengths: tuple[int, ...]
+
+    @classmethod
+    def from_manifests(
+        cls,
+        runtime_profile: Mapping[str, object],
+        allowlist: Mapping[str, object],
+        allowlist_sha256: str,
+    ) -> "CanaryRuntimeProvenance":
+        """Create a provenance record after validating paired manifests."""
+
+        required = {
+            "runtime_profile_id",
+            "bridge_commit",
+            "faster_wheel_sha256",
+            "compiled_allowlist_manifest_sha256",
+        }
+        missing = sorted(required.difference(runtime_profile))
+        if missing:
+            raise ValueError(
+                "runtime profile manifest is missing " + ", ".join(missing)
+            )
+        if runtime_profile["compiled_allowlist_manifest_sha256"] != allowlist_sha256:
+            raise ValueError("runtime profile manifest does not pin the allowlist SHA")
+        if allowlist.get("runtime_profile_id") != runtime_profile["runtime_profile_id"]:
+            raise ValueError("allowlist manifest does not match runtime profile")
+        lengths = allowlist.get("compiled_lengths")
+        if not isinstance(lengths, list) or not all(
+            isinstance(length, int) and not isinstance(length, bool) and length > 0
+            for length in lengths
+        ):
+            raise ValueError("allowlist manifest has invalid compiled_lengths")
+        values = {
+            key: runtime_profile[key]
+            for key in required - {"compiled_allowlist_manifest_sha256"}
+        }
+        if not all(isinstance(value, str) and value for value in values.values()):
+            raise ValueError("runtime profile manifest has invalid identity fields")
+        return cls(
+            runtime_profile_id=str(runtime_profile["runtime_profile_id"]),
+            bridge_commit=str(runtime_profile["bridge_commit"]),
+            faster_wheel_sha256=str(runtime_profile["faster_wheel_sha256"]),
+            compiled_allowlist_manifest_sha256=allowlist_sha256,
+            compiled_lengths=tuple(sorted(lengths)),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -386,6 +441,7 @@ class WorkerConfig:
         "main"
     )
     engine: EngineConfig = field(default_factory=MockEngineConfig)
+    canary_runtime_provenance: CanaryRuntimeProvenance | None = None
 
     def __post_init__(self) -> None:
         """Validate worker-level settings when the DTO is created."""
@@ -402,3 +458,7 @@ class WorkerConfig:
             raise ValueError("engine_startup_mode must be a supported value")
         if not isinstance(self.engine, (MockEngineConfig, QwenEngineConfig)):
             raise TypeError("engine must be a known engine configuration")
+        if self.canary_runtime_provenance is not None and not isinstance(
+            self.canary_runtime_provenance, CanaryRuntimeProvenance
+        ):
+            raise TypeError("canary_runtime_provenance must be valid when provided")

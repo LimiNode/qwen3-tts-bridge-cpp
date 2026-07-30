@@ -12,6 +12,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, BinaryIO, Deque, Optional, TextIO, cast
 
+from qwen_tts_bridge_worker.config import CanaryRuntimeProvenance
 from qwen_tts_bridge_worker.engine import (
     AudioFormat,
     EngineCapabilities,
@@ -137,6 +138,7 @@ class StdioWorkerServer:
         output_queue_size: int = 128,
         read_chunk_size: int = 4096,
         engine_startup_mode: str = "main",
+        canary_runtime_provenance: CanaryRuntimeProvenance | None = None,
     ) -> None:
         self._input = input_stream
         self._error = error_stream
@@ -144,6 +146,7 @@ class StdioWorkerServer:
         self._worker_version = worker_version
         self._read_chunk_size = read_chunk_size
         self._engine_startup_mode = engine_startup_mode
+        self._canary_runtime_provenance = canary_runtime_provenance
         self._metrics = MetricsWriter(error_stream)
 
         self._writer = _OutputWriter(output_stream, output_queue_size, self._metrics)
@@ -688,6 +691,16 @@ class StdioWorkerServer:
             **_thread_context_fields(),
             **_runtime_memory_fields(),
         )
+        if self._canary_runtime_provenance is not None:
+            self._metrics.emit(
+                "canary_runtime_provenance",
+                runtime_profile_id=self._canary_runtime_provenance.runtime_profile_id,
+                bridge_commit=self._canary_runtime_provenance.bridge_commit,
+                faster_wheel_sha256=self._canary_runtime_provenance.faster_wheel_sha256,
+                compiled_allowlist_manifest_sha256=(
+                    self._canary_runtime_provenance.compiled_allowlist_manifest_sha256
+                ),
+            )
 
     def _wait_for_engine_startup(self) -> bool:
         with self._condition:

@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import json
+from hashlib import sha256
+from pathlib import Path
 from typing import Literal, TypeVar, cast
 
 from qwen_tts_bridge_worker.config import (
+    CanaryRuntimeProvenance,
     EngineConfig,
     MockEngineConfig,
     QwenEngineConfig,
@@ -43,7 +47,65 @@ def build_worker_config(args: argparse.Namespace) -> WorkerConfig:
         output_queue_size=_selected_output_queue_size(args),
         engine_startup_mode=_selected_engine_startup_mode(args, engine),
         engine=engine,
+        canary_runtime_provenance=_build_canary_runtime_provenance(args, engine),
     )
+
+
+def _build_canary_runtime_provenance(
+    args: argparse.Namespace,
+    engine: EngineConfig,
+) -> CanaryRuntimeProvenance | None:
+    runtime_profile_path = _selected_server_option(
+        args.root_canary_runtime_profile_manifest,
+        getattr(args, "command_canary_runtime_profile_manifest", None),
+        "canary-runtime-profile-manifest",
+        None,
+    )
+    allowlist_path = _selected_server_option(
+        args.root_canary_compiled_allowlist_manifest,
+        getattr(args, "command_canary_compiled_allowlist_manifest", None),
+        "canary-compiled-allowlist-manifest",
+        None,
+    )
+    if runtime_profile_path is None and allowlist_path is None:
+        return None
+    if runtime_profile_path is None or allowlist_path is None:
+        raise ValueError(
+            "--canary-runtime-profile-manifest and "
+            "--canary-compiled-allowlist-manifest must be used together"
+        )
+    if not isinstance(engine, QwenEngineConfig):
+        raise ValueError("canary runtime provenance requires the qwen engine")
+    runtime_profile = _load_manifest(runtime_profile_path, "runtime profile")
+    allowlist = _load_manifest(allowlist_path, "compiled allowlist")
+    provenance = CanaryRuntimeProvenance.from_manifests(
+        runtime_profile,
+        allowlist,
+        sha256(allowlist_path.read_bytes()).hexdigest(),
+    )
+    if tuple(sorted(engine.prefill_compile_lengths)) != provenance.compiled_lengths:
+        raise ValueError("worker compiled lengths do not match allowlist manifest")
+    if engine.compiled_emit_chunk_schedule != (8, 8, 12):
+        raise ValueError("canary provenance requires compiled 8,8,12 schedule")
+    if engine.eager_emit_chunk_schedule != (8,):
+        raise ValueError("canary provenance requires eager fixed-8 schedule")
+    if engine.prefill_compile_policy != "exact_allowlist":
+        raise ValueError("canary provenance requires exact allowlist policy")
+    if engine.prefill_compile_on_miss or not engine.prefill_require_precompiled:
+        raise ValueError("canary provenance requires precompiled no-miss policy")
+    return provenance
+
+
+def _load_manifest(path: Path, name: str) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ValueError(f"cannot read {name} manifest: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{name} manifest is not valid JSON") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"{name} manifest must contain an object")
+    return value
 
 
 def build_engine_config(args: argparse.Namespace) -> EngineConfig:
@@ -158,6 +220,16 @@ def _add_root_server_options(parser: argparse.ArgumentParser) -> None:
         dest="root_output_queue_size",
         type=int,
     )
+    server_group.add_argument(
+        "--canary-runtime-profile-manifest",
+        dest="root_canary_runtime_profile_manifest",
+        type=Path,
+    )
+    server_group.add_argument(
+        "--canary-compiled-allowlist-manifest",
+        dest="root_canary_compiled_allowlist_manifest",
+        type=Path,
+    )
 
 
 def _server_options_parent_parser() -> argparse.ArgumentParser:
@@ -167,6 +239,16 @@ def _server_options_parent_parser() -> argparse.ArgumentParser:
         "--output-queue-size",
         dest="command_output_queue_size",
         type=int,
+    )
+    parser.add_argument(
+        "--canary-runtime-profile-manifest",
+        dest="command_canary_runtime_profile_manifest",
+        type=Path,
+    )
+    parser.add_argument(
+        "--canary-compiled-allowlist-manifest",
+        dest="command_canary_compiled_allowlist_manifest",
+        type=Path,
     )
     return parser
 

@@ -87,6 +87,15 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
         self.assertFalse(summary["input_valid"])
         self.assertEqual(1, summary["profile_mismatch_count"])
 
+    def test_rejects_mixed_evidence_sources(self) -> None:
+        records = [_record("completed", 32), _record("failed", 31)]
+        records[1]["evidence_source"] = "internal_real_traffic"
+
+        summary = _summary(records)
+
+        self.assertFalse(summary["input_valid"])
+        self.assertEqual(2, summary["evidence_source_mismatch_count"])
+
     def test_validates_outcome_specific_field_sets(self) -> None:
         completed = _record("completed", 32)
         del completed["inverse_rtf"]
@@ -168,6 +177,13 @@ class SummarizeRouteCoverageTests(unittest.TestCase):
             with patch.object(sys, "argv", required_arguments):
                 self.assertEqual(1, main())
 
+            source_arguments = arguments + [
+                "--require-evidence-source",
+                "internal_real_traffic",
+            ]
+            with patch.object(sys, "argv", source_arguments):
+                self.assertEqual(1, main())
+
     def test_rejects_incomplete_profile_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -188,6 +204,7 @@ def _summary(
 ) -> dict[str, object]:
     defaults: dict[str, object] = {
         "runtime_profile_id": _PROFILE,
+        "evidence_source": "synthetic_proxy",
         "compiled_lengths": {32},
         "min_requests": 1,
         "min_unknown_requests": 1,
@@ -222,6 +239,7 @@ def _record(
     result: dict[str, object] = {
         "schema_version": 3,
         "runtime_profile_id": _PROFILE,
+        "evidence_source": "synthetic_proxy",
         "request_outcome": outcome,
         "route_decision_made": route_decision_made,
     }

@@ -27,9 +27,11 @@ _OUTCOMES = {
     "cancelled_after_audio",
     "failed",
 }
+_EVIDENCE_SOURCES = {"synthetic_proxy", "internal_real_traffic"}
 _BASE_KEYS = {
     "schema_version",
     "runtime_profile_id",
+    "evidence_source",
     "request_outcome",
     "route_decision_made",
 }
@@ -83,6 +85,10 @@ def main() -> int:
     )
     parser.add_argument("--min-exact-coverage-percent", type=float, default=90.0)
     parser.add_argument("--require-decision", choices=_decision_choices())
+    parser.add_argument(
+        "--require-evidence-source",
+        choices=sorted(_EVIDENCE_SOURCES),
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     _validate_args(parser, args)
@@ -99,6 +105,7 @@ def main() -> int:
             args.min_eligible_unknown_coverage_percent
         ),
         min_exact_coverage_percent=args.min_exact_coverage_percent,
+        required_evidence_source=args.require_evidence_source,
     )
     summary.update(
         {
@@ -115,6 +122,12 @@ def main() -> int:
         summary["required_decision"] = args.require_decision
         summary["required_decision_pass"] = (
             summary["decision"] == args.require_decision
+        )
+    if args.require_evidence_source is not None:
+        summary["required_evidence_source"] = args.require_evidence_source
+        summary["required_evidence_source_pass"] = (
+            summary["evidence_source"] == args.require_evidence_source
+            and summary["input_valid"] is True
         )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, sort_keys=True), encoding="utf-8")
@@ -259,6 +272,8 @@ def _validate_record(record: dict[str, object], line_number: int) -> None:
     outcome = record["request_outcome"]
     if outcome not in _OUTCOMES:
         raise RuntimeError(f"line {line_number}: invalid request_outcome")
+    if record["evidence_source"] not in _EVIDENCE_SOURCES:
+        raise RuntimeError(f"line {line_number}: invalid evidence_source")
     route_decision_made = record["route_decision_made"]
     if not isinstance(route_decision_made, bool):
         raise RuntimeError(f"line {line_number}: route_decision_made must be boolean")
@@ -387,17 +402,20 @@ def _summarize(
     min_samples_per_length: int,
     min_eligible_unknown_coverage_percent: float,
     min_exact_coverage_percent: float,
+    required_evidence_source: str | None = None,
 ) -> dict[str, object]:
     invalid_routes = Counter[str]()
     profile_mismatch_count = 0
     route_decided_records = []
     outcome_counts = Counter[str]()
+    evidence_sources = Counter[str]()
     for record in records:
         if record["runtime_profile_id"] != runtime_profile_id:
             profile_mismatch_count += 1
             continue
         outcome = str(record["request_outcome"])
         outcome_counts.update([outcome])
+        evidence_sources.update([str(record["evidence_source"])])
         if record["route_decision_made"] is not True:
             continue
         error = _route_error(record, compiled_lengths)
@@ -437,7 +455,17 @@ def _summarize(
         for length, count in unknown_lengths.items()
         if count * 100.0 / route_decided_count >= 1.0
     }
-    input_valid = not invalid_routes and profile_mismatch_count == 0
+    evidence_source = (
+        next(iter(evidence_sources)) if len(evidence_sources) == 1 else "mixed"
+    )
+    source_mismatch_count = (
+        sum(evidence_sources.values()) if len(evidence_sources) > 1 else 0
+    )
+    input_valid = (
+        not invalid_routes
+        and profile_mismatch_count == 0
+        and source_mismatch_count == 0
+    )
     evidence_gate_pass = _evidence_gate_pass(
         input_valid=input_valid,
         route_decided_count=route_decided_count,
@@ -467,9 +495,17 @@ def _summarize(
         "input_valid": input_valid,
         "evidence_gate_pass": evidence_gate_pass,
         "runtime_profile_id": runtime_profile_id,
+        "evidence_source": evidence_source,
+        "evidence_source_histogram": dict(sorted(evidence_sources.items())),
+        "required_evidence_source": required_evidence_source,
+        "evidence_source_gate_pass": (
+            required_evidence_source is None
+            or (input_valid and evidence_source == required_evidence_source)
+        ),
         "input_record_count": len(records),
         "profile_matched_record_count": sum(outcome_counts.values()),
         "profile_mismatch_count": profile_mismatch_count,
+        "evidence_source_mismatch_count": source_mismatch_count,
         "outcome_histogram": dict(sorted(outcome_counts.items())),
         "route_decided_count": route_decided_count,
         "route_not_decided_count": sum(outcome_counts.values()) - route_decided_count,
@@ -546,7 +582,13 @@ def _exit_success(summary: dict[str, object]) -> bool:
     if summary.get("input_valid") is not True:
         return False
     required = summary.get("required_decision")
-    return required is None or summary.get("required_decision_pass") is True
+    if required is not None and summary.get("required_decision_pass") is not True:
+        return False
+    required_source = summary.get("required_evidence_source")
+    return (
+        required_source is None
+        or summary.get("required_evidence_source_pass") is True
+    )
 
 
 def _sha256(path: Path) -> str:

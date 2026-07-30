@@ -34,6 +34,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         worker_version=config.worker_version,
         output_queue_size=config.output_queue_size,
         engine_startup_mode=config.engine_startup_mode,
+        canary_runtime_provenance=config.canary_runtime_provenance,
     )
     return server.run()
 

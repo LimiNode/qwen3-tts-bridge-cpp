@@ -4,6 +4,7 @@ import threading
 import unittest
 from collections.abc import Iterable
 
+from qwen_tts_bridge_worker.config import CanaryRuntimeProvenance
 from qwen_tts_bridge_worker.engine import EngineRequestValidationError
 from qwen_tts_bridge_worker.engine.types import (
     EngineCapabilities,
@@ -223,6 +224,37 @@ class NoopWarmupEngine:
 
 
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
+    def test_emits_pinned_canary_runtime_provenance(self) -> None:
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=stderr,
+            engine=NoopWarmupEngine(),
+            canary_runtime_provenance=CanaryRuntimeProvenance(
+                runtime_profile_id="rtx4090-cv06-bf16-sdpa-strict-v1-9d2a61ef",
+                bridge_commit="56ecc48123456789",
+                faster_wheel_sha256="a" * 64,
+                compiled_allowlist_manifest_sha256="b" * 64,
+                compiled_lengths=(29, 30, 32, 33, 34, 35),
+            ),
+        )
+
+        self.assertEqual(0, server.run())
+
+        metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in stderr.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+        ]
+        provenance = next(
+            metric
+            for metric in metrics
+            if metric["event"] == "canary_runtime_provenance"
+        )
+        self.assertEqual("56ecc48123456789", provenance["bridge_commit"])
+        self.assertEqual("a" * 64, provenance["faster_wheel_sha256"])
+
     def test_load_failure_does_not_join_unstarted_engine_thread(self) -> None:
         engine = FailingLoadEngine()
         stderr = io.StringIO()
