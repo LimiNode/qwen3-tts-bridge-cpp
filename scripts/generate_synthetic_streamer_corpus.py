@@ -9,6 +9,7 @@ import re
 from collections import Counter
 from hashlib import sha256
 from pathlib import Path
+from typing import Any
 
 _CORPUS_ID = "streamer-game-voice-proxy-v1"
 _SCHEMA_VERSION = 1
@@ -336,7 +337,7 @@ def _word_count(text: str) -> int:
     return len(_WORD_RE.findall(text))
 
 
-def _audit(records: list[dict[str, object]], path: Path) -> dict[str, object]:
+def _audit(records: list[dict[str, object]], path: Path) -> dict[str, Any]:
     texts = [str(record["text"]) for record in records]
     word_counts = [_word_count(text) for text in texts]
     categories = Counter(record["category"] for record in records)

@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 _MINIMUM_ACTUAL_LENGTH = 16
 _MAXIMUM_ACTUAL_LENGTH = 32
@@ -55,7 +56,7 @@ def _evaluate(
     audit: dict[str, object],
     args: argparse.Namespace,
     audit_sha256: str,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     histogram = _histogram(route_summary)
     represented = [
         length

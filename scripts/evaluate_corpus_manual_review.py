@@ -6,7 +6,9 @@ import argparse
 import hashlib
 import json
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 _REVIEW_RECORD_COUNT = 100
 _BOOLEAN_FIELDS = {
@@ -141,8 +143,8 @@ def _validate_contract(
     review: list[dict[str, object]],
     frozen: list[dict[str, object]],
     frozen_bytes: bytes,
-    audit: dict[str, object],
-) -> dict[str, object]:
+    audit: Mapping[str, object],
+) -> dict[str, Any]:
     if len(review) != _REVIEW_RECORD_COUNT or len(frozen) != _REVIEW_RECORD_COUNT:
         raise RuntimeError(
             "review and frozen sample must each contain exactly 100 records"
@@ -193,8 +195,8 @@ def _unique_labels(records: list[dict[str, object]], name: str) -> set[str]:
 def _evaluate(
     records: list[dict[str, object]],
     args: argparse.Namespace,
-    provenance: dict[str, object],
-) -> dict[str, object]:
+    provenance: Mapping[str, object],
+) -> dict[str, Any]:
     count = len(records)
     true_counts = Counter(
         field

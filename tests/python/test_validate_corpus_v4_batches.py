@@ -7,10 +7,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.validate_corpus_v4_batches import _validate
+from scripts.validate_corpus_v4_batches import _record_valid, _validate
 
 
 class CorpusV4BatchValidationTests(unittest.TestCase):
+    def test_micro_length_does_not_count_standalone_dash(self) -> None:
+        record = _records()[0]
+        record["text"] = "Пауза — не сомнение."
+
+        self.assertTrue(_record_valid(record))
+
     def test_valid_batch_reports_remaining_quotas(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = _write(Path(directory), _records())
@@ -29,6 +35,10 @@ class CorpusV4BatchValidationTests(unittest.TestCase):
 
         self.assertFalse(result["passed"])
         self.assertEqual(["1"], result["failures"]["record_contract"])
+        self.assertEqual(
+            ["unknown_enum:category"],
+            result["failures"]["record_contract_details"]["v4-b01-001"],
+        )
         self.assertTrue(result["failures"]["duplicate_record_id"])
 
     def test_missing_text_returns_failure_report_without_traceback(self) -> None:
@@ -40,7 +50,12 @@ class CorpusV4BatchValidationTests(unittest.TestCase):
 
         self.assertFalse(result["passed"])
         self.assertEqual(["1"], result["failures"]["record_contract"])
+        self.assertEqual(
+            ["missing:text"],
+            result["failures"]["record_contract_details"]["v4-b01-001"],
+        )
         self.assertEqual({}, result["failures"]["repetition"])
+        self.assertEqual({}, result["failures"]["repetition_records"])
 
     def test_non_contiguous_batch_prefix_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

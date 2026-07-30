@@ -21,6 +21,11 @@ class CorpusRepetitionAuditTests(unittest.TestCase):
             {"спасибо большое за подписку.": 2},
             result["frequencies"]["duplicate_exact_text"],
         )
+        self.assertEqual(
+            ["1", "2"],
+            result["violation_records"]["exact_text"]
+            ["спасибо большое за подписку."],
+        )
 
     def test_sentence_repetition_at_the_limit_is_reported_but_allowed(self) -> None:
         result = _audit(
