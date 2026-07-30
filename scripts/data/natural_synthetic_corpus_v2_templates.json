@@ -1,0 +1,259 @@
+{
+  "ru": {
+    "contexts": {
+      "live_chat": "чате",
+      "game_commentary": "матче",
+      "game_review": "обзоре игры",
+      "game_dialogue": "диалоге персонажей",
+      "stream_event": "эфире",
+      "transition": "переходе между сценами"
+    },
+    "short": [
+      "В {context} мы уже видим главное",
+      "В {context} пора сделать следующий шаг",
+      "В {context} этот план выглядит надёжно",
+      "В {context} можно двигаться спокойно",
+      "В {context} можно сосредоточиться на главном",
+      "В {context} решение уже становится яснее",
+      "В {context} стоит сохранить текущий ритм",
+      "В {context} мы можем проверить всё по порядку"
+    ],
+    "short_endings": [
+      "и не отвлекаться на шум.",
+      "без лишней спешки.",
+      "перед следующей проверкой.",
+      "до конца этого раунда.",
+      "после короткой сверки.",
+      "пока команда держит темп.",
+      "до нового сигнала.",
+      "по текущим данным.",
+      "в этом раунде.",
+      "для сегодняшней задачи.",
+      "после этой подсказки.",
+      "на ближайшие минуты.",
+      "без дополнительного риска.",
+      "после спокойного обсуждения.",
+      "в текущем темпе.",
+      "для следующего решения."
+    ],
+    "qualifiers": [
+      "Сейчас",
+      "На этом этапе",
+      "По текущим данным",
+      "После последней проверки",
+      "Для этой задачи",
+      "В такой ситуации",
+      "Перед следующим запуском",
+      "Пока команда наблюдает",
+      "В этот момент",
+      "По ходу разговора",
+      "Если смотреть на картину целиком",
+      "Для уверенного вывода",
+      "С учётом последнего результата",
+      "Перед важным решением",
+      "Без лишних предположений",
+      "Пока данные свежие"
+    ],
+    "openings": [
+      "сначала стоит спокойно проверить основную задачу",
+      "я хочу отделить важный сигнал от случайного шума",
+      "лучше начать с простого и понятного решения",
+      "сейчас полезнее договориться о порядке действий"
+    ],
+    "observations": [
+      "последняя попытка показала, где именно теряется время",
+      "новые данные объясняют, почему прежний план перестал работать",
+      "команда уже заметила проблему, но ещё не выбрала безопасный ответ",
+      "результат выглядит убедительно только после сравнения с исходным состоянием"
+    ],
+    "actions": [
+      "сначала сверим настройки, а потом повторим проверку",
+      "зафиксируем наблюдение и не будем менять всё сразу",
+      "проверим один вариант, прежде чем расширять эксперимент",
+      "дадим участникам время увидеть результат своими глазами"
+    ],
+    "reasons": [
+      "так проще отличить реальное улучшение от удачного совпадения",
+      "иначе мы рискуем принять временный эффект за устойчивую закономерность",
+      "это сохранит возможность честно сравнить следующий запуск",
+      "после этого решения будет понятно, какой вопрос проверять дальше"
+    ],
+    "closings": [
+      "После этого можно переходить к следующему этапу.",
+      "Тогда итог будет понятен и команде, и зрителям.",
+      "Такой порядок не создаст лишней работы позже.",
+      "Это даст нам спокойную точку для следующего решения."
+    ]
+  },
+  "en": {
+    "contexts": {
+      "live_chat": "the chat",
+      "game_commentary": "the match",
+      "game_review": "the game review",
+      "game_dialogue": "the character dialogue",
+      "stream_event": "the stream",
+      "transition": "the scene transition"
+    },
+    "short": [
+      "In {context}, we can already see the main point",
+      "In {context}, it is time for the next step",
+      "In {context}, this plan looks reliable",
+      "In {context}, we can move calmly",
+      "In {context}, we can focus on the main point",
+      "In {context}, the decision is becoming clearer",
+      "In {context}, we should keep the current pace",
+      "In {context}, we can check everything in order"
+    ],
+    "short_endings": [
+      "without chasing random noise.",
+      "without unnecessary pressure.",
+      "before the next check.",
+      "until this round is complete.",
+      "after a quick comparison.",
+      "while the team keeps its pace.",
+      "until a new signal appears.",
+      "according to the current evidence.",
+      "during this round.",
+      "for today's task.",
+      "after this suggestion.",
+      "for the next few minutes.",
+      "without extra risk.",
+      "after a calm discussion.",
+      "at the current pace.",
+      "for the next decision."
+    ],
+    "qualifiers": [
+      "At this point",
+      "With the current evidence",
+      "After the last check",
+      "For this task",
+      "In this situation",
+      "Before the next run",
+      "While the team is watching",
+      "For the moment",
+      "Right now",
+      "During this conversation",
+      "Looking at the whole picture",
+      "For a confident conclusion",
+      "Considering the latest result",
+      "Before an important decision",
+      "Without extra assumptions",
+      "While the data is still fresh"
+    ],
+    "openings": [
+      "we should calmly verify the main task first",
+      "I want to separate a useful signal from random noise",
+      "it is better to begin with the simplest clear option",
+      "the useful move now is to agree on the order of work"
+    ],
+    "observations": [
+      "the last attempt showed exactly where time is being lost",
+      "the new information explains why the earlier plan stopped working",
+      "the team has noticed the problem but has not chosen a safe response",
+      "the result becomes convincing only when compared with the starting point"
+    ],
+    "actions": [
+      "we will compare the settings and then repeat the check",
+      "we will record the observation instead of changing everything at once",
+      "we will test one option before expanding the experiment",
+      "we will give everyone time to see the result for themselves"
+    ],
+    "reasons": [
+      "this makes it easier to separate a real improvement from a lucky accident",
+      "otherwise we could mistake a temporary effect for a stable pattern",
+      "this preserves an honest comparison for the next run",
+      "after that, the next question will be much clearer"
+    ],
+    "closings": [
+      "After that, we can move to the next stage.",
+      "That will make the conclusion clear to the team and the audience.",
+      "This order will avoid unnecessary work later.",
+      "It gives us a calm point for the next decision."
+    ]
+  },
+  "mixed": {
+    "contexts": {
+      "live_chat": "чате",
+      "game_commentary": "рейде",
+      "game_review": "обзоре игры",
+      "game_dialogue": "сцене диалога",
+      "stream_event": "стриме",
+      "transition": "переходе между сценами"
+    },
+    "short": [
+      "В {context} мы уже видим main point",
+      "В {context} пора сделать next step",
+      "В {context} этот plan выглядит reliable",
+      "В {context} можно двигаться calmly",
+      "В {context} можно сосредоточиться на main point",
+      "В {context} decision становится clearer",
+      "В {context} стоит сохранить current pace",
+      "В {context} можно проверить всё по порядку"
+    ],
+    "short_endings": [
+      "без random noise.",
+      "без лишнего pressure.",
+      "перед следующим check.",
+      "до конца этого round.",
+      "после quick comparison.",
+      "пока team держит темп.",
+      "до нового signal.",
+      "по текущим evidence.",
+      "в этом round.",
+      "для сегодняшней задачи.",
+      "после этой suggestion.",
+      "на ближайшие минуты.",
+      "без extra risk.",
+      "после calm discussion.",
+      "в текущем темпе.",
+      "для следующего decision."
+    ],
+    "qualifiers": [
+      "Сейчас",
+      "По current evidence",
+      "После последнего check",
+      "Для этой задачи",
+      "В этой situation",
+      "Перед следующим run",
+      "Пока team наблюдает",
+      "На этом этапе",
+      "В этот момент",
+      "По ходу discussion",
+      "Если смотреть на whole picture",
+      "Для уверенного conclusion",
+      "С учётом latest result",
+      "Перед важным decision",
+      "Пока данные fresh"
+    ],
+    "openings": [
+      "сначала стоит проверить основной game plan",
+      "я хочу отделить useful signal от случайного шума",
+      "лучше начать с простого и понятного option",
+      "сейчас полезнее согласовать порядок следующего run"
+    ],
+    "observations": [
+      "последняя попытка показала, где именно теряется время",
+      "новые данные объясняют, почему прежний plan перестал работать",
+      "команда заметила проблему, но ещё не выбрала safe response",
+      "результат становится убедительным только после честного comparison"
+    ],
+    "actions": [
+      "сверим settings, а потом повторим check",
+      "зафиксируем observation и не будем менять всё сразу",
+      "проверим один option, прежде чем расширять experiment",
+      "дадим зрителям время увидеть result своими глазами"
+    ],
+    "reasons": [
+      "так проще отличить реальное improvement от удачного совпадения",
+      "иначе можно принять временный effect за устойчивый pattern",
+      "это сохранит честный comparison для следующего run",
+      "после этого будет понятно, какой question проверять дальше"
+    ],
+    "closings": [
+      "После этого можно переходить к next stage.",
+      "Тогда итог будет понятен команде и chat.",
+      "Такой порядок не создаст лишней работы later.",
+      "Это даст спокойную точку для следующего decision."
+    ]
+  }
+}
