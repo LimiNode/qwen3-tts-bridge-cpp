@@ -3160,20 +3160,24 @@ route-aware-release-soak-r504-validation.json 6be62fdc3fa65853a3d48ef1a152fff1f8
 ### Canary Coverage Plan - 2026-07-30
 
 Do not change the exact allowlist or enable padded buckets from a benchmark
-guess. The internal canary schema in `route-aware-canary-telemetry.md` permits
-only prefill length, selected route/backend/schedule, and optional numeric
-latency values; it rejects text and all request-identifying fields. The local
-coverage summarizer is schema-v2 and requires one anonymous runtime-profile
-fingerprint, a full verified route/cache contract, at least 500 valid samples,
-and at least 100 valid unknown-shape samples. It treats 30-observation unknown
-lengths as eligible candidates and requires them to cover 80% of unknown
-traffic; the rare long tail is reported but does not block a decision forever.
-Only if exact-allowlist coverage remains below 90% after that gate may it
-recommend a separate padded-bucket correctness investigation. Invalid route,
-backend, schedule, cache, fallback, or profile records fail the summary rather
-than affecting coverage. That investigation must include exact PCM/semantic
-checks, playback reserve validation, cache/memory soak, and a fresh RTX 4090
-A/B. It does not authorize either padded compilation or `5 -> 8 -> 12` rollout.
+guess. Canary-v2.1 records every terminal request outcome without text or
+request identity, while coverage counts every request whose route was actually
+decided. Latency remains completed-only. The local schema-v3 summarizer
+separates `input_valid`, `evidence_gate_pass`, and `decision`, and it pins the
+input, validator, runtime-profile manifest, and allowlist manifest. The
+internal RTX 4090 profile can generate those manifests through
+`create_route_aware_canary_manifests.py`; the generator verifies all exact
+allowlist and route-aware policy fields before collection begins.
+
+The evidence gate requires 500 route-decided samples. At exact coverage of at
+least 90%, it retains the exact allowlist. Below 90%, it additionally requires
+100 unknown-shape requests and 30-observation eligible lengths covering 80% of
+unknown traffic before it recommends a separate padded-bucket correctness
+investigation. Invalid route, backend, schedule, cache, fallback, or profile
+records make the input invalid rather than affecting coverage. The investigation
+must include exact PCM/semantic checks, playback reserve validation,
+cache/memory soak, and a fresh RTX 4090 A/B. It does not authorize either
+padded compilation or `5 -> 8 -> 12` rollout.
 
 ## Sources
 

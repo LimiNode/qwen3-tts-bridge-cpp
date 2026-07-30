@@ -1,4 +1,4 @@
-"""Summarize privacy-safe route coverage for an exact-shape canary."""
+"""Validate and summarize privacy-safe route-aware canary telemetry."""
 
 from __future__ import annotations
 
@@ -6,10 +6,14 @@ import argparse
 import json
 import math
 import re
+import subprocess
 from collections import Counter
+from hashlib import sha256
 from pathlib import Path
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
+_VALIDATOR_SCHEMA_VERSION = 1
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 _COMPILED_ROUTE = "compiled_allowlist"
 _COMPILED_BACKEND = "compile_reduce_overhead"
 _COMPILED_SCHEDULE = [8, 8, 12]
@@ -17,10 +21,19 @@ _EAGER_ROUTE = "eager_unknown"
 _EAGER_BACKEND = "eager"
 _EAGER_SCHEDULE = [8]
 _PROFILE_ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9._-]{7,127}")
-
-_REQUIRED_KEYS = {
+_OUTCOMES = {
+    "completed",
+    "cancelled_before_audio",
+    "cancelled_after_audio",
+    "failed",
+}
+_BASE_KEYS = {
     "schema_version",
     "runtime_profile_id",
+    "request_outcome",
+    "route_decision_made",
+}
+_ROUTE_KEYS = {
     "talker_prefill_length",
     "prefill_shape_policy",
     "prefill_backend_used",
@@ -29,14 +42,38 @@ _REQUIRED_KEYS = {
     "prefill_compile_attempted",
     "prefill_compile_fallback",
 }
-_OPTIONAL_NUMERIC_KEYS = {"first_audio_ms", "completed_ms", "inverse_rtf"}
-_ALLOWED_KEYS = _REQUIRED_KEYS | _OPTIONAL_NUMERIC_KEYS
+_LATENCY_KEYS = {"first_audio_ms", "completed_ms", "inverse_rtf"}
+_ALLOWED_KEYS = _BASE_KEYS | _ROUTE_KEYS | _LATENCY_KEYS
+_PROFILE_MANIFEST_FIELDS = {
+    "manifest_schema_version",
+    "runtime_profile_id",
+    "bridge_commit",
+    "faster_wheel_sha256",
+    "qwen_commit",
+    "model_revision",
+    "torch_version",
+    "cuda_version",
+    "compiled_allowlist_manifest_sha256",
+}
+_ALLOWLIST_MANIFEST_FIELDS = {
+    "manifest_schema_version",
+    "runtime_profile_id",
+    "compiled_lengths",
+    "compiled_route",
+    "compiled_backend",
+    "compiled_schedule",
+    "eager_route",
+    "eager_backend",
+    "eager_schedule",
+}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
     parser.add_argument("--runtime-profile-id", required=True)
+    parser.add_argument("--runtime-profile-manifest", type=Path, required=True)
+    parser.add_argument("--compiled-allowlist-manifest", type=Path, required=True)
     parser.add_argument("--compiled-length", action="append", type=int, required=True)
     parser.add_argument("--min-requests", type=int, default=500)
     parser.add_argument("--min-unknown-requests", type=int, default=100)
@@ -45,10 +82,11 @@ def main() -> int:
         "--min-eligible-unknown-coverage-percent", type=float, default=80.0
     )
     parser.add_argument("--min-exact-coverage-percent", type=float, default=90.0)
+    parser.add_argument("--require-decision", choices=_decision_choices())
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     _validate_args(parser, args)
-
+    provenance = _validate_manifest_provenance(args)
     records = _load_records(args.input)
     summary = _summarize(
         records,
@@ -62,10 +100,34 @@ def main() -> int:
         ),
         min_exact_coverage_percent=args.min_exact_coverage_percent,
     )
+    summary.update(
+        {
+            "input_sha256": _sha256(args.input),
+            "validator_schema_version": _VALIDATOR_SCHEMA_VERSION,
+            "validator_commit": _validator_commit(),
+            "runtime_profile_manifest": provenance["runtime_profile_manifest"],
+            "compiled_allowlist_manifest": provenance[
+                "compiled_allowlist_manifest"
+            ],
+        }
+    )
+    if args.require_decision is not None:
+        summary["required_decision"] = args.require_decision
+        summary["required_decision_pass"] = (
+            summary["decision"] == args.require_decision
+        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, sort_keys=True), encoding="utf-8")
     print(json.dumps(summary, sort_keys=True))
-    return 0 if summary["acceptance_pass"] else 1
+    return 0 if _exit_success(summary) else 1
+
+
+def _decision_choices() -> tuple[str, ...]:
+    return (
+        "collect_more_anonymous_coverage",
+        "keep_exact_allowlist",
+        "evaluate_padded_bucket_correctness",
+    )
 
 
 def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
@@ -90,13 +152,89 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("coverage percentages must be within 0..100")
 
 
+def _validate_manifest_provenance(args: argparse.Namespace) -> dict[str, object]:
+    profile = _load_object(args.runtime_profile_manifest, "runtime profile manifest")
+    allowlist = _load_object(
+        args.compiled_allowlist_manifest,
+        "compiled allowlist manifest",
+    )
+    _require_manifest_fields(profile, _PROFILE_MANIFEST_FIELDS, "runtime profile")
+    _require_manifest_fields(
+        allowlist,
+        _ALLOWLIST_MANIFEST_FIELDS,
+        "compiled allowlist",
+    )
+    if profile["manifest_schema_version"] != 1:
+        raise RuntimeError("runtime profile manifest has an unsupported schema")
+    if allowlist["manifest_schema_version"] != 1:
+        raise RuntimeError("allowlist manifest has an unsupported schema")
+    _validate_profile_identity_fields(profile)
+    if profile.get("runtime_profile_id") != args.runtime_profile_id:
+        raise RuntimeError(
+            "runtime profile manifest does not match --runtime-profile-id"
+        )
+    if allowlist.get("runtime_profile_id") != args.runtime_profile_id:
+        raise RuntimeError("allowlist manifest does not match --runtime-profile-id")
+    configured_lengths = allowlist.get("compiled_lengths")
+    if configured_lengths != sorted(args.compiled_length):
+        raise RuntimeError("allowlist manifest does not match --compiled-length")
+    expected_contract = {
+        "compiled_route": _COMPILED_ROUTE,
+        "compiled_backend": _COMPILED_BACKEND,
+        "compiled_schedule": _COMPILED_SCHEDULE,
+        "eager_route": _EAGER_ROUTE,
+        "eager_backend": _EAGER_BACKEND,
+        "eager_schedule": _EAGER_SCHEDULE,
+    }
+    if any(allowlist.get(key) != value for key, value in expected_contract.items()):
+        raise RuntimeError("allowlist manifest does not match the canary contract")
+    allowlist_sha = _sha256(args.compiled_allowlist_manifest)
+    if profile.get("compiled_allowlist_manifest_sha256") != allowlist_sha:
+        raise RuntimeError("runtime profile manifest does not pin the allowlist SHA")
+    return {
+        "runtime_profile_manifest": _provenance(args.runtime_profile_manifest),
+        "compiled_allowlist_manifest": _provenance(args.compiled_allowlist_manifest),
+    }
+
+
+def _require_manifest_fields(
+    manifest: dict[str, object],
+    required: set[str],
+    name: str,
+) -> None:
+    missing = sorted(required.difference(manifest))
+    if missing:
+        raise RuntimeError(f"{name} manifest is missing: {', '.join(missing)}")
+
+
+def _validate_profile_identity_fields(profile: dict[str, object]) -> None:
+    for key in _PROFILE_MANIFEST_FIELDS - {
+        "manifest_schema_version",
+        "runtime_profile_id",
+    }:
+        value = profile[key]
+        if not isinstance(value, str) or not value:
+            raise RuntimeError(f"runtime profile manifest has invalid {key}")
+
+
+def _load_object(path: Path, name: str) -> dict[str, object]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise RuntimeError(f"{name} must contain a JSON object")
+    return value
+
+
 def _load_records(path: Path) -> list[dict[str, object]]:
     records = []
-    lines = path.read_text(encoding="utf-8").splitlines()
-    for line_number, line in enumerate(lines, 1):
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), 1
+    ):
         if not line.strip():
             continue
-        record = json.loads(line)
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"line {line_number}: malformed JSON") from exc
         if not isinstance(record, dict):
             raise RuntimeError(f"line {line_number}: record must be an object")
         _validate_record(record, line_number)
@@ -108,7 +246,7 @@ def _load_records(path: Path) -> list[dict[str, object]]:
 
 def _validate_record(record: dict[str, object], line_number: int) -> None:
     unknown = set(record).difference(_ALLOWED_KEYS)
-    missing = _REQUIRED_KEYS.difference(record)
+    missing = _BASE_KEYS.difference(record)
     if unknown or missing:
         raise RuntimeError(
             f"line {line_number}: telemetry keys must be the approved anonymous schema"
@@ -118,6 +256,34 @@ def _validate_record(record: dict[str, object], line_number: int) -> None:
     profile_id = record["runtime_profile_id"]
     if not isinstance(profile_id, str) or not _PROFILE_ID_PATTERN.fullmatch(profile_id):
         raise RuntimeError(f"line {line_number}: invalid runtime_profile_id")
+    outcome = record["request_outcome"]
+    if outcome not in _OUTCOMES:
+        raise RuntimeError(f"line {line_number}: invalid request_outcome")
+    route_decision_made = record["route_decision_made"]
+    if not isinstance(route_decision_made, bool):
+        raise RuntimeError(f"line {line_number}: route_decision_made must be boolean")
+    if outcome in {"completed", "cancelled_after_audio"} and not route_decision_made:
+        raise RuntimeError(
+            f"line {line_number}: {outcome} requires route_decision_made=true"
+        )
+    _validate_route_fields(record, line_number, route_decision_made)
+    _validate_latency_fields(record, line_number, str(outcome))
+
+
+def _validate_route_fields(
+    record: dict[str, object],
+    line_number: int,
+    route_decision_made: bool,
+) -> None:
+    present = _ROUTE_KEYS.intersection(record)
+    if not route_decision_made:
+        if present:
+            raise RuntimeError(
+                f"line {line_number}: route fields require route_decision_made=true"
+            )
+        return
+    if present != _ROUTE_KEYS:
+        raise RuntimeError(f"line {line_number}: incomplete route decision fields")
     length = record["talker_prefill_length"]
     if not isinstance(length, int) or isinstance(length, bool) or length <= 0:
         raise RuntimeError(f"line {line_number}: invalid talker_prefill_length")
@@ -138,43 +304,44 @@ def _validate_record(record: dict[str, object], line_number: int) -> None:
     ):
         if not isinstance(record[key], bool):
             raise RuntimeError(f"line {line_number}: {key} must be boolean")
-    _validate_optional_metrics(record, line_number)
 
 
-def _validate_optional_metrics(record: dict[str, object], line_number: int) -> None:
-    for key in _OPTIONAL_NUMERIC_KEYS:
-        if key not in record:
-            continue
-        value = record[key]
-        if (
-            not isinstance(value, (int, float))
-            or isinstance(value, bool)
-            or not math.isfinite(float(value))
-        ):
-            raise RuntimeError(f"line {line_number}: {key} must be finite")
-    first_audio = _optional_float(record, "first_audio_ms")
-    completed = _optional_float(record, "completed_ms")
-    inverse_rtf = _optional_float(record, "inverse_rtf")
-    if first_audio is not None and first_audio < 0.0:
-        raise RuntimeError(f"line {line_number}: first_audio_ms must be non-negative")
-    if completed is not None and completed < 0.0:
-        raise RuntimeError(f"line {line_number}: completed_ms must be non-negative")
-    if first_audio is not None and completed is not None and completed < first_audio:
+def _validate_latency_fields(
+    record: dict[str, object],
+    line_number: int,
+    outcome: str,
+) -> None:
+    present = _LATENCY_KEYS.intersection(record)
+    if outcome != "completed":
+        if present:
+            raise RuntimeError(
+                f"line {line_number}: latency fields require request_outcome=completed"
+            )
+        return
+    if present != _LATENCY_KEYS:
+        raise RuntimeError(
+            f"line {line_number}: completed requires full latency fields"
+        )
+    values = {key: _finite_float(record[key], key, line_number) for key in present}
+    if values["first_audio_ms"] < 0.0 or values["completed_ms"] < 0.0:
+        raise RuntimeError(f"line {line_number}: latency values must be non-negative")
+    if values["completed_ms"] < values["first_audio_ms"]:
         raise RuntimeError(f"line {line_number}: completed_ms precedes first_audio_ms")
-    if inverse_rtf is not None and inverse_rtf <= 0.0:
+    if values["inverse_rtf"] <= 0.0:
         raise RuntimeError(f"line {line_number}: inverse_rtf must be positive")
 
 
-def _optional_float(record: dict[str, object], key: str) -> float | None:
-    value = record.get(key)
-    if value is None:
-        return None
-    assert isinstance(value, (int, float))
-    assert not isinstance(value, bool)
+def _finite_float(value: object, key: str, line_number: int) -> float:
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or not math.isfinite(float(value))
+    ):
+        raise RuntimeError(f"line {line_number}: {key} must be finite")
     return float(value)
 
 
-def _route_errors(record: dict[str, object], compiled_lengths: set[int]) -> list[str]:
+def _route_error(record: dict[str, object], compiled_lengths: set[int]) -> str | None:
     length = _prefill_length(record)
     route = record["prefill_shape_policy"]
     backend = record["prefill_backend_used"]
@@ -191,7 +358,7 @@ def _route_errors(record: dict[str, object], compiled_lengths: set[int]) -> list
             and attempted is False
             and fallback is False
         )
-        return [] if expected else ["compiled_contract_mismatch"]
+        return None if expected else "compiled_contract_mismatch"
     expected = (
         route == _EAGER_ROUTE
         and backend == _EAGER_BACKEND
@@ -200,7 +367,7 @@ def _route_errors(record: dict[str, object], compiled_lengths: set[int]) -> list
         and attempted is False
         and fallback is False
     )
-    return [] if expected else ["eager_contract_mismatch"]
+    return None if expected else "eager_contract_mismatch"
 
 
 def _prefill_length(record: dict[str, object]) -> int:
@@ -221,28 +388,35 @@ def _summarize(
     min_eligible_unknown_coverage_percent: float,
     min_exact_coverage_percent: float,
 ) -> dict[str, object]:
-    invalid_routes = Counter()
+    invalid_routes = Counter[str]()
     profile_mismatch_count = 0
-    valid_records = []
+    route_decided_records = []
+    outcome_counts = Counter[str]()
     for record in records:
         if record["runtime_profile_id"] != runtime_profile_id:
             profile_mismatch_count += 1
             continue
-        errors = _route_errors(record, compiled_lengths)
-        if errors:
-            invalid_routes.update(errors)
+        outcome = str(record["request_outcome"])
+        outcome_counts.update([outcome])
+        if record["route_decision_made"] is not True:
             continue
-        valid_records.append(record)
+        error = _route_error(record, compiled_lengths)
+        if error is not None:
+            invalid_routes.update([error])
+            continue
+        route_decided_records.append(record)
 
-    lengths = Counter(
-        _prefill_length(record) for record in valid_records
+    lengths = Counter(_prefill_length(record) for record in route_decided_records)
+    routes = Counter(
+        str(record["prefill_shape_policy"]) for record in route_decided_records
     )
-    routes = Counter(str(record["prefill_shape_policy"]) for record in valid_records)
-    total = len(valid_records)
+    route_decided_count = len(route_decided_records)
     exact_count = sum(
         count for length, count in lengths.items() if length in compiled_lengths
     )
-    exact_coverage_percent = exact_count * 100.0 / total if total else 0.0
+    exact_coverage_percent = (
+        exact_count * 100.0 / route_decided_count if route_decided_count else 0.0
+    )
     unknown_lengths = {
         length: count
         for length, count in lengths.items()
@@ -261,12 +435,12 @@ def _summarize(
     material_unknown_lengths = {
         length: count
         for length, count in unknown_lengths.items()
-        if count * 100.0 / total >= 1.0
+        if count * 100.0 / route_decided_count >= 1.0
     }
-    acceptance_pass = not invalid_routes and profile_mismatch_count == 0 and total > 0
-    decision = _decision(
-        acceptance_pass=acceptance_pass,
-        total=total,
+    input_valid = not invalid_routes and profile_mismatch_count == 0
+    evidence_gate_pass = _evidence_gate_pass(
+        input_valid=input_valid,
+        route_decided_count=route_decided_count,
         unknown_count=unknown_count,
         exact_coverage_percent=exact_coverage_percent,
         eligible_unknown_coverage_percent=eligible_unknown_coverage_percent,
@@ -277,15 +451,31 @@ def _summarize(
             min_eligible_unknown_coverage_percent
         ),
     )
+    decision = _decision(
+        input_valid=input_valid,
+        evidence_gate_pass=evidence_gate_pass,
+        exact_coverage_percent=exact_coverage_percent,
+        min_exact_coverage_percent=min_exact_coverage_percent,
+    )
+    completed_records = [
+        record
+        for record in route_decided_records
+        if record["request_outcome"] == "completed"
+    ]
     return {
         "artifact_schema_version": _SCHEMA_VERSION,
-        "acceptance_pass": acceptance_pass,
+        "input_valid": input_valid,
+        "evidence_gate_pass": evidence_gate_pass,
         "runtime_profile_id": runtime_profile_id,
         "input_record_count": len(records),
-        "valid_record_count": total,
+        "profile_matched_record_count": sum(outcome_counts.values()),
+        "profile_mismatch_count": profile_mismatch_count,
+        "outcome_histogram": dict(sorted(outcome_counts.items())),
+        "route_decided_count": route_decided_count,
+        "route_not_decided_count": sum(outcome_counts.values()) - route_decided_count,
         "invalid_route_count": sum(invalid_routes.values()),
         "invalid_route_reasons": dict(sorted(invalid_routes.items())),
-        "profile_mismatch_count": profile_mismatch_count,
+        "completed_latency_record_count": len(completed_records),
         "compiled_lengths": sorted(compiled_lengths),
         "exact_allowlist_count": exact_count,
         "exact_allowlist_coverage_percent": exact_coverage_percent,
@@ -309,14 +499,10 @@ def _summarize(
     }
 
 
-def _histogram(values: dict[int, int] | Counter[int]) -> dict[str, int]:
-    return {str(length): count for length, count in sorted(values.items())}
-
-
-def _decision(
+def _evidence_gate_pass(
     *,
-    acceptance_pass: bool,
-    total: int,
+    input_valid: bool,
+    route_decided_count: int,
     unknown_count: int,
     exact_coverage_percent: float,
     eligible_unknown_coverage_percent: float,
@@ -324,18 +510,69 @@ def _decision(
     min_unknown_requests: int,
     min_exact_coverage_percent: float,
     min_eligible_unknown_coverage_percent: float,
+) -> bool:
+    if not input_valid or route_decided_count < min_requests:
+        return False
+    if exact_coverage_percent >= min_exact_coverage_percent:
+        return True
+    return (
+        unknown_count >= min_unknown_requests
+        and eligible_unknown_coverage_percent
+        >= min_eligible_unknown_coverage_percent
+    )
+
+
+def _decision(
+    *,
+    input_valid: bool,
+    evidence_gate_pass: bool,
+    exact_coverage_percent: float,
+    min_exact_coverage_percent: float,
 ) -> str:
-    if not acceptance_pass:
+    if not input_valid:
         return "reject_invalid_canary"
-    if total < min_requests:
+    if not evidence_gate_pass:
         return "collect_more_anonymous_coverage"
     if exact_coverage_percent >= min_exact_coverage_percent:
         return "keep_exact_allowlist"
-    if unknown_count < min_unknown_requests:
-        return "collect_more_anonymous_coverage"
-    if eligible_unknown_coverage_percent < min_eligible_unknown_coverage_percent:
-        return "collect_more_anonymous_coverage"
     return "evaluate_padded_bucket_correctness"
+
+
+def _histogram(values: dict[int, int] | Counter[int]) -> dict[str, int]:
+    return {str(length): count for length, count in sorted(values.items())}
+
+
+def _exit_success(summary: dict[str, object]) -> bool:
+    if summary.get("input_valid") is not True:
+        return False
+    required = summary.get("required_decision")
+    return required is None or summary.get("required_decision_pass") is True
+
+
+def _sha256(path: Path) -> str:
+    return sha256(path.read_bytes()).hexdigest()
+
+
+def _provenance(path: Path) -> dict[str, str]:
+    return {"path": _display_path(path), "sha256": _sha256(path)}
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(_REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _validator_commit() -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=_REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
 
 
 if __name__ == "__main__":

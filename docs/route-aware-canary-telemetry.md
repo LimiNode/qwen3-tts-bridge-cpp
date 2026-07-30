@@ -1,34 +1,42 @@
 # Route-Aware Canary Telemetry
 
-The route-aware scheduler remains an internal experimental opt-in. A canary may
-record one JSON object per completed request only with this allowlisted schema:
+The route-aware scheduler remains an internal experimental opt-in. Canary
+telemetry is one privacy-safe JSONL object per terminal request. It must never
+contain text, instruction, speaker, request ID, session ID, model path, or
+application labels.
+
+The current canary-v2.1 wire schema uses `schema_version: 3`. Every record has
+an anonymous `runtime_profile_id`, a terminal `request_outcome`, and whether a
+prefill route was decided. Valid outcomes are `completed`,
+`cancelled_before_audio`, `cancelled_after_audio`, and `failed`.
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "runtime_profile_id": "rtx4090-cv06-bf16-sdpa-strict-v1-9d2a61ef",
+  "request_outcome": "completed",
+  "route_decision_made": true,
   "talker_prefill_length": 32,
   "prefill_shape_policy": "compiled_allowlist",
   "prefill_backend_used": "compile_reduce_overhead",
   "selected_chunk_schedule": [8, 8, 12],
   "prefill_cache_hit": true,
   "prefill_compile_attempted": false,
-  "prefill_compile_fallback": false
+  "prefill_compile_fallback": false,
+  "first_audio_ms": 250.0,
+  "completed_ms": 2800.0,
+  "inverse_rtf": 2.9
 }
 ```
 
-Optional numeric latency fields are `first_audio_ms`, `completed_ms`, and
-`inverse_rtf`; they must be finite, `completed_ms` must not precede
-`first_audio_ms`, and `inverse_rtf` must be positive. Never record text,
-instruction, speaker, request ID, session ID, model path, or
-application-specific labels in this stream.
+`completed` and `cancelled_after_audio` require `route_decision_made=true`.
+Requests cancelled before route selection use `route_decision_made=false` and
+omit every route and latency field. A `completed` record requires all three
+latency fields; they must be finite, non-negative, and satisfy
+`completed_ms >= first_audio_ms`. Latency is never calculated for cancellations
+or failures.
 
-`runtime_profile_id` is a stable anonymous fingerprint of the bridge revision,
-FasterQwen wheel SHA, Qwen revision, model revision, Torch/CUDA runtime,
-allowlist, and scheduler. It must change whenever any of those values changes.
-The aggregator requires one explicit profile ID and rejects a mixed report.
-
-Only these completed-request route contracts are accepted:
+For route-decided requests, the aggregator accepts only these contracts:
 
 ```text
 allowlisted length: compiled_allowlist / compile_reduce_overhead / [8,8,12]
@@ -37,24 +45,70 @@ unknown length:     eager_unknown / eager / [8]
                     cache_hit=false, compile_attempted=false, fallback=false
 ```
 
-An invalid contract increments `invalid_route_count`, is excluded from all
-coverage calculations, and makes the canary summary fail.
+Coverage counts every route-decided request, regardless of outcome. Invalid
+route records are excluded from coverage and make `input_valid=false`.
+`runtime_profile_id` is an anonymous fingerprint of the bridge revision,
+FasterQwen wheel SHA, Qwen revision, model revision, Torch/CUDA runtime,
+allowlist, and scheduler. A report cannot mix profiles.
 
-Aggregate local JSONL with:
+Before a canary, generate pinned manifests from the internal RTX 4090 profile:
+
+```powershell
+python scripts/create_route_aware_canary_manifests.py `
+  --profile config/rtx4090-faster-customvoice-route-aware-scheduler-release-experimental.json `
+  --runtime-profile-id rtx4090-cv06-bf16-sdpa-strict-v1-9d2a61ef `
+  --faster-wheel-sha256 <wheel-sha256> `
+  --qwen-commit <qwen-commit> `
+  --model-revision Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --torch-version <torch-version> `
+  --cuda-version <cuda-version> `
+  --output-directory canary-manifests
+```
+
+The generator verifies the six exact lengths, compiled `8,8,12`, eager fixed
+`8`, eager unknown-shape fallback, disabled compile-on-miss, and required
+precompiled entries. It writes an allowlist manifest and a runtime-profile
+manifest which pins its SHA-256.
+
+Capture the worker's local `qtb_metric` stderr diagnostics with the bridge
+transport's `stderr_handler`, then convert that local diagnostic file before
+sharing or aggregating anything. The exporter correlates request IDs only in
+memory and emits no ID or text in its JSONL output:
+
+```powershell
+python scripts/export_route_aware_canary_telemetry.py worker-stderr.log `
+  --runtime-profile-id rtx4090-cv06-bf16-sdpa-strict-v1-9d2a61ef `
+  --output canary.jsonl
+```
+
+Aggregate telemetry locally with:
 
 ```powershell
 python scripts/summarize_route_coverage.py canary.jsonl `
   --runtime-profile-id rtx4090-cv06-bf16-sdpa-strict-v1-9d2a61ef `
+  --runtime-profile-manifest canary-manifests/runtime-profile-manifest.json `
+  --compiled-allowlist-manifest canary-manifests/compiled-allowlist-manifest.json `
   --compiled-length 29 --compiled-length 30 --compiled-length 32 `
   --compiled-length 33 --compiled-length 34 --compiled-length 35 `
   --output route-coverage-summary.json
 ```
 
-The default evidence threshold is 500 valid anonymous requests and at least
-100 valid unknown-shape requests. A length is an eligible padded-bucket
-candidate only after 30 observations. Eligible candidates must cover at least
-80% of unknown traffic and exact-allowlist coverage must remain below 90%
-before the output recommends `evaluate_padded_bucket_correctness`. The long
-tail is reported separately and cannot permanently block that decision.
-That recommendation authorizes a new correctness and quality investigation; it
-never enables padded compilation.
+The summary separately reports `input_valid`, `evidence_gate_pass`, and
+`decision`, plus input SHA-256, validator commit/schema, and both manifest
+SHA-256 values. CI or a release script can require a specific decision:
+
+```powershell
+--require-decision evaluate_padded_bucket_correctness
+```
+
+The default evidence gate requires 500 route-decided requests. If exact
+coverage is at least 90%, the decision is `keep_exact_allowlist`. Below 90%,
+it additionally requires 100 unknown-shape requests and eligible unknown
+lengths with at least 30 observations covering 80% of unknown traffic before
+it can recommend `evaluate_padded_bucket_correctness`. The long tail is
+reported separately and cannot permanently block the decision.
+
+An evaluation recommendation authorizes a new correctness investigation only:
+semantic/codec parity, PCM quality, playback reserve, compile/cache budget,
+memory soak, and same-wheel RTX 4090 A/B. It never enables padded compilation
+or `5 -> 8 -> 12` rollout.

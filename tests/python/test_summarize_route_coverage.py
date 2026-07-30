@@ -1,86 +1,185 @@
-"""Tests for anonymous route coverage aggregation."""
+"""Tests for privacy-safe route-aware canary aggregation."""
 
 from __future__ import annotations
 
-import math
+import argparse
+import json
+import sys
+import tempfile
 import unittest
+from hashlib import sha256
+from pathlib import Path
 from typing import cast
+from unittest.mock import patch
 
-from scripts.summarize_route_coverage import _summarize, _validate_record
+from scripts.summarize_route_coverage import (
+    _load_records,
+    _summarize,
+    _validate_manifest_provenance,
+    _validate_record,
+    main,
+)
 
 _PROFILE = "rtx4090-cv06-bf16-sdpa-strict-v1-9d2a61ef"
 
 
 class SummarizeRouteCoverageTests(unittest.TestCase):
-    def test_counts_exact_coverage_only_for_verified_compiled_route(self) -> None:
-        records = [_record(32), _record(32, route="eager_unknown")]
+    def test_coverage_counts_all_route_decisions_across_outcomes(self) -> None:
+        records = [
+            _record("completed", 32),
+            _record("cancelled_after_audio", 31),
+            _record("cancelled_before_audio", route_decision_made=False),
+            _record("failed", 31),
+        ]
 
         summary = _summary(records)
 
-        self.assertFalse(summary["acceptance_pass"])
-        self.assertEqual(1, summary["exact_allowlist_count"])
-        self.assertEqual(1, summary["invalid_route_count"])
-        self.assertEqual("reject_invalid_canary", summary["decision"])
+        self.assertTrue(summary["input_valid"])
+        self.assertEqual(3, summary["route_decided_count"])
+        self.assertEqual(1, summary["route_not_decided_count"])
+        self.assertEqual(
+            {
+                "cancelled_after_audio": 1,
+                "cancelled_before_audio": 1,
+                "completed": 1,
+                "failed": 1,
+            },
+            summary["outcome_histogram"],
+        )
+        self.assertEqual(1, summary["completed_latency_record_count"])
 
-    def test_rejects_mixed_runtime_profiles(self) -> None:
-        records = [_record(32), _record(31, runtime_profile_id="other-profile-9d2a")]
+    def test_rejects_route_contract_violations(self) -> None:
+        mutations = {
+            "backend": {"prefill_backend_used": "eager"},
+            "schedule": {"selected_chunk_schedule": [8]},
+            "cache": {"prefill_cache_hit": False},
+            "attempted": {"prefill_compile_attempted": True},
+            "fallback": {"prefill_compile_fallback": True},
+        }
+        for name, mutation in mutations.items():
+            with self.subTest(name=name):
+                record = _record("completed", 32)
+                record.update(mutation)
 
-        summary = _summary(records)
+                summary = _summary([record])
 
-        self.assertFalse(summary["acceptance_pass"])
-        self.assertEqual(1, summary["profile_mismatch_count"])
+                self.assertFalse(summary["input_valid"])
+                self.assertEqual(1, summary["invalid_route_count"])
 
-    def test_rejects_compiled_cache_policy_violation(self) -> None:
-        record = _record(32)
-        record["prefill_cache_hit"] = False
+    def test_rejects_eager_cache_hit(self) -> None:
+        record = _record("failed", 31)
+        record["prefill_cache_hit"] = True
 
         summary = _summary([record])
 
-        self.assertFalse(summary["acceptance_pass"])
+        self.assertFalse(summary["input_valid"])
         self.assertEqual(
-            {"compiled_contract_mismatch": 1},
+            {"eager_contract_mismatch": 1},
             summary["invalid_route_reasons"],
         )
 
-    def test_long_tail_does_not_block_eligible_unknown_gate(self) -> None:
-        records = [_record(32) for _ in range(10)]
-        records.extend(_record(31) for _ in range(10))
-        records.extend(_record(length) for length in range(40, 45))
+    def test_rejects_mixed_runtime_profiles(self) -> None:
+        records = [_record("completed", 32), _record("failed", 31)]
+        records[1]["runtime_profile_id"] = "other-profile-9d2a"
 
-        summary = _summary(
-            records,
-            min_requests=25,
-            min_unknown_requests=10,
-            min_samples_per_length=10,
-            min_eligible_unknown_coverage_percent=60.0,
-            min_exact_coverage_percent=50.0,
-        )
+        summary = _summary(records)
 
-        self.assertTrue(summary["acceptance_pass"])
-        self.assertEqual("evaluate_padded_bucket_correctness", summary["decision"])
-        self.assertEqual({"31": 10}, summary["eligible_unknown_length_histogram"])
+        self.assertFalse(summary["input_valid"])
+        self.assertEqual(1, summary["profile_mismatch_count"])
 
-    def test_rejects_text_or_request_identity_fields(self) -> None:
-        record = _record(32)
-        record["text"] = "must never appear in telemetry"
+    def test_validates_outcome_specific_field_sets(self) -> None:
+        completed = _record("completed", 32)
+        del completed["inverse_rtf"]
+        no_route = _record("cancelled_before_audio", route_decision_made=False)
+        no_route["prefill_cache_hit"] = False
 
-        with self.assertRaisesRegex(RuntimeError, "approved anonymous schema"):
-            _validate_record(record, 1)
+        with self.assertRaisesRegex(RuntimeError, "completed requires full latency"):
+            _validate_record(completed, 1)
+        with self.assertRaisesRegex(RuntimeError, "route fields require"):
+            _validate_record(no_route, 2)
 
-    def test_rejects_invalid_optional_metrics(self) -> None:
-        record = _record(32)
-        record["first_audio_ms"] = math.nan
-
-        with self.assertRaisesRegex(RuntimeError, "first_audio_ms must be finite"):
-            _validate_record(record, 1)
-
-    def test_rejects_completed_before_first_audio(self) -> None:
-        record = _record(32)
+    def test_accepts_equal_first_audio_and_completion(self) -> None:
+        record = _record("completed", 32)
         record["first_audio_ms"] = 10.0
-        record["completed_ms"] = 9.0
+        record["completed_ms"] = 10.0
 
-        with self.assertRaisesRegex(RuntimeError, "completed_ms precedes"):
-            _validate_record(record, 1)
+        _validate_record(record, 1)
+
+    def test_rejects_malformed_jsonl(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "telemetry.jsonl"
+            path.write_text("{not-json}\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "malformed JSON"):
+                _load_records(path)
+
+    def test_evidence_threshold_boundaries(self) -> None:
+        exact = [_record("completed", 32) for _ in range(450)]
+        unknown = [_record("failed", 31) for _ in range(50)]
+
+        keep = _summary(exact + unknown, min_requests=500)
+        self.assertTrue(keep["evidence_gate_pass"])
+        self.assertEqual("keep_exact_allowlist", keep["decision"])
+
+        bucket = _summary(
+            [_record("completed", 32) for _ in range(449)]
+            + [_record("failed", 31) for _ in range(100)],
+            min_requests=500,
+            min_unknown_requests=100,
+            min_samples_per_length=30,
+        )
+        self.assertTrue(bucket["evidence_gate_pass"])
+        self.assertEqual("evaluate_padded_bucket_correctness", bucket["decision"])
+
+        insufficient = _summary(exact + unknown[:-1], min_requests=500)
+        self.assertFalse(insufficient["evidence_gate_pass"])
+        self.assertEqual("collect_more_anonymous_coverage", insufficient["decision"])
+
+    def test_cli_require_decision_controls_exit_status(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "canary.jsonl"
+            input_path.write_text(
+                json.dumps(_record("completed", 32)) + "\n",
+                encoding="utf-8",
+            )
+            profile_path, allowlist_path = _write_manifests(root)
+            output_path = root / "summary.json"
+            arguments = [
+                "summarize_route_coverage.py",
+                str(input_path),
+                "--runtime-profile-id",
+                _PROFILE,
+                "--runtime-profile-manifest",
+                str(profile_path),
+                "--compiled-allowlist-manifest",
+                str(allowlist_path),
+                "--compiled-length",
+                "32",
+                "--output",
+                str(output_path),
+            ]
+            with patch.object(sys, "argv", arguments):
+                self.assertEqual(0, main())
+            required_arguments = arguments + [
+                "--require-decision",
+                "evaluate_padded_bucket_correctness",
+            ]
+            with patch.object(sys, "argv", required_arguments):
+                self.assertEqual(1, main())
+
+    def test_rejects_incomplete_profile_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile_path, allowlist_path = _write_manifests(root)
+            profile = json.loads(profile_path.read_text(encoding="utf-8"))
+            del profile["torch_version"]
+            profile_path.write_text(json.dumps(profile), encoding="utf-8")
+
+            arguments = _manifest_args(profile_path, allowlist_path)
+
+            with self.assertRaisesRegex(RuntimeError, "missing: torch_version"):
+                _validate_manifest_provenance(arguments)
 
 
 def _summary(
@@ -105,7 +204,8 @@ def _summary(
         min_unknown_requests=cast(int, defaults["min_unknown_requests"]),
         min_samples_per_length=cast(int, defaults["min_samples_per_length"]),
         min_eligible_unknown_coverage_percent=cast(
-            float, defaults["min_eligible_unknown_coverage_percent"]
+            float,
+            defaults["min_eligible_unknown_coverage_percent"]
         ),
         min_exact_coverage_percent=cast(
             float, defaults["min_exact_coverage_percent"]
@@ -114,27 +214,92 @@ def _summary(
 
 
 def _record(
-    prefill_length: int,
+    outcome: str,
+    prefill_length: int | None = None,
     *,
-    runtime_profile_id: str = _PROFILE,
-    route: str | None = None,
+    route_decision_made: bool = True,
 ) -> dict[str, object]:
-    compiled = prefill_length == 32
-    if route is None:
-        route = "compiled_allowlist" if compiled else "eager_unknown"
-    return {
-        "schema_version": 2,
-        "runtime_profile_id": runtime_profile_id,
-        "talker_prefill_length": prefill_length,
-        "prefill_shape_policy": route,
-        "prefill_backend_used": (
-            "compile_reduce_overhead" if compiled else "eager"
-        ),
-        "selected_chunk_schedule": [8, 8, 12] if compiled else [8],
-        "prefill_cache_hit": compiled,
-        "prefill_compile_attempted": False,
-        "prefill_compile_fallback": False,
+    result: dict[str, object] = {
+        "schema_version": 3,
+        "runtime_profile_id": _PROFILE,
+        "request_outcome": outcome,
+        "route_decision_made": route_decision_made,
     }
+    if route_decision_made:
+        if prefill_length is None:
+            raise ValueError("route decisions require a prefill length")
+        compiled = prefill_length == 32
+        result.update(
+            {
+                "talker_prefill_length": prefill_length,
+                "prefill_shape_policy": (
+                    "compiled_allowlist" if compiled else "eager_unknown"
+                ),
+                "prefill_backend_used": (
+                    "compile_reduce_overhead" if compiled else "eager"
+                ),
+                "selected_chunk_schedule": [8, 8, 12] if compiled else [8],
+                "prefill_cache_hit": compiled,
+                "prefill_compile_attempted": False,
+                "prefill_compile_fallback": False,
+            }
+        )
+    if outcome == "completed":
+        result.update(
+            {
+                "first_audio_ms": 10.0,
+                "completed_ms": 20.0,
+                "inverse_rtf": 2.0,
+            }
+        )
+    return result
+
+
+def _write_manifests(root: Path) -> tuple[Path, Path]:
+    allowlist_path = root / "allowlist.json"
+    allowlist = {
+        "manifest_schema_version": 1,
+        "runtime_profile_id": _PROFILE,
+        "compiled_lengths": [32],
+        "compiled_route": "compiled_allowlist",
+        "compiled_backend": "compile_reduce_overhead",
+        "compiled_schedule": [8, 8, 12],
+        "eager_route": "eager_unknown",
+        "eager_backend": "eager",
+        "eager_schedule": [8],
+    }
+    allowlist_path.write_text(json.dumps(allowlist), encoding="utf-8")
+    profile_path = root / "profile.json"
+    profile_path.write_text(
+        json.dumps(
+            {
+                "manifest_schema_version": 1,
+                "runtime_profile_id": _PROFILE,
+                "bridge_commit": "58fc4df8d78ef96e3838476e5fbf5a65e00f7827",
+                "faster_wheel_sha256": (
+                    "3b8fb11282072ac79323f696ed1b621bc1a7c676b3d7844c6bd47b4f10297113"
+                ),
+                "qwen_commit": "58b0637",
+                "model_revision": "Qwen3-TTS-12Hz-0.6B-CustomVoice",
+                "torch_version": "2.11.0+cu126",
+                "cuda_version": "12.6",
+                "compiled_allowlist_manifest_sha256": sha256(
+                    allowlist_path.read_bytes()
+                ).hexdigest(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    return profile_path, allowlist_path
+
+
+def _manifest_args(profile_path: Path, allowlist_path: Path) -> argparse.Namespace:
+    return argparse.Namespace(
+        runtime_profile_id=_PROFILE,
+        runtime_profile_manifest=profile_path,
+        compiled_allowlist_manifest=allowlist_path,
+        compiled_length=[32],
+    )
 
 
 if __name__ == "__main__":
