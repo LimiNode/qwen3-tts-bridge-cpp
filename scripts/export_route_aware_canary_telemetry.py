@@ -60,7 +60,7 @@ def main() -> int:
     ]:
         parser.error("--runtime-profile-id does not match the runtime profile manifest")
     result = _export(
-        args.input.read_text(encoding="utf-8").splitlines(),
+        args.input.read_text(encoding="utf-8", errors="replace").splitlines(),
         expected,
         args.evidence_source,
         allow_open_requests=args.allow_open_requests,

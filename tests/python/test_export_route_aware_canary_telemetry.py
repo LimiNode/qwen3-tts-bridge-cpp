@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
+from hashlib import sha256
+from pathlib import Path
+from unittest.mock import patch
 
-from scripts.export_route_aware_canary_telemetry import _export
+from scripts.export_route_aware_canary_telemetry import _export, main
 
 _PROFILE = {
     "runtime_profile_id": "profile-v21-9d2a61ef",
@@ -99,6 +103,61 @@ class ExportRouteAwareCanaryTelemetryTests(unittest.TestCase):
 
         self.assertFalse(result.summary["integrity_valid"])
         self.assertFalse(result.summary["worker_provenance_matches_manifest"])
+
+    def test_cli_ignores_non_utf8_non_metric_log_text(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile_path, allowlist_path = _write_manifests(root)
+            provenance = json.loads(profile_path.read_text(encoding="utf-8"))
+            input_path = root / "worker.log"
+            input_path.write_bytes(
+                b"foreign warning: \xad\n"
+                + _provenance(
+                    {
+                        key: str(provenance[key])
+                        for key in _PROFILE
+                    }
+                ).encode("utf-8")
+                + b"\n"
+            )
+            output_path = root / "canary.jsonl"
+            with patch(
+                "sys.argv",
+                [
+                    "export_route_aware_canary_telemetry.py",
+                    str(input_path),
+                    "--runtime-profile-manifest",
+                    str(profile_path),
+                    "--compiled-allowlist-manifest",
+                    str(allowlist_path),
+                    "--evidence-source",
+                    "synthetic_proxy",
+                    "--output",
+                    str(output_path),
+                ],
+            ):
+                self.assertEqual(0, main())
+
+
+def _write_manifests(root: Path) -> tuple[Path, Path]:
+    allowlist_path = root / "allowlist.json"
+    allowlist_path.write_text("{}", encoding="utf-8")
+    profile_path = root / "profile.json"
+    profile_path.write_text(
+        json.dumps(
+            {
+                "manifest_schema_version": 1,
+                **_PROFILE,
+            }
+        ),
+        encoding="utf-8",
+    )
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    profile["compiled_allowlist_manifest_sha256"] = sha256(
+        allowlist_path.read_bytes()
+    ).hexdigest()
+    profile_path.write_text(json.dumps(profile), encoding="utf-8")
+    return profile_path, allowlist_path
 
 
 def _provenance(values: dict[str, str] | None = None) -> str:
