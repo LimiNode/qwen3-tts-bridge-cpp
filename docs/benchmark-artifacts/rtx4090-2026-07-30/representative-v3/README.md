@@ -20,7 +20,9 @@ maximum intent share of five percent, and at most ten occurrences per recorded
 key phrase.
 
 `manual-review-form-100.jsonl` must be completed by a human reviewer before
-any GPU discovery. Its evaluator requires category fidelity, naturalness,
-likely real use, grammar, appropriate length, semantic repetition, and
-mixed-language code-switch assessments. Automated preflight passing is not a
-human-audit pass and does not authorize a runtime prototype.
+any GPU discovery. Its evaluator requires exactly the frozen 100-record label
+set, a single reviewer identity, and a source SHA matching `audit.json`, in
+addition to category fidelity, naturalness, likely real use, grammar,
+appropriate length, semantic repetition, and mixed-language code-switch
+assessments. Automated preflight passing is not a human-audit pass and does
+not authorize a runtime prototype.

@@ -10,17 +10,20 @@ from scripts.evaluate_padded_bucket_gate import _evaluate
 
 
 class EvaluatePaddedBucketGateTests(unittest.TestCase):
-    def test_pass_authorizes_only_a_correctness_prototype(self) -> None:
+    def test_pass_authorizes_only_a_distribution_research_plan(self) -> None:
         result = _evaluate(_route(), {"passed": True}, _artifact(), _args())
 
-        self.assertTrue(result["prototype_authorized"])
+        self.assertTrue(result["distribution_plan_authorized"])
+        self.assertFalse(result["prototype_authorized"])
         self.assertFalse(result["release_authorized"])
-        self.assertEqual("prototype_padded_bucket_correctness", result["decision"])
+        self.assertEqual(
+            "distribution_plan_ready_for_mechanism_gate", result["decision"]
+        )
 
     def test_missing_human_review_fails_closed(self) -> None:
         result = _evaluate(_route(), {"passed": False}, _artifact(), _args())
 
-        self.assertFalse(result["prototype_authorized"])
+        self.assertFalse(result["distribution_plan_authorized"])
         failed_checks = cast(list[str], result["failed_checks"])
         self.assertIn("manual_review_passed", failed_checks)
 

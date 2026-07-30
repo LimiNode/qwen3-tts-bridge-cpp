@@ -1,4 +1,4 @@
-"""Fail closed on a research-only padded-prefill correctness prototype gate."""
+"""Fail closed on a constrained padded-bucket distribution research plan."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, sort_keys=True), encoding="utf-8")
     print(json.dumps(result, sort_keys=True))
-    return 0 if result["prototype_authorized"] else 1
+    return 0 if result["distribution_plan_authorized"] else 1
 
 
 def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
@@ -99,20 +99,22 @@ def _evaluate(
             reasons.append(name)
     authorized = not reasons
     return {
-        "padded_bucket_gate_schema_version": 1,
+        "padded_bucket_distribution_gate_schema_version": 2,
         "candidate_id": args.candidate_id,
         "checks": checks,
         "failed_checks": reasons,
-        "prototype_authorized": authorized,
+        "distribution_plan_authorized": authorized,
+        "prototype_authorized": False,
         "decision": (
-            "prototype_padded_bucket_correctness"
+            "distribution_plan_ready_for_mechanism_gate"
             if authorized
-            else "do_not_prototype_padded_bucket"
+            else "do_not_advance_padded_bucket_research"
         ),
         "release_authorized": False,
         "release_note": (
-            "Synthetic evidence can authorize only a research correctness "
-            "prototype; it cannot authorize a release profile."
+            "A distribution plan cannot authorize a runtime implementation or "
+            "release profile. The mechanism gate separately permits only one "
+            "16..32-to-32 correctness prototype."
         ),
     }
 

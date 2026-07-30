@@ -9,9 +9,10 @@ optimization and do not modify the existing exact allowlist.
 concentration metric is meaningful only for deciding whether additional exact
 lengths deserve investigation. It must not authorize a padded bucket.
 
-## Padded-Bucket Gate
+## Distribution Research Gate
 
-`scripts/evaluate_padded_bucket_gate.py` owns the separate prototype decision.
+`scripts/evaluate_padded_bucket_gate.py` owns the constrained distribution-plan
+decision. It does not authorize a runtime implementation.
 It requires all of the following:
 
 - a completed human review of the frozen corpus sample;
@@ -29,9 +30,12 @@ the eager path; it does not force a prefix of the histogram into compiled
 buckets. Startup and runtime cost fields remain estimates until measured on the
 actual worker.
 
-## First Prototype
+## Mechanism Gate and First Prototype
 
-Only a passing padded-bucket gate may authorize one research implementation:
+`scripts/evaluate_padded_bucket_mechanism_gate.py` owns the separate mechanism
+decision. It requires a completed human review and at least 1,500 valid route
+records with real representation in the approved actual-length range. It can
+authorize exactly one research implementation:
 
 ```text
 actual prefill length 16..32 -> padded compiled shape 32
