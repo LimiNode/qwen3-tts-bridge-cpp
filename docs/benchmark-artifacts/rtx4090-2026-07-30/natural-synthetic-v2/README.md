@@ -38,3 +38,13 @@ authorized by this artifact.
 `discovery-1500-padded-bucket-candidates.json` is an offline, research-only
 calculation. It records 4/5/6-bucket possibilities and their padding/fallback
 trade-offs so a later, separately approved experiment has an auditable input.
+
+## Review Scope
+
+v2 is retained as a reproducible telemetry-pipeline corpus, not as the sole
+representation of future product speech. In particular, it underrepresents
+micro utterances and its template families reuse research-oriented phrasing
+across categories. `manual-review-form-100.jsonl` is a structured human-review
+form for recording category fidelity, naturalness, likely real use, grammar,
+code-switch quality, semantic repetition, and generic experiment phrasing.
+It has no completed review status and cannot authorize a runtime experiment.
