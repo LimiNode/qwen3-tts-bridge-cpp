@@ -8,7 +8,10 @@ import json
 from pathlib import Path
 import subprocess
 
-from qwen_release_soak import _shapes_by_label, _validate_release_soak
+try:
+    from qwen_release_soak import _shapes_by_label, _validate_release_soak
+except ModuleNotFoundError:
+    from scripts.qwen_release_soak import _shapes_by_label, _validate_release_soak
 
 
 _VALIDATOR_SCHEMA_VERSION = 2

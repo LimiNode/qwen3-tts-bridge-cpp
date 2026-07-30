@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from typing import cast
 
 from scripts.analyze_route_aware_ab import _bootstrap, _build_pairs
 
@@ -13,9 +14,14 @@ class AnalyzeRouteAwareAbTests(unittest.TestCase):
         route = [_request("unknown_31", 200.0), _request("compiled_32", 80.0)]
 
         pairs = _build_pairs(fixed, route)
+        fixed_metrics = cast(dict[str, float], pairs[0]["fixed8"])
+        route_metrics = cast(dict[str, float], pairs[0]["route_aware"])
 
         self.assertEqual("compiled", pairs[0]["category"])
-        self.assertEqual(20.0, pairs[0]["fixed8"]["completed_ms"] - pairs[0]["route_aware"]["completed_ms"])
+        self.assertEqual(
+            20.0,
+            fixed_metrics["completed_ms"] - route_metrics["completed_ms"],
+        )
         self.assertEqual("eager", pairs[1]["category"])
 
     def test_bootstrap_is_deterministic(self) -> None:
@@ -29,7 +35,9 @@ class AnalyzeRouteAwareAbTests(unittest.TestCase):
     def test_rejects_different_manifest_contract(self) -> None:
         fixed = [_request("compiled_32", 100.0)]
         route = [_request("compiled_32", 80.0)]
-        route[0]["manifest_contract"]["expected"]["prefill_length"] = 31
+        contract = cast(dict[str, object], route[0]["manifest_contract"])
+        expected = cast(dict[str, object], contract["expected"])
+        expected["prefill_length"] = 31
 
         with self.assertRaisesRegex(RuntimeError, "manifest contract"):
             _build_pairs(fixed, route)

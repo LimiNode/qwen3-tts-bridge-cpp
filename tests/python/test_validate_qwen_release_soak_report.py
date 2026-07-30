@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
+from typing import cast
 
 from scripts.validate_qwen_release_soak_report import _expected_context
 
@@ -30,8 +30,11 @@ class ValidateReleaseSoakReportTests(unittest.TestCase):
 
             context = _expected_context(config, schedule=schedule, seed_manifest=seeds)
 
-        self.assertEqual(["compiled_32", "unknown_31"], context["labels"])
-        self.assertIn("sha256", context["schedule"])
+        self.assertEqual(
+            ["compiled_32", "unknown_31"],
+            cast(list[str], context["labels"]),
+        )
+        self.assertIn("sha256", cast(dict[str, object], context["schedule"]))
 
     def test_rejects_manifest_different_from_raw_config(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

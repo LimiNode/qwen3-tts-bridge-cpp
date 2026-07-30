@@ -54,8 +54,11 @@ class SchedulePcmParityTests(unittest.TestCase):
 
     def test_rejects_relative_boundary_regression(self) -> None:
         candidate = _case()
+        quality = candidate["boundary_quality"]
+        self.assertIsInstance(quality, dict)
+        assert isinstance(quality, dict)
         candidate["boundary_quality"] = {
-            **candidate["boundary_quality"],
+            **quality,
             "max_dc_delta_s16": 600.0,
         }
 

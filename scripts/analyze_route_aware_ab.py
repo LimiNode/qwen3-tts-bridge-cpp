@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -70,8 +71,8 @@ def _provenance(path: Path) -> dict[str, str]:
 
 
 def _build_pairs(
-    fixed_requests: list[object],
-    route_requests: list[object],
+    fixed_requests: Sequence[object],
+    route_requests: Sequence[object],
 ) -> list[dict[str, object]]:
     fixed = _by_label(fixed_requests, "fixed8")
     route = _by_label(route_requests, "route-aware")
@@ -112,7 +113,7 @@ def _metrics(values: dict[str, object]) -> dict[str, float]:
 
 
 def _by_label(
-    requests: list[object], side: str
+    requests: Sequence[object], side: str
 ) -> dict[str, list[dict[str, object]]]:
     grouped: dict[str, list[dict[str, object]]] = {}
     for request in requests:

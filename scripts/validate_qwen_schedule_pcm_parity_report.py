@@ -7,11 +7,18 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
-from qwen_schedule_pcm_parity import (
-    _compare,
-    _load_cases,
-    _validate_candidate_contract,
-)
+try:
+    from qwen_schedule_pcm_parity import (
+        _compare,
+        _load_cases,
+        _validate_candidate_contract,
+    )
+except ModuleNotFoundError:
+    from scripts.qwen_schedule_pcm_parity import (
+        _compare,
+        _load_cases,
+        _validate_candidate_contract,
+    )
 
 
 def main() -> int:
