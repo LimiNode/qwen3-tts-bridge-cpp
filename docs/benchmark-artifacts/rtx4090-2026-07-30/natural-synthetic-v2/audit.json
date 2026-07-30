@@ -1,0 +1,89 @@
+{
+  "audit_schema_version": 1,
+  "class_validation_failures": [],
+  "corpus_id": "streamer-game-voice-natural-v2",
+  "discovery_count": 1500,
+  "discovery_distribution": {
+    "categories": {
+      "game_commentary": 359,
+      "game_dialogue": 212,
+      "game_review": 240,
+      "live_chat": 480,
+      "stream_event": 121,
+      "transition": 88
+    },
+    "languages": {
+      "en": 300,
+      "mixed": 152,
+      "ru": 1048
+    },
+    "length_classes": {
+      "extended": 227,
+      "long": 376,
+      "medium": 601,
+      "short": 296
+    }
+  },
+  "discovery_sha256": "3247fa2560d5670706a9f63714bb242d9ba669602779720e357be42974eedbc1",
+  "filler_strategy": "none",
+  "generation_config_sha256": "224008d48f7b5df3b8a7763c6497a28c95c79a2d6eeee38b20a2f0e43f55eed8",
+  "generation_seed": 20260731,
+  "generator_source_sha256": "dc5b96f1e0bdb492c13891df99030d4535f4a8faf94942708626a0c2bc828e92",
+  "holdout_count": 500,
+  "holdout_distribution": {
+    "categories": {
+      "game_commentary": 121,
+      "game_dialogue": 68,
+      "game_review": 80,
+      "live_chat": 160,
+      "stream_event": 39,
+      "transition": 32
+    },
+    "languages": {
+      "en": 100,
+      "mixed": 48,
+      "ru": 352
+    },
+    "length_classes": {
+      "extended": 73,
+      "long": 124,
+      "medium": 199,
+      "short": 104
+    }
+  },
+  "holdout_sha256": "f7bf6b82c464986a4c155edec94cb07de06eef0b5eba47e9c0888e9401540027",
+  "language_validation_failures": [],
+  "manual_review_count": 100,
+  "manual_review_sha256": "10777fadd63b3c91476580ae5506c5fe71b37f0cbde03fd6fba7f8f33835d762",
+  "manual_review_status": "pending_manual_review",
+  "max_repeated_token_run": 1,
+  "overall_distribution": {
+    "categories": {
+      "game_commentary": 480,
+      "game_dialogue": 280,
+      "game_review": 320,
+      "live_chat": 640,
+      "stream_event": 160,
+      "transition": 120
+    },
+    "languages": {
+      "en": 400,
+      "mixed": 200,
+      "ru": 1400
+    },
+    "length_classes": {
+      "extended": 300,
+      "long": 500,
+      "medium": 800,
+      "short": 400
+    }
+  },
+  "record_count": 2000,
+  "template_data_sha256": "34d383bf39503ec0995cca7a5cbbd28e3333fc20b67aaf601522981df613164e",
+  "unique_text_count": 2000,
+  "uniqueness_percent": 100.0,
+  "word_count": {
+    "max": 66,
+    "min": 8
+  }
+}
