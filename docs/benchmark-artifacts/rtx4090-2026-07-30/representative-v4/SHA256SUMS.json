@@ -1,8 +1,9 @@
 {
-    "corpus_v4_artifact_manifest_schema_version":  1,
+    "corpus_v4_artifact_manifest_schema_version":  2,
     "corpus_id":  "representative-v4",
     "package_path":  "docs/benchmark-artifacts/rtx4090-2026-07-30/representative-v4",
-    "generated_from_commit":  "a9200ab7b43b8be454676ac2a94de2d7e8d2da56",
+    "tooling_commit":  "73b73b997c5fdb268b6a703f2625a02e38fc23d2",
+    "package_base_commit":  "e348cd6097b4a7484b4d03ca01655b8650563d98",
     "artifact_count":  49,
     "artifacts":  [
                       {
@@ -17,8 +18,8 @@
                       },
                       {
                           "path":  "full-batch-validation.json",
-                          "bytes":  3033,
-                          "sha256":  "cc2559e9d941b7967758028cc3a9ce60ae83509c97be83f7b80d13ee588d56e7"
+                          "bytes":  2213,
+                          "sha256":  "41687e08bd8c61ad2fcd3091fb1b1cf75ef3f4cf070ae7b866f0c5d213138b57"
                       },
                       {
                           "path":  "manual-review-100.jsonl",
@@ -92,8 +93,8 @@
                       },
                       {
                           "path":  "README.md",
-                          "bytes":  1279,
-                          "sha256":  "3696bde85c63bbd6e47752bc68e1997efcd13278d2ac6c09af3875964efc2b1c"
+                          "bytes":  1539,
+                          "sha256":  "5fc9d2571322662d165f762a680a52bb039ba9c936fd06ca0d26cb37a8ec7542"
                       },
                       {
                           "path":  "repair-overlay.json",
@@ -127,8 +128,8 @@
                       },
                       {
                           "path":  "runtime-split-audit.json",
-                          "bytes":  2855,
-                          "sha256":  "1c54bd6a5de8a89bd60f3f230bb2d3e1dddf9241449e5df2dd3abbfd1085af55"
+                          "bytes":  4647,
+                          "sha256":  "ceb3b074b6975c035d19d3499a2849f0588841a4d28aed332124d3386a7584c4"
                       },
                       {
                           "path":  "source.jsonl",
@@ -242,13 +243,13 @@
                       },
                       {
                           "path":  "targeted-review-98.jsonl",
-                          "bytes":  132315,
-                          "sha256":  "79ce4cfb30c8bd1b4925efab4ded4dcf9471eb1f224478b5b777d3fd0b317b77"
+                          "bytes":  228434,
+                          "sha256":  "d8dbee07d0a5023fd3d8fecf04068d99edf8357943b585029908a360fcc315cb"
                       },
                       {
                           "path":  "targeted-review-98-summary.json",
-                          "bytes":  1131,
-                          "sha256":  "90c5fb28275426ffac3f502a4dd0da88532358d519bb3a57522481613ad6b6eb"
+                          "bytes":  578,
+                          "sha256":  "91fae7408c2d7d66d8c144b2eed689eb2125026150c4cd4582ae0630de980547"
                       }
                   ]
 }

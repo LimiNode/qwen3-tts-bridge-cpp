@@ -1,10 +1,72 @@
 {
+  "batch_coverage": {
+    "discovery": [
+      "v4-b01",
+      "v4-b02",
+      "v4-b03",
+      "v4-b04",
+      "v4-b05",
+      "v4-b06",
+      "v4-b07",
+      "v4-b08",
+      "v4-b09",
+      "v4-b10"
+    ],
+    "manual_review": [
+      "v4-b01",
+      "v4-b02",
+      "v4-b03",
+      "v4-b04",
+      "v4-b05",
+      "v4-b06",
+      "v4-b07",
+      "v4-b08",
+      "v4-b09",
+      "v4-b10"
+    ],
+    "runtime_measurement_holdout": [
+      "v4-b01",
+      "v4-b02",
+      "v4-b03",
+      "v4-b04",
+      "v4-b05",
+      "v4-b06",
+      "v4-b07",
+      "v4-b08",
+      "v4-b09",
+      "v4-b10"
+    ],
+    "source": [
+      "v4-b01",
+      "v4-b02",
+      "v4-b03",
+      "v4-b04",
+      "v4-b05",
+      "v4-b06",
+      "v4-b07",
+      "v4-b08",
+      "v4-b09",
+      "v4-b10"
+    ]
+  },
   "corpus_id": "representative-v4",
   "corpus_v4_runtime_split_schema_version": 1,
   "discovery_count": 1500,
   "discovery_sha256": "893b3d061a77cfe446f1ba278cf02caf9b981f618b87fb6bbcf81a93acf6de47",
   "distributions": {
     "discovery": {
+      "batch_id": {
+        "v4-b01": 148,
+        "v4-b02": 148,
+        "v4-b03": 147,
+        "v4-b04": 149,
+        "v4-b05": 146,
+        "v4-b06": 154,
+        "v4-b07": 152,
+        "v4-b08": 155,
+        "v4-b09": 143,
+        "v4-b10": 158
+      },
       "category": {
         "conversation": 240,
         "game_commentary": 368,
@@ -28,6 +90,18 @@
       }
     },
     "manual_review": {
+      "batch_id": {
+        "v4-b01": 21,
+        "v4-b02": 13,
+        "v4-b03": 11,
+        "v4-b04": 7,
+        "v4-b05": 6,
+        "v4-b06": 7,
+        "v4-b07": 7,
+        "v4-b08": 10,
+        "v4-b09": 11,
+        "v4-b10": 7
+      },
       "category": {
         "conversation": 14,
         "game_commentary": 17,
@@ -51,6 +125,18 @@
       }
     },
     "runtime_measurement_holdout": {
+      "batch_id": {
+        "v4-b01": 52,
+        "v4-b02": 52,
+        "v4-b03": 53,
+        "v4-b04": 51,
+        "v4-b05": 54,
+        "v4-b06": 46,
+        "v4-b07": 48,
+        "v4-b08": 45,
+        "v4-b09": 57,
+        "v4-b10": 42
+      },
       "category": {
         "conversation": 80,
         "game_commentary": 122,
@@ -74,6 +160,18 @@
       }
     },
     "source": {
+      "batch_id": {
+        "v4-b01": 200,
+        "v4-b02": 200,
+        "v4-b03": 200,
+        "v4-b04": 200,
+        "v4-b05": 200,
+        "v4-b06": 200,
+        "v4-b07": 200,
+        "v4-b08": 200,
+        "v4-b09": 200,
+        "v4-b10": 200
+      },
       "category": {
         "conversation": 320,
         "game_commentary": 490,
