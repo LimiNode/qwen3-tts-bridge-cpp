@@ -111,3 +111,9 @@ Re-run the complete ten-batch validation, full repetition audit, runtime split,
 and create fresh targeted and general pending human-review forms for the
 candidate. AI pre-review can identify repair candidates, but it never satisfies
 either human-review gate or authorizes a runtime benchmark.
+
+Use `scripts/prepare_corpus_v4_ai_prereview_triage.py` to retain an AI
+pre-review as SHA-pinned evidence and to create separate pending authoring
+forms for its flagged rows. Those forms are not repair overlays and cannot be
+materialized; a human author must propose and review every replacement before a
+new candidate can be built.

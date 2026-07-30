@@ -1,0 +1,514 @@
+{
+  "corpus_v4_ai_prereview_triage_schema_version": 1,
+  "general_repair_candidates": [
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "label": "v4-b01-100",
+      "notes": "Семантически повторяет семейство: истории и действия вокруг manual save, autosave или cloud sync."
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage"
+      ],
+      "label": "v4-b01-192",
+      "notes": "Реплика звучит как отредактированный тезис из эссе: три симметричных утверждения и абстрактный вывод маловероятны как спонтанная речь."
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage"
+      ],
+      "label": "v4-b02-175",
+      "notes": "Фраза обращена к чату, но построена как готовый афоризм и звучит назидательно, а не как живой ответ."
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "label": "v4-b02-198",
+      "notes": "Семантически повторяет семейство: истории и действия вокруг manual save, autosave или cloud sync."
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "code_switch_naturalness"
+      ],
+      "label": "v4-b03-028",
+      "notes": "`фиксирую выбранный branch` — неестественный code-switch; для живой речи ожидается «ветку». Семантически повторяет семейство: истории и действия вокруг manual save, autosave или cloud sync."
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "label": "v4-b03-125",
+      "notes": "Семантически повторяет семейство: донат прошёл, но текст или карточка уведомления не появились."
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "code_switch_naturalness"
+      ],
+      "label": "v4-b03-187",
+      "notes": "`Хороший label` — неестественная английская вставка; вся фраза звучит как перевод технической заметки."
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "label": "v4-b07-073",
+      "notes": "Семантически повторяет семейство: донат прошёл, но текст или карточка уведомления не появились."
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "code_switch_naturalness"
+      ],
+      "label": "v4-b08-092",
+      "notes": "`Активируй emergency protocol` звучит как искусственное смешение языков; естественнее русское название или закреплённый внутриигровой термин с контекстом."
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage"
+      ],
+      "label": "v4-b09-001",
+      "notes": "Фраза слишком афористична и обобщённа без разговорного контекста; больше похожа на письменный слоган."
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "label": "v4-b09-121",
+      "notes": "Семантически повторяет семейство: истории и действия вокруг manual save, autosave или cloud sync."
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "label": "v4-b09-197",
+      "notes": "Семантически повторяет семейство: истории и действия вокруг manual save, autosave или cloud sync."
+    }
+  ],
+  "inputs": {
+    "general_ai_prereview_sha256": "d7cd1fed779238092abafa4b428b62c68af5ff2285ff3185d7270d5bbd217a1c",
+    "general_form_sha256": "76949a0235e8c6683c68bdd4b4685bdae9a40100a9a05355526ca2313af19bee",
+    "targeted_ai_prereview_sha256": "262c1946413607d2d2144d17b3db0b83296f654accd644d44888e9ac38a9c001",
+    "targeted_form_sha256": "4668d0689c6a2b111133088485a66d7bae260f4ff0103c34a6e1d86b033b2e96"
+  },
+  "review_status": "ai_prereview_not_human_gate",
+  "summary": {
+    "general_repair_candidate_count": 12,
+    "general_review_record_count": 100,
+    "targeted_repair_candidate_count": 52,
+    "targeted_review_record_count": 98
+  },
+  "targeted_repair_candidates": [
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage"
+      ],
+      "notes": "`Debug camera disappoints` грамматически возможно, но как устная оценка звучит неидиоматично и недоговорённо.",
+      "record_id": "v4-b01-014"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "semantic_repetition_acceptable",
+        "code_switch_naturalness"
+      ],
+      "notes": "Выражение `дождёмся end screen` звучит менее естественно, чем русская формулировка. `end screen` звучит вставкой; в русской речи естественнее «экран итогов». Семантически повторяет семейство: переход к другому проекту после итогового экрана или отчёта.",
+      "record_id": "v4-b02-028"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: однотипный ответ на исправление факта зрителем.",
+      "record_id": "v4-b02-166"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "generic_ai_phrasing"
+      ],
+      "notes": "Ответ построен как аккуратная четырёхчастная таксономия с абстрактным выводом; слышится заранее сгенерированным. Семантически повторяет семейство: длинный ответ чату с последовательным перечислением подсистем и метрик.",
+      "record_id": "v4-b02-180"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "generic_ai_phrasing"
+      ],
+      "notes": "Формулировка похожа на универсальный модерационный шаблон, а не на спонтанный ответ зрителю. Семантически повторяет семейство: формализованное предупреждение чату с удалением сообщений.",
+      "record_id": "v4-b03-160"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "metadata_only_replacement"
+      ],
+      "notes": "Семантически повторяет семейство: почти дословный переход «покажу материал и продолжу прохождение». Замена почти повторяет source: изменены указательные слова и `вернусь` заменено на `продолжу`.",
+      "record_id": "v4-b03-161"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "generic_ai_phrasing"
+      ],
+      "notes": "Перечень этапов и метрик слишком симметричен и учебно оформлен для живого ответа. Семантически повторяет семейство: длинный ответ чату с последовательным перечислением подсистем и метрик.",
+      "record_id": "v4-b03-180"
+    },
+    {
+      "issues": [
+        "category_fidelity",
+        "speech_intent_fidelity",
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Основная функция реплики — разбор ошибочного raid alert и ручная сверка события; это ближе к stream_event/moderation_or_technical, чем к transition. Семантически повторяет семейство: неверный или неполный alert с ручной сверкой события.",
+      "record_id": "v4-b04-073"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: переход к другому проекту после итогового экрана или отчёта.",
+      "record_id": "v4-b04-077"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "code_switch_naturalness"
+      ],
+      "notes": "Начало `В debug build` ломает естественный ритм русской реплики. `в debug build` не интегрировано в русскую грамматику; естественнее «в дебаг-билде» или «в отладочной сборке».",
+      "record_id": "v4-b04-121"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "metadata_only_replacement"
+      ],
+      "notes": "Семантически повторяет семейство: почти дословный переход «покажу материал и продолжу прохождение». Содержание и синтаксический каркас source сохранены почти без изменения.",
+      "record_id": "v4-b04-161"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: однотипный ответ на исправление факта зрителем.",
+      "record_id": "v4-b04-166"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "category_fidelity",
+        "speech_intent_fidelity",
+        "code_switch_naturalness"
+      ],
+      "notes": "Короткая фраза собрана вокруг двух англоязычных терминов и звучит как метаданные теста. Реплика сообщает технические действия с сохранением и синхронизацией; переход как самостоятельная функция почти не выражен. Связка `local save` и `cloud sync` в короткой фразе выглядит терминологической заготовкой.",
+      "record_id": "v4-b04-197"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: переход к другому проекту после итогового экрана или отчёта.",
+      "record_id": "v4-b05-028"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: переход к другому проекту после итогового экрана или отчёта.",
+      "record_id": "v4-b05-077"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "metadata_only_replacement"
+      ],
+      "notes": "Семантически повторяет семейство: почти дословный переход «покажу материал и продолжу прохождение». Замена в основном переставляет слова исходной реплики и не даёт самостоятельной переформулировки.",
+      "record_id": "v4-b05-161"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: однотипный ответ на исправление факта зрителем.",
+      "record_id": "v4-b05-166"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "semantic_repetition_acceptable",
+        "code_switch_naturalness"
+      ],
+      "notes": "Финальный оборот `не доверяю одному sync` нехарактерен для живой русской речи. `локальный backup` допустим, но оборот `не доверяю одному sync` звучит неестественно. Семантически повторяет семейство: история о неверном сохранении, профиле или cloud-sync.",
+      "record_id": "v4-b05-168"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "code_switch_naturalness"
+      ],
+      "notes": "`branch` и `recap решений` перегружают обычный переход между играми. Семантически повторяет семейство: переход к другому проекту после итогового экрана или отчёта.",
+      "record_id": "v4-b06-028"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: переход к другому проекту после итогового экрана или отчёта.",
+      "record_id": "v4-b06-077"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: скрытая или устаревшая аудиоцепочка после смены сцены.",
+      "record_id": "v4-b06-078"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: неверный или неполный alert с ручной сверкой события.",
+      "record_id": "v4-b06-109"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "code_switch_naturalness"
+      ],
+      "notes": "`dialogue system надёжно помнит выбор` звучит переводно и технически искусственно. `dialogue system` здесь не нужен и звучит хуже естественного «система диалогов».",
+      "record_id": "v4-b06-121"
+    },
+    {
+      "issues": [
+        "generic_ai_phrasing"
+      ],
+      "notes": "Мини-обзор чрезмерно плотно балансирует достоинство, недостаток и два примера по шаблону.",
+      "record_id": "v4-b06-156"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: формализованное предупреждение чату с удалением сообщений.",
+      "record_id": "v4-b06-160"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "metadata_only_replacement"
+      ],
+      "notes": "Семантически повторяет семейство: почти дословный переход «покажу материал и продолжу прохождение». Замена почти дословно повторяет source с минимальной заменой глаголов.",
+      "record_id": "v4-b06-161"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: однотипный ответ на исправление факта зрителем.",
+      "record_id": "v4-b06-166"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: история о неверном сохранении, профиле или cloud-sync.",
+      "record_id": "v4-b06-168"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: отключение мониторинга из-за эха или задержки.",
+      "record_id": "v4-b06-171"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: скрытая или устаревшая аудиоцепочка после смены сцены.",
+      "record_id": "v4-b07-029"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: однотипный ответ на исправление факта зрителем.",
+      "record_id": "v4-b07-166"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: история о неверном сохранении, профиле или cloud-sync.",
+      "record_id": "v4-b07-168"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: отключение мониторинга из-за эха или задержки.",
+      "record_id": "v4-b07-171"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: переход к другому проекту после итогового экрана или отчёта.",
+      "record_id": "v4-b08-028"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: неверный или неполный alert с ручной сверкой события.",
+      "record_id": "v4-b08-073"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: неверный или неполный alert с ручной сверкой события.",
+      "record_id": "v4-b08-109"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "code_switch_naturalness"
+      ],
+      "notes": "`navigation system работает стабильно` звучит как калька, а не живая реплика. `navigation system` неестественно встроено в русскую фразу.",
+      "record_id": "v4-b08-121"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable",
+        "generic_ai_phrasing"
+      ],
+      "notes": "Правило чата изложено как формальная политика с последовательностью санкций. Семантически повторяет семейство: формализованное предупреждение чату с удалением сообщений.",
+      "record_id": "v4-b08-160"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: однотипный ответ на исправление факта зрителем.",
+      "record_id": "v4-b08-166"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "semantic_repetition_acceptable",
+        "code_switch_naturalness"
+      ],
+      "notes": "Сочетание `navigation mod` и `preset` делает рассказ похожим на терминологический шаблон. `navigation mod` и `preset` подряд создают искусственный code-switch. Семантически повторяет семейство: история о неверном сохранении, профиле или cloud-sync.",
+      "record_id": "v4-b08-168"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: отключение мониторинга из-за эха или задержки.",
+      "record_id": "v4-b08-171"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "semantic_repetition_acceptable",
+        "code_switch_naturalness"
+      ],
+      "notes": "`итоговый farm report` звучит нарочито смешанно. `farm report` выглядит лишней английской вставкой в обычной стримерской реплике. Семантически повторяет семейство: переход к другому проекту после итогового экрана или отчёта.",
+      "record_id": "v4-b09-028"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: неверный или неполный alert с ручной сверкой события.",
+      "record_id": "v4-b09-073"
+    },
+    {
+      "issues": [
+        "generic_ai_phrasing"
+      ],
+      "notes": "Сообщение о сборе имеет отполированную структуру отчёта и повторяет типовой шаблон закрытия кампании.",
+      "record_id": "v4-b09-108"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "semantic_repetition_acceptable",
+        "code_switch_naturalness"
+      ],
+      "notes": "Реплика перегружена английскими названиями обычных элементов интерфейса. `Twitch gift`, `goal widget` и `alert` в одном сообщении перегружают code-switch. Семантически повторяет семейство: неверный или неполный alert с ручной сверкой события.",
+      "record_id": "v4-b09-109"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: формализованное предупреждение чату с удалением сообщений.",
+      "record_id": "v4-b09-160"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: однотипный ответ на исправление факта зрителем.",
+      "record_id": "v4-b09-166"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: история о неверном сохранении, профиле или cloud-sync.",
+      "record_id": "v4-b09-168"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: отключение мониторинга из-за эха или задержки.",
+      "record_id": "v4-b09-171"
+    },
+    {
+      "issues": [
+        "semantic_repetition_acceptable"
+      ],
+      "notes": "Семантически повторяет семейство: скрытая или устаревшая аудиоцепочка после смены сцены.",
+      "record_id": "v4-b10-029"
+    },
+    {
+      "issues": [
+        "generic_ai_phrasing"
+      ],
+      "notes": "Фраза о сборе построена как универсальный заготовленный отчёт с обещанием будущей публикации.",
+      "record_id": "v4-b10-108"
+    },
+    {
+      "issues": [
+        "naturalness",
+        "likely_real_usage",
+        "semantic_repetition_acceptable",
+        "code_switch_naturalness"
+      ],
+      "notes": "Оборот `сам stream продолжает работать` неестественен по-русски. `alert`, `audio widget` и особенно `сам stream` подряд звучат искусственно. Семантически повторяет семейство: неверный или неполный alert с ручной сверкой события.",
+      "record_id": "v4-b10-109"
+    }
+  ]
+}
