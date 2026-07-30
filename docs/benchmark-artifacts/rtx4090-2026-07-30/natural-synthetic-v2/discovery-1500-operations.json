@@ -1,0 +1,1 @@
+{"observed_outcomes": {"cancelled_after_audio": 1500}, "operation_count": 1500, "operation_schema_version": 1, "passed": true, "requested_outcomes": {"cancelled_after_audio": 1500, "cancelled_before_audio": 0, "completed": 0, "failed": 0}}
