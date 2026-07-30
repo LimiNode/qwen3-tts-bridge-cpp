@@ -35,10 +35,16 @@ repetition audit. Do not accept the observed category distribution as a new
 contract and do not repair the difference by relabelling existing text.
 
 Use `scripts/build_corpus_v4_repair_set.py` with the full audit JSON and the
-combined, ID-assigned JSONL. It selects the smallest deterministic set of
-records needed to clear audit overflows and adds only the required category
-replacement slots. Its output stores the source-record SHA-256 and every
-immutable field that a replacement must preserve.
+combined, ID-assigned JSONL. Pass the immutable
+`config/corpus-v4-repair-policy-v1.json` explicitly. The builder uses a
+deterministic greedy multicover, reverse-delete pass, and bounded local search;
+its selected count is not claimed to be a global minimum. Its report exposes
+each selection stage and the local-search trial count.
+
+Run the audit with `--corpus-id representative-v4`. The audit, repair policy,
+repair-set, and overlay are linked by SHA-256 values for the complete source
+JSONL, its `record_id` set, the audit, and the policy. The repair-set stores
+every immutable field that a replacement must preserve.
 
 Author one natural replacement per repair-set record in a separate overlay.
 Each overlay entry must preserve `batch_id`, `record_id`, `language_class`, and
@@ -48,9 +54,11 @@ record changing category is a replacement with new text and metadata, never a
 metadata-only reclassification.
 
 Run `scripts/materialize_corpus_v4_overlay.py` to build the candidate JSONL.
-It refuses incomplete overlays, altered source records, changed immutable
-fields, target mismatches, and incorrect hashes. Then re-run the full ten-batch
-validator, `scripts/audit_corpus_repetition.py`, and human review. Keep the
-source batches immutable; commit the repair-set, reviewed overlay,
-materialization report, and resulting validation artifacts together only after
-all gates pass.
+Pass the same source JSONL, audit, repair policy, and repair-set used to build
+the plan. It refuses incomplete overlays, altered source records, changed
+immutable fields, target mismatches, incorrect hashes, schema-version drift,
+or a broken provenance chain. Then re-run the full ten-batch validator,
+`scripts/audit_corpus_repetition.py --corpus-id representative-v4`, and human
+review. Keep the source batches immutable; commit the repair-set, reviewed
+overlay, materialization report, and resulting validation artifacts together
+only after all gates pass.

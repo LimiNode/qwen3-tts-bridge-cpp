@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -18,9 +19,17 @@ _SENTENCE_RE = re.compile(r"[^.!?]+")
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
+    parser.add_argument("--corpus-id")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    result = _audit(_load_records(args.input))
+    input_bytes = args.input.read_bytes()
+    records = _load_records_bytes(input_bytes)
+    result = _audit(
+        records,
+        source_records_sha256=hashlib.sha256(input_bytes).hexdigest(),
+        source_record_id_set_sha256=_record_id_set_sha256(records),
+        corpus_id=args.corpus_id,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, sort_keys=True), encoding="utf-8")
     print(json.dumps(result, sort_keys=True))
@@ -28,9 +37,13 @@ def main() -> int:
 
 
 def _load_records(path: Path) -> list[dict[str, object]]:
+    return _load_records_bytes(path.read_bytes())
+
+
+def _load_records_bytes(value: bytes) -> list[dict[str, object]]:
     records = []
     for line_number, line in enumerate(
-        path.read_text(encoding="utf-8").splitlines(), 1
+        value.decode("utf-8").splitlines(), 1
     ):
         if not line.strip():
             continue
@@ -43,7 +56,13 @@ def _load_records(path: Path) -> list[dict[str, object]]:
     return records
 
 
-def _audit(records: list[dict[str, object]]) -> dict[str, Any]:
+def _audit(
+    records: list[dict[str, object]],
+    *,
+    source_records_sha256: str | None = None,
+    source_record_id_set_sha256: str | None = None,
+    corpus_id: str | None = None,
+) -> dict[str, Any]:
     texts = Counter(normalize_exact_text(str(record["text"])) for record in records)
     sentences = Counter()
     closings = Counter()
@@ -93,8 +112,8 @@ def _audit(records: list[dict[str, object]]) -> dict[str, Any]:
     passed = not violations["exact_text"] and not violations["sentence"]
     passed = passed and not violations["closing_block"]
     passed = passed and not any(violations["ngrams"].values())
-    return {
-        "corpus_repetition_audit_schema_version": 3,
+    result: dict[str, Any] = {
+        "corpus_repetition_audit_schema_version": 4,
         "record_count": len(records),
         "limits": limits,
         "frequencies": {
@@ -125,6 +144,34 @@ def _audit(records: list[dict[str, object]]) -> dict[str, Any]:
         },
         "passed": passed,
     }
+    if source_records_sha256 is not None or source_record_id_set_sha256 is not None:
+        if not _is_sha256(source_records_sha256) or not _is_sha256(
+            source_record_id_set_sha256
+        ):
+            raise RuntimeError("audit source provenance must contain SHA-256 values")
+        result["source_records_sha256"] = source_records_sha256
+        result["source_record_id_set_sha256"] = source_record_id_set_sha256
+    if corpus_id is not None:
+        if not isinstance(corpus_id, str) or not corpus_id:
+            raise RuntimeError("audit corpus_id is invalid")
+        result["corpus_id"] = corpus_id
+    return result
+
+
+def _record_id_set_sha256(records: list[dict[str, object]]) -> str:
+    labels = sorted(
+        _record_label(record, index) for index, record in enumerate(records, 1)
+    )
+    encoded = "".join(f"{label}\n" for label in labels).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _is_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 
 def _tokens(text: str) -> list[str]:

@@ -65,6 +65,24 @@ class CorpusRepetitionAuditTests(unittest.TestCase):
             2,
             result["violations"]["closing_block"]["дальше идём спокойно"],
         )
+    def test_source_provenance_is_included_when_supplied(self) -> None:
+        digest = "a" * 64
+        result = _audit(
+            [{"record_id": "v4-b01-001", "text": "One distinct line."}],
+            source_records_sha256=digest,
+            source_record_id_set_sha256="b" * 64,
+        )
+
+        self.assertEqual(4, result["corpus_repetition_audit_schema_version"])
+        self.assertEqual(digest, result["source_records_sha256"])
+        self.assertEqual("b" * 64, result["source_record_id_set_sha256"])
+
+    def test_partial_source_provenance_is_rejected(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "source provenance"):
+            _audit(
+                [{"text": "One distinct line."}],
+                source_records_sha256="a" * 64,
+            )
 
 
 if __name__ == "__main__":

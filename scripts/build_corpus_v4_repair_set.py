@@ -1,33 +1,51 @@
-"""Select the smallest deterministic corpus-v4 replacement set from an audit."""
+"""Build a provenance-pinned deterministic corpus-v4 repair set from an audit."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import itertools
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
 try:
+    from scripts.audit_corpus_repetition import _is_sha256, _record_id_set_sha256
     from scripts.validate_corpus_v4_batches import _GLOBAL_QUOTAS
 except ModuleNotFoundError:
+    from audit_corpus_repetition import _is_sha256, _record_id_set_sha256
     from validate_corpus_v4_batches import _GLOBAL_QUOTAS
+
+_AUDIT_SCHEMA_VERSION = 4
+_POLICY_SCHEMA_VERSION = 1
+_REPAIR_SET_SCHEMA_VERSION = 2
+_MAX_LOCAL_IMPROVEMENT_TRIALS = 25_000
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--audit", type=Path, required=True)
     parser.add_argument("--records", type=Path, required=True)
+    parser.add_argument("--repair-policy", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
 
     audit_bytes = args.audit.read_bytes()
+    records_bytes = args.records.read_bytes()
+    policy_bytes = args.repair_policy.read_bytes()
     audit = _load_object_bytes(audit_bytes, "audit")
-    records = _load_records(args.records)
+    records = _load_records_bytes(records_bytes)
+    policy = _load_object_bytes(policy_bytes, "repair policy")
     repair_set = _build_repair_set(
-        audit, records, hashlib.sha256(audit_bytes).hexdigest()
+        audit,
+        records,
+        source_audit_sha256=hashlib.sha256(audit_bytes).hexdigest(),
+        source_records_sha256=hashlib.sha256(records_bytes).hexdigest(),
+        source_record_id_set_sha256=_record_id_set_sha256(records),
+        repair_policy=policy,
+        repair_policy_sha256=hashlib.sha256(policy_bytes).hexdigest(),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
@@ -47,33 +65,196 @@ def main() -> int:
 def _build_repair_set(
     audit: dict[str, object],
     records: list[dict[str, object]],
-    audit_sha256: str,
     *,
+    source_audit_sha256: str,
+    source_records_sha256: str,
+    source_record_id_set_sha256: str,
+    repair_policy: dict[str, object],
+    repair_policy_sha256: str,
     category_quotas: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     records_by_id = _records_by_id(records)
-    groups = _groups(audit, records_by_id)
-    selected, reasons = _select_repetition_repairs(groups, records_by_id)
-    rebalanced = _add_category_rebalance(
-        selected,
-        reasons,
+    _validate_audit_provenance(
+        audit,
+        records,
+        source_records_sha256,
+        source_record_id_set_sha256,
+    )
+    policy = _validate_policy(
+        repair_policy,
         records_by_id,
         category_quotas or _GLOBAL_QUOTAS["category"],
     )
+    if audit["corpus_id"] != policy["corpus_id"]:
+        raise RuntimeError("audit corpus_id does not match repair policy")
+    if not _is_sha256(source_audit_sha256) or not _is_sha256(repair_policy_sha256):
+        raise RuntimeError("repair inputs must use SHA-256 values")
+
+    groups = _groups(audit, records_by_id)
+    selected, reasons = _select_repetition_repairs(
+        groups, records_by_id, policy["selection_priority"]
+    )
+    greedy_selected_count = len(selected)
+    target_by_id = _add_category_rebalance(
+        selected,
+        reasons,
+        records_by_id,
+        policy["allowed_category_replacements"],
+    )
+    post_rebalance_selected_count = len(selected)
+    selected = _reverse_prune(selected, target_by_id, groups)
+    reverse_pruned_selected_count = len(selected)
+    selected, local_metrics = _bounded_local_improvement(
+        selected,
+        target_by_id,
+        groups,
+    )
+    selected = _reverse_prune(selected, target_by_id, groups)
+    _add_missing_reasons(selected, reasons, groups)
     entries = [
-        _entry(record_id, records_by_id[record_id], reasons[record_id], rebalanced)
+        _entry(record_id, records_by_id[record_id], reasons[record_id], target_by_id)
         for record_id in sorted(selected)
     ]
+    category_rebalance_record_count = len(target_by_id)
+    metrics = {
+        "greedy_repetition_selected_count": greedy_selected_count,
+        "post_rebalance_selected_count": post_rebalance_selected_count,
+        "reverse_pruned_selected_count": reverse_pruned_selected_count,
+        "local_improved_selected_count": len(selected),
+        "category_rebalance_record_count": category_rebalance_record_count,
+        "repetition_only_record_count": len(selected) - category_rebalance_record_count,
+        **local_metrics,
+    }
     return {
-        "corpus_v4_repair_set_schema_version": 1,
-        "source_audit_sha256": audit_sha256,
+        "corpus_v4_repair_set_schema_version": _REPAIR_SET_SCHEMA_VERSION,
+        "corpus_id": policy["corpus_id"],
+        "source_audit_sha256": source_audit_sha256,
+        "source_records_sha256": source_records_sha256,
+        "source_record_id_set_sha256": source_record_id_set_sha256,
         "source_record_count": len(records),
+        "repair_policy_sha256": repair_policy_sha256,
+        "repair_policy_id": policy["corpus_id"],
         "implicated_record_count": len(
             {record_id for group in groups for record_id in group["occurrences"]}
         ),
         "selected_record_count": len(entries),
-        "selection_policy": "greedy_overflow_then_category_quota",
+        "selection_policy": (
+            "deterministic_greedy_multicover_reverse_delete_bounded_local_search"
+        ),
+        "selection_metrics": metrics,
         "records": entries,
+    }
+
+
+def _validate_audit_provenance(
+    audit: dict[str, object],
+    records: list[dict[str, object]],
+    source_records_sha256: str,
+    source_record_id_set_sha256: str,
+) -> None:
+    expected_fields = {
+        "corpus_repetition_audit_schema_version",
+        "corpus_id",
+        "record_count",
+        "source_records_sha256",
+        "source_record_id_set_sha256",
+        "limits",
+        "frequencies",
+        "violations",
+        "violation_records",
+        "passed",
+    }
+    if set(audit) != expected_fields:
+        raise RuntimeError("audit top-level schema is invalid")
+    if audit.get("corpus_repetition_audit_schema_version") != _AUDIT_SCHEMA_VERSION:
+        raise RuntimeError("audit schema version is unsupported")
+    if audit.get("record_count") != len(records):
+        raise RuntimeError("audit record count does not match source records")
+    if not isinstance(audit.get("corpus_id"), str) or not audit["corpus_id"]:
+        raise RuntimeError("audit corpus_id is invalid")
+    if audit.get("source_records_sha256") != source_records_sha256:
+        raise RuntimeError("audit source records SHA does not match")
+    if audit.get("source_record_id_set_sha256") != source_record_id_set_sha256:
+        raise RuntimeError("audit source record ID set SHA does not match")
+
+
+def _validate_policy(
+    policy: dict[str, object],
+    records_by_id: dict[str, dict[str, object]],
+    targets: dict[str, int],
+) -> dict[str, Any]:
+    expected_fields = {
+        "corpus_v4_repair_policy_schema_version",
+        "corpus_id",
+        "allowed_category_replacements",
+        "selection_priority",
+    }
+    if set(policy) != expected_fields:
+        raise RuntimeError("repair policy top-level schema is invalid")
+    if policy.get("corpus_v4_repair_policy_schema_version") != _POLICY_SCHEMA_VERSION:
+        raise RuntimeError("repair policy schema version is unsupported")
+    corpus_id = policy.get("corpus_id")
+    if not isinstance(corpus_id, str) or not corpus_id:
+        raise RuntimeError("repair policy corpus_id is invalid")
+    raw_replacements = policy.get("allowed_category_replacements")
+    if not isinstance(raw_replacements, dict):
+        raise RuntimeError("repair policy replacements are invalid")
+    replacements: dict[str, dict[str, int]] = {}
+    for source, target_counts in raw_replacements.items():
+        if not isinstance(source, str) or source not in targets:
+            raise RuntimeError("repair policy source category is invalid")
+        if not isinstance(target_counts, dict) or not target_counts:
+            raise RuntimeError("repair policy target categories are invalid")
+        parsed = {}
+        for target, count in target_counts.items():
+            if (
+                not isinstance(target, str)
+                or target not in targets
+                or not isinstance(count, int)
+                or isinstance(count, bool)
+                or count <= 0
+            ):
+                raise RuntimeError("repair policy target count is invalid")
+            parsed[target] = count
+        replacements[source] = parsed
+    priority = policy.get("selection_priority")
+    if (
+        not isinstance(priority, list)
+        or not all(isinstance(category, str) for category in priority)
+        or len(priority) != len(set(priority))
+        or set(priority) != set(replacements)
+    ):
+        raise RuntimeError("repair policy selection_priority is invalid")
+
+    source_counts = Counter(
+        str(record.get("category", "")) for record in records_by_id.values()
+    )
+    expected_sources = {
+        category: source_counts[category] - target
+        for category, target in targets.items()
+        if source_counts[category] > target
+    }
+    expected_targets = {
+        category: target - source_counts[category]
+        for category, target in targets.items()
+        if source_counts[category] < target
+    }
+    policy_sources = {
+        source: sum(target_counts.values())
+        for source, target_counts in replacements.items()
+    }
+    policy_targets = Counter()
+    for target_counts in replacements.values():
+        policy_targets.update(target_counts)
+    if policy_sources != expected_sources or dict(policy_targets) != expected_targets:
+        raise RuntimeError("repair policy does not match source category imbalance")
+    return {
+        "corpus_id": corpus_id,
+        "allowed_category_replacements": replacements,
+        "selection_priority": {
+            category: len(priority) - index
+            for index, category in enumerate(priority)
+        },
     }
 
 
@@ -84,17 +265,15 @@ def _load_object_bytes(value: bytes, name: str) -> dict[str, object]:
     return loaded
 
 
-def _load_records(path: Path) -> list[dict[str, object]]:
+def _load_records_bytes(value: bytes) -> list[dict[str, object]]:
     records = []
-    for line_number, line in enumerate(
-        path.read_text(encoding="utf-8").splitlines(), 1
-    ):
+    for line_number, line in enumerate(value.decode("utf-8").splitlines(), 1):
         if not line.strip():
             continue
-        value = json.loads(line)
-        if not isinstance(value, dict):
+        loaded = json.loads(line)
+        if not isinstance(loaded, dict):
             raise RuntimeError(f"records line {line_number} is not an object")
-        records.append(value)
+        records.append(loaded)
     return records
 
 
@@ -113,9 +292,9 @@ def _records_by_id(records: list[dict[str, object]]) -> dict[str, dict[str, obje
 def _groups(
     audit: dict[str, object], records_by_id: dict[str, dict[str, object]]
 ) -> list[dict[str, Any]]:
-    limits = audit.get("limits")
-    violations = audit.get("violations")
-    violation_records = audit.get("violation_records")
+    limits = audit["limits"]
+    violations = audit["violations"]
+    violation_records = audit["violation_records"]
     if not isinstance(limits, dict):
         raise RuntimeError("audit has no limits object")
     if not isinstance(violations, dict) or not isinstance(violation_records, dict):
@@ -189,7 +368,9 @@ def _group_id(kind: str, value: str) -> str:
 
 
 def _select_repetition_repairs(
-    groups: list[dict[str, Any]], records_by_id: dict[str, dict[str, object]]
+    groups: list[dict[str, Any]],
+    records_by_id: dict[str, dict[str, object]],
+    category_priority: dict[str, int],
 ) -> tuple[set[str], dict[str, set[str]]]:
     selected: set[str] = set()
     reasons: dict[str, set[str]] = defaultdict(set)
@@ -214,7 +395,9 @@ def _select_repetition_repairs(
             candidates,
             key=lambda record_id: (
                 -_coverage(record_id, remaining, overflow),
-                -_category_priority(records_by_id[record_id]),
+                -category_priority.get(
+                    str(records_by_id[record_id].get("category")), 0
+                ),
                 record_id,
             ),
         )
@@ -235,42 +418,14 @@ def _coverage(
     )
 
 
-def _category_priority(record: dict[str, object]) -> int:
-    category = record.get("category")
-    if not isinstance(category, str):
-        return 0
-    return {"game_commentary": 3, "conversation": 2, "stream_event": 1}.get(
-        category, 0
-    )
-
-
 def _add_category_rebalance(
     selected: set[str],
     reasons: dict[str, set[str]],
     records_by_id: dict[str, dict[str, object]],
-    targets: dict[str, int],
+    replacements: dict[str, dict[str, int]],
 ) -> dict[str, str]:
-    source_counts = Counter(
-        str(record.get("category", "")) for record in records_by_id.values()
-    )
-    replacements = {
-        "game_commentary": (
-            "game_review",
-            source_counts["game_commentary"] - targets["game_commentary"],
-        ),
-        "conversation": (
-            "transition",
-            source_counts["conversation"] - targets["conversation"],
-        ),
-        "stream_event": (
-            "transition",
-            source_counts["stream_event"] - targets["stream_event"],
-        ),
-    }
     target_by_id = {}
-    for source_category, (target_category, required) in replacements.items():
-        if required < 0:
-            raise RuntimeError(f"category {source_category} is below its quota")
+    for source_category, target_counts in replacements.items():
         candidates = sorted(
             record_id
             for record_id, record in records_by_id.items()
@@ -278,22 +433,107 @@ def _add_category_rebalance(
         )
         preferred = [record_id for record_id in candidates if record_id in selected]
         ordered = preferred + [item for item in candidates if item not in selected]
-        chosen = ordered[:required]
-        if len(chosen) != required:
-            raise RuntimeError(
-                f"not enough {source_category} records for category rebalance"
-            )
-        for record_id in chosen:
-            selected.add(record_id)
-            reasons[record_id].add("category_quota_rebalance")
-            target_by_id[record_id] = target_category
-    expected_counts = source_counts.copy()
-    for record_id, target_category in target_by_id.items():
-        expected_counts[str(records_by_id[record_id]["category"])] -= 1
-        expected_counts[target_category] += 1
-    if any(expected_counts[category] != target for category, target in targets.items()):
-        raise RuntimeError("category rebalance does not reach the frozen quotas")
+        offset = 0
+        for target_category, required in sorted(target_counts.items()):
+            chosen = ordered[offset : offset + required]
+            if len(chosen) != required:
+                raise RuntimeError(
+                    f"not enough {source_category} records for category rebalance"
+                )
+            for record_id in chosen:
+                selected.add(record_id)
+                reasons[record_id].add("category_quota_rebalance")
+                target_by_id[record_id] = target_category
+            offset += required
     return target_by_id
+
+
+def _reverse_prune(
+    selected: set[str], target_by_id: dict[str, str], groups: list[dict[str, Any]]
+) -> set[str]:
+    result = set(selected)
+    fixed = set(target_by_id)
+    for record_id in sorted(result.difference(fixed), reverse=True):
+        candidate = result.difference({record_id})
+        if _repetition_satisfied(candidate, groups):
+            result = candidate
+    return result
+
+
+def _bounded_local_improvement(
+    selected: set[str],
+    target_by_id: dict[str, str],
+    groups: list[dict[str, Any]],
+) -> tuple[set[str], dict[str, int]]:
+    result = set(selected)
+    fixed = set(target_by_id)
+    all_candidates = sorted(
+        {record_id for group in groups for record_id in group["occurrences"]}
+    )
+    trials = 0
+    improvements = 0
+    while trials < _MAX_LOCAL_IMPROVEMENT_TRIALS:
+        removable = sorted(result.difference(fixed))
+        replacement_pool = [
+            record_id for record_id in all_candidates if record_id not in result
+        ]
+        move = _find_local_move(
+            result,
+            removable,
+            replacement_pool,
+            groups,
+            _MAX_LOCAL_IMPROVEMENT_TRIALS - trials,
+        )
+        trials += move["trials"]
+        if move["selected"] is None:
+            break
+        result = move["selected"]
+        result = _reverse_prune(result, target_by_id, groups)
+        improvements += 1
+    return result, {
+        "bounded_local_improvement_trial_count": trials,
+        "bounded_local_improvement_count": improvements,
+    }
+
+
+def _find_local_move(
+    selected: set[str],
+    removable: list[str],
+    replacement_pool: list[str],
+    groups: list[dict[str, Any]],
+    max_trials: int,
+) -> dict[str, Any]:
+    trials = 0
+    for remove_count, add_count in ((2, 1), (3, 2)):
+        for removed in itertools.combinations(removable, remove_count):
+            for added in itertools.combinations(replacement_pool, add_count):
+                trials += 1
+                candidate = selected.difference(removed).union(added)
+                if _repetition_satisfied(candidate, groups):
+                    return {"selected": candidate, "trials": trials}
+                if trials >= max_trials:
+                    return {"selected": None, "trials": trials}
+    return {"selected": None, "trials": trials}
+
+
+def _repetition_satisfied(selected: set[str], groups: list[dict[str, Any]]) -> bool:
+    return all(
+        sum(
+            count
+            for record_id, count in group["occurrences"].items()
+            if record_id not in selected
+        )
+        <= group["limit"]
+        for group in groups
+    )
+
+
+def _add_missing_reasons(
+    selected: set[str], reasons: dict[str, set[str]], groups: list[dict[str, Any]]
+) -> None:
+    for group in groups:
+        for record_id in selected.intersection(group["occurrences"]):
+            reasons[record_id].add(group["id"])
 
 
 def _entry(
@@ -329,10 +569,15 @@ def _record_sha256(record: dict[str, object]) -> str:
 def _report(repair_set: dict[str, Any]) -> dict[str, Any]:
     records = repair_set["records"]
     return {
-        "corpus_v4_repair_report_schema_version": 1,
+        "corpus_v4_repair_report_schema_version": 2,
+        "corpus_id": repair_set["corpus_id"],
         "source_audit_sha256": repair_set["source_audit_sha256"],
+        "source_records_sha256": repair_set["source_records_sha256"],
+        "repair_policy_sha256": repair_set["repair_policy_sha256"],
         "implicated_record_count": repair_set["implicated_record_count"],
         "selected_record_count": repair_set["selected_record_count"],
+        "selection_policy": repair_set["selection_policy"],
+        "selection_metrics": repair_set["selection_metrics"],
         "selected_by_batch": dict(
             sorted(Counter(entry["preserve"]["batch_id"] for entry in records).items())
         ),
@@ -355,9 +600,6 @@ def _report(repair_set: dict[str, Any]) -> dict[str, Any]:
                     entry["preserve"]["intended_length_class"] for entry in records
                 ).items()
             )
-        ),
-        "quota_rebalance_record_count": sum(
-            "category_quota_rebalance" in entry["repair_reasons"] for entry in records
         ),
     }
 
