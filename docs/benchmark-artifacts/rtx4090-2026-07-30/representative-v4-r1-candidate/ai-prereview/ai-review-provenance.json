@@ -1,0 +1,10 @@
+{
+  "ai_review_provenance_schema_version": 1,
+  "evidence_class": "advisory_ai_prereview_not_human_gate",
+  "import_status": "model_prompt_and_rubric_not_supplied",
+  "targeted_reviewer_or_model_id": "not_supplied_by_import",
+  "general_reviewer_or_model_id": "not_supplied_by_import",
+  "prompt_sha256": null,
+  "rubric_sha256": null,
+  "preparer_commit": "0f0f799"
+}

@@ -113,7 +113,30 @@ candidate. AI pre-review can identify repair candidates, but it never satisfies
 either human-review gate or authorizes a runtime benchmark.
 
 Use `scripts/prepare_corpus_v4_ai_prereview_triage.py` to retain an AI
-pre-review as SHA-pinned evidence and to create separate pending authoring
-forms for its flagged rows. Those forms are not repair overlays and cannot be
-materialized; a human author must propose and review every replacement before a
-new candidate can be built.
+pre-review as SHA-pinned evidence and to create separate pending human
+adjudication forms for its flagged rows. It requires the exact 98-record
+targeted and 100-record general forms, validates their schemas and scopes,
+allows either scope to have zero findings, and rejects an overlap between the
+two repair scopes.
+
+Each human adjudication row must record one of two decisions:
+
+```text
+replace
+keep_after_human_review
+```
+
+Both decisions require a non-empty `author_id` and `decision_notes`. A
+`replace` decision also requires a non-empty `proposed_replacement_text`; a
+`keep_after_human_review` decision requires that field to remain empty. AI
+drafts are suggestions only and cannot make either decision. Every form row is
+also pinned to the exact SHA-256 of the base candidate.
+
+Use `scripts/build_corpus_v4_ai_prereview_revision.py` only after every
+flagged row has completed human adjudication. It verifies the triage manifest,
+both frozen review forms, both AI pre-reviews, the completed forms, and the
+base candidate by SHA-256. It applies text-only replacements, preserves all
+candidate metadata, validates word ranges and canonical uniqueness, and writes
+a provenance report with targeted/general replace/keep counts. Run the normal
+full batch validator and repetition audit on its output before considering a
+new candidate revision.
