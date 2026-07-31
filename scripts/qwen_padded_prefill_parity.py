@@ -37,7 +37,7 @@ def main() -> int:
     real_length = int(baseline_metadata["talker_prefill_length"])
     if not args.minimum_length <= real_length < args.target_length:
         report = {
-            "schema_version": 1,
+            "schema_version": 2,
             "status": "skipped_outside_research_range",
             "real_prefill_length": real_length,
             "minimum_length": args.minimum_length,
@@ -60,7 +60,7 @@ def main() -> int:
     sampled_baseline = _generate_trace(model, args, padded=False, do_sample=True)
     sampled_padded = _generate_trace(model, args, padded=True, do_sample=True)
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "status": "passed" if all(
             (
                 prefill["first_logits_exact"],
@@ -78,17 +78,32 @@ def main() -> int:
         "real_prefill_length": real_length,
         "padded_prefill_length": int(padded_metadata["talker_prefill_length"]),
         "left_padding_tokens": int(padded_metadata["prefill_padding_left_tokens"]),
-        "prefill": prefill,
-        "greedy": _trace_comparison(greedy_baseline, greedy_padded),
-        "seeded_sampling": _trace_comparison(sampled_baseline, sampled_padded),
+        "observed": {
+            "prefill": prefill,
+            "greedy": _trace_comparison(greedy_baseline, greedy_padded),
+            "seeded_sampling": _trace_comparison(sampled_baseline, sampled_padded),
+            "terminal_state": {
+                "equal_under_max_new_tokens_cap": (
+                    greedy_baseline["terminal"] == greedy_padded["terminal"]
+                    and sampled_baseline["terminal"] == sampled_padded["terminal"]
+                ),
+                "natural_eos_observed": False,
+            },
+        },
+        "not_independently_proven": [
+            "attention_mask_parity",
+            "position_id_parity",
+            "rope_position_parity",
+            "pad_tokens_absent_from_generation_state",
+        ],
         "checks": {
             "runtime_padding_implementation": True,
-            "attention_mask_parity": prefill["first_logits_exact"],
-            "position_id_parity": prefill["first_logits_exact"],
-            "rope_position_parity": prefill["first_logits_exact"],
+            "attention_mask_parity_direct": False,
+            "position_id_parity_direct": False,
+            "rope_position_parity_direct": False,
             "kv_cache_real_tokens_only": prefill["kv_real_tokens_exact"],
             "first_step_logits_parity": prefill["first_logits_exact"],
-            "pad_tokens_absent_from_generation_state": True,
+            "pad_tokens_absent_from_generation_state_direct": False,
             "greedy_codec_trace_exact": _traces_equal(
                 greedy_baseline,
                 greedy_padded,
@@ -97,10 +112,7 @@ def main() -> int:
                 sampled_baseline,
                 sampled_padded,
             ),
-            "terminal_outcome_parity": (
-                greedy_baseline["terminal"] == greedy_padded["terminal"]
-                and sampled_baseline["terminal"] == sampled_padded["terminal"]
-            ),
+            "terminal_eos_parity": False,
             "rng_neutrality": (
                 greedy_baseline["rng_state_sha256"] == greedy_padded["rng_state_sha256"]
                 and sampled_baseline["rng_state_sha256"]

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "source_repository": "https://github.com/LimiNode/faster-qwen3-tts.git",
+  "source_branch": "research/padded-prefill-16-32-to-32",
+  "base_commit": "58b063742f7707972ddc74a433a7f205ec471e65",
+  "base_source_tree_sha": "d0462ab87261a3e080096f515232610b4eb7523c",
+  "base_module_tree_sha": "97873fdad84dbd52e3aeac16afe42a3e150b15cc",
+  "source_commit": "b70175f531e375f01d4206b605afc2500c2db94e",
+  "source_tree_sha": "4c9f49e2f1e45a02cc93d887ddf396c9064cf6ba",
+  "module_tree_sha": "3997c41d750bb0d6db39639973c71b192543e240",
+  "patch_path": "faster-qwen-padded-prefill-patch/0001-feat-research-add-fail-closed-padded-prefill-prototype.patch",
+  "patch_sha256": "679ebc472b696a5fdac6d1fd3be0edf04b728ae9077339aa35c56336fc8cdf40",
+  "bundle_path": "faster-qwen-padded-prefill-patch/faster-qwen3-tts-58b0637-to-b70175f.bundle",
+  "bundle_sha256": "c2c3596d138ba1e08a034b398a169f042bf51c7ab8dacade270dcc9ebb3f17a7",
+  "bundle_requires_base_commit": true
+}

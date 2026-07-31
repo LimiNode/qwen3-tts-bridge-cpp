@@ -73,5 +73,16 @@ release route.
 Do not relax the exact checks to revive this prototype. The existing
 exact-length allowlist remains the only accepted accelerated prefill route.
 
+## Deferred Alternatives
+
+The rejection is specific to left-padding actual lengths 16..31 to 32 through
+the current explicit-mask BF16+SDPA FasterQwen path. It does not establish that
+all forms of bucketization are impossible. The following remain untested and
+are not current priorities:
+
+- right-padding with a real-token gather and KV compaction proof;
+- dynamic-shape compiled prefill;
+- architectural prefill batching without inserted sequence positions.
+
 Neither this research path nor a positive holdout changes a product default,
 the release profile, or the deferred `5->8->12` scheduler experiment.

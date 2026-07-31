@@ -1,0 +1,384 @@
+From b70175f531e375f01d4206b605afc2500c2db94e Mon Sep 17 00:00:00 2001
+From: Aster Seker <git.electroyar@gmail.com>
+Date: Fri, 31 Jul 2026 23:15:52 +0300
+Subject: [PATCH] feat(research): add fail-closed padded prefill prototype
+
+---
+ faster_qwen3_tts/model.py             |  25 +++++-
+ faster_qwen3_tts/streaming.py         | 120 +++++++++++++++++++++++++-
+ faster_qwen3_tts/talker_graph.py      |   8 +-
+ tests/test_padded_prefill_research.py |  98 +++++++++++++++++++++
+ 4 files changed, 247 insertions(+), 4 deletions(-)
+ create mode 100644 tests/test_padded_prefill_research.py
+
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 3f62c19..46c40da 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -20,7 +20,11 @@ from .prefill_compat import (
+     normalize_prefill_compile_compat_mode,
+     prefill_compile_compat_metadata,
+ )
+-from .streaming import _normalize_prefill_backend, clear_prefill_compile_cache
++from .streaming import (
++    _normalize_prefill_backend,
++    clear_prefill_compile_cache,
++    pad_prefill_inputs_left,
++)
+ from .utils import suppress_flash_attn_warning
+ 
+ logger = logging.getLogger(__name__)
+@@ -49,6 +53,7 @@ class FasterQwen3TTS:
+         prefill_compile_on_miss: bool = True,
+         prefill_unknown_shape_policy: str = "eager",
+         prefill_require_precompiled: bool = False,
++        prefill_pad_to_length: int | None = None,
+     ):
+         self.model = base_model  # The qwen-tts Qwen3TTSModel instance
+         self.predictor_graph = predictor_graph
+@@ -77,6 +82,9 @@ class FasterQwen3TTS:
+         if self.prefill_unknown_shape_policy not in {"eager", "error"}:
+             raise ValueError("prefill_unknown_shape_policy must be eager or error")
+         self.prefill_require_precompiled = bool(prefill_require_precompiled)
++        if prefill_pad_to_length is not None and prefill_pad_to_length <= 0:
++            raise ValueError("prefill_pad_to_length must be positive when provided")
++        self.prefill_pad_to_length = prefill_pad_to_length
+         self.sample_rate = self._infer_sample_rate(base_model)
+         self._warmed_up = False
+         self._voice_prompt_cache = {}  # Cache (ref_audio, ref_text) -> (vcp, ref_ids)
+@@ -229,6 +237,7 @@ class FasterQwen3TTS:
+         prefill_compile_on_miss: bool = True,
+         prefill_unknown_shape_policy: str = "eager",
+         prefill_require_precompiled: bool = False,
++        prefill_pad_to_length: int | None = None,
+     ):
+         """
+         Load Qwen3-TTS model and prepare CUDA graphs.
+@@ -249,6 +258,7 @@ class FasterQwen3TTS:
+             qwentts_clamp_fp16: Whether qwentts.cpp should clamp fp16 operations.
+             qwentts_ref_cache_dir: Optional cache directory for GGML voice-clone
+                 `.spk` / `.rvq` references extracted from raw reference audio.
++            prefill_pad_to_length: Research-only eager left-padding ceiling.
+ 
+         Returns:
+             A backend-specific model implementing the public generation and
+@@ -381,6 +391,7 @@ class FasterQwen3TTS:
+             prefill_compile_on_miss=prefill_compile_on_miss,
+             prefill_unknown_shape_policy=prefill_unknown_shape_policy,
+             prefill_require_precompiled=prefill_require_precompiled,
++            prefill_pad_to_length=prefill_pad_to_length,
+         )
+ 
+     def warmup(self, prefill_len: int = 100) -> None:
+@@ -813,6 +824,18 @@ class FasterQwen3TTS:
+                 "tokenize_wall_ms": tokenize_wall_ms,
+                 "build_talker_inputs_wall_ms": build_talker_inputs_wall_ms,
+             }
++            tie, tam, padding_metadata = pad_prefill_inputs_left(
++                tie,
++                tam,
++                target_length=self.prefill_pad_to_length,
++            )
++            if padding_metadata["prefill_padding_enabled"]:
++                metadata.update(padding_metadata)
++                metadata["talker_prefill_length"] = int(tie.shape[1])
++                metadata["prefill_attention_mask_all_valid"] = False
++                metadata["prefill_mask_decision_source"] = (
++                    "research_left_pad_to_exact"
++                )
+             return m, talker, config, tie, tam, tth, tpe, metadata
+ 
+         return m, talker, config, tie, tam, tth, tpe
+diff --git a/faster_qwen3_tts/streaming.py b/faster_qwen3_tts/streaming.py
+index 75694f0..ce9c822 100644
+--- a/faster_qwen3_tts/streaming.py
++++ b/faster_qwen3_tts/streaming.py
+@@ -233,6 +233,11 @@ def _run_talker_prefill(
+         prefill_unknown_shape_policy
+     )
+     _validate_prefill_configuration(prefill_backend, prefill_mask_mode)
++    _validate_padded_prefill_configuration(
++        prefill_backend=prefill_backend,
++        prefill_mask_mode=prefill_mask_mode,
++        input_metadata=input_metadata,
++    )
+     skip_prefill_causal_mask = prefill_mask_mode == "skip"
+     prefill_attention_mask = None if skip_prefill_causal_mask else attention_mask
+     _validate_prefill_compile_compat_configuration(
+@@ -311,6 +316,25 @@ def _run_talker_prefill(
+         "prefill_compiled_call_2_host_ms": 0.0,
+         "prefill_compiled_call_3plus_host_ms": 0.0,
+         "prefill_shape_call_ordinal": 0,
++        "prefill_padding_enabled": bool(
++            isinstance(input_metadata, dict)
++            and input_metadata.get("prefill_padding_enabled")
++        ),
++        "prefill_padding_target_length": (
++            input_metadata.get("prefill_padding_target_length")
++            if isinstance(input_metadata, dict)
++            else None
++        ),
++        "prefill_padding_left_tokens": (
++            input_metadata.get("prefill_padding_left_tokens")
++            if isinstance(input_metadata, dict)
++            else 0
++        ),
++        "prefill_real_length": (
++            input_metadata.get("prefill_real_length")
++            if isinstance(input_metadata, dict)
++            else shape_length
++        ),
+         **memory_before,
+     }
+     if prefill_backend == "eager":
+@@ -690,6 +714,86 @@ def _validate_prefill_configuration(
+         )
+ 
+ 
++def pad_prefill_inputs_left(
++    talker_input_embeds: torch.Tensor,
++    attention_mask: torch.Tensor,
++    *,
++    target_length: int | None,
++) -> tuple[torch.Tensor, torch.Tensor, dict[str, int | bool]]:
++    """Left-pad one prefill request for an eager-only fixed-shape experiment.
++
++    The caller must trim the matching leading KV entries before decode.  This
++    helper deliberately does not make padding a transparent optimization: its
++    metadata is consumed by ``fast_generate_streaming`` to enforce that rule.
++    """
++
++    actual_length = int(talker_input_embeds.shape[1])
++    metadata: dict[str, int | bool] = {
++        "prefill_padding_enabled": False,
++        "prefill_padding_target_length": actual_length,
++        "prefill_padding_left_tokens": 0,
++        "prefill_real_length": actual_length,
++    }
++    if target_length is None:
++        return talker_input_embeds, attention_mask, metadata
++    if target_length <= 0:
++        raise ValueError("prefill padding target_length must be positive")
++    if talker_input_embeds.ndim != 3 or attention_mask.ndim != 2:
++        raise ValueError("prefill padding expects [batch, sequence, hidden] inputs")
++    if talker_input_embeds.shape[:2] != attention_mask.shape:
++        raise ValueError("prefill padding inputs and attention mask must agree")
++    if talker_input_embeds.shape[0] != 1:
++        raise ValueError("prefill padding experiment only supports batch_size=1")
++    if actual_length > target_length:
++        raise ValueError(
++            "prefill padding target is shorter than the real prefill: "
++            f"target={target_length}, actual={actual_length}"
++        )
++    if actual_length == target_length:
++        return talker_input_embeds, attention_mask, metadata
++
++    left_tokens = target_length - actual_length
++    padded_embeds = F.pad(talker_input_embeds, (0, 0, left_tokens, 0))
++    padded_mask = F.pad(attention_mask, (left_tokens, 0), value=0)
++    metadata.update(
++        {
++            "prefill_padding_enabled": True,
++            "prefill_padding_target_length": target_length,
++            "prefill_padding_left_tokens": left_tokens,
++            "prefill_real_length": actual_length,
++        }
++    )
++    return padded_embeds, padded_mask, metadata
++
++
++def _validate_padded_prefill_configuration(
++    *,
++    prefill_backend: str,
++    prefill_mask_mode: str,
++    input_metadata: Optional[dict],
++) -> None:
++    """Keep the experimental padded route intentionally eager and explicit."""
++
++    if not isinstance(input_metadata, dict) or not input_metadata.get(
++        "prefill_padding_enabled"
++    ):
++        return
++    if prefill_backend != "eager":
++        raise UnsupportedPrefillConfiguration(
++            "padded prefill research only permits prefill_backend=eager"
++        )
++    if prefill_mask_mode != "explicit":
++        raise UnsupportedPrefillConfiguration(
++            "padded prefill research requires an explicit attention mask"
++        )
++    real_length = input_metadata.get("prefill_real_length")
++    left_tokens = input_metadata.get("prefill_padding_left_tokens")
++    if not isinstance(real_length, int) or real_length <= 0:
++        raise UnsupportedPrefillConfiguration("padded prefill missing real length")
++    if not isinstance(left_tokens, int) or left_tokens <= 0:
++        raise UnsupportedPrefillConfiguration("padded prefill missing left padding")
++
++
+ def _validate_prefill_compile_compat_configuration(
+     *,
+     prefill_backend: str,
+@@ -970,7 +1074,19 @@ def fast_generate_streaming(
+ 
+     prefill_kv_started = time.perf_counter()
+     with _CudaNvtxRange("qtb_prefill_static_cache", nvtx_enabled):
+-        prefill_len = talker_graph.prefill_kv(talker_past_kv)
++        padded_prefill = bool(
++            isinstance(input_metadata, dict)
++            and input_metadata.get("prefill_padding_enabled")
++        )
++        left_pad_tokens = (
++            int(input_metadata.get("prefill_padding_left_tokens", 0))
++            if isinstance(input_metadata, dict)
++            else 0
++        )
++        prefill_len = talker_graph.prefill_kv(
++            talker_past_kv,
++            source_start=left_pad_tokens if padded_prefill else 0,
++        )
+     prefill_profile["prefill_kv_launch_wall_ms"] = (
+         time.perf_counter() - prefill_kv_started
+     ) * 1000
+@@ -979,7 +1095,7 @@ def fast_generate_streaming(
+     generation_state_started = time.perf_counter()
+     with _CudaNvtxRange("qtb_prefill_generation_state", nvtx_enabled):
+         rope_deltas = getattr(talker, "rope_deltas", None)
+-        attention_mask_all_valid = (
++        attention_mask_all_valid = padded_prefill or (
+             isinstance(input_metadata, dict)
+             and input_metadata.get("prefill_attention_mask_all_valid") is True
+         )
+diff --git a/faster_qwen3_tts/talker_graph.py b/faster_qwen3_tts/talker_graph.py
+index 1b6dcc2..422abfa 100644
+--- a/faster_qwen3_tts/talker_graph.py
++++ b/faster_qwen3_tts/talker_graph.py
+@@ -161,15 +161,21 @@ class TalkerGraph:
+         """Reset cache for new sequence."""
+         self.static_cache.reset()
+ 
+-    def prefill_kv(self, past_key_values):
++    def prefill_kv(self, past_key_values, *, source_start: int = 0):
+         """
+         Copy HF DynamicCache from prefill into our StaticCache.
+         past_key_values: DynamicCache with num_layers layers of [1, kv_heads, seq_len, head_dim]
+         """
++        if source_start < 0:
++            raise ValueError("source_start must be non-negative")
+         self.static_cache.reset()
+         seq_len = 0
+         for li in range(self.num_layers):
+             k, v = past_key_values[li]  # each [1, kv_heads, seq_len, head_dim]
++            if source_start >= k.shape[2]:
++                raise ValueError("source_start must leave at least one KV position")
++            k = k[:, :, source_start:, :]
++            v = v[:, :, source_start:, :]
+             seq_len = k.shape[2]
+             if seq_len > self.max_seq_len:
+                 raise RuntimeError(
+diff --git a/tests/test_padded_prefill_research.py b/tests/test_padded_prefill_research.py
+new file mode 100644
+index 0000000..3c93f9b
+--- /dev/null
++++ b/tests/test_padded_prefill_research.py
+@@ -0,0 +1,98 @@
++import unittest
++
++import torch
++
++from faster_qwen3_tts.streaming import (
++    UnsupportedPrefillConfiguration,
++    _validate_padded_prefill_configuration,
++    pad_prefill_inputs_left,
++)
++from faster_qwen3_tts.talker_graph import TalkerGraph
++
++
++class PaddedPrefillResearchTests(unittest.TestCase):
++    def test_left_padding_preserves_real_suffix_and_metadata(self) -> None:
++        embeds = torch.arange(12, dtype=torch.float32).reshape(1, 3, 4)
++        mask = torch.ones(1, 3, dtype=torch.long)
++
++        padded, padded_mask, metadata = pad_prefill_inputs_left(
++            embeds,
++            mask,
++            target_length=5,
++        )
++
++        self.assertEqual((1, 5, 4), tuple(padded.shape))
++        self.assertEqual([[0, 0, 1, 1, 1]], padded_mask.tolist())
++        self.assertTrue(metadata["prefill_padding_enabled"])
++        self.assertEqual(2, metadata["prefill_padding_left_tokens"])
++        self.assertEqual(3, metadata["prefill_real_length"])
++        self.assertTrue(torch.equal(embeds, padded[:, 2:, :]))
++
++    def test_padding_rejects_batching_and_short_targets(self) -> None:
++        embeds = torch.ones(2, 3, 4)
++        mask = torch.ones(2, 3, dtype=torch.long)
++        with self.assertRaisesRegex(ValueError, "batch_size=1"):
++            pad_prefill_inputs_left(embeds, mask, target_length=5)
++
++        with self.assertRaisesRegex(ValueError, "shorter than the real prefill"):
++            pad_prefill_inputs_left(
++                torch.ones(1, 3, 4),
++                torch.ones(1, 3, dtype=torch.long),
++                target_length=2,
++            )
++
++    def test_padded_route_is_eager_and_explicit_only(self) -> None:
++        metadata = {
++            "prefill_padding_enabled": True,
++            "prefill_real_length": 20,
++            "prefill_padding_left_tokens": 12,
++        }
++        _validate_padded_prefill_configuration(
++            prefill_backend="eager",
++            prefill_mask_mode="explicit",
++            input_metadata=metadata,
++        )
++        with self.assertRaisesRegex(UnsupportedPrefillConfiguration, "eager"):
++            _validate_padded_prefill_configuration(
++                prefill_backend="compile_reduce_overhead",
++                prefill_mask_mode="explicit",
++                input_metadata=metadata,
++            )
++        with self.assertRaisesRegex(UnsupportedPrefillConfiguration, "explicit"):
++            _validate_padded_prefill_configuration(
++                prefill_backend="eager",
++                prefill_mask_mode="skip",
++                input_metadata=metadata,
++            )
++
++    def test_prefill_kv_copies_only_the_real_suffix(self) -> None:
++        graph = TalkerGraph.__new__(TalkerGraph)
++        graph.num_layers = 1
++        graph.max_seq_len = 8
++        graph.device = torch.device("cpu")
++        graph.static_cache = _CapturingStaticCache()
++
++        keys = torch.arange(20, dtype=torch.float32).reshape(1, 1, 5, 4)
++        values = keys + 100
++        copied_length = graph.prefill_kv([(keys, values)], source_start=2)
++
++        self.assertEqual(3, copied_length)
++        update = graph.static_cache.updates[0]
++        self.assertEqual([0, 1, 2], update[2]["cache_position"].tolist())
++        self.assertTrue(torch.equal(keys[:, :, 2:, :], update[0]))
++        self.assertTrue(torch.equal(values[:, :, 2:, :], update[1]))
++
++
++class _CapturingStaticCache:
++    def __init__(self) -> None:
++        self.updates: list[tuple[torch.Tensor, torch.Tensor, dict]] = []
++
++    def reset(self) -> None:
++        self.updates.clear()
++
++    def update(self, key, value, _layer, kwargs):
++        self.updates.append((key.clone(), value.clone(), kwargs))
++
++
++if __name__ == "__main__":
++    unittest.main()
+-- 
+2.53.0.windows.1
+

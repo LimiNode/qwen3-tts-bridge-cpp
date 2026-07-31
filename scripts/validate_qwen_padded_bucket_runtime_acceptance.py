@@ -10,15 +10,15 @@ from typing import Mapping
 
 _REQUIRED_SEMANTIC_CHECKS = (
     "runtime_padding_implementation",
-    "attention_mask_parity",
-    "position_id_parity",
-    "rope_position_parity",
+    "attention_mask_parity_direct",
+    "position_id_parity_direct",
+    "rope_position_parity_direct",
     "kv_cache_real_tokens_only",
     "first_step_logits_parity",
-    "pad_tokens_absent_from_generation_state",
+    "pad_tokens_absent_from_generation_state_direct",
     "greedy_codec_trace_exact",
     "seeded_sampling_parity",
-    "terminal_outcome_parity",
+    "terminal_eos_parity",
     "rng_neutrality",
 )
 

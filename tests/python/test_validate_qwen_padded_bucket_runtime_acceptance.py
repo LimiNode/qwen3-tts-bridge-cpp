@@ -35,6 +35,14 @@ class QwenPaddedBucketRuntimeAcceptanceTests(unittest.TestCase):
         self.assertIn("first_step_logits_parity", result["failed_checks"])
         self.assertIn("greedy_codec_trace_exact", result["failed_checks"])
 
+    def test_inferred_padding_causes_cannot_substitute_direct_proofs(self) -> None:
+        checks = _all_checks(True)
+        checks["attention_mask_parity_direct"] = False
+        result = validate(_authorization(True), {"checks": checks})
+
+        self.assertFalse(result["runtime_acceptance_authorized"])
+        self.assertIn("attention_mask_parity_direct", result["failed_checks"])
+
 
 def _authorization(authorized: bool) -> dict[str, object]:
     return {
