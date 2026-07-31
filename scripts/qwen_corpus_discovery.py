@@ -98,7 +98,7 @@ def main() -> int:
         print(json.dumps({"status": "already_completed", "record_count": len(selected)}))
         return 0
 
-    engine = _create_engine(profile, args.speaker)
+    engine = _create_engine(profile, args.speaker, args.seed)
     load_started = time.perf_counter()
     try:
         engine.load()
@@ -154,6 +154,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--speaker", default="ryan")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=20260731,
+        help="Base seed; request IDs make completed rows reproducible.",
+    )
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument("--resume", action="store_true")
@@ -241,6 +247,8 @@ def _build_manifest(
         "profile": _provenance(args.profile),
         "profile_name": profile.get("name"),
         "speaker": args.speaker,
+        "seed": args.seed,
+        "seed_mode": "request_id",
         "selected_record_count": selected_record_count,
         "runtime": _runtime_metadata(),
     }
@@ -259,7 +267,7 @@ def _prepare_output(
     if not resume:
         raise RuntimeError("output directory exists; pass --resume to continue it")
     saved = _load_object(output_dir / "run-manifest.json", "existing run manifest")
-    for key in ("corpus_id", "corpus_split", "input_sha256", "speaker"):
+    for key in ("corpus_id", "corpus_split", "input_sha256", "speaker", "seed"):
         if saved.get(key) != manifest.get(key):
             raise RuntimeError(f"existing run manifest does not match {key}")
     saved_profile = saved.get("profile")
@@ -284,7 +292,7 @@ def _completed_record_ids(path: Path) -> set[str]:
     return completed
 
 
-def _create_engine(profile: Mapping[str, object], speaker: str) -> Any:
+def _create_engine(profile: Mapping[str, object], speaker: str, seed: int) -> Any:
     from qwen_tts_bridge_worker.config import QwenEngineConfig
     from qwen_tts_bridge_worker.engine import QwenTtsEngine
 
@@ -329,6 +337,8 @@ def _create_engine(profile: Mapping[str, object], speaker: str) -> Any:
             else None
         ),
         collect_generation_trace=True,
+        seed=seed,
+        seed_mode="request_id",
         warmup_speaker=speaker,
     )
     return QwenTtsEngine(config)
@@ -564,6 +574,10 @@ def _runtime_metadata() -> dict[str, object]:
         faster_module = str(Path(faster_qwen3_tts.__file__).resolve())
     except ImportError:
         faster_module = "unavailable"
+    try:
+        triton_version = importlib.metadata.version("triton-windows")
+    except importlib.metadata.PackageNotFoundError:
+        triton_version = None
     flash_attention_available = False
     try:
         import flash_attn  # noqa: F401
@@ -580,6 +594,7 @@ def _runtime_metadata() -> dict[str, object]:
         "cuda_device_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
         "faster_qwen3_tts_version": faster_version,
         "faster_qwen3_tts_module": faster_module,
+        "triton_windows_version": triton_version,
         "flash_attention_available": flash_attention_available,
         "bridge_commit": _git_commit(),
     }
