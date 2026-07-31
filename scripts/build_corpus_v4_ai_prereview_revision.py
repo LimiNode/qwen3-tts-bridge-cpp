@@ -150,6 +150,7 @@ def main() -> int:
     output_bytes = _jsonl_bytes(materialized)
     _write_bytes(args.output, output_bytes)
     report["output_sha256"] = _sha256(output_bytes)
+    report["output_record_id_set_sha256"] = _record_id_set_sha256(materialized)
     _write_object(args.report, report)
     print(json.dumps(report, sort_keys=True))
     return 0
@@ -215,6 +216,7 @@ def _build_revision(
         "targeted_ai_prereview_sha256": provenance["targeted_ai_prereview_sha256"],
         "general_review_form_sha256": provenance["general_review_form_sha256"],
         "general_ai_prereview_sha256": provenance["general_ai_prereview_sha256"],
+        "ai_review_provenance_sha256": provenance["ai_review_provenance_sha256"],
         "targeted_adjudication_sha256": provenance["targeted_adjudication_sha256"],
         "general_adjudication_sha256": provenance["general_adjudication_sha256"],
         "ai_review_provenance": manifest["ai_review_provenance"],

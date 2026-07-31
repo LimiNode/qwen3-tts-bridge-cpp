@@ -145,3 +145,14 @@ as accepted only when `acceptance-report.json` records true for
 `materialization_pass`, `corpus_validation_pass`, `repetition_pass`, and
 `acceptance_pass`. Either zero-sized adjudication scope is valid only when the
 SHA-pinned triage manifest itself expects zero rows.
+
+The acceptance script verifies that the materialization report describes the
+exact candidate that reaches the batch and repetition gates: supported builder
+schema, candidate SHA-256, candidate `record_id` set SHA-256, base candidate,
+triage, review, AI-provenance, and adjudication input hashes must all match.
+Its acceptance report records this complete provenance chain together with the
+builder, validator, and repetition-audit schema versions. It writes into a
+sibling hidden pending directory and atomically publishes the requested output
+directory only after all gates pass. A failure is retained under a unique
+`<output>.rejected-...` directory with its available reports, so the requested
+output name remains immediately reusable.

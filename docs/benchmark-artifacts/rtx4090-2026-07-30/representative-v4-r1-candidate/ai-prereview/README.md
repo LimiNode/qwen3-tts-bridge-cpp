@@ -48,7 +48,10 @@ the full validation and repetition gates:
 The output directory must be new. Accept the candidate only when its
 `acceptance-report.json` has all four pass fields set to `true`:
 `materialization_pass`, `corpus_validation_pass`, `repetition_pass`, and
-`acceptance_pass`.
+`acceptance_pass`. The script creates the requested directory only after a
+complete pass. A rejected run is preserved instead as a sibling directory named
+`representative-v4-r2-candidate.rejected-...`; inspect its reports, correct the
+forms, then reuse the original output path for the next attempt.
 
 `ai-draft-proposals-64.json` and the two `*.ai-draft.jsonl` files are draft
 wording proposed by Codex. They are deliberately marked
