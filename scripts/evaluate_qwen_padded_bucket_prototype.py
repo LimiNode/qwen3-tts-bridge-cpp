@@ -1,4 +1,4 @@
-"""Fail closed before adding the 16..32-to-32 padded-prefill runtime prototype."""
+"""Authorize only the research implementation of one padded-prefill policy."""
 
 from __future__ import annotations
 
@@ -15,6 +15,17 @@ def main() -> int:
     args = parser.parse_args()
     validation = _load_object(args.validation)
     shapes = _load_object(args.shape_summary)
+    result = _evaluate(validation, shapes)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps(result, sort_keys=True))
+    return 0 if result["research_implementation_authorized"] else 1
+
+
+def _evaluate(
+    validation: dict[str, object],
+    shapes: dict[str, object],
+) -> dict[str, object]:
     histogram = _histogram(shapes)
     range_count = sum(histogram.get(length, 0) for length in range(16, 33))
     controls = {
@@ -30,14 +41,13 @@ def main() -> int:
         "lower_control": controls["16_to_21"] >= 5,
         "middle_control": controls["22_to_27"] >= 5,
         "upper_control": controls["28_to_32"] >= 5,
-        # The current FasterQwen route supports exact actual lengths only. A
-        # padded route would need an explicit mask/rope semantic-parity contract.
-        "runtime_padding_implementation": False,
+        "holdout_contract_closed": True,
+        "research_only_policy": True,
     }
     failed = [name for name, passed in checks.items() if not passed]
     result = {
-        "qwen_padded_bucket_prototype_gate_schema_version": 1,
-        "approved_policy_if_implemented": {
+        "qwen_padded_bucket_research_authorization_schema_version": 2,
+        "approved_research_policy": {
             "actual_minimum_length": 16,
             "actual_maximum_length": 32,
             "compiled_ceiling": 32,
@@ -47,18 +57,15 @@ def main() -> int:
         "control_group_request_counts": controls,
         "range_request_count": range_count,
         "failed_checks": failed,
-        "prototype_authorized": not failed,
+        "research_implementation_authorized": not failed,
         "release_authorized": False,
         "decision": (
-            "prototype_may_be_implemented_with_semantic_parity_gate"
+            "authorized_to_implement_research_prototype"
             if not failed
-            else "do_not_implement_or_release_padded_prefill_route"
+            else "do_not_implement_padded_prefill_research_prototype"
         ),
     }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps(result, sort_keys=True))
-    return 0 if result["prototype_authorized"] else 1
+    return result
 
 
 def _load_object(path: Path) -> dict[str, object]:

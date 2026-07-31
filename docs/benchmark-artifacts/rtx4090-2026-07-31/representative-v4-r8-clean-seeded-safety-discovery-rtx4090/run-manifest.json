@@ -1,0 +1,342 @@
+{
+  "completed_at_utc": "2026-07-31T19:02:11+00:00",
+  "corpus_discovery_schema_version": 3,
+  "corpus_id": "representative-v4-r6-candidate",
+  "corpus_split": "discovery",
+  "engine_load_ms": 4372.226700070314,
+  "engine_warmup": {
+    "prefill_allowlist_lengths": [
+      32,
+      29,
+      35,
+      34,
+      33,
+      30
+    ],
+    "prefill_allowlist_ready": true,
+    "prefill_allowlist_warmup": true,
+    "prefill_allowlist_warmup_duration_ms": 72529.269,
+    "prefill_allowlist_warmup_passes": [
+      {
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_call_ordinal": 3,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            32,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "talker_prefill_length": 32
+      },
+      {
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_call_ordinal": 3,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            29,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "talker_prefill_length": 29
+      },
+      {
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_call_ordinal": 3,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            35,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "talker_prefill_length": 35
+      },
+      {
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_call_ordinal": 3,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            34,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "talker_prefill_length": 34
+      },
+      {
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_call_ordinal": 3,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            33,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "talker_prefill_length": 33
+      },
+      {
+        "mask_mode": "skip",
+        "max_abs_observed": 0.0,
+        "prefill_compile_cache_hit": true,
+        "prefill_shape_attention_mask": [
+          "none"
+        ],
+        "prefill_shape_call_ordinal": 3,
+        "prefill_shape_talker_input_embeds": [
+          [
+            1,
+            30,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_trailing_text_hiddens": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "prefill_shape_tts_pad_embed": [
+          [
+            1,
+            1,
+            1024
+          ],
+          "torch.bfloat16",
+          "cuda:0",
+          false
+        ],
+        "talker_prefill_length": 30
+      }
+    ],
+    "prefill_allowlist_warmup_repeats": 3,
+    "prefill_decode_state_generation_state_attention_mask_all_valid": true,
+    "prefill_decode_state_generation_state_mask_cache_hit": true,
+    "prefill_decode_state_generation_state_mask_key": null,
+    "prefill_decode_state_generation_state_mask_key_ms": 0.002,
+    "prefill_decode_state_generation_state_mask_table_build_ms": 0.0,
+    "prefill_decode_state_generation_state_masks_built": 0,
+    "prefill_decode_state_generation_state_ms": 0.103,
+    "prefill_decode_state_generation_state_previous_mask_key": null,
+    "prefill_decode_state_generation_state_rope_copy_ms": 0.06,
+    "prefill_decode_state_generation_state_total_ms": 0.071,
+    "prefill_decode_state_length": 32,
+    "prefill_decode_state_prefill_kv_ms": 8.508,
+    "prefill_decode_state_ready": true,
+    "prefill_decode_state_replay_ms": 109.29,
+    "prefill_decode_state_reset_ms": 2.27,
+    "prefill_decode_state_warmup": true,
+    "prefill_decode_state_warmup_duration_ms": 120.261,
+    "prefill_first_chunk_warmup": true,
+    "prefill_first_chunk_warmup_audio_chunks": 1,
+    "prefill_first_chunk_warmup_duration_ms": 606.798,
+    "prefill_first_chunk_warmup_first_audio_ms": 603.605,
+    "prefill_first_chunk_warmup_length": 32,
+    "prefill_first_chunk_warmup_ready": true,
+    "prefill_first_chunk_warmup_reset": {
+      "compiled_prefill_cache_preserved": true,
+      "cuda_graphs_preserved": true,
+      "generation_mask_cache_preserved": true,
+      "predictor_graphs_reset": 2,
+      "reset_api_version": 1,
+      "talker_graph_reset": true
+    },
+    "prefill_first_chunk_warmup_reset_ms": 2.173
+  },
+  "engine_warmup_ms": 73155.27520002797,
+  "input": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-07-30\\representative-v4-r6-candidate\\discovery.jsonl",
+    "sha256": "0f22e2252cfef4d7fafb8a41d8b39dc0321d9bdc4cf8c9f5f565001775dc2891"
+  },
+  "input_sha256": "0f22e2252cfef4d7fafb8a41d8b39dc0321d9bdc4cf8c9f5f565001775dc2891",
+  "profile": {
+    "path": "config\\rtx4090-faster-customvoice-route-aware-scheduler-release-safety-v1-experimental.json",
+    "sha256": "932f5bb0b7abda26df9a5ee79af88559de1bca72354467ede44327c30656a53b"
+  },
+  "profile_name": "rtx4090-faster-customvoice-route-aware-scheduler-release-safety-v1-experimental",
+  "runtime": {
+    "bridge_commit": "e8115103e3201413f10d62e6013d69badbcbfe5e",
+    "bridge_git_tree": "8eae1f0f59fb5c5e6350ebaab77f3432756b31a9",
+    "bridge_tracked_tree_clean": true,
+    "bridge_worker_source_bundle_sha256": "ff6fdfaa2af5271f4cdf203352cbdbf7aa2787149d6082fd948e60c8f7748b8e",
+    "cuda_available": true,
+    "cuda_device_name": "NVIDIA GeForce RTX 4090",
+    "cuda_version": "12.8",
+    "faster_qwen3_tts_module": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean\\faster_qwen3_tts\\__init__.py",
+    "faster_qwen3_tts_source": {
+      "module_bundle_sha256": "a04b90e72105a6dfba4bf83a9f1cbe9b2bd06bc9208fd95c334378e674642c4c",
+      "module_directory": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean\\faster_qwen3_tts",
+      "source_commit": "58b063742f7707972ddc74a433a7f205ec471e65",
+      "source_git_tree": "d0462ab87261a3e080096f515232610b4eb7523c",
+      "source_repository": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean",
+      "source_tracked_tree_clean": true
+    },
+    "faster_qwen3_tts_version": "0.3.2",
+    "flash_attention_available": false,
+    "platform": "Windows-11-10.0.26100-SP0",
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "torch_version": "2.10.0+cu128",
+    "triton_windows_version": "3.6.0.post26",
+    "triton_windows_wheel_filename": "triton_windows-3.6.0.post26-cp312-cp312-win_amd64.whl",
+    "triton_windows_wheel_sha256": "189d8c57911aa9d2ff983a715e5c967b325f576307db60924cab22b501a36515"
+  },
+  "runtime_split_audit": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-07-30\\representative-v4-r6-candidate\\runtime-split-audit.json",
+    "sha256": "38aba7028b042b07c9130dc8b151b24c55a5c78e649372fa555bda35fe31b8ee"
+  },
+  "seed": 20260731,
+  "seed_mode": "request_id",
+  "selected_record_count": 1500,
+  "speaker": "ryan",
+  "started_at_utc": "2026-07-31T17:38:00+00:00",
+  "status": "completed"
+}

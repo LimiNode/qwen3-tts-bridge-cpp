@@ -1,0 +1,30 @@
+{
+  "approved_research_policy": {
+    "actual_maximum_length": 32,
+    "actual_minimum_length": 16,
+    "compiled_ceiling": 32,
+    "compiled_graph_count": 1
+  },
+  "checks": {
+    "baseline_validation": true,
+    "generation_acceptance": true,
+    "holdout_contract_closed": true,
+    "lower_control": true,
+    "middle_control": true,
+    "minimum_range_count": true,
+    "real_discovery_histogram": true,
+    "research_only_policy": true,
+    "upper_control": true
+  },
+  "control_group_request_counts": {
+    "16_to_21": 273,
+    "22_to_27": 205,
+    "28_to_32": 157
+  },
+  "decision": "authorized_to_implement_research_prototype",
+  "failed_checks": [],
+  "qwen_padded_bucket_research_authorization_schema_version": 2,
+  "range_request_count": 635,
+  "release_authorized": false,
+  "research_implementation_authorized": true
+}

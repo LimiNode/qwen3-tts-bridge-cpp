@@ -1,0 +1,39 @@
+{
+  "checks": {
+    "all_rows_terminal": true,
+    "corpus_id": true,
+    "discovery_split": true,
+    "exact_route_contract": true,
+    "execution_completed": true,
+    "generation_eos": true,
+    "input_sha256": true,
+    "manifest_status": true,
+    "profile_limits": true,
+    "profile_route_policy": true,
+    "profile_sha256": true,
+    "record_count": true,
+    "record_ids": true,
+    "row_seed_contract": true,
+    "runtime_provenance": true,
+    "seed_contract": true
+  },
+  "corpus_id": "representative-v4-r6-candidate",
+  "decision": "accepted_for_baseline",
+  "execution_outcomes": {
+    "completed": 1500
+  },
+  "failed_checks": [],
+  "generation_acceptance_pass": true,
+  "generation_outcomes": {
+    "eos": 1500
+  },
+  "input_sha256": "0f22e2252cfef4d7fafb8a41d8b39dc0321d9bdc4cf8c9f5f565001775dc2891",
+  "overall_acceptance_pass": true,
+  "profile_sha256": "932f5bb0b7abda26df9a5ee79af88559de1bca72354467ede44327c30656a53b",
+  "qwen_corpus_discovery_validation_schema_version": 2,
+  "record_count": 1500,
+  "records_sha256": "e2bf20b927e6eb3f85665440c9634f67663a2efc7e0ba7e68abd7fa1e99d706d",
+  "route_acceptance_pass": true,
+  "route_failure_count": 0,
+  "route_failures": []
+}

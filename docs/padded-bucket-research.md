@@ -34,7 +34,13 @@ the eager path; it does not force a prefix of the histogram into compiled
 buckets. Startup and runtime cost fields remain estimates until measured on the
 actual worker.
 
-## Mechanism Gate and First Prototype
+## Research Authorization and Runtime Acceptance
+
+`scripts/evaluate_qwen_padded_bucket_prototype.py` is the research
+authorization gate. It uses a clean, accepted discovery baseline and its real
+shape histogram. It can authorize the implementation work below, but never a
+runtime route, holdout run, or release profile. It deliberately does not
+require a padding implementation to exist.
 
 `scripts/evaluate_padded_bucket_mechanism_gate.py` owns the separate mechanism
 decision. It requires a completed human review and at least 1,500 valid route
@@ -47,11 +53,12 @@ can authorize exactly one research implementation:
 actual prefill length 16..32 -> padded compiled shape 32
 ```
 
-The prototype must prove attention-mask and position-ID correctness, eager
-versus padded semantic parity for greedy and sampling paths, RNG neutrality,
-trace and termination equality, PCM duration/quality, playback reserve,
-single-entry cache behavior, no dynamic compilation, and cancel/reset state
-isolation. The frozen holdout remains unused until that proof is complete.
+After implementation,
+`scripts/validate_qwen_padded_bucket_runtime_acceptance.py` consumes the
+research authorization and a semantic parity report. It requires attention
+mask, position-ID, RoPE, KV-cache, first-step logits, generation state,
+greedy trace, seeded sampling, terminal outcome, and RNG-neutrality checks.
+Only this second gate can authorize one frozen-holdout run.
 
 Neither this research path nor a positive holdout changes a product default,
 the release profile, or the deferred `5->8->12` scheduler experiment.
