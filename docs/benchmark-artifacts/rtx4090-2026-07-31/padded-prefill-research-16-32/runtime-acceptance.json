@@ -1,0 +1,32 @@
+{
+  "checks": {
+    "attention_mask_parity": false,
+    "first_step_logits_parity": false,
+    "greedy_codec_trace_exact": false,
+    "kv_cache_real_tokens_only": false,
+    "pad_tokens_absent_from_generation_state": true,
+    "position_id_parity": false,
+    "research_implementation_authorized": true,
+    "research_policy": true,
+    "rng_neutrality": true,
+    "rope_position_parity": false,
+    "runtime_padding_implementation": true,
+    "seeded_sampling_parity": false,
+    "semantic_report_checks": true,
+    "terminal_outcome_parity": true
+  },
+  "decision": "do_not_run_holdout_or_release_padded_route",
+  "failed_checks": [
+    "attention_mask_parity",
+    "position_id_parity",
+    "rope_position_parity",
+    "kv_cache_real_tokens_only",
+    "first_step_logits_parity",
+    "greedy_codec_trace_exact",
+    "seeded_sampling_parity"
+  ],
+  "holdout_authorized": false,
+  "qwen_padded_bucket_runtime_acceptance_schema_version": 1,
+  "release_authorized": false,
+  "runtime_acceptance_authorized": false
+}

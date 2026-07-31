@@ -60,5 +60,18 @@ mask, position-ID, RoPE, KV-cache, first-step logits, generation state,
 greedy trace, seeded sampling, terminal outcome, and RNG-neutrality checks.
 Only this second gate can authorize one frozen-holdout run.
 
+## RTX 4090 Result: 16..31 to 32 Rejected
+
+The authorized eager explicit-mask prototype was implemented in an isolated
+FasterQwen research worktree and evaluated against an 18-token real discovery
+prompt on RTX 4090. The first semantic parity report is stored in
+`docs/benchmark-artifacts/rtx4090-2026-07-31/padded-prefill-research-16-32/`.
+It failed exact first-logit, real-token KV, greedy codec, and fixed-seed codec
+checks. The runtime-acceptance gate therefore rejects both a holdout and a
+release route.
+
+Do not relax the exact checks to revive this prototype. The existing
+exact-length allowlist remains the only accepted accelerated prefill route.
+
 Neither this research path nor a positive holdout changes a product default,
 the release profile, or the deferred `5->8->12` scheduler experiment.
