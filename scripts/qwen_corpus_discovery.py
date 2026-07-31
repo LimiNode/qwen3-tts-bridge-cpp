@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 import importlib.metadata
 import json
@@ -609,7 +610,14 @@ def _append_jsonl(path: Path, value: Mapping[str, object]) -> None:
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(_json_safe(value), ensure_ascii=False, sort_keys=True) + "\n")
         handle.flush()
-        os.fsync(handle.fileno())
+        try:
+            os.fsync(handle.fileno())
+        except OSError as exc:
+            # Some Windows filesystem/filter-driver combinations reject fsync
+            # on a text handle after many writes. flush plus the atomic checkpoint
+            # still makes resume deterministic without turning that into a run abort.
+            if exc.errno != errno.EINVAL:
+                raise
 
 
 def _atomic_write_json(path: Path, value: Mapping[str, object]) -> None:
