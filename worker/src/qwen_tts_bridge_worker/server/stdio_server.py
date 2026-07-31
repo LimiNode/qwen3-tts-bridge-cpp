@@ -815,7 +815,11 @@ class StdioWorkerServer:
         except GenerationSafetyLimitError as exc:
             with self._condition:
                 self._terminalize_locked(request_id)
-            self._emit_request_finished(slot, "failed")
+            self._emit_request_finished(
+                slot,
+                "failed",
+                generation_outcome="safety_duration_limit",
+            )
             self._metrics.emit(
                 "request_generation_outcome",
                 request_id=request_id,
@@ -868,6 +872,8 @@ class StdioWorkerServer:
         self,
         slot: _RequestSlot,
         terminal_state: str,
+        *,
+        generation_outcome: str | None = None,
     ) -> None:
         ended_at = monotonic_seconds()
         fields: dict[str, object] = {
@@ -877,6 +883,8 @@ class StdioWorkerServer:
             "audio_chunks": slot.audio_chunks,
             "audio_bytes": slot.audio_bytes,
         }
+        if generation_outcome is not None:
+            fields["generation_outcome"] = generation_outcome
         if terminal_state == "completed" and slot.audio_chunks > 0:
             # A full chunk can be yielded before deferred EOS is observable.
             # Completion therefore authoritatively marks the final delivered PCM.

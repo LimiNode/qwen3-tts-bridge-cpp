@@ -284,6 +284,9 @@ def _terminal_record(
         "request_outcome": outcome,
         "route_decision_made": route is not None,
     }
+    generation_outcome = metric.get("generation_outcome")
+    if isinstance(generation_outcome, str) and generation_outcome:
+        record["generation_outcome"] = generation_outcome
     if route is not None:
         record.update(route)
     if outcome == "completed":

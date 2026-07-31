@@ -104,6 +104,27 @@ class ExportRouteAwareCanaryTelemetryTests(unittest.TestCase):
         self.assertFalse(result.summary["integrity_valid"])
         self.assertFalse(result.summary["worker_provenance_matches_manifest"])
 
+    def test_preserves_safety_generation_outcome_from_terminal_event(self) -> None:
+        result = _export(
+            [
+                _provenance(),
+                _metric("request_received", 1),
+                _metric(
+                    "request_finished",
+                    1,
+                    terminal_state="failed",
+                    generation_outcome="safety_duration_limit",
+                ),
+            ],
+            _PROFILE,
+            "synthetic_proxy",
+            allow_open_requests=False,
+        )
+
+        self.assertTrue(result.summary["integrity_valid"])
+        self.assertEqual("failed", result.records[0]["request_outcome"])
+        self.assertEqual("safety_duration_limit", result.records[0]["generation_outcome"])
+
     def test_cli_ignores_non_utf8_non_metric_log_text(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

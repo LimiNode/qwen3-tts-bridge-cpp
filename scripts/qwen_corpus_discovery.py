@@ -10,6 +10,7 @@ import json
 import math
 import os
 import platform
+import subprocess
 import statistics
 import sys
 import threading
@@ -22,7 +23,7 @@ from typing import Any
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 _SAMPLE_RATE = 24_000
 _PCM_BYTES_PER_SECOND = _SAMPLE_RATE * 2
 _PROFILE_KEYS = {
@@ -51,6 +52,8 @@ _PROFILE_KEYS = {
     "prefill_first_chunk_warmup_length",
     "collect_generation_trace",
     "profile_prefill",
+    "max_seq_len",
+    "max_audio_seconds_per_utterance",
 }
 _ROUTE_FIELDS = {
     "talker_prefill_length",
@@ -66,6 +69,10 @@ _ROUTE_FIELDS = {
     "prefill_compile_cache_entries",
     "prefill_compile_cache_entries_delta",
     "prefill_compile_cache_evictions_delta",
+    "prefill_compile_on_miss",
+    "prefill_require_precompiled",
+    "prefill_dynamo_counter_available",
+    "prefill_dynamo_unique_graphs_delta",
     "prefill_ms",
     "ar_decode_ms",
     "chunk_steps",
@@ -81,6 +88,7 @@ def main() -> int:
         parser.error("--checkpoint-every must be positive")
     if not args.speaker.strip():
         parser.error("--speaker must not be empty")
+    _require_clean_tracked_tree()
     records, input_sha256, corpus_id = _load_discovery_records(
         args.input,
         args.runtime_split_audit,
@@ -111,11 +119,22 @@ def main() -> int:
         manifest["engine_warmup"] = _json_safe(warmup)
         _atomic_write_json(args.output_dir / "run-manifest.json", manifest)
 
-        for ordinal, record in enumerate(pending, len(completed) + 1):
-            row = _measure_record(engine, ordinal, record, args.speaker)
+        request_ids = {
+            str(record["record_id"]): ordinal
+            for ordinal, record in enumerate(selected, 1)
+        }
+        for record in pending:
+            request_id = request_ids[str(record["record_id"])]
+            row = _measure_record(
+                engine,
+                request_id,
+                record,
+                args.speaker,
+                args.seed,
+            )
             _append_jsonl(args.output_dir / "records.jsonl", row)
             completed.add(str(record["record_id"]))
-            if ordinal % args.checkpoint_every == 0 or ordinal == len(selected):
+            if len(completed) % args.checkpoint_every == 0 or len(completed) == len(selected):
                 _write_checkpoint(args.output_dir, manifest, selected, completed)
                 print(
                     json.dumps(
@@ -267,7 +286,15 @@ def _prepare_output(
     if not resume:
         raise RuntimeError("output directory exists; pass --resume to continue it")
     saved = _load_object(output_dir / "run-manifest.json", "existing run manifest")
-    for key in ("corpus_id", "corpus_split", "input_sha256", "speaker", "seed"):
+    for key in (
+        "corpus_id",
+        "corpus_split",
+        "input_sha256",
+        "speaker",
+        "seed",
+        "seed_mode",
+        "selected_record_count",
+    ):
         if saved.get(key) != manifest.get(key):
             raise RuntimeError(f"existing run manifest does not match {key}")
     saved_profile = saved.get("profile")
@@ -353,6 +380,7 @@ def _measure_record(
     request_id: int,
     record: Mapping[str, object],
     speaker: str,
+    base_seed: int,
 ) -> dict[str, object]:
     from qwen_tts_bridge_worker.engine import (
         GenerationSafetyLimitError,
@@ -408,6 +436,8 @@ def _measure_record(
         generation_outcome = _generation_outcome(generation_trace)
     return {
         "record_id": record["record_id"],
+        "request_id": request_id,
+        "derived_request_seed": base_seed + request_id,
         "label": record.get("label"),
         "category": record.get("category"),
         "scene_context": record.get("scene_context"),
@@ -657,10 +687,13 @@ def _runtime_metadata(profile: Mapping[str, object]) -> dict[str, object]:
         faster_version = importlib.metadata.version("faster-qwen3-tts")
     except importlib.metadata.PackageNotFoundError:
         faster_version = "unpackaged"
+    faster_source: dict[str, object] | None = None
     try:
         import faster_qwen3_tts
 
-        faster_module = str(Path(faster_qwen3_tts.__file__).resolve())
+        faster_module_path = Path(faster_qwen3_tts.__file__).resolve()
+        faster_module = str(faster_module_path)
+        faster_source = _source_provenance(faster_module_path.parent)
     except ImportError:
         faster_module = "unavailable"
     try:
@@ -683,11 +716,17 @@ def _runtime_metadata(profile: Mapping[str, object]) -> dict[str, object]:
         "cuda_device_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
         "faster_qwen3_tts_version": faster_version,
         "faster_qwen3_tts_module": faster_module,
+        "faster_qwen3_tts_source": faster_source,
         "triton_windows_version": triton_version,
         "triton_windows_wheel_filename": profile.get("triton_windows_wheel_filename"),
         "triton_windows_wheel_sha256": profile.get("triton_windows_wheel_sha256"),
         "flash_attention_available": flash_attention_available,
-        "bridge_commit": _git_commit(),
+        "bridge_commit": _git_output(_REPO_ROOT, "rev-parse", "HEAD"),
+        "bridge_git_tree": _git_output(_REPO_ROOT, "rev-parse", "HEAD^{tree}"),
+        "bridge_tracked_tree_clean": _tracked_tree_is_clean(_REPO_ROOT),
+        "bridge_worker_source_bundle_sha256": _directory_sha256(
+            _REPO_ROOT / "worker" / "src" / "qwen_tts_bridge_worker"
+        ),
     }
 
 
@@ -754,20 +793,91 @@ def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def _git_commit() -> str | None:
-    head = _REPO_ROOT / ".git" / "HEAD"
+def _require_clean_tracked_tree() -> None:
+    if not _tracked_tree_is_clean(_REPO_ROOT):
+        raise RuntimeError(
+            "discovery requires a clean tracked git tree; commit or stash tracked "
+            "changes before running it"
+        )
+
+
+def _tracked_tree_is_clean(path: Path) -> bool:
+    return all(
+        _git_returncode(path, *arguments) == 0
+        for arguments in (
+            ("diff", "--quiet", "--ignore-submodules=dirty"),
+            ("diff", "--cached", "--quiet", "--ignore-submodules=dirty"),
+        )
+    )
+
+
+def _source_provenance(module_directory: Path) -> dict[str, object]:
+    repository = _git_output(module_directory, "rev-parse", "--show-toplevel")
+    repository_path = Path(repository) if repository is not None else None
+    return {
+        "module_directory": str(module_directory),
+        "module_bundle_sha256": _directory_sha256(module_directory),
+        "source_repository": str(repository_path) if repository_path is not None else None,
+        "source_commit": (
+            _git_output(repository_path, "rev-parse", "HEAD")
+            if repository_path is not None
+            else None
+        ),
+        "source_git_tree": (
+            _git_output(repository_path, "rev-parse", "HEAD^{tree}")
+            if repository_path is not None
+            else None
+        ),
+        "source_tracked_tree_clean": (
+            _tracked_tree_is_clean(repository_path)
+            if repository_path is not None
+            else None
+        ),
+    }
+
+
+def _directory_sha256(path: Path) -> str | None:
+    if not path.is_dir():
+        return None
+    digest = hashlib.sha256()
+    files = sorted(
+        candidate
+        for candidate in path.rglob("*")
+        if candidate.is_file() and "__pycache__" not in candidate.parts
+    )
+    for candidate in files:
+        digest.update(candidate.relative_to(path).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(candidate.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _git_output(path: Path, *arguments: str) -> str | None:
     try:
-        value = head.read_text(encoding="utf-8").strip()
+        completed = subprocess.run(
+            ["git", "-C", str(path), *arguments],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
     except OSError:
         return None
-    if value.startswith("ref: "):
-        try:
-            return (_REPO_ROOT / ".git" / value.removeprefix("ref: ")).read_text(
-                encoding="utf-8"
-            ).strip()
-        except OSError:
-            return None
-    return value or None
+    value = completed.stdout.strip()
+    return value if completed.returncode == 0 and value else None
+
+
+def _git_returncode(path: Path, *arguments: str) -> int | None:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(path), *arguments],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except OSError:
+        return None
+    return completed.returncode
 
 
 if __name__ == "__main__":

@@ -108,6 +108,38 @@ class QwenCorpusDiscoveryTest(unittest.TestCase):
             ),
         )
 
+    def test_measured_row_records_request_seed_contract(self) -> None:
+        row = _MODULE._measure_record(
+            _MetricEngine(),
+            7,
+            {
+                "record_id": "record-7",
+                "text": "hello",
+                "language_class": "en",
+            },
+            "ryan",
+            20260731,
+        )
+
+        self.assertEqual(7, row["request_id"])
+        self.assertEqual(20260738, row["derived_request_seed"])
+        self.assertEqual("eos", row["generation_outcome"])
+
+
+class _MetricEngine:
+    def validate_request(self, request: object) -> None:
+        del request
+
+    def synthesize_stream(self, request: object, cancel_event: object):
+        del request, cancel_event
+        yield b"\0" * 48_000
+
+    def pop_last_chunk_metrics(self) -> dict[str, object]:
+        return {"talker_prefill_length": 32}
+
+    def pop_last_generation_trace(self) -> dict[str, object]:
+        return {"hit_eos": True, "termination_reason": "eos"}
+
 
 if __name__ == "__main__":
     unittest.main()
