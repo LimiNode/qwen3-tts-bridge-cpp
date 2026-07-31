@@ -36,6 +36,18 @@ class QwenEngineError(RuntimeError):
     """Raised when the Qwen adapter cannot load or run the model."""
 
 
+class GenerationSafetyLimitError(QwenEngineError):
+    """Raised after generated PCM reaches the configured product safety limit."""
+
+    def __init__(self, limit_seconds: float, emitted_seconds: float) -> None:
+        self.limit_seconds = limit_seconds
+        self.emitted_seconds = emitted_seconds
+        super().__init__(
+            "generated audio reached the safety duration limit "
+            f"({emitted_seconds:.3f}s of {limit_seconds:.3f}s)"
+        )
+
+
 class QwenTtsEngine:
     """Adapter around the vendored Qwen3-TTS streaming package."""
 
@@ -150,6 +162,8 @@ class QwenTtsEngine:
             self._last_generation_trace = None
             _seed_runtime(_request_seed(self._config, request))
             audio_stream = self._generate_audio_stream(model, request)
+            emitted_audio_bytes = 0
+            max_audio_bytes = _max_audio_bytes(self._config, request)
             close_stream = getattr(audio_stream, "close", None)
             try:
                 iterator = iter(audio_stream)
@@ -174,12 +188,37 @@ class QwenTtsEngine:
                     pcm = _float_audio_to_s16le(wav)
                     pcm_convert_ms = elapsed_milliseconds(convert_started_at)
                     if pcm:
+                        truncated_to_safety_limit = False
+                        if max_audio_bytes is not None:
+                            remaining_bytes = max_audio_bytes - emitted_audio_bytes
+                            if remaining_bytes <= 0:
+                                raise _safety_duration_limit_error(
+                                    self._config,
+                                    emitted_audio_bytes,
+                                    request,
+                                )
+                            if len(pcm) > remaining_bytes:
+                                pcm = pcm[: remaining_bytes - (remaining_bytes % 2)]
+                                if not pcm:
+                                    raise _safety_duration_limit_error(
+                                        self._config,
+                                        emitted_audio_bytes,
+                                        request,
+                                    )
+                                truncated_to_safety_limit = True
                         self._last_chunk_metrics = _first_chunk_timing_fields(
                             chunk_timing,
                             next_wall_ms=next_wall_ms,
                             pcm_convert_ms=pcm_convert_ms,
                         )
+                        emitted_audio_bytes += len(pcm)
                         yield pcm
+                        if truncated_to_safety_limit:
+                            raise _safety_duration_limit_error(
+                                self._config,
+                                emitted_audio_bytes,
+                                request,
+                            )
                 if not cancel_event.is_set():
                     self._capture_generation_trace(model)
             finally:
@@ -573,6 +612,30 @@ class QwenTtsEngine:
             return stream
 
         return _qwen_full_audio_as_stream(self._generate_audio(model, request))
+
+
+def _max_audio_bytes(
+    config: QwenEngineConfig,
+    request: SynthesisRequest,
+) -> int | None:
+    if config.max_audio_seconds_per_utterance is None:
+        return None
+    bytes_per_second = request.output.sample_rate * request.output.channels * 2
+    return int(config.max_audio_seconds_per_utterance * bytes_per_second)
+
+
+def _safety_duration_limit_error(
+    config: QwenEngineConfig,
+    emitted_audio_bytes: int,
+    request: SynthesisRequest,
+) -> GenerationSafetyLimitError:
+    assert config.max_audio_seconds_per_utterance is not None
+    bytes_per_second = request.output.sample_rate * request.output.channels * 2
+    emitted_seconds = emitted_audio_bytes / bytes_per_second
+    return GenerationSafetyLimitError(
+        config.max_audio_seconds_per_utterance,
+        emitted_seconds,
+    )
 
 
 def _default_model_loader(config: QwenEngineConfig) -> Any:

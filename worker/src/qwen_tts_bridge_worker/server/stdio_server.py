@@ -17,6 +17,7 @@ from qwen_tts_bridge_worker.engine import (
     AudioFormat,
     EngineCapabilities,
     EngineRequestValidationError,
+    GenerationSafetyLimitError,
     SynthesisRequest,
     TtsEngine,
 )
@@ -811,6 +812,24 @@ class StdioWorkerServer:
                     request_id=request_id,
                     first_audio_frame=first_audio_frame,
                 )
+        except GenerationSafetyLimitError as exc:
+            with self._condition:
+                self._terminalize_locked(request_id)
+            self._emit_request_finished(slot, "failed")
+            self._metrics.emit(
+                "request_generation_outcome",
+                request_id=request_id,
+                generation_outcome="safety_duration_limit",
+                max_audio_seconds_per_utterance=exc.limit_seconds,
+                emitted_audio_seconds=exc.emitted_seconds,
+            )
+            self._send_error(
+                request_id,
+                "resource_error",
+                "safety_duration_limit",
+                str(exc),
+            )
+            return
         except Exception as exc:
             with self._condition:
                 self._terminalize_locked(request_id)

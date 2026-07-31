@@ -18,6 +18,7 @@ if (-not (Test-Path -LiteralPath $pythonPath)) {
 }
 
 $selectedModelPath = if ($ModelPath) { $ModelPath } else { $profile.model_path }
+$maxSeqLen = if ($null -ne $profile.max_seq_len) { $profile.max_seq_len } else { 2048 }
 $arguments = @(
     "-m", "qwen_tts_bridge_worker",
     "qwen",
@@ -26,6 +27,7 @@ $arguments = @(
     "--device", $profile.device,
     "--dtype", $profile.dtype,
     "--attn-implementation", $profile.attn_implementation,
+    "--max-seq-len", $maxSeqLen,
     "--emit-every-frames", $profile.emit_every_frames,
     "--decode-window-frames", $profile.decode_window_frames,
     "--prefill-backend", $profile.prefill_backend,
@@ -38,6 +40,13 @@ $arguments = @(
     "--prefill-allowlist-max-entries", $profile.prefill_allowlist_max_entries,
     "--prefill-allowlist-max-abs-threshold", $profile.prefill_allowlist_max_abs_threshold
 )
+
+if ($null -ne $profile.max_audio_seconds_per_utterance) {
+    $arguments += @(
+        "--max-audio-seconds-per-utterance",
+        $profile.max_audio_seconds_per_utterance
+    )
+}
 
 if (-not $profile.prefill_compile_on_miss) {
     $arguments += "--no-prefill-compile-on-miss"

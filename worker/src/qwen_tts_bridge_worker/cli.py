@@ -128,6 +128,9 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 dtype=args.dtype,
                 attn_implementation=args.attn_implementation,
                 max_seq_len=args.max_seq_len,
+                max_audio_seconds_per_utterance=(
+                    args.max_audio_seconds_per_utterance
+                ),
                 emit_every_frames=args.emit_every_frames,
                 emit_chunk_schedule=args.emit_chunk_schedule,
                 compiled_emit_chunk_schedule=args.compiled_emit_chunk_schedule,
@@ -338,6 +341,15 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--dtype", default="auto")
     qwen_parser.add_argument("--attn-implementation", default="")
     qwen_parser.add_argument("--max-seq-len", type=int, default=2048)
+    qwen_parser.add_argument(
+        "--max-audio-seconds-per-utterance",
+        type=float,
+        default=None,
+        help=(
+            "Fail a request after this much generated PCM audio instead of "
+            "reporting a normal completion; omit for diagnostic runs."
+        ),
+    )
     qwen_parser.add_argument("--emit-every-frames", type=int, default=8)
     qwen_parser.add_argument(
         "--emit-chunk-schedule",

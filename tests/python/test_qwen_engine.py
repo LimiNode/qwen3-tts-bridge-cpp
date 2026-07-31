@@ -10,6 +10,7 @@ from qwen_tts_bridge_worker.config import QwenEngineConfig
 from qwen_tts_bridge_worker.engine import (
     AudioFormat,
     EngineRequestValidationError,
+    GenerationSafetyLimitError,
     QwenEngineError,
     QwenTtsEngine,
     SynthesisRequest,
@@ -265,6 +266,29 @@ class _NestedWrapper:
 
 
 class QwenEngineTests(unittest.TestCase):
+    def test_safety_duration_limit_fails_after_delivering_bounded_pcm(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                max_audio_seconds_per_utterance=1.0 / 24_000.0,
+            ),
+            model_loader=lambda _config: _StreamingWrapperModel(
+                "custom_voice",
+                supported_speakers=["Alice"],
+            ),
+        )
+        engine.load()
+        request = SynthesisRequest(request_id=1, text="Hello", speaker="Alice")
+
+        chunks = []
+        with self.assertRaises(GenerationSafetyLimitError) as raised:
+            for chunk in engine.synthesize_stream(request, threading.Event()):
+                chunks.append(chunk)
+
+        self.assertEqual(1, len(chunks))
+        self.assertEqual(2, len(chunks[0]))
+        self.assertEqual(1.0 / 24_000.0, raised.exception.limit_seconds)
+
     def test_prefill_snapshot_rejects_structural_mismatch(self) -> None:
         cases = (
             ({"hidden": 1}, {"cache": 1}, "dictionary keys mismatch"),

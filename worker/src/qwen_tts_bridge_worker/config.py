@@ -97,6 +97,7 @@ class QwenEngineConfig:
     dtype: str = "auto"
     attn_implementation: str = ""
     max_seq_len: int = 2048
+    max_audio_seconds_per_utterance: float | None = None
     emit_every_frames: int = 8
     emit_chunk_schedule: tuple[int, ...] = ()
     compiled_emit_chunk_schedule: tuple[int, ...] = ()
@@ -189,6 +190,13 @@ class QwenEngineConfig:
             raise ValueError("qwen.decode_window_frames must be greater than zero")
         if self.max_seq_len <= 0:
             raise ValueError("qwen.max_seq_len must be greater than zero")
+        if self.max_audio_seconds_per_utterance is not None and (
+            not math.isfinite(self.max_audio_seconds_per_utterance)
+            or self.max_audio_seconds_per_utterance <= 0.0
+        ):
+            raise ValueError(
+                "qwen.max_audio_seconds_per_utterance must be finite and positive"
+            )
         if self.overlap_samples < 0:
             raise ValueError("qwen.overlap_samples must be non-negative")
         if not self.compile_mode:
