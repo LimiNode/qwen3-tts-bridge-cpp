@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import unittest
 
 from scripts.build_corpus_v4_ai_prereview_revision import _build_revision
@@ -22,6 +23,8 @@ class BuildCorpusV4AiPrereviewRevisionTests(unittest.TestCase):
             _manifest({"targeted-001"}, {"general-001"}),
             targeted,
             general,
+            copy.deepcopy(targeted),
+            copy.deepcopy(general),
             **_provenance(),
         )
 
@@ -47,6 +50,8 @@ class BuildCorpusV4AiPrereviewRevisionTests(unittest.TestCase):
                 _manifest({"targeted-001"}, {"general-001"}),
                 targeted,
                 general,
+                copy.deepcopy(targeted),
+                copy.deepcopy(general),
                 **_provenance(),
             )
 
@@ -58,16 +63,19 @@ class BuildCorpusV4AiPrereviewRevisionTests(unittest.TestCase):
             )
         ]
         cast_target = targeted[0]["target"]
+        expected_targeted = copy.deepcopy(targeted)
         assert isinstance(cast_target, dict)
         cast_target["category"] = "conversation"
         general = [_general_adjudication(base[1], "keep_after_human_review", "")]
 
-        with self.assertRaisesRegex(RuntimeError, "metadata drifted"):
+        with self.assertRaisesRegex(RuntimeError, "protected context drifted"):
             _build_revision(
                 base,
                 _manifest({"targeted-001"}, {"general-001"}),
                 targeted,
                 general,
+                expected_targeted,
+                copy.deepcopy(general),
                 **_provenance(),
             )
 
@@ -82,7 +90,102 @@ class BuildCorpusV4AiPrereviewRevisionTests(unittest.TestCase):
                 _manifest({"targeted-001"}, {"general-001"}),
                 targeted,
                 general,
+                copy.deepcopy(targeted),
+                copy.deepcopy(general),
                 **_provenance(),
+            )
+
+    def test_rejects_ai_notes_drift(self) -> None:
+        base = [_record("targeted-001"), _record("general-001")]
+        targeted = [_targeted_adjudication(base[0], "keep_after_human_review", "")]
+        general = [_general_adjudication(base[1], "keep_after_human_review", "")]
+        expected_targeted = copy.deepcopy(targeted)
+        targeted[0]["ai_prereview_notes"] = "Changed after review."
+
+        with self.assertRaisesRegex(RuntimeError, "protected context drifted"):
+            _build_revision(
+                base,
+                _manifest({"targeted-001"}, {"general-001"}),
+                targeted,
+                general,
+                expected_targeted,
+                copy.deepcopy(general),
+                **_provenance(),
+            )
+
+    def test_rejects_targeted_source_drift(self) -> None:
+        base = [_record("targeted-001"), _record("general-001")]
+        targeted = [_targeted_adjudication(base[0], "keep_after_human_review", "")]
+        general = [_general_adjudication(base[1], "keep_after_human_review", "")]
+        expected_targeted = copy.deepcopy(targeted)
+        source = targeted[0]["source"]
+        assert isinstance(source, dict)
+        source["text"] = "Changed source."
+
+        with self.assertRaisesRegex(RuntimeError, "protected context drifted"):
+            _build_revision(
+                base,
+                _manifest({"targeted-001"}, {"general-001"}),
+                targeted,
+                general,
+                expected_targeted,
+                copy.deepcopy(general),
+                **_provenance(),
+            )
+
+    def test_allows_empty_scope_when_manifest_expects_it(self) -> None:
+        base = [_record("targeted-001"), _record("general-001")]
+        targeted = [_targeted_adjudication(base[0], "keep_after_human_review", "")]
+
+        _, report = _build_revision(
+            base,
+            _manifest({"targeted-001"}, set()),
+            targeted,
+            [],
+            copy.deepcopy(targeted),
+            [],
+            **_provenance(),
+        )
+
+        self.assertEqual(0, report["general_flagged"])
+        self.assertEqual(0, report["general_kept"])
+
+    def test_rejects_empty_scope_when_manifest_expects_records(self) -> None:
+        base = [_record("targeted-001"), _record("general-001")]
+        targeted = [_targeted_adjudication(base[0], "keep_after_human_review", "")]
+        expected_general = [
+            _general_adjudication(base[1], "keep_after_human_review", "")
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "IDs do not match"):
+            _build_revision(
+                base,
+                _manifest({"targeted-001"}, {"general-001"}),
+                targeted,
+                [],
+                copy.deepcopy(targeted),
+                expected_general,
+                **_provenance(),
+            )
+
+    def test_rejects_mismatched_ai_review_provenance(self) -> None:
+        base = [_record("targeted-001"), _record("general-001")]
+        targeted = [_targeted_adjudication(base[0], "keep_after_human_review", "")]
+        general = [_general_adjudication(base[1], "keep_after_human_review", "")]
+        provenance = _provenance()
+        provenance["ai_review_provenance_sha256"] = "f" * 64
+
+        with self.assertRaisesRegex(
+            RuntimeError, "ai_review_provenance_sha256 does not match"
+        ):
+            _build_revision(
+                base,
+                _manifest({"targeted-001"}, {"general-001"}),
+                targeted,
+                general,
+                copy.deepcopy(targeted),
+                copy.deepcopy(general),
+                **provenance,
             )
 
 
@@ -163,11 +266,13 @@ def _manifest(targeted_ids: set[str], general_ids: set[str]) -> dict[str, object
             "general_form_sha256": "c" * 64,
             "general_ai_prereview_sha256": "d" * 64,
             "base_candidate_sha256": "0" * 64,
-            "ai_review_provenance_sha256": None,
+            "ai_review_provenance_sha256": "e" * 64,
         },
         "ai_review_provenance": {"status": "incomplete_not_supplied"},
         "summary": {
+            "targeted_review_record_count": 98,
             "targeted_repair_candidate_count": len(targeted_ids),
+            "general_review_record_count": 100,
             "general_repair_candidate_count": len(general_ids),
             "overlap_count": 0,
             "unique_candidate_count": len(targeted_ids.union(general_ids)),
@@ -191,6 +296,7 @@ def _provenance() -> dict[str, str]:
         "targeted_ai_prereview_sha256": "b" * 64,
         "general_review_form_sha256": "c" * 64,
         "general_ai_prereview_sha256": "d" * 64,
+        "ai_review_provenance_sha256": "e" * 64,
         "targeted_adjudication_sha256": "2" * 64,
         "general_adjudication_sha256": "3" * 64,
     }

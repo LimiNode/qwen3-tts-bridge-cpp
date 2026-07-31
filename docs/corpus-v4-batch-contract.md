@@ -132,11 +132,16 @@ Both decisions require a non-empty `author_id` and `decision_notes`. A
 drafts are suggestions only and cannot make either decision. Every form row is
 also pinned to the exact SHA-256 of the base candidate.
 
-Use `scripts/build_corpus_v4_ai_prereview_revision.py` only after every
-flagged row has completed human adjudication. It verifies the triage manifest,
-both frozen review forms, both AI pre-reviews, the completed forms, and the
-base candidate by SHA-256. It applies text-only replacements, preserves all
-candidate metadata, validates word ranges and canonical uniqueness, and writes
-a provenance report with targeted/general replace/keep counts. Run the normal
-full batch validator and repetition audit on its output before considering a
-new candidate revision.
+Use `scripts/accept_corpus_v4_ai_prereview_revision.py` only after every
+flagged row has completed human adjudication. Its internal builder reconstructs
+the exact v2 templates from the frozen 98/100 review forms, both SHA-pinned AI
+pre-reviews, and AI-review provenance. It permits human changes only to the
+decision, author identity, decision notes, and proposed replacement text; any
+drift in AI notes, issues, source text, targets, or current candidate context
+is rejected. It then materializes text-only replacements, preserves candidate
+metadata, validates word ranges and canonical uniqueness, writes ten batches,
+and runs the full validator and repetition audit. Treat the resulting candidate
+as accepted only when `acceptance-report.json` records true for
+`materialization_pass`, `corpus_validation_pass`, `repetition_pass`, and
+`acceptance_pass`. Either zero-sized adjudication scope is valid only when the
+SHA-pinned triage manifest itself expects zero rows.

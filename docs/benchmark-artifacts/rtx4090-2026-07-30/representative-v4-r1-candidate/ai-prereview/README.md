@@ -25,21 +25,30 @@ For each v2 row, a human reviewer must set `authoring_status` to
 `replace` requires a natural `proposed_replacement_text`; `keep_after_human_review`
 requires that field to remain empty.
 
-After all 64 rows are complete, build a separate revision with:
+After all 64 rows are complete, create a separate revision with the canonical
+acceptance command. It rebuilds the triage context from the pinned review
+inputs, materializes the revised candidate, splits all ten batches, and runs
+the full validation and repetition gates:
 
 ```powershell
-.venv\Scripts\python.exe scripts\build_corpus_v4_ai_prereview_revision.py `
+.venv\Scripts\python.exe scripts\accept_corpus_v4_ai_prereview_revision.py `
   --base-candidate docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\candidate.jsonl `
   --triage-manifest docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\ai-prereview\ai-prereview-triage-v2.json `
   --targeted-review-form docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\targeted-review-98.jsonl `
   --targeted-ai-prereview docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\ai-prereview\targeted-review-98.ai-prereview.jsonl `
   --general-review-form docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\manual-review-form-100.jsonl `
   --general-ai-prereview docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\ai-prereview\manual-review-form-100.ai-prereview.jsonl `
+  --ai-review-provenance docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\ai-prereview\ai-review-provenance.json `
   --targeted-adjudication docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\ai-prereview\targeted-human-adjudication-52.jsonl `
   --general-adjudication docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r1-candidate\ai-prereview\general-human-adjudication-12.jsonl `
-  --output docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r2-candidate\candidate.jsonl `
-  --report docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r2-candidate\human-adjudication-revision-report.json
+  --corpus-id representative-v4-r2-candidate `
+  --output-dir docs\benchmark-artifacts\rtx4090-2026-07-30\representative-v4-r2-candidate
 ```
+
+The output directory must be new. Accept the candidate only when its
+`acceptance-report.json` has all four pass fields set to `true`:
+`materialization_pass`, `corpus_validation_pass`, `repetition_pass`, and
+`acceptance_pass`.
 
 `ai-draft-proposals-64.json` and the two `*.ai-draft.jsonl` files are draft
 wording proposed by Codex. They are deliberately marked

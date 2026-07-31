@@ -15,12 +15,14 @@ try:
         _record_id_set_sha256,
         normalize_exact_text,
     )
+    from scripts.prepare_corpus_v4_ai_prereview_triage import _prepare_triage
     from scripts.prepare_corpus_v4_quality_overlay import (
         _RECORD_FIELDS,
         _validate_word_range,
     )
 except ModuleNotFoundError:
     from audit_corpus_repetition import _record_id_set_sha256, normalize_exact_text
+    from prepare_corpus_v4_ai_prereview_triage import _prepare_triage
     from prepare_corpus_v4_quality_overlay import _RECORD_FIELDS, _validate_word_range
 
 _TRIAGE_SCHEMA_VERSION = 2
@@ -69,6 +71,13 @@ _TARGETED_CANDIDATE_FIELDS = {
     "semantic_intent_id",
     "key_phrase_id",
 }
+_HUMAN_EDITABLE_FIELDS = {
+    "authoring_status",
+    "authoring_decision",
+    "author_id",
+    "decision_notes",
+    "proposed_replacement_text",
+}
 
 
 def main() -> int:
@@ -79,6 +88,7 @@ def main() -> int:
     parser.add_argument("--targeted-ai-prereview", type=Path, required=True)
     parser.add_argument("--general-review-form", type=Path, required=True)
     parser.add_argument("--general-ai-prereview", type=Path, required=True)
+    parser.add_argument("--ai-review-provenance", type=Path, required=True)
     parser.add_argument("--targeted-adjudication", type=Path, required=True)
     parser.add_argument("--general-adjudication", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -91,19 +101,49 @@ def main() -> int:
     targeted_ai_bytes = args.targeted_ai_prereview.read_bytes()
     general_form_bytes = args.general_review_form.read_bytes()
     general_ai_bytes = args.general_ai_prereview.read_bytes()
+    ai_review_provenance_bytes = args.ai_review_provenance.read_bytes()
     targeted_adjudication_bytes = args.targeted_adjudication.read_bytes()
     general_adjudication_bytes = args.general_adjudication.read_bytes()
+    expected_manifest, expected_targeted, expected_general = _prepare_triage(
+        _load_jsonl(targeted_form_bytes, "targeted review form"),
+        _load_jsonl(targeted_ai_bytes, "targeted AI pre-review"),
+        _load_jsonl(general_form_bytes, "general review form"),
+        _load_jsonl(general_ai_bytes, "general AI pre-review"),
+        targeted_form_sha256=_sha256(targeted_form_bytes),
+        targeted_ai_sha256=_sha256(targeted_ai_bytes),
+        general_form_sha256=_sha256(general_form_bytes),
+        general_ai_sha256=_sha256(general_ai_bytes),
+        base_candidate_sha256=_sha256(base_bytes),
+        ai_review_provenance=_load_object(
+            ai_review_provenance_bytes, "AI review provenance"
+        ),
+        ai_review_provenance_sha256=_sha256(ai_review_provenance_bytes),
+    )
+    manifest = _load_object(manifest_bytes, "triage manifest")
+    if manifest != expected_manifest:
+        raise RuntimeError("triage manifest does not match pinned review inputs")
     materialized, report = _build_revision(
         _load_jsonl(base_bytes, "base candidate"),
-        _load_object(manifest_bytes, "triage manifest"),
-        _load_jsonl(targeted_adjudication_bytes, "targeted adjudication"),
-        _load_jsonl(general_adjudication_bytes, "general adjudication"),
+        manifest,
+        _load_jsonl(
+            targeted_adjudication_bytes,
+            "targeted adjudication",
+            allow_empty=not expected_targeted,
+        ),
+        _load_jsonl(
+            general_adjudication_bytes,
+            "general adjudication",
+            allow_empty=not expected_general,
+        ),
+        expected_targeted,
+        expected_general,
         base_candidate_sha256=_sha256(base_bytes),
         triage_manifest_sha256=_sha256(manifest_bytes),
         targeted_review_form_sha256=_sha256(targeted_form_bytes),
         targeted_ai_prereview_sha256=_sha256(targeted_ai_bytes),
         general_review_form_sha256=_sha256(general_form_bytes),
         general_ai_prereview_sha256=_sha256(general_ai_bytes),
+        ai_review_provenance_sha256=_sha256(ai_review_provenance_bytes),
         targeted_adjudication_sha256=_sha256(targeted_adjudication_bytes),
         general_adjudication_sha256=_sha256(general_adjudication_bytes),
     )
@@ -120,10 +160,24 @@ def _build_revision(
     manifest: dict[str, Any],
     targeted_rows: list[dict[str, Any]],
     general_rows: list[dict[str, Any]],
+    expected_targeted_rows: list[dict[str, object]],
+    expected_general_rows: list[dict[str, object]],
     **provenance: str,
 ) -> tuple[list[dict[str, Any]], dict[str, object]]:
     base_by_id = _records_by_id(base_records)
     _validate_manifest(manifest, provenance)
+    _validate_adjudication_templates(
+        targeted_rows,
+        expected_targeted_rows,
+        "record_id",
+        "targeted adjudication",
+    )
+    _validate_adjudication_templates(
+        general_rows,
+        expected_general_rows,
+        "label",
+        "general adjudication",
+    )
     targeted_by_id = _adjudications_by_id(
         targeted_rows, "record_id", _TARGETED_FIELDS, "targeted adjudication"
     )
@@ -206,13 +260,14 @@ def _validate_manifest(manifest: dict[str, Any], provenance: dict[str, str]) -> 
         "general_form_sha256": provenance["general_review_form_sha256"],
         "general_ai_prereview_sha256": provenance["general_ai_prereview_sha256"],
         "base_candidate_sha256": provenance["base_candidate_sha256"],
+        "ai_review_provenance_sha256": provenance["ai_review_provenance_sha256"],
     }
+    if set(inputs) != set(expected_inputs):
+        raise RuntimeError("triage manifest input schema is invalid")
     for field, expected in expected_inputs.items():
         if inputs.get(field) != expected:
             raise RuntimeError(f"triage manifest {field} does not match")
-    if inputs.get("ai_review_provenance_sha256") is not None and not _is_sha256(
-        inputs.get("ai_review_provenance_sha256")
-    ):
+    if not _is_sha256(inputs.get("ai_review_provenance_sha256")):
         raise RuntimeError("triage manifest AI provenance SHA is invalid")
     if not isinstance(manifest.get("ai_review_provenance"), dict):
         raise RuntimeError("triage manifest AI provenance is invalid")
@@ -237,7 +292,9 @@ def _validate_manifest_candidates(
     if not isinstance(summary, dict):
         raise RuntimeError("triage manifest summary is invalid")
     expected = {
+        "targeted_review_record_count": 98,
         "targeted_repair_candidate_count": len(targeted_ids),
+        "general_review_record_count": 100,
         "general_repair_candidate_count": len(general_ids),
         "overlap_count": 0,
         "unique_candidate_count": len(targeted_ids.union(general_ids)),
@@ -245,6 +302,42 @@ def _validate_manifest_candidates(
     for field, value in expected.items():
         if summary.get(field) != value:
             raise RuntimeError(f"triage manifest summary {field} is invalid")
+
+
+def _validate_adjudication_templates(
+    actual_rows: list[dict[str, Any]],
+    expected_rows: list[dict[str, object]],
+    id_field: str,
+    name: str,
+) -> None:
+    actual_by_id = _rows_by_id(actual_rows, id_field, name)
+    expected_by_id = _rows_by_id(expected_rows, id_field, f"expected {name}")
+    if set(actual_by_id) != set(expected_by_id):
+        raise RuntimeError(f"{name} IDs do not match pinned review context")
+    for record_id, actual in actual_by_id.items():
+        expected = expected_by_id[record_id]
+        if set(actual) != set(expected):
+            raise RuntimeError(f"{record_id}: {name} schema drifted")
+        for field, expected_value in expected.items():
+            if (
+                field not in _HUMAN_EDITABLE_FIELDS
+                and actual.get(field) != expected_value
+            ):
+                raise RuntimeError(
+                    f"{record_id}: {name} protected context drifted: {field}"
+                )
+
+
+def _rows_by_id(
+    rows: list[dict[str, object]], id_field: str, name: str
+) -> dict[str, dict[str, object]]:
+    result = {}
+    for row in rows:
+        record_id = row.get(id_field)
+        if not isinstance(record_id, str) or not record_id or record_id in result:
+            raise RuntimeError(f"{name} has duplicate or invalid {id_field}")
+        result[record_id] = row
+    return result
 
 
 def _candidate_ids(value: object, field: str, name: str) -> set[str]:
@@ -428,7 +521,9 @@ def _records_by_id(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return result
 
 
-def _load_jsonl(value: bytes, name: str) -> list[dict[str, Any]]:
+def _load_jsonl(
+    value: bytes, name: str, *, allow_empty: bool = False
+) -> list[dict[str, Any]]:
     rows = []
     for line_number, line in enumerate(value.decode("utf-8").splitlines(), 1):
         if not line.strip():
@@ -437,7 +532,7 @@ def _load_jsonl(value: bytes, name: str) -> list[dict[str, Any]]:
         if not isinstance(row, dict):
             raise RuntimeError(f"{name} line {line_number} is not an object")
         rows.append(row)
-    if not rows:
+    if not rows and not allow_empty:
         raise RuntimeError(f"{name} contains no records")
     return rows
 
