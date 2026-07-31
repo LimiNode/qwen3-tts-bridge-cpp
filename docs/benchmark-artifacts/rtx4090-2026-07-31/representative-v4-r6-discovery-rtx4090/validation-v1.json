@@ -1,0 +1,36 @@
+{
+  "checks": {
+    "all_rows_terminal": true,
+    "corpus_id": true,
+    "discovery_split": true,
+    "exact_route_contract": true,
+    "execution_completed": true,
+    "generation_eos": false,
+    "input_sha256": true,
+    "profile_sha256": true,
+    "record_count": true,
+    "record_ids": true
+  },
+  "corpus_id": "representative-v4-r6-candidate",
+  "decision": "not_a_valid_baseline",
+  "execution_outcomes": {
+    "completed": 1500
+  },
+  "failed_checks": [
+    "generation_eos"
+  ],
+  "generation_acceptance_pass": false,
+  "generation_outcomes": {
+    "eos": 1499,
+    "max_seq_len": 1
+  },
+  "input_sha256": "0f22e2252cfef4d7fafb8a41d8b39dc0321d9bdc4cf8c9f5f565001775dc2891",
+  "overall_acceptance_pass": false,
+  "profile_sha256": "bc8592ec0c9a78452fa3c49c62b78e01416bbb98b0649cb5ca3050705597a2ce",
+  "qwen_corpus_discovery_validation_schema_version": 1,
+  "record_count": 1500,
+  "records_sha256": "d7dbc31d51079f91573313da3ebee847613d796e3ecd563b0d4258aef8803c15",
+  "route_acceptance_pass": true,
+  "route_failure_count": 0,
+  "route_failures": []
+}

@@ -1,0 +1,31 @@
+{
+  "approved_policy_if_implemented": {
+    "actual_maximum_length": 32,
+    "actual_minimum_length": 16,
+    "compiled_ceiling": 32,
+    "compiled_graph_count": 1
+  },
+  "checks": {
+    "baseline_validation": true,
+    "generation_acceptance": true,
+    "lower_control": true,
+    "middle_control": true,
+    "minimum_range_count": true,
+    "real_discovery_histogram": true,
+    "runtime_padding_implementation": false,
+    "upper_control": true
+  },
+  "control_group_request_counts": {
+    "16_to_21": 273,
+    "22_to_27": 205,
+    "28_to_32": 157
+  },
+  "decision": "do_not_implement_or_release_padded_prefill_route",
+  "failed_checks": [
+    "runtime_padding_implementation"
+  ],
+  "prototype_authorized": false,
+  "qwen_padded_bucket_prototype_gate_schema_version": 1,
+  "range_request_count": 635,
+  "release_authorized": false
+}

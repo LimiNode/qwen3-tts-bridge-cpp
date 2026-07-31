@@ -22,7 +22,7 @@ from typing import Any
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 _SAMPLE_RATE = 24_000
 _PCM_BYTES_PER_SECOND = _SAMPLE_RATE * 2
 _PROFILE_KEYS = {
@@ -250,7 +250,7 @@ def _build_manifest(
         "seed": args.seed,
         "seed_mode": "request_id",
         "selected_record_count": selected_record_count,
-        "runtime": _runtime_metadata(),
+        "runtime": _runtime_metadata(profile),
     }
 
 
@@ -283,7 +283,7 @@ def _completed_record_ids(path: Path) -> set[str]:
     completed: set[str] = set()
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         value = json.loads(line)
-        if not isinstance(value, dict) or value.get("request_outcome") != "completed":
+        if not isinstance(value, dict) or not _is_terminal_row(value):
             raise RuntimeError(f"records line {line_number}: invalid terminal row")
         record_id = value.get("record_id")
         if not isinstance(record_id, str) or not record_id or record_id in completed:
@@ -337,6 +337,10 @@ def _create_engine(profile: Mapping[str, object], speaker: str, seed: int) -> An
             else None
         ),
         collect_generation_trace=True,
+        max_seq_len=int(profile.get("max_seq_len", 2048)),
+        max_audio_seconds_per_utterance=_optional_positive_float(
+            profile.get("max_audio_seconds_per_utterance")
+        ),
         seed=seed,
         seed_mode="request_id",
         warmup_speaker=speaker,
@@ -350,7 +354,10 @@ def _measure_record(
     record: Mapping[str, object],
     speaker: str,
 ) -> dict[str, object]:
-    from qwen_tts_bridge_worker.engine import SynthesisRequest
+    from qwen_tts_bridge_worker.engine import (
+        GenerationSafetyLimitError,
+        SynthesisRequest,
+    )
 
     started_at = time.perf_counter()
     first_audio_ms: float | None = None
@@ -367,6 +374,9 @@ def _measure_record(
     engine.validate_request(request)
     cancel_event = threading.Event()
     stream = engine.synthesize_stream(request, cancel_event)
+    execution_outcome = "completed"
+    generation_outcome: str | None = None
+    failure: dict[str, object] | None = None
     try:
         for pcm in stream:
             audio_chunks += 1
@@ -375,6 +385,16 @@ def _measure_record(
             if first_audio_ms is None:
                 first_audio_ms = _milliseconds(started_at)
                 first_metrics = dict(metrics) if isinstance(metrics, dict) else {}
+    except GenerationSafetyLimitError as exc:
+        execution_outcome = "failed"
+        generation_outcome = "safety_duration_limit"
+        failure = {
+            "category": "resource_error",
+            "code": "safety_duration_limit",
+            "message": str(exc),
+            "max_audio_seconds_per_utterance": exc.limit_seconds,
+            "emitted_audio_seconds": exc.emitted_seconds,
+        }
     finally:
         close = getattr(stream, "close", None)
         if callable(close):
@@ -383,6 +403,9 @@ def _measure_record(
     if first_audio_ms is None or audio_chunks == 0:
         raise RuntimeError(f"{record['record_id']}: synthesis completed without PCM")
     audio_seconds = audio_bytes / _PCM_BYTES_PER_SECOND
+    generation_trace = _json_safe(engine.pop_last_generation_trace())
+    if generation_outcome is None:
+        generation_outcome = _generation_outcome(generation_trace)
     return {
         "record_id": record["record_id"],
         "label": record.get("label"),
@@ -393,7 +416,12 @@ def _measure_record(
         "language_class": record.get("language_class"),
         "text_sha256": hashlib.sha256(str(record["text"]).encode("utf-8")).hexdigest(),
         "text_characters": len(str(record["text"])),
-        "request_outcome": "completed",
+        # request_outcome is retained for v1 readers. New consumers must use the
+        # explicit execution and generation outcomes below.
+        "request_outcome": execution_outcome,
+        "execution_outcome": execution_outcome,
+        "generation_outcome": generation_outcome,
+        "generation_accepted": generation_outcome == "eos",
         "first_audio_ms": round(first_audio_ms, 3),
         "completed_ms": round(completed_ms, 3),
         "audio_seconds": round(audio_seconds, 6),
@@ -401,7 +429,8 @@ def _measure_record(
         "audio_chunks": audio_chunks,
         "audio_bytes": audio_bytes,
         "first_chunk_route": _route_fields(first_metrics or {}),
-        "generation_trace": _json_safe(engine.pop_last_generation_trace()),
+        "generation_trace": generation_trace,
+        "failure": failure,
     }
 
 
@@ -432,7 +461,7 @@ def _write_summary(
     manifest: Mapping[str, object],
     selected: list[Mapping[str, object]],
 ) -> dict[str, object]:
-    rows = _load_completed_rows(output_dir / "records.jsonl")
+    rows = _load_terminal_rows(output_dir / "records.jsonl")
     expected_ids = {str(record["record_id"]) for record in selected}
     observed_ids = {str(row["record_id"]) for row in rows}
     if observed_ids != expected_ids:
@@ -452,6 +481,11 @@ def _write_summary(
         "completed_ms": _distribution(rows, "completed_ms"),
         "inverse_rtf": _distribution(rows, "inverse_rtf"),
         "audio_seconds": _distribution(rows, "audio_seconds"),
+        "execution_outcomes": _outcome_counts(rows, "execution_outcome"),
+        "generation_outcomes": _generation_outcome_counts(rows),
+        "generation_acceptance_pass": all(
+            _row_generation_outcome(row) == "eos" for row in rows
+        ),
         "route_counts": _route_counts(rows),
         "talker_prefill_histogram": _prefill_histogram(rows),
     }
@@ -460,16 +494,63 @@ def _write_summary(
     return summary
 
 
-def _load_completed_rows(path: Path) -> list[dict[str, object]]:
+def _load_terminal_rows(path: Path) -> list[dict[str, object]]:
     rows = []
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         value = json.loads(line)
-        if not isinstance(value, dict) or value.get("request_outcome") != "completed":
-            raise RuntimeError(f"records line {line_number}: invalid completed row")
+        if not isinstance(value, dict) or not _is_terminal_row(value):
+            raise RuntimeError(f"records line {line_number}: invalid terminal row")
         rows.append(value)
     if not rows:
-        raise RuntimeError("records output contains no completed rows")
+        raise RuntimeError("records output contains no terminal rows")
     return rows
+
+
+def _is_terminal_row(row: Mapping[str, object]) -> bool:
+    execution_outcome = row.get("execution_outcome")
+    if execution_outcome is not None:
+        return execution_outcome in {"completed", "failed", "cancelled"}
+    return row.get("request_outcome") == "completed"
+
+
+def _row_generation_outcome(row: Mapping[str, object]) -> str:
+    outcome = row.get("generation_outcome")
+    if isinstance(outcome, str):
+        return outcome
+    return _generation_outcome(row.get("generation_trace"))
+
+
+def _generation_outcome(trace: object) -> str:
+    if not isinstance(trace, Mapping):
+        return "unknown"
+    if trace.get("hit_eos") is True or trace.get("termination_reason") == "eos":
+        return "eos"
+    if trace.get("hit_max_new_tokens") is True or trace.get("termination_reason") == "max_new_tokens":
+        return "max_new_tokens"
+    if trace.get("hit_max_seq_len") is True or trace.get("termination_reason") == "max_seq_len":
+        return "max_seq_len"
+    return "unknown"
+
+
+def _outcome_counts(
+    rows: Iterable[Mapping[str, object]],
+    field: str,
+) -> dict[str, int]:
+    counts: Counter[str] = Counter()
+    for row in rows:
+        value = row.get(field)
+        if isinstance(value, str):
+            counts[value] += 1
+        elif field == "execution_outcome" and row.get("request_outcome") == "completed":
+            counts["completed"] += 1
+        else:
+            counts["unknown"] += 1
+    return dict(sorted(counts.items()))
+
+
+def _generation_outcome_counts(rows: Iterable[Mapping[str, object]]) -> dict[str, int]:
+    counts: Counter[str] = Counter(_row_generation_outcome(row) for row in rows)
+    return dict(sorted(counts.items()))
 
 
 def _route_counts(rows: Iterable[Mapping[str, object]]) -> dict[str, dict[str, int]]:
@@ -549,6 +630,14 @@ def _as_positive_tuple(value: object) -> tuple[int, ...]:
     return tuple(value)
 
 
+def _optional_positive_float(value: object) -> float | None:
+    if value is None:
+        return None
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+        raise RuntimeError("profile contains an invalid positive duration")
+    return float(value)
+
+
 def _load_object(path: Path, name: str) -> dict[str, object]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -561,7 +650,7 @@ def _load_object(path: Path, name: str) -> dict[str, object]:
     return value
 
 
-def _runtime_metadata() -> dict[str, object]:
+def _runtime_metadata(profile: Mapping[str, object]) -> dict[str, object]:
     import torch
 
     try:
@@ -595,6 +684,8 @@ def _runtime_metadata() -> dict[str, object]:
         "faster_qwen3_tts_version": faster_version,
         "faster_qwen3_tts_module": faster_module,
         "triton_windows_version": triton_version,
+        "triton_windows_wheel_filename": profile.get("triton_windows_wheel_filename"),
+        "triton_windows_wheel_sha256": profile.get("triton_windows_wheel_sha256"),
         "flash_attention_available": flash_attention_available,
         "bridge_commit": _git_commit(),
     }
@@ -629,8 +720,9 @@ def _append_jsonl(path: Path, value: Mapping[str, object]) -> None:
             os.fsync(handle.fileno())
         except OSError as exc:
             # Some Windows filesystem/filter-driver combinations reject fsync
-            # on a text handle after many writes. flush plus the atomic checkpoint
-            # still makes resume deterministic without turning that into a run abort.
+            # on a text handle after many writes. The append and atomic checkpoint
+            # remain process-crash resumable, but are not a power-loss durability
+            # guarantee when this fallback is used.
             if exc.errno != errno.EINVAL:
                 raise
 

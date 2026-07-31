@@ -96,6 +96,18 @@ class QwenCorpusDiscoveryTest(unittest.TestCase):
         self.assertEqual("English", _MODULE._language_for_record("en"))
         self.assertEqual("Auto", _MODULE._language_for_record("mixed"))
 
+    def test_generation_outcome_distinguishes_max_sequence_from_eos(self) -> None:
+        self.assertEqual(
+            "eos",
+            _MODULE._generation_outcome({"hit_eos": True, "hit_max_seq_len": False}),
+        )
+        self.assertEqual(
+            "max_seq_len",
+            _MODULE._generation_outcome(
+                {"hit_eos": False, "hit_max_seq_len": True}
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
