@@ -24,6 +24,17 @@ class QwenPaddedBucketRuntimeAcceptanceTests(unittest.TestCase):
         self.assertFalse(result["runtime_acceptance_authorized"])
         self.assertIn("rng_neutrality", result["failed_checks"])
 
+    def test_exact_logit_or_codec_divergence_blocks_holdout(self) -> None:
+        checks = _all_checks(True)
+        checks["first_step_logits_parity"] = False
+        checks["greedy_codec_trace_exact"] = False
+        result = validate(_authorization(True), {"checks": checks})
+
+        self.assertFalse(result["runtime_acceptance_authorized"])
+        self.assertFalse(result["holdout_authorized"])
+        self.assertIn("first_step_logits_parity", result["failed_checks"])
+        self.assertIn("greedy_codec_trace_exact", result["failed_checks"])
+
 
 def _authorization(authorized: bool) -> dict[str, object]:
     return {
