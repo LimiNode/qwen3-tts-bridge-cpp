@@ -1,0 +1,82 @@
+{
+  "batch_count": 10,
+  "complete": true,
+  "corpus_v4_batch_validation_schema_version": 1,
+  "distributions": {
+    "category": {
+      "conversation": 320,
+      "game_commentary": 490,
+      "game_dialogue": 100,
+      "game_review": 260,
+      "live_chat": 380,
+      "stream_event": 330,
+      "transition": 120
+    },
+    "intended_length_class": {
+      "extended": 200,
+      "long": 400,
+      "medium": 700,
+      "micro": 300,
+      "short": 400
+    },
+    "language_class": {
+      "en": 500,
+      "mixed": 200,
+      "ru": 1300
+    }
+  },
+  "expected_batch_count": 10,
+  "failures": {
+    "batch_identity": [],
+    "batch_record_count": [],
+    "contiguous_batch_prefix": [],
+    "duplicate_record_id": {},
+    "duplicate_text": {},
+    "metadata_frequency": {},
+    "parse": [],
+    "quota_ceiling": {},
+    "quota_completion": {},
+    "record_contract": [],
+    "record_contract_details": {},
+    "repetition": {},
+    "repetition_records": {}
+  },
+  "input_sha256": {
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b01.jsonl": "d0782e9dd96a4edd812334428e6df53de54d6830f9548ca142cfa241d58695ec",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b02.jsonl": "d7cfc1730cc46098e57ce94393b00f1d4a4b95408fffb3e8d092f535e4bf10a5",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b03.jsonl": "65a86fb0c5232cd3049b141db995ab6f9f34102e68d78f14dfec464fba1fccad",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b04.jsonl": "c57a188d299a83d16bf400adeeef92fd97ecfdd96cf2469b40361b6a4a8ae7f5",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b05.jsonl": "8a6a674c795d4c35ab00ff5b913e13c5911da60167b584f1c7404f80443ee95f",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b06.jsonl": "88de59814de394bc50324ecaac66598fd303a03854b41d4b98fb9aa201afc60a",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b07.jsonl": "983b1043a47eb92f15aa8bdcd7b7a81cbeff3ed15dd12fbdd6a6c8021068c07a",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b08.jsonl": "1f4ae3c042fbb1777291dfce09537b2959b5a3949e91a785b8e8f389781eb79f",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b09.jsonl": "aff81bc80737d413d992c7cee6f32a0ba7e64b9bade0408ea4aeacccac54225d",
+    "C:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\benchmark-artifacts\\rtx4090-2026-07-30\\.representative-v4-r2-candidate.pending-9uy4qj5y\\candidate-batches\\v4-b10.jsonl": "7f8559412d1d3df1e72934d948266bd85f1912e4112d793c0794d51458950a28"
+  },
+  "passed": true,
+  "record_count": 2000,
+  "remaining_quotas": {
+    "category": {
+      "conversation": 0,
+      "game_commentary": 0,
+      "game_dialogue": 0,
+      "game_review": 0,
+      "live_chat": 0,
+      "stream_event": 0,
+      "transition": 0
+    },
+    "intended_length_class": {
+      "extended": 0,
+      "long": 0,
+      "medium": 0,
+      "micro": 0,
+      "short": 0
+    },
+    "language_class": {
+      "en": 0,
+      "mixed": 0,
+      "ru": 0
+    }
+  },
+  "valid_record_count": 2000
+}
