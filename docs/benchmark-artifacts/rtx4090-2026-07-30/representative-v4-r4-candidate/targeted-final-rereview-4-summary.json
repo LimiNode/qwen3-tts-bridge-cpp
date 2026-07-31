@@ -1,0 +1,19 @@
+{
+  "candidate_sha256": "9054b5753fa2d504e23c3550c4ae86c11e341671191c6789ec34f9ee563ad5a0",
+  "checks": {
+    "naturalness": 1
+  },
+  "passed": false,
+  "record_failures": {
+    "v4-b06-028": [
+      "naturalness"
+    ]
+  },
+  "repair_authoring_sha256": "6fd919a9634062dc6e607a84deae642b606befc2a6ea89e76e4f95b0435e8ae6",
+  "review_form_sha256": "8c54f13ed782d3add70e4506ed9f69d8f94b946806092cb6b0a994df9ac1f7e5",
+  "review_record_count": 4,
+  "review_scope": "post_repair_corpus_v4_targeted_rereview",
+  "reviewer_id": "anonymous",
+  "status": "failed_needs_human_review",
+  "targeted_rereview_summary_schema_version": 1
+}

@@ -1,0 +1,33 @@
+{
+  "candidate_sha256": "d5389e7718ba1b305bf4516e5683bc34120118d73325a6a104b7171c7db4aef2",
+  "checks": {
+    "code_switch_naturalness": 1,
+    "likely_real_usage": 2,
+    "naturalness": 4
+  },
+  "passed": false,
+  "record_failures": {
+    "v4-b05-168": [
+      "naturalness",
+      "code_switch_naturalness"
+    ],
+    "v4-b06-028": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b08-096": [
+      "naturalness"
+    ],
+    "v4-b09-171": [
+      "naturalness",
+      "likely_real_usage"
+    ]
+  },
+  "repair_authoring_sha256": "192361a1dd3983fca5ae08eac19c97e43036af05a629c58324be2f1cd4624e70",
+  "review_form_sha256": "4ecdc21969465637c453313233ddf6423ae49c05ea07fedde23992b4ae479b3d",
+  "review_record_count": 26,
+  "review_scope": "post_repair_corpus_v4_targeted_rereview",
+  "reviewer_id": "anonymous",
+  "status": "failed_needs_human_review",
+  "targeted_rereview_summary_schema_version": 1
+}

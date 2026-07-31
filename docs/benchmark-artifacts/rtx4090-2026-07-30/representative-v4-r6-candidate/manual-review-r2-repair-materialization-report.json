@@ -1,0 +1,10 @@
+{
+  "base_candidate_record_id_set_sha256": "f5aa31058353d80c4efeca0f620ae299b63e523347e2b6ccfc9677ab66e91c0f",
+  "base_candidate_sha256": "de576c6ed88236b4aef56a8342824b11a9ebaa57f5012560666a20bc65c1ff02",
+  "corpus_v4_final_targeted_repair_materialization_schema_version": 1,
+  "output_record_id_set_sha256": "f5aa31058353d80c4efeca0f620ae299b63e523347e2b6ccfc9677ab66e91c0f",
+  "output_sha256": "236c790308c00fc0cc7e3127aab0ccd1113d2b5831efc03940c4ed17630c809e",
+  "record_count": 2000,
+  "repair_authoring_sha256": "48c5ae8ea8ac87984d509e350e1535ec175f192aef69fad7df70e7a16db8b4f0",
+  "repair_record_count": 10
+}

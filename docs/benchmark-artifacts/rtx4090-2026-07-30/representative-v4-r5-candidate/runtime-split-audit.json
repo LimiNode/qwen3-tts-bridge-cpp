@@ -1,0 +1,208 @@
+{
+  "batch_coverage": {
+    "discovery": [
+      "v4-b01",
+      "v4-b02",
+      "v4-b03",
+      "v4-b04",
+      "v4-b05",
+      "v4-b06",
+      "v4-b07",
+      "v4-b08",
+      "v4-b09",
+      "v4-b10"
+    ],
+    "manual_review": [
+      "v4-b01",
+      "v4-b02",
+      "v4-b03",
+      "v4-b04",
+      "v4-b05",
+      "v4-b06",
+      "v4-b07",
+      "v4-b08",
+      "v4-b09",
+      "v4-b10"
+    ],
+    "runtime_measurement_holdout": [
+      "v4-b01",
+      "v4-b02",
+      "v4-b03",
+      "v4-b04",
+      "v4-b05",
+      "v4-b06",
+      "v4-b07",
+      "v4-b08",
+      "v4-b09",
+      "v4-b10"
+    ],
+    "source": [
+      "v4-b01",
+      "v4-b02",
+      "v4-b03",
+      "v4-b04",
+      "v4-b05",
+      "v4-b06",
+      "v4-b07",
+      "v4-b08",
+      "v4-b09",
+      "v4-b10"
+    ]
+  },
+  "corpus_id": "representative-v4-r5-candidate",
+  "corpus_v4_runtime_split_schema_version": 1,
+  "discovery_count": 1500,
+  "discovery_sha256": "0559dcea5d8706cd680f23e016d111dcbb5b7a8e003b8108af2a85d2ece249ac",
+  "distributions": {
+    "discovery": {
+      "batch_id": {
+        "v4-b01": 148,
+        "v4-b02": 148,
+        "v4-b03": 147,
+        "v4-b04": 149,
+        "v4-b05": 146,
+        "v4-b06": 154,
+        "v4-b07": 152,
+        "v4-b08": 155,
+        "v4-b09": 143,
+        "v4-b10": 158
+      },
+      "category": {
+        "conversation": 240,
+        "game_commentary": 368,
+        "game_dialogue": 75,
+        "game_review": 195,
+        "live_chat": 285,
+        "stream_event": 247,
+        "transition": 90
+      },
+      "intended_length_class": {
+        "extended": 144,
+        "long": 310,
+        "medium": 535,
+        "micro": 213,
+        "short": 298
+      },
+      "language_class": {
+        "en": 377,
+        "mixed": 142,
+        "ru": 981
+      }
+    },
+    "manual_review": {
+      "batch_id": {
+        "v4-b01": 21,
+        "v4-b02": 13,
+        "v4-b03": 11,
+        "v4-b04": 7,
+        "v4-b05": 6,
+        "v4-b06": 7,
+        "v4-b07": 7,
+        "v4-b08": 10,
+        "v4-b09": 11,
+        "v4-b10": 7
+      },
+      "category": {
+        "conversation": 14,
+        "game_commentary": 17,
+        "game_dialogue": 9,
+        "game_review": 15,
+        "live_chat": 15,
+        "stream_event": 17,
+        "transition": 13
+      },
+      "intended_length_class": {
+        "extended": 18,
+        "long": 20,
+        "medium": 27,
+        "micro": 17,
+        "short": 18
+      },
+      "language_class": {
+        "en": 33,
+        "mixed": 22,
+        "ru": 45
+      }
+    },
+    "runtime_measurement_holdout": {
+      "batch_id": {
+        "v4-b01": 52,
+        "v4-b02": 52,
+        "v4-b03": 53,
+        "v4-b04": 51,
+        "v4-b05": 54,
+        "v4-b06": 46,
+        "v4-b07": 48,
+        "v4-b08": 45,
+        "v4-b09": 57,
+        "v4-b10": 42
+      },
+      "category": {
+        "conversation": 80,
+        "game_commentary": 122,
+        "game_dialogue": 25,
+        "game_review": 65,
+        "live_chat": 95,
+        "stream_event": 83,
+        "transition": 30
+      },
+      "intended_length_class": {
+        "extended": 56,
+        "long": 90,
+        "medium": 165,
+        "micro": 87,
+        "short": 102
+      },
+      "language_class": {
+        "en": 123,
+        "mixed": 58,
+        "ru": 319
+      }
+    },
+    "source": {
+      "batch_id": {
+        "v4-b01": 200,
+        "v4-b02": 200,
+        "v4-b03": 200,
+        "v4-b04": 200,
+        "v4-b05": 200,
+        "v4-b06": 200,
+        "v4-b07": 200,
+        "v4-b08": 200,
+        "v4-b09": 200,
+        "v4-b10": 200
+      },
+      "category": {
+        "conversation": 320,
+        "game_commentary": 490,
+        "game_dialogue": 100,
+        "game_review": 260,
+        "live_chat": 380,
+        "stream_event": 330,
+        "transition": 120
+      },
+      "intended_length_class": {
+        "extended": 200,
+        "long": 400,
+        "medium": 700,
+        "micro": 300,
+        "short": 400
+      },
+      "language_class": {
+        "en": 500,
+        "mixed": 200,
+        "ru": 1300
+      }
+    }
+  },
+  "holdout_count": 500,
+  "holdout_sha256": "11abc657a23334566c0961a2267dfab6ddad24db1899d013da12b91b60247c3a",
+  "manual_review_count": 100,
+  "manual_review_sha256": "f798f3c3d5ae599b5331fe5541ce853b19d2b51d2367c11d47184d9acdd0494d",
+  "manual_review_status": "pending_human_review",
+  "record_count": 2000,
+  "source_record_id_set_sha256": "f5aa31058353d80c4efeca0f620ae299b63e523347e2b6ccfc9677ab66e91c0f",
+  "source_records_sha256": "de576c6ed88236b4aef56a8342824b11a9ebaa57f5012560666a20bc65c1ff02",
+  "split_seed": 20260731,
+  "split_strategy": "deterministic_category_quota_holdout_and_discovery_stratified_review_v1"
+}

@@ -1,0 +1,116 @@
+{
+  "candidate_sha256": "fe0b947b42ade4e5c243479171f41084b3ab61fece0c5bb102f3504945d7b693",
+  "checks": {
+    "category_fidelity": 1,
+    "code_switch_naturalness": 5,
+    "likely_real_usage": 8,
+    "naturalness": 19,
+    "scene_context_fidelity": 1,
+    "semantic_repetition_acceptable": 7,
+    "speech_intent_fidelity": 1
+  },
+  "final_targeted_review_summary_schema_version": 1,
+  "passed": false,
+  "record_failures": {
+    "v4-b01-013": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b01-033": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b03-081": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b03-162": [
+      "naturalness"
+    ],
+    "v4-b04-057": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b04-073": [
+      "naturalness",
+      "code_switch_naturalness"
+    ],
+    "v4-b04-077": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b04-153": [
+      "naturalness"
+    ],
+    "v4-b04-166": [
+      "naturalness"
+    ],
+    "v4-b05-028": [
+      "naturalness",
+      "code_switch_naturalness"
+    ],
+    "v4-b05-153": [
+      "naturalness"
+    ],
+    "v4-b05-168": [
+      "semantic_repetition_acceptable"
+    ],
+    "v4-b06-028": [
+      "semantic_repetition_acceptable"
+    ],
+    "v4-b06-051": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b06-121": [
+      "code_switch_naturalness"
+    ],
+    "v4-b06-153": [
+      "naturalness"
+    ],
+    "v4-b06-168": [
+      "semantic_repetition_acceptable"
+    ],
+    "v4-b07-029": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b07-168": [
+      "naturalness",
+      "code_switch_naturalness"
+    ],
+    "v4-b08-096": [
+      "naturalness"
+    ],
+    "v4-b08-171": [
+      "naturalness",
+      "semantic_repetition_acceptable"
+    ],
+    "v4-b09-168": [
+      "semantic_repetition_acceptable",
+      "code_switch_naturalness"
+    ],
+    "v4-b09-171": [
+      "semantic_repetition_acceptable"
+    ],
+    "v4-b10-029": [
+      "naturalness",
+      "likely_real_usage"
+    ],
+    "v4-b10-108": [
+      "semantic_repetition_acceptable"
+    ],
+    "v4-b10-110": [
+      "naturalness",
+      "category_fidelity",
+      "scene_context_fidelity",
+      "speech_intent_fidelity"
+    ]
+  },
+  "review_form_sha256": "e03d3bdd99610fe1c27f496c9cdbc8b358128d17795e349d7668ae2be157e0df",
+  "review_record_count": 98,
+  "review_scope": "finalized_corpus_v4_targeted_replacements",
+  "reviewer_id": "anonymous",
+  "status": "failed_needs_human_review",
+  "targeted_form_sha256": "4668d0689c6a2b111133088485a66d7bae260f4ff0103c34a6e1d86b033b2e96"
+}
