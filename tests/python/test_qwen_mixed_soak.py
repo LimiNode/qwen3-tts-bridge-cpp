@@ -6,10 +6,41 @@ import argparse
 import unittest
 from typing import cast
 
-from scripts.qwen_mixed_soak import _validate_soak, _validate_worker_args
+from scripts.qwen_mixed_soak import (
+    _validate_soak,
+    _validate_wheel,
+    _validate_worker_args,
+)
 
 
 class MixedSoakTests(unittest.TestCase):
+    def test_accepts_source_bundle_provenance_without_a_wheel(self) -> None:
+        _validate_wheel(
+            {
+                "imports": {
+                    "faster_qwen3_tts": {
+                        "source_bundle_sha256": "a" * 64,
+                    }
+                }
+            },
+            "",
+            "a" * 64,
+        )
+
+    def test_rejects_source_bundle_provenance_mismatch(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "source bundle SHA mismatch"):
+            _validate_wheel(
+                {
+                    "imports": {
+                        "faster_qwen3_tts": {
+                            "source_bundle_sha256": "a" * 64,
+                        }
+                    }
+                },
+                "",
+                "b" * 64,
+            )
+
     def test_benchmark_style_engine_flag_is_rejected(self) -> None:
         parser = cast(argparse.ArgumentParser, _RecordingParser())
 

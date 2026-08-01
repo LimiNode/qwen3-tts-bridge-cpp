@@ -188,6 +188,7 @@ def _module_provenance(name: str) -> dict[str, object]:
     if distribution_name is not None:
         provenance["distribution"] = _distribution_provenance(distribution_name)
     if path is not None:
+        provenance["source_bundle_sha256"] = _directory_sha256(path)
         source_git = _source_git_info(path)
         if source_git is not None:
             provenance["source_git"] = source_git
@@ -197,6 +198,25 @@ def _module_provenance(name: str) -> dict[str, object]:
                 "suppressed for installed package inside venv"
             )
     return provenance
+
+
+def _directory_sha256(path: Path) -> str | None:
+    """Hash an importable source package without transient bytecode files."""
+
+    if not path.is_dir():
+        return None
+    digest = hashlib.sha256()
+    files = sorted(
+        candidate
+        for candidate in path.rglob("*")
+        if candidate.is_file() and "__pycache__" not in candidate.parts
+    )
+    for candidate in files:
+        digest.update(candidate.relative_to(path).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(candidate.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 def _provenance_path(

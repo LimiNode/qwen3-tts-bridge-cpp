@@ -334,7 +334,26 @@ def _gpu_memory_by_pid_mib(process_ids: list[int]) -> dict[str, int | None] | No
     return values
 
 
-def _validate_wheel(runtime: dict[str, object], expected_sha256: str) -> None:
+def _validate_wheel(
+    runtime: dict[str, object],
+    expected_sha256: str,
+    expected_source_bundle_sha256: str = "",
+) -> None:
+    if expected_source_bundle_sha256:
+        try:
+            actual_source_bundle = str(
+                runtime["imports"]["faster_qwen3_tts"]["source_bundle_sha256"]
+            )
+        except (KeyError, TypeError):
+            raise RuntimeError(
+                "runtime lacks importable FasterQwen source bundle provenance"
+            ) from None
+        if actual_source_bundle.lower() != expected_source_bundle_sha256.lower():
+            raise RuntimeError(
+                "FasterQwen source bundle SHA mismatch: "
+                f"{actual_source_bundle} != {expected_source_bundle_sha256}"
+            )
+        return
     try:
         actual = str(
             runtime["imports"]["faster_qwen3_tts"]["distribution"]["direct_url"][

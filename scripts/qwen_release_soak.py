@@ -74,7 +74,11 @@ def main() -> int:
         worker_prefix_args=args.worker_arg,
         args=args,
     )
-    _validate_wheel(runtime, args.expected_faster_wheel_sha256)
+    _validate_wheel(
+        runtime,
+        args.expected_faster_wheel_sha256,
+        args.expected_faster_source_bundle_sha256,
+    )
     harness = PackagedWorkerHarness(
         worker_executable=worker_executable,
         args=args.worker_arg,
@@ -168,7 +172,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default="required",
     )
     parser.add_argument("--expected-prefill-cache-entries", type=int, default=6)
-    parser.add_argument("--expected-faster-wheel-sha256", required=True)
+    parser.add_argument("--expected-faster-wheel-sha256", default="")
+    parser.add_argument("--expected-faster-source-bundle-sha256", default="")
     return parser
 
 
@@ -179,6 +184,19 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("--cancellations-per-category must be positive")
     if args.cancellations_per_category % len(_CANCEL_STAGES) != 0:
         parser.error("--cancellations-per-category must divide evenly across stages")
+    provenance_count = sum(
+        bool(value)
+        for value in (
+            args.expected_faster_wheel_sha256,
+            args.expected_faster_source_bundle_sha256,
+        )
+    )
+    if provenance_count != 1:
+        parser.error(
+            "provide exactly one FasterQwen provenance: "
+            "--expected-faster-wheel-sha256 or "
+            "--expected-faster-source-bundle-sha256"
+        )
     for key in (
         "expected_prefill_cache_entries",
         "max_rss_growth_mb",
