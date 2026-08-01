@@ -403,6 +403,19 @@ def _run_cancel(
                     else None
                 ),
             }
+        if message_type == "completed" and cancel_sent_at is not None:
+            return {
+                "request_id": request_id,
+                "terminal_state": "completed_before_cancel_observed",
+                "audio_chunks": audio_chunks,
+                "audio_bytes": audio_bytes,
+                "pcm_sha256": digest.hexdigest(),
+                "first_audio_ms": first_audio_ms,
+                "completed_ms": elapsed_ms,
+                "cancel_latency_ms": (
+                    (time.perf_counter() - cancel_sent_at) * 1000.0
+                ),
+            }
 
 
 def _validate_release_soak(
