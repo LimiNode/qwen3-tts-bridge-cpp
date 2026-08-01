@@ -13,7 +13,11 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $profileFullPath = Join-Path $repoRoot $ProfilePath
 $profile = Get-Content -Raw $profileFullPath | ConvertFrom-Json
-$pythonPath = Join-Path $repoRoot $Python
+$pythonPath = if ([System.IO.Path]::IsPathRooted($Python)) {
+    $Python
+} else {
+    Join-Path $repoRoot $Python
+}
 
 if (-not (Test-Path -LiteralPath $pythonPath)) {
     throw "Python executable was not found: $pythonPath"

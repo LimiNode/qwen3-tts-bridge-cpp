@@ -55,9 +55,14 @@ $arguments = @(
 $benchmarkOutput = & $BenchmarkExecutable @arguments
 $exitCode = $LASTEXITCODE
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+$outputText = if ($null -eq $benchmarkOutput) {
+    ""
+} else {
+    [string]::Join([Environment]::NewLine, [string[]]$benchmarkOutput)
+}
 [System.IO.File]::WriteAllText(
     $outputPath,
-    [string]::Join([Environment]::NewLine, [string[]]$benchmarkOutput),
+    $outputText,
     $utf8NoBom
 )
 exit $exitCode
