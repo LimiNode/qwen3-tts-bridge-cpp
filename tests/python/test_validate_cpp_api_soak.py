@@ -7,7 +7,10 @@ import unittest
 from pathlib import Path
 from typing import cast
 
-from scripts.validate_cpp_api_soak import _read_worker_metrics_text, validate_cpp_api_soak
+from scripts.validate_cpp_api_soak import (
+    _read_worker_metrics_text,
+    validate_cpp_api_soak,
+)
 
 
 class ValidateCppApiSoakTests(unittest.TestCase):
@@ -166,7 +169,9 @@ class ValidateCppApiSoakTests(unittest.TestCase):
 
         self.assertEqual([], cast(list[str], validation["failures"]))
 
-    def test_accepts_partial_manifest_contract_after_first_pcm_cancellation(self) -> None:
+    def test_accepts_partial_manifest_contract_after_first_pcm_cancellation(
+        self,
+    ) -> None:
         phases = _phases(1)
         phases["talker_prefill_length"] = 32
         artifact = {

@@ -3,6 +3,7 @@ import json
 import threading
 import unittest
 from collections.abc import Iterable
+from typing import BinaryIO, cast
 
 from qwen_tts_bridge_worker.config import CanaryRuntimeProvenance
 from qwen_tts_bridge_worker.engine import (
@@ -455,7 +456,10 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         output_stream = io.BytesIO()
         error_stream = io.StringIO()
         server = StdioWorkerServer(
-            input_stream=_EofAfterEvent(payload, engine.limit_reached),
+            input_stream=cast(
+                BinaryIO,
+                _EofAfterEvent(payload, engine.limit_reached),
+            ),
             output_stream=output_stream,
             error_stream=error_stream,
             engine=engine,
@@ -464,7 +468,11 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertEqual(0, server.run())
 
         frames = _parse_frames(output_stream.getvalue())
-        error = next(frame for frame in frames if frame.header.frame_type == FrameType.ERROR_JSON)
+        error = next(
+            frame
+            for frame in frames
+            if frame.header.frame_type == FrameType.ERROR_JSON
+        )
         self.assertEqual("safety_duration_limit", _payload(error)["code"])
         metrics = [
             json.loads(line.removeprefix("qtb_metric "))

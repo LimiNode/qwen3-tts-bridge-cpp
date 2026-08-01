@@ -4,8 +4,9 @@ import importlib.util
 import unittest
 from pathlib import Path
 
-
-_SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "qwen_tail_case_matrix.py"
+_SCRIPT_PATH = (
+    Path(__file__).resolve().parents[2] / "scripts" / "qwen_tail_case_matrix.py"
+)
 _SPEC = importlib.util.spec_from_file_location("qwen_tail_case_matrix", _SCRIPT_PATH)
 assert _SPEC is not None and _SPEC.loader is not None
 _MODULE = importlib.util.module_from_spec(_SPEC)

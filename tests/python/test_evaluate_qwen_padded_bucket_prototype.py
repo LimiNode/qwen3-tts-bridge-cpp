@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from typing import cast
 
 from scripts.evaluate_qwen_padded_bucket_prototype import _evaluate
 
@@ -20,7 +21,10 @@ class QwenPaddedBucketResearchAuthorizationTests(unittest.TestCase):
         result = _evaluate(_validation(False), _shapes())
 
         self.assertFalse(result["research_implementation_authorized"])
-        self.assertIn("baseline_validation", result["failed_checks"])
+        self.assertIn(
+            "baseline_validation",
+            cast(list[object], result["failed_checks"]),
+        )
 
 
 def _validation(accepted: bool) -> dict[str, object]:

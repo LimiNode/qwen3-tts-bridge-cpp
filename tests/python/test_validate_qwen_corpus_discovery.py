@@ -6,7 +6,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-
+from typing import cast
 
 _SCRIPT_PATH = (
     Path(__file__).resolve().parents[2]
@@ -36,7 +36,7 @@ class ValidateQwenCorpusDiscoveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             paths = _write_valid_run(root)
-            records_path = paths["run_dir"] / "records.jsonl"
+            records_path = cast(Path, paths["run_dir"]) / "records.jsonl"
             row = json.loads(records_path.read_text(encoding="utf-8"))
             row.pop("derived_request_seed")
             records_path.write_text(json.dumps(row) + "\n", encoding="utf-8")

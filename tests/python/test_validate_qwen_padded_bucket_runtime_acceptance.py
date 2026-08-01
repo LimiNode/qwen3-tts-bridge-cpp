@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from typing import cast
 
 from scripts.validate_qwen_padded_bucket_runtime_acceptance import (
     _REQUIRED_SEMANTIC_CHECKS,
@@ -22,7 +23,10 @@ class QwenPaddedBucketRuntimeAcceptanceTests(unittest.TestCase):
         result = validate(_authorization(True), {"checks": checks})
 
         self.assertFalse(result["runtime_acceptance_authorized"])
-        self.assertIn("rng_neutrality", result["failed_checks"])
+        self.assertIn(
+            "rng_neutrality",
+            cast(list[object], result["failed_checks"]),
+        )
 
 
 def _authorization(authorized: bool) -> dict[str, object]:

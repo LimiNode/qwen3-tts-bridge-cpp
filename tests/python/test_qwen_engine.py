@@ -3,6 +3,7 @@ import random
 import struct
 import threading
 import unittest
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -679,7 +680,7 @@ class QwenEngineTests(unittest.TestCase):
         custom_stream_call = dict(fake_model.custom_stream_calls[0])
         cancel_check = custom_stream_call.pop("cancel_check")
         self.assertTrue(callable(cancel_check))
-        self.assertFalse(cancel_check())
+        self.assertFalse(cast(Callable[[], bool], cancel_check)())
         self.assertEqual(
             {
                 "text": "Hello",
@@ -1046,7 +1047,7 @@ class QwenEngineTests(unittest.TestCase):
         design_stream_call = dict(fake_model.design_stream_calls[0])
         cancel_check = design_stream_call.pop("cancel_check")
         self.assertTrue(callable(cancel_check))
-        self.assertFalse(cancel_check())
+        self.assertFalse(cast(Callable[[], bool], cancel_check)())
         self.assertEqual(
             {
                 "text": "Hello",
@@ -1093,7 +1094,7 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(1, fake_model.closed_streams)
         cancel_check = fake_model.custom_stream_calls[0]["cancel_check"]
         self.assertTrue(callable(cancel_check))
-        self.assertTrue(cancel_check())
+        self.assertTrue(cast(Callable[[], bool], cancel_check)())
 
     def test_voice_design_requires_instruction(self) -> None:
         engine = QwenTtsEngine(
