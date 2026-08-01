@@ -1,14 +1,14 @@
 {
-  "frequency_exact_allowlist_evidence_index_schema_version": 1,
-  "evidence_role": "historical_research_not_internal_opt_in_authorization",
-  "source_capture": {
+  "frequency_exact_allowlist_evidence_index_schema_version": 2,
+  "evidence_role": "internal_opt_in_candidate_with_historical_context",
+  "historical_source_capture": {
     "branch": "research/frequency-exact-allowlist",
     "commit": "b26d53d",
     "raw_cpp_artifact_sha256": "45461a25378ee4336892e7002d9ff0be8ede2fd20994661ff63ccda41e498089",
     "raw_cpp_worker_stderr_sha256": "dbd92767bce7f566bff6cbdfa314f2565901b44a7df7352613a1e484ababb194",
     "raw_python_soak_report_sha256": "cc3436988bacdee92980b8250d811f1e4fdf61997ed342fb88b3deb93a3e7007"
   },
-  "files": {
+  "historical_files": {
     "cancellation-sentinel-calibration.json": "de3b0865f7411618acfdbcf53671d50c6620133157a06cbef8946831fb3f40c1",
     "cpp-api-soak-manifest.jsonl": "ee067b58e98988e8ded53deb15f9a91439247f8f4f50cd046db1089cfef413af",
     "cpp-api-soak-r250.metrics.jsonl": "cb3b180fe6733c930661a264a7906171fdf085aedcca17ce9bcb5caeefc81a83",
@@ -19,5 +19,20 @@
     "operational-soak-schedule.jsonl": "ab550fe22a25daa967c20936555ff62468e8192ea82f651537343a824410e59f",
     "python-operational-soak-final.summary.json": "2df0a14865b2b645617e071836a9c8d8927b4c9a495c074d3e5ca7f96dbf8ded",
     "seed-manifest.json": "abae5064effe8059415a7c32e71350aba09f851b5d670de781f6e155381eab35"
+  },
+  "generation_prime_capture": {
+    "source_python_release_soak_sha256": "79ed8945f0dc6b08b169a952589ec2e0c4be30e10a936b92477e9593d461660f",
+    "source_cpp_api_soak_sha256": "12e95d2c3286ae0d762546035aec57bd3605311d352cb47e9df0083ae310ec9c",
+    "source_worker_metric_provenance": "embedded_request_telemetry",
+    "faster_module_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+    "worker_source_bundle_sha256": "ff745b37a067a50bdacc02b19116687c3c28af04a7f061749f3af6b190c82240"
+  },
+  "internal_opt_in_candidate_files": {
+    "cpp-api-soak-r250-prime.metrics.jsonl": "1c11ae58fa2c055e33694b306222e47caffedace8b308c7cdacce0e46527581e",
+    "cpp-api-soak-r250-prime.sanitization.json": "9a99bf2128ad587f9310bbf135d9a5c35ead52efe9edccca8e436b0b6bd6fd8b",
+    "cpp-api-soak-r250-prime.sanitized.json": "fba4fd34b3ecf301567f8619f4f8908cbb2f788301743cc614e622a10064da86",
+    "cpp-api-soak-r250-prime.validation.json": "436ba615668f9d64a278633d368d55329edad174490fcc2904c0247eacbc1d2f",
+    "python-launcher-soak-r63.summary.json": "e2d78635ab29a17c04b1095da8b74e2a94b63266d1e0971925c8e4a7d20b903d",
+    "python-launcher-soak-r63.validation.json": "9f8f79d8c24e114ca474e30cabebaf427ed4f8a801d1a58a86152e3d9b80bdbb"
   }
 }
