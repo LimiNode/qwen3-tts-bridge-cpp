@@ -60,6 +60,9 @@ if ($profile.prefill_first_chunk_warmup) {
         "--prefill-first-chunk-warmup-length", $profile.prefill_first_chunk_warmup_length
     )
 }
+if ($profile.prefill_generation_prime) {
+    $arguments += "--prefill-generation-prime"
+}
 if ($profile.collect_generation_trace) {
     $arguments += "--collect-generation-trace"
 }
