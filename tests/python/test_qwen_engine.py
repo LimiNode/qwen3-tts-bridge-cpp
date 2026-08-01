@@ -819,6 +819,10 @@ class QwenEngineTests(unittest.TestCase):
 
         self.assertEqual([struct.pack("<h", 16383), struct.pack("<h", 16383)], chunks)
         self.assertEqual(1, len(fake_model.custom_stream_calls))
+        custom_stream_call = dict(fake_model.custom_stream_calls[0])
+        cancel_check = custom_stream_call.pop("cancel_check")
+        self.assertTrue(callable(cancel_check))
+        self.assertFalse(cancel_check())
         self.assertEqual(
             {
                 "text": "Hello",
@@ -832,7 +836,7 @@ class QwenEngineTests(unittest.TestCase):
                 "prefill_backend": "eager",
                 "prefill_compile_compat_mode": "none",
             },
-            fake_model.custom_stream_calls[0],
+            custom_stream_call,
         )
         self.assertEqual(1, fake_model.closed_streams)
         metrics = engine.pop_last_chunk_metrics()
@@ -1174,6 +1178,10 @@ class QwenEngineTests(unittest.TestCase):
             )
         )
 
+        design_stream_call = dict(fake_model.design_stream_calls[0])
+        cancel_check = design_stream_call.pop("cancel_check")
+        self.assertTrue(callable(cancel_check))
+        self.assertFalse(cancel_check())
         self.assertEqual(
             {
                 "text": "Hello",
@@ -1185,7 +1193,7 @@ class QwenEngineTests(unittest.TestCase):
                 "prefill_backend": "eager",
                 "prefill_compile_compat_mode": "none",
             },
-            fake_model.design_stream_calls[0],
+            design_stream_call,
         )
 
     def test_faster_stream_is_closed_on_cancel(self) -> None:
@@ -1218,6 +1226,9 @@ class QwenEngineTests(unittest.TestCase):
         with self.assertRaises(StopIteration):
             next(iterator)
         self.assertEqual(1, fake_model.closed_streams)
+        cancel_check = fake_model.custom_stream_calls[0]["cancel_check"]
+        self.assertTrue(callable(cancel_check))
+        self.assertTrue(cancel_check())
 
     def test_voice_design_requires_instruction(self) -> None:
         engine = QwenTtsEngine(

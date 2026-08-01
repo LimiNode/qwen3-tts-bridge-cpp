@@ -164,7 +164,7 @@ class QwenTtsEngine:
         with self._synthesis_lock:
             self._last_generation_trace = None
             _seed_runtime(_request_seed(self._config, request))
-            audio_stream = self._generate_audio_stream(model, request)
+            audio_stream = self._generate_audio_stream(model, request, cancel_event)
             emitted_audio_bytes = 0
             max_audio_bytes = _max_audio_bytes(self._config, request)
             close_stream = getattr(audio_stream, "close", None)
@@ -667,8 +667,14 @@ class QwenTtsEngine:
         self,
         model: Any,
         request: SynthesisRequest,
+        cancel_event: threading.Event,
     ) -> Iterable[tuple[Any, int]]:
-        stream = _qwen_stream_generate_audio(model, self._config, request)
+        stream = _qwen_stream_generate_audio(
+            model,
+            self._config,
+            request,
+            cancel_event,
+        )
         if stream is not None:
             return stream
 
@@ -1378,6 +1384,7 @@ def _qwen_stream_generate_audio(
     model: Any,
     config: QwenEngineConfig,
     request: SynthesisRequest,
+    cancel_event: threading.Event,
 ) -> Iterable[tuple[Any, int]] | None:
     model_type = _qwen_model_type(model)
     language = _qwen_language(request.language)
@@ -1397,6 +1404,7 @@ def _qwen_stream_generate_audio(
                     "do_sample": config.do_sample,
                     "prefill_backend": config.prefill_backend,
                     "prefill_compile_compat_mode": (config.prefill_compile_compat_mode),
+                    "cancel_check": cancel_event.is_set,
                 }
                 if config.compiled_emit_chunk_schedule:
                     stream_kwargs["compiled_chunk_schedule"] = (
@@ -1456,6 +1464,7 @@ def _qwen_stream_generate_audio(
                     "do_sample": config.do_sample,
                     "prefill_backend": config.prefill_backend,
                     "prefill_compile_compat_mode": (config.prefill_compile_compat_mode),
+                    "cancel_check": cancel_event.is_set,
                 }
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
