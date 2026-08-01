@@ -53,6 +53,16 @@
     "model-runtime-manifest.json": "4fbf476dc476fd662ecd2ae125a44b39378d05b650606d49d55cf3a1bbd41ee7",
     "triton-runtime-provenance.json": "448d2678ce97500fab486ab7b0b063de722c3952184924838d0e3b4837a39176"
   },
+  "sealing_smoke_capture": {
+    "source_python_release_soak_sha256": "8ea4f1710b05b76db6e0f19a0765bd08562cd9505df4b4a4106ae06665f9bab9",
+    "source_faster_git_commit": "a0532ff8b712a4051bdf60ac2cd430a492c24d39",
+    "source_faster_git_dirty": false,
+    "source_model_directory_manifest_sha256": "f457dce4a6e6068dde0c2d2b302e2f9dbcd6944d2043bdab600853b096547d69"
+  },
+  "sealing_smoke_files": {
+    "python-sealing-smoke-r63.summary.json": "59e8b6d8d43f66e8f3b167979d1d58c4f8e2d8a5e51670c5ca02015b2ff507a3",
+    "python-sealing-smoke-r63.validation.json": "ef6101ef8b3de45b3e918afeb0270fd9dc1c2adf7368faa13f180ac1ca73884b"
+  },
   "supplemental_launcher_smoke_files": {
     "python-launcher-soak-r63.summary.json": "e2d78635ab29a17c04b1095da8b74e2a94b63266d1e0971925c8e4a7d20b903d",
     "python-launcher-soak-r63.validation.json": "9f8f79d8c24e114ca474e30cabebaf427ed4f8a801d1a58a86152e3d9b80bdbb"

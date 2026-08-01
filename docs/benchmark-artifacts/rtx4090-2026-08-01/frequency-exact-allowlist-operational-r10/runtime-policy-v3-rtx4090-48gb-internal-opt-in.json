@@ -60,6 +60,8 @@
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/offline-holdout-report.json": "cbf598238acef6df7527b7168d1fd09082c1a7ed67f888dadaff4e8109d5cafb",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-launcher-soak-r504.summary.json": "259757061e0c780fc74888e80929c4b66bf60f8c067db5bcc9af41663539ad64",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-launcher-soak-r504.validation.json": "2f1975eddc26fc7bfadb7f6fdb45a974bc486ec813390714ae10d78472c10183",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-sealing-smoke-r63.summary.json": "59e8b6d8d43f66e8f3b167979d1d58c4f8e2d8a5e51670c5ca02015b2ff507a3",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-sealing-smoke-r63.validation.json": "ef6101ef8b3de45b3e918afeb0270fd9dc1c2adf7368faa13f180ac1ca73884b",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/triton-runtime-provenance.json": "448d2678ce97500fab486ab7b0b063de722c3952184924838d0e3b4837a39176"
   },
   "excluded_experiments": [

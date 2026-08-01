@@ -28,6 +28,9 @@ this compiled configuration can be enabled there.
   references, and six cache entries.
 - The public C++ API soak passed 250 operations: 225 completed, 25 cancelled,
   one worker identity, and six cache entries.
+- The post-sealing Python smoke passed 36 completed and 27 cancelled requests,
+  including all six compiled lengths, three eager holdouts, and all cancellation
+  phases.
 - The frozen holdout remains descriptive only and was not used to tune forms.
 
 The mixed Python soak is not a latency SLA: first audio was `384.5 ms` median,

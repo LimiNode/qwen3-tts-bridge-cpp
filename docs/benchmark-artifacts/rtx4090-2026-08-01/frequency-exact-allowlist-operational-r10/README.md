@@ -45,6 +45,11 @@ latency as a guarantee for arbitrary eager text lengths.
 `python-launcher-soak-r63.*` is retained as a supplementary launcher smoke. It
 does not authorize the profile and is not pinned by the runtime policy.
 
+`python-sealing-smoke-r63.*` is the post-sealing smoke. It passed 36 completed
+requests and 27 cancellations, covering every compiled/eager scenario and all
+three cancellation phases under the pinned model manifest and clean FasterQwen
+source.
+
 ## Historical Research
 
 - `python-operational-soak-final.summary.json` records a sanitized summary of
