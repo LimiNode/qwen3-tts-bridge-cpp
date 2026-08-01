@@ -50,6 +50,7 @@ _PROFILE_KEYS = {
     "prefill_require_precompiled",
     "prefill_first_chunk_warmup",
     "prefill_first_chunk_warmup_length",
+    "prefill_generation_prime",
     "collect_generation_trace",
     "profile_prefill",
     "max_seq_len",
@@ -362,6 +363,9 @@ def _create_engine(profile: Mapping[str, object], speaker: str, seed: int) -> An
             int(profile["prefill_first_chunk_warmup_length"])
             if profile["prefill_first_chunk_warmup_length"] is not None
             else None
+        ),
+        prefill_generation_prime_enabled=bool(
+            profile.get("prefill_generation_prime", False)
         ),
         collect_generation_trace=True,
         max_seq_len=int(profile.get("max_seq_len", 2048)),

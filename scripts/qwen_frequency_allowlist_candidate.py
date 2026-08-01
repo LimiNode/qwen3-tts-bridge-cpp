@@ -17,6 +17,11 @@ def main() -> int:
     parser.add_argument("--records", type=Path, required=True)
     parser.add_argument("--discovery", type=Path, required=True)
     parser.add_argument("--select-count", type=int, default=6)
+    parser.add_argument(
+        "--exact-lengths",
+        default="",
+        help="Explicit exact lengths for a reproducible baseline manifest.",
+    )
     parser.add_argument("--current-lengths", default="")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -29,6 +34,7 @@ def main() -> int:
         discovery_path=args.discovery,
         select_count=args.select_count,
         current_lengths=_parse_lengths(args.current_lengths),
+        exact_lengths=_parse_lengths(args.exact_lengths),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
@@ -53,6 +59,7 @@ def build_manifest(
     discovery_path: Path,
     select_count: int,
     current_lengths: list[int],
+    exact_lengths: list[int] | None = None,
 ) -> dict[str, object]:
     records = _load_jsonl(records_path, "records")
     discovery = _load_jsonl(discovery_path, "discovery")
@@ -67,7 +74,11 @@ def build_manifest(
 
     histogram = Counter(lengths_by_id.values())
     ranked = sorted(histogram.items(), key=lambda item: (-item[1], item[0]))
-    selected = sorted(length for length, _count in ranked[:select_count])
+    selected = exact_lengths or sorted(
+        length for length, _count in ranked[:select_count]
+    )
+    if len(selected) > select_count:
+        raise ValueError("explicit exact lengths exceed --select-count")
     rows = [
         _candidate_row(record_id, discovery_by_id[record_id], length)
         for length in selected
@@ -78,7 +89,11 @@ def build_manifest(
     total = len(lengths_by_id)
     return {
         "artifact_schema_version": 1,
-        "method": "frequency_ranked_exact_prefill_lengths_from_completed_discovery",
+        "method": (
+            "explicit_exact_prefill_lengths_from_completed_discovery"
+            if exact_lengths
+            else "frequency_ranked_exact_prefill_lengths_from_completed_discovery"
+        ),
         "records_path": str(records_path),
         "records_sha256": _sha256(records_path),
         "discovery_path": str(discovery_path),
