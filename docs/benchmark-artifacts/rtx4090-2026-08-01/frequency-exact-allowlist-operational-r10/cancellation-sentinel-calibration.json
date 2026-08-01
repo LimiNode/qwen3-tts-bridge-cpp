@@ -1,0 +1,20 @@
+{
+  "artifact_schema_version": 1,
+  "purpose": "ensure after_third_audio cancellation is issued before EOS",
+  "measurement_status": "real_runtime_preflight",
+  "runtime_profile": "faster_cuda_bf16_sdpa_strict_bf16_sdpa_v1",
+  "cancellation_semantic_seed": 3,
+  "compiled_emit_chunk_schedule": [8, 8, 12],
+  "eager_emit_chunk_schedule": [8],
+  "results": [
+    {"label": "compiled_18_ryan", "audio_chunks": 5, "codec_frames": 44},
+    {"label": "compiled_19_serena", "audio_chunks": 4, "codec_frames": 31},
+    {"label": "compiled_20_ryan", "audio_chunks": 5, "codec_frames": 42},
+    {"label": "compiled_26_serena", "audio_chunks": 7, "codec_frames": 71},
+    {"label": "compiled_27_ryan", "audio_chunks": 8, "codec_frames": 83},
+    {"label": "compiled_29_serena", "audio_chunks": 5, "codec_frames": 51},
+    {"label": "eager_17_ryan", "audio_chunks": 9, "codec_frames": 69},
+    {"label": "eager_38_serena_mixed", "audio_chunks": 12, "codec_frames": 91},
+    {"label": "eager_60_ryan", "audio_chunks": 27, "codec_frames": 214}
+  ]
+}

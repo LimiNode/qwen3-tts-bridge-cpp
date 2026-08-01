@@ -1,0 +1,23 @@
+{
+  "frequency_exact_allowlist_evidence_index_schema_version": 1,
+  "evidence_role": "historical_research_not_internal_opt_in_authorization",
+  "source_capture": {
+    "branch": "research/frequency-exact-allowlist",
+    "commit": "b26d53d",
+    "raw_cpp_artifact_sha256": "45461a25378ee4336892e7002d9ff0be8ede2fd20994661ff63ccda41e498089",
+    "raw_cpp_worker_stderr_sha256": "dbd92767bce7f566bff6cbdfa314f2565901b44a7df7352613a1e484ababb194",
+    "raw_python_soak_report_sha256": "cc3436988bacdee92980b8250d811f1e4fdf61997ed342fb88b3deb93a3e7007"
+  },
+  "files": {
+    "cancellation-sentinel-calibration.json": "de3b0865f7411618acfdbcf53671d50c6620133157a06cbef8946831fb3f40c1",
+    "cpp-api-soak-manifest.jsonl": "ee067b58e98988e8ded53deb15f9a91439247f8f4f50cd046db1089cfef413af",
+    "cpp-api-soak-r250.metrics.jsonl": "cb3b180fe6733c930661a264a7906171fdf085aedcca17ce9bcb5caeefc81a83",
+    "cpp-api-soak-r250.sanitization.json": "2456661d1f5d29ae62cfb04e0e7d269d6edc7ff9844c21c0065aea4525d1a509",
+    "cpp-api-soak-r250.sanitized.json": "c6923da285bb7e629d945608aa94890aea438762463cc50369d5a80ecbb447b7",
+    "cpp-api-soak-r250.validation.json": "bdf6a3c37450fa09f6a118b75a7d7bac1a11dc77cccde83c43602d9a0ae3f73d",
+    "offline-holdout-report.json": "cbf598238acef6df7527b7168d1fd09082c1a7ed67f888dadaff4e8109d5cafb",
+    "operational-soak-schedule.jsonl": "ab550fe22a25daa967c20936555ff62468e8192ea82f651537343a824410e59f",
+    "python-operational-soak-final.summary.json": "2df0a14865b2b645617e071836a9c8d8927b4c9a495c074d3e5ca7f96dbf8ded",
+    "seed-manifest.json": "abae5064effe8059415a7c32e71350aba09f851b5d670de781f6e155381eab35"
+  }
+}

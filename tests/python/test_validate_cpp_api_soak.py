@@ -8,12 +8,26 @@ from pathlib import Path
 from typing import cast
 
 from scripts.validate_cpp_api_soak import (
+    _read_worker_metrics,
     _read_worker_metrics_text,
     validate_cpp_api_soak,
 )
 
 
 class ValidateCppApiSoakTests(unittest.TestCase):
+    def test_reads_canonical_jsonl_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_name:
+            path = Path(temporary_name) / "metrics.jsonl"
+            path.write_text(
+                '{"event":"worker_runtime_memory","request_id":1}\n',
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                [{"event": "worker_runtime_memory", "request_id": 1}],
+                _read_worker_metrics(path),
+            )
+
     def test_tolerates_non_utf8_worker_log_preamble(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "worker.log"
