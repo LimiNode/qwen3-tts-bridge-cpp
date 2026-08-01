@@ -35,10 +35,14 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
+При одноконфигурационной сборке MinGW исполняемые файлы находятся прямо в
+`build`; многоконфигурационные генераторы вроде Visual Studio используют
+`build\Release`.
+
 Для mock-примера WAV не нужны CUDA и модель:
 
 ```powershell
-.\build\Release\qwen_tts_save_wav.exe --mock --output sample.wav --text "Hello from QwenTTSBridge"
+.\build\qwen_tts_save_wav.exe --mock --output sample.wav --text "Hello from QwenTTSBridge"
 ```
 
 Для реального worker укажите packaged worker либо выбранный Python launcher и
@@ -50,8 +54,25 @@ ctest --test-dir build -C Release --output-on-failure
 потоковый 16-битный PCM на устройство вывода по умолчанию через Windows
 multimedia API.
 
+Для закреплённого internal RTX 4090 profile один раз создайте игнорируемый
+локальный runtime-файл из `config/playback-runtime.local.example.json`, после
+чего worker-аргументы не нужно повторять при каждом запуске:
+
 ```powershell
-.\build\Release\qwen_tts_play.exe --worker path\to\qwen_tts_worker.exe --speaker serena
+Copy-Item config\playback-runtime.local.example.json config\playback-runtime.local.json
+# Укажите три локальных пути в playback-runtime.local.json.
+scripts\start-qwen-tts-play.ps1
+```
+
+Launcher по умолчанию использует sealed R10 profile и запускает его preflight.
+`-Text "Hello"` выполняет одноразовый playback smoke, а `-DryRun` показывает
+итоговую команду без запуска worker. Параметры `-Speaker`, `-Language` и
+`-Instruction` переопределяют сохранённые настройки на один запуск. Пятиминутный
+timeout запуска worker учитывает измеренное время compile/prime для R10; его
+можно изменить через `-StartupTimeoutMs`.
+
+```powershell
+scripts\start-qwen-tts-play.ps1 -Text "Hello" -Speaker serena -Language English
 ```
 
 Введите текст для озвучивания. Пока запрос выполняется, новая строка отменяет

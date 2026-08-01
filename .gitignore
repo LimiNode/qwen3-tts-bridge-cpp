@@ -40,6 +40,7 @@ CMakeUserPresets.json
 *.user
 *.suo
 *.vcxproj.user
+/config/playback-runtime.local.json
 
 # Logs and temporary local files
 *.log

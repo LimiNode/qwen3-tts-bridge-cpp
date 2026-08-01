@@ -35,10 +35,13 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
+With a single-config MinGW build, executables are written directly to
+`build`; multi-config generators such as Visual Studio use `build\Release`.
+
 The mock WAV example needs no CUDA model:
 
 ```powershell
-.\build\Release\qwen_tts_save_wav.exe --mock --output sample.wav --text "Hello from QwenTTSBridge"
+.\build\qwen_tts_save_wav.exe --mock --output sample.wav --text "Hello from QwenTTSBridge"
 ```
 
 For a real worker, point the examples at the packaged worker or the selected
@@ -50,8 +53,25 @@ not hard-coded in C++.
 `qwen_tts_play` is a Windows example and smoke tool. It sends streamed
 16-bit PCM to the default output device via the Windows multimedia API.
 
+For the pinned internal RTX 4090 profile, create the ignored local runtime
+file once from `config/playback-runtime.local.example.json`, then start the
+interactive CLI without repeating worker arguments:
+
 ```powershell
-.\build\Release\qwen_tts_play.exe --worker path\to\qwen_tts_worker.exe --speaker serena
+Copy-Item config\playback-runtime.local.example.json config\playback-runtime.local.json
+# Set the three local paths in playback-runtime.local.json.
+scripts\start-qwen-tts-play.ps1
+```
+
+The launcher defaults to the sealed R10 profile and runs its preflight. Use
+`-Text "Hello"` for a one-shot playback smoke or `-DryRun` to inspect the
+resolved command without starting a worker. `-Speaker`, `-Language`, and
+`-Instruction` override the saved defaults for one run. Its five-minute worker
+startup timeout covers the measured R10 compile/prime startup and can be
+changed with `-StartupTimeoutMs`.
+
+```powershell
+scripts\start-qwen-tts-play.ps1 -Text "Hello" -Speaker serena -Language English
 ```
 
 Enter text to synthesize. While it runs, a new line cancels the prior
