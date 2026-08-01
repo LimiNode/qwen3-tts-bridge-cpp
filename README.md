@@ -48,6 +48,12 @@ For a real worker, point the examples at the packaged worker or the selected
 Python worker launcher and model profile. Runtime configuration is deliberately
 not hard-coded in C++.
 
+The portable Python worker is built from local wheel files and marks its output
+with `.qtb-portable-worker-root`. When launching it through `StdIoTransport`,
+set `environment_overrides` as a complete replacement environment containing
+`PYTHONHOME`, `PYTHONPATH`, and the required Windows runtime variables; do not
+inherit an arbitrary development Python environment into the packaged worker.
+
 ## Interactive Playback CLI
 
 `qwen_tts_play` is a Windows example and smoke tool. It sends streamed

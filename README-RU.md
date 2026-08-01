@@ -49,6 +49,12 @@ ctest --test-dir build -C Release --output-on-failure
 Для реального worker укажите packaged worker либо выбранный Python launcher и
 профиль модели. Runtime-конфигурация намеренно не зашита в C++.
 
+Portable Python worker собирается из локальных wheel-файлов и помечает свой
+output файлом `.qtb-portable-worker-root`. При его запуске через
+`StdIoTransport` задавайте `environment_overrides` как полную замену окружения
+с `PYTHONHOME`, `PYTHONPATH` и нужными Windows runtime-переменными; не
+наследуйте произвольное development Python окружение в packaged worker.
+
 ## Интерактивный Playback CLI
 
 `qwen_tts_play` - пример и smoke-инструмент для Windows. Он отправляет
