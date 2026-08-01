@@ -13,11 +13,41 @@ from unittest.mock import patch
 from scripts.model_runtime_manifest import build_manifest
 from scripts.validate_internal_runtime_profile import (
     _effective_worker_config,
+    _repository_identity_sha256,
     _validate,
+    _worker_source_bundle_sha256,
 )
 
 
 class ValidateInternalRuntimeProfileTests(unittest.TestCase):
+    def test_repository_text_identity_normalizes_windows_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_name:
+            root = Path(temporary_name)
+            text = root / "evidence.json"
+            text.write_bytes(b"{\r\n  \"value\": true\r\n}\r\n")
+            binary = root / "evidence.bundle"
+            binary.write_bytes(b"bundle\r\npayload\r\n")
+
+            self.assertEqual(
+                hashlib.sha256(b"{\n  \"value\": true\n}\n").hexdigest(),
+                _repository_identity_sha256(text),
+            )
+            self.assertEqual(
+                hashlib.sha256(binary.read_bytes()).hexdigest(),
+                _repository_identity_sha256(binary),
+            )
+
+    def test_worker_bundle_identity_normalizes_windows_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_name:
+            root = Path(temporary_name)
+            source = root / "package"
+            source.mkdir()
+            (source / "worker.py").write_bytes(b"def main():\r\n    return 0\r\n")
+
+            expected = hashlib.sha256()
+            expected.update(b"worker.py\0def main():\n    return 0\n\0")
+            self.assertEqual(expected.hexdigest(), _worker_source_bundle_sha256(source))
+
     def test_accepts_exact_profile_runtime_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_name:
             root = Path(temporary_name)

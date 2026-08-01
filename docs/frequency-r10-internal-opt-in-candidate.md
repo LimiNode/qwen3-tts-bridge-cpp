@@ -20,7 +20,10 @@ this compiled configuration can be enabled there.
   required.
 - The policy pins the full non-transient model directory, the complete installed
   Triton file set, Python, Torch/CUDA, FasterQwen, worker, profile, and evidence
-  hashes. Arbitrary launcher overrides are rejected for this internal profile.
+  hashes. Repository text identities are canonicalized to LF so Git's Windows
+  CRLF checkout conversion does not cause false drift; models and binary bundles
+  remain byte-for-byte sealed. Arbitrary launcher overrides are rejected for this
+  internal profile.
 
 ## Operational Evidence
 
