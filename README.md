@@ -16,8 +16,8 @@ stdin/stdout, and supports request-ID cancellation.
 - Persistent local worker with async C++ request submission and PCM callbacks.
 - Framed binary protocol, bounded queues, deterministic worker shutdown, and
   mock-worker tests that do not require CUDA.
-- Qwen CustomVoice support through text, language, optional speaker, and
-  natural-language style instruction.
+- Request fields keep text, language, optional speaker, and natural-language
+  style instruction separate; model-family support is documented per model.
 - WAV and default-device playback examples.
 - A narrowly scoped, measured `torch.compile` internal opt-in profile for one
   pinned RTX 4090 48 GiB runtime; the default remains eager and unchanged.
@@ -82,6 +82,11 @@ generation and queued playback before starting the replacement request. Use
 Use `--text "..."` for a one-shot playback smoke, or `--mock` to exercise the
 CLI against the bundled mock worker. The playback example is intentionally a
 small Windows utility, not the library's future cross-platform audio layer.
+
+For practical CustomVoice usage, Russian pronunciation workarounds, CLI
+commands, and current model limitations, see
+[Using CustomVoice and the Playback CLI](docs/using-qwen-customvoice-and-cli.md)
+([Russian version](docs/using-qwen-customvoice-and-cli-ru.md)).
 
 ## Public C++ Surface
 
