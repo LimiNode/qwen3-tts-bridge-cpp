@@ -71,10 +71,14 @@ class QwenTtsEngine:
         """Return capabilities exposed by the Qwen adapter."""
 
         streaming = self._model is not None and _supports_qwen_streaming(self._model)
+        instructions = self._model is None or _supports_qwen_instructions(
+            self._model,
+            self._config,
+        )
         return EngineCapabilities(
             streaming=streaming,
             cancellation=streaming,
-            instructions=True,
+            instructions=instructions,
             voice_clone=False,
         )
 
@@ -128,6 +132,16 @@ class QwenTtsEngine:
         model_type = _qwen_model_type(model)
         if model_type == "custom_voice":
             _validate_custom_voice_request(model, request)
+            if request.instruction.strip() and not _supports_custom_voice_instructions(
+                model,
+                self._config,
+            ):
+                raise EngineRequestValidationError(
+                    "unsupported_feature",
+                    "the loaded FasterQwen CustomVoice runtime does not support "
+                    "style instructions for this model; use a runtime that "
+                    "advertises supports_custom_voice_instructions",
+                )
             return
 
         if model_type == "voice_design":
@@ -1373,6 +1387,22 @@ def _supports_qwen_streaming(model: Any) -> bool:
     return False
 
 
+def _supports_qwen_instructions(model: Any, config: QwenEngineConfig) -> bool:
+    model_type = _qwen_model_type(model)
+    if model_type == "custom_voice":
+        return _supports_custom_voice_instructions(model, config)
+    return model_type == "voice_design"
+
+
+def _supports_custom_voice_instructions(
+    model: Any,
+    config: QwenEngineConfig,
+) -> bool:
+    if config.runtime_backend != "faster":
+        return True
+    return bool(getattr(model, "supports_custom_voice_instructions", False))
+
+
 def _supports_qwen_stream_generate_pcm(model: Any) -> bool:
     inner_model = getattr(model, "model", None)
     return callable(
@@ -1448,7 +1478,7 @@ def _qwen_stream_generate_audio(
             text=request.text,
             language=language,
             speaker=request.speaker,
-            instruction=_custom_voice_instruction(model, request),
+            instruction=_custom_voice_instruction(model, config, request),
         )
 
     if model_type == "voice_design":
@@ -1868,16 +1898,14 @@ def _qwen_full_audio_as_stream(
 
 def _custom_voice_instruction(
     model: Any,
+    config: QwenEngineConfig,
     request: SynthesisRequest,
 ) -> str | None:
-    if not request.instruction:
+    if not request.instruction or not _supports_custom_voice_instructions(
+        model,
+        config,
+    ):
         return None
-
-    inner_model = getattr(model, "model", None)
-    model_size = str(getattr(inner_model, "tts_model_size", ""))
-    if model_size.lower() in {"0b6", "0.6b", "0.6"}:
-        return None
-
     return request.instruction
 
 

@@ -57,14 +57,25 @@ $arguments = @(
     "--decode-window-frames", $profile.decode_window_frames,
     "--prefill-backend", $profile.prefill_backend,
     "--prefill-compile-compat-mode", $profile.prefill_compile_compat_mode,
-    "--prefill-compile-lengths", ($profile.prefill_compile_lengths -join ","),
     "--prefill-unknown-shape-policy", $profile.prefill_unknown_shape_policy,
     "--prefill-compile-policy", $profile.prefill_compile_policy,
-    "--prefill-allowlist-warmup-manifest", $profile.prefill_allowlist_warmup_manifest,
     "--prefill-allowlist-warmup-repeats", $profile.prefill_allowlist_warmup_repeats,
     "--prefill-allowlist-max-entries", $profile.prefill_allowlist_max_entries,
     "--prefill-allowlist-max-abs-threshold", $profile.prefill_allowlist_max_abs_threshold
 )
+
+if ($profile.prefill_compile_lengths -and $profile.prefill_compile_lengths.Count -gt 0) {
+    $arguments += @(
+        "--prefill-compile-lengths",
+        ($profile.prefill_compile_lengths -join ",")
+    )
+}
+if (-not [string]::IsNullOrWhiteSpace($profile.prefill_allowlist_warmup_manifest)) {
+    $arguments += @(
+        "--prefill-allowlist-warmup-manifest",
+        $profile.prefill_allowlist_warmup_manifest
+    )
+}
 
 if ($null -ne $profile.max_audio_seconds_per_utterance) {
     $arguments += @(

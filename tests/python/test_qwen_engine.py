@@ -148,6 +148,7 @@ class _FasterStreamingModel:
         attn_implementation: str = "sdpa",
         prefill_compile_compat_mode: str = "none",
         prefill_compile_compat_metadata: dict[str, object] | None = None,
+        supports_custom_voice_instructions: bool = True,
     ) -> None:
         self.model = _NestedWrapper(model_type, attn_implementation)
         self.dtype = dtype
@@ -160,6 +161,7 @@ class _FasterStreamingModel:
             )
         )
         self._supported_speakers = supported_speakers
+        self.supports_custom_voice_instructions = supports_custom_voice_instructions
         self.custom_stream_calls: list[dict[str, object]] = []
         self.design_stream_calls: list[dict[str, object]] = []
         self.closed_streams = 0
@@ -504,6 +506,60 @@ class QwenEngineTests(unittest.TestCase):
                             speaker=speaker,
                         )
                     )
+
+    def test_legacy_faster_custom_voice_rejects_style_instruction(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+            supports_custom_voice_instructions=False,
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        self.assertFalse(engine.capabilities.instructions)
+        with self.assertRaisesRegex(
+            EngineRequestValidationError,
+            "does not support style instructions",
+        ):
+            engine.validate_request(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                    instruction="Speak warmly.",
+                )
+            )
+
+    def test_patched_faster_custom_voice_accepts_style_instruction(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+            supports_custom_voice_instructions=True,
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        self.assertTrue(engine.capabilities.instructions)
+        engine.validate_request(
+            SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                speaker="Alice",
+                instruction="Speak warmly.",
+            )
+        )
 
     def test_custom_voice_allows_advertised_default_speaker(self) -> None:
         fake_model = _CustomVoiceModel(supported_speakers=["default"])

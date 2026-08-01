@@ -88,7 +88,7 @@
     "faster_source_git_tree": "41fc626b09fb4814d16c7e3c2794f6803437afd3",
     "faster_source_git_dirty": false,
     "faster_source_repository": "https://github.com/LimiNode/faster-qwen3-tts.git",
-    "worker_source_bundle_sha256": "a3bcabca3088675712f5b189aba45b4865e057d411b6553cf5641169d4aa1248",
+    "worker_source_bundle_sha256": "be94eb11b5d7aa9dbad054ad1e973c037237b2fb30def5c74d4812cca9e57f55",
     "nvidia_driver_version": "591.86",
     "gpu_name": "NVIDIA GeForce RTX 4090",
     "gpu_capability": [8, 9],
