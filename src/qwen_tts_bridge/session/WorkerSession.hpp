@@ -18,26 +18,26 @@ namespace qwen_tts_bridge {
 /// \brief Runtime options for the C++ side worker session.
 struct WorkerSessionOptions {
     /// \brief Name sent in the hello control message.
-    std::string client_name = "qwen-tts-bridge-cpp";
+    std::string client_name = "qwen-tts-bridge-cpp"; ///< Name sent in hello.
 
     /// \brief Version sent in the hello control message.
-    std::string client_version = "0.2.0";
+    std::string client_version = "0.2.0"; ///< Version sent in hello.
 
     /// \brief Maximum time start() waits for worker ready.
-    std::chrono::milliseconds startup_timeout{10000};
+    std::chrono::milliseconds startup_timeout{10000}; ///< Ready-handshake timeout.
 
     /// \brief Maximum regular events waiting for application dispatch.
     ///
     /// This is a defensive memory bound for the session event queue. The
     /// internally generated overflow diagnostic and final exit event are
     /// exempt so failure and process termination remain observable.
-    std::size_t max_event_queue_events = 4096u;
+    std::size_t max_event_queue_events = 4096u; ///< Bound for queued events.
 
     /// \brief Maximum regular event payload bytes waiting in the session queue.
     ///
     /// Counts audio payload bytes and diagnostic string bytes. Control events
     /// are bounded by frame/control payload limits before they reach this queue.
-    std::size_t max_event_queue_bytes = 16u * 1024u * 1024u;
+    std::size_t max_event_queue_bytes = 16u * 1024u * 1024u; ///< Bound for queued payload bytes.
 };
 
 /// \enum WorkerSessionEventType
@@ -66,13 +66,13 @@ enum class WorkerSessionState {
 /// \struct WorkerSessionEvent
 /// \brief Event emitted by WorkerSession after transport and protocol parsing.
 struct WorkerSessionEvent {
-    WorkerSessionEventType type = WorkerSessionEventType::SessionError;
-    RequestId request_id = 0;
-    ControlMessage control;
-    ErrorMessage error;
-    std::vector<std::byte> audio;
-    int exit_status = 0;
-    std::string message;
+    WorkerSessionEventType type = WorkerSessionEventType::SessionError; ///< Event category.
+    RequestId request_id = 0; ///< Related request, or zero for session events.
+    ControlMessage control; ///< Decoded control payload when type is Control.
+    ErrorMessage error; ///< Decoded error payload when type is WorkerError.
+    std::vector<std::byte> audio; ///< PCM bytes when type is Audio.
+    int exit_status = 0; ///< Process status when type is Exited.
+    std::string message; ///< Local transport, protocol, or session diagnostic.
 };
 
 /// \class WorkerSession

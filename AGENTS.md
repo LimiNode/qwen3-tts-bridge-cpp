@@ -90,6 +90,14 @@ Observed conventions to preserve here:
 - Keep docs and commit headers in English.
 - Use Conventional Commits: `type(scope): summary`.
 
+## Documentation Language Policy
+
+`README.md` is the canonical English project overview. `README-RU.md` is a
+faithful Russian translation of it, not an independently maintained document.
+Update both files in the same change whenever README content changes. Keep
+detailed benchmark methods, evidence, and research conclusions in `docs/` and
+link them from the README instead of turning the README into an experiment log.
+
 Commit examples:
 
 ```text

@@ -20,18 +20,18 @@ namespace qwen_tts_bridge {
 /// \brief Runtime options for the public async client facade.
 struct QwenTtsClientOptions {
     /// \brief Options passed to the underlying worker session.
-    WorkerSessionOptions session;
+    WorkerSessionOptions session; ///< Options passed to the underlying worker session.
 
     /// \brief Maximum outbound control commands waiting for the writer thread.
-    std::size_t max_outbound_commands = 4096u;
+    std::size_t max_outbound_commands = 4096u; ///< Bound for queued outbound commands.
 
     /// \brief Maximum dynamic payload bytes waiting in the outbound queue.
-    std::size_t max_outbound_command_bytes = 16u * 1024u * 1024u;
+    std::size_t max_outbound_command_bytes = 16u * 1024u * 1024u; ///< Bound for queued outbound payload bytes.
 
     /// \brief Optional diagnostic hook for exceptions thrown by user callbacks.
     ///
     /// Exceptions thrown by this handler are ignored.
-    std::function<void(std::exception_ptr)> on_callback_exception;
+    std::function<void(std::exception_ptr)> on_callback_exception; ///< Optional callback-exception diagnostic hook.
 };
 
 /// \class QwenTtsClient
