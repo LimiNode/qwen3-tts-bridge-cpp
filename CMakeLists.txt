@@ -85,6 +85,12 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         examples/qwen_tts_latency_benchmark.cpp
     )
 
+    if(WIN32)
+        add_executable(qwen_tts_play
+            examples/qwen_tts_play.cpp
+        )
+    endif()
+
     target_link_libraries(qwen_tts_save_wav
         PRIVATE
             QwenTTSBridge::qwen_tts_bridge
@@ -95,6 +101,14 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
             QwenTTSBridge::qwen_tts_bridge
             nlohmann_json::nlohmann_json
     )
+
+    if(WIN32)
+        target_link_libraries(qwen_tts_play
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge
+                winmm
+        )
+    endif()
 
     target_compile_definitions(qwen_tts_save_wav
         PRIVATE
@@ -107,6 +121,14 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
             QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
             QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR}"
     )
+
+    if(WIN32)
+        target_compile_definitions(qwen_tts_play
+            PRIVATE
+                QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
+                QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR}"
+        )
+    endif()
 endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_TESTS)

@@ -1,0 +1,680 @@
+#include <qwen_tts_bridge/client.hpp>
+#include <qwen_tts_bridge/transport.hpp>
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <mmsystem.h>
+
+#include <chrono>
+#include <cmath>
+#include <condition_variable>
+#include <cstdint>
+#include <cstring>
+#include <exception>
+#include <iostream>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+
+#ifndef QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE
+#define QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE ""
+#endif
+
+#ifndef QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR
+#define QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR ""
+#endif
+
+namespace {
+
+using qwen_tts_bridge::AudioFormat;
+using qwen_tts_bridge::PcmChunk;
+using qwen_tts_bridge::QwenTtsClient;
+using qwen_tts_bridge::QwenTtsClientOptions;
+using qwen_tts_bridge::RequestId;
+using qwen_tts_bridge::StdIoTransportOptions;
+using qwen_tts_bridge::TtsCallbacks;
+using qwen_tts_bridge::TtsError;
+using qwen_tts_bridge::TtsRequest;
+
+struct ProgramOptions {
+    bool help = false;
+    bool use_mock_worker = false;
+    std::string worker_executable;
+    std::vector<std::string> worker_arguments;
+    std::string working_directory;
+    std::string text;
+    std::string language = "auto";
+    std::string speaker;
+    std::string instruction;
+    std::uint32_t sample_rate = 24000;
+    std::uint32_t channels = 1;
+    int mock_chunks = 3;
+    int mock_chunk_ms = 100;
+    double mock_chunk_delay = 0.0;
+    std::chrono::milliseconds startup_timeout{30000};
+};
+
+class WaveOutPlayer final {
+public:
+    WaveOutPlayer() = default;
+
+    ~WaveOutPlayer() {
+        close_noexcept();
+    }
+
+    WaveOutPlayer(const WaveOutPlayer&) = delete;
+    WaveOutPlayer& operator=(const WaveOutPlayer&) = delete;
+
+    void enqueue(const PcmChunk& chunk) {
+        if (chunk.format.sample_format != "s16le") {
+            throw std::runtime_error("default-device playback requires s16le PCM");
+        }
+        if (chunk.format.sample_rate == 0 ||
+            chunk.format.channels == 0 ||
+            chunk.format.channels > std::numeric_limits<WORD>::max()) {
+            throw std::runtime_error("invalid PCM format for default-device playback");
+        }
+        if (chunk.bytes.empty()) {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(mutex_);
+        reap_finished_locked();
+        open_or_validate_locked(chunk.format);
+
+        auto buffer = std::make_unique<Buffer>();
+        buffer->bytes = chunk.bytes;
+        buffer->header.lpData = reinterpret_cast<LPSTR>(buffer->bytes.data());
+        buffer->header.dwBufferLength = static_cast<DWORD>(buffer->bytes.size());
+
+        check_mmresult(
+            waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
+            "waveOutPrepareHeader");
+        buffer->prepared = true;
+        try {
+            check_mmresult(
+                waveOutWrite(m_handle, &buffer->header, sizeof(WAVEHDR)),
+                "waveOutWrite");
+        }
+        catch (...) {
+            waveOutUnprepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR));
+            throw;
+        }
+        buffers_.push_back(std::move(buffer));
+    }
+
+    /// Stops queued and currently playing audio. It never cancels worker inference.
+    void reset() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (m_handle == nullptr) {
+            return;
+        }
+
+        check_mmresult(waveOutReset(m_handle), "waveOutReset");
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        while (!buffers_.empty()) {
+            reap_finished_locked();
+            if (buffers_.empty()) {
+                break;
+            }
+            if (std::chrono::steady_clock::now() >= deadline) {
+                throw std::runtime_error("timed out waiting for default audio device reset");
+            }
+            lock.unlock();
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            lock.lock();
+        }
+    }
+
+    void wait_until_idle(std::chrono::milliseconds timeout) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (!buffers_.empty()) {
+            reap_finished_locked();
+            if (buffers_.empty()) {
+                return;
+            }
+            if (std::chrono::steady_clock::now() >= deadline) {
+                throw std::runtime_error("timed out waiting for default audio playback");
+            }
+            lock.unlock();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            lock.lock();
+        }
+    }
+
+private:
+    struct Buffer {
+        std::vector<std::byte> bytes;
+        WAVEHDR header{};
+        bool prepared = false;
+    };
+
+    static bool formats_match(const AudioFormat& left, const AudioFormat& right) {
+        return left.sample_format == right.sample_format &&
+            left.sample_rate == right.sample_rate &&
+            left.channels == right.channels;
+    }
+
+    static void check_mmresult(MMRESULT result, const char* operation) {
+        if (result == MMSYSERR_NOERROR) {
+            return;
+        }
+        char message[MAXERRORLENGTH]{};
+        waveOutGetErrorTextA(result, message, static_cast<UINT>(sizeof(message)));
+        throw std::runtime_error(std::string(operation) + " failed: " + message);
+    }
+
+    void open_or_validate_locked(const AudioFormat& format) {
+        if (m_handle != nullptr) {
+            if (!formats_match(m_format, format)) {
+                throw std::runtime_error(
+                    "default-device playback cannot change PCM format while audio is queued");
+            }
+            return;
+        }
+
+        WAVEFORMATEX wave_format{};
+        wave_format.wFormatTag = WAVE_FORMAT_PCM;
+        wave_format.nChannels = static_cast<WORD>(format.channels);
+        wave_format.nSamplesPerSec = format.sample_rate;
+        wave_format.wBitsPerSample = 16;
+        wave_format.nBlockAlign = static_cast<WORD>(
+            wave_format.nChannels * (wave_format.wBitsPerSample / 8));
+        wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * wave_format.nBlockAlign;
+
+        check_mmresult(
+            waveOutOpen(&m_handle, WAVE_MAPPER, &wave_format, 0, 0, CALLBACK_NULL),
+            "waveOutOpen");
+        m_format = format;
+    }
+
+    void reap_finished_locked() {
+        for (auto it = buffers_.begin(); it != buffers_.end();) {
+            Buffer& buffer = **it;
+            if ((buffer.header.dwFlags & WHDR_DONE) == 0) {
+                ++it;
+                continue;
+            }
+            if (buffer.prepared) {
+                check_mmresult(
+                    waveOutUnprepareHeader(m_handle, &buffer.header, sizeof(WAVEHDR)),
+                    "waveOutUnprepareHeader");
+                buffer.prepared = false;
+            }
+            it = buffers_.erase(it);
+        }
+    }
+
+    void close_noexcept() noexcept {
+        try {
+            reset();
+        }
+        catch (...) {
+        }
+
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (m_handle != nullptr) {
+            waveOutClose(m_handle);
+            m_handle = nullptr;
+        }
+    }
+
+    std::mutex mutex_;
+    HWAVEOUT m_handle = nullptr;
+    AudioFormat m_format;
+    std::vector<std::unique_ptr<Buffer>> buffers_;
+};
+
+struct ActiveRequestState {
+    std::mutex mutex;
+    RequestId active_request_id = 0;
+    RequestId next_request_id = 1;
+};
+
+struct OneShotState {
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool terminal = false;
+    bool success = false;
+    std::string message;
+};
+
+void print_usage(std::ostream& out, const char* executable_name) {
+    out << "Usage:\n"
+        << "  " << executable_name << " --mock [--speaker name]\n"
+        << "  " << executable_name << " --worker qwen_tts_worker.exe [--speaker name]\n"
+        << "  " << executable_name << " --worker qwen_tts_worker.exe --text \"Hello\"\n\n"
+        << "Interactive commands:\n"
+        << "  <text>                 Cancel current generation and speak this text.\n"
+        << "  /cancel                Cancel current generation and stop playback.\n"
+        << "  /voice <name>          Set the speaker for future requests.\n"
+        << "  /language <name>       Set the language for future requests.\n"
+        << "  /style <text>          Set the style instruction for future requests.\n"
+        << "  /help                  Show this help.\n"
+        << "  /quit                  Stop the worker and exit.\n\n"
+        << "Options:\n"
+        << "  --help                         Show this help.\n"
+        << "  --mock                         Run the bundled Python mock worker.\n"
+        << "  --worker <path>                Worker executable path.\n"
+        << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
+        << "  --cwd <path>                   Worker working directory.\n"
+        << "  --text <utf8>                  One-shot playback instead of interactive mode.\n"
+        << "  --language <name>              Request language, default: auto.\n"
+        << "  --speaker <name>               Optional request speaker or voice name.\n"
+        << "  --instruction <utf8>           Natural-language style instruction.\n"
+        << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
+        << "  --channels <count>             Requested channel count, default: 1.\n"
+        << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
+        << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
+        << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
+        << "  --mock-chunk-delay <seconds>   Mock delay between chunks, default: 0.\n";
+}
+
+std::string require_value(
+    int& index,
+    int argc,
+    char** argv,
+    const std::string& option) {
+    const std::string prefix = option + '=';
+    const std::string current = argv[index];
+    if (current.rfind(prefix, 0) == 0) {
+        return current.substr(prefix.size());
+    }
+    if (index + 1 >= argc) {
+        throw std::runtime_error("missing value for " + option);
+    }
+    ++index;
+    return argv[index];
+}
+
+std::uint32_t parse_u32(const std::string& value, const std::string& option) {
+    std::size_t parsed = 0;
+    const unsigned long result = std::stoul(value, &parsed, 10);
+    if (parsed != value.size() || result > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::runtime_error("invalid integer for " + option + ": " + value);
+    }
+    return static_cast<std::uint32_t>(result);
+}
+
+int parse_int(const std::string& value, const std::string& option) {
+    std::size_t parsed = 0;
+    const long result = std::stol(value, &parsed, 10);
+    if (parsed != value.size() || result < std::numeric_limits<int>::min() ||
+        result > std::numeric_limits<int>::max()) {
+        throw std::runtime_error("invalid integer for " + option + ": " + value);
+    }
+    return static_cast<int>(result);
+}
+
+double parse_double(const std::string& value, const std::string& option) {
+    std::size_t parsed = 0;
+    const double result = std::stod(value, &parsed);
+    if (parsed != value.size() || !std::isfinite(result)) {
+        throw std::runtime_error("invalid number for " + option + ": " + value);
+    }
+    return result;
+}
+
+ProgramOptions parse_options(int argc, char** argv) {
+    ProgramOptions options;
+    for (int index = 1; index < argc; ++index) {
+        const std::string arg = argv[index];
+        if (arg == "--help" || arg == "-h") {
+            options.help = true;
+        }
+        else if (arg == "--mock") {
+            options.use_mock_worker = true;
+        }
+        else if (arg == "--worker" || arg.rfind("--worker=", 0) == 0) {
+            options.worker_executable = require_value(index, argc, argv, "--worker");
+        }
+        else if (arg == "--worker-arg" || arg.rfind("--worker-arg=", 0) == 0) {
+            options.worker_arguments.push_back(
+                require_value(index, argc, argv, "--worker-arg"));
+        }
+        else if (arg == "--cwd" || arg.rfind("--cwd=", 0) == 0) {
+            options.working_directory = require_value(index, argc, argv, "--cwd");
+        }
+        else if (arg == "--text" || arg.rfind("--text=", 0) == 0) {
+            options.text = require_value(index, argc, argv, "--text");
+        }
+        else if (arg == "--language" || arg.rfind("--language=", 0) == 0) {
+            options.language = require_value(index, argc, argv, "--language");
+        }
+        else if (arg == "--speaker" || arg.rfind("--speaker=", 0) == 0) {
+            options.speaker = require_value(index, argc, argv, "--speaker");
+        }
+        else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
+            options.instruction = require_value(index, argc, argv, "--instruction");
+        }
+        else if (arg == "--sample-rate" || arg.rfind("--sample-rate=", 0) == 0) {
+            options.sample_rate = parse_u32(
+                require_value(index, argc, argv, "--sample-rate"), "--sample-rate");
+        }
+        else if (arg == "--channels" || arg.rfind("--channels=", 0) == 0) {
+            options.channels = parse_u32(
+                require_value(index, argc, argv, "--channels"), "--channels");
+        }
+        else if (arg == "--startup-timeout-ms" ||
+                 arg.rfind("--startup-timeout-ms=", 0) == 0) {
+            options.startup_timeout = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--startup-timeout-ms"),
+                "--startup-timeout-ms"));
+        }
+        else if (arg == "--mock-chunks" || arg.rfind("--mock-chunks=", 0) == 0) {
+            options.mock_chunks = parse_int(
+                require_value(index, argc, argv, "--mock-chunks"), "--mock-chunks");
+        }
+        else if (arg == "--mock-chunk-ms" || arg.rfind("--mock-chunk-ms=", 0) == 0) {
+            options.mock_chunk_ms = parse_int(
+                require_value(index, argc, argv, "--mock-chunk-ms"), "--mock-chunk-ms");
+        }
+        else if (arg == "--mock-chunk-delay" ||
+                 arg.rfind("--mock-chunk-delay=", 0) == 0) {
+            options.mock_chunk_delay = parse_double(
+                require_value(index, argc, argv, "--mock-chunk-delay"),
+                "--mock-chunk-delay");
+        }
+        else {
+            throw std::runtime_error("unknown option: " + arg);
+        }
+    }
+    return options;
+}
+
+void validate_options(const ProgramOptions& options) {
+    if (options.help) {
+        return;
+    }
+    if (!options.use_mock_worker && options.worker_executable.empty()) {
+        throw std::runtime_error("--worker is required unless --mock is used");
+    }
+    if (options.sample_rate == 0 || options.channels == 0 ||
+        options.channels > std::numeric_limits<WORD>::max()) {
+        throw std::runtime_error("invalid requested PCM format");
+    }
+    if (options.mock_chunks <= 0 || options.mock_chunk_ms <= 0 ||
+        options.mock_chunk_delay < 0.0) {
+        throw std::runtime_error("invalid mock worker options");
+    }
+}
+
+StdIoTransportOptions make_transport_options(const ProgramOptions& options) {
+    StdIoTransportOptions transport_options;
+    transport_options.stderr_handler = [](std::string text) {
+        std::cerr << text;
+    };
+    if (options.use_mock_worker) {
+        const std::string python_executable = QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE;
+        const std::string worker_dir = QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR;
+        if (python_executable.empty() || worker_dir.empty()) {
+            throw std::runtime_error("--mock is unavailable because Python was not found at build time");
+        }
+        transport_options.arguments = {
+            python_executable,
+            "-m",
+            "qwen_tts_bridge_worker.main",
+            "--mock",
+            "--mock-chunks",
+            std::to_string(options.mock_chunks),
+            "--mock-chunk-ms",
+            std::to_string(options.mock_chunk_ms),
+            "--mock-chunk-delay",
+            std::to_string(options.mock_chunk_delay)
+        };
+        transport_options.working_directory = worker_dir;
+        return transport_options;
+    }
+
+    transport_options.arguments.push_back(options.worker_executable);
+    transport_options.arguments.insert(
+        transport_options.arguments.end(),
+        options.worker_arguments.begin(),
+        options.worker_arguments.end());
+    transport_options.working_directory = options.working_directory;
+    return transport_options;
+}
+
+AudioFormat requested_audio_format(const ProgramOptions& options) {
+    AudioFormat format;
+    format.sample_format = "s16le";
+    format.sample_rate = options.sample_rate;
+    format.channels = options.channels;
+    return format;
+}
+
+bool is_active_request(ActiveRequestState& state, RequestId request_id) {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    return state.active_request_id == request_id;
+}
+
+void clear_active_request(ActiveRequestState& state, RequestId request_id) {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if (state.active_request_id == request_id) {
+        state.active_request_id = 0;
+    }
+}
+
+void cancel_active_request(
+    QwenTtsClient& client,
+    WaveOutPlayer& player,
+    ActiveRequestState& state) {
+    RequestId request_id = 0;
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        request_id = state.active_request_id;
+        state.active_request_id = 0;
+    }
+    if (request_id != 0) {
+        client.cancel(request_id);
+    }
+    player.reset();
+}
+
+RequestId submit_request(
+    QwenTtsClient& client,
+    WaveOutPlayer& player,
+    ActiveRequestState& active_state,
+    const ProgramOptions& options,
+    const std::string& text,
+    OneShotState* one_shot_state = nullptr) {
+    cancel_active_request(client, player, active_state);
+
+    TtsRequest request;
+    request.text = text;
+    request.language = options.language;
+    request.speaker = options.speaker;
+    request.instruction = options.instruction;
+    request.output = requested_audio_format(options);
+    {
+        std::lock_guard<std::mutex> lock(active_state.mutex);
+        request.id = active_state.next_request_id++;
+        if (request.id == 0) {
+            request.id = active_state.next_request_id++;
+        }
+        active_state.active_request_id = request.id;
+    }
+
+    const RequestId request_id = request.id;
+    TtsCallbacks callbacks;
+    callbacks.on_audio = [&player, &active_state, request_id](const PcmChunk& chunk) {
+        if (!is_active_request(active_state, request_id)) {
+            return;
+        }
+        try {
+            player.enqueue(chunk);
+        }
+        catch (const std::exception& exc) {
+            std::cerr << "playback error: " << exc.what() << '\n';
+        }
+    };
+    callbacks.on_completed = [&active_state, one_shot_state, request_id] {
+        clear_active_request(active_state, request_id);
+        if (one_shot_state != nullptr) {
+            std::lock_guard<std::mutex> lock(one_shot_state->mutex);
+            one_shot_state->terminal = true;
+            one_shot_state->success = true;
+            one_shot_state->condition.notify_all();
+        }
+        else {
+            std::cout << "completed request " << request_id << '\n';
+        }
+    };
+    callbacks.on_cancelled = [&player, &active_state, one_shot_state, request_id] {
+        if (is_active_request(active_state, request_id)) {
+            player.reset();
+            clear_active_request(active_state, request_id);
+        }
+        if (one_shot_state != nullptr) {
+            std::lock_guard<std::mutex> lock(one_shot_state->mutex);
+            one_shot_state->terminal = true;
+            one_shot_state->message = "request cancelled";
+            one_shot_state->condition.notify_all();
+        }
+    };
+    callbacks.on_error = [&player, &active_state, one_shot_state, request_id](const TtsError& error) {
+        if (is_active_request(active_state, request_id)) {
+            player.reset();
+            clear_active_request(active_state, request_id);
+        }
+        if (one_shot_state != nullptr) {
+            std::lock_guard<std::mutex> lock(one_shot_state->mutex);
+            one_shot_state->terminal = true;
+            one_shot_state->message = error.category + "/" + error.code + ": " + error.message;
+            one_shot_state->condition.notify_all();
+        }
+        else {
+            std::cerr << "request " << request_id << " failed: " << error.category
+                      << '/' << error.code << ": " << error.message << '\n';
+        }
+    };
+
+    if (client.synthesize_async(std::move(request), std::move(callbacks)) != request_id) {
+        clear_active_request(active_state, request_id);
+        throw std::runtime_error("failed to enqueue synthesis request");
+    }
+    return request_id;
+}
+
+bool wait_for_one_shot(OneShotState& state, std::chrono::milliseconds timeout) {
+    std::unique_lock<std::mutex> lock(state.mutex);
+    return state.condition.wait_for(lock, timeout, [&state] { return state.terminal; });
+}
+
+void print_interactive_status(const ProgramOptions& options) {
+    std::cout << "speaker=" << (options.speaker.empty() ? "<worker default>" : options.speaker)
+              << ", language=" << options.language
+              << ", style=" << (options.instruction.empty() ? "<none>" : options.instruction)
+              << '\n';
+}
+
+bool apply_interactive_command(ProgramOptions& options, const std::string& line) {
+    const auto split = line.find(' ');
+    const std::string command = line.substr(0, split);
+    const std::string value = split == std::string::npos ? "" : line.substr(split + 1);
+
+    if (command == "/voice") {
+        options.speaker = value;
+        print_interactive_status(options);
+        return true;
+    }
+    if (command == "/language") {
+        if (value.empty()) {
+            std::cerr << "usage: /language <name>\n";
+        }
+        else {
+            options.language = value;
+            print_interactive_status(options);
+        }
+        return true;
+    }
+    if (command == "/style") {
+        options.instruction = value;
+        print_interactive_status(options);
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    try {
+        ProgramOptions options = parse_options(argc, argv);
+        validate_options(options);
+        if (options.help) {
+            print_usage(std::cout, argv[0]);
+            return 0;
+        }
+
+        QwenTtsClientOptions client_options;
+        client_options.session.startup_timeout = options.startup_timeout;
+
+        QwenTtsClient client;
+        if (!client.start(make_transport_options(options), client_options)) {
+            throw std::runtime_error("failed to start Qwen TTS worker");
+        }
+
+        WaveOutPlayer player;
+        ActiveRequestState active_state;
+
+        if (!options.text.empty()) {
+            OneShotState state;
+            submit_request(client, player, active_state, options, options.text, &state);
+            if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
+                cancel_active_request(client, player, active_state);
+                client.stop();
+                throw std::runtime_error("one-shot synthesis timed out");
+            }
+            if (!state.success) {
+                client.stop();
+                throw std::runtime_error(state.message.empty() ? "one-shot synthesis failed" : state.message);
+            }
+            player.wait_until_idle(std::chrono::minutes(5));
+            client.stop();
+            return 0;
+        }
+
+        print_usage(std::cout, argv[0]);
+        print_interactive_status(options);
+        for (std::string line; std::cout << "> " && std::getline(std::cin, line);) {
+            if (line.empty()) {
+                continue;
+            }
+            if (line == "/quit" || line == "/exit") {
+                break;
+            }
+            if (line == "/help") {
+                print_usage(std::cout, argv[0]);
+                continue;
+            }
+            if (line == "/cancel") {
+                cancel_active_request(client, player, active_state);
+                std::cout << "cancelled active request\n";
+                continue;
+            }
+            if (line.front() == '/') {
+                if (!apply_interactive_command(options, line)) {
+                    std::cerr << "unknown command; use /help\n";
+                }
+                continue;
+            }
+            submit_request(client, player, active_state, options, line);
+        }
+
+        cancel_active_request(client, player, active_state);
+        client.stop();
+        return 0;
+    }
+    catch (const std::exception& exc) {
+        std::cerr << "qwen_tts_play: " << exc.what() << '\n';
+        std::cerr << "Run with --help for usage.\n";
+        return 1;
+    }
+}
