@@ -1,6 +1,7 @@
 {
   "python": ".venv-faster-qwen/Scripts/python.exe",
   "faster_qwen_source_path": "external/python/faster-qwen3-tts",
+  "style_experiment_faster_qwen_source_path": "C:/path/to/faster-qwen3-tts-style-experiment",
   "model_path": "models/Qwen3-TTS-12Hz-0.6B-CustomVoice",
   "speaker": "serena",
   "language": "auto",

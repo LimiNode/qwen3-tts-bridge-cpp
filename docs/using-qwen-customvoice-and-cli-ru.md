@@ -80,11 +80,34 @@ symbol как часть слова и давала артефакты вмес�
 
 - Это модель preset-голосов. Клонирование голоса ещё не доступно в публичном
   сценарии bridge.
-- Bridge передаёт `instruction` в выбранный streaming API FasterQwen, но
-  закреплённый исходный FasterQwen явно очищает его для `0.6B` CustomVoice до
-  подготовки prompt. Поэтому `/style` принимается CLI, но сейчас не делает
-  речь агрессивной, шёпотом, быстрее или иначе стилистически отличающейся.
-  Не следует рассчитывать на него в этом runtime profile.
+- Sealed R10 runtime объявляет style-инструкции неподдерживаемыми для 0.6B
+  CustomVoice. Запрос с `/style` завершится понятной ошибкой, а не будет молча
+  принят и проигнорирован. Не следует рассчитывать на style control в этом
+  runtime profile.
+- `-StyleExperiment` намеренно использует eager profile и отдельное локальное
+  дерево исходников FasterQwen. Он не меняет и не переиспользует sealed R10
+  allowlist. Укажите `style_experiment_faster_qwen_source_path` и запустите:
+
+  ```powershell
+  .\scripts\start-qwen-tts-play.ps1 -StyleExperiment
+  ```
+
+  Это только эксперимент для оценки instruction control. Сравните одинаковые
+  текст, голос, язык и seed сначала без `/style`, затем с ним. Передача prompt
+  ещё не доказывает полезного эмоционального изменения: результат нужно
+  прослушать.
+
+  Воспроизводимый A/B probe без воспроизведения фиксирует эти технические
+  факты:
+
+  ```powershell
+  $env:PYTHONPATH = "C:\path\to\faster-qwen3-tts-style-experiment;worker\src"
+  .\.venv-faster-qwen\Scripts\python.exe scripts\qwen_customvoice_style_ab.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "This is a controlled style test." `
+    --instruction "Speak with controlled urgency." `
+    --output tmp\customvoice-style-ab.json
+  ```
 - Нет поддерживаемого word-level контроля фонем, IPA, SSML или ударений.
 - Sealed RTX 4090 R10 profile - internal opt-in профиль производительности,
   а не универсальный default для других GPU и семейств моделей. Тексты за

@@ -84,11 +84,32 @@ known problematic words to approved replacements.
 
 - It is a preset-speaker model. It does not yet provide voice cloning through
   this bridge's public workflow.
-- The bridge passes `instruction` to the selected FasterQwen streaming API, but
-  the pinned FasterQwen source explicitly clears it for `0.6B` CustomVoice
-  before prompt preparation. `/style` is therefore accepted by the CLI but
-  does not currently make speech angry, whispered, faster, or otherwise
-  stylistically different. Do not depend on it for this runtime profile.
+- The sealed R10 runtime advertises style instructions as unsupported for 0.6B
+  CustomVoice. A request with `/style` fails clearly instead of being accepted
+  and silently ignored. Do not depend on style control in that runtime profile.
+- `-StyleExperiment` deliberately uses an eager profile and a separate local
+  FasterQwen source tree. It never changes or reuses the sealed R10 allowlist.
+  Configure `style_experiment_faster_qwen_source_path` and start it with:
+
+  ```powershell
+  .\scripts\start-qwen-tts-play.ps1 -StyleExperiment
+  ```
+
+  This experiment is only for assessing instruction control. Compare the same
+  text, speaker, language, and seed first without `/style`, then with it. The
+  resulting audio still requires listening review; passing a prompt through is
+  not proof of a useful emotional change.
+
+  The reproducible non-playback A/B probe records those transport-level facts:
+
+  ```powershell
+  $env:PYTHONPATH = "C:\path\to\faster-qwen3-tts-style-experiment;worker\src"
+  .\.venv-faster-qwen\Scripts\python.exe scripts\qwen_customvoice_style_ab.py `
+    --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+    --text "This is a controlled style test." `
+    --instruction "Speak with controlled urgency." `
+    --output tmp\customvoice-style-ab.json
+  ```
 - There is no supported word-level phoneme, IPA, SSML, or stress-mark control.
 - The sealed RTX 4090 R10 profile is an internal opt-in performance profile,
   not a universal default for other GPUs or model families. Text lengths outside

@@ -10,6 +10,7 @@ param(
     [string]$Text = "",
     [string]$BuildDirectory = "build",
     [uint32]$StartupTimeoutMs = 300000,
+    [switch]$StyleExperiment,
     [switch]$DryRun
 )
 
@@ -53,6 +54,8 @@ if (Test-Path -LiteralPath $localConfigPath) {
 $pythonValue = if ($Python) { $Python } else { Get-ConfigValue $localConfig "python" }
 $fasterSourceValue = if ($FasterQwenSourcePath) {
     $FasterQwenSourcePath
+} elseif ($StyleExperiment) {
+    Get-ConfigValue $localConfig "style_experiment_faster_qwen_source_path"
 } else {
     Get-ConfigValue $localConfig "faster_qwen_source_path"
 }
@@ -60,6 +63,10 @@ $modelValue = if ($ModelPath) { $ModelPath } else { Get-ConfigValue $localConfig
 $speakerValue = if ($Speaker) { $Speaker } else { Get-ConfigValue $localConfig "speaker" }
 $languageValue = if ($Language) { $Language } else { Get-ConfigValue $localConfig "language" }
 $instructionValue = if ($Instruction) { $Instruction } else { Get-ConfigValue $localConfig "instruction" }
+
+if ($StyleExperiment -and -not $PSBoundParameters.ContainsKey("ProfilePath")) {
+    $ProfilePath = "config/rtx4090-faster-customvoice-style-eager-experiment.json"
+}
 
 if ([string]::IsNullOrWhiteSpace($pythonValue) -or
     [string]::IsNullOrWhiteSpace($fasterSourceValue) -or
@@ -70,6 +77,9 @@ Playback runtime is not configured. Copy:
 to:
   $localConfigPath
 and set python, faster_qwen_source_path, and model_path once. The local file is ignored by Git.
+
+For -StyleExperiment also set style_experiment_faster_qwen_source_path, or pass
+-FasterQwenSourcePath explicitly.
 "@
 }
 
