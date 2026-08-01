@@ -10,6 +10,7 @@ import gc
 import hashlib
 import importlib
 import json
+import math
 import random
 import threading
 from collections.abc import Callable, Iterable, Iterator
@@ -127,6 +128,21 @@ class QwenTtsEngine:
             raise UnsupportedAudioFormatError(
                 "qwen engine currently supports only s16le 24000 Hz mono"
             )
+
+        if (
+            not request.sampling.is_default()
+            and not self._config.allow_request_sampling_overrides
+        ):
+            raise EngineRequestValidationError(
+                "unsupported_feature",
+                "the active runtime profile does not allow per-request sampling overrides",
+            )
+        if self._config.runtime_backend != "faster" and not request.sampling.is_default():
+            raise EngineRequestValidationError(
+                "unsupported_feature",
+                "per-request sampling controls require runtime_backend=faster",
+            )
+        _resolve_faster_sampling(self._config, request)
 
         model = self._require_model()
         model_type = _qwen_model_type(model)
@@ -1418,6 +1434,7 @@ def _qwen_stream_generate_audio(
 ) -> Iterable[tuple[Any, int]] | None:
     model_type = _qwen_model_type(model)
     language = _qwen_language(request.language)
+    sampling = _resolve_faster_sampling(config, request)
 
     if model_type == "custom_voice":
         if config.runtime_backend == "faster":
@@ -1431,7 +1448,7 @@ def _qwen_stream_generate_audio(
                     "chunk_size": config.emit_every_frames,
                     "chunk_schedule": config.emit_chunk_schedule or None,
                     "overlap_samples": config.overlap_samples,
-                    "do_sample": config.do_sample,
+                    **sampling,
                     "prefill_backend": config.prefill_backend,
                     "prefill_compile_compat_mode": (config.prefill_compile_compat_mode),
                     "cancel_check": cancel_event.is_set,
@@ -1491,7 +1508,7 @@ def _qwen_stream_generate_audio(
                     "instruct": request.instruction,
                     "chunk_size": config.emit_every_frames,
                     "chunk_schedule": config.emit_chunk_schedule or None,
-                    "do_sample": config.do_sample,
+                    **sampling,
                     "prefill_backend": config.prefill_backend,
                     "prefill_compile_compat_mode": (config.prefill_compile_compat_mode),
                     "cancel_check": cancel_event.is_set,
@@ -1532,6 +1549,55 @@ def _qwen_stream_generate_audio(
         )
 
     return None
+
+
+def _resolve_faster_sampling(
+    config: QwenEngineConfig,
+    request: SynthesisRequest,
+) -> dict[str, float | int | bool]:
+    """Resolve and validate request overrides against runtime sampling defaults."""
+
+    options = request.sampling
+    temperature = config.temperature if options.temperature is None else options.temperature
+    top_k = config.top_k if options.top_k is None else options.top_k
+    top_p = config.top_p if options.top_p is None else options.top_p
+    repetition_penalty = (
+        config.repetition_penalty
+        if options.repetition_penalty is None
+        else options.repetition_penalty
+    )
+    do_sample = config.do_sample if options.do_sample is None else options.do_sample
+
+    if not math.isfinite(temperature) or not 0.0 < temperature <= 2.0:
+        raise EngineRequestValidationError(
+            "invalid_field_type",
+            "sampling.temperature must be finite and in the interval (0, 2]",
+        )
+    if top_k <= 0:
+        raise EngineRequestValidationError(
+            "invalid_field_type",
+            "sampling.top_k must be greater than zero",
+        )
+    if not math.isfinite(top_p) or not 0.0 < top_p <= 1.0:
+        raise EngineRequestValidationError(
+            "invalid_field_type",
+            "sampling.top_p must be finite and in the interval (0, 1]",
+        )
+    if (
+        not math.isfinite(repetition_penalty)
+        or not 1.0 <= repetition_penalty <= 2.0
+    ):
+        raise EngineRequestValidationError(
+            "invalid_field_type",
+            "sampling.repetition_penalty must be finite and in the interval [1, 2]",
+        )
+    return {
+        "temperature": temperature,
+        "top_k": top_k,
+        "top_p": top_p,
+        "repetition_penalty": repetition_penalty,
+        "do_sample": do_sample,
+    }
 
 
 def _qwen_stream_generate_pcm(

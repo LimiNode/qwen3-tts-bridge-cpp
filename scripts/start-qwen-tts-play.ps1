@@ -7,6 +7,12 @@ param(
     [string]$Speaker = "",
     [string]$Language = "",
     [string]$Instruction = "",
+    [string]$Temperature = "",
+    [string]$TopK = "",
+    [string]$TopP = "",
+    [string]$RepetitionPenalty = "",
+    [string]$Seed = "",
+    [switch]$NoSample,
     [string]$Text = "",
     [string]$BuildDirectory = "build",
     [uint32]$StartupTimeoutMs = 300000,
@@ -121,6 +127,24 @@ if ($languageValue) {
 }
 if ($instructionValue) {
     $cliArguments += @("--instruction", $instructionValue)
+}
+if ($Temperature) {
+    $cliArguments += @("--temperature", $Temperature)
+}
+if ($TopK) {
+    $cliArguments += @("--top-k", $TopK)
+}
+if ($TopP) {
+    $cliArguments += @("--top-p", $TopP)
+}
+if ($RepetitionPenalty) {
+    $cliArguments += @("--repetition-penalty", $RepetitionPenalty)
+}
+if ($Seed) {
+    $cliArguments += @("--seed", $Seed)
+}
+if ($NoSample) {
+    $cliArguments += "--no-sample"
 }
 if ($Text) {
     $cliArguments += @("--text", $Text)

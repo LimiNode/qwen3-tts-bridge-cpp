@@ -12,6 +12,7 @@ from qwen_tts_bridge_worker.engine.types import (
     AudioFormat,
     EngineCapabilities,
     EngineRequestValidationError,
+    SamplingOptions,
     SynthesisRequest,
     UnsupportedAudioFormatError,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "MockTtsEngine",
     "QwenEngineError",
     "QwenTtsEngine",
+    "SamplingOptions",
     "SynthesisRequest",
     "TtsEngine",
     "UnsupportedAudioFormatError",

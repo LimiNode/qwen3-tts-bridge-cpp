@@ -99,6 +99,24 @@ if ($profile.prefill_first_chunk_warmup) {
 if ($profile.prefill_generation_prime) {
     $arguments += "--prefill-generation-prime"
 }
+if ($profile.allow_request_sampling_overrides) {
+    $arguments += "--allow-request-sampling-overrides"
+}
+if ($null -ne $profile.temperature) {
+    $arguments += @("--temperature", $profile.temperature)
+}
+if ($null -ne $profile.top_k) {
+    $arguments += @("--top-k", $profile.top_k)
+}
+if ($null -ne $profile.top_p) {
+    $arguments += @("--top-p", $profile.top_p)
+}
+if ($null -ne $profile.repetition_penalty) {
+    $arguments += @("--repetition-penalty", $profile.repetition_penalty)
+}
+if ($null -ne $profile.do_sample -and -not $profile.do_sample) {
+    $arguments += "--no-sample"
+}
 if ($profile.collect_generation_trace) {
     $arguments += "--collect-generation-trace"
 }

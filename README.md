@@ -71,8 +71,9 @@ scripts\start-qwen-tts-play.ps1
 
 The launcher defaults to the sealed R10 profile and runs its preflight. Use
 `-Text "Hello"` for a one-shot playback smoke or `-DryRun` to inspect the
-resolved command without starting a worker. `-Speaker`, `-Language`, and
-`-Instruction` override the saved defaults for one run. Its five-minute worker
+resolved command without starting a worker. `-Speaker`, `-Language`, `-Instruction`,
+`-Temperature`, `-TopK`, `-TopP`, `-RepetitionPenalty`, `-Seed`, and `-NoSample`
+override the saved defaults for one run. Its five-minute worker
 startup timeout covers the measured R10 compile/prime startup and can be
 changed with `-StartupTimeoutMs`.
 
@@ -83,7 +84,8 @@ scripts\start-qwen-tts-play.ps1 -Text "Hello" -Speaker serena -Language English
 Enter text to synthesize. While it runs, a new line cancels the prior
 generation and queued playback before starting the replacement request. Use
 `/cancel` to stop the current request, `/voice <name>` to select a speaker,
-`/language <name>`, `/style <text>`, `/help`, or `/quit`.
+`/language <name>`, `/style <text>`, `/temperature <value>`, `/seed <value>`,
+`/sample <on|off>`, `/sampling`, `/help`, or `/quit`.
 
 Use `--text "..."` for a one-shot playback smoke, or `--mock` to exercise the
 CLI against the bundled mock worker. The playback example is intentionally a

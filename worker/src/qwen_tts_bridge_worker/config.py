@@ -9,6 +9,25 @@ from typing import Literal, Mapping, TypeAlias
 MAX_EMIT_CHUNK_SCHEDULE_FRAMES = 64
 
 
+def _validate_sampling_values(
+    *,
+    temperature: float,
+    top_k: int,
+    top_p: float,
+    repetition_penalty: float,
+) -> None:
+    if not math.isfinite(temperature) or not 0.0 < temperature <= 2.0:
+        raise ValueError("qwen.temperature must be finite and in the interval (0, 2]")
+    if top_k <= 0:
+        raise ValueError("qwen.top_k must be greater than zero")
+    if not math.isfinite(top_p) or not 0.0 < top_p <= 1.0:
+        raise ValueError("qwen.top_p must be finite and in the interval (0, 1]")
+    if not math.isfinite(repetition_penalty) or not 1.0 <= repetition_penalty <= 2.0:
+        raise ValueError(
+            "qwen.repetition_penalty must be finite and in the interval [1, 2]"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class CanaryRuntimeProvenance:
     """Pinned runtime identity emitted with local canary diagnostics."""
@@ -138,7 +157,12 @@ class QwenEngineConfig:
     prefill_first_chunk_warmup_enabled: bool = False
     prefill_first_chunk_warmup_length: int | None = None
     prefill_generation_prime_enabled: bool = False
+    allow_request_sampling_overrides: bool = False
     do_sample: bool = True
+    temperature: float = 0.9
+    top_k: int = 50
+    top_p: float = 1.0
+    repetition_penalty: float = 1.05
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"
     warmup_seed: int | None = None
@@ -315,6 +339,12 @@ class QwenEngineConfig:
                 "warmup_synthesis_enabled cannot both be true"
             )
         self._validate_prefill_compile_compat_contract()
+        _validate_sampling_values(
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
+            repetition_penalty=self.repetition_penalty,
+        )
         if self.seed_mode not in {"request_id", "fixed"}:
             raise ValueError("qwen.seed_mode must be request_id or fixed")
         if self.warmup_synthesis_enabled and not self.warmup_text:

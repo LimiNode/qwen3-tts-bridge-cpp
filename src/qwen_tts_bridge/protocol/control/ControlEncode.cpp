@@ -31,6 +31,10 @@ Json control_message_to_json(const ControlMessage& message) {
                 if (value.has_seed) {
                     out["seed"] = value.seed;
                 }
+                const Json sampling = synthesis_sampling_to_json(value.sampling);
+                if (!sampling.empty()) {
+                    out["sampling"] = sampling;
+                }
                 return out;
             }
             else if constexpr (std::is_same_v<Message, CancelMessage>) {

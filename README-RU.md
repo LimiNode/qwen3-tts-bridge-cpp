@@ -73,8 +73,9 @@ scripts\start-qwen-tts-play.ps1
 
 Launcher по умолчанию использует sealed R10 profile и запускает его preflight.
 `-Text "Hello"` выполняет одноразовый playback smoke, а `-DryRun` показывает
-итоговую команду без запуска worker. Параметры `-Speaker`, `-Language` и
-`-Instruction` переопределяют сохранённые настройки на один запуск. Пятиминутный
+итоговую команду без запуска worker. Параметры `-Speaker`, `-Language`,
+`-Instruction`, `-Temperature`, `-TopK`, `-TopP`, `-RepetitionPenalty`, `-Seed`
+и `-NoSample` переопределяют сохранённые настройки на один запуск. Пятиминутный
 timeout запуска worker учитывает измеренное время compile/prime для R10; его
 можно изменить через `-StartupTimeoutMs`.
 
@@ -85,7 +86,8 @@ scripts\start-qwen-tts-play.ps1 -Text "Hello" -Speaker serena -Language English
 Введите текст для озвучивания. Пока запрос выполняется, новая строка отменяет
 предыдущую генерацию и поставленный звук, затем запускает новый запрос. Для
 отмены используйте `/cancel`; для выбора голоса - `/voice <name>`; также
-доступны `/language <name>`, `/style <text>`, `/help` и `/quit`.
+доступны `/language <name>`, `/style <text>`, `/temperature <value>`,
+`/seed <value>`, `/sample <on|off>`, `/sampling`, `/help` и `/quit`.
 
 `--text "..."` запускает одноразовый playback smoke, а `--mock` проверяет CLI
 на встроенном mock-worker. Пример воспроизведения намеренно остаётся небольшой

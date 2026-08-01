@@ -27,6 +27,12 @@
   "prefill_require_precompiled": false,
   "prefill_first_chunk_warmup": false,
   "prefill_generation_prime": false,
+  "allow_request_sampling_overrides": true,
+  "do_sample": true,
+  "temperature": 0.4,
+  "top_k": 50,
+  "top_p": 1.0,
+  "repetition_penalty": 1.05,
   "collect_generation_trace": true,
   "profile_prefill": false
 }

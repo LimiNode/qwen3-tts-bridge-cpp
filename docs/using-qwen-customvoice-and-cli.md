@@ -31,8 +31,9 @@ For a one-shot smoke test instead of an interactive session:
 .\scripts\start-qwen-tts-play.ps1 -Text "Hello" -Speaker serena -Language English
 ```
 
-`-Speaker`, `-Language`, and `-Instruction` override the saved values for one
-launcher invocation. The five-minute startup timeout is intentional: the R10
+`-Speaker`, `-Language`, `-Instruction`, `-Temperature`, `-TopK`, `-TopP`,
+`-RepetitionPenalty`, `-Seed`, and `-NoSample` override the saved values for
+one launcher invocation. The five-minute startup timeout is intentional: the R10
 profile prewarms six exact compiled shapes before declaring the worker ready.
 
 ## Interactive Commands
@@ -44,6 +45,13 @@ profile prewarms six exact compiled shapes before declaring the worker ready.
 | `/voice <name>` | Selects a preset speaker for future requests. |
 | `/language <name>` | Selects the request language for future requests. |
 | `/style <text>` | Stores a style instruction for future requests; see the model limitation below. |
+| `/temperature <value\|default>` | Sets sampling temperature for future requests, or restores the worker profile default. |
+| `/top-k <value\|default>` | Limits each sampling step to the most likely candidates, or restores the worker default. |
+| `/top-p <value\|default>` | Sets nucleus sampling probability, or restores the worker default. |
+| `/repetition-penalty <value\|default>` | Discourages repeating generated acoustic tokens, or restores the worker default. |
+| `/sample <on\|off\|default>` | Enables sampling, requests greedy decoding, or restores the worker default. |
+| `/seed <value\|off>` | Uses a deterministic request seed, or returns to the worker seed policy. |
+| `/sampling` | Prints the effective CLI overrides; `<worker default>` means the profile controls that value. |
 | `/help` | Shows the command reference. |
 | `/quit` | Stops the worker and exits. |
 
@@ -51,6 +59,32 @@ Changing `/voice` does not recolor audio that is already generated. To switch
 immediately, set the voice and submit a new line of text; that new request
 cancels the old generation. `serena` and `ryan` are known preset speakers for
 the local model. An unsupported speaker is rejected by the worker.
+
+## Sampling and Stable Pronunciation
+
+The experimental CustomVoice profile starts with `temperature = 0.4`,
+`top_k = 50`, `top_p = 1.0`, `repetition_penalty = 1.05`, and sampling enabled.
+This is deliberately more conservative than FasterQwen's upstream temperature
+of `0.9`: it normally reduces phrase-to-phrase variation while retaining some
+prosody. It does not add phoneme or stress control.
+Request-level sampling commands are enabled only by `-StyleExperiment`; the
+sealed R10 profile rejects them so its measured operating contract cannot drift.
+
+Use a fixed seed before comparing a style, spelling hint, or pronunciation:
+
+```text
+/seed 4242
+/temperature 0.4
+/sample on
+```
+
+`/sample off` uses greedy decoding. It is the strongest repeatability check,
+but may sound flatter and can weaken a style instruction. `top_k` narrows the
+candidate set; lower values are more conservative. `top_p` retains only the
+most probable cumulative mass; lowering it also reduces variation. Increasing
+the repetition penalty discourages repeated acoustic tokens, but an excessive
+value can make articulation less natural. Change one control at a time and
+listen to the complete phrase rather than judging a single word.
 
 ## Russian Pronunciation
 
@@ -96,7 +130,7 @@ known problematic words to approved replacements.
   ```
 
   This experiment is only for assessing instruction control. Compare the same
-  text, speaker, language, and seed first without `/style`, then with it. The
+  text, speaker, language, seed, and sampling controls first without `/style`, then with it. The
   resulting audio still requires listening review; passing a prompt through is
   not proof of a useful emotional change.
 

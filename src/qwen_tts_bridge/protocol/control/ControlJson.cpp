@@ -1,5 +1,6 @@
 #include "ControlCodecInternal.hpp"
 
+#include <cmath>
 #include <limits>
 #include <utility>
 
@@ -290,6 +291,64 @@ bool read_required_audio_format(
     return read_audio_format(*value, out, diagnostic, error);
 }
 
+bool read_optional_finite_double(
+    const Json& object,
+    const char* name,
+    std::optional<double>& out,
+    std::string& diagnostic,
+    ControlCodecError& error) {
+    const Json* value = find_field(object, name);
+    if (value == nullptr) {
+        out.reset();
+        return true;
+    }
+    if (!value->is_number()) {
+        error = ControlCodecError::InvalidFieldType;
+        diagnostic = std::string("field must be a finite number: ") + name;
+        return false;
+    }
+    const double number = value->get<double>();
+    if (!std::isfinite(number)) {
+        error = ControlCodecError::InvalidFieldType;
+        diagnostic = std::string("field must be a finite number: ") + name;
+        return false;
+    }
+    out = number;
+    return true;
+}
+
+bool read_optional_synthesis_sampling(
+    const Json& object,
+    const char* name,
+    SynthesisSamplingOptions& out,
+    std::string& diagnostic,
+    ControlCodecError& error) {
+    const Json* value = find_field(object, name);
+    if (value == nullptr) {
+        out = {};
+        return true;
+    }
+    if (!value->is_object()) {
+        error = ControlCodecError::InvalidFieldType;
+        diagnostic = std::string("field must be an object: ") + name;
+        return false;
+    }
+    std::uint32_t top_k = 0;
+    bool top_k_present = false;
+    bool do_sample = false;
+    bool do_sample_present = false;
+    if (!read_optional_finite_double(*value, "temperature", out.temperature, diagnostic, error) ||
+        !read_optional_u32(*value, "top_k", top_k, top_k_present, diagnostic, error) ||
+        !read_optional_finite_double(*value, "top_p", out.top_p, diagnostic, error) ||
+        !read_optional_finite_double(*value, "repetition_penalty", out.repetition_penalty, diagnostic, error) ||
+        !read_optional_bool(*value, "do_sample", do_sample, do_sample_present, diagnostic, error)) {
+        return false;
+    }
+    out.top_k = top_k_present ? std::optional<std::uint32_t>(top_k) : std::nullopt;
+    out.do_sample = do_sample_present ? std::optional<bool>(do_sample) : std::nullopt;
+    return true;
+}
+
 bool read_capabilities(
     const Json& object,
     WorkerCapabilities& out,
@@ -329,6 +388,26 @@ Json audio_format_to_json(const AudioFormat& format) {
         {"sample_rate", format.sample_rate},
         {"channels", format.channels}
     };
+}
+
+Json synthesis_sampling_to_json(const SynthesisSamplingOptions& options) {
+    Json out = Json::object();
+    if (options.temperature.has_value()) {
+        out["temperature"] = options.temperature.value();
+    }
+    if (options.top_k.has_value()) {
+        out["top_k"] = options.top_k.value();
+    }
+    if (options.top_p.has_value()) {
+        out["top_p"] = options.top_p.value();
+    }
+    if (options.repetition_penalty.has_value()) {
+        out["repetition_penalty"] = options.repetition_penalty.value();
+    }
+    if (options.do_sample.has_value()) {
+        out["do_sample"] = options.do_sample.value();
+    }
+    return out;
 }
 
 Json capabilities_to_json(const WorkerCapabilities& capabilities) {

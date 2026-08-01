@@ -17,6 +17,7 @@ from qwen_tts_bridge_worker.engine import (
     GenerationSafetyLimitError,
     QwenEngineError,
     QwenTtsEngine,
+    SamplingOptions,
     SynthesisRequest,
     UnsupportedAudioFormatError,
 )
@@ -916,7 +917,11 @@ class QwenEngineTests(unittest.TestCase):
                 "chunk_size": 8,
                 "chunk_schedule": (6, 8, 12),
                 "overlap_samples": 240,
+                "temperature": 0.9,
+                "top_k": 50,
+                "top_p": 1.0,
                 "do_sample": True,
+                "repetition_penalty": 1.05,
                 "prefill_backend": "eager",
                 "prefill_compile_compat_mode": "none",
             },
@@ -951,6 +956,76 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(1, metrics["chunk_schedule_index"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])
         self.assertIn("codec_wrapper_residual_ms", metrics)
+
+    def test_faster_custom_voice_request_sampling_overrides_profile(self) -> None:
+        fake_model = _FasterStreamingModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+                allow_request_sampling_overrides=True,
+                temperature=0.9,
+                top_k=50,
+                top_p=1.0,
+                repetition_penalty=1.05,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                    sampling=SamplingOptions(
+                        temperature=0.4,
+                        top_k=32,
+                        top_p=0.9,
+                        repetition_penalty=1.1,
+                        do_sample=False,
+                    ),
+                ),
+                threading.Event(),
+            )
+        )
+
+        stream_call = fake_model.custom_stream_calls[0]
+        self.assertEqual(0.4, stream_call["temperature"])
+        self.assertEqual(32, stream_call["top_k"])
+        self.assertEqual(0.9, stream_call["top_p"])
+        self.assertEqual(1.1, stream_call["repetition_penalty"])
+        self.assertFalse(cast(bool, stream_call["do_sample"]))
+
+    def test_faster_custom_voice_rejects_sampling_without_profile_opt_in(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+            ),
+            model_loader=lambda _config: _FasterStreamingModel(
+                "custom_voice",
+                supported_speakers=["Alice"],
+            ),
+        )
+        engine.load()
+
+        with self.assertRaisesRegex(
+            EngineRequestValidationError,
+            "does not allow per-request sampling overrides",
+        ):
+            engine.validate_request(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                    sampling=SamplingOptions(temperature=0.4),
+                )
+            )
 
     def test_faster_generation_trace_is_captured_after_completed_stream(self) -> None:
         fake_model = _FasterStreamingModel(
@@ -1273,7 +1348,11 @@ class QwenEngineTests(unittest.TestCase):
                 "instruct": "Low calm voice.",
                 "chunk_size": 12,
                 "chunk_schedule": (6, 8, 12),
+                "temperature": 0.9,
+                "top_k": 50,
+                "top_p": 1.0,
                 "do_sample": True,
+                "repetition_penalty": 1.05,
                 "prefill_backend": "eager",
                 "prefill_compile_compat_mode": "none",
             },

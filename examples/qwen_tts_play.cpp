@@ -16,6 +16,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -52,6 +53,12 @@ struct ProgramOptions {
     std::string language = "auto";
     std::string speaker;
     std::string instruction;
+    std::optional<double> temperature;
+    std::optional<std::uint32_t> top_k;
+    std::optional<double> top_p;
+    std::optional<double> repetition_penalty;
+    std::optional<bool> do_sample;
+    std::optional<std::uint64_t> seed;
     std::uint32_t sample_rate = 24000;
     std::uint32_t channels = 1;
     int mock_chunks = 3;
@@ -287,6 +294,13 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  /voice <name>          Set the speaker for future requests.\n"
         << "  /language <name>       Set the language for future requests.\n"
         << "  /style <text>          Set the style instruction for future requests.\n"
+        << "  /temperature <value|default>  Set sampling temperature for future requests.\n"
+        << "  /top-k <value|default> Set top-k candidate limit for future requests.\n"
+        << "  /top-p <value|default> Set nucleus probability for future requests.\n"
+        << "  /repetition-penalty <value|default> Set repetition penalty for future requests.\n"
+        << "  /sample <on|off|default> Set sampling mode for future requests.\n"
+        << "  /seed <value|off>      Set deterministic seed for future requests.\n"
+        << "  /sampling               Show current per-request sampling controls.\n"
         << "  /help                  Show this help.\n"
         << "  /quit                  Stop the worker and exit.\n\n"
         << "Options:\n"
@@ -299,6 +313,13 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
+        << "  --temperature <value>          Per-request sampling temperature.\n"
+        << "  --top-k <value>                Per-request top-k candidate limit.\n"
+        << "  --top-p <value>                Per-request nucleus probability.\n"
+        << "  --repetition-penalty <value>   Per-request repetition penalty.\n"
+        << "  --sample                       Enable per-request sampling.\n"
+        << "  --no-sample                    Use per-request greedy decoding.\n"
+        << "  --seed <value>                 Per-request deterministic seed.\n"
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
@@ -331,6 +352,18 @@ std::uint32_t parse_u32(const std::string& value, const std::string& option) {
         throw std::runtime_error("invalid integer for " + option + ": " + value);
     }
     return static_cast<std::uint32_t>(result);
+}
+
+std::uint64_t parse_u64(const std::string& value, const std::string& option) {
+    if (value.empty() || value.front() == '-') {
+        throw std::runtime_error("invalid integer for " + option + ": " + value);
+    }
+    std::size_t parsed = 0;
+    const unsigned long long result = std::stoull(value, &parsed, 10);
+    if (parsed != value.size()) {
+        throw std::runtime_error("invalid integer for " + option + ": " + value);
+    }
+    return static_cast<std::uint64_t>(result);
 }
 
 int parse_int(const std::string& value, const std::string& option) {
@@ -384,6 +417,34 @@ ProgramOptions parse_options(int argc, char** argv) {
         else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
             options.instruction = require_value(index, argc, argv, "--instruction");
         }
+        else if (arg == "--temperature" || arg.rfind("--temperature=", 0) == 0) {
+            options.temperature = parse_double(
+                require_value(index, argc, argv, "--temperature"), "--temperature");
+        }
+        else if (arg == "--top-k" || arg.rfind("--top-k=", 0) == 0) {
+            options.top_k = parse_u32(
+                require_value(index, argc, argv, "--top-k"), "--top-k");
+        }
+        else if (arg == "--top-p" || arg.rfind("--top-p=", 0) == 0) {
+            options.top_p = parse_double(
+                require_value(index, argc, argv, "--top-p"), "--top-p");
+        }
+        else if (arg == "--repetition-penalty" ||
+                 arg.rfind("--repetition-penalty=", 0) == 0) {
+            options.repetition_penalty = parse_double(
+                require_value(index, argc, argv, "--repetition-penalty"),
+                "--repetition-penalty");
+        }
+        else if (arg == "--sample") {
+            options.do_sample = true;
+        }
+        else if (arg == "--no-sample") {
+            options.do_sample = false;
+        }
+        else if (arg == "--seed" || arg.rfind("--seed=", 0) == 0) {
+            options.seed = parse_u64(
+                require_value(index, argc, argv, "--seed"), "--seed");
+        }
         else if (arg == "--sample-rate" || arg.rfind("--sample-rate=", 0) == 0) {
             options.sample_rate = parse_u32(
                 require_value(index, argc, argv, "--sample-rate"), "--sample-rate");
@@ -433,6 +494,22 @@ void validate_options(const ProgramOptions& options) {
     if (options.mock_chunks <= 0 || options.mock_chunk_ms <= 0 ||
         options.mock_chunk_delay < 0.0) {
         throw std::runtime_error("invalid mock worker options");
+    }
+    if (options.temperature.has_value() &&
+        (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0)) {
+        throw std::runtime_error("--temperature must be in the interval (0, 2]");
+    }
+    if (options.top_k.has_value() && options.top_k.value() == 0) {
+        throw std::runtime_error("--top-k must be greater than zero");
+    }
+    if (options.top_p.has_value() &&
+        (options.top_p.value() <= 0.0 || options.top_p.value() > 1.0)) {
+        throw std::runtime_error("--top-p must be in the interval (0, 1]");
+    }
+    if (options.repetition_penalty.has_value() &&
+        (options.repetition_penalty.value() < 1.0 ||
+         options.repetition_penalty.value() > 2.0)) {
+        throw std::runtime_error("--repetition-penalty must be in the interval [1, 2]");
     }
 }
 
@@ -522,6 +599,15 @@ RequestId submit_request(
     request.language = options.language;
     request.speaker = options.speaker;
     request.instruction = options.instruction;
+    request.sampling.temperature = options.temperature;
+    request.sampling.top_k = options.top_k;
+    request.sampling.top_p = options.top_p;
+    request.sampling.repetition_penalty = options.repetition_penalty;
+    request.sampling.do_sample = options.do_sample;
+    if (options.seed.has_value()) {
+        request.has_seed = true;
+        request.seed = options.seed.value();
+    }
     request.output = requested_audio_format(options);
     {
         std::lock_guard<std::mutex> lock(active_state.mutex);
@@ -602,6 +688,24 @@ void print_interactive_status(const ProgramOptions& options) {
     std::cout << "speaker=" << (options.speaker.empty() ? "<worker default>" : options.speaker)
               << ", language=" << options.language
               << ", style=" << (options.instruction.empty() ? "<none>" : options.instruction)
+              << "\n";
+    std::cout << "sampling: temperature="
+              << (options.temperature.has_value() ? std::to_string(options.temperature.value()) : "<worker default>")
+              << ", top_k="
+              << (options.top_k.has_value() ? std::to_string(options.top_k.value()) : "<worker default>")
+              << ", top_p="
+              << (options.top_p.has_value() ? std::to_string(options.top_p.value()) : "<worker default>")
+              << ", repetition_penalty="
+              << (options.repetition_penalty.has_value() ? std::to_string(options.repetition_penalty.value()) : "<worker default>")
+              << ", do_sample=";
+    if (!options.do_sample.has_value()) {
+        std::cout << "<worker default>";
+    }
+    else {
+        std::cout << (options.do_sample.value() ? "on" : "off");
+    }
+    std::cout << ", seed="
+              << (options.seed.has_value() ? std::to_string(options.seed.value()) : "<worker default>")
               << '\n';
 }
 
@@ -627,6 +731,90 @@ bool apply_interactive_command(ProgramOptions& options, const std::string& line)
     }
     if (command == "/style") {
         options.instruction = value;
+        print_interactive_status(options);
+        return true;
+    }
+    if (command == "/temperature") {
+        if (value == "default") {
+            options.temperature.reset();
+        }
+        else {
+            options.temperature = parse_double(value, "/temperature");
+            if (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0) {
+                throw std::runtime_error("/temperature must be in the interval (0, 2]");
+            }
+        }
+        print_interactive_status(options);
+        return true;
+    }
+    if (command == "/top-k") {
+        if (value == "default") {
+            options.top_k.reset();
+        }
+        else {
+            options.top_k = parse_u32(value, "/top-k");
+            if (options.top_k.value() == 0) {
+                throw std::runtime_error("/top-k must be greater than zero");
+            }
+        }
+        print_interactive_status(options);
+        return true;
+    }
+    if (command == "/top-p") {
+        if (value == "default") {
+            options.top_p.reset();
+        }
+        else {
+            options.top_p = parse_double(value, "/top-p");
+            if (options.top_p.value() <= 0.0 || options.top_p.value() > 1.0) {
+                throw std::runtime_error("/top-p must be in the interval (0, 1]");
+            }
+        }
+        print_interactive_status(options);
+        return true;
+    }
+    if (command == "/repetition-penalty") {
+        if (value == "default") {
+            options.repetition_penalty.reset();
+        }
+        else {
+            options.repetition_penalty = parse_double(value, "/repetition-penalty");
+            if (options.repetition_penalty.value() < 1.0 ||
+                options.repetition_penalty.value() > 2.0) {
+                throw std::runtime_error("/repetition-penalty must be in the interval [1, 2]");
+            }
+        }
+        print_interactive_status(options);
+        return true;
+    }
+    if (command == "/sample") {
+        if (value == "on") {
+            options.do_sample = true;
+        }
+        else if (value == "off") {
+            options.do_sample = false;
+        }
+        else if (value == "default") {
+            options.do_sample.reset();
+        }
+        else {
+            std::cerr << "usage: /sample <on|off|default>\n";
+            return true;
+        }
+        print_interactive_status(options);
+        return true;
+    }
+    if (command == "/seed") {
+        if (value == "off") {
+            options.seed.reset();
+        }
+        else {
+            options.seed = parse_u64(value, "/seed");
+        }
+        print_interactive_status(options);
+        return true;
+    }
+    if (command == "/sampling") {
         print_interactive_status(options);
         return true;
     }

@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -80,6 +81,16 @@ struct HelloMessage {
     std::string client_version; ///< C++ client implementation version.
 };
 
+/// \struct SynthesisSamplingOptions
+/// \brief Optional decoding controls carried by a synthesize message.
+struct SynthesisSamplingOptions {
+    std::optional<double> temperature; ///< Optional sampling temperature.
+    std::optional<std::uint32_t> top_k; ///< Optional top-k candidate limit.
+    std::optional<double> top_p; ///< Optional nucleus-sampling probability.
+    std::optional<double> repetition_penalty; ///< Optional repetition penalty.
+    std::optional<bool> do_sample; ///< Optional sampling-mode override.
+};
+
 /// \struct SynthesizeMessage
 /// \brief Client-to-worker synthesis request payload.
 struct SynthesizeMessage {
@@ -89,6 +100,7 @@ struct SynthesizeMessage {
     std::string instruction; ///< Natural-language style instruction.
     bool has_seed = false; ///< Whether seed contains a deterministic seed.
     std::uint64_t seed = 0; ///< Optional deterministic engine seed.
+    SynthesisSamplingOptions sampling; ///< Optional per-request decoding controls.
     AudioFormat output; ///< Requested output PCM format.
 };
 

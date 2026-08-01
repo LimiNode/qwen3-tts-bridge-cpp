@@ -6,10 +6,33 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace qwen_tts_bridge {
+
+/// \struct TtsSamplingOptions
+/// \brief Optional per-request decoding controls.
+///
+/// Unset fields preserve the worker runtime profile's defaults. These controls
+/// are model-dependent and may be rejected by a worker that cannot honour them.
+struct TtsSamplingOptions {
+    /// \brief Optional sampling temperature; must be finite and greater than zero.
+    std::optional<double> temperature; ///< Optional sampling temperature.
+
+    /// \brief Optional top-k candidate limit; must be positive.
+    std::optional<std::uint32_t> top_k; ///< Optional top-k candidate limit.
+
+    /// \brief Optional nucleus-sampling probability in the interval (0, 1].
+    std::optional<double> top_p; ///< Optional nucleus-sampling probability.
+
+    /// \brief Optional repetition penalty in the interval [1, 2].
+    std::optional<double> repetition_penalty; ///< Optional repetition penalty.
+
+    /// \brief Optional sampling-mode override; false requests greedy decoding.
+    std::optional<bool> do_sample; ///< Optional sampling-mode override.
+};
 
 /// \struct TtsRequest
 /// \brief User-facing synthesis request.
@@ -39,6 +62,9 @@ struct TtsRequest {
     /// support deterministic request-level seeding.
     bool has_seed = false; ///< Whether seed contains a deterministic request seed.
     std::uint64_t seed = 0; ///< Optional deterministic seed for engine diagnostics.
+
+    /// \brief Optional decoding controls for this request.
+    TtsSamplingOptions sampling; ///< Optional per-request decoding controls.
 
     /// \brief Requested PCM output format.
     AudioFormat output; ///< Requested PCM output format.

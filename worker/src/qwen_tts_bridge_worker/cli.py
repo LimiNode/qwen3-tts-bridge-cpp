@@ -172,7 +172,14 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                     args.prefill_first_chunk_warmup_length
                 ),
                 prefill_generation_prime_enabled=args.prefill_generation_prime,
+                allow_request_sampling_overrides=(
+                    args.allow_request_sampling_overrides
+                ),
                 do_sample=not args.no_sample,
+                temperature=args.temperature,
+                top_k=args.top_k,
+                top_p=args.top_p,
+                repetition_penalty=args.repetition_penalty,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
                 warmup_seed=args.warmup_seed,
@@ -520,9 +527,38 @@ def _add_qwen_subcommand(
         help="Run one internal full-EOS generation prime before reporting ready.",
     )
     qwen_parser.add_argument(
+        "--allow-request-sampling-overrides",
+        action="store_true",
+        help="Allow per-request sampling overrides for an isolated experimental profile.",
+    )
+    qwen_parser.add_argument(
         "--no-sample",
         action="store_true",
         help="Use greedy decoding instead of sampling.",
+    )
+    qwen_parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.9,
+        help="Default sampling temperature for faster Qwen inference.",
+    )
+    qwen_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=50,
+        help="Default top-k candidate limit for faster Qwen inference.",
+    )
+    qwen_parser.add_argument(
+        "--top-p",
+        type=float,
+        default=1.0,
+        help="Default nucleus-sampling probability for faster Qwen inference.",
+    )
+    qwen_parser.add_argument(
+        "--repetition-penalty",
+        type=float,
+        default=1.05,
+        help="Default repetition penalty for faster Qwen inference.",
     )
     qwen_parser.add_argument(
         "--seed",

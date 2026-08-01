@@ -18,6 +18,7 @@ from qwen_tts_bridge_worker.engine import (
     EngineCapabilities,
     EngineRequestValidationError,
     GenerationSafetyLimitError,
+    SamplingOptions,
     SynthesisRequest,
     TtsEngine,
 )
@@ -31,6 +32,81 @@ from qwen_tts_bridge_worker.protocol.data import Frame, FrameType, ParseStatus
 from qwen_tts_bridge_worker.protocol.framing import FrameParser, encode_frame
 from qwen_tts_bridge_worker.server.metrics import MetricsWriter
 from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
+
+
+def _parse_sampling_options(
+    request_id: int,
+    payload: object,
+    send_error: Any,
+) -> SamplingOptions | None:
+    """Validate optional request-level sampling controls."""
+
+    if payload is None:
+        return SamplingOptions()
+    if not isinstance(payload, dict):
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling must be an object when provided",
+        )
+        return None
+
+    temperature = payload.get("temperature")
+    top_k = payload.get("top_k")
+    top_p = payload.get("top_p")
+    repetition_penalty = payload.get("repetition_penalty")
+    do_sample = payload.get("do_sample")
+    numeric_values = (temperature, top_p, repetition_penalty)
+    if any(
+        value is not None
+        and (isinstance(value, bool) or not isinstance(value, (int, float)))
+        for value in numeric_values
+    ):
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling temperature, top_p, and repetition_penalty must be numbers",
+        )
+        return None
+    if top_k is not None and (
+        isinstance(top_k, bool) or not isinstance(top_k, int) or top_k <= 0
+    ):
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling.top_k must be a positive integer",
+        )
+        return None
+    if do_sample is not None and not isinstance(do_sample, bool):
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling.do_sample must be a boolean",
+        )
+        return None
+
+    try:
+        return SamplingOptions(
+            temperature=None if temperature is None else float(temperature),
+            top_k=top_k,
+            top_p=None if top_p is None else float(top_p),
+            repetition_penalty=(
+                None if repetition_penalty is None else float(repetition_penalty)
+            ),
+            do_sample=do_sample,
+        )
+    except ValueError:
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling values are invalid",
+        )
+        return None
 
 
 @dataclass
@@ -428,6 +504,7 @@ class StdioWorkerServer:
         speaker = message.get("speaker", "")
         instruction = message.get("instruction", "")
         seed = message.get("seed")
+        sampling_payload = message.get("sampling")
         output_payload = message.get("output")
 
         if not isinstance(language, str) or not isinstance(speaker, str):
@@ -459,6 +536,10 @@ class StdioWorkerServer:
             )
             return None
 
+        sampling = _parse_sampling_options(request_id, sampling_payload, self._send_error)
+        if sampling is None:
+            return None
+
         if output_payload is not None and not isinstance(output_payload, dict):
             self._send_error(
                 request_id,
@@ -486,6 +567,7 @@ class StdioWorkerServer:
             speaker=speaker,
             instruction=instruction,
             seed=seed,
+            sampling=sampling,
             output=output,
         )
         try:

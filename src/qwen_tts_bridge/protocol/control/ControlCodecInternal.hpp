@@ -94,6 +94,12 @@ bool read_required_audio_format(
     AudioFormat& out,
     std::string& diagnostic,
     ControlCodecError& error);
+bool read_optional_synthesis_sampling(
+    const Json& object,
+    const char* name,
+    SynthesisSamplingOptions& out,
+    std::string& diagnostic,
+    ControlCodecError& error);
 bool read_capabilities(
     const Json& object,
     WorkerCapabilities& out,
@@ -101,6 +107,7 @@ bool read_capabilities(
     ControlCodecError& error);
 
 Json audio_format_to_json(const AudioFormat& format);
+Json synthesis_sampling_to_json(const SynthesisSamplingOptions& options);
 Json capabilities_to_json(const WorkerCapabilities& capabilities);
 JsonPayloadEncodeResult encode_json_payload(const Json& value);
 

@@ -118,6 +118,44 @@ void test_synthesize_seed_round_trip() {
     CHECK(seeded.seed == 4242);
 }
 
+void test_synthesize_sampling_round_trip() {
+    SynthesizeMessage message;
+    message.text = "Controlled synthesis.";
+    message.sampling.temperature = 0.4;
+    message.sampling.top_k = 40;
+    message.sampling.top_p = 0.92;
+    message.sampling.repetition_penalty = 1.1;
+    message.sampling.do_sample = true;
+
+    const auto encoded = encode_control_message(ControlMessage{message});
+    CHECK(encoded);
+    const std::string payload = string_from_bytes(encoded.payload);
+    CHECK(payload.find("\"sampling\"") != std::string::npos);
+    CHECK(payload.find("\"temperature\":0.4") != std::string::npos);
+
+    const auto decoded = decode_control_message(
+        encoded.payload,
+        ControlMessageDirection::ClientToWorker);
+    CHECK(decoded);
+    const auto& sampling = std::get<SynthesizeMessage>(decoded.message).sampling;
+    CHECK(sampling.temperature.has_value());
+    CHECK(sampling.temperature.value() == 0.4);
+    CHECK(sampling.top_k == 40);
+    CHECK(sampling.top_p == 0.92);
+    CHECK(sampling.repetition_penalty == 1.1);
+    CHECK(sampling.do_sample == true);
+}
+
+void test_synthesize_rejects_invalid_sampling() {
+    const auto result = decode_client(
+        "{\"message_type\":\"synthesize\","
+        "\"text\":\"Invalid sampling.\","
+        "\"sampling\":{\"temperature\":0}}");
+
+    CHECK(!result);
+    CHECK(result.error == ControlCodecError::InvalidFieldType);
+}
+
 void test_encode_synthesize_omits_unspecified_speaker() {
     SynthesizeMessage message;
     message.text = "No explicit speaker.";
@@ -435,6 +473,8 @@ int main() {
     test_decode_synthesize_with_instruction_and_output();
     test_decode_synthesize_without_speaker();
     test_synthesize_seed_round_trip();
+    test_synthesize_sampling_round_trip();
+    test_synthesize_rejects_invalid_sampling();
     test_encode_synthesize_omits_unspecified_speaker();
     test_encode_synthesize_with_explicit_speaker();
     test_decode_ready();

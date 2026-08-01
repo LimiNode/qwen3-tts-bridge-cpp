@@ -34,6 +34,11 @@ SynthesizeMessage to_control_message(const TtsRequest& request) {
     message.instruction = request.instruction;
     message.has_seed = request.has_seed;
     message.seed = request.seed;
+    message.sampling.temperature = request.sampling.temperature;
+    message.sampling.top_k = request.sampling.top_k;
+    message.sampling.top_p = request.sampling.top_p;
+    message.sampling.repetition_penalty = request.sampling.repetition_penalty;
+    message.sampling.do_sample = request.sampling.do_sample;
     message.output = request.output;
     return message;
 }

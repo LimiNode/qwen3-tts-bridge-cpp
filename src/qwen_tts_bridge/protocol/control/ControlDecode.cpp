@@ -71,6 +71,7 @@ ControlDecodeResult decode_known_control_message(
             !read_optional_string(object, "speaker", message.speaker, diagnostic, error) ||
             !read_optional_string(object, "instruction", message.instruction, diagnostic, error) ||
             !read_optional_u64(object, "seed", message.seed, message.has_seed, diagnostic, error) ||
+            !read_optional_synthesis_sampling(object, "sampling", message.sampling, diagnostic, error) ||
             !read_optional_audio_format(object, "output", message.output, diagnostic, error)) {
             return control_error(error, diagnostic);
         }

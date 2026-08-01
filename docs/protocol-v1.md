@@ -235,6 +235,13 @@ The `synthesize` payload keeps spoken text separate from style instructions:
   "speaker": "Alice",
   "instruction": "Speak with relief, but keep a little resentment.",
   "seed": 4242,
+  "sampling": {
+    "temperature": 0.4,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "do_sample": true
+  },
   "output": {
     "sample_format": "s16le",
     "sample_rate": 24000,
@@ -255,6 +262,13 @@ requests. It must not be used as a production quality guarantee: support and
 determinism remain engine- and runtime-dependent. A worker that cannot honour
 the control must return `request_error` instead of silently accepting a
 different seed.
+
+`sampling` is an optional object of per-request decoding overrides. Omitted
+fields retain the worker runtime profile's defaults. `temperature` must be in
+`(0, 2]`, `top_k` must be a positive integer, `top_p` must be in `(0, 1]`, and
+`repetition_penalty` must be in `[1, 2]`. `do_sample = false` requests greedy
+decoding. A worker that cannot honour request-level sampling controls must
+return `request_error` instead of silently ignoring them.
 
 `output` is the client's requested output format. If the worker cannot satisfy
 it, the worker must return:
