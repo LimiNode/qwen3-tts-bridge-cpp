@@ -11,7 +11,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$profileFullPath = Join-Path $repoRoot $ProfilePath
+$profileFullPath = if ([System.IO.Path]::IsPathRooted($ProfilePath)) {
+    $ProfilePath
+} else {
+    Join-Path $repoRoot $ProfilePath
+}
 $profile = Get-Content -Raw $profileFullPath | ConvertFrom-Json
 
 if ($profile.profile_status -eq "internal_opt_in_only" -and $AdditionalArguments.Count -gt 0) {

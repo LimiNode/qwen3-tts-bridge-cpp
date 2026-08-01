@@ -17,6 +17,35 @@ _INTERNAL_PROFILE = (
 
 @unittest.skipUnless(os.name == "nt", "PowerShell launcher is Windows-only")
 class InternalRuntimeLauncherTests(unittest.TestCase):
+    def test_internal_profile_accepts_an_absolute_profile_path(self) -> None:
+        completed = subprocess.run(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(_LAUNCHER),
+                "-ProfilePath",
+                str(_ROOT / _INTERNAL_PROFILE),
+                "-Python",
+                "not-used-because-argument-is-rejected.exe",
+                "-AdditionalArguments",
+                "--dtype",
+                "float16",
+            ],
+            cwd=_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn(
+            "Internal runtime profiles do not accept AdditionalArguments.",
+            completed.stderr,
+        )
+
     def test_internal_profile_rejects_runtime_overrides_before_preflight(self) -> None:
         override_attempts = (
             ("--model-path", "models/other-model"),
