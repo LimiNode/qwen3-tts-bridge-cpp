@@ -529,6 +529,7 @@ def _write_checkpoint(
         {
             "corpus_discovery_schema_version": _SCHEMA_VERSION,
             "corpus_id": manifest["corpus_id"],
+            "corpus_split": manifest["corpus_split"],
             "input_sha256": manifest["input_sha256"],
             "selected_record_count": len(selected_ids),
             "completed_record_count": len(completed),
@@ -548,12 +549,12 @@ def _write_summary(
     expected_ids = {str(record["record_id"]) for record in selected}
     observed_ids = {str(row["record_id"]) for row in rows}
     if observed_ids != expected_ids:
-        raise RuntimeError("completed records do not match the selected discovery set")
+        raise RuntimeError("completed records do not match the selected corpus set")
     summary = {
         "corpus_discovery_schema_version": _SCHEMA_VERSION,
         "status": "completed",
         "corpus_id": manifest["corpus_id"],
-        "corpus_split": "discovery",
+        "corpus_split": manifest["corpus_split"],
         "input_sha256": manifest["input_sha256"],
         "profile_sha256": _nested_sha(manifest, "profile"),
         "runtime": manifest["runtime"],

@@ -125,6 +125,38 @@ class QwenCorpusDiscoveryTest(unittest.TestCase):
         self.assertEqual(20260738, row["derived_request_seed"])
         self.assertEqual("eos", row["generation_outcome"])
 
+    def test_summary_preserves_holdout_split(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output_dir = Path(directory)
+            row = {
+                "record_id": "record-1",
+                "execution_outcome": "completed",
+                "generation_outcome": "eos",
+                "first_audio_ms": 10.0,
+                "completed_ms": 20.0,
+                "inverse_rtf": 2.0,
+                "audio_seconds": 1.0,
+                "first_chunk_route": {"talker_prefill_length": 18},
+            }
+            (output_dir / "records.jsonl").write_text(
+                json.dumps(row) + "\n",
+                encoding="utf-8",
+            )
+
+            summary = _MODULE._write_summary(
+                output_dir,
+                {
+                    "corpus_id": "corpus-v4",
+                    "corpus_split": "runtime_measurement_holdout",
+                    "input_sha256": "a" * 64,
+                    "profile": {"sha256": "b" * 64},
+                    "runtime": {},
+                },
+                [{"record_id": "record-1"}],
+            )
+
+        self.assertEqual("runtime_measurement_holdout", summary["corpus_split"])
+
 
 class _MetricEngine:
     def validate_request(self, request: object) -> None:
