@@ -1,0 +1,387 @@
+{
+  "diagnostic_scope": "Frozen discovery record only. This matrix does not read the runtime measurement holdout and does not authorize a runtime configuration change.",
+  "input": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-07-30\\representative-v4-r6-candidate\\discovery.jsonl",
+    "sha256": "0f22e2252cfef4d7fafb8a41d8b39dc0321d9bdc4cf8c9f5f565001775dc2891"
+  },
+  "modes": {
+    "fresh_process": {
+      "audio_seconds": {
+        "max": 2.24,
+        "mean": 2.24,
+        "min": 2.24,
+        "p50": 2.24,
+        "p95": 2.24
+      },
+      "codec_frame_count": {
+        "max": 28.0,
+        "mean": 28.0,
+        "min": 28.0,
+        "p50": 28.0,
+        "p95": 28.0
+      },
+      "execution_outcomes": {
+        "completed": 1
+      },
+      "first_audio_ms": {
+        "max": 237.844,
+        "mean": 237.844,
+        "min": 237.844,
+        "p50": 237.844,
+        "p95": 237.844
+      },
+      "generation_outcomes": {
+        "eos": 1
+      },
+      "run_count": 1,
+      "runs": [
+        {
+          "audio_chunks": 3,
+          "audio_seconds": 2.24,
+          "codec_frame_count": 28,
+          "completed_ms": 850.908,
+          "execution_outcome": "completed",
+          "failure": null,
+          "first_audio_ms": 237.844,
+          "first_chunk_route": {
+            "ar_decode_ms": 152.96530723571777,
+            "ar_ms_per_step": 19.12066340446472,
+            "build_talker_inputs_wall_ms": 3.754999954253435,
+            "chunk_schedule_decision": "compiled_allowlist",
+            "chunk_schedule_index": 0,
+            "chunk_steps": 8,
+            "chunk_target_steps": 8,
+            "codec_wrapper_residual_ms": 68.14049285814167,
+            "first_sample_launch_wall_ms": 2.5649999734014273,
+            "generation_state_attention_mask_all_valid": true,
+            "generation_state_mask_cache_hit": true,
+            "generation_state_mask_key": null,
+            "generation_state_mask_key_ms": 0.001,
+            "generation_state_mask_table_build_ms": 0.0,
+            "generation_state_masks_built": 0,
+            "generation_state_previous_mask_key": null,
+            "generation_state_rope_copy_ms": 0.033,
+            "generation_state_total_ms": 0.036,
+            "generation_state_wall_ms": 0.05100015550851822,
+            "instruction_token_count": 0,
+            "is_final": false,
+            "next_wall_ms": 235.74,
+            "pcm_convert_ms": 0.096,
+            "prefill_backend_requested": "compile_reduce_overhead",
+            "prefill_backend_used": "compile_reduce_overhead",
+            "prefill_compile_attempt_count": 0,
+            "prefill_compile_attempted": false,
+            "prefill_compile_cache_entries": 6,
+            "prefill_compile_cache_entries_after": 6,
+            "prefill_compile_cache_entries_before": 6,
+            "prefill_compile_cache_entries_delta": 0,
+            "prefill_compile_cache_evictions": 0,
+            "prefill_compile_cache_evictions_after": 0,
+            "prefill_compile_cache_evictions_before": 0,
+            "prefill_compile_cache_evictions_delta": 0,
+            "prefill_compile_cache_hit": true,
+            "prefill_compile_cache_kind": "python_callable_lru",
+            "prefill_compile_cache_max_entries": 64,
+            "prefill_compile_cache_talker_entries": 6,
+            "prefill_compile_cache_talker_entries_after": 6,
+            "prefill_compile_cache_talker_entries_before": 6,
+            "prefill_compile_cache_talker_entries_delta": 0,
+            "prefill_compile_compat_applied": true,
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_compat_patched_modules": {
+              "attention": 33,
+              "mlp": 33,
+              "rmsnorm": 134
+            },
+            "prefill_compile_compat_reused": true,
+            "prefill_compile_fallback": false,
+            "prefill_compile_on_miss": false,
+            "prefill_compile_wrapper_create_host_ms": 0.0,
+            "prefill_compile_wrapper_create_ms": 0.0,
+            "prefill_compiled_call_1_host_ms": 0.0,
+            "prefill_compiled_call_2_host_ms": 0.0,
+            "prefill_compiled_call_3plus_host_ms": 4.205,
+            "prefill_compiled_call_host_ms": 4.205,
+            "prefill_compiled_call_ms": 4.205,
+            "prefill_compiled_first_call_ms": 0.0,
+            "prefill_compiled_warm_call_ms": 4.205,
+            "prefill_cuda_memory_after_allocated_bytes": 2465878528,
+            "prefill_cuda_memory_after_max_reserved_bytes": 2640314368,
+            "prefill_cuda_memory_after_reserved_bytes": 2640314368,
+            "prefill_cuda_memory_before_allocated_bytes": 2465878528,
+            "prefill_cuda_memory_before_max_reserved_bytes": 2640314368,
+            "prefill_cuda_memory_before_reserved_bytes": 2640314368,
+            "prefill_dynamo_counter_available": true,
+            "prefill_dynamo_unique_graphs_after": 6,
+            "prefill_dynamo_unique_graphs_before": 6,
+            "prefill_dynamo_unique_graphs_delta": 0,
+            "prefill_kv_launch_wall_ms": 4.699999932199717,
+            "prefill_ms": 14.634199906140566,
+            "prefill_require_precompiled": true,
+            "prefill_shape_allowlist_hit": true,
+            "prefill_shape_attention_mask": [
+              "none"
+            ],
+            "prefill_shape_call_ordinal": 5,
+            "prefill_shape_length": 18,
+            "prefill_shape_policy": "compiled_allowlist",
+            "prefill_shape_talker_input_embeds": [
+              [
+                1,
+                18,
+                1024
+              ],
+              "torch.bfloat16",
+              "cuda:0",
+              false
+            ],
+            "prefill_shape_trailing_text_hiddens": [
+              [
+                1,
+                1,
+                1024
+              ],
+              "torch.bfloat16",
+              "cuda:0",
+              false
+            ],
+            "prefill_shape_tts_pad_embed": [
+              [
+                1,
+                1,
+                1024
+              ],
+              "torch.bfloat16",
+              "cuda:0",
+              false
+            ],
+            "prefill_sync_wait_ms": 0.029799994081258774,
+            "profile_path": "fast",
+            "profile_prefill_enabled": false,
+            "profile_schema_version": 3,
+            "profile_status": "disabled",
+            "selected_chunk_schedule": [
+              8,
+              8,
+              12
+            ],
+            "talker_forward_launch_wall_ms": 7.140600122511387,
+            "talker_prefill_length": 18,
+            "text_token_count": 15,
+            "tokenize_wall_ms": 0.5652999971061945
+          },
+          "generation_outcome": "eos",
+          "generation_trace": {
+            "codec_frame_count": 28,
+            "codec_sha256": "6c1ab552c4dcb41840995061858de5b46c27bca764a24906be17195cbb4e9ced",
+            "emitted_steps": 28,
+            "generated_steps": 28,
+            "hit_eos": true,
+            "hit_max_new_tokens": false,
+            "hit_max_seq_len": false,
+            "terminal_step_index": 28,
+            "terminal_token_id": 2150,
+            "termination_reason": "eos"
+          },
+          "request_id": 3,
+          "seed": 20260801,
+          "subprocess_returncode": 0
+        }
+      ]
+    },
+    "long_lived": {
+      "audio_seconds": {
+        "max": 2.24,
+        "mean": 2.24,
+        "min": 2.24,
+        "p50": 2.24,
+        "p95": 2.24
+      },
+      "codec_frame_count": {
+        "max": 28.0,
+        "mean": 28.0,
+        "min": 28.0,
+        "p50": 28.0,
+        "p95": 28.0
+      },
+      "execution_outcomes": {
+        "completed": 1
+      },
+      "first_audio_ms": {
+        "max": 240.233,
+        "mean": 240.233,
+        "min": 240.233,
+        "p50": 240.233,
+        "p95": 240.233
+      },
+      "generation_outcomes": {
+        "eos": 1
+      },
+      "run_count": 1,
+      "runs": [
+        {
+          "audio_chunks": 3,
+          "audio_seconds": 2.24,
+          "codec_frame_count": 28,
+          "completed_ms": 853.429,
+          "execution_outcome": "completed",
+          "failure": null,
+          "first_audio_ms": 240.233,
+          "first_chunk_route": {
+            "ar_decode_ms": 156.2516689300537,
+            "ar_ms_per_step": 19.531458616256714,
+            "build_talker_inputs_wall_ms": 3.9715999737381935,
+            "chunk_schedule_decision": "compiled_allowlist",
+            "chunk_schedule_index": 0,
+            "chunk_steps": 8,
+            "chunk_target_steps": 8,
+            "codec_wrapper_residual_ms": 68.4449310708344,
+            "first_sample_launch_wall_ms": 2.5169001892209053,
+            "generation_state_attention_mask_all_valid": true,
+            "generation_state_mask_cache_hit": true,
+            "generation_state_mask_key": null,
+            "generation_state_mask_key_ms": 0.001,
+            "generation_state_mask_table_build_ms": 0.0,
+            "generation_state_masks_built": 0,
+            "generation_state_previous_mask_key": null,
+            "generation_state_rope_copy_ms": 0.033,
+            "generation_state_total_ms": 0.036,
+            "generation_state_wall_ms": 0.050099799409508705,
+            "instruction_token_count": 0,
+            "is_final": false,
+            "next_wall_ms": 238.548,
+            "pcm_convert_ms": 0.079,
+            "prefill_backend_requested": "compile_reduce_overhead",
+            "prefill_backend_used": "compile_reduce_overhead",
+            "prefill_compile_attempt_count": 0,
+            "prefill_compile_attempted": false,
+            "prefill_compile_cache_entries": 6,
+            "prefill_compile_cache_entries_after": 6,
+            "prefill_compile_cache_entries_before": 6,
+            "prefill_compile_cache_entries_delta": 0,
+            "prefill_compile_cache_evictions": 0,
+            "prefill_compile_cache_evictions_after": 0,
+            "prefill_compile_cache_evictions_before": 0,
+            "prefill_compile_cache_evictions_delta": 0,
+            "prefill_compile_cache_hit": true,
+            "prefill_compile_cache_kind": "python_callable_lru",
+            "prefill_compile_cache_max_entries": 64,
+            "prefill_compile_cache_talker_entries": 6,
+            "prefill_compile_cache_talker_entries_after": 6,
+            "prefill_compile_cache_talker_entries_before": 6,
+            "prefill_compile_cache_talker_entries_delta": 0,
+            "prefill_compile_compat_applied": true,
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_compat_patched_modules": {
+              "attention": 33,
+              "mlp": 33,
+              "rmsnorm": 134
+            },
+            "prefill_compile_compat_reused": true,
+            "prefill_compile_fallback": false,
+            "prefill_compile_on_miss": false,
+            "prefill_compile_wrapper_create_host_ms": 0.0,
+            "prefill_compile_wrapper_create_ms": 0.0,
+            "prefill_compiled_call_1_host_ms": 0.0,
+            "prefill_compiled_call_2_host_ms": 0.0,
+            "prefill_compiled_call_3plus_host_ms": 3.958,
+            "prefill_compiled_call_host_ms": 3.958,
+            "prefill_compiled_call_ms": 3.958,
+            "prefill_compiled_first_call_ms": 0.0,
+            "prefill_compiled_warm_call_ms": 3.958,
+            "prefill_cuda_memory_after_allocated_bytes": 2465878528,
+            "prefill_cuda_memory_after_max_reserved_bytes": 2640314368,
+            "prefill_cuda_memory_after_reserved_bytes": 2640314368,
+            "prefill_cuda_memory_before_allocated_bytes": 2465878528,
+            "prefill_cuda_memory_before_max_reserved_bytes": 2640314368,
+            "prefill_cuda_memory_before_reserved_bytes": 2640314368,
+            "prefill_dynamo_counter_available": true,
+            "prefill_dynamo_unique_graphs_after": 6,
+            "prefill_dynamo_unique_graphs_before": 6,
+            "prefill_dynamo_unique_graphs_delta": 0,
+            "prefill_kv_launch_wall_ms": 4.507399862632155,
+            "prefill_ms": 13.85139999911189,
+            "prefill_require_precompiled": true,
+            "prefill_shape_allowlist_hit": true,
+            "prefill_shape_attention_mask": [
+              "none"
+            ],
+            "prefill_shape_call_ordinal": 5,
+            "prefill_shape_length": 18,
+            "prefill_shape_policy": "compiled_allowlist",
+            "prefill_shape_talker_input_embeds": [
+              [
+                1,
+                18,
+                1024
+              ],
+              "torch.bfloat16",
+              "cuda:0",
+              false
+            ],
+            "prefill_shape_trailing_text_hiddens": [
+              [
+                1,
+                1,
+                1024
+              ],
+              "torch.bfloat16",
+              "cuda:0",
+              false
+            ],
+            "prefill_shape_tts_pad_embed": [
+              [
+                1,
+                1,
+                1024
+              ],
+              "torch.bfloat16",
+              "cuda:0",
+              false
+            ],
+            "prefill_sync_wait_ms": 0.02319994382560253,
+            "profile_path": "fast",
+            "profile_prefill_enabled": false,
+            "profile_schema_version": 3,
+            "profile_status": "disabled",
+            "selected_chunk_schedule": [
+              8,
+              8,
+              12
+            ],
+            "talker_forward_launch_wall_ms": 6.6316998563706875,
+            "talker_prefill_length": 18,
+            "text_token_count": 15,
+            "tokenize_wall_ms": 0.44620013795793056
+          },
+          "generation_outcome": "eos",
+          "generation_trace": {
+            "codec_frame_count": 28,
+            "codec_sha256": "6c1ab552c4dcb41840995061858de5b46c27bca764a24906be17195cbb4e9ced",
+            "emitted_steps": 28,
+            "generated_steps": 28,
+            "hit_eos": true,
+            "hit_max_new_tokens": false,
+            "hit_max_seq_len": false,
+            "terminal_step_index": 28,
+            "terminal_token_id": 2150,
+            "termination_reason": "eos"
+          },
+          "request_id": 3,
+          "seed": 20260801
+        }
+      ]
+    }
+  },
+  "profile": {
+    "path": "config\\rtx4090-faster-customvoice-frequency-exact-allowlist-r9-research.json",
+    "sha256": "5a7cf907aeaf96b5add41607a27ca34502576947cc1b9bf632d36d6b65a31809"
+  },
+  "qwen_tail_case_matrix_schema_version": 1,
+  "record_id": "v4-b01-003",
+  "request_id": 3,
+  "seed_count": 1,
+  "seed_mode": "explicit_request_seed",
+  "seed_start": 20260801,
+  "speaker": "ryan"
+}
