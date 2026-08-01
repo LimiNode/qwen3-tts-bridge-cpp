@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 from typing import cast
 
-from scripts.validate_cpp_api_soak import validate_cpp_api_soak
+from scripts.validate_cpp_api_soak import _read_worker_metrics_text, validate_cpp_api_soak
 
 
 class ValidateCppApiSoakTests(unittest.TestCase):
+    def test_tolerates_non_utf8_worker_log_preamble(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "worker.log"
+            path.write_bytes(b"\xad\xa5 warning\nqtb_metric {\"event\":\"ok\"}\n")
+
+            text = _read_worker_metrics_text(path)
+
+        self.assertIn('qtb_metric {"event":"ok"}', text)
+
     def test_accepts_compiled_completion_and_first_pcm_cancellation(self) -> None:
         artifact = {
             "requests": [
@@ -142,6 +153,51 @@ class ValidateCppApiSoakTests(unittest.TestCase):
             [],
             expected_requests=1,
             expected_cancelled=0,
+            expected_cache_entries=6,
+            expected_contracts={
+                "compiled_32": {
+                    "prefill_length": 32,
+                    "route": "compiled_allowlist",
+                    "backend": "compile_reduce_overhead",
+                    "chunk_schedule": [6, 8, 12],
+                }
+            },
+        )
+
+        self.assertEqual([], cast(list[str], validation["failures"]))
+
+    def test_accepts_partial_manifest_contract_after_first_pcm_cancellation(self) -> None:
+        phases = _phases(1)
+        phases["talker_prefill_length"] = 32
+        artifact = {
+            "requests": [
+                {
+                    "request_id": 1,
+                    "label": "compiled_32",
+                    "success": False,
+                    "cancelled": True,
+                    "audio_chunks": 1,
+                    "chunks": _client_chunks(1),
+                    "manifest_contract": {"checked": True, "valid": True},
+                    "worker_telemetry": {
+                        "first_chunk_phases": phases,
+                        "pcm_chunks": _chunks(1, completed=False),
+                        "finished": {
+                            "event": "request_finished",
+                            "request_id": 1,
+                            "terminal_state": "cancelled",
+                        },
+                        "runtime_memory": _memory(1),
+                    },
+                }
+            ]
+        }
+
+        validation = validate_cpp_api_soak(
+            cast(dict[str, object], artifact),
+            [],
+            expected_requests=1,
+            expected_cancelled=1,
             expected_cache_entries=6,
             expected_contracts={
                 "compiled_32": {
