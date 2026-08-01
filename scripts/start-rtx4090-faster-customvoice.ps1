@@ -3,6 +3,8 @@ param(
     [string]$ProfilePath = "config/rtx4090-faster-customvoice-experimental.json",
     [string]$Python = ".venv-qwen-flash/Scripts/python.exe",
     [string]$ModelPath = "",
+    [string]$FasterQwenSourcePath = "",
+    [switch]$ValidateOnly,
     [string[]]$AdditionalArguments = @()
 )
 
@@ -15,6 +17,31 @@ $pythonPath = Join-Path $repoRoot $Python
 
 if (-not (Test-Path -LiteralPath $pythonPath)) {
     throw "Python executable was not found: $pythonPath"
+}
+
+if ($FasterQwenSourcePath) {
+    $resolvedFasterSourcePath = (Resolve-Path $FasterQwenSourcePath).Path
+    $env:PYTHONPATH = if ($env:PYTHONPATH) {
+        "$resolvedFasterSourcePath;$env:PYTHONPATH"
+    } else {
+        $resolvedFasterSourcePath
+    }
+}
+
+if ($profile.profile_status -eq "internal_opt_in_only") {
+    $preflight = Join-Path $repoRoot "scripts/validate_internal_runtime_profile.py"
+    $preflightOutput = & $pythonPath $preflight --profile $profileFullPath
+    $preflightExitCode = $LASTEXITCODE
+    if ($preflightOutput) {
+        [Console]::Error.WriteLine(($preflightOutput -join [Environment]::NewLine))
+    }
+    if ($preflightExitCode -ne 0) {
+        throw "Internal runtime profile preflight failed."
+    }
+}
+
+if ($ValidateOnly) {
+    exit 0
 }
 
 $selectedModelPath = if ($ModelPath) { $ModelPath } else { $profile.model_path }

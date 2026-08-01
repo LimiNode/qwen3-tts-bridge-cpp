@@ -1,0 +1,48 @@
+{
+  "runtime_policy_schema_version": 2,
+  "status": "internal_opt_in_only",
+  "policy_name": "rtx4090-frequency-exact-allowlist-r10-internal-opt-in",
+  "profile_sha256": "ead6541474db16cdef8847951732be5048f4a856b10af8f5a49ca1abb11a537e",
+  "profile_contract": {
+    "profile_status": "internal_opt_in_only",
+    "runtime_backend": "faster",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "attn_implementation": "sdpa",
+    "prefill_backend": "compile_reduce_overhead",
+    "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+    "prefill_compile_lengths": [18, 19, 20, 26, 27, 29],
+    "prefill_compile_on_miss": false,
+    "prefill_unknown_shape_policy": "eager",
+    "prefill_compile_policy": "exact_allowlist",
+    "prefill_allowlist_max_entries": 6,
+    "prefill_allowlist_max_abs_threshold": 0.0,
+    "prefill_require_precompiled": true,
+    "compiled_emit_chunk_schedule": [8, 8, 12],
+    "eager_emit_chunk_schedule": [8]
+  },
+  "runtime_contract": {
+    "python": "3.12.10",
+    "torch": "2.10.0+cu128",
+    "cuda_runtime": "12.8",
+    "triton_windows": "3.6.0.post26",
+    "faster_version": "0.3.2",
+    "faster_module_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+    "worker_source_bundle_sha256": "87ce78f39b1e149b46fb6e6fa9df3596e6fd4135a0bfb06809e429b0862ce1ea",
+    "gpu_name": "NVIDIA GeForce RTX 4090",
+    "gpu_capability": [8, 9],
+    "gpu_total_memory_bytes": 51526369280
+  },
+  "evidence_files": {
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250.metrics.jsonl": "cb3b180fe6733c930661a264a7906171fdf085aedcca17ce9bcb5caeefc81a83",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250.sanitized.json": "c6923da285bb7e629d945608aa94890aea438762463cc50369d5a80ecbb447b7",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250.validation.json": "bdf6a3c37450fa09f6a118b75a7d7bac1a11dc77cccde83c43602d9a0ae3f73d",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/offline-holdout-report.json": "cbf598238acef6df7527b7168d1fd09082c1a7ed67f888dadaff4e8109d5cafb",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-operational-soak-final.summary.json": "2df0a14865b2b645617e071836a9c8d8927b4c9a495c074d3e5ca7f96dbf8ded"
+  },
+  "excluded_experiments": [
+    "padded_prefill_buckets",
+    "compiled_5_8_12_scheduler"
+  ],
+  "default_profile_changed": false
+}
