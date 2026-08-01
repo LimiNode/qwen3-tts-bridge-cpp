@@ -1,0 +1,80 @@
+{
+  "runtime_policy_schema_version": 2,
+  "policy_name": "rtx4090-frequency-exact-allowlist-r10-internal-opt-in",
+  "status": "internal_opt_in_only",
+  "scope": {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "platform": "Windows-11-10.0.26100-SP0",
+    "model": "Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "default_changed": false,
+    "excluded_experiments": [
+      "padded_prefill_buckets",
+      "compiled_5_8_12_scheduler"
+    ]
+  },
+  "profile": {
+    "path": "config/rtx4090-faster-customvoice-frequency-exact-allowlist-r10-internal-opt-in.json",
+    "sha256": "159047a93a030a60be78d6e73695fabc5ebc995d1454555a55f6ac8bcee0bf1a"
+  },
+  "runtime_contract": {
+    "python": "3.12.10",
+    "torch": "2.10.0+cu128",
+    "cuda_runtime": "12.8",
+    "triton_windows": "3.6.0.post26",
+    "flash_attention_available": false,
+    "worker_source_bundle_sha256": "63f233737245fe3e463325fcda10ac268bb833dff05d50277bc47c4dd0eee7c8",
+    "faster_qwen3_tts": {
+      "version": "0.3.2",
+      "source_commit": "1ab0dc0e2c9b98292960e3e8469bd554ae744354",
+      "module_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+      "source_git_worktree_clean": false,
+      "source_git_worktree_note": "Only untracked local build artifacts remained; the imported module identity is the recorded bundle SHA-256."
+    },
+    "prefill": {
+      "backend": "compile_reduce_overhead",
+      "compat_mode": "strict_bf16_sdpa_v1",
+      "compile_policy": "exact_allowlist",
+      "compiled_lengths": [18, 19, 20, 26, 27, 29],
+      "compile_on_miss": false,
+      "unknown_shape_policy": "eager",
+      "require_precompiled": true,
+      "allowlist_cache_entries": 6,
+      "compiled_chunk_schedule": [8, 8, 12],
+      "eager_chunk_schedule": [8]
+    }
+  },
+  "evidence": {
+    "research_policy": {
+      "path": "docs/benchmark-artifacts/rtx4090-2026-08-01/representative-v4-frequency-exact-allowlist-r9/runtime-policy-v2.json",
+      "status": "validated_research_configuration"
+    },
+    "python_operational_soak": {
+      "path": "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-operational-soak-final-report.json",
+      "sha256": "cc3436988bacdee92980b8250d811f1e4fdf61997ed342fb88b3deb93a3e7007",
+      "requests": 504,
+      "completed": 396,
+      "cancelled": 108,
+      "acceptance_pass": true
+    },
+    "cpp_api_soak": {
+      "artifact_path": "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250.json",
+      "artifact_sha256": "45461a25378ee4336892e7002d9ff0be8ede2fd20994661ff63ccda41e498089",
+      "validation_path": "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-validation.json",
+      "validation_sha256": "33950b3cb8ece08c66f8389ceacaca8995c47ceca4e4e619caab85763bcdb0c",
+      "requests": 250,
+      "completed": 225,
+      "cancelled": 25,
+      "acceptance_pass": true
+    }
+  },
+  "acceptance_checks": {
+    "python_operational_soak_passed": true,
+    "cpp_api_soak_passed": true,
+    "compiled_and_eager_routes_exercised": true,
+    "cancellation_before_and_after_audio_exercised": true,
+    "cache_and_dynamo_gates_passed": true,
+    "memory_gates_passed": true,
+    "default_profile_unchanged": true
+  },
+  "acceptance_pass": true
+}
