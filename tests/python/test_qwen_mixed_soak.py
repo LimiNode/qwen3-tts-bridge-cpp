@@ -67,7 +67,10 @@ class MixedSoakTests(unittest.TestCase):
             package.mkdir()
             module = package / "__init__.py"
             module.write_text("VERSION = 'test'\n", encoding="utf-8")
-            runtime = {"imports": {"faster_qwen3_tts": {"origin": str(module)}}}
+            runtime = cast(
+                dict[str, object],
+                {"imports": {"faster_qwen3_tts": {"origin": str(module)}}},
+            )
 
             digest = hashlib.sha256()
             digest.update(b"__init__.py\0")

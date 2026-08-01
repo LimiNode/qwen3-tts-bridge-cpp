@@ -5,7 +5,7 @@ import struct
 import tempfile
 import threading
 import unittest
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -266,7 +266,10 @@ class _PrimeStreamingModel(_FasterStreamingModel):
         self._termination_reason = termination_reason
 
     def _stream(self) -> object:
-        parent = super()._stream()
+        parent = cast(
+            Generator[tuple[list[float], int, dict[str, object]], None, None],
+            super()._stream(),
+        )
         model = self
 
         class _TracedStream:
