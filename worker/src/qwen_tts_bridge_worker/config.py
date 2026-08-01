@@ -137,6 +137,7 @@ class QwenEngineConfig:
     prefill_require_precompiled: bool = False
     prefill_first_chunk_warmup_enabled: bool = False
     prefill_first_chunk_warmup_length: int | None = None
+    prefill_generation_prime_enabled: bool = False
     do_sample: bool = True
     seed: int | None = None
     seed_mode: Literal["request_id", "fixed"] = "request_id"
@@ -283,6 +284,27 @@ class QwenEngineConfig:
             raise ValueError(
                 "qwen.prefill_first_chunk_warmup_length requires "
                 "prefill_first_chunk_warmup_enabled=true"
+            )
+        if (
+            self.prefill_generation_prime_enabled
+            and not self.prefill_first_chunk_warmup_enabled
+        ):
+            raise ValueError(
+                "qwen.prefill_generation_prime_enabled requires "
+                "prefill_first_chunk_warmup_enabled=true"
+            )
+        if self.prefill_generation_prime_enabled and not self.collect_generation_trace:
+            raise ValueError(
+                "qwen.prefill_generation_prime_enabled requires "
+                "collect_generation_trace=true"
+            )
+        if (
+            self.prefill_generation_prime_enabled
+            and self.max_audio_seconds_per_utterance is None
+        ):
+            raise ValueError(
+                "qwen.prefill_generation_prime_enabled requires a finite "
+                "max_audio_seconds_per_utterance safety limit"
             )
         if (
             self.prefill_first_chunk_warmup_enabled
