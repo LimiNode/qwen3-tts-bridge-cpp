@@ -29,6 +29,8 @@ except ModuleNotFoundError:  # Imported as scripts.validate_internal_runtime_pro
 from qwen_tts_bridge_worker.cli import build_parser, build_worker_config
 from qwen_tts_bridge_worker.config import QwenEngineConfig
 
+_REPOSITORY_TEXT_SUFFIXES = frozenset({".json", ".jsonl", ".md", ".ps1", ".py"})
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -52,7 +54,7 @@ def main() -> int:
         model_path=args.model_path,
         effective_worker_config=effective_worker_config,
     )
-    profile_sha256 = _sha256(profile_bytes)
+    profile_sha256 = _repository_identity_sha256(args.profile, profile_bytes)
     if policy.get("profile_sha256") != profile_sha256:
         report["failures"].append("profile SHA does not match policy")
     report["profile_sha256"] = profile_sha256
@@ -168,7 +170,7 @@ def _validate_evidence(
         path = repo_root / relative_path
         if not path.is_file():
             failures.append(f"evidence file is missing: {relative_path}")
-        elif _sha256(path.read_bytes()) != expected_sha256:
+        elif _repository_identity_sha256(path) != expected_sha256:
             failures.append(f"evidence file SHA does not match: {relative_path}")
 
 
@@ -188,7 +190,7 @@ def _validate_model_runtime_manifest(
     if not manifest_path.is_file():
         failures.append("model runtime manifest is missing")
         return
-    if _sha256(manifest_path.read_bytes()) != expected_sha256:
+    if _repository_identity_sha256(manifest_path) != expected_sha256:
         failures.append("model runtime manifest SHA does not match policy")
         return
     selected_model_path = model_path or _contract_path(
@@ -223,7 +225,7 @@ def _validate_triton_installed_runtime_manifest(
     if not manifest_path.is_file():
         failures.append("Triton installed runtime manifest is missing")
         return
-    if _sha256(manifest_path.read_bytes()) != expected_sha256:
+    if _repository_identity_sha256(manifest_path) != expected_sha256:
         failures.append("Triton installed runtime manifest SHA does not match policy")
         return
     try:
@@ -256,7 +258,7 @@ def _runtime(repo_root: Path) -> dict[str, object]:
         "faster_version": importlib.metadata.version("faster-qwen3-tts"),
         "faster_module_bundle_sha256": _bundle_sha256(faster_directory),
         **_git_provenance(faster_directory),
-        "worker_source_bundle_sha256": _bundle_sha256(
+        "worker_source_bundle_sha256": _worker_source_bundle_sha256(
             repo_root / "worker" / "src" / "qwen_tts_bridge_worker"
         ),
         "nvidia_driver_version": _nvidia_driver_version(),
@@ -325,13 +327,35 @@ def _policy_path(profile_path: Path, profile: dict[str, object]) -> Path:
 
 
 def _bundle_sha256(directory: Path) -> str:
+    return _python_bundle_sha256(directory, canonicalize_text=False)
+
+
+def _worker_source_bundle_sha256(directory: Path) -> str:
+    return _python_bundle_sha256(directory, canonicalize_text=True)
+
+
+def _python_bundle_sha256(directory: Path, *, canonicalize_text: bool) -> str:
     digest = hashlib.sha256()
     for path in sorted(directory.rglob("*.py")):
         digest.update(path.relative_to(directory).as_posix().encode("utf-8"))
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        content = _repository_identity_bytes(path) if canonicalize_text else path.read_bytes()
+        digest.update(content)
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def _repository_identity_sha256(path: Path, value: bytes | None = None) -> str:
+    """Hash tracked text consistently across Git's Windows EOL conversion."""
+    return _sha256(_repository_identity_bytes(path, value))
+
+
+def _repository_identity_bytes(path: Path, value: bytes | None = None) -> bytes:
+    """Return raw bytes for binaries and LF-canonical bytes for repository text."""
+    raw = path.read_bytes() if value is None else value
+    if path.suffix.lower() in _REPOSITORY_TEXT_SUFFIXES:
+        return raw.replace(b"\r\n", b"\n")
+    return raw
 
 
 def _object(value: dict[str, object], name: str) -> dict[str, object]:

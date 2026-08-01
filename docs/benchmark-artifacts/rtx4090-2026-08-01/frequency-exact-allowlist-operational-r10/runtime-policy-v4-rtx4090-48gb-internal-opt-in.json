@@ -88,7 +88,7 @@
     "faster_source_git_tree": "41fc626b09fb4814d16c7e3c2794f6803437afd3",
     "faster_source_git_dirty": false,
     "faster_source_repository": "https://github.com/LimiNode/faster-qwen3-tts.git",
-    "worker_source_bundle_sha256": "ff745b37a067a50bdacc02b19116687c3c28af04a7f061749f3af6b190c82240",
+    "worker_source_bundle_sha256": "a3bcabca3088675712f5b189aba45b4865e057d411b6553cf5641169d4aa1248",
     "nvidia_driver_version": "591.86",
     "gpu_name": "NVIDIA GeForce RTX 4090",
     "gpu_capability": [8, 9],
@@ -104,7 +104,7 @@
     "distribution": "triton-windows"
   },
   "evidence_files": {
-    "docs/benchmark-artifacts/rtx4090-2026-08-01/representative-v4-frequency-exact-allowlist-r9/candidate-manifest.json": "bcbf9c7ab92a5caf0c45ab08c883d03c54c2393a069bc17a60e23254ce570207",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/representative-v4-frequency-exact-allowlist-r9/candidate-manifest.json": "80f9f2898942fc697ba859801d5ba7e29bb4f21fd1731cfd5c4ed6e42cdbaac8",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/bridge-tool-provenance.json": "886076be53ca753b768b82860b6554170d61067b17dde57b541fe3266549e485",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-prime.metrics.jsonl": "1c11ae58fa2c055e33694b306222e47caffedace8b308c7cdacce0e46527581e",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-prime.sanitization.json": "9a99bf2128ad587f9310bbf135d9a5c35ead52efe9edccca8e436b0b6bd6fd8b",
