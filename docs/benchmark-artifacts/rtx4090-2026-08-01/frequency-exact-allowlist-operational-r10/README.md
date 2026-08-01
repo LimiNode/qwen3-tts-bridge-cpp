@@ -24,3 +24,9 @@ seed pool. `cancellation-sentinel-calibration.json` records the real-runtime
 preflight that established that seed leaves work after the third audio chunk
 for every scheduled label. This prevents `after_third_audio` from racing a
 known EOS terminal event.
+
+This RTX 4090 Windows WDDM environment returns no process rows for
+`nvidia-smi --query-compute-apps`, so PID-specific GPU memory is recorded as
+unsupported rather than fabricated. The operational gate still requires the
+worker's per-request `torch.cuda` allocated/reserved memory metrics, plus the
+process-tree RSS and private-bytes checks.

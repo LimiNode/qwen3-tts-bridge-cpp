@@ -124,7 +124,7 @@ $arguments = @(
     "--max-cuda-allocated-growth-mb=128",
     "--max-cuda-reserved-growth-mb=128",
     "--max-cuda-reserved-tail-slope-bytes-per-request=1048576",
-    "--gpu-pid-telemetry-policy=required",
+    "--gpu-pid-telemetry-policy=allow_unsupported",
     "--expected-prefill-cache-entries=6",
     "--expected-faster-source-bundle-sha256=$FasterSourceBundleSha256"
 )

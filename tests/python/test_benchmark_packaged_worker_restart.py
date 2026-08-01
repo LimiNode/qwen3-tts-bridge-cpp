@@ -70,6 +70,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "instruction_token_count": 9,
                 "prefill_sequence_length": 30,
                 "talker_prefill_length": 42,
+                "selected_chunk_schedule": [6, 8, 12],
                 "profile_schema_version": 3,
                 "profile_path": "fast",
                 "profile_request_role": "first_user",
@@ -169,6 +170,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(9.0, enriched["first_chunk_instruction_token_count"])
         self.assertEqual(30.0, enriched["first_chunk_prefill_sequence_length"])
         self.assertEqual(42.0, enriched["first_chunk_talker_prefill_length"])
+        self.assertEqual([6, 8, 12], enriched["first_chunk_selected_chunk_schedule"])
         self.assertEqual(3, enriched["first_chunk_profile_schema_version"])
         self.assertEqual("fast", enriched["first_chunk_profile_path"])
         self.assertEqual("first_user", enriched["first_chunk_profile_request_role"])

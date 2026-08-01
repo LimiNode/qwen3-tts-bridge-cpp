@@ -1970,6 +1970,12 @@ def _with_request_pipeline_metrics(
         ("prefill_shape_policy", "first_chunk_prefill_shape_policy"),
     ):
         _copy_metric_string(enriched, first_chunk_phases, source_key, target_key)
+    _copy_metric_int_list(
+        enriched,
+        first_chunk_phases,
+        "selected_chunk_schedule",
+        "first_chunk_selected_chunk_schedule",
+    )
     for source_key, target_key in (
         ("profile_schema_version", "first_chunk_profile_schema_version"),
         ("prefill_total_gpu_stream_id", "first_chunk_prefill_total_gpu_stream_id"),
@@ -2123,6 +2129,17 @@ def _copy_metric_string(
     value = source.get(source_key)
     if isinstance(value, str):
         target[target_key] = value
+
+
+def _copy_metric_int_list(
+    target: dict[str, object],
+    source: dict[str, object],
+    source_key: str,
+    target_key: str,
+) -> None:
+    value = source.get(source_key)
+    if isinstance(value, list) and all(isinstance(item, int) for item in value):
+        target[target_key] = list(value)
 
 
 def _median_request(requests: list[dict[str, object]]) -> dict[str, object] | None:
