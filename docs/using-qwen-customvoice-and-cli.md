@@ -84,9 +84,11 @@ known problematic words to approved replacements.
 
 - It is a preset-speaker model. It does not yet provide voice cloning through
   this bridge's public workflow.
-- The current worker deliberately does not pass `instruction` to the `0.6B`
-  CustomVoice generation path. `/style` is accepted by the CLI but does not
-  make speech angry, whispered, faster, or otherwise stylistically different.
+- The bridge passes `instruction` to the selected FasterQwen streaming API, but
+  the pinned FasterQwen source explicitly clears it for `0.6B` CustomVoice
+  before prompt preparation. `/style` is therefore accepted by the CLI but
+  does not currently make speech angry, whispered, faster, or otherwise
+  stylistically different. Do not depend on it for this runtime profile.
 - There is no supported word-level phoneme, IPA, SSML, or stress-mark control.
 - The sealed RTX 4090 R10 profile is an internal opt-in performance profile,
   not a universal default for other GPUs or model families. Text lengths outside
