@@ -23,14 +23,15 @@ if (-not (Test-Path -LiteralPath $pythonPath)) {
     throw "Python executable was not found: $pythonPath"
 }
 
+$pythonPaths = @()
 if ($FasterQwenSourcePath) {
-    $resolvedFasterSourcePath = (Resolve-Path $FasterQwenSourcePath).Path
-    $env:PYTHONPATH = if ($env:PYTHONPATH) {
-        "$resolvedFasterSourcePath;$env:PYTHONPATH"
-    } else {
-        $resolvedFasterSourcePath
-    }
+    $pythonPaths += (Resolve-Path $FasterQwenSourcePath).Path
 }
+$pythonPaths += (Join-Path $repoRoot "worker\src")
+if ($env:PYTHONPATH) {
+    $pythonPaths += $env:PYTHONPATH
+}
+$env:PYTHONPATH = [string]::Join(";", $pythonPaths)
 
 if ($profile.profile_status -eq "internal_opt_in_only") {
     $preflight = Join-Path $repoRoot "scripts/validate_internal_runtime_profile.py"
