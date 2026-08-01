@@ -1,0 +1,15 @@
+# Research Reports
+
+This directory separates concise project-facing results from the detailed,
+reproducible evidence retained under `docs/benchmark-artifacts/`.
+
+- [RTX 4090 frequency R10 report](frequency-r10-rtx4090.md): measured scope,
+  results, operational gates, and a carefully bounded external comparison.
+- [Representative corpus v4](benchmark-corpus-v4.md): corpus purpose,
+  construction, review process, and frozen-holdout rules.
+- [Optimization decisions](optimization-decisions.md): accepted, rejected, and
+  deferred performance approaches with their rationale.
+
+These reports describe a narrow internal configuration. They do not make
+performance or compatibility claims for arbitrary models, drivers, CUDA stacks,
+or GPUs.
