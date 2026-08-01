@@ -22,6 +22,7 @@ from qwen_tts_bridge_worker.protocol import (
 )
 from qwen_tts_bridge_worker.protocol.control import encode_json_payload
 from qwen_tts_bridge_worker.server import StdioWorkerServer
+from qwen_tts_bridge_worker.server.stdio_server import _RequestSlot
 
 
 class FailingLoadEngine:
@@ -61,6 +62,14 @@ class FailingLoadEngine:
 
     def close(self) -> None:
         self.close_called = True
+
+
+class _RecordingWriter:
+    def __init__(self) -> None:
+        self.frames: list[bytes] = []
+
+    def send(self, frame: bytes, **_: object) -> None:
+        self.frames.append(frame)
 
 
 class FailingWarmupEngine:
@@ -257,6 +266,46 @@ class _EofAfterEvent:
 
 
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
+    def test_running_cancel_is_terminal_before_engine_returns(self) -> None:
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=stderr,
+            engine=FailingLoadEngine(),
+        )
+        writer = _RecordingWriter()
+        server._writer = writer  # type: ignore[assignment]
+        slot = _RequestSlot(
+            request=SynthesisRequest(request_id=1, text="Hello"),
+            cancel_event=threading.Event(),
+            state="running",
+        )
+        server._active[1] = slot
+
+        server._handle_cancel(1)
+        server._finish_cancelled(slot)
+
+        self.assertTrue(slot.cancel_event.is_set())
+        self.assertTrue(slot.terminal_notified)
+        self.assertNotIn(1, server._active)
+        frames = _parse_frames(b"".join(writer.frames))
+        self.assertEqual(1, len(frames))
+        self.assertEqual("cancelled", _payload(frames[0])["message_type"])
+        metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in stderr.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+        ]
+        terminal_metrics = [
+            metric
+            for metric in metrics
+            if metric.get("event") == "request_finished"
+            and metric.get("request_id") == 1
+        ]
+        self.assertEqual(1, len(terminal_metrics))
+        self.assertEqual("cancelled", terminal_metrics[0]["terminal_state"])
+
     def test_emits_pinned_canary_runtime_provenance(self) -> None:
         stderr = io.StringIO()
         server = StdioWorkerServer(
