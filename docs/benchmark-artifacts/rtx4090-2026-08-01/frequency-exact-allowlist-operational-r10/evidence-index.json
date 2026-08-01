@@ -69,6 +69,15 @@
     "python-sealing-smoke-r63.summary.json": "59e8b6d8d43f66e8f3b167979d1d58c4f8e2d8a5e51670c5ca02015b2ff507a3",
     "python-sealing-smoke-r63.validation.json": "ef6101ef8b3de45b3e918afeb0270fd9dc1c2adf7368faa13f180ac1ca73884b"
   },
+  "final_sealing_smoke": {
+    "source_report_sha256": "d212c34afdf29237ea575f037430f9ca36c1ea92101e0ed5c4eab169e58f5d27",
+    "source_bridge_commit": "e37f626560af5b66f865fc6dc530908473c90aa6",
+    "source_bridge_git_dirty": false,
+    "source_faster_git_commit": "a0532ff8b712a4051bdf60ac2cd430a492c24d39",
+    "source_faster_git_dirty": false,
+    "python-final-sealing-smoke-r63.summary.json": "75f28a709b4412bb65c3d994e42c05d026a438ab47beffa42d762cac76f604b8",
+    "python-final-sealing-smoke-r63.validation.json": "e198a248045e2ad33f79a8b1e72e8671172c817a3910da1b34ca8d2c3288e38d"
+  },
   "supplemental_launcher_smoke_files": {
     "python-launcher-soak-r63.summary.json": "e2d78635ab29a17c04b1095da8b74e2a94b63266d1e0971925c8e4a7d20b903d",
     "python-launcher-soak-r63.validation.json": "9f8f79d8c24e114ca474e30cabebaf427ed4f8a801d1a58a86152e3d9b80bdbb"

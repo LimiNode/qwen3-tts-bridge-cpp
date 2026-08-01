@@ -32,6 +32,9 @@ this compiled configuration can be enabled there.
 - The post-sealing Python smoke passed 36 completed and 27 cancelled requests,
   including all six compiled lengths, three eager holdouts, and all cancellation
   phases.
+- The final clean-source sealing smoke repeated the same 36/27 gate after argv
+  and content-manifest hardening, with six cache entries and zero allocated CUDA
+  memory growth.
 - The frozen holdout remains descriptive only and was not used to tune forms.
 
 The mixed Python soak is not a latency SLA: first audio was `384.5 ms` median,

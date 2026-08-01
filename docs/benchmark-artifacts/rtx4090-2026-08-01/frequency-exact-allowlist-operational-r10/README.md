@@ -54,6 +54,11 @@ requests and 27 cancellations, covering every compiled/eager scenario and all
 three cancellation phases under the pinned model manifest and clean FasterQwen
 source.
 
+`python-final-sealing-smoke-r63.*` repeats that gate after the final fail-closed
+argv and complete-content-manifest changes. It records a clean bridge commit and
+clean FasterQwen source: 36 completed requests, 27 cancellations, six cache
+entries, zero allocated CUDA-memory growth, and no validation failures.
+
 ## Historical Research
 
 - `python-operational-soak-final.summary.json` records a sanitized summary of
