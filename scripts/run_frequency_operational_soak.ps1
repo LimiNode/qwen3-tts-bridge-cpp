@@ -28,6 +28,11 @@ $warmupManifest = Join-Path $repositoryRoot (
 )
 $report = Join-Path $OutputDirectory "$RunName-report.json"
 $exitCodePath = Join-Path $OutputDirectory "$RunName.exit-code.txt"
+$seedConfiguration = Get-Content -LiteralPath $seedManifest -Raw | ConvertFrom-Json
+$semanticSeed = $seedConfiguration.cancellation_semantic_seed
+if ($semanticSeed -isnot [int] -or $semanticSeed -lt 0) {
+    throw "seed manifest must provide a non-negative cancellation_semantic_seed"
+}
 
 $env:PYTHONPATH = @(
     (Join-Path $repositoryRoot "worker\src")
@@ -108,7 +113,7 @@ $arguments = @(
     "--required-label=eager_60_ryan",
     "--requests=504",
     "--cancellations-per-category=12",
-    "--semantic-seed=4242",
+    "--semantic-seed=$semanticSeed",
     "--operation-seed=20260801",
     "--progress-every=25",
     "--partial-output=$report",

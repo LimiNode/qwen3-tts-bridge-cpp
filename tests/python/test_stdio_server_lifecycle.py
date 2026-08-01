@@ -303,6 +303,13 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             if metric.get("event") == "request_finished"
             and metric.get("request_id") == 1
         ]
+        cancel_metrics = [
+            metric
+            for metric in metrics
+            if metric.get("event") == "request_cancel_received"
+            and metric.get("request_id") == 1
+        ]
+        self.assertEqual(1, len(cancel_metrics))
         self.assertEqual(1, len(terminal_metrics))
         self.assertEqual("cancelled", terminal_metrics[0]["terminal_state"])
 

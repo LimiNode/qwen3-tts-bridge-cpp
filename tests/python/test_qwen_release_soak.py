@@ -61,6 +61,32 @@ class ReleaseSoakTests(unittest.TestCase):
             cast(list[str], validation["failures"]),
         )
 
+    def test_rejects_completion_that_wins_cancellation_race(self) -> None:
+        raced = _cancelled(2, "allowlist_29", "after_third_audio")
+        raced["terminal_state"] = "completed_before_cancel_observed"
+        results = [
+            _completed(1, "allowlist_29", "reference"),
+            raced,
+            _completed(3, "allowlist_29", "audit"),
+        ]
+
+        validation = _validate_release_soak(
+            results,
+            _snapshots(),
+            _worker_memory_metrics(results),
+            expected_cache_entries=6,
+            expected_requests=3,
+            expected_cancellations=1,
+            expected_labels={"allowlist_29"},
+            cancellations_per_stage=1,
+            max_rss_growth_mb=1.0,
+        )
+
+        self.assertIn(
+            "request 2: unexpected terminal state 'completed_before_cancel_observed'",
+            cast(list[str], validation["failures"]),
+        )
+
     def test_accepts_explicit_compiled_route_contract(self) -> None:
         result = _completed(1, "compiled_32", "normal")
         result["shape"] = {

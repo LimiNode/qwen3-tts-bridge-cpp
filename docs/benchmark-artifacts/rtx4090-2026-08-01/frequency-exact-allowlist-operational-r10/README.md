@@ -18,3 +18,9 @@ required twenty unique seeds.
 The source records and frozen policy remain in
 `../representative-v4-frequency-exact-allowlist-r9/`; this directory contains
 only the operational schedule and its run outputs.
+
+The cancellation semantic seed is deliberately separate from the normal-run
+seed pool. `cancellation-sentinel-calibration.json` records the real-runtime
+preflight that established that seed leaves work after the third audio chunk
+for every scheduled label. This prevents `after_third_audio` from racing a
+known EOS terminal event.

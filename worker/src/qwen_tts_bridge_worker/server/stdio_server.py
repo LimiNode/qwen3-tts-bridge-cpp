@@ -502,6 +502,7 @@ class StdioWorkerServer:
         return request
 
     def _handle_cancel(self, request_id: int) -> None:
+        self._metrics.emit("request_cancel_received", request_id=request_id)
         if request_id == 0:
             self._send_error(
                 0,

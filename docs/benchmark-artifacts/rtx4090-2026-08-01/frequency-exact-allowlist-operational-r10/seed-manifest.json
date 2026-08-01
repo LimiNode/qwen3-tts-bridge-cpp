@@ -1,6 +1,7 @@
 {
   "artifact_schema_version": 1,
   "purpose": "frequency_exact_allowlist_operational_soak",
+  "cancellation_semantic_seed": 3,
   "seeds": [
     202608101, 202608102, 202608103, 202608104, 202608105,
     202608106, 202608107, 202608108, 202608109, 202608110,
