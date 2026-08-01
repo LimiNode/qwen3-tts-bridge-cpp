@@ -1,0 +1,460 @@
+{
+  "audio_seconds": {
+    "max": 39.12,
+    "mean": 8.836,
+    "min": 1.44,
+    "p50": 7.04,
+    "p90": 18.808,
+    "p95": 24.408,
+    "p99": 31.372
+  },
+  "completed_ms": {
+    "max": 13992.756,
+    "mean": 3234.457,
+    "min": 673.453,
+    "p50": 2614.533,
+    "p90": 6682.934,
+    "p95": 8772.91,
+    "p99": 11125.095
+  },
+  "corpus_discovery_schema_version": 3,
+  "corpus_id": "representative-v4-r6-candidate",
+  "corpus_split": "runtime_measurement_holdout",
+  "execution_outcomes": {
+    "completed": 500
+  },
+  "first_audio_ms": {
+    "max": 478.441,
+    "mean": 368.738,
+    "min": 233.166,
+    "p50": 398.74,
+    "p90": 421.059,
+    "p95": 428.327,
+    "p99": 443.008
+  },
+  "generation_acceptance_pass": true,
+  "generation_outcomes": {
+    "eos": 500
+  },
+  "input_sha256": "73c7f52b4fa9db684cb248ba1f9f5e177fdfe68f7db246f32b780551ab5375e7",
+  "inverse_rtf": {
+    "max": 3.1,
+    "mean": 2.689,
+    "min": 1.973,
+    "p50": 2.712,
+    "p90": 2.937,
+    "p95": 3.004,
+    "p99": 3.049
+  },
+  "profile_sha256": "59d94166a35baecd57fa28020e882ade23609bf82da61788b96bb653d165cdbd",
+  "record_count": 500,
+  "record_id_set_sha256": "9e7a1646c468e83838f5501a19f2be14288424094a84f44bb3521902d13ff8d5",
+  "records_sha256": "14f8289bd7fa03197fc7c7062645416b7b69b3aeadc86575c9cd0602eba54d67",
+  "route_counts": {
+    "prefill_backend_used": {
+      "\"compile_reduce_overhead\"": 99,
+      "\"eager\"": 401
+    },
+    "prefill_shape_policy": {
+      "\"compiled_allowlist\"": 99,
+      "\"eager_unknown\"": 401
+    },
+    "selected_chunk_schedule": {
+      "[8, 8, 12]": 99,
+      "[8]": 401
+    }
+  },
+  "runtime": {
+    "bridge_commit": "17d70926626aee6e15ca812aeae44750ae2d6eb9",
+    "bridge_git_tree": "b74c6395b52785d9e843eebe65f007552477c16d",
+    "bridge_tracked_tree_clean": true,
+    "bridge_worker_source_bundle_sha256": "da1223fb9a0f8e59cbb488cab22cc271dcb1f074aa64d6b29beaa9ddee590ef6",
+    "cuda_available": true,
+    "cuda_device_name": "NVIDIA GeForce RTX 4090",
+    "cuda_version": "12.8",
+    "faster_qwen3_tts_module": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean\\faster_qwen3_tts\\__init__.py",
+    "faster_qwen3_tts_source": {
+      "module_bundle_sha256": "a04b90e72105a6dfba4bf83a9f1cbe9b2bd06bc9208fd95c334378e674642c4c",
+      "module_directory": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean\\faster_qwen3_tts",
+      "source_commit": "58b063742f7707972ddc74a433a7f205ec471e65",
+      "source_git_tree": "d0462ab87261a3e080096f515232610b4eb7523c",
+      "source_repository": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean",
+      "source_tracked_tree_clean": true
+    },
+    "faster_qwen3_tts_version": "0.3.2",
+    "flash_attention_available": false,
+    "platform": "Windows-11-10.0.26100-SP0",
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "torch_version": "2.10.0+cu128",
+    "triton_windows_version": "3.6.0.post26",
+    "triton_windows_wheel_filename": null,
+    "triton_windows_wheel_sha256": null
+  },
+  "status": "completed",
+  "talker_prefill_histogram": [
+    {
+      "count": 26,
+      "talker_prefill_length": 19
+    },
+    {
+      "count": 22,
+      "talker_prefill_length": 18
+    },
+    {
+      "count": 20,
+      "talker_prefill_length": 20
+    },
+    {
+      "count": 16,
+      "talker_prefill_length": 26
+    },
+    {
+      "count": 15,
+      "talker_prefill_length": 17
+    },
+    {
+      "count": 14,
+      "talker_prefill_length": 21
+    },
+    {
+      "count": 14,
+      "talker_prefill_length": 23
+    },
+    {
+      "count": 13,
+      "talker_prefill_length": 38
+    },
+    {
+      "count": 12,
+      "talker_prefill_length": 14
+    },
+    {
+      "count": 12,
+      "talker_prefill_length": 15
+    },
+    {
+      "count": 12,
+      "talker_prefill_length": 28
+    },
+    {
+      "count": 12,
+      "talker_prefill_length": 30
+    },
+    {
+      "count": 11,
+      "talker_prefill_length": 37
+    },
+    {
+      "count": 10,
+      "talker_prefill_length": 22
+    },
+    {
+      "count": 10,
+      "talker_prefill_length": 24
+    },
+    {
+      "count": 10,
+      "talker_prefill_length": 25
+    },
+    {
+      "count": 10,
+      "talker_prefill_length": 29
+    },
+    {
+      "count": 10,
+      "talker_prefill_length": 40
+    },
+    {
+      "count": 9,
+      "talker_prefill_length": 31
+    },
+    {
+      "count": 9,
+      "talker_prefill_length": 34
+    },
+    {
+      "count": 9,
+      "talker_prefill_length": 46
+    },
+    {
+      "count": 8,
+      "talker_prefill_length": 16
+    },
+    {
+      "count": 8,
+      "talker_prefill_length": 45
+    },
+    {
+      "count": 8,
+      "talker_prefill_length": 48
+    },
+    {
+      "count": 8,
+      "talker_prefill_length": 49
+    },
+    {
+      "count": 7,
+      "talker_prefill_length": 33
+    },
+    {
+      "count": 7,
+      "talker_prefill_length": 35
+    },
+    {
+      "count": 7,
+      "talker_prefill_length": 55
+    },
+    {
+      "count": 7,
+      "talker_prefill_length": 60
+    },
+    {
+      "count": 7,
+      "talker_prefill_length": 62
+    },
+    {
+      "count": 6,
+      "talker_prefill_length": 36
+    },
+    {
+      "count": 6,
+      "talker_prefill_length": 43
+    },
+    {
+      "count": 6,
+      "talker_prefill_length": 44
+    },
+    {
+      "count": 6,
+      "talker_prefill_length": 47
+    },
+    {
+      "count": 6,
+      "talker_prefill_length": 50
+    },
+    {
+      "count": 6,
+      "talker_prefill_length": 59
+    },
+    {
+      "count": 6,
+      "talker_prefill_length": 65
+    },
+    {
+      "count": 6,
+      "talker_prefill_length": 66
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 27
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 32
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 39
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 64
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 105
+    },
+    {
+      "count": 4,
+      "talker_prefill_length": 41
+    },
+    {
+      "count": 4,
+      "talker_prefill_length": 51
+    },
+    {
+      "count": 4,
+      "talker_prefill_length": 56
+    },
+    {
+      "count": 3,
+      "talker_prefill_length": 42
+    },
+    {
+      "count": 3,
+      "talker_prefill_length": 57
+    },
+    {
+      "count": 3,
+      "talker_prefill_length": 67
+    },
+    {
+      "count": 3,
+      "talker_prefill_length": 96
+    },
+    {
+      "count": 3,
+      "talker_prefill_length": 108
+    },
+    {
+      "count": 3,
+      "talker_prefill_length": 118
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 52
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 61
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 63
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 68
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 69
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 83
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 91
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 94
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 95
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 100
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 106
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 107
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 114
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 120
+    },
+    {
+      "count": 2,
+      "talker_prefill_length": 121
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 53
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 54
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 58
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 72
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 76
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 77
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 79
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 80
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 86
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 90
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 93
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 97
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 99
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 101
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 103
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 104
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 109
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 111
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 122
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 123
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 130
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 131
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 132
+    },
+    {
+      "count": 1,
+      "talker_prefill_length": 138
+    }
+  ]
+}
