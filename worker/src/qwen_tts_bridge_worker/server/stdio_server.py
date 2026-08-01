@@ -43,6 +43,7 @@ class _RequestSlot:
     first_audio_at: float | None = None
     audio_chunks: int = 0
     audio_bytes: int = 0
+    terminal_notified: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -501,6 +502,7 @@ class StdioWorkerServer:
         return request
 
     def _handle_cancel(self, request_id: int) -> None:
+        self._metrics.emit("request_cancel_received", request_id=request_id)
         if request_id == 0:
             self._send_error(
                 0,
@@ -530,6 +532,11 @@ class StdioWorkerServer:
                     cancelled_slot = slot
             elif slot.state == "running":
                 slot.cancel_event.set()
+                self._terminalize_locked(request_id)
+                if not slot.terminal_notified:
+                    slot.terminal_notified = True
+                    send_cancelled = True
+                    cancelled_slot = slot
 
             self._condition.notify_all()
 
@@ -750,6 +757,8 @@ class StdioWorkerServer:
                     break
                 if not pcm_chunk:
                     continue
+                if slot.cancel_event.is_set():
+                    break
                 chunk_time = monotonic_seconds()
                 if slot.first_audio_at is None:
                     slot.first_audio_at = chunk_time
@@ -835,6 +844,9 @@ class StdioWorkerServer:
             )
             return
         except Exception as exc:
+            if slot.cancel_event.is_set():
+                self._finish_cancelled(slot)
+                return
             with self._condition:
                 self._terminalize_locked(request_id)
             self._emit_request_finished(slot, "failed")
@@ -864,6 +876,9 @@ class StdioWorkerServer:
     def _finish_cancelled(self, slot: _RequestSlot) -> None:
         request_id = slot.request.request_id
         with self._condition:
+            if slot.terminal_notified:
+                return
+            slot.terminal_notified = True
             self._terminalize_locked(request_id)
         self._emit_request_finished(slot, "cancelled")
         self._writer.send(control_frame(request_id, {"message_type": "cancelled"}))

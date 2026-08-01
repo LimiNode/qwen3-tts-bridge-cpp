@@ -1,0 +1,21 @@
+{
+  "cpp_api_soak_sanitization_schema_version": 2,
+  "excluded_fields": [
+    "request_text",
+    "instructions",
+    "absolute_paths",
+    "native_thread_ids",
+    "python_thread_names",
+    "original_request_ids",
+    "worker_process_id"
+  ],
+  "metric_count": 2549,
+  "request_count": 250,
+  "request_id_policy": "deterministic_benchmark_ordinals",
+  "sanitized_artifact_sha256": "fba4fd34b3ecf301567f8619f4f8908cbb2f788301743cc614e622a10064da86",
+  "sanitized_worker_metrics_sha256": "1c11ae58fa2c055e33694b306222e47caffedace8b308c7cdacce0e46527581e",
+  "source_artifact_sha256": "12e95d2c3286ae0d762546035aec57bd3605311d352cb47e9df0083ae310ec9c",
+  "source_worker_metric_provenance": "embedded_request_telemetry",
+  "source_worker_stderr_sha256": null,
+  "worker_pid_policy": "replaced_with_constant_one"
+}

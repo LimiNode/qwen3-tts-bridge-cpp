@@ -67,8 +67,15 @@ target_link_libraries(qwen_tts_bridge
 if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     set(QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE "")
     if(Python3_Interpreter_FOUND)
-        set(QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
+        file(TO_CMAKE_PATH
+            "${Python3_EXECUTABLE}"
+            QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE
+        )
     endif()
+    file(TO_CMAKE_PATH
+        "${QWEN_TTS_BRIDGE_WORKER_DIR}"
+        QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR
+    )
 
     add_executable(qwen_tts_save_wav
         examples/qwen_tts_save_wav.cpp
@@ -92,13 +99,13 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     target_compile_definitions(qwen_tts_save_wav
         PRIVATE
             QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
-            QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+            QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR}"
     )
 
     target_compile_definitions(qwen_tts_latency_benchmark
         PRIVATE
             QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
-            QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+            QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR}"
     )
 endif()
 
@@ -147,6 +154,14 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     )
 
     if(Python3_Interpreter_FOUND)
+        file(TO_CMAKE_PATH
+            "${Python3_EXECUTABLE}"
+            QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE
+        )
+        file(TO_CMAKE_PATH
+            "${QWEN_TTS_BRIDGE_WORKER_DIR}"
+            QWEN_TTS_BRIDGE_TEST_WORKER_DIR
+        )
         add_executable(stdio_transport_test
             tests/stdio_transport_test.cpp
         )
@@ -158,8 +173,8 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         target_compile_definitions(stdio_transport_test
             PRIVATE
-                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${Python3_EXECUTABLE}"
-                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE}"
+                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
         )
 
         add_test(NAME stdio_transport_test COMMAND stdio_transport_test)
@@ -175,8 +190,8 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         target_compile_definitions(worker_session_test
             PRIVATE
-                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${Python3_EXECUTABLE}"
-                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE}"
+                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
         )
 
         add_test(NAME worker_session_test COMMAND worker_session_test)
@@ -192,8 +207,8 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         target_compile_definitions(qwen_tts_client_test
             PRIVATE
-                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${Python3_EXECUTABLE}"
-                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE}"
+                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
         )
 
         add_test(NAME qwen_tts_client_test COMMAND qwen_tts_client_test)

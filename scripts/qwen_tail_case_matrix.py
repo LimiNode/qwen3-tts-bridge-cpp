@@ -15,7 +15,6 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _PCM_BYTES_PER_SECOND = 24_000 * 2
 
@@ -83,7 +82,10 @@ def _matrix_run(args: argparse.Namespace, seeds: list[int]) -> dict[str, object]
     }
 
 
-def _fresh_process_runs(args: argparse.Namespace, seeds: list[int]) -> dict[str, object]:
+def _fresh_process_runs(
+    args: argparse.Namespace,
+    seeds: list[int],
+) -> dict[str, object]:
     run_dir = args.output.parent / f"{args.output.stem}-fresh-runs"
     run_dir.mkdir(parents=True, exist_ok=True)
     runs: list[dict[str, object]] = []
@@ -163,7 +165,11 @@ def _create_engine(profile: Mapping[str, object], speaker: str) -> Any:
     from qwen_tts_bridge_worker.engine import QwenTtsEngine
 
     model_path = _resolve_profile_path(profile, "model_path")
-    warmup_manifest = _resolve_profile_path(profile, "prefill_allowlist_warmup_manifest")
+    warmup_manifest = _resolve_profile_path(
+        profile,
+        "prefill_allowlist_warmup_manifest",
+    )
+    warmup_length = profile.get("prefill_first_chunk_warmup_length")
     return QwenTtsEngine(
         QwenEngineConfig(
             model_path=str(model_path),
@@ -198,8 +204,11 @@ def _create_engine(profile: Mapping[str, object], speaker: str) -> Any:
             ),
             prefill_require_precompiled=bool(profile["prefill_require_precompiled"]),
             prefill_first_chunk_warmup_enabled=bool(profile["prefill_first_chunk_warmup"]),
-            prefill_first_chunk_warmup_length=int(
-                profile["prefill_first_chunk_warmup_length"]
+            prefill_first_chunk_warmup_length=(
+                int(warmup_length) if warmup_length is not None else None
+            ),
+            prefill_generation_prime_enabled=bool(
+                profile.get("prefill_generation_prime", False)
             ),
             collect_generation_trace=True,
             seed=None,
@@ -265,11 +274,15 @@ def _run_request(
         "request_id": request_id,
         "execution_outcome": execution_outcome,
         "generation_outcome": generation_outcome,
-        "first_audio_ms": round(first_audio_ms, 3) if first_audio_ms is not None else None,
+        "first_audio_ms": (
+            round(first_audio_ms, 3) if first_audio_ms is not None else None
+        ),
         "completed_ms": round(_milliseconds(started), 3),
         "audio_seconds": round(audio_bytes / _PCM_BYTES_PER_SECOND, 6),
         "audio_chunks": audio_chunks,
-        "codec_frame_count": trace.get("codec_frame_count") if isinstance(trace, dict) else None,
+        "codec_frame_count": (
+            trace.get("codec_frame_count") if isinstance(trace, dict) else None
+        ),
         "first_chunk_route": first_route,
         "generation_trace": trace,
         "failure": failure,
@@ -296,7 +309,8 @@ def _distribution(runs: list[Mapping[str, object]], key: str) -> dict[str, float
     values = [
         float(value)
         for run in runs
-        if isinstance((value := run.get(key)), (int, float)) and not isinstance(value, bool)
+        if isinstance((value := run.get(key)), (int, float))
+        and not isinstance(value, bool)
     ]
     if not values:
         return {}
@@ -336,7 +350,8 @@ def _resolve_profile_path(profile: Mapping[str, object], key: str) -> Path:
 
 def _positive_tuple(value: object) -> tuple[int, ...]:
     if not isinstance(value, list) or any(
-        not isinstance(item, int) or isinstance(item, bool) or item <= 0 for item in value
+        not isinstance(item, int) or isinstance(item, bool) or item <= 0
+        for item in value
     ):
         raise RuntimeError("profile has an invalid positive integer list")
     return tuple(value)
@@ -394,7 +409,10 @@ def _load_object(path: Path) -> dict[str, object]:
 
 def _write_json(path: Path, value: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _printable_summary(value: Mapping[str, object]) -> Mapping[str, object]:

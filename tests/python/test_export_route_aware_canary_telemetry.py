@@ -123,7 +123,10 @@ class ExportRouteAwareCanaryTelemetryTests(unittest.TestCase):
 
         self.assertTrue(result.summary["integrity_valid"])
         self.assertEqual("failed", result.records[0]["request_outcome"])
-        self.assertEqual("safety_duration_limit", result.records[0]["generation_outcome"])
+        self.assertEqual(
+            "safety_duration_limit",
+            result.records[0]["generation_outcome"],
+        )
 
     def test_cli_ignores_non_utf8_non_metric_log_text(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -845,8 +845,12 @@ void validate_request_contract(RequestResult& result) {
     if (!result.contract_checked) {
         return;
     }
-    if (!result.success) {
+    if (!result.success && !result.cancelled) {
         fail_contract(result, "request did not complete successfully");
+        return;
+    }
+    if (result.cancelled && result.audio_chunks == 0u) {
+        fail_contract(result, "cancelled request has no PCM prefix to validate");
         return;
     }
 
@@ -913,6 +917,13 @@ void validate_request_contract(RequestResult& result) {
         if (!terminal_chunk && steps->get<int>() != target) {
             fail_contract(result, "non-terminal chunk is shorter than its target");
         }
+    }
+    if (result.cancelled) {
+        if (!result.worker_finished.is_object() ||
+            !json_field_equals(result.worker_finished, "terminal_state", "cancelled")) {
+            fail_contract(result, "missing cancelled request_finished telemetry");
+        }
+        return;
     }
     if (!result.worker_generation_trace.is_object()) {
         fail_contract(result, "missing request_generation_trace telemetry");

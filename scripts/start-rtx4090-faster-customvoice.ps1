@@ -3,6 +3,8 @@ param(
     [string]$ProfilePath = "config/rtx4090-faster-customvoice-experimental.json",
     [string]$Python = ".venv-qwen-flash/Scripts/python.exe",
     [string]$ModelPath = "",
+    [string]$FasterQwenSourcePath = "",
+    [switch]$ValidateOnly,
     [string[]]$AdditionalArguments = @()
 )
 
@@ -11,13 +13,32 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $profileFullPath = Join-Path $repoRoot $ProfilePath
 $profile = Get-Content -Raw $profileFullPath | ConvertFrom-Json
-$pythonPath = Join-Path $repoRoot $Python
+
+if ($profile.profile_status -eq "internal_opt_in_only" -and $AdditionalArguments.Count -gt 0) {
+    throw "Internal runtime profiles do not accept AdditionalArguments."
+}
+
+$pythonPath = if ([System.IO.Path]::IsPathRooted($Python)) {
+    $Python
+} else {
+    Join-Path $repoRoot $Python
+}
+$selectedModelPath = if ($ModelPath) { $ModelPath } else { $profile.model_path }
 
 if (-not (Test-Path -LiteralPath $pythonPath)) {
     throw "Python executable was not found: $pythonPath"
 }
 
-$selectedModelPath = if ($ModelPath) { $ModelPath } else { $profile.model_path }
+$pythonPaths = @()
+if ($FasterQwenSourcePath) {
+    $pythonPaths += (Resolve-Path $FasterQwenSourcePath).Path
+}
+$pythonPaths += (Join-Path $repoRoot "worker\src")
+if ($env:PYTHONPATH) {
+    $pythonPaths += $env:PYTHONPATH
+}
+$env:PYTHONPATH = [string]::Join(";", $pythonPaths)
+
 $maxSeqLen = if ($null -ne $profile.max_seq_len) { $profile.max_seq_len } else { 2048 }
 $arguments = @(
     "-m", "qwen_tts_bridge_worker",
@@ -60,6 +81,9 @@ if ($profile.prefill_first_chunk_warmup) {
         "--prefill-first-chunk-warmup-length", $profile.prefill_first_chunk_warmup_length
     )
 }
+if ($profile.prefill_generation_prime) {
+    $arguments += "--prefill-generation-prime"
+}
 if ($profile.collect_generation_trace) {
     $arguments += "--collect-generation-trace"
 }
@@ -83,6 +107,26 @@ if ($profile.eager_emit_chunk_schedule -and $profile.eager_emit_chunk_schedule.C
         "--eager-emit-chunk-schedule",
         ($profile.eager_emit_chunk_schedule -join ",")
     )
+}
+
+if ($profile.profile_status -eq "internal_opt_in_only") {
+    $preflight = Join-Path $repoRoot "scripts/validate_internal_runtime_profile.py"
+    $preflightArguments = @("--profile", $profileFullPath, "--model-path", $selectedModelPath)
+    foreach ($argument in $arguments) {
+        $preflightArguments += "--worker-argument=$argument"
+    }
+    $preflightOutput = & $pythonPath $preflight @preflightArguments
+    $preflightExitCode = $LASTEXITCODE
+    if ($preflightOutput) {
+        [Console]::Error.WriteLine(($preflightOutput -join [Environment]::NewLine))
+    }
+    if ($preflightExitCode -ne 0) {
+        throw "Internal runtime profile preflight failed."
+    }
+}
+
+if ($ValidateOnly) {
+    exit 0
 }
 
 & $pythonPath @arguments @AdditionalArguments

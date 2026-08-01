@@ -26,13 +26,16 @@ def main() -> int:
     args = parser.parse_args()
 
     artifact = json.loads(args.artifact.read_text(encoding="utf-8"))
-    worker_metrics_text = (
-        args.worker_metrics.read_text(encoding="utf-8") if args.worker_metrics else ""
+    worker_metrics_bytes = (
+        args.worker_metrics.read_bytes() if args.worker_metrics else b""
+    )
+    worker_metrics = (
+        _read_worker_metrics(args.worker_metrics) if args.worker_metrics else []
     )
     expected_contracts = _manifest_contracts(args.manifest) if args.manifest else None
     report = validate_cpp_api_soak(
         artifact,
-        _worker_metrics(worker_metrics_text),
+        worker_metrics,
         expected_requests=args.expected_requests,
         expected_cancelled=args.expected_cancelled,
         expected_cache_entries=args.expected_cache_entries,
@@ -40,16 +43,41 @@ def main() -> int:
         expected_chunk_schedule=args.expected_chunk_schedule,
         expected_contracts=expected_contracts,
     )
-    report["artifact"] = str(args.artifact)
-    report["worker_metrics"] = str(args.worker_metrics) if args.worker_metrics else None
-    report["worker_metrics_sha256"] = hashlib.sha256(
-        worker_metrics_text.encode("utf-8")
-    ).hexdigest()
+    report["artifact"] = args.artifact.name
+    report["worker_metrics"] = (
+        args.worker_metrics.name if args.worker_metrics else None
+    )
+    report["worker_metrics_sha256"] = hashlib.sha256(worker_metrics_bytes).hexdigest()
     report["acceptance_pass"] = not report["failures"]
     if args.output:
         args.output.write_text(json.dumps(report, sort_keys=True), encoding="utf-8")
     print(json.dumps(report, sort_keys=True))
     return 0 if report["acceptance_pass"] else 1
+
+
+def _read_worker_metrics_text(path: Path) -> str:
+    """Decode mixed worker stderr without losing ASCII metric lines."""
+
+    return path.read_bytes().decode("utf-8", errors="replace")
+
+
+def _read_worker_metrics(path: Path) -> list[dict[str, object]]:
+    """Read either legacy stderr metrics or canonical sanitized JSONL metrics."""
+
+    if path.suffix.lower() != ".jsonl":
+        return _worker_metrics(_read_worker_metrics_text(path))
+    metrics: list[dict[str, object]] = []
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(),
+        1,
+    ):
+        if not line.strip():
+            continue
+        value = json.loads(line)
+        if not isinstance(value, dict):
+            raise ValueError(f"worker metrics line {line_number} is not an object")
+        metrics.append(value)
+    return metrics
 
 
 def validate_cpp_api_soak(
@@ -122,7 +150,9 @@ def validate_cpp_api_soak(
         if expected_contracts is not None:
             label = request.get("label")
             if not isinstance(label, str) or label not in expected_contracts:
-                failures.append(f"request {request_id}: missing expected manifest category")
+                failures.append(
+                    f"request {request_id}: missing expected manifest category"
+                )
             else:
                 expected_contract = expected_contracts[label]
                 _validate_embedded_contract(request_id, request, failures)
@@ -187,7 +217,10 @@ def _manifest_contracts(path: Path) -> dict[str, dict[str, object]]:
         "expected_backend",
         "expected_chunk_schedule",
     }
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(),
+        1,
+    ):
         if not line.strip():
             continue
         value = json.loads(line)
@@ -452,7 +485,8 @@ def _validate_route(
             failures.append(f"request {request_id}: manifest prefill length is invalid")
         elif phases.get("talker_prefill_length") != expected_length:
             failures.append(
-                f"request {request_id}: expected talker_prefill_length={expected_length!r}"
+                f"request {request_id}: expected talker_prefill_length="
+                f"{expected_length!r}"
             )
         route_value = expected_contract.get("route")
         backend_value = expected_contract.get("backend")

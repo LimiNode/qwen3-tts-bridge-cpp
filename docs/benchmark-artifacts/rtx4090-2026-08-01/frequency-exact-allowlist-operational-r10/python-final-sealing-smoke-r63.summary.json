@@ -1,0 +1,166 @@
+{
+  "acceptance_pass": true,
+  "config": {
+    "cancellations_per_category": 3,
+    "expected_faster_source_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+    "expected_prefill_cache_entries": 6,
+    "operation_seed": 20260804,
+    "requests": 63,
+    "required_label": [],
+    "semantic_seed": 3
+  },
+  "excluded_fields": [
+    "request_texts",
+    "per_request_records",
+    "absolute_paths",
+    "process_ids",
+    "session_ids",
+    "host_identifiers",
+    "raw_worker_metrics"
+  ],
+  "qwen_operational_soak_summary_schema_version": 1,
+  "ready": {
+    "capabilities": {
+      "cancellation": true,
+      "instructions": true,
+      "streaming": true,
+      "voice_clone": false
+    },
+    "warmed_up": true,
+    "worker_version": "0.2.0"
+  },
+  "runtime": {
+    "faster_qwen3_tts": {
+      "available": true,
+      "source_commit": "a0532ff8b712a4051bdf60ac2cd430a492c24d39",
+      "source_git_dirty": false,
+      "version": "0.3.2"
+    },
+    "python": "3.12.10",
+    "torch": {
+      "cuda_available": true,
+      "cuda_runtime": "12.8",
+      "version": "2.10.0+cu128"
+    },
+    "worker": {
+      "available": true,
+      "source_commit": "e37f626560af5b66f865fc6dc530908473c90aa6",
+      "source_git_dirty": false,
+      "version": "0.2.0"
+    }
+  },
+  "source_report_sha256": "d212c34afdf29237ea575f037430f9ca36c1ea92101e0ed5c4eab169e58f5d27",
+  "summary": {
+    "cancel_latency_ms": {
+      "max": 2.0357000175863504,
+      "median": 1.4084000140428543,
+      "min": 1.125499838963151,
+      "p95": 1.871599955484271
+    },
+    "cancelled_requests": 27,
+    "completed_ms": {
+      "max": 6126.245900057256,
+      "median": 1852.292750030756,
+      "min": 877.9323999769986,
+      "p95": 6024.511675001122
+    },
+    "completed_requests": 36,
+    "first_audio_ms": {
+      "max": 375.11399993672967,
+      "median": 244.05434995424002,
+      "min": 239.37510000541806,
+      "p95": 368.69430006481707
+    },
+    "real_time_factor": {
+      "max": 0.3992338586797722,
+      "median": 0.3507889833849209,
+      "min": 0.32468861444426855,
+      "p95": 0.3770344321216938
+    }
+  },
+  "validation": {
+    "allocator": {
+      "allocated": {
+        "first_bytes": 2465832448,
+        "growth_mib": 0.0,
+        "last_bytes": 2465832448,
+        "max_bytes": 2476726272,
+        "tail_slope_bytes_per_request": -43926.61583577713
+      },
+      "available": true,
+      "reserved": {
+        "first_bytes": 2682257408,
+        "growth_mib": 6.0,
+        "last_bytes": 2688548864,
+        "max_bytes": 2688548864,
+        "tail_slope_bytes_per_request": 0.0
+      }
+    },
+    "cache_entries_observed": [
+      6.0
+    ],
+    "cancelled_by_label": {
+      "compiled_18_ryan": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      },
+      "compiled_19_serena": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      },
+      "compiled_20_ryan": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      },
+      "compiled_26_serena": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      },
+      "compiled_27_ryan": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      },
+      "compiled_29_serena": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      },
+      "eager_17_ryan": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      },
+      "eager_38_serena_mixed": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      },
+      "eager_60_ryan": {
+        "after_first_audio": 1,
+        "after_third_audio": 1,
+        "before_first_audio": 1
+      }
+    },
+    "cancelled_requests": 27,
+    "failures": [],
+    "memory": {
+      "failures": [],
+      "gpu_peak_mib": null,
+      "gpu_pid_memory_available": false,
+      "gpu_pid_presence_observed": true,
+      "gpu_pid_telemetry_policy": "allow_unsupported",
+      "gpu_pid_telemetry_status": "unsupported",
+      "private_growth_mib": 81.68359375,
+      "rss_growth_mib": 31.6875,
+      "rss_monotonic_non_decreasing": false,
+      "rss_peak_mib": 2648.73046875,
+      "snapshots": 64
+    },
+    "semantic_references": 9
+  }
+}

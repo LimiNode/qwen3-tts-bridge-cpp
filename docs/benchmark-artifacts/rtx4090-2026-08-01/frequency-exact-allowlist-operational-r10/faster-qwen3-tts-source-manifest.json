@@ -1,0 +1,14 @@
+{
+  "faster_qwen3_tts_source_manifest_schema_version": 1,
+  "repository": "https://github.com/LimiNode/faster-qwen3-tts.git",
+  "branch": "prefill-compile-exact-shape",
+  "commit": "a0532ff8b712a4051bdf60ac2cd430a492c24d39",
+  "tree": "41fc626b09fb4814d16c7e3c2794f6803437afd3",
+  "source_git_dirty": false,
+  "module_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+  "git_bundle": {
+    "path": "faster-qwen3-tts-a0532ff.bundle",
+    "sha256": "61a672a7e5d501aea9f6623489556e745ace2012ef9ac17ce2def0e8df46e8fb",
+    "contains_commit": "a0532ff8b712a4051bdf60ac2cd430a492c24d39"
+  }
+}

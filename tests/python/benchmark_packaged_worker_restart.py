@@ -1986,6 +1986,12 @@ def _with_request_pipeline_metrics(
         ),
     ):
         _copy_metric_int(enriched, first_chunk_phases, source_key, target_key)
+    _copy_metric_positive_int_list(
+        enriched,
+        first_chunk_phases,
+        "selected_chunk_schedule",
+        "first_chunk_selected_chunk_schedule",
+    )
     for source_key, target_key in (
         ("profile_prefill_enabled", "first_chunk_profile_prefill_enabled"),
         ("profile_complete", "first_chunk_profile_complete"),
@@ -2101,6 +2107,20 @@ def _copy_metric_int(
     value = source.get(source_key)
     if isinstance(value, (int, float)):
         target[target_key] = int(value)
+
+
+def _copy_metric_positive_int_list(
+    target: dict[str, object],
+    source: dict[str, object],
+    source_key: str,
+    target_key: str,
+) -> None:
+    value = source.get(source_key)
+    if isinstance(value, list) and all(
+        isinstance(item, int) and not isinstance(item, bool) and item > 0
+        for item in value
+    ):
+        target[target_key] = list(value)
 
 
 def _copy_metric_bool(

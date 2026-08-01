@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import tempfile
 import unittest
+from pathlib import Path
 from typing import cast
 
-from scripts.qwen_mixed_soak import _validate_soak, _validate_worker_args
+from scripts.qwen_mixed_soak import (
+    _faster_source_bundle_sha256,
+    _validate_faster_provenance,
+    _validate_soak,
+    _validate_worker_args,
+)
 
 
 class MixedSoakTests(unittest.TestCase):
@@ -52,6 +60,28 @@ class MixedSoakTests(unittest.TestCase):
 
         failures = cast(list[str], validation["failures"])
         self.assertIn("prefill compile cache changed", "\n".join(failures))
+
+    def test_source_bundle_provenance_is_verified(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            package = Path(temporary_directory) / "faster_qwen3_tts"
+            package.mkdir()
+            module = package / "__init__.py"
+            module.write_text("VERSION = 'test'\n", encoding="utf-8")
+            runtime = cast(
+                dict[str, object],
+                {"imports": {"faster_qwen3_tts": {"origin": str(module)}}},
+            )
+
+            digest = hashlib.sha256()
+            digest.update(b"__init__.py\0")
+            digest.update(module.read_bytes())
+            digest.update(b"\0")
+            expected = digest.hexdigest()
+
+            self.assertEqual(expected, _faster_source_bundle_sha256(runtime))
+            _validate_faster_provenance(runtime, "", expected)
+            with self.assertRaisesRegex(RuntimeError, "SHA mismatch"):
+                _validate_faster_provenance(runtime, "", "0" * 64)
 
 
 def _request(

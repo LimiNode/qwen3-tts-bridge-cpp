@@ -171,6 +171,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 prefill_first_chunk_warmup_length=(
                     args.prefill_first_chunk_warmup_length
                 ),
+                prefill_generation_prime_enabled=args.prefill_generation_prime,
                 do_sample=not args.no_sample,
                 seed=args.seed,
                 seed_mode=args.seed_mode,
@@ -512,6 +513,11 @@ def _add_qwen_subcommand(
         type=int,
         default=None,
         help="Exact allowlisted length used by first-chunk startup warmup.",
+    )
+    qwen_parser.add_argument(
+        "--prefill-generation-prime",
+        action="store_true",
+        help="Run one internal full-EOS generation prime before reporting ready.",
     )
     qwen_parser.add_argument(
         "--no-sample",

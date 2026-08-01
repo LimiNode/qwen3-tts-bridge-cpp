@@ -1,0 +1,177 @@
+{
+  "acceptance_pass": true,
+  "config": {
+    "cancellations_per_category": 12,
+    "expected_faster_source_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+    "expected_prefill_cache_entries": 6,
+    "operation_seed": 20260801,
+    "requests": 504,
+    "required_label": [
+      "compiled_18_ryan",
+      "compiled_19_serena",
+      "compiled_20_ryan",
+      "compiled_26_serena",
+      "compiled_27_ryan",
+      "compiled_29_serena",
+      "eager_17_ryan",
+      "eager_38_serena_mixed",
+      "eager_60_ryan"
+    ],
+    "semantic_seed": 3
+  },
+  "excluded_fields": [
+    "request_texts",
+    "per_request_records",
+    "absolute_paths",
+    "process_ids",
+    "session_ids",
+    "host_identifiers",
+    "raw_worker_metrics"
+  ],
+  "qwen_operational_soak_summary_schema_version": 1,
+  "ready": {
+    "capabilities": {
+      "cancellation": true,
+      "instructions": true,
+      "streaming": true,
+      "voice_clone": false
+    },
+    "warmed_up": true,
+    "worker_version": "0.2.0"
+  },
+  "runtime": {
+    "faster_qwen3_tts": {
+      "available": true,
+      "source_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+      "source_commit": "1ab0dc0e2c9b98292960e3e8469bd554ae744354",
+      "source_git_dirty": true,
+      "version": "0.3.2"
+    },
+    "python": "3.12.10",
+    "torch": {
+      "cuda_available": true,
+      "cuda_runtime": "12.8",
+      "version": "2.10.0+cu128"
+    },
+    "worker": {
+      "available": true,
+      "source_bundle_sha256": "63f233737245fe3e463325fcda10ac268bb833dff05d50277bc47c4dd0eee7c8",
+      "source_commit": "e1129b845f90899976c01b944aa5a3a34eeb728b",
+      "source_git_dirty": true
+    }
+  },
+  "source_report_sha256": "cc3436988bacdee92980b8250d811f1e4fdf61997ed342fb88b3deb93a3e7007",
+  "summary": {
+    "cancel_latency_ms": {
+      "max": 2.5673999916762114,
+      "median": 1.6843000194057822,
+      "min": 1.2262000236660242,
+      "p95": 2.268914971500635
+    },
+    "cancelled_requests": 108,
+    "completed_ms": {
+      "max": 8479.318799916655,
+      "median": 1588.9436999568716,
+      "min": 636.2558000255376,
+      "p95": 4864.3198749632575
+    },
+    "completed_requests": 396,
+    "first_audio_ms": {
+      "max": 391.6800001170486,
+      "median": 254.28889994509518,
+      "min": 243.18949994631112,
+      "p95": 384.93702514097095
+    },
+    "real_time_factor": {
+      "max": 0.5482519696339626,
+      "median": 0.35985944940919234,
+      "min": 0.3248288703435939,
+      "p95": 0.4217916688936557
+    }
+  },
+  "validation": {
+    "allocator": {
+      "allocated": {
+        "first_bytes": 2465832448,
+        "growth_mib": 0.0,
+        "last_bytes": 2465832448,
+        "max_bytes": 2476726272,
+        "tail_slope_bytes_per_request": -390.15916308415876
+      },
+      "available": true,
+      "reserved": {
+        "first_bytes": 2682257408,
+        "growth_mib": 6.0,
+        "last_bytes": 2688548864,
+        "max_bytes": 2688548864,
+        "tail_slope_bytes_per_request": 0.0
+      }
+    },
+    "cache_entries_observed": [
+      6.0
+    ],
+    "cancelled_by_label": {
+      "compiled_18_ryan": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      },
+      "compiled_19_serena": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      },
+      "compiled_20_ryan": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      },
+      "compiled_26_serena": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      },
+      "compiled_27_ryan": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      },
+      "compiled_29_serena": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      },
+      "eager_17_ryan": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      },
+      "eager_38_serena_mixed": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      },
+      "eager_60_ryan": {
+        "after_first_audio": 4,
+        "after_third_audio": 4,
+        "before_first_audio": 4
+      }
+    },
+    "cancelled_requests": 108,
+    "failures": [],
+    "memory": {
+      "failures": [],
+      "gpu_peak_mib": null,
+      "gpu_pid_memory_available": false,
+      "gpu_pid_presence_observed": true,
+      "gpu_pid_telemetry_policy": "allow_unsupported",
+      "gpu_pid_telemetry_status": "unsupported",
+      "private_growth_mib": 90.57421875,
+      "rss_growth_mib": 40.21484375,
+      "rss_monotonic_non_decreasing": false,
+      "rss_peak_mib": 2574.7265625,
+      "snapshots": 505
+    },
+    "semantic_references": 9
+  }
+}

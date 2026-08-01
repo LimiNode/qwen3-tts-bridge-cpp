@@ -1,0 +1,1 @@
+{"acceptance_pass": true, "artifact": "cpp-api-soak-r250.sanitized.json", "cache_entries_observed": [6], "cancelled_requests": 25, "completed_requests": 225, "failures": [], "worker_metrics": "cpp-api-soak-r250.metrics.jsonl", "worker_metrics_sha256": "cb3b180fe6733c930661a264a7906171fdf085aedcca17ce9bcb5caeefc81a83", "worker_pids": [1]}
