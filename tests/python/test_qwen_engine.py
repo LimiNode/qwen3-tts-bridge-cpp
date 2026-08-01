@@ -21,6 +21,7 @@ from qwen_tts_bridge_worker.engine import (
     UnsupportedAudioFormatError,
 )
 from qwen_tts_bridge_worker.engine.qwen_engine import (
+    _load_prefill_allowlist_warmup_manifest,
     _prefill_snapshot_max_abs,
     _preserved_rng_state,
     _reset_after_partial_generation,
@@ -329,6 +330,29 @@ def _generation_prime_config(manifest: Path) -> QwenEngineConfig:
 
 
 class QwenEngineTests(unittest.TestCase):
+    def test_prefill_warmup_manifest_uses_root_speaker(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "manifest.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "speaker": "Alice",
+                        "rows": [
+                            {
+                                "talker_prefill_length": 16,
+                                "text": "Prime.",
+                                "language": "English",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            entries = _load_prefill_allowlist_warmup_manifest(manifest, (16,))
+
+        self.assertEqual("Alice", entries[16]["speaker"])
+
     def test_safety_duration_limit_fails_after_delivering_bounded_pcm(self) -> None:
         engine = QwenTtsEngine(
             QwenEngineConfig(

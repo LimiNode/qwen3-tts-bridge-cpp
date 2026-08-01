@@ -1,5 +1,6 @@
 {
   "artifact_schema_version": 1,
+  "speaker": "ryan",
   "candidate_coverage": {
     "covered_fraction": 0.202667,
     "covered_prompts": 304,

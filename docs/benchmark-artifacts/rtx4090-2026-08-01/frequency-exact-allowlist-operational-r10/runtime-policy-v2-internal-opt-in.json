@@ -18,6 +18,7 @@
     "prefill_allowlist_max_entries": 6,
     "prefill_allowlist_max_abs_threshold": 0.0,
     "prefill_require_precompiled": true,
+    "prefill_generation_prime": true,
     "compiled_emit_chunk_schedule": [8, 8, 12],
     "eager_emit_chunk_schedule": [8]
   },
@@ -28,12 +29,13 @@
     "triton_windows": "3.6.0.post26",
     "faster_version": "0.3.2",
     "faster_module_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
-    "worker_source_bundle_sha256": "87ce78f39b1e149b46fb6e6fa9df3596e6fd4135a0bfb06809e429b0862ce1ea",
+    "worker_source_bundle_sha256": "ff745b37a067a50bdacc02b19116687c3c28af04a7f061749f3af6b190c82240",
     "gpu_name": "NVIDIA GeForce RTX 4090",
     "gpu_capability": [8, 9],
     "gpu_total_memory_bytes": 51526369280
   },
   "evidence_files": {
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/representative-v4-frequency-exact-allowlist-r9/candidate-manifest.json": "bcbf9c7ab92a5caf0c45ab08c883d03c54c2393a069bc17a60e23254ce570207",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250.metrics.jsonl": "cb3b180fe6733c930661a264a7906171fdf085aedcca17ce9bcb5caeefc81a83",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250.sanitized.json": "c6923da285bb7e629d945608aa94890aea438762463cc50369d5a80ecbb447b7",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250.validation.json": "bdf6a3c37450fa09f6a118b75a7d7bac1a11dc77cccde83c43602d9a0ae3f73d",
