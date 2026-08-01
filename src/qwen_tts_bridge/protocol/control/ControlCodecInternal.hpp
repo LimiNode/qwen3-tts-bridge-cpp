@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,12 @@ JsonPayloadEncodeResult encode_error(
     std::string diagnostic);
 
 bool has_forbidden_header_field(const Json& object);
+bool reject_unknown_fields(
+    const Json& object,
+    std::initializer_list<const char*> allowed,
+    const char* object_name,
+    std::string& diagnostic,
+    ControlCodecError& error);
 const Json* find_field(const Json& object, const char* name);
 
 bool read_required_string(

@@ -9,6 +9,7 @@ from collections.abc import Callable, Generator
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import patch
 
 from qwen_tts_bridge_worker.config import QwenEngineConfig
 from qwen_tts_bridge_worker.engine import (
@@ -26,6 +27,7 @@ from qwen_tts_bridge_worker.engine.qwen_engine import (
     _prefill_snapshot_max_abs,
     _preserved_rng_state,
     _reset_after_partial_generation,
+    _seed_runtime,
 )
 
 
@@ -305,6 +307,7 @@ class _TalkerConfig:
 class _ModelConfig:
     def __init__(self, attn_implementation: str) -> None:
         self.talker_config = _TalkerConfig(attn_implementation)
+        self.vocab_size = 2048
 
 
 class _NestedWrapper:
@@ -1026,6 +1029,91 @@ class QwenEngineTests(unittest.TestCase):
                     sampling=SamplingOptions(temperature=0.4),
                 )
             )
+
+    def test_faster_custom_voice_rejects_top_k_above_loaded_vocabulary(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+                allow_request_sampling_overrides=True,
+            ),
+            model_loader=lambda _config: _FasterStreamingModel(
+                "custom_voice",
+                supported_speakers=["Alice"],
+            ),
+        )
+        engine.load()
+
+        with self.assertRaisesRegex(EngineRequestValidationError, "vocabulary size"):
+            engine.validate_request(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                    sampling=SamplingOptions(top_k=2049),
+                )
+            )
+
+    def test_describe_request_reports_effective_sampling_and_explicit_seed(
+        self,
+    ) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="faster",
+                device="cpu",
+                allow_request_sampling_overrides=True,
+                temperature=0.9,
+                top_k=50,
+                top_p=1.0,
+                repetition_penalty=1.05,
+            ),
+            model_loader=lambda _config: _FasterStreamingModel(
+                "custom_voice",
+                supported_speakers=["Alice"],
+            ),
+        )
+        engine.load()
+
+        with patch(
+            "qwen_tts_bridge_worker.engine.qwen_engine._seed_runtime"
+        ) as seed_runtime:
+            settings = engine.describe_request(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                    seed=4242,
+                    sampling=SamplingOptions(
+                        temperature=0.4,
+                        top_k=32,
+                        do_sample=False,
+                    ),
+                )
+            )
+
+        self.assertEqual(4242, settings["effective_seed"])
+        self.assertTrue(settings["effective_seed_explicit"])
+        self.assertEqual(0.4, settings["effective_temperature"])
+        self.assertEqual(32, settings["effective_top_k"])
+        self.assertEqual(1.0, settings["effective_top_p"])
+        self.assertFalse(settings["effective_do_sample"])
+        seed_runtime.assert_called_once_with(4242, strict=True, require_cuda=False)
+
+    def test_explicit_seed_fails_closed_when_numpy_seed_cannot_be_applied(self) -> None:
+        original_import_module = importlib.import_module
+
+        def fail_numpy(name: str) -> Any:
+            if name == "numpy":
+                raise ImportError("test NumPy failure")
+            return original_import_module(name)
+
+        with patch(
+            "qwen_tts_bridge_worker.engine.qwen_engine.importlib.import_module",
+            side_effect=fail_numpy,
+        ):
+            with self.assertRaisesRegex(EngineRequestValidationError, "NumPy RNG"):
+                _seed_runtime(4242, strict=True, require_cuda=False)
 
     def test_faster_generation_trace_is_captured_after_completed_stream(self) -> None:
         fake_model = _FasterStreamingModel(

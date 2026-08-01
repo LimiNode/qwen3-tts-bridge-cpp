@@ -198,7 +198,9 @@ The worker replies with `ready`:
     "streaming": true,
     "cancellation": true,
     "instructions": true,
-    "voice_clone": false
+    "voice_clone": false,
+    "sampling_overrides": true,
+    "deterministic_seed": true
   }
 }
 ```
@@ -218,6 +220,12 @@ scenarios. It is not used to route v1 stdio frames.
 actually performed successfully. If warmup is disabled by configuration, `ready`
 may use `warmed_up = false`; the worker is still able to accept `synthesize`,
 but the first request may be slower.
+
+`sampling_overrides` and `deterministic_seed` are optional capability fields.
+Clients must treat an absent field as `false` so that a newer client can safely
+connect to an older v1 worker. The first indicates whether request-level
+sampling controls are accepted; the second indicates whether an explicit
+request `seed` is applied fail-closed across the engine RNGs.
 
 The C++ supervisor must apply a configurable startup timeout while waiting for
 `ready`. On timeout, it may terminate the worker and report a local startup
@@ -267,8 +275,12 @@ different seed.
 fields retain the worker runtime profile's defaults. `temperature` must be in
 `(0, 2]`, `top_k` must be a positive integer, `top_p` must be in `(0, 1]`, and
 `repetition_penalty` must be in `[1, 2]`. `do_sample = false` requests greedy
-decoding. A worker that cannot honour request-level sampling controls must
-return `request_error` instead of silently ignoring them.
+decoding. Only `temperature`, `top_k`, `top_p`, `repetition_penalty`, and
+`do_sample` are valid members; an unknown member must return
+`request_error / unknown_field`. A worker that cannot honour request-level
+sampling controls must return `request_error` instead of silently ignoring
+them. A loaded engine may additionally reject `top_k` above its actual codec
+vocabulary size.
 
 `output` is the client's requested output format. If the worker cannot satisfy
 it, the worker must return:

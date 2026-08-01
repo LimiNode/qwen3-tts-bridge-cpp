@@ -46,6 +46,8 @@ class MockTtsEngine:
             cancellation=True,
             instructions=True,
             voice_clone=False,
+            sampling_overrides=False,
+            deterministic_seed=False,
         )
 
     def load(self) -> None:
@@ -71,6 +73,12 @@ class MockTtsEngine:
         raise UnsupportedAudioFormatError(
             "mock engine supports only s16le 24000 Hz mono"
         )
+
+    def describe_request(self, request: SynthesisRequest) -> dict[str, object]:
+        """Return mock generation settings without claiming unsupported controls."""
+
+        del request
+        return {}
 
     def synthesize_stream(
         self,

@@ -81,6 +81,11 @@ class QwenTtsEngine:
             cancellation=streaming,
             instructions=instructions,
             voice_clone=False,
+            sampling_overrides=(
+                self._config.runtime_backend == "faster"
+                and self._config.allow_request_sampling_overrides
+            ),
+            deterministic_seed=True,
         )
 
     def load(self) -> None:
@@ -88,7 +93,10 @@ class QwenTtsEngine:
 
         if self._model is not None:
             return
-        _seed_runtime(self._config.seed)
+        _seed_runtime(
+            self._config.seed,
+            require_cuda=self._config.device.lower().startswith("cuda"),
+        )
         self._model = self._model_loader(self._config)
         model = self._require_model()
         _validate_loaded_prefill_compile_compat(model, self._config)
@@ -135,16 +143,21 @@ class QwenTtsEngine:
         ):
             raise EngineRequestValidationError(
                 "unsupported_feature",
-                "the active runtime profile does not allow per-request sampling overrides",
+                "the active runtime profile does not allow per-request "
+                "sampling overrides",
             )
-        if self._config.runtime_backend != "faster" and not request.sampling.is_default():
+        if (
+            self._config.runtime_backend != "faster"
+            and not request.sampling.is_default()
+        ):
             raise EngineRequestValidationError(
                 "unsupported_feature",
                 "per-request sampling controls require runtime_backend=faster",
             )
-        _resolve_faster_sampling(self._config, request)
+        sampling = _resolve_faster_sampling(self._config, request)
 
         model = self._require_model()
+        _validate_sampling_top_k_for_model(model, int(sampling["top_k"]))
         model_type = _qwen_model_type(model)
         if model_type == "custom_voice":
             _validate_custom_voice_request(model, request)
@@ -180,6 +193,27 @@ class QwenTtsEngine:
             f"unsupported qwen tts_model_type: {model_type or 'unknown'}",
         )
 
+    def describe_request(self, request: SynthesisRequest) -> dict[str, object]:
+        """Apply explicit RNG state and report effective generation controls."""
+
+        self.validate_request(request)
+        sampling = _resolve_faster_sampling(self._config, request)
+        effective_seed = _request_seed(self._config, request)
+        _seed_runtime(
+            effective_seed,
+            strict=request.seed is not None,
+            require_cuda=self._config.device.lower().startswith("cuda"),
+        )
+        return {
+            "effective_seed": effective_seed,
+            "effective_seed_explicit": request.seed is not None,
+            "effective_temperature": sampling["temperature"],
+            "effective_top_k": sampling["top_k"],
+            "effective_top_p": sampling["top_p"],
+            "effective_repetition_penalty": sampling["repetition_penalty"],
+            "effective_do_sample": sampling["do_sample"],
+        }
+
     def synthesize_stream(
         self,
         request: SynthesisRequest,
@@ -193,7 +227,11 @@ class QwenTtsEngine:
         self._maybe_open_profile_pair_range(request.request_id)
         with self._synthesis_lock:
             self._last_generation_trace = None
-            _seed_runtime(_request_seed(self._config, request))
+            _seed_runtime(
+                _request_seed(self._config, request),
+                strict=request.seed is not None,
+                require_cuda=self._config.device.lower().startswith("cuda"),
+            )
             audio_stream = self._generate_audio_stream(model, request, cancel_event)
             emitted_audio_bytes = 0
             max_audio_bytes = _max_audio_bytes(self._config, request)
@@ -1227,24 +1265,43 @@ def _warmup_pass_max_output_chunks(
     return config.warmup_max_output_chunks
 
 
-def _seed_runtime(seed: int | None) -> None:
+def _seed_runtime(
+    seed: int | None,
+    *,
+    strict: bool = False,
+    require_cuda: bool = False,
+) -> None:
     if seed is None:
         return
-    random.seed(seed)
+    failures: list[str] = []
+    try:
+        random.seed(seed)
+    except Exception as exc:
+        failures.append(f"Python RNG: {exc}")
     try:
         numpy = importlib.import_module("numpy")
         numpy.random.seed(seed % (2**32))
-    except Exception:
-        pass
+    except Exception as exc:
+        failures.append(f"NumPy RNG: {exc}")
     try:
         torch = importlib.import_module("torch")
         torch.manual_seed(seed)
         cuda = getattr(torch, "cuda", None)
         manual_seed_all = getattr(cuda, "manual_seed_all", None)
-        if callable(manual_seed_all):
+        if require_cuda and not callable(manual_seed_all):
+            raise RuntimeError("torch.cuda.manual_seed_all is unavailable")
+        if require_cuda:
+            assert callable(manual_seed_all)
             manual_seed_all(seed)
-    except Exception:
-        pass
+    except Exception as exc:
+        failures.append(f"Torch RNG: {exc}")
+
+    if strict and failures:
+        raise EngineRequestValidationError(
+            "seed_application_failed",
+            "could not apply explicit seed to all required RNGs: "
+            + "; ".join(failures),
+        )
 
 
 def _reset_after_partial_generation(model: Any) -> dict[str, object]:
@@ -1551,6 +1608,32 @@ def _qwen_stream_generate_audio(
     return None
 
 
+def _sampling_vocab_size(model: Any) -> int | None:
+    """Return the loaded codec vocabulary size when the adapter exposes it."""
+
+    for path in (
+        ("model", "config", "vocab_size"),
+        ("model", "model", "config", "vocab_size"),
+        ("config", "vocab_size"),
+    ):
+        value = _nested_attr(model, path)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return value
+    return None
+
+
+def _validate_sampling_top_k_for_model(model: Any, top_k: int) -> None:
+    """Reject top-k settings outside the loaded codec vocabulary."""
+
+    vocabulary_size = _sampling_vocab_size(model)
+    if vocabulary_size is not None and top_k > vocabulary_size:
+        raise EngineRequestValidationError(
+            "invalid_field_type",
+            "sampling.top_k must not exceed the loaded codec vocabulary size "
+            f"({vocabulary_size})",
+        )
+
+
 def _resolve_faster_sampling(
     config: QwenEngineConfig,
     request: SynthesisRequest,
@@ -1558,7 +1641,9 @@ def _resolve_faster_sampling(
     """Resolve and validate request overrides against runtime sampling defaults."""
 
     options = request.sampling
-    temperature = config.temperature if options.temperature is None else options.temperature
+    temperature = (
+        config.temperature if options.temperature is None else options.temperature
+    )
     top_k = config.top_k if options.top_k is None else options.top_k
     top_p = config.top_p if options.top_p is None else options.top_p
     repetition_penalty = (

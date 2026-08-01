@@ -1,6 +1,8 @@
 #include "ControlCodecInternal.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <initializer_list>
 #include <limits>
 #include <utility>
 
@@ -52,6 +54,26 @@ JsonPayloadEncodeResult encode_error(
 
 bool has_forbidden_header_field(const Json& object) {
     return object.contains(kProtocolVersion) || object.contains(kRequestId);
+}
+
+bool reject_unknown_fields(
+    const Json& object,
+    std::initializer_list<const char*> allowed,
+    const char* object_name,
+    std::string& diagnostic,
+    ControlCodecError& error) {
+    for (const auto& entry : object.items()) {
+        const bool known = std::any_of(
+            allowed.begin(),
+            allowed.end(),
+            [&entry](const char* name) { return entry.key() == name; });
+        if (!known) {
+            error = ControlCodecError::UnknownField;
+            diagnostic = std::string(object_name) + " contains unknown field: " + entry.key();
+            return false;
+        }
+    }
+    return true;
 }
 
 const Json* find_field(const Json& object, const char* name) {
@@ -333,6 +355,14 @@ bool read_optional_synthesis_sampling(
         diagnostic = std::string("field must be an object: ") + name;
         return false;
     }
+    if (!reject_unknown_fields(
+            *value,
+            {"temperature", "top_k", "top_p", "repetition_penalty", "do_sample"},
+            name,
+            diagnostic,
+            error)) {
+        return false;
+    }
     std::uint32_t top_k = 0;
     bool top_k_present = false;
     bool do_sample = false;
@@ -378,6 +408,26 @@ bool read_capabilities(
     if (!read_required_bool(*value, "voice_clone", out.voice_clone, diagnostic, error)) {
         return false;
     }
+    bool sampling_overrides_present = false;
+    if (!read_optional_bool(
+            *value,
+            "sampling_overrides",
+            out.sampling_overrides,
+            sampling_overrides_present,
+            diagnostic,
+            error)) {
+        return false;
+    }
+    bool deterministic_seed_present = false;
+    if (!read_optional_bool(
+            *value,
+            "deterministic_seed",
+            out.deterministic_seed,
+            deterministic_seed_present,
+            diagnostic,
+            error)) {
+        return false;
+    }
 
     return true;
 }
@@ -415,7 +465,9 @@ Json capabilities_to_json(const WorkerCapabilities& capabilities) {
         {"streaming", capabilities.streaming},
         {"cancellation", capabilities.cancellation},
         {"instructions", capabilities.instructions},
-        {"voice_clone", capabilities.voice_clone}
+        {"voice_clone", capabilities.voice_clone},
+        {"sampling_overrides", capabilities.sampling_overrides},
+        {"deterministic_seed", capabilities.deterministic_seed}
     };
 }
 

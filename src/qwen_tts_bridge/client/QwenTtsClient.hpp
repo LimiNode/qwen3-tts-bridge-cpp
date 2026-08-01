@@ -99,6 +99,11 @@ public:
     /// \brief Returns whether the client is running and ready for requests.
     bool is_running() const;
 
+    /// \brief Returns the worker readiness payload after a successful start.
+    /// \param ready Output readiness data, including advertised capabilities.
+    /// \return True when the worker is running and has sent ready.
+    bool ready_message(ReadyMessage& ready) const;
+
     /// \brief Stops the client, worker session, and internal threads.
     ///
     /// This method is idempotent. It may block while the worker stops and

@@ -28,6 +28,8 @@ const char* control_codec_error_code(ControlCodecError error) {
         return "invalid_field_type";
     case ControlCodecError::ForbiddenField:
         return "invalid_field_type";
+    case ControlCodecError::UnknownField:
+        return "unknown_field";
     case ControlCodecError::EncodeFailed:
         return "internal_error";
     }

@@ -156,6 +156,17 @@ void test_synthesize_rejects_invalid_sampling() {
     CHECK(result.error == ControlCodecError::InvalidFieldType);
 }
 
+void test_synthesize_rejects_unknown_sampling_field() {
+    const auto result = decode_client(
+        "{\"message_type\":\"synthesize\","
+        "\"text\":\"Unknown sampling.\","
+        "\"sampling\":{\"temprature\":0.4}}");
+
+    CHECK(!result);
+    CHECK(result.error == ControlCodecError::UnknownField);
+    CHECK(std::string(control_codec_error_code(result.error)) == "unknown_field");
+}
+
 void test_encode_synthesize_omits_unspecified_speaker() {
     SynthesizeMessage message;
     message.text = "No explicit speaker.";
@@ -190,7 +201,9 @@ void test_decode_ready() {
         "\"streaming\":true,"
         "\"cancellation\":true,"
         "\"instructions\":true,"
-        "\"voice_clone\":false"
+        "\"voice_clone\":false,"
+        "\"sampling_overrides\":true,"
+        "\"deterministic_seed\":true"
         "}}");
 
     CHECK(result);
@@ -204,6 +217,26 @@ void test_decode_ready() {
     CHECK(ready.capabilities.cancellation);
     CHECK(ready.capabilities.instructions);
     CHECK(!ready.capabilities.voice_clone);
+    CHECK(ready.capabilities.sampling_overrides);
+    CHECK(ready.capabilities.deterministic_seed);
+}
+
+void test_decode_ready_without_optional_sampling_capabilities() {
+    const auto result = decode_worker(
+        "{\"message_type\":\"ready\","
+        "\"worker_version\":\"0.2.0\","
+        "\"session_id\":\"session-legacy\","
+        "\"capabilities\":{"
+        "\"streaming\":true,"
+        "\"cancellation\":true,"
+        "\"instructions\":true,"
+        "\"voice_clone\":false"
+        "}}");
+
+    CHECK(result);
+    const auto& ready = std::get<ReadyMessage>(result.message);
+    CHECK(!ready.capabilities.sampling_overrides);
+    CHECK(!ready.capabilities.deterministic_seed);
 }
 
 void test_encode_ping_round_trip() {
@@ -475,9 +508,11 @@ int main() {
     test_synthesize_seed_round_trip();
     test_synthesize_sampling_round_trip();
     test_synthesize_rejects_invalid_sampling();
+    test_synthesize_rejects_unknown_sampling_field();
     test_encode_synthesize_omits_unspecified_speaker();
     test_encode_synthesize_with_explicit_speaker();
     test_decode_ready();
+    test_decode_ready_without_optional_sampling_capabilities();
     test_encode_ping_round_trip();
     test_decode_started_audio_format();
     test_decode_error_json();

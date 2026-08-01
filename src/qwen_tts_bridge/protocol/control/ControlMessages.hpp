@@ -49,6 +49,7 @@ enum class ControlCodecError {
     MissingRequiredField,    ///< A required message field is absent.
     InvalidFieldType,        ///< A message field has an invalid JSON type.
     ForbiddenField,          ///< A message contains a forbidden field.
+    UnknownField,            ///< A nested object contains an unknown field.
     EncodeFailed             ///< A valid message could not be encoded.
 };
 
@@ -72,6 +73,8 @@ struct WorkerCapabilities {
     bool cancellation = false; ///< Worker supports request cancellation.
     bool instructions = false; ///< Worker accepts style instructions.
     bool voice_clone = false; ///< Worker advertises voice-cloning support.
+    bool sampling_overrides = false; ///< Worker accepts request-level sampling controls.
+    bool deterministic_seed = false; ///< Worker can strictly apply explicit RNG seeds.
 };
 
 /// \struct HelloMessage

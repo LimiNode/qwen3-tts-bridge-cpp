@@ -208,6 +208,11 @@ bool QwenTtsClient::is_running() const {
     return running_ && !stopping_ && session_ != nullptr;
 }
 
+bool QwenTtsClient::ready_message(ReadyMessage& ready) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return running_ && !stopping_ && session_ != nullptr && session_->ready_message(ready);
+}
+
 void QwenTtsClient::stop() {
     WorkerSession* session = nullptr;
     {

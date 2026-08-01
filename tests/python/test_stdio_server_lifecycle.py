@@ -151,6 +151,55 @@ class RequestValidationEngine:
         pass
 
 
+class SettingsEngine:
+    def __init__(self) -> None:
+        self.completed = threading.Event()
+
+    @property
+    def capabilities(self) -> EngineCapabilities:
+        return EngineCapabilities(
+            streaming=True,
+            cancellation=True,
+            instructions=True,
+            voice_clone=False,
+            sampling_overrides=True,
+            deterministic_seed=True,
+        )
+
+    def load(self) -> None:
+        pass
+
+    def warmup(self) -> None:
+        pass
+
+    def validate_request(self, request: SynthesisRequest) -> None:
+        del request
+
+    def describe_request(self, request: SynthesisRequest) -> dict[str, object]:
+        self.validate_request(request)
+        return {
+            "effective_seed": request.seed,
+            "effective_seed_explicit": request.seed is not None,
+            "effective_temperature": 0.4,
+            "effective_top_k": 50,
+            "effective_top_p": 1.0,
+            "effective_repetition_penalty": 1.05,
+            "effective_do_sample": True,
+        }
+
+    def synthesize_stream(
+        self,
+        request: SynthesisRequest,
+        cancel_event: threading.Event,
+    ) -> Iterable[bytes]:
+        del request, cancel_event
+        self.completed.set()
+        return ()
+
+    def close(self) -> None:
+        pass
+
+
 class WarmupMetricsEngine:
     def __init__(self) -> None:
         self.load_thread_name = ""
@@ -433,6 +482,94 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             if metric["event"] == "request_finished" and metric["request_id"] == 1
         )
         self.assertEqual("failed", terminal["terminal_state"])
+
+    def test_unknown_sampling_field_is_rejected(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+            + _control_frame(
+                1,
+                {
+                    "message_type": "synthesize",
+                    "text": "Hello",
+                    "sampling": {"temprature": 0.4},
+                },
+            )
+        )
+        output_stream = io.BytesIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=output_stream,
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+        )
+
+        self.assertEqual(0, server.run())
+
+        frames = _parse_frames(output_stream.getvalue())
+        self.assertEqual("ready", _payload(frames[0])["message_type"])
+        self.assertEqual(FrameType.ERROR_JSON, frames[1].header.frame_type)
+        self.assertEqual("request_error", _payload(frames[1])["category"])
+        self.assertEqual("unknown_field", _payload(frames[1])["code"])
+
+    def test_ready_capabilities_and_effective_settings_are_emitted(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+            + _control_frame(
+                1,
+                {
+                    "message_type": "synthesize",
+                    "text": "Hello",
+                    "seed": 4242,
+                },
+            )
+        )
+        output_stream = io.BytesIO()
+        error_stream = io.StringIO()
+        engine = SettingsEngine()
+        server = StdioWorkerServer(
+            input_stream=cast(
+                BinaryIO,
+                _EofAfterEvent(input_stream.getvalue(), engine.completed),
+            ),
+            output_stream=output_stream,
+            error_stream=error_stream,
+            engine=engine,
+        )
+
+        self.assertEqual(0, server.run())
+
+        frames = _parse_frames(output_stream.getvalue())
+        ready = _payload(frames[0])
+        capabilities = cast(dict[str, object], ready["capabilities"])
+        self.assertTrue(capabilities["sampling_overrides"])
+        self.assertTrue(capabilities["deterministic_seed"])
+        metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in error_stream.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+        ]
+        effective = next(
+            metric
+            for metric in metrics
+            if metric["event"] == "request_effective_generation_settings"
+        )
+        self.assertEqual(4242, effective["effective_seed"])
+        self.assertEqual(0.4, effective["effective_temperature"])
+        self.assertTrue(effective["effective_do_sample"])
 
     def test_safety_limit_is_preserved_on_terminal_metric(self) -> None:
         payload = (

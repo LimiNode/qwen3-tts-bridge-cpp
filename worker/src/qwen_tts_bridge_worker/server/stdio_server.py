@@ -9,6 +9,7 @@ import threading
 import traceback
 import uuid
 from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, BinaryIO, Deque, Optional, TextIO, cast
 
@@ -33,6 +34,16 @@ from qwen_tts_bridge_worker.protocol.framing import FrameParser, encode_frame
 from qwen_tts_bridge_worker.server.metrics import MetricsWriter
 from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
 
+_SAMPLING_FIELDS = frozenset(
+    {
+        "temperature",
+        "top_k",
+        "top_p",
+        "repetition_penalty",
+        "do_sample",
+    }
+)
+
 
 def _parse_sampling_options(
     request_id: int,
@@ -49,6 +60,16 @@ def _parse_sampling_options(
             "request_error",
             "invalid_field_type",
             "sampling must be an object when provided",
+        )
+        return None
+
+    unknown_fields = sorted(set(payload).difference(_SAMPLING_FIELDS))
+    if unknown_fields:
+        send_error(
+            request_id,
+            "request_error",
+            "unknown_field",
+            "sampling contains unknown field(s): " + ", ".join(unknown_fields),
         )
         return None
 
@@ -388,6 +409,8 @@ class StdioWorkerServer:
             cancellation=capabilities.cancellation,
             instructions=capabilities.instructions,
             voice_clone=capabilities.voice_clone,
+            sampling_overrides=capabilities.sampling_overrides,
+            deterministic_seed=capabilities.deterministic_seed,
         )
         self._writer.send(
             control_frame(
@@ -536,7 +559,11 @@ class StdioWorkerServer:
             )
             return None
 
-        sampling = _parse_sampling_options(request_id, sampling_payload, self._send_error)
+        sampling = _parse_sampling_options(
+            request_id,
+            sampling_payload,
+            self._send_error,
+        )
         if sampling is None:
             return None
 
@@ -806,6 +833,26 @@ class StdioWorkerServer:
             self._finish_cancelled(slot)
             return
 
+        try:
+            describe_request = getattr(self._engine, "describe_request", None)
+            raw_effective_settings = (
+                describe_request(slot.request) if callable(describe_request) else {}
+            )
+            if not isinstance(raw_effective_settings, Mapping) or not all(
+                isinstance(key, str) for key in raw_effective_settings
+            ):
+                raise EngineRequestValidationError(
+                    "invalid_engine_settings",
+                    "engine returned invalid effective generation settings",
+                )
+            effective_settings = dict(raw_effective_settings)
+        except EngineRequestValidationError as exc:
+            with self._condition:
+                self._terminalize_locked(request_id)
+            self._emit_request_finished(slot, "failed")
+            self._send_error(request_id, "request_error", exc.code, str(exc))
+            return
+
         slot.started_at = monotonic_seconds()
         self._metrics.emit(
             "request_started",
@@ -818,6 +865,11 @@ class StdioWorkerServer:
             queue_ms=elapsed_milliseconds(slot.queued_at, slot.started_at),
             startup_mode=self._engine_startup_mode,
             **_thread_context_fields(),
+        )
+        self._metrics.emit(
+            "request_effective_generation_settings",
+            request_id=request_id,
+            **effective_settings,
         )
 
         self._writer.send(
@@ -903,6 +955,12 @@ class StdioWorkerServer:
                     request_id=request_id,
                     first_audio_frame=first_audio_frame,
                 )
+        except EngineRequestValidationError as exc:
+            with self._condition:
+                self._terminalize_locked(request_id)
+            self._emit_request_finished(slot, "failed")
+            self._send_error(request_id, "request_error", exc.code, str(exc))
+            return
         except GenerationSafetyLimitError as exc:
             with self._condition:
                 self._terminalize_locked(request_id)
@@ -1054,6 +1112,8 @@ def _capabilities_payload(capabilities: EngineCapabilities) -> dict[str, bool]:
         "cancellation": capabilities.cancellation,
         "instructions": capabilities.instructions,
         "voice_clone": capabilities.voice_clone,
+        "sampling_overrides": capabilities.sampling_overrides,
+        "deterministic_seed": capabilities.deterministic_seed,
     }
 
 

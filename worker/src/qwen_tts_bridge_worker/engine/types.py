@@ -15,6 +15,8 @@ class EngineCapabilities:
     cancellation: bool
     instructions: bool
     voice_clone: bool
+    sampling_overrides: bool = False
+    deterministic_seed: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,7 +87,9 @@ class SamplingOptions:
             not math.isfinite(self.temperature)
             or not 0.0 < self.temperature <= 2.0
         ):
-            raise ValueError("sampling.temperature must be finite and in the interval (0, 2]")
+            raise ValueError(
+                "sampling.temperature must be finite and in the interval (0, 2]"
+            )
         if self.top_k is not None and self.top_k <= 0:
             raise ValueError("sampling.top_k must be greater than zero")
         if self.top_p is not None and (

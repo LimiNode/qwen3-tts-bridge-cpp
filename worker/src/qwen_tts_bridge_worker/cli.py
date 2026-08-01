@@ -529,7 +529,10 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument(
         "--allow-request-sampling-overrides",
         action="store_true",
-        help="Allow per-request sampling overrides for an isolated experimental profile.",
+        help=(
+            "Allow per-request sampling overrides for an isolated experimental "
+            "profile."
+        ),
     )
     qwen_parser.add_argument(
         "--no-sample",
