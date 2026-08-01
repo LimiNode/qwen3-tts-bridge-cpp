@@ -91,6 +91,23 @@ class Rtx4090ExperimentalProfileTests(unittest.TestCase):
         self.assertIn("rtx4090-faster-customvoice-experimental.json", launcher)
         self.assertIn("--prefill-require-precompiled", launcher)
         self.assertIn("--emit-chunk-schedule", launcher)
+        self.assertIn("--warmup-synthesis", launcher)
+        self.assertIn("--warmup-instruction", launcher)
+
+    def test_style_experiment_profile_primes_instruction_before_ready(self) -> None:
+        profile = json.loads(
+            (
+                _ROOT
+                / "config"
+                / "rtx4090-faster-customvoice-style-eager-experiment.json"
+            ).read_text(encoding="utf-8")
+        )
+
+        self.assertTrue(profile["warmup_synthesis"])
+        self.assertEqual(1, profile["warmup_synthesis_passes"])
+        self.assertEqual("Russian", profile["warmup_language"])
+        self.assertEqual("serena", profile["warmup_speaker"])
+        self.assertTrue(profile["warmup_instruction"].strip())
 
     def test_route_aware_scheduler_profile_keeps_unknown_shapes_fixed(self) -> None:
         profile = json.loads(

@@ -130,9 +130,12 @@ known problematic words to approved replacements.
   ```
 
   This experiment is only for assessing instruction control. Compare the same
-  text, speaker, language, seed, and sampling controls first without `/style`, then with it. The
-  resulting audio still requires listening review; passing a prompt through is
-  not proof of a useful emotional change.
+  text, speaker, language, seed, and sampling controls first without `/style`,
+  then with it. It completes one short instructed synthesis before
+  `worker_ready`, so startup is longer but the first phrase you enter is not
+  responsible for CUDA graph capture or the first instruction-path execution.
+  The resulting audio still requires listening review; passing a prompt through
+  is not proof of a useful emotional change.
 
   The reproducible non-playback A/B probe records those transport-level facts:
 

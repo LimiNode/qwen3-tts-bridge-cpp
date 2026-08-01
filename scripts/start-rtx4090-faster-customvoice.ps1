@@ -99,6 +99,36 @@ if ($profile.prefill_first_chunk_warmup) {
 if ($profile.prefill_generation_prime) {
     $arguments += "--prefill-generation-prime"
 }
+if ($profile.warmup_synthesis) {
+    $arguments += "--warmup-synthesis"
+    if ($null -ne $profile.warmup_synthesis_passes) {
+        $arguments += @(
+            "--warmup-synthesis-passes", $profile.warmup_synthesis_passes
+        )
+    }
+    if ($null -ne $profile.warmup_unbounded_passes) {
+        $arguments += @(
+            "--warmup-unbounded-passes", $profile.warmup_unbounded_passes
+        )
+    }
+    if ($null -ne $profile.warmup_max_output_chunks) {
+        $arguments += @(
+            "--warmup-max-output-chunks", $profile.warmup_max_output_chunks
+        )
+    }
+    if (-not [string]::IsNullOrWhiteSpace($profile.warmup_text)) {
+        $arguments += @("--warmup-text", $profile.warmup_text)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($profile.warmup_language)) {
+        $arguments += @("--warmup-language", $profile.warmup_language)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($profile.warmup_speaker)) {
+        $arguments += @("--warmup-speaker", $profile.warmup_speaker)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($profile.warmup_instruction)) {
+        $arguments += @("--warmup-instruction", $profile.warmup_instruction)
+    }
+}
 if ($profile.allow_request_sampling_overrides) {
     $arguments += "--allow-request-sampling-overrides"
 }

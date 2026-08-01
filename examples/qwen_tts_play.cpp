@@ -283,7 +283,9 @@ struct OneShotState {
     std::string message;
 };
 
-void print_usage(std::ostream& out, const char* executable_name) {
+std::string utf8_from_wide(const std::wstring& value);
+
+void print_usage(std::ostream& out, const std::string& executable_name) {
     out << "Usage:\n"
         << "  " << executable_name << " --mock [--speaker name]\n"
         << "  " << executable_name << " --worker qwen_tts_worker.exe [--speaker name]\n"
@@ -331,10 +333,10 @@ void print_usage(std::ostream& out, const char* executable_name) {
 std::string require_value(
     int& index,
     int argc,
-    char** argv,
+    wchar_t** argv,
     const std::string& option) {
     const std::string prefix = option + '=';
-    const std::string current = argv[index];
+    const std::string current = utf8_from_wide(argv[index]);
     if (current.rfind(prefix, 0) == 0) {
         return current.substr(prefix.size());
     }
@@ -342,7 +344,7 @@ std::string require_value(
         throw std::runtime_error("missing value for " + option);
     }
     ++index;
-    return argv[index];
+    return utf8_from_wide(argv[index]);
 }
 
 std::uint32_t parse_u32(const std::string& value, const std::string& option) {
@@ -385,10 +387,10 @@ double parse_double(const std::string& value, const std::string& option) {
     return result;
 }
 
-ProgramOptions parse_options(int argc, char** argv) {
+ProgramOptions parse_options(int argc, wchar_t** argv) {
     ProgramOptions options;
     for (int index = 1; index < argc; ++index) {
-        const std::string arg = argv[index];
+        const std::string arg = utf8_from_wide(argv[index]);
         if (arg == "--help" || arg == "-h") {
             options.help = true;
         }
@@ -885,13 +887,13 @@ bool read_interactive_line(std::string& line) {
 
 } // namespace
 
-int main(int argc, char** argv) {
+int wmain(int argc, wchar_t** argv) {
     try {
         ConsoleCodePageGuard console_code_page_guard;
         ProgramOptions options = parse_options(argc, argv);
         validate_options(options);
         if (options.help) {
-            print_usage(std::cout, argv[0]);
+            print_usage(std::cout, utf8_from_wide(argv[0]));
             return 0;
         }
 
@@ -923,7 +925,7 @@ int main(int argc, char** argv) {
             return 0;
         }
 
-        print_usage(std::cout, argv[0]);
+        print_usage(std::cout, utf8_from_wide(argv[0]));
         print_interactive_status(options);
         for (std::string line; std::cout << "> " && read_interactive_line(line);) {
             if (line.empty()) {
@@ -933,7 +935,7 @@ int main(int argc, char** argv) {
                 break;
             }
             if (line == "/help") {
-                print_usage(std::cout, argv[0]);
+                print_usage(std::cout, utf8_from_wide(argv[0]));
                 continue;
             }
             if (line == "/cancel") {

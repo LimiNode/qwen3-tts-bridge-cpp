@@ -101,7 +101,10 @@ acute accent после гласной: на 0.6B CustomVoice он иногда 
 
   Для него нужен `style_experiment_faster_qwen_source_path` в локальной
   конфигурации. Он не меняет R10 allowlist. Сравнивайте одинаковые text,
-  speaker, language, seed и sampling settings с `/style` и без него.
+  speaker, language, seed и sampling settings с `/style` и без него. Перед
+  `worker_ready` эксперимент намеренно завершает одну короткую синтезацию с
+  instruction: запуск занимает дольше, зато первая введённая фраза больше не
+  отвечает за захват CUDA graph и первый проход пути instruction.
 - Предупреждения `flash-attn` и SoX сейчас неблокирующие: проверенный путь
   использует PyTorch SDPA и проигрывает 24 kHz PCM напрямую.
 

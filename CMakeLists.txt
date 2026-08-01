@@ -108,6 +108,9 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
                 QwenTTSBridge::qwen_tts_bridge
                 winmm
         )
+        if(MINGW)
+            target_link_options(qwen_tts_play PRIVATE -municode)
+        endif()
     endif()
 
     target_compile_definitions(qwen_tts_save_wav
@@ -269,6 +272,15 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                     --requests 2
                     --request-timeout-ms 10000
             )
+            if(WIN32)
+                add_test(
+                    NAME qwen_tts_play_mock_utf8_example
+                    COMMAND qwen_tts_play
+                        --mock
+                        --text "Я твой робот, я твой работник."
+                        --speaker serena
+                )
+            endif()
         endif()
     else()
         message(WARNING "Python3 interpreter not found; stdio/worker session tests will not be built")
