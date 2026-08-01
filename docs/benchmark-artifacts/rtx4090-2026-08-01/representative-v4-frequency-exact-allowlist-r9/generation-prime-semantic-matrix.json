@@ -1,0 +1,117 @@
+{
+  "acceptance": {
+    "greedy_observed": true,
+    "prime_off_completed": true,
+    "prime_off_mismatch_observed": true,
+    "prime_off_observed": true,
+    "prime_on_observed": true,
+    "prime_on_parity_pass": true,
+    "sampling_observed": true
+  },
+  "artifact_schema_version": 1,
+  "cases": [
+    {
+      "compiled_profile": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\sampling-prime-off-compiled.json",
+        "sha256": "0284c0a4194bfd3692362962d28c7f9309f07db4c3c958c15e3946d2234b1f52"
+      },
+      "decode_mode": "sampling",
+      "eager_profile": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\sampling-prime-off-eager.json",
+        "sha256": "236d9934a7c26e8c81912ee899f9d8aed3f7bc61b613611327c1d6c397e4c53a"
+      },
+      "executed": true,
+      "name": "sampling-prime-off",
+      "parity_pass": false,
+      "passed": true,
+      "prime_enabled": false,
+      "report": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-sampling-prime-off.json",
+        "sha256": "3420399fc8cb6aef23ad50aa7e2494e59e337f1d44d36d89c655851d6c3ea8eb"
+      },
+      "seed_count": 5,
+      "subprocess_returncode": 1
+    },
+    {
+      "compiled_profile": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\sampling-prime-on-compiled.json",
+        "sha256": "70baa0ea198bc80b38348ec3b871538f68036197f38498c7cdb00d9499131b6c"
+      },
+      "decode_mode": "sampling",
+      "eager_profile": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\sampling-prime-on-eager.json",
+        "sha256": "236d9934a7c26e8c81912ee899f9d8aed3f7bc61b613611327c1d6c397e4c53a"
+      },
+      "executed": true,
+      "name": "sampling-prime-on",
+      "parity_pass": true,
+      "passed": true,
+      "prime_enabled": true,
+      "report": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-sampling-prime-on.json",
+        "sha256": "f11707e75a3589569cf036d1724919e0dbdf7982aa8b763933e28dfb77634640"
+      },
+      "seed_count": 5,
+      "subprocess_returncode": 0
+    },
+    {
+      "compiled_profile": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\greedy-prime-off-compiled.json",
+        "sha256": "994f56fa2da98d2d038e4808947821aab3d669cecc27be094b54ad6702fe9b1a"
+      },
+      "decode_mode": "greedy",
+      "eager_profile": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\greedy-prime-off-eager.json",
+        "sha256": "3b7215e7c7d4c143d7238bb97591bcaa20c2f3e6733730fa32c42c7fd28905c9"
+      },
+      "executed": true,
+      "name": "greedy-prime-off",
+      "parity_pass": false,
+      "passed": true,
+      "prime_enabled": false,
+      "report": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-greedy-prime-off.json",
+        "sha256": "53839a01a57ce8bd25c197496455c36e02f168e3524093bf924144863c5d3be2"
+      },
+      "seed_count": 3,
+      "subprocess_returncode": 1
+    },
+    {
+      "compiled_profile": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\greedy-prime-on-compiled.json",
+        "sha256": "41142ee3ae068e0bdbe854951362475690ce50e1a4f66d9ec8032aa8ef90adc7"
+      },
+      "decode_mode": "greedy",
+      "eager_profile": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\greedy-prime-on-eager.json",
+        "sha256": "3b7215e7c7d4c143d7238bb97591bcaa20c2f3e6733730fa32c42c7fd28905c9"
+      },
+      "executed": true,
+      "name": "greedy-prime-on",
+      "parity_pass": true,
+      "passed": true,
+      "prime_enabled": true,
+      "report": {
+        "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-greedy-prime-on.json",
+        "sha256": "4bfe8f29e355316d7b26e000b68a13cd27afc1d6ffb1a1d5d5c192e754e0deeb"
+      },
+      "seed_count": 3,
+      "subprocess_returncode": 0
+    }
+  ],
+  "manifest": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\candidate-manifest.json",
+    "sha256": "669ea0a213bc911723c75d828d23dcf972afadb82b058baa2ed54d12c171e57c"
+  },
+  "method": "eager_vs_exact_allowlist_generation_prime_semantic_matrix",
+  "passed": true,
+  "seed_start": 20260801,
+  "source_compiled_profile": {
+    "path": "config\\rtx4090-faster-customvoice-frequency-exact-allowlist-r9-research.json",
+    "sha256": "59d94166a35baecd57fa28020e882ade23609bf82da61788b96bb653d165cdbd"
+  },
+  "source_eager_profile": {
+    "path": "config\\rtx4090-faster-customvoice-frequency-eager-parity-r9-research.json",
+    "sha256": "da34542717dd61a5f49c42b7552415cb996d839e6c764d0506d4141be11f407a"
+  }
+}

@@ -1,0 +1,243 @@
+{
+  "artifact_schema_version": 1,
+  "compiled_profile": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\greedy-prime-on-compiled.json",
+    "sha256": "41142ee3ae068e0bdbe854951362475690ce50e1a4f66d9ec8032aa8ef90adc7"
+  },
+  "eager_profile": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\generation-prime-semantic-matrix-profiles\\greedy-prime-on-eager.json",
+    "sha256": "3b7215e7c7d4c143d7238bb97591bcaa20c2f3e6733730fa32c42c7fd28905c9"
+  },
+  "manifest": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\candidate-manifest.json",
+    "sha256": "669ea0a213bc911723c75d828d23dcf972afadb82b058baa2ed54d12c171e57c"
+  },
+  "method": "long_lived_fixed_seed_eager_vs_exact_allowlist_generation",
+  "passed": true,
+  "rows": [
+    {
+      "passed": true,
+      "record_id": "v4-b01-003",
+      "seed_pairs": [
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "6c1ab552c4dcb41840995061858de5b46c27bca764a24906be17195cbb4e9ced",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "6c1ab552c4dcb41840995061858de5b46c27bca764a24906be17195cbb4e9ced",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260801,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "a0be82dc14ba68d799cbba7c7b111e827ceeef61fdee7905becfb048c8b787bc",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "a0be82dc14ba68d799cbba7c7b111e827ceeef61fdee7905becfb048c8b787bc",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260802,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "cedfb56092a84e911522e2848bf8c38043b7dc2529dabf1b73646a74f51cc6a9",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "cedfb56092a84e911522e2848bf8c38043b7dc2529dabf1b73646a74f51cc6a9",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260803,
+          "terminal_eos_exact": true
+        }
+      ],
+      "talker_prefill_length": 18
+    },
+    {
+      "passed": true,
+      "record_id": "v4-b01-001",
+      "seed_pairs": [
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "2afe3272921757477bff18924307283959347959e619a04e222d7d3664df780a",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "2afe3272921757477bff18924307283959347959e619a04e222d7d3664df780a",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260801,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "5f87d32f26dd52d054ae761c0f23171d9d6fbecbf0acbd584e3766d3a4cfc523",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "5f87d32f26dd52d054ae761c0f23171d9d6fbecbf0acbd584e3766d3a4cfc523",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260802,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "2963427668110e3914a249cd7f0df916bed2b7853c7932b6f8285cbb8b6d34c4",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "2963427668110e3914a249cd7f0df916bed2b7853c7932b6f8285cbb8b6d34c4",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260803,
+          "terminal_eos_exact": true
+        }
+      ],
+      "talker_prefill_length": 19
+    },
+    {
+      "passed": true,
+      "record_id": "v4-b01-030",
+      "seed_pairs": [
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "82a810b43ea89f057e4041b57eb2e05ded2c01d189d96768e07ff22ea2155d96",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "82a810b43ea89f057e4041b57eb2e05ded2c01d189d96768e07ff22ea2155d96",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260801,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "eb06546c998c84d8c1f513cba1172116099d96528f6124771cab7cac4f88e39f",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "eb06546c998c84d8c1f513cba1172116099d96528f6124771cab7cac4f88e39f",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260802,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "74136ab511b32833170f26ff58f5725cfaa90b90324d73077a9689dc58858556",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "74136ab511b32833170f26ff58f5725cfaa90b90324d73077a9689dc58858556",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260803,
+          "terminal_eos_exact": true
+        }
+      ],
+      "talker_prefill_length": 20
+    },
+    {
+      "passed": true,
+      "record_id": "v4-b01-059",
+      "seed_pairs": [
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "b5af9ec2bf3f29289944b4a9a3aa9786355c1494d51921cdee7c2f82085da34b",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "b5af9ec2bf3f29289944b4a9a3aa9786355c1494d51921cdee7c2f82085da34b",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260801,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "82e209cfb82e06659b55641778a69c9be332957eb0398b5e41a172dee360c237",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "82e209cfb82e06659b55641778a69c9be332957eb0398b5e41a172dee360c237",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260802,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "0f89ea8f6f2cef85c96485b929962bb4ef936eccb281040ee3cba5af4b9791a6",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "0f89ea8f6f2cef85c96485b929962bb4ef936eccb281040ee3cba5af4b9791a6",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260803,
+          "terminal_eos_exact": true
+        }
+      ],
+      "talker_prefill_length": 26
+    },
+    {
+      "passed": true,
+      "record_id": "v4-b01-155",
+      "seed_pairs": [
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "cef103b67086d19b94380f202dc7c58c58cdfac55cbc729fcca9189c4abce5d9",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "cef103b67086d19b94380f202dc7c58c58cdfac55cbc729fcca9189c4abce5d9",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260801,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "827985de95cf8f3dc1051be6319547d1798b16dc440ddbdd71fe46158dc0d819",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "827985de95cf8f3dc1051be6319547d1798b16dc440ddbdd71fe46158dc0d819",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260802,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "5b072562fe6c407c84aee575d8ec048c0ab5a3a3ace67900fc054d5003639e10",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "5b072562fe6c407c84aee575d8ec048c0ab5a3a3ace67900fc054d5003639e10",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260803,
+          "terminal_eos_exact": true
+        }
+      ],
+      "talker_prefill_length": 27
+    },
+    {
+      "passed": true,
+      "record_id": "v4-b01-022",
+      "seed_pairs": [
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "533023fef2e8a2ec21d14695c8fb1f5be3553117dd4d16d0dae1c5016f7aef3d",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "533023fef2e8a2ec21d14695c8fb1f5be3553117dd4d16d0dae1c5016f7aef3d",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260801,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "214adc030150a57d75bbb01f5393ff39fb563b94d7de582e80551b2c77114fe5",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "214adc030150a57d75bbb01f5393ff39fb563b94d7de582e80551b2c77114fe5",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260802,
+          "terminal_eos_exact": true
+        },
+        {
+          "codec_trace_exact": true,
+          "compiled_codec_sha256": "beaa93b9314504a0b1c121c4b10c72897bfd58ffdcced4593e51edb3d8e79134",
+          "compiled_route_ok": true,
+          "eager_codec_sha256": "beaa93b9314504a0b1c121c4b10c72897bfd58ffdcced4593e51edb3d8e79134",
+          "eager_route_ok": true,
+          "passed": true,
+          "seed": 20260803,
+          "terminal_eos_exact": true
+        }
+      ],
+      "talker_prefill_length": 29
+    }
+  ],
+  "seed_count": 3,
+  "seed_start": 20260801
+}
