@@ -44,8 +44,8 @@ Copy-Item config\playback-runtime.local.example.json config\playback-runtime.loc
 | `/top-p <value\|default>` | Устанавливает top-p или возвращает значение профиля. |
 | `/repetition-penalty <value\|default>` | Устанавливает penalty или возвращает значение профиля. |
 | `/sample <on\|off\|default>` | Включает sampling, greedy decoding или значение профиля. |
-| `/seed <value\|off>` | Устанавливает seed либо возвращает политику worker. |
-| `/sampling` | Показывает текущие overrides; `<worker default>` означает значение профиля. |
+| `/seed <value\|default>` | Устанавливает seed либо возвращает политику worker. `off` сохранён как alias для `default`. |
+| `/sampling` | Показывает текущие overrides и capabilities worker; `<worker default>` означает значение профиля. Worker логирует итоговые настройки как `request_effective_generation_settings`. |
 | `/help` | Показывает справку. |
 | `/quit` | Останавливает worker и завершает программу. |
 
@@ -62,6 +62,8 @@ Copy-Item config\playback-runtime.local.example.json config\playback-runtime.loc
 добавляет фонемный API или управление ударениями.
 Команды request-level sampling включены только с `-StyleExperiment`; sealed
 R10 profile отклоняет их, чтобы его измеренный operating contract не менялся.
+CLI сообщает об этом до отправки запроса. То же ограничение действует для
+one-shot sampling-флагов.
 
 Перед сравнением style, орфографической подсказки или произношения зафиксируйте
 seed:

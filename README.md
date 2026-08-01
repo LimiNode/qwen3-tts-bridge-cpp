@@ -73,7 +73,9 @@ The launcher defaults to the sealed R10 profile and runs its preflight. Use
 `-Text "Hello"` for a one-shot playback smoke or `-DryRun` to inspect the
 resolved command without starting a worker. `-Speaker`, `-Language`, `-Instruction`,
 `-Temperature`, `-TopK`, `-TopP`, `-RepetitionPenalty`, `-Seed`, and `-NoSample`
-override the saved defaults for one run. Its five-minute worker
+override the saved defaults for one run **only with `-StyleExperiment`**. The
+default sealed R10 profile rejects request-level sampling controls to preserve
+its measured contract. Its five-minute worker
 startup timeout covers the measured R10 compile/prime startup and can be
 changed with `-StartupTimeoutMs`.
 

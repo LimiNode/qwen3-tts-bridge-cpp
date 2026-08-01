@@ -75,7 +75,9 @@ Launcher по умолчанию использует sealed R10 profile и за
 `-Text "Hello"` выполняет одноразовый playback smoke, а `-DryRun` показывает
 итоговую команду без запуска worker. Параметры `-Speaker`, `-Language`,
 `-Instruction`, `-Temperature`, `-TopK`, `-TopP`, `-RepetitionPenalty`, `-Seed`
-и `-NoSample` переопределяют сохранённые настройки на один запуск. Пятиминутный
+и `-NoSample` переопределяют сохранённые настройки на один запуск **только с
+`-StyleExperiment`**. Sealed R10 profile по умолчанию отклоняет request-level
+sampling, чтобы не менять измеренный контракт. Пятиминутный
 timeout запуска worker учитывает измеренное время compile/prime для R10; его
 можно изменить через `-StartupTimeoutMs`.
 

@@ -50,8 +50,8 @@ profile prewarms six exact compiled shapes before declaring the worker ready.
 | `/top-p <value\|default>` | Sets nucleus sampling probability, or restores the worker default. |
 | `/repetition-penalty <value\|default>` | Discourages repeating generated acoustic tokens, or restores the worker default. |
 | `/sample <on\|off\|default>` | Enables sampling, requests greedy decoding, or restores the worker default. |
-| `/seed <value\|off>` | Uses a deterministic request seed, or returns to the worker seed policy. |
-| `/sampling` | Prints the effective CLI overrides; `<worker default>` means the profile controls that value. |
+| `/seed <value\|default>` | Uses a deterministic request seed, or returns to the worker seed policy. `off` remains an alias for `default`. |
+| `/sampling` | Prints the current CLI overrides and worker capabilities; `<worker default>` means the profile controls that value. The worker logs resolved settings as `request_effective_generation_settings`. |
 | `/help` | Shows the command reference. |
 | `/quit` | Stops the worker and exits. |
 
@@ -69,6 +69,8 @@ of `0.9`: it normally reduces phrase-to-phrase variation while retaining some
 prosody. It does not add phoneme or stress control.
 Request-level sampling commands are enabled only by `-StyleExperiment`; the
 sealed R10 profile rejects them so its measured operating contract cannot drift.
+The CLI reports that restriction before it sends a request. One-shot sampling
+flags have the same requirement.
 
 Use a fixed seed before comparing a style, spelling hint, or pronunciation:
 

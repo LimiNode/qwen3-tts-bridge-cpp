@@ -37,6 +37,7 @@ using qwen_tts_bridge::AudioFormat;
 using qwen_tts_bridge::PcmChunk;
 using qwen_tts_bridge::QwenTtsClient;
 using qwen_tts_bridge::QwenTtsClientOptions;
+using qwen_tts_bridge::ReadyMessage;
 using qwen_tts_bridge::RequestId;
 using qwen_tts_bridge::StdIoTransportOptions;
 using qwen_tts_bridge::TtsCallbacks;
@@ -59,6 +60,8 @@ struct ProgramOptions {
     std::optional<double> repetition_penalty;
     std::optional<bool> do_sample;
     std::optional<std::uint64_t> seed;
+    bool sampling_overrides_supported = false;
+    bool deterministic_seed_supported = false;
     std::uint32_t sample_rate = 24000;
     std::uint32_t channels = 1;
     int mock_chunks = 3;
@@ -301,7 +304,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  /top-p <value|default> Set nucleus probability for future requests.\n"
         << "  /repetition-penalty <value|default> Set repetition penalty for future requests.\n"
         << "  /sample <on|off|default> Set sampling mode for future requests.\n"
-        << "  /seed <value|off>      Set deterministic seed for future requests.\n"
+        << "  /seed <value|default>  Set deterministic seed for future requests.\n"
         << "  /sampling               Show current per-request sampling controls.\n"
         << "  /help                  Show this help.\n"
         << "  /quit                  Stop the worker and exit.\n\n"
@@ -709,6 +712,34 @@ void print_interactive_status(const ProgramOptions& options) {
     std::cout << ", seed="
               << (options.seed.has_value() ? std::to_string(options.seed.value()) : "<worker default>")
               << '\n';
+    std::cout << "worker capabilities: sampling_overrides="
+              << (options.sampling_overrides_supported ? "true" : "false")
+              << ", deterministic_seed="
+              << (options.deterministic_seed_supported ? "true" : "false")
+              << '\n';
+}
+
+bool has_sampling_overrides(const ProgramOptions& options) {
+    return options.temperature.has_value() ||
+           options.top_k.has_value() ||
+           options.top_p.has_value() ||
+           options.repetition_penalty.has_value() ||
+           options.do_sample.has_value();
+}
+
+void require_sampling_overrides_supported(const ProgramOptions& options) {
+    if (!options.sampling_overrides_supported) {
+        throw std::runtime_error(
+            "sampling overrides are disabled by the active worker profile; "
+            "use the StyleExperiment launcher profile");
+    }
+}
+
+void require_deterministic_seed_supported(const ProgramOptions& options) {
+    if (!options.deterministic_seed_supported) {
+        throw std::runtime_error(
+            "the active worker profile does not guarantee deterministic explicit seeds");
+    }
 }
 
 bool apply_interactive_command(ProgramOptions& options, const std::string& line) {
@@ -741,10 +772,12 @@ bool apply_interactive_command(ProgramOptions& options, const std::string& line)
             options.temperature.reset();
         }
         else {
-            options.temperature = parse_double(value, "/temperature");
-            if (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0) {
+            require_sampling_overrides_supported(options);
+            const double temperature = parse_double(value, "/temperature");
+            if (temperature <= 0.0 || temperature > 2.0) {
                 throw std::runtime_error("/temperature must be in the interval (0, 2]");
             }
+            options.temperature = temperature;
         }
         print_interactive_status(options);
         return true;
@@ -754,10 +787,12 @@ bool apply_interactive_command(ProgramOptions& options, const std::string& line)
             options.top_k.reset();
         }
         else {
-            options.top_k = parse_u32(value, "/top-k");
-            if (options.top_k.value() == 0) {
+            require_sampling_overrides_supported(options);
+            const std::uint32_t top_k = parse_u32(value, "/top-k");
+            if (top_k == 0) {
                 throw std::runtime_error("/top-k must be greater than zero");
             }
+            options.top_k = top_k;
         }
         print_interactive_status(options);
         return true;
@@ -767,10 +802,12 @@ bool apply_interactive_command(ProgramOptions& options, const std::string& line)
             options.top_p.reset();
         }
         else {
-            options.top_p = parse_double(value, "/top-p");
-            if (options.top_p.value() <= 0.0 || options.top_p.value() > 1.0) {
+            require_sampling_overrides_supported(options);
+            const double top_p = parse_double(value, "/top-p");
+            if (top_p <= 0.0 || top_p > 1.0) {
                 throw std::runtime_error("/top-p must be in the interval (0, 1]");
             }
+            options.top_p = top_p;
         }
         print_interactive_status(options);
         return true;
@@ -780,20 +817,23 @@ bool apply_interactive_command(ProgramOptions& options, const std::string& line)
             options.repetition_penalty.reset();
         }
         else {
-            options.repetition_penalty = parse_double(value, "/repetition-penalty");
-            if (options.repetition_penalty.value() < 1.0 ||
-                options.repetition_penalty.value() > 2.0) {
+            require_sampling_overrides_supported(options);
+            const double repetition_penalty = parse_double(value, "/repetition-penalty");
+            if (repetition_penalty < 1.0 || repetition_penalty > 2.0) {
                 throw std::runtime_error("/repetition-penalty must be in the interval [1, 2]");
             }
+            options.repetition_penalty = repetition_penalty;
         }
         print_interactive_status(options);
         return true;
     }
     if (command == "/sample") {
         if (value == "on") {
+            require_sampling_overrides_supported(options);
             options.do_sample = true;
         }
         else if (value == "off") {
+            require_sampling_overrides_supported(options);
             options.do_sample = false;
         }
         else if (value == "default") {
@@ -807,10 +847,11 @@ bool apply_interactive_command(ProgramOptions& options, const std::string& line)
         return true;
     }
     if (command == "/seed") {
-        if (value == "off") {
+        if (value == "default" || value == "off") {
             options.seed.reset();
         }
         else {
+            require_deterministic_seed_supported(options);
             options.seed = parse_u64(value, "/seed");
         }
         print_interactive_status(options);
@@ -904,6 +945,24 @@ int wmain(int argc, wchar_t** argv) {
         if (!client.start(make_transport_options(options), client_options)) {
             throw std::runtime_error("failed to start Qwen TTS worker");
         }
+        ReadyMessage ready;
+        if (!client.ready_message(ready)) {
+            client.stop();
+            throw std::runtime_error("worker did not expose a ready payload");
+        }
+        options.sampling_overrides_supported = ready.capabilities.sampling_overrides;
+        options.deterministic_seed_supported = ready.capabilities.deterministic_seed;
+        if (has_sampling_overrides(options) && !options.sampling_overrides_supported) {
+            client.stop();
+            throw std::runtime_error(
+                "sampling overrides are disabled by the active worker profile; "
+                "use the StyleExperiment launcher profile");
+        }
+        if (options.seed.has_value() && !options.deterministic_seed_supported) {
+            client.stop();
+            throw std::runtime_error(
+                "the active worker profile does not guarantee deterministic explicit seeds");
+        }
 
         WaveOutPlayer player;
         ActiveRequestState active_state;
@@ -944,8 +1003,13 @@ int wmain(int argc, wchar_t** argv) {
                 continue;
             }
             if (line.front() == '/') {
-                if (!apply_interactive_command(options, line)) {
-                    std::cerr << "unknown command; use /help\n";
+                try {
+                    if (!apply_interactive_command(options, line)) {
+                        std::cerr << "unknown command; use /help\n";
+                    }
+                }
+                catch (const std::exception& exc) {
+                    std::cerr << "command error: " << exc.what() << '\n';
                 }
                 continue;
             }
