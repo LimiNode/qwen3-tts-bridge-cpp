@@ -1,0 +1,126 @@
+{
+  "artifact_schema_version": 1,
+  "baseline": {
+    "profile_lengths": [
+      29,
+      30,
+      32,
+      33,
+      34,
+      35
+    ],
+    "records": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\same-wheel-ab\\legacy-run\\records.jsonl",
+      "sha256": "ec16fe0d8b86bed53251f31b2a7eb2a204b222fa4ad7d4e03e4f86f0b6c2c8d9"
+    },
+    "run": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\same-wheel-ab\\legacy-run\\run-manifest.json",
+      "sha256": "2dff4ee9cfa2128bc896f37d3bb5c696ce0a249dca0ecc400dbb38828081611f"
+    },
+    "startup": {
+      "engine_load_ms": 5050.842500058934,
+      "engine_warmup_ms": 48653.97199988365,
+      "generation_prime": false,
+      "generation_prime_duration_ms": null,
+      "generation_prime_rng_equal": true
+    }
+  },
+  "candidate": {
+    "profile_lengths": [
+      18,
+      19,
+      20,
+      26,
+      27,
+      29
+    ],
+    "records": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\same-wheel-ab\\candidate-run\\records.jsonl",
+      "sha256": "09fb892b15786a7876bcd74c2dc82341c25ccccf8106d6c69754341a15e70a93"
+    },
+    "run": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\same-wheel-ab\\candidate-run\\run-manifest.json",
+      "sha256": "573ffcbdfc21f4c33b2dd866e9ec9a73214b0e69bb4317f3c91465e5555f9a2d"
+    },
+    "startup": {
+      "engine_load_ms": 5449.532000115141,
+      "engine_warmup_ms": 49210.43669991195,
+      "generation_prime": true,
+      "generation_prime_duration_ms": 824.996,
+      "generation_prime_rng_equal": true
+    }
+  },
+  "failures": [],
+  "groups": {
+    "dropped_to_eager": {
+      "baseline_route": "compiled_allowlist",
+      "candidate_route": "eager_unknown",
+      "completed_ms": {
+        "baseline_mean": 2636.127,
+        "candidate_mean": 3014.864,
+        "candidate_minus_baseline_mean": 378.737,
+        "candidate_minus_baseline_p95": 633.425
+      },
+      "count": 25,
+      "first_audio_ms": {
+        "baseline_mean": 235.485,
+        "candidate_mean": 379.368,
+        "candidate_minus_baseline_mean": 143.883,
+        "candidate_minus_baseline_p95": 162.52
+      },
+      "lengths": [
+        30,
+        32,
+        33,
+        34,
+        35
+      ]
+    },
+    "newly_compiled": {
+      "baseline_route": "eager_unknown",
+      "candidate_route": "compiled_allowlist",
+      "completed_ms": {
+        "baseline_mean": 1455.678,
+        "candidate_mean": 1261.151,
+        "candidate_minus_baseline_mean": -194.526,
+        "candidate_minus_baseline_p95": -114.448
+      },
+      "count": 25,
+      "first_audio_ms": {
+        "baseline_mean": 350.491,
+        "candidate_mean": 237.762,
+        "candidate_minus_baseline_mean": -112.729,
+        "candidate_minus_baseline_p95": -106.57
+      },
+      "lengths": [
+        18,
+        19,
+        20,
+        26,
+        27
+      ]
+    },
+    "shared_compiled": {
+      "baseline_route": "compiled_allowlist",
+      "candidate_route": "compiled_allowlist",
+      "completed_ms": {
+        "baseline_mean": 1575.889,
+        "candidate_mean": 1578.178,
+        "candidate_minus_baseline_mean": 2.289,
+        "candidate_minus_baseline_p95": 43.252
+      },
+      "count": 5,
+      "first_audio_ms": {
+        "baseline_mean": 235.399,
+        "candidate_mean": 237.859,
+        "candidate_minus_baseline_mean": 2.46,
+        "candidate_minus_baseline_p95": 4.672
+      },
+      "lengths": [
+        29
+      ]
+    }
+  },
+  "method": "same_wheel_stratified_exact_allowlist_ab",
+  "passed": true
+}
