@@ -46,6 +46,17 @@ class ValidateQwenCorpusDiscoveryTests(unittest.TestCase):
         self.assertFalse(result["overall_acceptance_pass"])
         self.assertIn("row_seed_contract", result["failed_checks"])
 
+    def test_accepts_frozen_holdout_with_generation_prime(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = _write_valid_run(root)
+            _rewrite_as_frozen_holdout(paths)
+
+            result = _MODULE.validate(**paths)
+
+        self.assertTrue(result["overall_acceptance_pass"])
+        self.assertEqual("runtime_measurement_holdout", result["corpus_split"])
+
 
 def _write_valid_run(root: Path) -> dict[str, object]:
     input_path = root / "input.jsonl"
@@ -84,6 +95,7 @@ def _write_valid_run(root: Path) -> dict[str, object]:
     run_dir.mkdir()
     manifest = {
         "status": "completed",
+        "corpus_split": "discovery",
         "input_sha256": input_sha256,
         "corpus_id": "corpus-v4",
         "profile": {"sha256": _sha256(profile_path)},
@@ -153,6 +165,66 @@ def _write_valid_run(root: Path) -> dict[str, object]:
         "profile_path": profile_path,
         "run_dir": run_dir,
     }
+
+
+def _rewrite_as_frozen_holdout(paths: dict[str, object]) -> None:
+    input_path = paths["input_path"]
+    audit_path = paths["audit_path"]
+    profile_path = paths["profile_path"]
+    run_dir = paths["run_dir"]
+    assert isinstance(input_path, Path)
+    assert isinstance(audit_path, Path)
+    assert isinstance(profile_path, Path)
+    assert isinstance(run_dir, Path)
+
+    record = json.loads(input_path.read_text(encoding="utf-8"))
+    record["corpus_split"] = "runtime_measurement_holdout"
+    input_path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    input_sha256 = _sha256(input_path)
+    audit_path.write_text(
+        json.dumps(
+            {
+                "corpus_id": "corpus-v4",
+                "holdout_sha256": input_sha256,
+                "holdout_count": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    profile["prefill_generation_prime"] = True
+    profile_path.write_text(json.dumps(profile), encoding="utf-8")
+    policy_path = input_path.parent / "holdout-policy.json"
+    policy_path.write_text(
+        json.dumps(
+            {
+                "status": "frozen_for_one_measurement_holdout",
+                "corpus_id": "corpus-v4",
+                "input_sha256": input_sha256,
+                "profile_sha256": _sha256(profile_path),
+                "allow_padded_prefill": False,
+                "prefill_generation_prime": True,
+                "seed": 20260731,
+                "seed_mode": "request_id",
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest_path = run_dir / "run-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["corpus_split"] = "runtime_measurement_holdout"
+    manifest["input_sha256"] = input_sha256
+    manifest["profile"] = {"sha256": _sha256(profile_path)}
+    manifest["holdout_policy"] = {"sha256": _sha256(policy_path)}
+    manifest["engine_warmup"].update(
+        {
+            "prefill_generation_prime": True,
+            "prefill_generation_prime_ready": True,
+            "prefill_generation_prime_requires_natural_eos": True,
+        }
+    )
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    paths["holdout_policy_path"] = policy_path
 
 
 def _sha256(path: Path) -> str:

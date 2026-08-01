@@ -1,4 +1,4 @@
-"""Fail closed on a completed Qwen discovery run and its exact route contract."""
+"""Fail closed on a completed Qwen corpus run and its exact route contract."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ def main() -> int:
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--holdout-policy", type=Path)
     args = parser.parse_args()
 
     result = validate(
@@ -36,6 +37,7 @@ def main() -> int:
         expected_max_audio_seconds=args.expected_max_audio_seconds,
         profile_path=args.profile,
         run_dir=args.run_dir,
+        holdout_policy_path=args.holdout_policy,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -55,6 +57,7 @@ def validate(
     expected_max_audio_seconds: float,
     profile_path: Path,
     run_dir: Path,
+    holdout_policy_path: Path | None = None,
 ) -> dict[str, object]:
     records = _load_jsonl(input_path, "input")
     audit = _load_object(audit_path, "runtime split audit")
@@ -67,14 +70,29 @@ def validate(
     observed_ids = [str(row.get("record_id", "")) for row in rows]
     observed_id_set = set(observed_ids)
     profile_sha256 = _sha256(profile_path)
+    holdout_policy = (
+        _load_object(holdout_policy_path, "holdout policy")
+        if holdout_policy_path is not None
+        else None
+    )
+    expected_split = (
+        "runtime_measurement_holdout" if holdout_policy is not None else "discovery"
+    )
+    expected_audit_sha_key = (
+        "holdout_sha256" if holdout_policy is not None else "discovery_sha256"
+    )
+    expected_audit_count_key = (
+        "holdout_count" if holdout_policy is not None else "discovery_count"
+    )
 
     provenance_checks = {
-        "input_sha256": audit.get("discovery_sha256") == input_sha256
+        "input_sha256": audit.get(expected_audit_sha_key) == input_sha256
         and manifest.get("input_sha256") == input_sha256,
         "corpus_id": audit.get("corpus_id") == expected_corpus_id
         and manifest.get("corpus_id") == expected_corpus_id,
-        "discovery_split": all(record.get("corpus_split") == "discovery" for record in records),
-        "record_count": audit.get("discovery_count") == len(records),
+        "corpus_split": manifest.get("corpus_split") == expected_split
+        and all(record.get("corpus_split") == expected_split for record in records),
+        "record_count": audit.get(expected_audit_count_key) == len(records),
         "profile_sha256": _nested_sha(manifest, "profile") == profile_sha256,
         "record_ids": bool(expected_ids)
         and "" not in expected_ids
@@ -95,6 +113,17 @@ def validate(
             records,
             expected_seed,
             expected_seed_mode,
+        ),
+        "holdout_policy": _holdout_policy_valid(
+            holdout_policy,
+            holdout_policy_path,
+            input_path,
+            profile_path,
+            profile,
+            expected_corpus_id,
+            expected_seed,
+            expected_seed_mode,
+            manifest,
         ),
     }
 
@@ -120,6 +149,7 @@ def validate(
         "input_sha256": input_sha256,
         "records_sha256": _sha256(run_dir / "records.jsonl"),
         "profile_sha256": profile_sha256,
+        "corpus_split": expected_split,
         "checks": checks,
         "failed_checks": failed_checks,
         "execution_outcomes": dict(sorted(execution_counts.items())),
@@ -234,6 +264,44 @@ def _runtime_provenance_valid(manifest: Mapping[str, object]) -> bool:
         _nonempty_string(faster_source.get("source_commit"))
         and _nonempty_string(faster_source.get("source_git_tree"))
         and faster_source.get("source_tracked_tree_clean") is True
+    )
+
+
+def _holdout_policy_valid(
+    policy: Mapping[str, object] | None,
+    policy_path: Path | None,
+    input_path: Path,
+    profile_path: Path,
+    profile: Mapping[str, object],
+    expected_corpus_id: str,
+    expected_seed: int,
+    expected_seed_mode: str,
+    manifest: Mapping[str, object],
+) -> bool:
+    if policy is None:
+        return manifest.get("corpus_split") == "discovery"
+    if policy_path is None:
+        return False
+    manifest_policy = manifest.get("holdout_policy")
+    engine_warmup = manifest.get("engine_warmup")
+    if not isinstance(manifest_policy, Mapping):
+        return False
+    if not isinstance(engine_warmup, Mapping):
+        return False
+    return (
+        policy.get("status") == "frozen_for_one_measurement_holdout"
+        and policy.get("corpus_id") == expected_corpus_id
+        and policy.get("input_sha256") == _sha256(input_path)
+        and policy.get("profile_sha256") == _sha256(profile_path)
+        and policy.get("allow_padded_prefill") is False
+        and policy.get("prefill_generation_prime") is True
+        and profile.get("prefill_generation_prime") is True
+        and engine_warmup.get("prefill_generation_prime") is True
+        and engine_warmup.get("prefill_generation_prime_ready") is True
+        and engine_warmup.get("prefill_generation_prime_requires_natural_eos") is True
+        and policy.get("seed") == expected_seed
+        and policy.get("seed_mode") == expected_seed_mode
+        and manifest_policy.get("sha256") == _sha256(policy_path)
     )
 
 
