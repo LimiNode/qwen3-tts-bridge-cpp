@@ -41,8 +41,8 @@
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-prime.sanitized.json": "fba4fd34b3ecf301567f8619f4f8908cbb2f788301743cc614e622a10064da86",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-prime.validation.json": "436ba615668f9d64a278633d368d55329edad174490fcc2904c0247eacbc1d2f",
     "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/offline-holdout-report.json": "cbf598238acef6df7527b7168d1fd09082c1a7ed67f888dadaff4e8109d5cafb",
-    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-launcher-soak-r63.summary.json": "e2d78635ab29a17c04b1095da8b74e2a94b63266d1e0971925c8e4a7d20b903d",
-    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-launcher-soak-r63.validation.json": "9f8f79d8c24e114ca474e30cabebaf427ed4f8a801d1a58a86152e3d9b80bdbb"
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-launcher-soak-r504.summary.json": "259757061e0c780fc74888e80929c4b66bf60f8c067db5bcc9af41663539ad64",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-launcher-soak-r504.validation.json": "2f1975eddc26fc7bfadb7f6fdb45a974bc486ec813390714ae10d78472c10183"
   },
   "excluded_experiments": [
     "padded_prefill_buckets",

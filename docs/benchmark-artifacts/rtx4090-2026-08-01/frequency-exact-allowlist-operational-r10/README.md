@@ -13,11 +13,11 @@ part of this evidence.
 
 ## Generation-Prime Internal Candidate
 
-- `python-launcher-soak-r63.summary.json` and
-  `python-launcher-soak-r63.validation.json` record a launcher-mediated,
-  63-operation Python soak. It completed 36 requests, cancelled 27 requests,
-  exercised all six compiled lengths plus three eager holdouts, and observed
-  exactly six compiled cache entries.
+- `python-launcher-soak-r504.summary.json` and
+  `python-launcher-soak-r504.validation.json` record a launcher-mediated,
+  504-operation Python soak. It completed 396 requests, cancelled 108 requests
+  across all three cancellation phases, exercised all six compiled lengths plus
+  three eager holdouts, and observed exactly six compiled cache entries.
 - `cpp-api-soak-r250-prime.sanitized.json`, its metric JSONL, sanitization
   sidecar, and validation record a 250-operation public C++ API soak. It
   completed 225 requests, cancelled 25 requests, observed six cache entries,
@@ -26,6 +26,9 @@ part of this evidence.
 Both captures were run against the pinned generation-prime worker source and
 FasterQwen module bundles named in `evidence-index.json` and the runtime policy.
 Raw reports remain local and are intentionally not committed.
+
+`python-launcher-soak-r63.*` is retained as a supplementary launcher smoke. It
+does not authorize the profile and is not pinned by the runtime policy.
 
 ## Historical Research
 

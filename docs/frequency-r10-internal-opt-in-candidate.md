@@ -18,8 +18,9 @@ to other GPUs, including the deferred CMP 50HX profile.
 
 ## Operational Evidence
 
-- The launcher-mediated Python soak passed 63 mixed compiled/eager operations:
-  36 completed, 27 cancelled, nine semantic references, and six cache entries.
+- The launcher-mediated Python soak passed 504 mixed compiled/eager operations:
+  396 completed, 108 cancelled across every cancellation phase, nine semantic
+  references, and six cache entries.
 - The public C++ API soak passed 250 operations: 225 completed, 25 cancelled,
   one worker identity, and six cache entries.
 - The frozen holdout remains descriptive only and was not used to tune forms.
