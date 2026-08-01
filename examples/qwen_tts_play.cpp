@@ -6,6 +6,7 @@
 #include <mmsystem.h>
 
 #include <chrono>
+#include <array>
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
@@ -57,6 +58,36 @@ struct ProgramOptions {
     int mock_chunk_ms = 100;
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
+};
+
+class ConsoleCodePageGuard final {
+public:
+    ConsoleCodePageGuard()
+        : input_code_page_(GetConsoleCP()),
+          output_code_page_(GetConsoleOutputCP()) {
+        if (input_code_page_ != 0) {
+            SetConsoleCP(CP_UTF8);
+        }
+        if (output_code_page_ != 0) {
+            SetConsoleOutputCP(CP_UTF8);
+        }
+    }
+
+    ~ConsoleCodePageGuard() {
+        if (input_code_page_ != 0) {
+            SetConsoleCP(input_code_page_);
+        }
+        if (output_code_page_ != 0) {
+            SetConsoleOutputCP(output_code_page_);
+        }
+    }
+
+    ConsoleCodePageGuard(const ConsoleCodePageGuard&) = delete;
+    ConsoleCodePageGuard& operator=(const ConsoleCodePageGuard&) = delete;
+
+private:
+    UINT input_code_page_ = 0;
+    UINT output_code_page_ = 0;
 };
 
 class WaveOutPlayer final {
@@ -602,10 +633,73 @@ bool apply_interactive_command(ProgramOptions& options, const std::string& line)
     return false;
 }
 
+std::string utf8_from_wide(const std::wstring& value) {
+    if (value.empty()) {
+        return {};
+    }
+
+    const int byte_count = WideCharToMultiByte(
+        CP_UTF8,
+        WC_ERR_INVALID_CHARS,
+        value.data(),
+        static_cast<int>(value.size()),
+        nullptr,
+        0,
+        nullptr,
+        nullptr);
+    if (byte_count <= 0) {
+        throw std::runtime_error("failed to convert console input to UTF-8");
+    }
+
+    std::string utf8(static_cast<std::size_t>(byte_count), '\0');
+    if (WideCharToMultiByte(
+            CP_UTF8,
+            WC_ERR_INVALID_CHARS,
+            value.data(),
+            static_cast<int>(value.size()),
+            utf8.data(),
+            byte_count,
+            nullptr,
+            nullptr) <= 0) {
+        throw std::runtime_error("failed to convert console input to UTF-8");
+    }
+    return utf8;
+}
+
+bool read_interactive_line(std::string& line) {
+    const HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD console_mode = 0;
+    if (input == INVALID_HANDLE_VALUE ||
+        input == nullptr ||
+        !GetConsoleMode(input, &console_mode)) {
+        return static_cast<bool>(std::getline(std::cin, line));
+    }
+
+    std::array<wchar_t, 4096> wide_buffer{};
+    DWORD characters_read = 0;
+    if (!ReadConsoleW(
+            input,
+            wide_buffer.data(),
+            static_cast<DWORD>(wide_buffer.size() - 1),
+            &characters_read,
+            nullptr)) {
+        return false;
+    }
+
+    std::wstring wide_line(wide_buffer.data(), characters_read);
+    while (!wide_line.empty() &&
+           (wide_line.back() == L'\r' || wide_line.back() == L'\n')) {
+        wide_line.pop_back();
+    }
+    line = utf8_from_wide(wide_line);
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
     try {
+        ConsoleCodePageGuard console_code_page_guard;
         ProgramOptions options = parse_options(argc, argv);
         validate_options(options);
         if (options.help) {
@@ -643,7 +737,7 @@ int main(int argc, char** argv) {
 
         print_usage(std::cout, argv[0]);
         print_interactive_status(options);
-        for (std::string line; std::cout << "> " && std::getline(std::cin, line);) {
+        for (std::string line; std::cout << "> " && read_interactive_line(line);) {
             if (line.empty()) {
                 continue;
             }
