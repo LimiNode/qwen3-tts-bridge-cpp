@@ -1,0 +1,140 @@
+{
+  "audio_seconds": {
+    "max": 43.84,
+    "mean": 5.951,
+    "min": 2.0,
+    "p50": 4.8,
+    "p90": 8.8,
+    "p95": 10.576,
+    "p99": 29.498
+  },
+  "completed_ms": {
+    "max": 13465.393,
+    "mean": 2003.174,
+    "min": 847.611,
+    "p50": 1596.177,
+    "p90": 2748.272,
+    "p95": 3301.965,
+    "p99": 9084.239
+  },
+  "corpus_discovery_schema_version": 3,
+  "corpus_id": "representative-v4-r6-candidate",
+  "corpus_split": "discovery",
+  "execution_outcomes": {
+    "completed": 55
+  },
+  "first_audio_ms": {
+    "max": 356.931,
+    "mean": 287.753,
+    "min": 233.493,
+    "p50": 238.751,
+    "p90": 352.428,
+    "p95": 352.938,
+    "p99": 356.379
+  },
+  "generation_acceptance_pass": true,
+  "generation_outcomes": {
+    "eos": 55
+  },
+  "input_sha256": "ebdff9ca36b7e02c53cd8a98047a8c3b7bb7481e1325bff849bfc437bf7ca4ff",
+  "inverse_rtf": {
+    "max": 3.256,
+    "mean": 2.856,
+    "min": 2.193,
+    "p50": 2.987,
+    "p90": 3.181,
+    "p95": 3.217,
+    "p99": 3.241
+  },
+  "profile_sha256": "367f8d207c370412adec7253dcd5e2a787868eb053da0cf227f62a0ab3e46114",
+  "record_count": 55,
+  "record_id_set_sha256": "5adaa7f503e7ae89d11f64b5a9804c42ecb521f928eeb14ffc7100dc581a5054",
+  "records_sha256": "ec16fe0d8b86bed53251f31b2a7eb2a204b222fa4ad7d4e03e4f86f0b6c2c8d9",
+  "route_counts": {
+    "prefill_backend_used": {
+      "\"compile_reduce_overhead\"": 30,
+      "\"eager\"": 25
+    },
+    "prefill_shape_policy": {
+      "\"compiled_allowlist\"": 30,
+      "\"eager_unknown\"": 25
+    },
+    "selected_chunk_schedule": {
+      "[8, 8, 12]": 30,
+      "[8]": 25
+    }
+  },
+  "runtime": {
+    "bridge_commit": "be2034519a6c43e9fcc26638355a7f8b9e6a4747",
+    "bridge_git_tree": "f5b84de8dfdbdf01792cd31be63ee5e29d8795a4",
+    "bridge_tracked_tree_clean": true,
+    "bridge_worker_source_bundle_sha256": "da1223fb9a0f8e59cbb488cab22cc271dcb1f074aa64d6b29beaa9ddee590ef6",
+    "cuda_available": true,
+    "cuda_device_name": "NVIDIA GeForce RTX 4090",
+    "cuda_version": "12.8",
+    "faster_qwen3_tts_module": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean\\faster_qwen3_tts\\__init__.py",
+    "faster_qwen3_tts_source": {
+      "module_bundle_sha256": "a04b90e72105a6dfba4bf83a9f1cbe9b2bd06bc9208fd95c334378e674642c4c",
+      "module_directory": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean\\faster_qwen3_tts",
+      "source_commit": "58b063742f7707972ddc74a433a7f205ec471e65",
+      "source_git_tree": "d0462ab87261a3e080096f515232610b4eb7523c",
+      "source_repository": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean",
+      "source_tracked_tree_clean": true
+    },
+    "faster_qwen3_tts_version": "0.3.2",
+    "flash_attention_available": false,
+    "platform": "Windows-11-10.0.26100-SP0",
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "torch_version": "2.10.0+cu128",
+    "triton_windows_version": "3.6.0.post26",
+    "triton_windows_wheel_filename": null,
+    "triton_windows_wheel_sha256": null
+  },
+  "status": "completed",
+  "talker_prefill_histogram": [
+    {
+      "count": 5,
+      "talker_prefill_length": 18
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 19
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 20
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 26
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 27
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 29
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 30
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 32
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 33
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 34
+    },
+    {
+      "count": 5,
+      "talker_prefill_length": 35
+    }
+  ]
+}
