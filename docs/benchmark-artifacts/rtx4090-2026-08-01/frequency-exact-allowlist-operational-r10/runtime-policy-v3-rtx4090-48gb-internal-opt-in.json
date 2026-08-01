@@ -1,0 +1,70 @@
+{
+  "runtime_policy_schema_version": 3,
+  "status": "internal_opt_in_only",
+  "policy_name": "rtx4090-48gb-frequency-exact-allowlist-r10-internal-opt-in",
+  "hardware_scope": "NVIDIA GeForce RTX 4090 reporting 48 GiB total VRAM",
+  "profile_sha256": "2249c5a765091e2f98244b308ecb156877292ed64a1bed703c3ecc8675ab6076",
+  "profile_contract": {
+    "profile_status": "internal_opt_in_only",
+    "name": "rtx4090-48gb-faster-customvoice-frequency-exact-allowlist-r10-internal-opt-in",
+    "model_path": "models/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "runtime_backend": "faster",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "attn_implementation": "sdpa",
+    "prefill_backend": "compile_reduce_overhead",
+    "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+    "prefill_compile_lengths": [18, 19, 20, 26, 27, 29],
+    "prefill_compile_on_miss": false,
+    "prefill_unknown_shape_policy": "eager",
+    "prefill_compile_policy": "exact_allowlist",
+    "prefill_allowlist_max_entries": 6,
+    "prefill_allowlist_max_abs_threshold": 0.0,
+    "prefill_require_precompiled": true,
+    "prefill_generation_prime": true,
+    "compiled_emit_chunk_schedule": [8, 8, 12],
+    "eager_emit_chunk_schedule": [8]
+  },
+  "runtime_contract": {
+    "python": "3.12.10",
+    "torch": "2.10.0+cu128",
+    "cuda_runtime": "12.8",
+    "triton_windows": "3.6.0.post26",
+    "triton_windows_record_sha256": "57042f5da747ab53c196331d46e3ced98914d53b725eeddaea68c53d46e19fdd",
+    "faster_version": "0.3.2",
+    "faster_module_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+    "faster_source_git_commit": "a0532ff8b712a4051bdf60ac2cd430a492c24d39",
+    "faster_source_git_tree": "41fc626b09fb4814d16c7e3c2794f6803437afd3",
+    "faster_source_git_dirty": false,
+    "faster_source_repository": "https://github.com/LimiNode/faster-qwen3-tts.git",
+    "worker_source_bundle_sha256": "ff745b37a067a50bdacc02b19116687c3c28af04a7f061749f3af6b190c82240",
+    "nvidia_driver_version": "591.86",
+    "gpu_name": "NVIDIA GeForce RTX 4090",
+    "gpu_capability": [8, 9],
+    "gpu_total_memory_bytes": 51526369280
+  },
+  "model_runtime_manifest": {
+    "path": "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/model-runtime-manifest.json",
+    "sha256": "4fbf476dc476fd662ecd2ae125a44b39378d05b650606d49d55cf3a1bbd41ee7"
+  },
+  "evidence_files": {
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/representative-v4-frequency-exact-allowlist-r9/candidate-manifest.json": "bcbf9c7ab92a5caf0c45ab08c883d03c54c2393a069bc17a60e23254ce570207",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/bridge-tool-provenance.json": "9ccc498e41f7af402ac00e42b1494e3ba2ee38f00d155ce3a0226fd917ed6a05",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-prime.metrics.jsonl": "1c11ae58fa2c055e33694b306222e47caffedace8b308c7cdacce0e46527581e",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-prime.sanitization.json": "9a99bf2128ad587f9310bbf135d9a5c35ead52efe9edccca8e436b0b6bd6fd8b",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-prime.sanitized.json": "fba4fd34b3ecf301567f8619f4f8908cbb2f788301743cc614e622a10064da86",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/cpp-api-soak-r250-prime.validation.json": "436ba615668f9d64a278633d368d55329edad174490fcc2904c0247eacbc1d2f",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/faster-qwen3-tts-a0532ff.bundle": "61a672a7e5d501aea9f6623489556e745ace2012ef9ac17ce2def0e8df46e8fb",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/faster-qwen3-tts-source-manifest.json": "ed67e56167f3315adf6bf80450c9ba6084ffc028494a9aba8a957e9961386676",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/model-runtime-manifest.json": "4fbf476dc476fd662ecd2ae125a44b39378d05b650606d49d55cf3a1bbd41ee7",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/offline-holdout-report.json": "cbf598238acef6df7527b7168d1fd09082c1a7ed67f888dadaff4e8109d5cafb",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-launcher-soak-r504.summary.json": "259757061e0c780fc74888e80929c4b66bf60f8c067db5bcc9af41663539ad64",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/python-launcher-soak-r504.validation.json": "2f1975eddc26fc7bfadb7f6fdb45a974bc486ec813390714ae10d78472c10183",
+    "docs/benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/triton-runtime-provenance.json": "448d2678ce97500fab486ab7b0b063de722c3952184924838d0e3b4837a39176"
+  },
+  "excluded_experiments": [
+    "padded_prefill_buckets",
+    "compiled_5_8_12_scheduler"
+  ],
+  "default_profile_changed": false
+}

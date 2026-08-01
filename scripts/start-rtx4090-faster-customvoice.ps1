@@ -18,6 +18,7 @@ $pythonPath = if ([System.IO.Path]::IsPathRooted($Python)) {
 } else {
     Join-Path $repoRoot $Python
 }
+$selectedModelPath = if ($ModelPath) { $ModelPath } else { $profile.model_path }
 
 if (-not (Test-Path -LiteralPath $pythonPath)) {
     throw "Python executable was not found: $pythonPath"
@@ -35,7 +36,7 @@ $env:PYTHONPATH = [string]::Join(";", $pythonPaths)
 
 if ($profile.profile_status -eq "internal_opt_in_only") {
     $preflight = Join-Path $repoRoot "scripts/validate_internal_runtime_profile.py"
-    $preflightOutput = & $pythonPath $preflight --profile $profileFullPath
+    $preflightOutput = & $pythonPath $preflight --profile $profileFullPath --model-path $selectedModelPath
     $preflightExitCode = $LASTEXITCODE
     if ($preflightOutput) {
         [Console]::Error.WriteLine(($preflightOutput -join [Environment]::NewLine))
@@ -49,7 +50,6 @@ if ($ValidateOnly) {
     exit 0
 }
 
-$selectedModelPath = if ($ModelPath) { $ModelPath } else { $profile.model_path }
 $maxSeqLen = if ($null -ne $profile.max_seq_len) { $profile.max_seq_len } else { 2048 }
 $arguments = @(
     "-m", "qwen_tts_bridge_worker",

@@ -1,0 +1,8 @@
+{
+  "triton_runtime_provenance_schema_version": 1,
+  "distribution": "triton-windows",
+  "version": "3.6.0.post26",
+  "installed_record_sha256": "57042f5da747ab53c196331d46e3ced98914d53b725eeddaea68c53d46e19fdd",
+  "original_wheel_sha256": null,
+  "wheel_cache_status": "unavailable_at_sealing"
+}

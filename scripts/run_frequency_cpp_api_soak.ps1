@@ -22,7 +22,7 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $launcher = Join-Path $repositoryRoot "scripts\start-rtx4090-faster-customvoice.ps1"
-$profile = "config\rtx4090-faster-customvoice-frequency-exact-allowlist-r10-internal-opt-in.json"
+$profile = "config\rtx4090-48gb-faster-customvoice-frequency-exact-allowlist-r10-internal-opt-in.json"
 $powerShell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
 $manifest = (Resolve-Path $ManifestPath).Path
 $null = New-Item -ItemType Directory -Force -Path $OutputDirectory

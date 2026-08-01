@@ -7,13 +7,20 @@ import hashlib
 import importlib
 import importlib.metadata
 import json
+import subprocess
 import sys
 from pathlib import Path
+
+try:
+    from model_runtime_manifest import verify_manifest
+except ModuleNotFoundError:  # Imported as scripts.validate_internal_runtime_profile.
+    from scripts.model_runtime_manifest import verify_manifest
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, required=True)
+    parser.add_argument("--model-path", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -22,7 +29,13 @@ def main() -> int:
     policy_path = _policy_path(args.profile, profile)
     policy = _load_object(policy_path.read_bytes(), "evidence policy")
     repo_root = args.profile.parents[1]
-    report = _validate(profile, policy, _runtime(repo_root), repo_root)
+    report = _validate(
+        profile,
+        policy,
+        _runtime(repo_root),
+        repo_root,
+        model_path=args.model_path,
+    )
     profile_sha256 = _sha256(profile_bytes)
     if policy.get("profile_sha256") != profile_sha256:
         report["failures"].append("profile SHA does not match policy")
@@ -42,17 +55,26 @@ def _validate(
     policy: dict[str, object],
     runtime: dict[str, object],
     repo_root: Path,
+    *,
+    model_path: Path | None = None,
 ) -> dict[str, object]:
     failures: list[str] = []
     if profile.get("profile_status") != "internal_opt_in_only":
         failures.append("profile is not internal_opt_in_only")
-    if policy.get("runtime_policy_schema_version") != 2:
+    if policy.get("runtime_policy_schema_version") != 3:
         failures.append("runtime policy schema is unsupported")
     if policy.get("status") != "internal_opt_in_only":
         failures.append("runtime policy is not internal_opt_in_only")
     _compare("profile", profile, _object(policy, "profile_contract"), failures)
     _compare("runtime", runtime, _object(policy, "runtime_contract"), failures)
     _validate_evidence(repo_root, _object(policy, "evidence_files"), failures)
+    _validate_model_runtime_manifest(
+        repo_root,
+        profile,
+        _object(policy, "model_runtime_manifest"),
+        failures,
+        model_path=model_path,
+    )
     return {"failures": failures, "runtime": runtime}
 
 
@@ -83,24 +105,119 @@ def _validate_evidence(
             failures.append(f"evidence file SHA does not match: {relative_path}")
 
 
+def _validate_model_runtime_manifest(
+    repo_root: Path,
+    profile: dict[str, object],
+    contract: dict[str, object],
+    failures: list[str],
+    *,
+    model_path: Path | None,
+) -> None:
+    manifest_path = _contract_path(repo_root, contract.get("path"))
+    expected_sha256 = contract.get("sha256")
+    if manifest_path is None or not isinstance(expected_sha256, str):
+        failures.append("model runtime manifest contract is invalid")
+        return
+    if not manifest_path.is_file():
+        failures.append("model runtime manifest is missing")
+        return
+    if _sha256(manifest_path.read_bytes()) != expected_sha256:
+        failures.append("model runtime manifest SHA does not match policy")
+        return
+    selected_model_path = model_path or _contract_path(
+        repo_root, profile.get("model_path")
+    )
+    if selected_model_path is None:
+        failures.append("profile model_path is invalid")
+        return
+    try:
+        manifest = _load_object(manifest_path.read_bytes(), "model runtime manifest")
+        verify_manifest(selected_model_path, manifest)
+    except ValueError as exc:
+        failures.append(f"model runtime manifest verification failed: {exc}")
+
+
+def _contract_path(repo_root: Path, value: object) -> Path | None:
+    if not isinstance(value, str) or not value:
+        return None
+    path = Path(value)
+    return path if path.is_absolute() else repo_root / path
+
+
 def _runtime(repo_root: Path) -> dict[str, object]:
     torch = importlib.import_module("torch")
     faster = importlib.import_module("faster_qwen3_tts")
     gpu = torch.cuda.get_device_properties(0) if torch.cuda.is_available() else None
+    faster_directory = Path(faster.__file__).parent
     return {
         "python": ".".join(str(item) for item in sys.version_info[:3]),
         "torch": torch.__version__,
         "cuda_runtime": torch.version.cuda,
         "triton_windows": importlib.metadata.version("triton-windows"),
+        "triton_windows_record_sha256": _distribution_record_sha256(
+            "triton-windows"
+        ),
         "faster_version": importlib.metadata.version("faster-qwen3-tts"),
-        "faster_module_bundle_sha256": _bundle_sha256(Path(faster.__file__).parent),
+        "faster_module_bundle_sha256": _bundle_sha256(faster_directory),
+        **_git_provenance(faster_directory),
         "worker_source_bundle_sha256": _bundle_sha256(
             repo_root / "worker" / "src" / "qwen_tts_bridge_worker"
         ),
+        "nvidia_driver_version": _nvidia_driver_version(),
         "gpu_name": gpu.name if gpu else None,
         "gpu_capability": [gpu.major, gpu.minor] if gpu else None,
         "gpu_total_memory_bytes": gpu.total_memory if gpu else None,
     }
+
+
+def _distribution_record_sha256(distribution_name: str) -> str | None:
+    record = importlib.metadata.distribution(distribution_name).read_text("RECORD")
+    return _sha256(record.encode("utf-8")) if record is not None else None
+
+
+def _git_provenance(path: Path) -> dict[str, object]:
+    root = _git_output(path, "rev-parse", "--show-toplevel")
+    if root is None:
+        return {
+            "faster_source_git_commit": None,
+            "faster_source_git_tree": None,
+            "faster_source_git_dirty": None,
+            "faster_source_repository": None,
+        }
+    source_root = Path(root)
+    status = _git_output(source_root, "status", "--porcelain", "--untracked-files=all")
+    return {
+        "faster_source_git_commit": _git_output(source_root, "rev-parse", "HEAD"),
+        "faster_source_git_tree": _git_output(source_root, "rev-parse", "HEAD^{tree}"),
+        "faster_source_git_dirty": bool(status) if status is not None else None,
+        "faster_source_repository": _git_output(
+            source_root, "remote", "get-url", "fork"
+        ),
+    }
+
+
+def _git_output(path: Path, *arguments: str) -> str | None:
+    try:
+        return subprocess.check_output(
+            ["git", "-C", str(path), *arguments],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _nvidia_driver_version() -> str | None:
+    try:
+        output = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    values = [line.strip() for line in output.splitlines() if line.strip()]
+    return values[0] if len(values) == 1 else None
 
 
 def _policy_path(profile_path: Path, profile: dict[str, object]) -> Path:

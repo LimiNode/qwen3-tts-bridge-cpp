@@ -3,8 +3,8 @@
 This directory contains reproducible, privacy-minimized R10 frequency
 exact-allowlist evidence. The older evidence is retained as historical research.
 The generation-prime evidence below is the candidate basis for the narrowly
-scoped RTX 4090 internal opt-in profile. It does not change the default runtime
-profile or authorize broader hardware rollout.
+scoped RTX 4090 48GB internal opt-in profile. It does not change the default
+runtime profile or authorize broader hardware rollout.
 
 The measured configuration used the exact compiled lengths `18, 19, 20, 26,
 27, 29`, compiled chunk schedule `8, 8, 12`, eager schedule `8`, and an eager
@@ -26,6 +26,21 @@ part of this evidence.
 Both captures were run against the pinned generation-prime worker source and
 FasterQwen module bundles named in `evidence-index.json` and the runtime policy.
 Raw reports remain local and are intentionally not committed.
+
+The sealed policy additionally verifies the content manifest of the selected
+model directory before worker startup. `faster-qwen3-tts-a0532ff.bundle` and
+its source manifest preserve the clean source tree whose Python module bundle
+matches the capture. The original Triton wheel was absent from the local pip
+cache at sealing time; the policy therefore pins the installed distribution
+`RECORD` hash rather than claiming a wheel hash it cannot verify.
+
+## Latency Scope
+
+The operational soak is a stability gate, not a latency SLA. Across its mixed
+completed requests, first audio was `384.5 ms` median, `1073.9 ms` p95, and
+`1197.2 ms` maximum. The three eager holdout scenarios each measured p95 first
+audio between `1174.2 ms` and `1175.9 ms`. Do not present compiled allowlist
+latency as a guarantee for arbitrary eager text lengths.
 
 `python-launcher-soak-r63.*` is retained as a supplementary launcher smoke. It
 does not authorize the profile and is not pinned by the runtime policy.
@@ -49,7 +64,7 @@ Raw stderr, complete per-request Python reports, process IDs, session IDs,
 absolute paths, and runtime request text are intentionally absent. The source
 file hashes and retained-file hashes are in `evidence-index.json`. Historical
 files do not authorize the current profile; only the generation-prime candidate
-files are pinned by `runtime-policy-v2-internal-opt-in.json`.
+files are pinned by `runtime-policy-v3-rtx4090-48gb-internal-opt-in.json`.
 
 ## Revalidation
 
@@ -64,4 +79,12 @@ sidecar:
   --expected-requests 250 `
   --expected-cancelled 25 `
   --expected-cache-entries 6
+```
+
+Verify the actual model directory before launching the internal profile:
+
+```powershell
+.venv\Scripts\python.exe scripts\model_runtime_manifest.py verify `
+  --model-path models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --manifest docs\benchmark-artifacts\rtx4090-2026-08-01\frequency-exact-allowlist-operational-r10\model-runtime-manifest.json
 ```

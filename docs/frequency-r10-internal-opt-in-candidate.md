@@ -2,9 +2,14 @@
 
 ## Status
 
-The RTX 4090 FasterQwen frequency exact-allowlist configuration is an internal
-opt-in candidate. The project default remains unchanged. No result here applies
-to other GPUs, including the deferred CMP 50HX profile.
+The RTX 4090 48GB FasterQwen frequency exact-allowlist configuration is an
+internal opt-in candidate. The project default remains unchanged. No result
+here applies to other GPUs, including the deferred CMP 50HX profile.
+
+This is a pinned `NVIDIA GeForce RTX 4090` configuration reporting `48 GiB`
+of total VRAM. A normal 24GB RTX 4090, RTX 3090, or any other CUDA GPU may use
+the generic eager path, but must receive its own profile, smoke, and soak before
+this compiled configuration can be enabled there.
 
 ## Runtime Contract
 
@@ -13,8 +18,8 @@ to other GPUs, including the deferred CMP 50HX profile.
 - Compiled emission schedule: `8, 8, 12`; eager schedule: `8`.
 - Strict BF16 SDPA, exact zero-delta allowlist gate, and generation priming are
   required.
-- The policy pins the Python, Torch/CUDA, Triton, FasterQwen, worker, profile,
-  and evidence hashes.
+- The policy pins the model runtime files, Python, Torch/CUDA, Triton,
+  FasterQwen, worker, profile, and evidence hashes.
 
 ## Operational Evidence
 
@@ -25,8 +30,12 @@ to other GPUs, including the deferred CMP 50HX profile.
   one worker identity, and six cache entries.
 - The frozen holdout remains descriptive only and was not used to tune forms.
 
+The mixed Python soak is not a latency SLA: first audio was `384.5 ms` median,
+`1073.9 ms` p95, and `1197.2 ms` maximum. Eager holdouts reached roughly
+`1.17-1.18 s` p95, so arbitrary text shapes need that expectation documented.
+
 See [the evidence README](benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/README.md)
-and `runtime-policy-v2-internal-opt-in.json` for validation commands and exact
+and `runtime-policy-v3-rtx4090-48gb-internal-opt-in.json` for validation commands and exact
 provenance.
 
 ## Deferred Work

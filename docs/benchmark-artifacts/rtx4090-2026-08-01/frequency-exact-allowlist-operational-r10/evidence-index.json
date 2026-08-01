@@ -1,5 +1,5 @@
 {
-  "frequency_exact_allowlist_evidence_index_schema_version": 2,
+  "frequency_exact_allowlist_evidence_index_schema_version": 3,
   "evidence_role": "internal_opt_in_candidate_with_historical_context",
   "historical_source_capture": {
     "branch": "research/frequency-exact-allowlist",
@@ -24,8 +24,19 @@
     "source_python_release_soak_sha256": "4e56dbcd2d37407a9ffd804785a492c0330a43574381e13d3b63e59704123f98",
     "source_cpp_api_soak_sha256": "12e95d2c3286ae0d762546035aec57bd3605311d352cb47e9df0083ae310ec9c",
     "source_worker_metric_provenance": "embedded_request_telemetry",
+    "captured_faster_source_commit": "1ab0dc0e2c9b98292960e3e8469bd554ae744354",
+    "captured_faster_source_git_dirty": true,
     "faster_module_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
     "worker_source_bundle_sha256": "ff745b37a067a50bdacc02b19116687c3c28af04a7f061749f3af6b190c82240"
+  },
+  "clean_source_reproduction": {
+    "repository": "https://github.com/LimiNode/faster-qwen3-tts.git",
+    "branch": "prefill-compile-exact-shape",
+    "commit": "a0532ff8b712a4051bdf60ac2cd430a492c24d39",
+    "tree": "41fc626b09fb4814d16c7e3c2794f6803437afd3",
+    "git_dirty": false,
+    "module_bundle_sha256": "c258f89d59894f549c65324d793575aab31161d91f6825db1f5d6ca1317431df",
+    "git_bundle_sha256": "61a672a7e5d501aea9f6623489556e745ace2012ef9ac17ce2def0e8df46e8fb"
   },
   "internal_opt_in_candidate_files": {
     "cpp-api-soak-r250-prime.metrics.jsonl": "1c11ae58fa2c055e33694b306222e47caffedace8b308c7cdacce0e46527581e",
@@ -34,6 +45,13 @@
     "cpp-api-soak-r250-prime.validation.json": "436ba615668f9d64a278633d368d55329edad174490fcc2904c0247eacbc1d2f",
     "python-launcher-soak-r504.summary.json": "259757061e0c780fc74888e80929c4b66bf60f8c067db5bcc9af41663539ad64",
     "python-launcher-soak-r504.validation.json": "2f1975eddc26fc7bfadb7f6fdb45a974bc486ec813390714ae10d78472c10183"
+  },
+  "sealing_provenance_files": {
+    "bridge-tool-provenance.json": "9ccc498e41f7af402ac00e42b1494e3ba2ee38f00d155ce3a0226fd917ed6a05",
+    "faster-qwen3-tts-a0532ff.bundle": "61a672a7e5d501aea9f6623489556e745ace2012ef9ac17ce2def0e8df46e8fb",
+    "faster-qwen3-tts-source-manifest.json": "ed67e56167f3315adf6bf80450c9ba6084ffc028494a9aba8a957e9961386676",
+    "model-runtime-manifest.json": "4fbf476dc476fd662ecd2ae125a44b39378d05b650606d49d55cf3a1bbd41ee7",
+    "triton-runtime-provenance.json": "448d2678ce97500fab486ab7b0b063de722c3952184924838d0e3b4837a39176"
   },
   "supplemental_launcher_smoke_files": {
     "python-launcher-soak-r63.summary.json": "e2d78635ab29a17c04b1095da8b74e2a94b63266d1e0971925c8e4a7d20b903d",
