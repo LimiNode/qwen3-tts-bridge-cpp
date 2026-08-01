@@ -27,7 +27,7 @@ def main() -> int:
 
     artifact = json.loads(args.artifact.read_text(encoding="utf-8"))
     worker_metrics_text = (
-        args.worker_metrics.read_text(encoding="utf-8") if args.worker_metrics else ""
+        _read_worker_metrics_text(args.worker_metrics) if args.worker_metrics else ""
     )
     expected_contracts = _manifest_contracts(args.manifest) if args.manifest else None
     report = validate_cpp_api_soak(
@@ -50,6 +50,12 @@ def main() -> int:
         args.output.write_text(json.dumps(report, sort_keys=True), encoding="utf-8")
     print(json.dumps(report, sort_keys=True))
     return 0 if report["acceptance_pass"] else 1
+
+
+def _read_worker_metrics_text(path: Path) -> str:
+    """Decode mixed worker stderr without losing ASCII metric lines."""
+
+    return path.read_bytes().decode("utf-8", errors="replace")
 
 
 def validate_cpp_api_soak(

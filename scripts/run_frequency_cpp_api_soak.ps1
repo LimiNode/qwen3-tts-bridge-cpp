@@ -98,5 +98,12 @@ $arguments = @(
     "--request-timeout-ms=120000"
 )
 
-& $BenchmarkExecutable @arguments | Set-Content -LiteralPath $outputPath -Encoding utf8
-exit $LASTEXITCODE
+$benchmarkOutput = & $BenchmarkExecutable @arguments
+$exitCode = $LASTEXITCODE
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText(
+    $outputPath,
+    [string]::Join([Environment]::NewLine, [string[]]$benchmarkOutput),
+    $utf8NoBom
+)
+exit $exitCode
