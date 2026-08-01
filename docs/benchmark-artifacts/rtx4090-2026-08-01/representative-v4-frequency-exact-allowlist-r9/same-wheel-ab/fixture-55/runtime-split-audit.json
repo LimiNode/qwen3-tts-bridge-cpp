@@ -1,0 +1,50 @@
+{
+  "artifact_schema_version": 1,
+  "baseline_manifest": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\same-wheel-ab\\old-allowlist-manifest.json",
+    "sha256": "66b4e8c00171cd88e0a83dbf93f2565cc164bc89bcba1777cf93bca67364fe2d"
+  },
+  "candidate_manifest": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\candidate-manifest.json",
+    "sha256": "669ea0a213bc911723c75d828d23dcf972afadb82b058baa2ed54d12c171e57c"
+  },
+  "corpus_id": "representative-v4-r6-candidate",
+  "discovery_count": 55,
+  "discovery_sha256": "ebdff9ca36b7e02c53cd8a98047a8c3b7bb7481e1325bff849bfc437bf7ca4ff",
+  "fixture_kind": "same_wheel_exact_allowlist_ab",
+  "samples_per_length": 5,
+  "selected_count_by_length": {
+    "18": 5,
+    "19": 5,
+    "20": 5,
+    "26": 5,
+    "27": 5,
+    "29": 5,
+    "30": 5,
+    "32": 5,
+    "33": 5,
+    "34": 5,
+    "35": 5
+  },
+  "selected_lengths": [
+    18,
+    19,
+    20,
+    26,
+    27,
+    29,
+    30,
+    32,
+    33,
+    34,
+    35
+  ],
+  "source_discovery": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-07-30\\representative-v4-r6-candidate\\discovery.jsonl",
+    "sha256": "0f22e2252cfef4d7fafb8a41d8b39dc0321d9bdc4cf8c9f5f565001775dc2891"
+  },
+  "source_records": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-07-31\\representative-v4-r8-clean-seeded-safety-discovery-rtx4090\\records.jsonl",
+    "sha256": "e2bf20b927e6eb3f85665440c9634f67663a2efc7e0ba7e68abd7fa1e99d706d"
+  }
+}
