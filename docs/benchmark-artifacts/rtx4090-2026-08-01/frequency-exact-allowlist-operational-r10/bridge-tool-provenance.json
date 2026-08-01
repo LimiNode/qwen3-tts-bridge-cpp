@@ -1,6 +1,8 @@
 {
-  "bridge_tool_provenance_schema_version": 1,
+  "bridge_tool_provenance_schema_version": 2,
   "sealing_base_commit": "b1fe5cd140f290490d6f5ea0be401cfe4e68ee8d",
-  "preflight_script_sha256": "7cfe31f873bf12c61045021728c7e1885bca35e55fee7db9e67c097725d02d47",
-  "model_manifest_tool_sha256": "953f26e42025dc3cc87dd4e3bac61207d3b749a81f8c960a79e47566f8a6ac7b"
+  "preflight_script_sha256": "4eae609afe6f0da21c88f41b6f75625699ae2864d6e99e885c82083bb67a608a",
+  "launcher_script_sha256": "4760f70332031c164c3d58c1bbb71b5d786fca7c18df4281dd11f22ebba113dd",
+  "model_manifest_tool_sha256": "2e2bfce39a4f30b0ce9391e1c999dfd5b98e18409c0e30d290938fa41528720f",
+  "triton_manifest_tool_sha256": "0364d078a234a0f5675e6dc45d6297164548b04112c085bce52276163a4ee640"
 }

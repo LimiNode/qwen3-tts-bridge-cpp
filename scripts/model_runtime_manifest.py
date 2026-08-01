@@ -7,16 +7,9 @@ import hashlib
 import json
 from pathlib import Path
 
-_SCHEMA_VERSION = 1
-_RUNTIME_FILE_NAMES = {
-    "config.json",
-    "generation_config.json",
-    "merges.txt",
-    "model.safetensors",
-    "preprocessor_config.json",
-    "tokenizer_config.json",
-    "vocab.json",
-}
+_SCHEMA_VERSION = 2
+_TRANSIENT_DIRECTORY_NAMES = {".cache"}
+_TRANSIENT_FILE_SUFFIXES = {".incomplete", ".lock", ".partial", ".tmp"}
 
 
 def main() -> int:
@@ -47,7 +40,7 @@ def build_manifest(
     repository: str,
     revision: str,
 ) -> dict[str, object]:
-    """Return a deterministic manifest of all model files loaded at runtime."""
+    """Return a deterministic manifest of a complete pinned model directory."""
 
     if not repository or not revision:
         raise ValueError("repository and revision must be non-empty")
@@ -119,13 +112,17 @@ def _runtime_files(model_path: Path) -> list[Path]:
     files = [
         path
         for path in model_path.rglob("*")
-        if path.is_file()
-        and ".cache" not in path.relative_to(model_path).parts
-        and path.name in _RUNTIME_FILE_NAMES
+        if path.is_file() and not _is_transient_model_path(path.relative_to(model_path))
     ]
     if not files:
         raise ValueError("model path has no runtime files")
     return sorted(files, key=lambda path: path.relative_to(model_path).as_posix())
+
+
+def _is_transient_model_path(relative_path: Path) -> bool:
+    return bool(
+        set(relative_path.parts).intersection(_TRANSIENT_DIRECTORY_NAMES)
+    ) or relative_path.name.endswith(tuple(_TRANSIENT_FILE_SUFFIXES))
 
 
 def _load_manifest(path: Path) -> dict[str, object]:
@@ -136,9 +133,9 @@ def _load_manifest(path: Path) -> dict[str, object]:
 
 
 def _json_bytes(value: dict[str, object]) -> bytes:
-    return (
-        json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n"
-    ).encode("utf-8")
+    return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode(
+        "utf-8"
+    )
 
 
 def _sha256(value: bytes) -> str:

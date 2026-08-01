@@ -1,5 +1,5 @@
 {
-  "frequency_exact_allowlist_evidence_index_schema_version": 3,
+  "frequency_exact_allowlist_evidence_index_schema_version": 4,
   "evidence_role": "internal_opt_in_candidate_with_historical_context",
   "historical_source_capture": {
     "branch": "research/frequency-exact-allowlist",
@@ -47,17 +47,23 @@
     "python-launcher-soak-r504.validation.json": "2f1975eddc26fc7bfadb7f6fdb45a974bc486ec813390714ae10d78472c10183"
   },
   "sealing_provenance_files": {
-    "bridge-tool-provenance.json": "9ccc498e41f7af402ac00e42b1494e3ba2ee38f00d155ce3a0226fd917ed6a05",
+    "bridge-tool-provenance.json": "886076be53ca753b768b82860b6554170d61067b17dde57b541fe3266549e485",
     "faster-qwen3-tts-a0532ff.bundle": "61a672a7e5d501aea9f6623489556e745ace2012ef9ac17ce2def0e8df46e8fb",
     "faster-qwen3-tts-source-manifest.json": "ed67e56167f3315adf6bf80450c9ba6084ffc028494a9aba8a957e9961386676",
-    "model-runtime-manifest.json": "4fbf476dc476fd662ecd2ae125a44b39378d05b650606d49d55cf3a1bbd41ee7",
-    "triton-runtime-provenance.json": "448d2678ce97500fab486ab7b0b063de722c3952184924838d0e3b4837a39176"
+    "model-runtime-manifest.json": "7e384b002d7ad56f1e3e1bba2255ec73a56dbabee96fb9d083123a71e657c56f",
+    "triton-installed-runtime-manifest.json": "886e8571ada6125023b6a1c1eec460c3fc82ac4cc9d214976f706669ace055e4",
+    "triton-runtime-provenance.json": "c4cb6b2f63e72fb1552fafee6336e8795ff7565ea9987ac9964ee59009fd51f6"
   },
   "sealing_smoke_capture": {
     "source_python_release_soak_sha256": "8ea4f1710b05b76db6e0f19a0765bd08562cd9505df4b4a4106ae06665f9bab9",
     "source_faster_git_commit": "a0532ff8b712a4051bdf60ac2cd430a492c24d39",
     "source_faster_git_dirty": false,
     "source_model_directory_manifest_sha256": "f457dce4a6e6068dde0c2d2b302e2f9dbcd6944d2043bdab600853b096547d69"
+  },
+  "content_manifest_v2": {
+    "model_directory_manifest_sha256": "6d2e50c2ca1ee8b9845fda1669c5fff6e9e856537266ac3e9f01a28882db01f0",
+    "model_runtime_file_count": 13,
+    "triton_installed_file_count": 329
   },
   "sealing_smoke_files": {
     "python-sealing-smoke-r63.summary.json": "59e8b6d8d43f66e8f3b167979d1d58c4f8e2d8a5e51670c5ca02015b2ff507a3",

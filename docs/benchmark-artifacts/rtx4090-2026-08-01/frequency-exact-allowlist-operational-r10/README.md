@@ -27,12 +27,16 @@ Both captures were run against the pinned generation-prime worker source and
 FasterQwen module bundles named in `evidence-index.json` and the runtime policy.
 Raw reports remain local and are intentionally not committed.
 
-The sealed policy additionally verifies the content manifest of the selected
-model directory before worker startup. `faster-qwen3-tts-a0532ff.bundle` and
+The sealed policy additionally verifies every non-transient file in the selected
+model directory before worker startup. Internal profiles reject arbitrary
+launcher arguments, and preflight parses the exact worker argv with the worker's
+own parser before comparing the resulting configuration with the policy.
+`faster-qwen3-tts-a0532ff.bundle` and
 its source manifest preserve the clean source tree whose Python module bundle
 matches the capture. The original Triton wheel was absent from the local pip
-cache at sealing time; the policy therefore pins the installed distribution
-`RECORD` hash rather than claiming a wheel hash it cannot verify.
+cache at sealing time; the policy therefore does not claim an unverifiable wheel
+hash. It pins both the installed distribution `RECORD` and SHA-256 values for
+the complete installed Triton file set.
 
 ## Latency Scope
 
@@ -69,7 +73,7 @@ Raw stderr, complete per-request Python reports, process IDs, session IDs,
 absolute paths, and runtime request text are intentionally absent. The source
 file hashes and retained-file hashes are in `evidence-index.json`. Historical
 files do not authorize the current profile; only the generation-prime candidate
-files are pinned by `runtime-policy-v3-rtx4090-48gb-internal-opt-in.json`.
+files are pinned by `runtime-policy-v4-rtx4090-48gb-internal-opt-in.json`.
 
 ## Revalidation
 

@@ -19,7 +19,7 @@ class ModelRuntimeManifestTests(unittest.TestCase):
 
             verify_manifest(model, manifest)
 
-    def test_rejects_changed_or_extra_runtime_file(self) -> None:
+    def test_rejects_changed_or_extra_model_directory_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_name:
             model = Path(temporary_name)
             _write_runtime_files(model)
@@ -30,9 +30,7 @@ class ModelRuntimeManifestTests(unittest.TestCase):
                 verify_manifest(model, manifest)
 
             (model / "config.json").write_text("config", encoding="utf-8")
-            (model / "speech_tokenizer" / "vocab.json").write_text(
-                "extra", encoding="utf-8"
-            )
+            (model / "tokenizer.json").write_text("extra", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "file set"):
                 verify_manifest(model, manifest)
 

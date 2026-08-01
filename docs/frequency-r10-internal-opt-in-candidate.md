@@ -18,8 +18,9 @@ this compiled configuration can be enabled there.
 - Compiled emission schedule: `8, 8, 12`; eager schedule: `8`.
 - Strict BF16 SDPA, exact zero-delta allowlist gate, and generation priming are
   required.
-- The policy pins the model runtime files, Python, Torch/CUDA, Triton,
-  FasterQwen, worker, profile, and evidence hashes.
+- The policy pins the full non-transient model directory, the complete installed
+  Triton file set, Python, Torch/CUDA, FasterQwen, worker, profile, and evidence
+  hashes. Arbitrary launcher overrides are rejected for this internal profile.
 
 ## Operational Evidence
 
@@ -38,7 +39,7 @@ The mixed Python soak is not a latency SLA: first audio was `384.5 ms` median,
 `1.17-1.18 s` p95, so arbitrary text shapes need that expectation documented.
 
 See [the evidence README](benchmark-artifacts/rtx4090-2026-08-01/frequency-exact-allowlist-operational-r10/README.md)
-and `runtime-policy-v3-rtx4090-48gb-internal-opt-in.json` for validation commands and exact
+and `runtime-policy-v4-rtx4090-48gb-internal-opt-in.json` for validation commands and exact
 provenance.
 
 ## Deferred Work

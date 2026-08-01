@@ -9,6 +9,7 @@ import importlib.metadata
 import json
 import subprocess
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 try:
@@ -16,12 +17,25 @@ try:
 except ModuleNotFoundError:  # Imported as scripts.validate_internal_runtime_profile.
     from scripts.model_runtime_manifest import verify_manifest
 
+try:
+    from triton_installed_runtime_manifest import (
+        verify_manifest as verify_triton_manifest,
+    )
+except ModuleNotFoundError:  # Imported as scripts.validate_internal_runtime_profile.
+    from scripts.triton_installed_runtime_manifest import (
+        verify_manifest as verify_triton_manifest,
+    )
+
+from qwen_tts_bridge_worker.cli import build_parser, build_worker_config
+from qwen_tts_bridge_worker.config import QwenEngineConfig
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--model-path", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--worker-argument", action="append", default=[])
     args = parser.parse_args()
 
     profile_bytes = args.profile.read_bytes()
@@ -29,12 +43,14 @@ def main() -> int:
     policy_path = _policy_path(args.profile, profile)
     policy = _load_object(policy_path.read_bytes(), "evidence policy")
     repo_root = args.profile.parents[1]
+    effective_worker_config = _effective_worker_config(args.worker_argument)
     report = _validate(
         profile,
         policy,
         _runtime(repo_root),
         repo_root,
         model_path=args.model_path,
+        effective_worker_config=effective_worker_config,
     )
     profile_sha256 = _sha256(profile_bytes)
     if policy.get("profile_sha256") != profile_sha256:
@@ -57,16 +73,22 @@ def _validate(
     repo_root: Path,
     *,
     model_path: Path | None = None,
+    effective_worker_config: dict[str, object] | None = None,
 ) -> dict[str, object]:
     failures: list[str] = []
     if profile.get("profile_status") != "internal_opt_in_only":
         failures.append("profile is not internal_opt_in_only")
-    if policy.get("runtime_policy_schema_version") != 3:
+    if policy.get("runtime_policy_schema_version") != 4:
         failures.append("runtime policy schema is unsupported")
     if policy.get("status") != "internal_opt_in_only":
         failures.append("runtime policy is not internal_opt_in_only")
     _compare("profile", profile, _object(policy, "profile_contract"), failures)
     _compare("runtime", runtime, _object(policy, "runtime_contract"), failures)
+    _validate_effective_worker_config(
+        effective_worker_config,
+        _object(policy, "effective_worker_contract"),
+        failures,
+    )
     _validate_evidence(repo_root, _object(policy, "evidence_files"), failures)
     _validate_model_runtime_manifest(
         repo_root,
@@ -75,7 +97,44 @@ def _validate(
         failures,
         model_path=model_path,
     )
+    _validate_triton_installed_runtime_manifest(
+        repo_root,
+        _object(policy, "triton_installed_runtime_manifest"),
+        failures,
+    )
     return {"failures": failures, "runtime": runtime}
+
+
+def _effective_worker_config(arguments: list[str]) -> dict[str, object] | None:
+    if not arguments:
+        return None
+    if arguments[:2] != ["-m", "qwen_tts_bridge_worker"]:
+        raise ValueError(
+            "worker arguments must start with the worker module entry point"
+        )
+    parsed = build_parser().parse_args(arguments[2:])
+    worker = build_worker_config(parsed)
+    if not isinstance(worker.engine, QwenEngineConfig):
+        raise ValueError("internal runtime profile must select the qwen engine")
+    config = asdict(worker.engine)
+    config.pop("kind", None)
+    # The selected path is verified against the model content manifest separately.
+    config.pop("model_path", None)
+    return _json_compatible(config)
+
+
+def _validate_effective_worker_config(
+    actual: dict[str, object] | None,
+    expected: dict[str, object],
+    failures: list[str],
+) -> None:
+    if not expected:
+        failures.append("effective worker configuration contract is missing")
+        return
+    if actual is None:
+        failures.append("effective worker configuration was not supplied")
+        return
+    _compare("effective_worker", actual, expected, failures)
 
 
 def _compare(
@@ -87,6 +146,14 @@ def _compare(
     for key, expected_value in expected.items():
         if actual.get(key) != expected_value:
             failures.append(f"{label}.{key} does not match policy")
+
+
+def _json_compatible(value: object) -> object:
+    if isinstance(value, dict):
+        return {str(key): _json_compatible(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_json_compatible(item) for item in value]
+    return value
 
 
 def _validate_evidence(
@@ -137,6 +204,37 @@ def _validate_model_runtime_manifest(
         failures.append(f"model runtime manifest verification failed: {exc}")
 
 
+def _validate_triton_installed_runtime_manifest(
+    repo_root: Path,
+    contract: dict[str, object],
+    failures: list[str],
+) -> None:
+    manifest_path = _contract_path(repo_root, contract.get("path"))
+    expected_sha256 = contract.get("sha256")
+    distribution = contract.get("distribution")
+    if (
+        manifest_path is None
+        or not isinstance(expected_sha256, str)
+        or not isinstance(distribution, str)
+        or not distribution
+    ):
+        failures.append("Triton installed runtime manifest contract is invalid")
+        return
+    if not manifest_path.is_file():
+        failures.append("Triton installed runtime manifest is missing")
+        return
+    if _sha256(manifest_path.read_bytes()) != expected_sha256:
+        failures.append("Triton installed runtime manifest SHA does not match policy")
+        return
+    try:
+        manifest = _load_object(
+            manifest_path.read_bytes(), "Triton installed runtime manifest"
+        )
+        verify_triton_manifest(distribution, manifest)
+    except ValueError as exc:
+        failures.append(f"Triton installed runtime verification failed: {exc}")
+
+
 def _contract_path(repo_root: Path, value: object) -> Path | None:
     if not isinstance(value, str) or not value:
         return None
@@ -154,9 +252,7 @@ def _runtime(repo_root: Path) -> dict[str, object]:
         "torch": torch.__version__,
         "cuda_runtime": torch.version.cuda,
         "triton_windows": importlib.metadata.version("triton-windows"),
-        "triton_windows_record_sha256": _distribution_record_sha256(
-            "triton-windows"
-        ),
+        "triton_windows_record_sha256": _distribution_record_sha256("triton-windows"),
         "faster_version": importlib.metadata.version("faster-qwen3-tts"),
         "faster_module_bundle_sha256": _bundle_sha256(faster_directory),
         **_git_provenance(faster_directory),

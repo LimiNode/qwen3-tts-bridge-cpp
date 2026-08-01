@@ -13,6 +13,11 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $profileFullPath = Join-Path $repoRoot $ProfilePath
 $profile = Get-Content -Raw $profileFullPath | ConvertFrom-Json
+
+if ($profile.profile_status -eq "internal_opt_in_only" -and $AdditionalArguments.Count -gt 0) {
+    throw "Internal runtime profiles do not accept AdditionalArguments."
+}
+
 $pythonPath = if ([System.IO.Path]::IsPathRooted($Python)) {
     $Python
 } else {
@@ -33,22 +38,6 @@ if ($env:PYTHONPATH) {
     $pythonPaths += $env:PYTHONPATH
 }
 $env:PYTHONPATH = [string]::Join(";", $pythonPaths)
-
-if ($profile.profile_status -eq "internal_opt_in_only") {
-    $preflight = Join-Path $repoRoot "scripts/validate_internal_runtime_profile.py"
-    $preflightOutput = & $pythonPath $preflight --profile $profileFullPath --model-path $selectedModelPath
-    $preflightExitCode = $LASTEXITCODE
-    if ($preflightOutput) {
-        [Console]::Error.WriteLine(($preflightOutput -join [Environment]::NewLine))
-    }
-    if ($preflightExitCode -ne 0) {
-        throw "Internal runtime profile preflight failed."
-    }
-}
-
-if ($ValidateOnly) {
-    exit 0
-}
 
 $maxSeqLen = if ($null -ne $profile.max_seq_len) { $profile.max_seq_len } else { 2048 }
 $arguments = @(
@@ -118,6 +107,26 @@ if ($profile.eager_emit_chunk_schedule -and $profile.eager_emit_chunk_schedule.C
         "--eager-emit-chunk-schedule",
         ($profile.eager_emit_chunk_schedule -join ",")
     )
+}
+
+if ($profile.profile_status -eq "internal_opt_in_only") {
+    $preflight = Join-Path $repoRoot "scripts/validate_internal_runtime_profile.py"
+    $preflightArguments = @("--profile", $profileFullPath, "--model-path", $selectedModelPath)
+    foreach ($argument in $arguments) {
+        $preflightArguments += "--worker-argument=$argument"
+    }
+    $preflightOutput = & $pythonPath $preflight @preflightArguments
+    $preflightExitCode = $LASTEXITCODE
+    if ($preflightOutput) {
+        [Console]::Error.WriteLine(($preflightOutput -join [Environment]::NewLine))
+    }
+    if ($preflightExitCode -ne 0) {
+        throw "Internal runtime profile preflight failed."
+    }
+}
+
+if ($ValidateOnly) {
+    exit 0
 }
 
 & $pythonPath @arguments @AdditionalArguments

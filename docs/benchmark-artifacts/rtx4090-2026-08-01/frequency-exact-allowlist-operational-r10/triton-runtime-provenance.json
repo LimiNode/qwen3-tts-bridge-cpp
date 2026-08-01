@@ -1,8 +1,11 @@
 {
-  "triton_runtime_provenance_schema_version": 1,
+  "triton_runtime_provenance_schema_version": 2,
   "distribution": "triton-windows",
   "version": "3.6.0.post26",
   "installed_record_sha256": "57042f5da747ab53c196331d46e3ced98914d53b725eeddaea68c53d46e19fdd",
+  "installed_runtime_manifest": "triton-installed-runtime-manifest.json",
+  "installed_runtime_manifest_sha256": "886e8571ada6125023b6a1c1eec460c3fc82ac4cc9d214976f706669ace055e4",
+  "installed_runtime_file_count": 329,
   "original_wheel_sha256": null,
   "wheel_cache_status": "unavailable_at_sealing"
 }
