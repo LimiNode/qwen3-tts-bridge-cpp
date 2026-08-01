@@ -12,7 +12,9 @@ param(
     [string]$FasterSourceDirectory,
 
     [Parameter(Mandatory = $true)]
-    [string]$FasterSourceBundleSha256
+    [string]$FasterSourceBundleSha256,
+
+    [string]$RunName = "python-operational-soak"
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,8 +26,8 @@ $warmupManifest = Join-Path $repositoryRoot (
     "docs\benchmark-artifacts\rtx4090-2026-08-01\" +
     "representative-v4-frequency-exact-allowlist-r9\candidate-manifest.json"
 )
-$report = Join-Path $OutputDirectory "python-operational-soak-report.json"
-$exitCodePath = Join-Path $OutputDirectory "python-operational-soak.exit-code.txt"
+$report = Join-Path $OutputDirectory "$RunName-report.json"
+$exitCodePath = Join-Path $OutputDirectory "$RunName.exit-code.txt"
 
 $env:PYTHONPATH = @(
     (Join-Path $repositoryRoot "worker\src")
