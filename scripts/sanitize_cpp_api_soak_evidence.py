@@ -12,7 +12,7 @@ try:
 except ModuleNotFoundError:
     from validate_cpp_api_soak import _worker_metrics
 
-_SANITIZATION_SCHEMA_VERSION = 1
+_SANITIZATION_SCHEMA_VERSION = 2
 _FIRST_CHUNK_FIELDS = {
     "event",
     "request_id",
@@ -55,16 +55,29 @@ _MEMORY_FIELDS = {
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifact", type=Path, required=True)
-    parser.add_argument("--worker-stderr", type=Path, required=True)
+    worker_metrics_source = parser.add_mutually_exclusive_group(required=True)
+    worker_metrics_source.add_argument("--worker-stderr", type=Path)
+    worker_metrics_source.add_argument(
+        "--embedded-worker-telemetry",
+        action="store_true",
+        help="Derive metrics from worker telemetry embedded in the artifact.",
+    )
     parser.add_argument("--artifact-output", type=Path, required=True)
     parser.add_argument("--metrics-output", type=Path, required=True)
     parser.add_argument("--manifest-output", type=Path, required=True)
     args = parser.parse_args()
 
     artifact_bytes = args.artifact.read_bytes()
-    stderr_bytes = args.worker_stderr.read_bytes()
     artifact = _load_object(artifact_bytes, "artifact")
-    metrics = _worker_metrics(stderr_bytes.decode("utf-8", errors="replace"))
+    if args.worker_stderr:
+        stderr_bytes = args.worker_stderr.read_bytes()
+        metrics = _worker_metrics(stderr_bytes.decode("utf-8", errors="replace"))
+        metric_source = "worker_stderr"
+        stderr_sha256: str | None = _sha256(stderr_bytes)
+    else:
+        metrics = _embedded_worker_metrics(artifact)
+        metric_source = "embedded_request_telemetry"
+        stderr_sha256 = None
     sanitized_artifact, request_id_map = _sanitize_artifact(artifact)
     sanitized_metrics = _sanitize_worker_metrics(metrics, request_id_map)
     artifact_output = _json_bytes(sanitized_artifact)
@@ -79,7 +92,8 @@ def main() -> int:
                     _SANITIZATION_SCHEMA_VERSION
                 ),
                 "source_artifact_sha256": _sha256(artifact_bytes),
-                "source_worker_stderr_sha256": _sha256(stderr_bytes),
+                "source_worker_metric_provenance": metric_source,
+                "source_worker_stderr_sha256": stderr_sha256,
                 "sanitized_artifact_sha256": _sha256(artifact_output),
                 "sanitized_worker_metrics_sha256": _sha256(metrics_output),
                 "request_count": len(request_id_map),
@@ -241,6 +255,29 @@ def _sanitize_worker_metrics(
         if request_id is None:
             continue
         result.append(_sanitize_metric(metric, allowed, request_id))
+    return result
+
+
+def _embedded_worker_metrics(artifact: dict[str, object]) -> list[dict[str, object]]:
+    """Extract recorded worker events when the C++ artifact embeds telemetry."""
+
+    requests = artifact.get("requests")
+    if not isinstance(requests, list):
+        raise ValueError("artifact lacks requests array")
+    result: list[dict[str, object]] = []
+    for request in requests:
+        if not isinstance(request, dict):
+            raise ValueError("artifact request is not an object")
+        telemetry = request.get("worker_telemetry")
+        if not isinstance(telemetry, dict):
+            raise ValueError("artifact request lacks worker telemetry")
+        for key in ("first_chunk_phases", "finished", "runtime_memory"):
+            event = telemetry.get(key)
+            if isinstance(event, dict):
+                result.append(dict(event))
+        chunks = telemetry.get("pcm_chunks")
+        if isinstance(chunks, list):
+            result.extend(dict(chunk) for chunk in chunks if isinstance(chunk, dict))
     return result
 
 

@@ -6,12 +6,26 @@ import unittest
 from typing import cast
 
 from scripts.sanitize_cpp_api_soak_evidence import (
+    _embedded_worker_metrics,
     _sanitize_artifact,
     _sanitize_worker_metrics,
 )
 
 
 class SanitizeCppApiSoakEvidenceTests(unittest.TestCase):
+    def test_extracts_embedded_worker_metrics(self) -> None:
+        metrics = _embedded_worker_metrics(_artifact())
+
+        self.assertEqual(
+            [
+                "request_first_chunk_engine_phases",
+                "request_finished",
+                "worker_runtime_memory",
+                "request_pcm_chunk",
+            ],
+            [metric["event"] for metric in metrics],
+        )
+
     def test_remaps_request_ids_and_drops_unapproved_metric_fields(self) -> None:
         artifact, request_id_map = _sanitize_artifact(_artifact())
         metrics = _sanitize_worker_metrics(_worker_metrics(), request_id_map)
