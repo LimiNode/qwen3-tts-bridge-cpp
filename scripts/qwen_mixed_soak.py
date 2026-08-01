@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import statistics
 import subprocess
@@ -119,7 +120,10 @@ def main() -> int:
                     _report(args, runtime, ready, results, snapshots, worker_metrics),
                 )
             if request_index % args.progress_every == 0:
-                _progress(f"request {request_index}: terminal {result['terminal_state']}")
+                _progress(
+                    f"request {request_index}: terminal "
+                    f"{result['terminal_state']}"
+                )
         _shutdown(harness)
         worker_metrics = _worker_metrics(harness.stderr_text())
     finally:
@@ -349,6 +353,47 @@ def _validate_wheel(runtime: dict[str, object], expected_sha256: str) -> None:
         raise RuntimeError(
             f"FasterQwen wheel SHA mismatch: {actual} != {expected_sha256}"
         )
+
+
+def _validate_faster_provenance(
+    runtime: dict[str, object],
+    expected_wheel_sha256: str,
+    expected_source_bundle_sha256: str,
+) -> None:
+    """Validate the declared installed wheel or source-bundle identity."""
+
+    if expected_wheel_sha256:
+        _validate_wheel(runtime, expected_wheel_sha256)
+        return
+    actual = _faster_source_bundle_sha256(runtime)
+    if actual is None:
+        raise RuntimeError(
+            "runtime lacks FasterQwen source bundle provenance"
+        )
+    if actual.lower() != expected_source_bundle_sha256.lower():
+        raise RuntimeError(
+            "FasterQwen source bundle SHA mismatch: "
+            f"{actual} != {expected_source_bundle_sha256}"
+        )
+
+
+def _faster_source_bundle_sha256(runtime: dict[str, object]) -> str | None:
+    try:
+        origin = runtime["imports"]["faster_qwen3_tts"]["origin"]
+    except (KeyError, TypeError):
+        return None
+    if not isinstance(origin, str):
+        return None
+    directory = Path(origin).parent
+    if not directory.is_dir():
+        return None
+    digest = hashlib.sha256()
+    for path in sorted(directory.rglob("*.py")):
+        digest.update(path.relative_to(directory).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 def _report(

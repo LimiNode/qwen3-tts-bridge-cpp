@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import argparse
-from hashlib import sha256
 import json
 import random
-import sys
 import time
+from hashlib import sha256
 from pathlib import Path
 
 try:
@@ -16,8 +15,8 @@ try:
         _progress,
         _snapshot,
         _summary,
+        _validate_faster_provenance,
         _validate_route,
-        _validate_wheel,
         _write_report,
     )
     from semantic_trace_contract import validate_generation_trace
@@ -27,8 +26,8 @@ except ModuleNotFoundError:  # Imported as scripts.qwen_release_soak in tests.
         _progress,
         _snapshot,
         _summary,
+        _validate_faster_provenance,
         _validate_route,
-        _validate_wheel,
         _write_report,
     )
     from scripts.semantic_trace_contract import validate_generation_trace
@@ -48,7 +47,6 @@ from benchmark_packaged_worker_restart import (
 from benchmark_runtime import runtime_fingerprint
 from qwen_tts_bridge_worker.protocol import FrameType
 from verify_packaged_worker import PackagedWorkerHarness, _control_payload
-
 
 _CANCEL_STAGES = (
     "before_first_audio",
@@ -74,7 +72,11 @@ def main() -> int:
         worker_prefix_args=args.worker_arg,
         args=args,
     )
-    _validate_wheel(runtime, args.expected_faster_wheel_sha256)
+    _validate_faster_provenance(
+        runtime,
+        args.expected_faster_wheel_sha256,
+        args.expected_faster_source_bundle_sha256,
+    )
     harness = PackagedWorkerHarness(
         worker_executable=worker_executable,
         args=args.worker_arg,
@@ -168,7 +170,8 @@ def _build_parser() -> argparse.ArgumentParser:
         default="required",
     )
     parser.add_argument("--expected-prefill-cache-entries", type=int, default=6)
-    parser.add_argument("--expected-faster-wheel-sha256", required=True)
+    parser.add_argument("--expected-faster-wheel-sha256", default="")
+    parser.add_argument("--expected-faster-source-bundle-sha256", default="")
     return parser
 
 
@@ -179,6 +182,13 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("--cancellations-per-category must be positive")
     if args.cancellations_per_category % len(_CANCEL_STAGES) != 0:
         parser.error("--cancellations-per-category must divide evenly across stages")
+    if bool(args.expected_faster_wheel_sha256) == bool(
+        args.expected_faster_source_bundle_sha256
+    ):
+        parser.error(
+            "provide exactly one FasterQwen provenance expectation: "
+            "wheel or source bundle"
+        )
     for key in (
         "expected_prefill_cache_entries",
         "max_rss_growth_mb",
@@ -189,10 +199,15 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
     ):
         if getattr(args, key) <= 0:
             parser.error(f"--{key.replace('_', '-')} must be positive")
-    if "--engine" in args.worker_arg or not any(
-        item in {"mock", "qwen"} for item in args.worker_arg
-    ):
-        parser.error("--worker-arg must contain worker process arguments and engine")
+    has_engine = any(item in {"mock", "qwen"} for item in args.worker_arg)
+    has_standard_launcher = any(
+        Path(item).name == "start-rtx4090-faster-customvoice.ps1"
+        for item in args.worker_arg
+    )
+    if "--engine" in args.worker_arg or not (has_engine or has_standard_launcher):
+        parser.error(
+            "--worker-arg must contain a worker engine or standard RTX launcher"
+        )
 
 
 def _shapes_by_label(schedule: Path) -> dict[str, dict[str, object]]:
@@ -462,9 +477,13 @@ def _validate_release_soak(
             elif result.get("role") == "audit":
                 reference = references.get(label)
                 if reference is None:
-                    failures.append(f"{prefix}: missing semantic reference for {label}")
+                    failures.append(
+                        f"{prefix}: missing semantic reference for {label}"
+                    )
                 elif reference != _fingerprint(result):
-                    failures.append(f"{prefix}: post-cancel semantic fingerprint changed")
+                    failures.append(
+                        f"{prefix}: post-cancel semantic fingerprint changed"
+                    )
         elif terminal == "cancelled":
             stage = result.get("cancel_stage")
             if stage not in _CANCEL_STAGES:
@@ -477,9 +496,13 @@ def _validate_release_soak(
 
     if len(results) != expected_requests:
         failures.append(f"expected {expected_requests} requests, got {len(results)}")
-    cancelled = sum(1 for result in results if result.get("terminal_state") == "cancelled")
+    cancelled = sum(
+        1 for result in results if result.get("terminal_state") == "cancelled"
+    )
     if cancelled != expected_cancellations:
-        failures.append(f"expected {expected_cancellations} cancellations, got {cancelled}")
+        failures.append(
+            f"expected {expected_cancellations} cancellations, got {cancelled}"
+        )
     for label in sorted(expected_labels):
         stages = cancelled_by_label.get(label, {})
         for stage in _CANCEL_STAGES:
