@@ -1,7 +1,7 @@
 {
   "profile_schema_version": 1,
   "name": "rtx4090-faster-customvoice-frequency-exact-allowlist-r9-research",
-  "description": "Research-only RTX 4090 CustomVoice profile for the frequency-ranked exact compiled prefill candidate derived from r8 discovery. It is fail-closed on unknown shapes and does not authorize the experimental release profile.",
+  "description": "Research-only RTX 4090 CustomVoice profile for the frequency-ranked exact compiled prefill candidate derived from r8 discovery. Unknown shapes route eagerly with compile-on-miss disabled; this is fail-closed against unexpected compilation, not request rejection. It does not authorize the experimental release profile.",
   "model_path": "models/Qwen3-TTS-12Hz-0.6B-CustomVoice",
   "runtime_backend": "faster",
   "device": "cuda",

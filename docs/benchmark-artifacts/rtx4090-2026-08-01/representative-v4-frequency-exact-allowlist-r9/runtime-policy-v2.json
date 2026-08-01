@@ -1,0 +1,124 @@
+{
+  "acceptance_checks": {
+    "cuda_matches_ab": true,
+    "faster_module_bundle_matches_ab": true,
+    "generation_prime_succeeded": true,
+    "holdout_completed": true,
+    "holdout_is_measurement_split": true,
+    "profile_sha_matches_source_policy": true,
+    "same_wheel_ab_passed": true,
+    "source_policy_is_frozen": true,
+    "torch_matches_ab": true,
+    "triton_matches_ab": true,
+    "worker_bundle_matches_ab": true
+  },
+  "acceptance_pass": true,
+  "holdout": {
+    "corpus_id": "representative-v4-r6-candidate",
+    "corpus_split": "runtime_measurement_holdout",
+    "input_sha256": "73c7f52b4fa9db684cb248ba1f9f5e177fdfe68f7db246f32b780551ab5375e7",
+    "profile": {
+      "path": "config\\rtx4090-faster-customvoice-frequency-exact-allowlist-r9-research.json",
+      "sha256": "59d94166a35baecd57fa28020e882ade23609bf82da61788b96bb653d165cdbd"
+    },
+    "records": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\holdout-run\\records.jsonl",
+      "sha256": "14f8289bd7fa03197fc7c7062645416b7b69b3aeadc86575c9cd0602eba54d67"
+    },
+    "run_manifest": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\holdout-run\\run-manifest.json",
+      "sha256": "21eb12aa7768a40d4286153002361cdba722f6f893b612e674618721f6454507"
+    },
+    "seed": 20260801,
+    "seed_mode": "request_id",
+    "validation": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\holdout-validation.json",
+      "sha256": "6a4a722045d13e760842d5b3a814cbcad0549709d8620eddd76b1cf8538b5d89"
+    }
+  },
+  "installed_toolchain_provenance": {
+    "python_executable": "C:\\_repoz\\qwen3-tts-bridge-cpp\\.venv-faster-qwen\\Scripts\\python.exe",
+    "torch": {
+      "bundle_sha256": "541d87926ff2f996de038042f4ac35ce507dcfdd6a8d5b89543a72abaf2d5596",
+      "distribution": "torch",
+      "file_count": 13959,
+      "metadata_name": "torch",
+      "original_wheel": "unavailable_in_local_pip_cache",
+      "status": "installed_distribution_bundle",
+      "version": "2.10.0+cu128"
+    },
+    "triton_windows": {
+      "bundle_sha256": "c9e678c7f80312c4344ed2df7b167171d47fb7b0b88160f3c734df2eb9eea212",
+      "distribution": "triton-windows",
+      "file_count": 329,
+      "metadata_name": "triton-windows",
+      "original_wheel": "unavailable_in_local_pip_cache",
+      "status": "installed_distribution_bundle",
+      "version": "3.6.0.post26"
+    }
+  },
+  "policy_name": "rtx4090-frequency-exact-allowlist-r9-sealed",
+  "runtime_contract": {
+    "candidate_ab_bridge_commit": "be2034519a6c43e9fcc26638355a7f8b9e6a4747",
+    "candidate_ab_bridge_tree": "f5b84de8dfdbdf01792cd31be63ee5e29d8795a4",
+    "cuda_version": "12.8",
+    "faster_qwen3_tts_source": {
+      "module_bundle_sha256": "a04b90e72105a6dfba4bf83a9f1cbe9b2bd06bc9208fd95c334378e674642c4c",
+      "module_directory": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean\\faster_qwen3_tts",
+      "source_commit": "58b063742f7707972ddc74a433a7f205ec471e65",
+      "source_git_tree": "d0462ab87261a3e080096f515232610b4eb7523c",
+      "source_repository": "C:\\_repoz\\faster-qwen3-tts-v032-stack112-clean",
+      "source_tracked_tree_clean": true
+    },
+    "flash_attention_available": false,
+    "holdout_bridge_commit": "17d70926626aee6e15ca812aeae44750ae2d6eb9",
+    "holdout_bridge_tree": "b74c6395b52785d9e843eebe65f007552477c16d",
+    "platform": "Windows-11-10.0.26100-SP0",
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "runtime_agreement": {
+      "cuda": true,
+      "faster_module_bundle": true,
+      "faster_source_commit": true,
+      "torch": true,
+      "triton": true,
+      "worker_bundle": true
+    },
+    "torch_version": "2.10.0+cu128",
+    "triton_windows_version": "3.6.0.post26",
+    "worker_source_bundle_sha256": "da1223fb9a0f8e59cbb488cab22cc271dcb1f074aa64d6b29beaa9ddee590ef6"
+  },
+  "runtime_policy_schema_version": 2,
+  "same_wheel_ab": {
+    "candidate_run_manifest": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\same-wheel-ab\\candidate-run\\run-manifest.json",
+      "sha256": "573ffcbdfc21f4c33b2dd866e9ec9a73214b0e69bb4317f3c91465e5555f9a2d"
+    },
+    "summary": {
+      "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\same-wheel-ab\\summary.json",
+      "sha256": "9d376de68676a5bd4528fbf4608b0289e4190da0fe7fc76201708111c6db8464"
+    }
+  },
+  "source_policy": {
+    "path": "docs\\benchmark-artifacts\\rtx4090-2026-08-01\\representative-v4-frequency-exact-allowlist-r9\\holdout-policy.json",
+    "sha256": "364896edd4c823539422d086cd841b55f7e7a1b31e558d82e698ba053b7ae01a"
+  },
+  "status": "validated_research_configuration",
+  "tool_provenance": {
+    "corpus_runner": {
+      "path": "C:\\_repoz\\qwen3-tts-bridge-cpp\\scripts\\qwen_corpus_discovery.py",
+      "sha256": "7cc254952d508acc7110cdc54a8f2853eae661ad7dda38b80b2bf4b7cec3ab06"
+    },
+    "corpus_validator": {
+      "path": "C:\\_repoz\\qwen3-tts-bridge-cpp\\scripts\\validate_qwen_corpus_discovery.py",
+      "sha256": "5bf5541cb727a55cd27b766ea9560c71a9e2add0cdb6a25aa1f1c942bd04d433"
+    },
+    "policy_builder": {
+      "path": "C:\\_repoz\\qwen3-tts-bridge-cpp\\scripts\\qwen_runtime_policy_v2.py",
+      "sha256": "b14170de4d0e9e4ffebf68e4e9d0782ead1c0b1e30cf9eb72b261d344879821a"
+    },
+    "route_report_builder": {
+      "path": "C:\\_repoz\\qwen3-tts-bridge-cpp\\scripts\\qwen_holdout_route_report.py",
+      "sha256": "d0193bf42ff21667d8795d75f3cbff610147aeca0261ea6fd46feb3b648e9416"
+    }
+  }
+}

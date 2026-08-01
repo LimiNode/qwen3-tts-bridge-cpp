@@ -63,6 +63,13 @@ their exact route contracts.
 no-padding constraint. `holdout-run/` records the only measurement holdout run;
 `holdout-validation.json` is the fail-closed acceptance result.
 
+`runtime-policy-v2.json` seals that evidence to the worker source bundle,
+FasterQwen source/module bundle, Python/Torch/CUDA/Triton versions, the exact
+same-wheel A/B summary, and the tool source hashes. The original Triton wheel
+is not retained in the local pip cache, so the policy records a hash of the
+installed `triton-windows` distribution bundle and explicitly marks the wheel
+artifact as unavailable rather than claiming an unverified wheel hash.
+
 The run used 500 held-out prompts on RTX 4090 with the exact candidate
 allowlist. All 500 requests completed at EOS, all provenance and seed checks
 passed, and there were zero route-contract failures. The six compiled shapes
@@ -80,3 +87,18 @@ inverse RTF: mean 2.689, p50 2.712, p95 3.004
 This is a validated research configuration for the pinned RTX 4090 runtime,
 not evidence for other GPUs, model families, padded buckets, or an unmeasured
 allowlist expansion.
+
+## Route Breakdown
+
+`holdout-route-report.json` separates the observed holdout routes. The 99
+compiled requests had mean first audio of 250.067 ms (p95 264.258 ms), while
+the 401 eager requests had mean first audio of 398.036 ms (p95 433.175 ms).
+It also reports per-length, category, and language distributions.
+
+For context only, the former allowlist would cover 50 of the 500 already
+revealed holdout records (10.0%). This is a counterfactual routing count, not a
+new measurement and not input to another allowlist selection.
+
+Unknown shapes are accepted and routed to eager execution. The profile is
+fail-closed only against unexpected compilation: `compile-on-miss` remains
+disabled.
