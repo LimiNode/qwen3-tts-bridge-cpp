@@ -1,0 +1,772 @@
+{
+  "artifact_schema_version": 1,
+  "candidate_coverage": {
+    "covered_fraction": 0.105333,
+    "covered_prompts": 158,
+    "selected_count": 6
+  },
+  "corpus_id": "representative-v4-r6-candidate",
+  "current_coverage": {
+    "covered_fraction": 0.105333,
+    "covered_prompts": 158,
+    "selected_count": 6
+  },
+  "current_exact_lengths": [
+    32,
+    29,
+    35,
+    34,
+    33,
+    30
+  ],
+  "discovery_path": "docs\\benchmark-artifacts\\rtx4090-2026-07-30\\representative-v4-r6-candidate\\discovery.jsonl",
+  "discovery_sha256": "0f22e2252cfef4d7fafb8a41d8b39dc0321d9bdc4cf8c9f5f565001775dc2891",
+  "histogram": [
+    {
+      "count": 58,
+      "cumulative_fraction": 0.038667,
+      "fraction": 0.038667,
+      "talker_prefill_length": 18
+    },
+    {
+      "count": 57,
+      "cumulative_fraction": 0.076667,
+      "fraction": 0.038,
+      "talker_prefill_length": 19
+    },
+    {
+      "count": 57,
+      "cumulative_fraction": 0.114667,
+      "fraction": 0.038,
+      "talker_prefill_length": 20
+    },
+    {
+      "count": 47,
+      "cumulative_fraction": 0.146,
+      "fraction": 0.031333,
+      "talker_prefill_length": 27
+    },
+    {
+      "count": 43,
+      "cumulative_fraction": 0.174667,
+      "fraction": 0.028667,
+      "talker_prefill_length": 29
+    },
+    {
+      "count": 42,
+      "cumulative_fraction": 0.202667,
+      "fraction": 0.028,
+      "talker_prefill_length": 26
+    },
+    {
+      "count": 41,
+      "cumulative_fraction": 0.23,
+      "fraction": 0.027333,
+      "talker_prefill_length": 17
+    },
+    {
+      "count": 39,
+      "cumulative_fraction": 0.256,
+      "fraction": 0.026,
+      "talker_prefill_length": 28
+    },
+    {
+      "count": 36,
+      "cumulative_fraction": 0.28,
+      "fraction": 0.024,
+      "talker_prefill_length": 21
+    },
+    {
+      "count": 36,
+      "cumulative_fraction": 0.304,
+      "fraction": 0.024,
+      "talker_prefill_length": 30
+    },
+    {
+      "count": 34,
+      "cumulative_fraction": 0.326667,
+      "fraction": 0.022667,
+      "talker_prefill_length": 42
+    },
+    {
+      "count": 33,
+      "cumulative_fraction": 0.348667,
+      "fraction": 0.022,
+      "talker_prefill_length": 39
+    },
+    {
+      "count": 32,
+      "cumulative_fraction": 0.37,
+      "fraction": 0.021333,
+      "talker_prefill_length": 22
+    },
+    {
+      "count": 29,
+      "cumulative_fraction": 0.389333,
+      "fraction": 0.019333,
+      "talker_prefill_length": 24
+    },
+    {
+      "count": 28,
+      "cumulative_fraction": 0.408,
+      "fraction": 0.018667,
+      "talker_prefill_length": 23
+    },
+    {
+      "count": 28,
+      "cumulative_fraction": 0.426667,
+      "fraction": 0.018667,
+      "talker_prefill_length": 41
+    },
+    {
+      "count": 27,
+      "cumulative_fraction": 0.444667,
+      "fraction": 0.018,
+      "talker_prefill_length": 25
+    },
+    {
+      "count": 27,
+      "cumulative_fraction": 0.462667,
+      "fraction": 0.018,
+      "talker_prefill_length": 35
+    },
+    {
+      "count": 26,
+      "cumulative_fraction": 0.48,
+      "fraction": 0.017333,
+      "talker_prefill_length": 46
+    },
+    {
+      "count": 25,
+      "cumulative_fraction": 0.496667,
+      "fraction": 0.016667,
+      "talker_prefill_length": 14
+    },
+    {
+      "count": 25,
+      "cumulative_fraction": 0.513333,
+      "fraction": 0.016667,
+      "talker_prefill_length": 31
+    },
+    {
+      "count": 25,
+      "cumulative_fraction": 0.53,
+      "fraction": 0.016667,
+      "talker_prefill_length": 38
+    },
+    {
+      "count": 24,
+      "cumulative_fraction": 0.546,
+      "fraction": 0.016,
+      "talker_prefill_length": 16
+    },
+    {
+      "count": 24,
+      "cumulative_fraction": 0.562,
+      "fraction": 0.016,
+      "talker_prefill_length": 40
+    },
+    {
+      "count": 23,
+      "cumulative_fraction": 0.577333,
+      "fraction": 0.015333,
+      "talker_prefill_length": 48
+    },
+    {
+      "count": 22,
+      "cumulative_fraction": 0.592,
+      "fraction": 0.014667,
+      "talker_prefill_length": 15
+    },
+    {
+      "count": 21,
+      "cumulative_fraction": 0.606,
+      "fraction": 0.014,
+      "talker_prefill_length": 33
+    },
+    {
+      "count": 21,
+      "cumulative_fraction": 0.62,
+      "fraction": 0.014,
+      "talker_prefill_length": 37
+    },
+    {
+      "count": 21,
+      "cumulative_fraction": 0.634,
+      "fraction": 0.014,
+      "talker_prefill_length": 50
+    },
+    {
+      "count": 20,
+      "cumulative_fraction": 0.647333,
+      "fraction": 0.013333,
+      "talker_prefill_length": 36
+    },
+    {
+      "count": 20,
+      "cumulative_fraction": 0.660667,
+      "fraction": 0.013333,
+      "talker_prefill_length": 43
+    },
+    {
+      "count": 20,
+      "cumulative_fraction": 0.674,
+      "fraction": 0.013333,
+      "talker_prefill_length": 45
+    },
+    {
+      "count": 19,
+      "cumulative_fraction": 0.686667,
+      "fraction": 0.012667,
+      "talker_prefill_length": 49
+    },
+    {
+      "count": 19,
+      "cumulative_fraction": 0.699333,
+      "fraction": 0.012667,
+      "talker_prefill_length": 54
+    },
+    {
+      "count": 19,
+      "cumulative_fraction": 0.712,
+      "fraction": 0.012667,
+      "talker_prefill_length": 60
+    },
+    {
+      "count": 18,
+      "cumulative_fraction": 0.724,
+      "fraction": 0.012,
+      "talker_prefill_length": 47
+    },
+    {
+      "count": 17,
+      "cumulative_fraction": 0.735333,
+      "fraction": 0.011333,
+      "talker_prefill_length": 34
+    },
+    {
+      "count": 16,
+      "cumulative_fraction": 0.746,
+      "fraction": 0.010667,
+      "talker_prefill_length": 44
+    },
+    {
+      "count": 16,
+      "cumulative_fraction": 0.756667,
+      "fraction": 0.010667,
+      "talker_prefill_length": 52
+    },
+    {
+      "count": 16,
+      "cumulative_fraction": 0.767333,
+      "fraction": 0.010667,
+      "talker_prefill_length": 58
+    },
+    {
+      "count": 16,
+      "cumulative_fraction": 0.778,
+      "fraction": 0.010667,
+      "talker_prefill_length": 64
+    },
+    {
+      "count": 15,
+      "cumulative_fraction": 0.788,
+      "fraction": 0.01,
+      "talker_prefill_length": 53
+    },
+    {
+      "count": 15,
+      "cumulative_fraction": 0.798,
+      "fraction": 0.01,
+      "talker_prefill_length": 55
+    },
+    {
+      "count": 15,
+      "cumulative_fraction": 0.808,
+      "fraction": 0.01,
+      "talker_prefill_length": 65
+    },
+    {
+      "count": 14,
+      "cumulative_fraction": 0.817333,
+      "fraction": 0.009333,
+      "talker_prefill_length": 32
+    },
+    {
+      "count": 14,
+      "cumulative_fraction": 0.826667,
+      "fraction": 0.009333,
+      "talker_prefill_length": 57
+    },
+    {
+      "count": 14,
+      "cumulative_fraction": 0.836,
+      "fraction": 0.009333,
+      "talker_prefill_length": 62
+    },
+    {
+      "count": 14,
+      "cumulative_fraction": 0.845333,
+      "fraction": 0.009333,
+      "talker_prefill_length": 68
+    },
+    {
+      "count": 13,
+      "cumulative_fraction": 0.854,
+      "fraction": 0.008667,
+      "talker_prefill_length": 51
+    },
+    {
+      "count": 13,
+      "cumulative_fraction": 0.862667,
+      "fraction": 0.008667,
+      "talker_prefill_length": 59
+    },
+    {
+      "count": 13,
+      "cumulative_fraction": 0.871333,
+      "fraction": 0.008667,
+      "talker_prefill_length": 63
+    },
+    {
+      "count": 11,
+      "cumulative_fraction": 0.878667,
+      "fraction": 0.007333,
+      "talker_prefill_length": 67
+    },
+    {
+      "count": 9,
+      "cumulative_fraction": 0.884667,
+      "fraction": 0.006,
+      "talker_prefill_length": 56
+    },
+    {
+      "count": 9,
+      "cumulative_fraction": 0.890667,
+      "fraction": 0.006,
+      "talker_prefill_length": 61
+    },
+    {
+      "count": 9,
+      "cumulative_fraction": 0.896667,
+      "fraction": 0.006,
+      "talker_prefill_length": 113
+    },
+    {
+      "count": 7,
+      "cumulative_fraction": 0.901333,
+      "fraction": 0.004667,
+      "talker_prefill_length": 66
+    },
+    {
+      "count": 7,
+      "cumulative_fraction": 0.906,
+      "fraction": 0.004667,
+      "talker_prefill_length": 70
+    },
+    {
+      "count": 6,
+      "cumulative_fraction": 0.91,
+      "fraction": 0.004,
+      "talker_prefill_length": 96
+    },
+    {
+      "count": 6,
+      "cumulative_fraction": 0.914,
+      "fraction": 0.004,
+      "talker_prefill_length": 98
+    },
+    {
+      "count": 6,
+      "cumulative_fraction": 0.918,
+      "fraction": 0.004,
+      "talker_prefill_length": 109
+    },
+    {
+      "count": 5,
+      "cumulative_fraction": 0.921333,
+      "fraction": 0.003333,
+      "talker_prefill_length": 69
+    },
+    {
+      "count": 5,
+      "cumulative_fraction": 0.924667,
+      "fraction": 0.003333,
+      "talker_prefill_length": 101
+    },
+    {
+      "count": 5,
+      "cumulative_fraction": 0.928,
+      "fraction": 0.003333,
+      "talker_prefill_length": 105
+    },
+    {
+      "count": 5,
+      "cumulative_fraction": 0.931333,
+      "fraction": 0.003333,
+      "talker_prefill_length": 108
+    },
+    {
+      "count": 4,
+      "cumulative_fraction": 0.934,
+      "fraction": 0.002667,
+      "talker_prefill_length": 79
+    },
+    {
+      "count": 4,
+      "cumulative_fraction": 0.936667,
+      "fraction": 0.002667,
+      "talker_prefill_length": 102
+    },
+    {
+      "count": 4,
+      "cumulative_fraction": 0.939333,
+      "fraction": 0.002667,
+      "talker_prefill_length": 103
+    },
+    {
+      "count": 4,
+      "cumulative_fraction": 0.942,
+      "fraction": 0.002667,
+      "talker_prefill_length": 112
+    },
+    {
+      "count": 4,
+      "cumulative_fraction": 0.944667,
+      "fraction": 0.002667,
+      "talker_prefill_length": 118
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.946667,
+      "fraction": 0.002,
+      "talker_prefill_length": 71
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.948667,
+      "fraction": 0.002,
+      "talker_prefill_length": 72
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.950667,
+      "fraction": 0.002,
+      "talker_prefill_length": 73
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.952667,
+      "fraction": 0.002,
+      "talker_prefill_length": 74
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.954667,
+      "fraction": 0.002,
+      "talker_prefill_length": 86
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.956667,
+      "fraction": 0.002,
+      "talker_prefill_length": 88
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.958667,
+      "fraction": 0.002,
+      "talker_prefill_length": 93
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.960667,
+      "fraction": 0.002,
+      "talker_prefill_length": 95
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.962667,
+      "fraction": 0.002,
+      "talker_prefill_length": 100
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.964667,
+      "fraction": 0.002,
+      "talker_prefill_length": 106
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.966667,
+      "fraction": 0.002,
+      "talker_prefill_length": 110
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.968667,
+      "fraction": 0.002,
+      "talker_prefill_length": 123
+    },
+    {
+      "count": 3,
+      "cumulative_fraction": 0.970667,
+      "fraction": 0.002,
+      "talker_prefill_length": 128
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.972,
+      "fraction": 0.001333,
+      "talker_prefill_length": 77
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.973333,
+      "fraction": 0.001333,
+      "talker_prefill_length": 80
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.974667,
+      "fraction": 0.001333,
+      "talker_prefill_length": 89
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.976,
+      "fraction": 0.001333,
+      "talker_prefill_length": 91
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.977333,
+      "fraction": 0.001333,
+      "talker_prefill_length": 92
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.978667,
+      "fraction": 0.001333,
+      "talker_prefill_length": 94
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.98,
+      "fraction": 0.001333,
+      "talker_prefill_length": 97
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.981333,
+      "fraction": 0.001333,
+      "talker_prefill_length": 99
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.982667,
+      "fraction": 0.001333,
+      "talker_prefill_length": 104
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.984,
+      "fraction": 0.001333,
+      "talker_prefill_length": 115
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.985333,
+      "fraction": 0.001333,
+      "talker_prefill_length": 116
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.986667,
+      "fraction": 0.001333,
+      "talker_prefill_length": 117
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.988,
+      "fraction": 0.001333,
+      "talker_prefill_length": 124
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.989333,
+      "fraction": 0.001333,
+      "talker_prefill_length": 125
+    },
+    {
+      "count": 2,
+      "cumulative_fraction": 0.990667,
+      "fraction": 0.001333,
+      "talker_prefill_length": 130
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.991333,
+      "fraction": 0.000667,
+      "talker_prefill_length": 75
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.992,
+      "fraction": 0.000667,
+      "talker_prefill_length": 81
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.992667,
+      "fraction": 0.000667,
+      "talker_prefill_length": 82
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.993333,
+      "fraction": 0.000667,
+      "talker_prefill_length": 83
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.994,
+      "fraction": 0.000667,
+      "talker_prefill_length": 84
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.994667,
+      "fraction": 0.000667,
+      "talker_prefill_length": 85
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.995333,
+      "fraction": 0.000667,
+      "talker_prefill_length": 87
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.996,
+      "fraction": 0.000667,
+      "talker_prefill_length": 90
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.996667,
+      "fraction": 0.000667,
+      "talker_prefill_length": 107
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.997333,
+      "fraction": 0.000667,
+      "talker_prefill_length": 120
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.998,
+      "fraction": 0.000667,
+      "talker_prefill_length": 122
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.998667,
+      "fraction": 0.000667,
+      "talker_prefill_length": 129
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 0.999333,
+      "fraction": 0.000667,
+      "talker_prefill_length": 133
+    },
+    {
+      "count": 1,
+      "cumulative_fraction": 1.0,
+      "fraction": 0.000667,
+      "talker_prefill_length": 139
+    }
+  ],
+  "method": "explicit_exact_prefill_lengths_from_completed_discovery",
+  "record_count": 1500,
+  "records_path": "docs\\benchmark-artifacts\\rtx4090-2026-07-31\\representative-v4-r8-clean-seeded-safety-discovery-rtx4090\\records.jsonl",
+  "records_sha256": "e2bf20b927e6eb3f85665440c9634f67663a2efc7e0ba7e68abd7fa1e99d706d",
+  "rows": [
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "v4-b01-056",
+      "language": "Russian",
+      "language_class": "ru",
+      "record_id": "v4-b01-056",
+      "talker_prefill_length": 32,
+      "text": "\u0411\u0435\u0437 \u0441\u043f\u043e\u0439\u043b\u0435\u0440\u043e\u0432 \u0432 \u0447\u0430\u0442\u0435, \u0437\u0434\u0435\u0441\u044c \u043c\u043d\u043e\u0433\u0438\u0435 \u043f\u0440\u043e\u0445\u043e\u0434\u044f\u0442 \u044d\u0442\u0443 \u0447\u0430\u0441\u0442\u044c \u0432\u043f\u0435\u0440\u0432\u044b\u0435.",
+      "text_characters": 62
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "v4-b01-022",
+      "language": "Russian",
+      "language_class": "ru",
+      "record_id": "v4-b01-022",
+      "talker_prefill_length": 29,
+      "text": "\u0422\u0435\u0441\u0442 \u0437\u0430\u043a\u043e\u043d\u0447\u0435\u043d, \u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0430\u044e\u0441\u044c \u043d\u0430 \u0440\u0435\u0437\u0435\u0440\u0432\u043d\u044b\u0439 \u0438\u0441\u0442\u043e\u0447\u043d\u0438\u043a.",
+      "text_characters": 50
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "v4-b01-052",
+      "language": "Russian",
+      "language_class": "ru",
+      "record_id": "v4-b01-052",
+      "talker_prefill_length": 35,
+      "text": "\u042f \u0432\u044b\u0431\u0440\u0430\u043b \u043c\u0435\u0434\u043b\u0435\u043d\u043d\u044b\u0439 \u043c\u0430\u0440\u0448\u0440\u0443\u0442, \u043f\u043e\u0442\u043e\u043c\u0443 \u0447\u0442\u043e \u0442\u0430\u043c \u0431\u043e\u043b\u044c\u0448\u0435 \u0443\u043a\u0440\u044b\u0442\u0438\u0439 \u0438 \u043c\u0435\u043d\u044c\u0448\u0435 \u0441\u043b\u0443\u0447\u0430\u0439\u043d\u044b\u0445 \u0431\u043e\u0451\u0432.",
+      "text_characters": 82
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "v4-b01-050",
+      "language": "Russian",
+      "language_class": "ru",
+      "record_id": "v4-b01-050",
+      "talker_prefill_length": 34,
+      "text": "\u0423 \u043f\u0440\u043e\u0442\u0438\u0432\u043d\u0438\u043a\u0430 \u0437\u0430\u043a\u043e\u043d\u0447\u0438\u043b\u0430\u0441\u044c \u0432\u044b\u043d\u043e\u0441\u043b\u0438\u0432\u043e\u0441\u0442\u044c, \u0441\u0435\u0439\u0447\u0430\u0441 \u043e\u043a\u043d\u043e \u0434\u043b\u044f \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0439 \u0430\u0442\u0430\u043a\u0438.",
+      "text_characters": 72
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "v4-b01-039",
+      "language": "Russian",
+      "language_class": "ru",
+      "record_id": "v4-b01-039",
+      "talker_prefill_length": 33,
+      "text": "\u041c\u0438\u043a\u0440\u043e\u0444\u043e\u043d \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442, \u043f\u0440\u043e\u0441\u0442\u043e \u043a\u043e\u043c\u043f\u0440\u0435\u0441\u0441\u043e\u0440 \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0441\u0438\u043b\u044c\u043d\u043e \u0441\u044a\u0435\u0434\u0430\u0435\u0442 \u0442\u0438\u0445\u0438\u0435 \u0441\u043b\u043e\u0432\u0430.",
+      "text_characters": 72
+    },
+    {
+      "instruction": "",
+      "instruction_characters": 0,
+      "label": "v4-b01-069",
+      "language": "Auto",
+      "language_class": "mixed",
+      "record_id": "v4-b01-069",
+      "talker_prefill_length": 30,
+      "text": "\u0412 Discord \u043c\u0435\u043d\u044f \u0441\u043b\u044b\u0448\u043d\u043e \u043d\u043e\u0440\u043c\u0430\u043b\u044c\u043d\u043e, \u0430 OBS \u043f\u0438\u0448\u0435\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u043b\u0435\u0432\u044b\u0439 \u043a\u0430\u043d\u0430\u043b.",
+      "text_characters": 64
+    }
+  ],
+  "selected_exact_lengths": [
+    32,
+    29,
+    35,
+    34,
+    33,
+    30
+  ]
+}
