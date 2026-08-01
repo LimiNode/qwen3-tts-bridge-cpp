@@ -7,6 +7,7 @@ until the qwen engine is actually selected and loaded.
 from __future__ import annotations
 
 import gc
+import hashlib
 import importlib
 import json
 import random
@@ -106,6 +107,8 @@ class QwenTtsEngine:
             _set_prefill_require_precompiled(self._require_model(), True)
         if self._config.prefill_first_chunk_warmup_enabled:
             warmup_fields.update(self._run_prefill_first_chunk_warmup())
+        if self._config.prefill_generation_prime_enabled:
+            warmup_fields.update(self._run_prefill_generation_prime())
         if self._config.warmup_synthesis_enabled:
             warmup_fields.update(self._run_warmup_synthesis())
         return warmup_fields or None
@@ -420,6 +423,64 @@ class QwenTtsEngine:
             "prefill_first_chunk_warmup_reset": reset_metadata,
             "prefill_first_chunk_warmup_first_audio_ms": pass_fields["first_audio_ms"],
             "prefill_first_chunk_warmup_audio_chunks": pass_fields["audio_chunks"],
+        }
+
+    def _run_prefill_generation_prime(self) -> dict[str, object]:
+        """Prime one internal generation to natural EOS before worker readiness.
+
+        The existing partial first-chunk warmup is deliberately not reused here:
+        a partial stream needs an explicit graph reset and did not establish
+        decode parity for the first real request. This pass therefore consumes a
+        finite, safety-limited prompt to natural EOS and fails startup otherwise.
+        """
+        entries = _load_prefill_allowlist_warmup_manifest(
+            Path(self._config.prefill_allowlist_warmup_manifest),
+            self._config.prefill_compile_lengths,
+        )
+        length = self._config.prefill_first_chunk_warmup_length
+        if length is None:
+            raise QwenEngineError("generation prime requires an allowlisted length")
+        entry = entries[length]
+        model = self._require_model()
+        request = SynthesisRequest(
+            request_id=0,
+            text=str(entry["text"]),
+            language=str(entry["language"]),
+            speaker=str(entry.get("speaker") or self._config.warmup_speaker),
+            instruction=_prefill_warmup_instruction(model, entry) or "",
+            output=AudioFormat.default(),
+        )
+        self.validate_request(request)
+        started_at = monotonic_seconds()
+        rng_before = _rng_state_fingerprint()
+        with _preserved_rng_state():
+            pass_fields = self._run_warmup_synthesis_pass(
+                request, pass_index=1, output_chunk_limit=None
+            )
+        rng_after = _rng_state_fingerprint()
+        if rng_before != rng_after:
+            raise QwenEngineError("generation prime changed caller RNG state")
+        trace = self.pop_last_generation_trace()
+        if not isinstance(trace, dict) or trace.get("termination_reason") != "eos":
+            raise QwenEngineError("generation prime did not reach natural eos")
+        if pass_fields["bounded"]:
+            raise QwenEngineError("generation prime unexpectedly used a chunk limit")
+        self._last_chunk_metrics = None
+        return {
+            "prefill_generation_prime": True,
+            "prefill_generation_prime_ready": True,
+            "prefill_generation_prime_internal_only": True,
+            "prefill_generation_prime_requires_natural_eos": True,
+            "prefill_generation_prime_safety_limit_seconds": (
+                self._config.max_audio_seconds_per_utterance
+            ),
+            "prefill_generation_prime_length": length,
+            "prefill_generation_prime_duration_ms": elapsed_milliseconds(started_at),
+            "prefill_generation_prime_first_audio_ms": pass_fields["first_audio_ms"],
+            "prefill_generation_prime_audio_chunks": pass_fields["audio_chunks"],
+            "prefill_generation_prime_codec_frames": trace.get("codec_frame_count"),
+            "prefill_generation_prime_rng_before": rng_before,
+            "prefill_generation_prime_rng_after": rng_after,
         }
 
     def _run_prefill_allowlist_warmup(self, model: Any) -> dict[str, object]:
@@ -1185,6 +1246,45 @@ def _reset_after_partial_generation(model: Any) -> dict[str, object]:
                 f"partial faster generation reset did not preserve {name}"
             )
     return metadata
+
+
+def _rng_state_fingerprint(*, require_cuda: bool = True) -> dict[str, str]:
+    """Return stable hashes for every RNG state guarded by warmup passes."""
+
+    try:
+        numpy = importlib.import_module("numpy")
+        torch = importlib.import_module("torch")
+        cuda_available = bool(torch.cuda.is_available())
+        if require_cuda and not cuda_available:
+            raise QwenEngineError("strict generation prime requires CUDA RNG state")
+        numpy_state = numpy.random.get_state()
+        torch_cpu_state = torch.get_rng_state().cpu().numpy().tobytes()
+        cuda_states = torch.cuda.get_rng_state_all() if cuda_available else ()
+    except QwenEngineError:
+        raise
+    except Exception as exc:
+        raise QwenEngineError(
+            "failed to fingerprint generation-prime RNG state"
+        ) from exc
+
+    def digest(value: bytes) -> str:
+        return hashlib.sha256(value).hexdigest()
+
+    numpy_bytes = b"".join(
+        (
+            str(numpy_state[0]).encode("ascii"),
+            numpy_state[1].tobytes(),
+            str(numpy_state[2:]).encode("ascii"),
+        )
+    )
+    return {
+        "python_sha256": digest(repr(random.getstate()).encode("utf-8")),
+        "numpy_sha256": digest(numpy_bytes),
+        "torch_cpu_sha256": digest(torch_cpu_state),
+        "torch_cuda_sha256": digest(
+            b"".join(state.cpu().numpy().tobytes() for state in cuda_states)
+        ),
+    }
 
 
 @contextmanager

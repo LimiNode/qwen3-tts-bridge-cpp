@@ -1,9 +1,12 @@
 import importlib
+import json
 import random
 import struct
+import tempfile
 import threading
 import unittest
 from collections.abc import Callable
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -211,43 +214,80 @@ class _FasterStreamingModel:
                 if self._index >= 2:
                     raise StopIteration
                 self._index += 1
-                return [
-                    0.5
-                ], 24000, {
-                    "prefill_ms": 12.0,
-                    "decode_ms": 80.0,
-                    "chunk_steps": 8,
-                    "chunk_target_steps": 8,
-                    "chunk_schedule_index": 1,
-                    "profile_schema_version": 3,
-                    "profile_path": "fast",
-                    "profile_request_role": "first_user",
-                    "profile_prefill_enabled": True,
-                    "profile_complete": True,
-                    "events_complete": True,
-                    "components_finite": True,
-                    "components_nonnegative": True,
-                    "all_component_streams_equal": True,
-                    "prefill_total_gpu_ms": 11.0,
-                    "talker_forward_gpu_ms": 6.0,
-                    "first_sample_gpu_ms": 1.0,
-                    "prefill_kv_gpu_ms": 2.0,
-                    "generation_state_gpu_ms": 1.5,
-                    "prefill_to_sync_gpu_ms": 0.5,
-                    "prefill_gpu_component_sum_ms": 11.0,
-                    "prefill_gpu_partition_error_ms": 0.0,
-                    "prefill_gpu_accounting_error_ms": 0.0,
-                    "talker_forward_gpu_stream_id": 1234,
-                    "prefill_shape_length": 21,
-                    "prefill_shape_policy": "compiled_allowlist",
-                    "prefill_shape_allowlist_hit": True,
-                    "prefill_compile_on_miss": False,
-                }
+                return (
+                    [0.5],
+                    24000,
+                    {
+                        "prefill_ms": 12.0,
+                        "decode_ms": 80.0,
+                        "chunk_steps": 8,
+                        "chunk_target_steps": 8,
+                        "chunk_schedule_index": 1,
+                        "profile_schema_version": 3,
+                        "profile_path": "fast",
+                        "profile_request_role": "first_user",
+                        "profile_prefill_enabled": True,
+                        "profile_complete": True,
+                        "events_complete": True,
+                        "components_finite": True,
+                        "components_nonnegative": True,
+                        "all_component_streams_equal": True,
+                        "prefill_total_gpu_ms": 11.0,
+                        "talker_forward_gpu_ms": 6.0,
+                        "first_sample_gpu_ms": 1.0,
+                        "prefill_kv_gpu_ms": 2.0,
+                        "generation_state_gpu_ms": 1.5,
+                        "prefill_to_sync_gpu_ms": 0.5,
+                        "prefill_gpu_component_sum_ms": 11.0,
+                        "prefill_gpu_partition_error_ms": 0.0,
+                        "prefill_gpu_accounting_error_ms": 0.0,
+                        "talker_forward_gpu_stream_id": 1234,
+                        "prefill_shape_length": 21,
+                        "prefill_shape_policy": "compiled_allowlist",
+                        "prefill_shape_allowlist_hit": True,
+                        "prefill_compile_on_miss": False,
+                    },
+                )
 
             def close(self) -> None:
                 model.closed_streams += 1
 
         return _Stream()
+
+
+class _PrimeStreamingModel(_FasterStreamingModel):
+    def __init__(self, termination_reason: str) -> None:
+        super().__init__(
+            "custom_voice",
+            supported_speakers=["Alice"],
+            prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+        )
+        self._termination_reason = termination_reason
+
+    def _stream(self) -> object:
+        parent = super()._stream()
+        model = self
+
+        class _TracedStream:
+            def __iter__(self) -> "_TracedStream":
+                self._iterator = iter(parent)
+                return self
+
+            def __next__(self) -> tuple[list[float], int, dict[str, object]]:
+                try:
+                    return next(self._iterator)
+                except StopIteration:
+                    model.last_generation_trace = {
+                        "codec_sha256": "prime-trace",
+                        "codec_frame_count": 2,
+                        "termination_reason": model._termination_reason,
+                    }
+                    raise
+
+            def close(self) -> None:
+                parent.close()
+
+        return _TracedStream()
 
 
 class _TalkerConfig:
@@ -264,6 +304,28 @@ class _NestedWrapper:
     def __init__(self, model_type: str, attn_implementation: str = "sdpa") -> None:
         self.model = _InnerModel(model_type)
         self.config = _ModelConfig(attn_implementation)
+
+
+def _generation_prime_config(manifest: Path) -> QwenEngineConfig:
+    return QwenEngineConfig(
+        model_path="models/qwen-custom",
+        runtime_backend="faster",
+        dtype="bfloat16",
+        attn_implementation="sdpa",
+        max_audio_seconds_per_utterance=60.0,
+        prefill_backend="compile_reduce_overhead",
+        prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+        prefill_compile_lengths=(16,),
+        prefill_compile_on_miss=False,
+        prefill_unknown_shape_policy="eager",
+        prefill_compile_policy="exact_allowlist",
+        prefill_allowlist_warmup_manifest=str(manifest),
+        prefill_require_precompiled=True,
+        prefill_first_chunk_warmup_enabled=True,
+        prefill_first_chunk_warmup_length=16,
+        prefill_generation_prime_enabled=True,
+        collect_generation_trace=True,
+    )
 
 
 class QwenEngineTests(unittest.TestCase):
@@ -566,6 +628,87 @@ class QwenEngineTests(unittest.TestCase):
         warmup_passes = cast(list[dict[str, object]], warmup_fields["warmup_passes"])
         self.assertTrue(warmup_passes[0]["bounded"])
         self.assertEqual(1, warmup_passes[0]["max_output_chunks"])
+
+    def test_generation_prime_requires_natural_eos_and_keeps_metrics_internal(
+        self,
+    ) -> None:
+        try:
+            torch = importlib.import_module("torch")
+        except ModuleNotFoundError:
+            self.skipTest("torch is required for generation-prime coverage")
+        if not torch.cuda.is_available():
+            self.skipTest("CUDA is required for strict generation-prime coverage")
+
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "manifest.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "rows": [
+                            {
+                                "talker_prefill_length": 16,
+                                "text": "Prime.",
+                                "language": "English",
+                                "speaker": "Alice",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            fake_model = _PrimeStreamingModel("eos")
+            engine = QwenTtsEngine(
+                _generation_prime_config(manifest),
+                model_loader=lambda _config: fake_model,
+            )
+
+            engine.load()
+            fields = engine._run_prefill_generation_prime()
+
+        self.assertTrue(fields["prefill_generation_prime_ready"])
+        self.assertTrue(fields["prefill_generation_prime_internal_only"])
+        self.assertTrue(fields["prefill_generation_prime_requires_natural_eos"])
+        self.assertEqual(60.0, fields["prefill_generation_prime_safety_limit_seconds"])
+        self.assertEqual(
+            fields["prefill_generation_prime_rng_before"],
+            fields["prefill_generation_prime_rng_after"],
+        )
+        self.assertEqual(1, len(fake_model.custom_stream_calls))
+        self.assertIsNone(engine.pop_last_chunk_metrics())
+
+    def test_generation_prime_rejects_non_eos_termination(self) -> None:
+        try:
+            torch = importlib.import_module("torch")
+        except ModuleNotFoundError:
+            self.skipTest("torch is required for generation-prime coverage")
+        if not torch.cuda.is_available():
+            self.skipTest("CUDA is required for strict generation-prime coverage")
+
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "manifest.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "rows": [
+                            {
+                                "talker_prefill_length": 16,
+                                "text": "Prime.",
+                                "language": "English",
+                                "speaker": "Alice",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            engine = QwenTtsEngine(
+                _generation_prime_config(manifest),
+                model_loader=lambda _config: _PrimeStreamingModel("max_new_tokens"),
+            )
+            engine.load()
+
+            with self.assertRaisesRegex(QwenEngineError, "natural eos"):
+                engine._run_prefill_generation_prime()
 
     def test_custom_voice_rejects_unsupported_speaker(self) -> None:
         engine = QwenTtsEngine(
@@ -932,12 +1075,8 @@ class QwenEngineTests(unittest.TestCase):
                 "fake": {
                     "prefill_compile_compat_metadata": {
                         "prefill_compile_compat_metadata_version": 1,
-                        "prefill_compile_compat_wrapper_mode": (
-                            "strict_bf16_sdpa_v1"
-                        ),
-                        "prefill_compile_compat_declared_mode": (
-                            "strict_bf16_sdpa_v1"
-                        ),
+                        "prefill_compile_compat_wrapper_mode": ("strict_bf16_sdpa_v1"),
+                        "prefill_compile_compat_declared_mode": ("strict_bf16_sdpa_v1"),
                         "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
                         "prefill_compile_compat_applied": True,
                         "prefill_compile_compat_reused": False,
@@ -966,12 +1105,8 @@ class QwenEngineTests(unittest.TestCase):
                 "fake": {
                     "prefill_compile_compat_metadata": {
                         "prefill_compile_compat_metadata_version": 1,
-                        "prefill_compile_compat_wrapper_mode": (
-                            "strict_bf16_sdpa_v1"
-                        ),
-                        "prefill_compile_compat_declared_mode": (
-                            "strict_bf16_sdpa_v1"
-                        ),
+                        "prefill_compile_compat_wrapper_mode": ("strict_bf16_sdpa_v1"),
+                        "prefill_compile_compat_declared_mode": ("strict_bf16_sdpa_v1"),
                         "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
                         "prefill_compile_compat_applied": False,
                         "prefill_compile_compat_reused": False,

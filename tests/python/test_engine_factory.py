@@ -162,6 +162,13 @@ class EngineFactoryTests(unittest.TestCase):
                 "--prefill-allowlist-warmup-repeats",
                 "4",
                 "--prefill-require-precompiled",
+                "--prefill-first-chunk-warmup",
+                "--prefill-first-chunk-warmup-length",
+                "16",
+                "--prefill-generation-prime",
+                "--collect-generation-trace",
+                "--max-audio-seconds-per-utterance",
+                "60",
             ]
         )
 
@@ -173,6 +180,9 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("manifest.json", config.prefill_allowlist_warmup_manifest)
         self.assertEqual(4, config.prefill_allowlist_warmup_repeats)
         self.assertTrue(config.prefill_require_precompiled)
+        self.assertTrue(config.prefill_first_chunk_warmup_enabled)
+        self.assertEqual(16, config.prefill_first_chunk_warmup_length)
+        self.assertTrue(config.prefill_generation_prime_enabled)
 
     def test_qwen_subcommand_requires_model_path(self) -> None:
         parser = build_parser()
@@ -429,6 +439,40 @@ class EngineFactoryTests(unittest.TestCase):
             prefill_first_chunk_warmup_enabled=True,
             prefill_first_chunk_warmup_length=16,
         )
+
+    def test_qwen_config_rejects_generation_prime_without_trace_or_safety_limit(
+        self,
+    ) -> None:
+        valid: dict[str, Any] = {
+            "model_path": "models/qwen",
+            "runtime_backend": "faster",
+            "dtype": "bfloat16",
+            "attn_implementation": "sdpa",
+            "max_audio_seconds_per_utterance": 60.0,
+            "prefill_backend": "compile_reduce_overhead",
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_lengths": (16,),
+            "prefill_compile_on_miss": False,
+            "prefill_unknown_shape_policy": "eager",
+            "prefill_compile_policy": "exact_allowlist",
+            "prefill_allowlist_warmup_manifest": "manifest.json",
+            "prefill_require_precompiled": True,
+            "prefill_first_chunk_warmup_enabled": True,
+            "prefill_first_chunk_warmup_length": 16,
+            "prefill_generation_prime_enabled": True,
+            "collect_generation_trace": True,
+        }
+        QwenEngineConfig(**valid)
+
+        for update in (
+            {"collect_generation_trace": False},
+            {"max_audio_seconds_per_utterance": None},
+        ):
+            with self.subTest(update=update):
+                invalid = dict(valid)
+                invalid.update(update)
+                with self.assertRaises(ValueError):
+                    QwenEngineConfig(**invalid)
 
     def test_qwen_config_rejects_first_chunk_and_full_synthesis_warmup(self) -> None:
         with self.assertRaises(ValueError):

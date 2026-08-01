@@ -164,6 +164,7 @@ def _create_engine(profile: Mapping[str, object], speaker: str) -> Any:
 
     model_path = _resolve_profile_path(profile, "model_path")
     warmup_manifest = _resolve_profile_path(profile, "prefill_allowlist_warmup_manifest")
+    warmup_length = profile.get("prefill_first_chunk_warmup_length")
     return QwenTtsEngine(
         QwenEngineConfig(
             model_path=str(model_path),
@@ -198,8 +199,11 @@ def _create_engine(profile: Mapping[str, object], speaker: str) -> Any:
             ),
             prefill_require_precompiled=bool(profile["prefill_require_precompiled"]),
             prefill_first_chunk_warmup_enabled=bool(profile["prefill_first_chunk_warmup"]),
-            prefill_first_chunk_warmup_length=int(
-                profile["prefill_first_chunk_warmup_length"]
+            prefill_first_chunk_warmup_length=(
+                int(warmup_length) if warmup_length is not None else None
+            ),
+            prefill_generation_prime_enabled=bool(
+                profile.get("prefill_generation_prime", False)
             ),
             collect_generation_trace=True,
             seed=None,
