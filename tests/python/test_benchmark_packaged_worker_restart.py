@@ -62,6 +62,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
                 "prefill_ms": 12.0,
                 "ar_decode_ms": 80.0,
                 "chunk_steps": 8,
+                "selected_chunk_schedule": [8, 8, 12],
                 "ar_ms_per_step": 10.0,
                 "codec_wrapper_residual_ms": 4.5,
                 "pcm_convert_ms": 0.25,
@@ -162,6 +163,7 @@ class BenchmarkPackagedWorkerRestartTests(unittest.TestCase):
         self.assertEqual(12.0, enriched["first_chunk_prefill_ms"])
         self.assertEqual(80.0, enriched["first_chunk_ar_decode_ms"])
         self.assertEqual(8.0, enriched["first_chunk_steps"])
+        self.assertEqual([8, 8, 12], enriched["first_chunk_selected_chunk_schedule"])
         self.assertEqual(10.0, enriched["first_chunk_ar_ms_per_step"])
         self.assertEqual(4.5, enriched["first_chunk_codec_wrapper_residual_ms"])
         self.assertEqual(0.25, enriched["first_chunk_pcm_convert_ms"])
