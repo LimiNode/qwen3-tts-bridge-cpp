@@ -90,16 +90,27 @@ def main() -> int:
     if not args.speaker.strip():
         parser.error("--speaker must not be empty")
     _require_clean_tracked_tree()
+    policy = _load_holdout_policy(args.holdout_policy, args.input, args.profile)
+    expected_split = "runtime_measurement_holdout" if policy is not None else "discovery"
     records, input_sha256, corpus_id = _load_discovery_records(
         args.input,
         args.runtime_split_audit,
         args.expected_corpus_id,
+        expected_split=expected_split,
     )
     selected = records[: args.limit] if args.limit else records
     if not selected:
         parser.error("--limit selected no discovery records")
     profile = _load_profile(args.profile)
-    manifest = _build_manifest(args, input_sha256, corpus_id, profile, len(selected))
+    manifest = _build_manifest(
+        args,
+        input_sha256,
+        corpus_id,
+        profile,
+        len(selected),
+        corpus_split=expected_split,
+        holdout_policy=policy,
+    )
     completed = _prepare_output(args.output_dir, manifest, resume=args.resume)
     pending = [record for record in selected if record["record_id"] not in completed]
     if not pending:
@@ -183,6 +194,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--holdout-policy",
+        type=Path,
+        help="Frozen policy required to measure the runtime holdout.",
+    )
     return parser
 
 
@@ -190,12 +206,16 @@ def _load_discovery_records(
     input_path: Path,
     audit_path: Path,
     expected_corpus_id: str,
+    *,
+    expected_split: str = "discovery",
 ) -> tuple[list[dict[str, object]], str, str]:
     input_sha256 = _sha256(input_path)
     audit = _load_object(audit_path, "runtime split audit")
     if audit.get("corpus_id") != expected_corpus_id:
         raise RuntimeError("runtime split audit does not match --expected-corpus-id")
-    if audit.get("discovery_sha256") != input_sha256:
+    sha_key = "holdout_sha256" if expected_split != "discovery" else "discovery_sha256"
+    count_key = "holdout_count" if expected_split != "discovery" else "discovery_count"
+    if audit.get(sha_key) != input_sha256:
         raise RuntimeError("input SHA does not match the pinned discovery SHA")
 
     records: list[dict[str, object]] = []
@@ -219,8 +239,10 @@ def _load_discovery_records(
             raise RuntimeError(f"line {line_number}: text must be a non-empty string")
         if not isinstance(corpus_id, str) or not corpus_id:
             raise RuntimeError(f"line {line_number}: corpus_id must be a non-empty string")
-        if value.get("corpus_split") != "discovery":
-            raise RuntimeError("input is not a discovery split; holdout is forbidden")
+        if value.get("corpus_split") != expected_split:
+            if expected_split == "discovery":
+                raise RuntimeError("input is not a discovery split; holdout is forbidden")
+            raise RuntimeError(f"input corpus_split must be {expected_split}")
         if record_id in record_ids:
             raise RuntimeError(f"line {line_number}: duplicate record_id {record_id}")
         record_ids.add(record_id)
@@ -230,7 +252,7 @@ def _load_discovery_records(
         raise RuntimeError("input contains no discovery records")
     if corpus_ids != {expected_corpus_id}:
         raise RuntimeError("input corpus_id does not match --expected-corpus-id")
-    expected_count = audit.get("discovery_count")
+    expected_count = audit.get(count_key)
     if not isinstance(expected_count, int) or expected_count != len(records):
         raise RuntimeError("input record count does not match runtime split audit")
     return records, input_sha256, expected_corpus_id
@@ -248,19 +270,46 @@ def _load_profile(path: Path) -> dict[str, object]:
     return profile
 
 
+def _load_holdout_policy(
+    path: Path | None,
+    input_path: Path,
+    profile_path: Path,
+) -> dict[str, object] | None:
+    if path is None:
+        return None
+    policy = _load_object(path, "holdout policy")
+    if policy.get("status") != "frozen_for_one_measurement_holdout":
+        raise RuntimeError("holdout policy is not frozen")
+    if policy.get("input_sha256") != _sha256(input_path):
+        raise RuntimeError("holdout policy input SHA does not match")
+    if policy.get("profile_sha256") != _sha256(profile_path):
+        raise RuntimeError("holdout policy profile SHA does not match")
+    if policy.get("allow_padded_prefill") is not False:
+        raise RuntimeError("holdout policy must reject padded prefill")
+    return {
+        "path": str(path),
+        "sha256": _sha256(path),
+        "policy_name": policy.get("policy_name"),
+    }
+
+
 def _build_manifest(
     args: argparse.Namespace,
     input_sha256: str,
     corpus_id: str,
     profile: Mapping[str, object],
     selected_record_count: int,
+    *,
+    corpus_split: str,
+    holdout_policy: dict[str, object] | None,
 ) -> dict[str, object]:
     return {
         "corpus_discovery_schema_version": _SCHEMA_VERSION,
         "status": "running",
         "started_at_utc": _utc_now(),
         "corpus_id": corpus_id,
-        "corpus_split": "discovery",
+        "corpus_split": corpus_split,
+        "holdout_policy": holdout_policy,
         "input": _provenance(args.input),
         "input_sha256": input_sha256,
         "runtime_split_audit": _provenance(args.runtime_split_audit),

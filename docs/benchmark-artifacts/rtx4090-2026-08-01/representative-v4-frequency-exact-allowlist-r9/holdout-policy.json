@@ -1,0 +1,17 @@
+{
+  "artifact_schema_version": 1,
+  "policy_name": "rtx4090-frequency-exact-allowlist-r9-holdout",
+  "status": "frozen_for_one_measurement_holdout",
+  "corpus_id": "representative-v4-r6-candidate",
+  "input": "docs/benchmark-artifacts/rtx4090-2026-07-30/representative-v4-r6-candidate/holdout.jsonl",
+  "input_sha256": "73c7f52b4fa9db684cb248ba1f9f5e177fdfe68f7db246f32b780551ab5375e7",
+  "profile": "config/rtx4090-faster-customvoice-frequency-exact-allowlist-r9-research.json",
+  "profile_sha256": "59d94166a35baecd57fa28020e882ade23609bf82da61788b96bb653d165cdbd",
+  "same_wheel_ab": "docs/benchmark-artifacts/rtx4090-2026-08-01/representative-v4-frequency-exact-allowlist-r9/same-wheel-ab/summary.json",
+  "allow_padded_prefill": false,
+  "allowlist_lengths": [18, 19, 20, 26, 27, 29],
+  "prefill_generation_prime": true,
+  "max_audio_seconds_per_utterance": 60.0,
+  "seed": 20260801,
+  "seed_mode": "request_id"
+}
