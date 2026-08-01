@@ -1,0 +1,11 @@
+{
+  "completed_record_count": 500,
+  "completed_record_id_set_sha256": "9e7a1646c468e83838f5501a19f2be14288424094a84f44bb3521902d13ff8d5",
+  "corpus_discovery_schema_version": 3,
+  "corpus_id": "representative-v4-r6-candidate",
+  "corpus_split": "runtime_measurement_holdout",
+  "input_sha256": "73c7f52b4fa9db684cb248ba1f9f5e177fdfe68f7db246f32b780551ab5375e7",
+  "remaining_record_count": 0,
+  "selected_record_count": 500,
+  "updated_at_utc": "2026-08-01T02:46:06+00:00"
+}
