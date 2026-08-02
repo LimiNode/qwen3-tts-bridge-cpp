@@ -126,6 +126,35 @@ bool read_optional_string(
     return true;
 }
 
+bool read_optional_string_array(
+    const Json& object,
+    const char* name,
+    std::vector<std::string>& out,
+    std::string& diagnostic,
+    ControlCodecError& error) {
+    const Json* value = find_field(object, name);
+    if (value == nullptr) {
+        return true;
+    }
+    if (!value->is_array()) {
+        error = ControlCodecError::InvalidFieldType;
+        diagnostic = std::string("field must be an array: ") + name;
+        return false;
+    }
+    std::vector<std::string> items;
+    items.reserve(value->size());
+    for (const Json& item : *value) {
+        if (!item.is_string() || item.get<std::string>().empty()) {
+            error = ControlCodecError::InvalidFieldType;
+            diagnostic = std::string("field must contain non-empty strings: ") + name;
+            return false;
+        }
+        items.push_back(item.get<std::string>());
+    }
+    out = std::move(items);
+    return true;
+}
+
 bool read_optional_bool(
     const Json& object,
     const char* name,
@@ -428,6 +457,26 @@ bool read_capabilities(
             error)) {
         return false;
     }
+    bool voice_clone_streaming_present = false;
+    if (!read_optional_bool(
+            *value,
+            "voice_clone_streaming",
+            out.voice_clone_streaming,
+            voice_clone_streaming_present,
+            diagnostic,
+            error)) {
+        return false;
+    }
+    bool voice_profiles_present = false;
+    if (!read_optional_bool(
+            *value,
+            "voice_profiles",
+            out.voice_profiles,
+            voice_profiles_present,
+            diagnostic,
+            error)) {
+        return false;
+    }
 
     return true;
 }
@@ -467,7 +516,9 @@ Json capabilities_to_json(const WorkerCapabilities& capabilities) {
         {"instructions", capabilities.instructions},
         {"voice_clone", capabilities.voice_clone},
         {"sampling_overrides", capabilities.sampling_overrides},
-        {"deterministic_seed", capabilities.deterministic_seed}
+        {"deterministic_seed", capabilities.deterministic_seed},
+        {"voice_clone_streaming", capabilities.voice_clone_streaming},
+        {"voice_profiles", capabilities.voice_profiles}
     };
 }
 

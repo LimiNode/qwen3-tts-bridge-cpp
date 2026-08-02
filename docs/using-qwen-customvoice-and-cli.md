@@ -43,6 +43,7 @@ profile prewarms six exact compiled shapes before declaring the worker ready.
 | Plain text | Cancels an active synthesis and queued playback, then speaks the new text. |
 | `/cancel` | Cancels the active synthesis and stops queued playback. |
 | `/voice <name>` | Selects a preset speaker for future requests. |
+| `/voices` | Lists registered Base voice profiles when the worker exposes them. |
 | `/language <name>` | Selects the request language for future requests. |
 | `/style <text>` | Stores a style instruction for future requests; see the model limitation below. |
 | `/temperature <value\|default>` | Sets sampling temperature for future requests, or restores the worker profile default. |
@@ -59,6 +60,11 @@ Changing `/voice` does not recolor audio that is already generated. To switch
 immediately, set the voice and submit a new line of text; that new request
 cancels the old generation. `serena` and `ryan` are known preset speakers for
 the local model. An unsupported speaker is rejected by the worker.
+
+With a Base worker configured with a voice registry, `/voice <id>` instead
+selects a registered clone profile and `/voices` lists the available IDs. See
+[Local Voice Clone](voice-clone.md) for profile creation and the distinction
+between a reusable profile and a one-off reference WAV request.
 
 ## Sampling and Stable Pronunciation
 

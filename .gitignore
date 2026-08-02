@@ -41,6 +41,7 @@ CMakeUserPresets.json
 *.suo
 *.vcxproj.user
 /config/playback-runtime.local.json
+/config/voice-profiles.local.json
 
 # Logs and temporary local files
 *.log

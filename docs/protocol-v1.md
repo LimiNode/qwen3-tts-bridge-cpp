@@ -200,8 +200,11 @@ The worker replies with `ready`:
     "instructions": true,
     "voice_clone": false,
     "sampling_overrides": true,
-    "deterministic_seed": true
-  }
+    "deterministic_seed": true,
+    "voice_clone_streaming": false,
+    "voice_profiles": false
+  },
+  "voice_ids": []
 }
 ```
 
@@ -221,11 +224,14 @@ actually performed successfully. If warmup is disabled by configuration, `ready`
 may use `warmed_up = false`; the worker is still able to accept `synthesize`,
 but the first request may be slower.
 
-`sampling_overrides` and `deterministic_seed` are optional capability fields.
-Clients must treat an absent field as `false` so that a newer client can safely
-connect to an older v1 worker. The first indicates whether request-level
-sampling controls are accepted; the second indicates whether an explicit
-request `seed` is applied fail-closed across the engine RNGs.
+`sampling_overrides`, `deterministic_seed`, `voice_clone_streaming`, and
+`voice_profiles` are optional capability fields. Clients must treat an absent
+field as `false` so that a newer client can safely connect to an older v1
+worker. The first indicates whether request-level sampling controls are
+accepted; the second indicates whether an explicit request `seed` is applied
+fail-closed across the engine RNGs. `voice_clone_streaming` means a Base model
+can stream clone PCM before completion. `voice_profiles` means `voice_ids`
+contains selectable local Base profiles; an absent `voice_ids` is an empty list.
 
 The C++ supervisor must apply a configurable startup timeout while waiting for
 `ready`. On timeout, it may terminate the worker and report a local startup
@@ -273,6 +279,13 @@ request. `reference_text` is its transcript and is required by ICL cloning.
 Set `x_vector_only = true` to clone only the speaker embedding without a
 transcript. These fields are model-specific: CustomVoice and VoiceDesign
 workers must reject them rather than silently changing request semantics.
+
+`voice_id` is an optional registered Base voice profile identifier. A profile
+contains local reference metadata held by the worker; its model-ready prompt
+may be retained only in that worker's memory. `voice_id` is mutually exclusive
+with `reference_audio_path`, `reference_text`, and `x_vector_only`. A worker
+without a configured voice registry, or one that does not recognize the ID,
+must return `request_error` rather than silently selecting another voice.
 
 `seed` is an optional non-negative integer for reproducible, diagnostic
 requests. It must not be used as a production quality guarantee: support and

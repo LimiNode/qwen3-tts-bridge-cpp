@@ -101,6 +101,12 @@ bool read_required_audio_format(
     AudioFormat& out,
     std::string& diagnostic,
     ControlCodecError& error);
+bool read_optional_string_array(
+    const Json& object,
+    const char* name,
+    std::vector<std::string>& out,
+    std::string& diagnostic,
+    ControlCodecError& error);
 bool read_optional_synthesis_sampling(
     const Json& object,
     const char* name,

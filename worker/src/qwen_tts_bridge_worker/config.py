@@ -174,6 +174,8 @@ class QwenEngineConfig:
     warmup_language: str = "auto"
     warmup_speaker: str = ""
     warmup_instruction: str = ""
+    voice_registry_path: str = ""
+    voice_prompt_cache_max_entries: int = 8
     kind: Literal["qwen"] = field(default="qwen", init=False)
 
     def __post_init__(self) -> None:
@@ -191,6 +193,10 @@ class QwenEngineConfig:
             raise ValueError("qwen.device must not be empty")
         if not self.dtype:
             raise ValueError("qwen.dtype must not be empty")
+        if self.voice_prompt_cache_max_entries <= 0:
+            raise ValueError(
+                "qwen.voice_prompt_cache_max_entries must be greater than zero"
+            )
         if self.emit_every_frames <= 0:
             raise ValueError("qwen.emit_every_frames must be greater than zero")
         schedules = {
@@ -245,13 +251,10 @@ class QwenEngineConfig:
             "strict_bf16_sdpa_v1",
         }:
             raise ValueError(
-                "qwen.prefill_compile_compat_mode must be none or "
-                "strict_bf16_sdpa_v1"
+                "qwen.prefill_compile_compat_mode must be none or strict_bf16_sdpa_v1"
             )
         if self.prefill_unknown_shape_policy not in {"eager", "error"}:
-            raise ValueError(
-                "qwen.prefill_unknown_shape_policy must be eager or error"
-            )
+            raise ValueError("qwen.prefill_unknown_shape_policy must be eager or error")
         if self.prefill_compile_policy not in {
             "diagnostic_dynamic",
             "exact_allowlist",
@@ -262,14 +265,10 @@ class QwenEngineConfig:
             )
         if any(length <= 0 for length in self.prefill_compile_lengths):
             raise ValueError("qwen.prefill_compile_lengths must be positive")
-        if len(set(self.prefill_compile_lengths)) != len(
-            self.prefill_compile_lengths
-        ):
+        if len(set(self.prefill_compile_lengths)) != len(self.prefill_compile_lengths):
             raise ValueError("qwen.prefill_compile_lengths must be unique")
         if self.prefill_allowlist_warmup_repeats < 3:
-            raise ValueError(
-                "qwen.prefill_allowlist_warmup_repeats must be at least 3"
-            )
+            raise ValueError("qwen.prefill_allowlist_warmup_repeats must be at least 3")
         if self.prefill_allowlist_max_entries <= 0:
             raise ValueError("qwen.prefill_allowlist_max_entries must be positive")
         if (
@@ -330,10 +329,7 @@ class QwenEngineConfig:
                 "qwen.prefill_generation_prime_enabled requires a finite "
                 "max_audio_seconds_per_utterance safety limit"
             )
-        if (
-            self.prefill_first_chunk_warmup_enabled
-            and self.warmup_synthesis_enabled
-        ):
+        if self.prefill_first_chunk_warmup_enabled and self.warmup_synthesis_enabled:
             raise ValueError(
                 "qwen.prefill_first_chunk_warmup_enabled and "
                 "warmup_synthesis_enabled cannot both be true"
@@ -473,18 +469,15 @@ class QwenEngineConfig:
             )
         if self.prefill_unknown_shape_policy != "eager":
             raise ValueError(
-                "route-aware chunk schedules require "
-                "prefill_unknown_shape_policy=eager"
+                "route-aware chunk schedules require prefill_unknown_shape_policy=eager"
             )
         if self.prefill_compile_on_miss:
             raise ValueError(
-                "route-aware chunk schedules require "
-                "prefill_compile_on_miss=false"
+                "route-aware chunk schedules require prefill_compile_on_miss=false"
             )
         if not self.prefill_require_precompiled:
             raise ValueError(
-                "route-aware chunk schedules require "
-                "prefill_require_precompiled=true"
+                "route-aware chunk schedules require prefill_require_precompiled=true"
             )
 
 
@@ -497,9 +490,7 @@ class WorkerConfig:
 
     worker_version: str = "0.2.0"
     output_queue_size: int = 128
-    engine_startup_mode: Literal["main", "engine_warmup", "engine_load_warmup"] = (
-        "main"
-    )
+    engine_startup_mode: Literal["main", "engine_warmup", "engine_load_warmup"] = "main"
     engine: EngineConfig = field(default_factory=MockEngineConfig)
     canary_runtime_provenance: CanaryRuntimeProvenance | None = None
 

@@ -101,6 +101,12 @@ ControlCodecError validate_control_payload(
             diagnostic = "reference_text and x_vector_only require reference_audio_path";
             return ControlCodecError::InvalidFieldType;
         }
+        if (!value.voice_id.empty() &&
+            (!value.reference_audio_path.empty() || !value.reference_text.empty() ||
+             value.x_vector_only)) {
+            diagnostic = "voice_id cannot be combined with direct reference-audio fields";
+            return ControlCodecError::InvalidFieldType;
+        }
         if (const auto error = validate_synthesis_sampling(value.sampling, diagnostic);
             error != ControlCodecError::None) {
             return error;

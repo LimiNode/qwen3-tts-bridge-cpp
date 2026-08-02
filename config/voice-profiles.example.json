@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "voices": [
+    {
+      "voice_id": "kraftwerk_robot_ru",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "Я твой слуга, я твой работник",
+      "x_vector_only": false
+    }
+  ]
+}

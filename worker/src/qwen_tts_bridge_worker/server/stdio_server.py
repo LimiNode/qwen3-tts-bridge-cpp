@@ -402,6 +402,7 @@ class StdioWorkerServer:
         self._hello_seen = True
         self._ready_sent = True
         capabilities = self._engine.capabilities
+        voice_ids = tuple(getattr(self._engine, "voice_ids", ()))
         self._metrics.emit(
             "worker_ready_sent",
             warmed_up=self._warmed_up,
@@ -409,6 +410,8 @@ class StdioWorkerServer:
             cancellation=capabilities.cancellation,
             instructions=capabilities.instructions,
             voice_clone=capabilities.voice_clone,
+            voice_clone_streaming=capabilities.voice_clone_streaming,
+            voice_profiles=capabilities.voice_profiles,
             sampling_overrides=capabilities.sampling_overrides,
             deterministic_seed=capabilities.deterministic_seed,
         )
@@ -423,6 +426,7 @@ class StdioWorkerServer:
                     "capabilities": _capabilities_payload(
                         capabilities,
                     ),
+                    "voice_ids": list(voice_ids),
                 },
             )
         )
@@ -528,6 +532,7 @@ class StdioWorkerServer:
         instruction = message.get("instruction", "")
         reference_audio_path = message.get("reference_audio_path", "")
         reference_text = message.get("reference_text", "")
+        voice_id = message.get("voice_id", "")
         x_vector_only = message.get("x_vector_only", False)
         seed = message.get("seed")
         sampling_payload = message.get("sampling")
@@ -565,6 +570,7 @@ class StdioWorkerServer:
         if (
             not isinstance(reference_audio_path, str)
             or not isinstance(reference_text, str)
+            or not isinstance(voice_id, str)
             or not isinstance(x_vector_only, bool)
         ):
             self._send_error(
@@ -609,6 +615,7 @@ class StdioWorkerServer:
             language=language,
             speaker=speaker,
             instruction=instruction,
+            voice_id=voice_id,
             reference_audio_path=reference_audio_path,
             reference_text=reference_text,
             x_vector_only=x_vector_only,
@@ -1131,6 +1138,8 @@ def _capabilities_payload(capabilities: EngineCapabilities) -> dict[str, bool]:
         "cancellation": capabilities.cancellation,
         "instructions": capabilities.instructions,
         "voice_clone": capabilities.voice_clone,
+        "voice_clone_streaming": capabilities.voice_clone_streaming,
+        "voice_profiles": capabilities.voice_profiles,
         "sampling_overrides": capabilities.sampling_overrides,
         "deterministic_seed": capabilities.deterministic_seed,
     }

@@ -71,6 +71,7 @@ ControlDecodeResult decode_known_control_message(
             !read_optional_string(object, "language", message.language, diagnostic, error) ||
             !read_optional_string(object, "speaker", message.speaker, diagnostic, error) ||
             !read_optional_string(object, "instruction", message.instruction, diagnostic, error) ||
+            !read_optional_string(object, "voice_id", message.voice_id, diagnostic, error) ||
             !read_optional_string(object, "reference_audio_path", message.reference_audio_path, diagnostic, error) ||
             !read_optional_string(object, "reference_text", message.reference_text, diagnostic, error) ||
             !read_optional_bool(object, "x_vector_only", message.x_vector_only, has_x_vector_only, diagnostic, error) ||
@@ -116,6 +117,7 @@ ControlDecodeResult decode_known_control_message(
         if (!read_required_string(object, "worker_version", message.worker_version, diagnostic, error) ||
             !read_required_string(object, "session_id", message.session_id, diagnostic, error) ||
             !read_optional_bool(object, "warmed_up", message.warmed_up, message.has_warmed_up, diagnostic, error) ||
+            !read_optional_string_array(object, "voice_ids", message.voice_ids, diagnostic, error) ||
             !read_capabilities(object, message.capabilities, diagnostic, error)) {
             return control_error(error, diagnostic);
         }

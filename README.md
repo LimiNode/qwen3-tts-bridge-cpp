@@ -23,8 +23,10 @@ stdin/stdout, and supports request-ID cancellation.
   pinned RTX 4090 48 GiB runtime; the default remains eager and unchanged.
 
 Base-model voice cloning is available through the playback example; the normal
-`0.6B-CustomVoice` runtime remains a preset-speaker model. See
-[Local Voice Clone](docs/voice-clone.md) for the reference-audio workflow.
+`0.6B-CustomVoice` runtime remains a preset-speaker model. Base profiles are
+created and tested separately, then selected by durable `voice_id` in ordinary
+playback sessions. See [Local Voice Clone](docs/voice-clone.md) for the
+reference-audio workflow and the included `kraftwerk_robot_ru` example.
 
 ## Quick Start
 

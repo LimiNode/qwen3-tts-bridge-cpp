@@ -128,9 +128,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 dtype=args.dtype,
                 attn_implementation=args.attn_implementation,
                 max_seq_len=args.max_seq_len,
-                max_audio_seconds_per_utterance=(
-                    args.max_audio_seconds_per_utterance
-                ),
+                max_audio_seconds_per_utterance=(args.max_audio_seconds_per_utterance),
                 emit_every_frames=args.emit_every_frames,
                 emit_chunk_schedule=args.emit_chunk_schedule,
                 compiled_emit_chunk_schedule=args.compiled_emit_chunk_schedule,
@@ -165,9 +163,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                     args.prefill_allowlist_max_abs_threshold
                 ),
                 prefill_require_precompiled=args.prefill_require_precompiled,
-                prefill_first_chunk_warmup_enabled=(
-                    args.prefill_first_chunk_warmup
-                ),
+                prefill_first_chunk_warmup_enabled=(args.prefill_first_chunk_warmup),
                 prefill_first_chunk_warmup_length=(
                     args.prefill_first_chunk_warmup_length
                 ),
@@ -191,6 +187,8 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 warmup_language=args.warmup_language,
                 warmup_speaker=args.warmup_speaker,
                 warmup_instruction=args.warmup_instruction,
+                voice_registry_path=args.voice_registry_path,
+                voice_prompt_cache_max_entries=args.voice_prompt_cache_max_entries,
             )
         raise ValueError(f"unsupported engine command: {engine_command}")
 
@@ -200,9 +198,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
             raise ValueError("--mock cannot be combined with --engine qwen")
         engine_name = "mock"
     if engine_name is None:
-        raise ValueError(
-            "choose an engine subcommand or use --mock/--engine mock"
-        )
+        raise ValueError("choose an engine subcommand or use --mock/--engine mock")
 
     if engine_name == "mock":
         return MockEngineConfig(
@@ -373,8 +369,7 @@ def _add_qwen_subcommand(
         type=_parse_emit_chunk_schedule,
         default=(),
         help=(
-            "Optional Faster-only schedule selected after a compiled allowlist "
-            "prefill."
+            "Optional Faster-only schedule selected after a compiled allowlist prefill."
         ),
     )
     qwen_parser.add_argument(
@@ -530,8 +525,7 @@ def _add_qwen_subcommand(
         "--allow-request-sampling-overrides",
         action="store_true",
         help=(
-            "Allow per-request sampling overrides for an isolated experimental "
-            "profile."
+            "Allow per-request sampling overrides for an isolated experimental profile."
         ),
     )
     qwen_parser.add_argument(
@@ -609,6 +603,17 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--warmup-language", default="auto")
     qwen_parser.add_argument("--warmup-speaker", default="")
     qwen_parser.add_argument("--warmup-instruction", default="")
+    qwen_parser.add_argument(
+        "--voice-registry-path",
+        default="",
+        help="Optional local JSON registry of validated Base voice profiles.",
+    )
+    qwen_parser.add_argument(
+        "--voice-prompt-cache-max-entries",
+        type=int,
+        default=8,
+        help="Maximum prepared Base voice prompts retained by the persistent worker.",
+    )
     qwen_parser.add_argument(
         "--engine-startup-mode",
         choices=("auto", "main", "engine_warmup", "engine_load_warmup"),

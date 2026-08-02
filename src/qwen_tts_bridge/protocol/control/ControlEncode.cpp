@@ -28,6 +28,9 @@ Json control_message_to_json(const ControlMessage& message) {
                 if (!value.speaker.empty()) {
                     out["speaker"] = value.speaker;
                 }
+                if (!value.voice_id.empty()) {
+                    out["voice_id"] = value.voice_id;
+                }
                 if (!value.reference_audio_path.empty()) {
                     out["reference_audio_path"] = value.reference_audio_path;
                 }
@@ -71,6 +74,9 @@ Json control_message_to_json(const ControlMessage& message) {
                 };
                 if (value.has_warmed_up) {
                     out["warmed_up"] = value.warmed_up;
+                }
+                if (!value.voice_ids.empty()) {
+                    out["voice_ids"] = value.voice_ids;
                 }
                 return out;
             }

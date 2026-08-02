@@ -165,6 +165,32 @@ void test_synthesize_voice_clone_round_trip() {
     CHECK(clone.x_vector_only);
 }
 
+void test_synthesize_voice_profile_round_trip() {
+    SynthesizeMessage message;
+    message.text = "Use a registered voice.";
+    message.voice_id = "kraftwerk_robot_ru";
+
+    const auto encoded = encode_control_message(ControlMessage{message});
+    CHECK(encoded);
+    const auto decoded = decode_control_message(
+        encoded.payload,
+        ControlMessageDirection::ClientToWorker);
+    CHECK(decoded);
+    const auto& profile = std::get<SynthesizeMessage>(decoded.message);
+    CHECK(profile.voice_id == "kraftwerk_robot_ru");
+}
+
+void test_synthesize_rejects_mixed_voice_profile_and_reference() {
+    const auto result = decode_client(
+        "{\"message_type\":\"synthesize\","
+        "\"text\":\"Invalid mixed voice.\","
+        "\"voice_id\":\"robot\","
+        "\"reference_audio_path\":\"reference.wav\"}");
+
+    CHECK(!result);
+    CHECK(result.error == ControlCodecError::InvalidFieldType);
+}
+
 void test_synthesize_rejects_orphaned_voice_clone_fields() {
     const auto result = decode_client(
         "{\"message_type\":\"synthesize\","
@@ -231,9 +257,12 @@ void test_decode_ready() {
         "\"cancellation\":true,"
         "\"instructions\":true,"
         "\"voice_clone\":false,"
+        "\"voice_clone_streaming\":false,"
+        "\"voice_profiles\":true,"
         "\"sampling_overrides\":true,"
         "\"deterministic_seed\":true"
-        "}}");
+        "},"
+        "\"voice_ids\":[\"kraftwerk_robot_ru\"]}");
 
     CHECK(result);
     CHECK(control_message_type(result.message) == ControlMessageType::Ready);
@@ -246,8 +275,12 @@ void test_decode_ready() {
     CHECK(ready.capabilities.cancellation);
     CHECK(ready.capabilities.instructions);
     CHECK(!ready.capabilities.voice_clone);
+    CHECK(!ready.capabilities.voice_clone_streaming);
+    CHECK(ready.capabilities.voice_profiles);
     CHECK(ready.capabilities.sampling_overrides);
     CHECK(ready.capabilities.deterministic_seed);
+    CHECK(ready.voice_ids.size() == 1);
+    CHECK(ready.voice_ids.front() == "kraftwerk_robot_ru");
 }
 
 void test_decode_ready_without_optional_sampling_capabilities() {
@@ -537,6 +570,8 @@ int main() {
     test_synthesize_seed_round_trip();
     test_synthesize_sampling_round_trip();
     test_synthesize_voice_clone_round_trip();
+    test_synthesize_voice_profile_round_trip();
+    test_synthesize_rejects_mixed_voice_profile_and_reference();
     test_synthesize_rejects_orphaned_voice_clone_fields();
     test_synthesize_rejects_invalid_sampling();
     test_synthesize_rejects_unknown_sampling_field();

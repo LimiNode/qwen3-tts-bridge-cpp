@@ -5,6 +5,7 @@ import struct
 import tempfile
 import threading
 import unittest
+import wave
 from collections.abc import Callable, Generator
 from pathlib import Path
 from types import SimpleNamespace
@@ -86,10 +87,23 @@ class _BaseModel:
         self.model = _InnerModel("base")
 
 
+def _write_reference_wav(path: Path) -> None:
+    with wave.open(str(path), "wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(2)
+        writer.setframerate(24000)
+        writer.writeframes(struct.pack("<h", 4000) * 48_000)
+
+
 class _StreamingBaseModel:
     def __init__(self) -> None:
         self.model = _InnerModel("base")
         self.stream_calls: list[dict[str, object]] = []
+        self.create_prompt_calls = 0
+
+    def create_voice_clone_prompt(self, **kwargs: object) -> object:
+        self.create_prompt_calls += 1
+        return {"prepared": dict(kwargs)}
 
     def stream_generate_voice_clone(self, **kwargs: object) -> object:
         self.stream_calls.append(dict(kwargs))
@@ -1550,6 +1564,25 @@ class QwenEngineTests(unittest.TestCase):
                 SynthesisRequest(request_id=1, text="Hello"),
             )
 
+    def test_custom_voice_rejects_registered_base_voice_profile(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(model_path="models/qwen-custom"),
+            model_loader=lambda _config: _CustomVoiceModel(),
+        )
+        engine.load()
+
+        with self.assertRaisesRegex(
+            EngineRequestValidationError,
+            "registered voice profiles are supported only by qwen base models",
+        ):
+            engine.validate_request(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    voice_id="robot",
+                )
+            )
+
     def test_base_voice_clone_streams_reference_audio_request(self) -> None:
         fake_model = _StreamingBaseModel()
         engine = QwenTtsEngine(
@@ -1558,7 +1591,7 @@ class QwenEngineTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as temporary_directory:
             reference = Path(temporary_directory) / "reference.wav"
-            reference.write_bytes(b"RIFF")
+            _write_reference_wav(reference)
             request = SynthesisRequest(
                 request_id=1,
                 text="Hello",
@@ -1574,6 +1607,82 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(str(reference), fake_model.stream_calls[0]["ref_audio"])
         self.assertEqual("Reference text.", fake_model.stream_calls[0]["ref_text"])
         self.assertFalse(cast(bool, fake_model.stream_calls[0]["x_vector_only_mode"]))
+
+    def test_base_voice_profile_reuses_prepared_prompt(self) -> None:
+        fake_model = _StreamingBaseModel()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            registry = directory / "voices.json"
+            _write_reference_wav(reference)
+            registry.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voices": [
+                            {
+                                "voice_id": "robot",
+                                "reference_audio_path": "reference.wav",
+                                "reference_text": "Reference text.",
+                                "x_vector_only": False,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            engine = QwenTtsEngine(
+                QwenEngineConfig(
+                    model_path="models/qwen-base",
+                    device="cpu",
+                    voice_registry_path=str(registry),
+                ),
+                model_loader=lambda _config: fake_model,
+            )
+            engine.load()
+            request = SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                language="English",
+                voice_id="robot",
+            )
+            self.assertTrue(engine.capabilities.voice_profiles)
+            self.assertTrue(engine.capabilities.voice_clone_streaming)
+            list(engine.synthesize_stream(request, threading.Event()))
+            list(engine.synthesize_stream(request, threading.Event()))
+
+        self.assertEqual(1, fake_model.create_prompt_calls)
+        self.assertEqual(2, len(fake_model.stream_calls))
+        self.assertIsNone(fake_model.stream_calls[0]["ref_audio"])
+        self.assertEqual(
+            {
+                "prepared": {
+                    "ref_audio": str(reference),
+                    "ref_text": "Reference text.",
+                    "x_vector_only_mode": False,
+                }
+            },
+            fake_model.stream_calls[0]["voice_clone_prompt"],
+        )
+
+    def test_base_voice_clone_rejects_invalid_reference_wav(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(model_path="models/qwen-base", device="cpu"),
+            model_loader=lambda _config: _StreamingBaseModel(),
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference = Path(temporary_directory) / "reference.wav"
+            reference.write_bytes(b"not a wav" * 20)
+            engine.load()
+            with self.assertRaisesRegex(EngineRequestValidationError, "decodable PCM"):
+                engine.validate_request(
+                    SynthesisRequest(
+                        request_id=1,
+                        text="Hello",
+                        reference_audio_path=str(reference),
+                        reference_text="Reference text.",
+                    )
+                )
 
     def test_unsupported_audio_format_is_rejected(self) -> None:
         engine = QwenTtsEngine(QwenEngineConfig(model_path="models/qwen"))

@@ -27,6 +27,11 @@ from qwen_tts_bridge_worker.engine.types import (
     SynthesisRequest,
     UnsupportedAudioFormatError,
 )
+from qwen_tts_bridge_worker.engine.voice_profiles import (
+    VoiceProfileError,
+    VoiceProfileRegistry,
+    preflight_reference_audio,
+)
 from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
 
 QwenModelLoader = Callable[[QwenEngineConfig], Any]
@@ -66,6 +71,14 @@ class QwenTtsEngine:
         self._last_generation_trace: dict[str, object] | None = None
         self._profile_pair_range_open = False
         self._prewarmed_prefill_lengths: set[int] = set()
+        self._voice_profiles = (
+            VoiceProfileRegistry.from_json_file(
+                config.voice_registry_path,
+                config.voice_prompt_cache_max_entries,
+            )
+            if config.voice_registry_path
+            else None
+        )
 
     @property
     def capabilities(self) -> EngineCapabilities:
@@ -83,14 +96,41 @@ class QwenTtsEngine:
             voice_clone=(
                 self._model is not None
                 and _qwen_model_type(self._model) == "base"
-                and _supports_qwen_streaming(self._model)
+                and (
+                    callable(getattr(self._model, "generate_voice_clone", None))
+                    or callable(
+                        getattr(self._model, "stream_generate_voice_clone", None)
+                    )
+                )
             ),
             sampling_overrides=(
                 self._config.runtime_backend == "faster"
                 and self._config.allow_request_sampling_overrides
             ),
             deterministic_seed=True,
+            voice_clone_streaming=(
+                self._model is not None
+                and _qwen_model_type(self._model) == "base"
+                and callable(getattr(self._model, "stream_generate_voice_clone", None))
+            ),
+            voice_profiles=(
+                self._model is not None
+                and _qwen_model_type(self._model) == "base"
+                and self._voice_profiles is not None
+            ),
         )
+
+    @property
+    def voice_ids(self) -> tuple[str, ...]:
+        """Return the registered Base voice IDs advertised to local clients."""
+
+        if (
+            self._voice_profiles is None
+            or self._model is None
+            or _qwen_model_type(self._model) != "base"
+        ):
+            return ()
+        return self._voice_profiles.voice_ids
 
     def load(self) -> None:
         """Load the Qwen model wrapper."""
@@ -188,7 +228,7 @@ class QwenTtsEngine:
             return
 
         if model_type == "base":
-            _validate_voice_clone_request(request)
+            _validate_voice_clone_request(request, self._voice_profiles)
             return
 
         raise EngineRequestValidationError(
@@ -724,12 +764,24 @@ class QwenTtsEngine:
             )
 
         if model_type == "base":
+            voice_clone_prompt = self._voice_clone_prompt_for(model, request)
             wavs, sample_rate = model.generate_voice_clone(
                 text=request.text,
                 language=_model_call_language(self._config, request.language),
-                ref_audio=request.reference_audio_path,
-                ref_text=request.reference_text or None,
-                x_vector_only_mode=request.x_vector_only,
+                ref_audio=(
+                    None
+                    if voice_clone_prompt is not None
+                    else request.reference_audio_path
+                ),
+                ref_text=(
+                    None
+                    if voice_clone_prompt is not None
+                    else request.reference_text or None
+                ),
+                x_vector_only_mode=(
+                    False if voice_clone_prompt is not None else request.x_vector_only
+                ),
+                voice_clone_prompt=voice_clone_prompt,
             )
             return wavs, sample_rate
 
@@ -748,11 +800,26 @@ class QwenTtsEngine:
             self._config,
             request,
             cancel_event,
+            voice_clone_prompt=self._voice_clone_prompt_for(model, request),
         )
         if stream is not None:
             return stream
 
         return _qwen_full_audio_as_stream(self._generate_audio(model, request))
+
+    def _voice_clone_prompt_for(
+        self,
+        model: Any,
+        request: SynthesisRequest,
+    ) -> Any | None:
+        if not request.voice_id:
+            return None
+        if self._voice_profiles is None:
+            raise QwenEngineError("the loaded worker has no voice profile registry")
+        try:
+            return self._voice_profiles.prompt_for(model, request.voice_id)
+        except VoiceProfileError as exc:
+            raise QwenEngineError(str(exc)) from exc
 
 
 def _max_audio_bytes(
@@ -1476,7 +1543,10 @@ def _supports_qwen_instructions(model: Any, config: QwenEngineConfig) -> bool:
     return model_type == "voice_design"
 
 
-def _validate_voice_clone_request(request: SynthesisRequest) -> None:
+def _validate_voice_clone_request(
+    request: SynthesisRequest,
+    profiles: VoiceProfileRegistry | None,
+) -> None:
     """Validate local Base voice-clone inputs before model inference."""
 
     if request.speaker:
@@ -1489,31 +1559,58 @@ def _validate_voice_clone_request(request: SynthesisRequest) -> None:
             "unsupported_feature",
             "qwen base voice-clone requests do not accept instruction",
         )
+    if request.voice_id:
+        if (
+            request.reference_audio_path
+            or request.reference_text
+            or request.x_vector_only
+        ):
+            raise EngineRequestValidationError(
+                "invalid_field_type",
+                "voice_id cannot be combined with direct reference-audio fields",
+            )
+        if profiles is None:
+            raise EngineRequestValidationError(
+                "unsupported_feature",
+                "qwen base voice profiles require a configured voice registry",
+            )
+        if not profiles.has_voice(request.voice_id):
+            raise EngineRequestValidationError(
+                "invalid_field_type",
+                f"unknown qwen base voice profile: {request.voice_id}",
+            )
+        return
     if not request.reference_audio_path:
         raise EngineRequestValidationError(
             "missing_required_field",
             "qwen base voice-clone requests require reference_audio_path",
         )
-    reference_audio = Path(request.reference_audio_path)
-    if not reference_audio.is_file():
+    try:
+        preflight_reference_audio(
+            request.reference_audio_path,
+            request.reference_text,
+            request.x_vector_only,
+        )
+    except VoiceProfileError as exc:
         raise EngineRequestValidationError(
             "invalid_field_type",
-            "reference_audio_path must identify an existing local file",
-        )
-    if not request.x_vector_only and not request.reference_text.strip():
-        raise EngineRequestValidationError(
-            "missing_required_field",
-            "reference_text is required unless x_vector_only is true",
-        )
+            str(exc),
+        ) from exc
 
 
 def _reject_voice_clone_fields_for_non_base_model(request: SynthesisRequest) -> None:
     """Reject Base-only clone inputs instead of silently ignoring them."""
 
-    if request.reference_audio_path or request.reference_text or request.x_vector_only:
+    if (
+        request.voice_id
+        or request.reference_audio_path
+        or request.reference_text
+        or request.x_vector_only
+    ):
         raise EngineRequestValidationError(
             "unsupported_feature",
-            "reference audio voice cloning is supported only by qwen base models",
+            "voice cloning and registered voice profiles are supported only by "
+            "qwen base models",
         )
 
 
@@ -1538,6 +1635,7 @@ def _qwen_stream_generate_audio(
     config: QwenEngineConfig,
     request: SynthesisRequest,
     cancel_event: threading.Event,
+    voice_clone_prompt: Any | None = None,
 ) -> Iterable[tuple[Any, int]] | None:
     model_type = _qwen_model_type(model)
     language = _qwen_language(request.language)
@@ -1663,9 +1761,22 @@ def _qwen_stream_generate_audio(
                 public_stream(
                     text=request.text,
                     language=language,
-                    ref_audio=request.reference_audio_path,
-                    ref_text=request.reference_text or None,
-                    x_vector_only_mode=request.x_vector_only,
+                    ref_audio=(
+                        None
+                        if voice_clone_prompt is not None
+                        else request.reference_audio_path
+                    ),
+                    ref_text=(
+                        None
+                        if voice_clone_prompt is not None
+                        else request.reference_text or None
+                    ),
+                    x_vector_only_mode=(
+                        False
+                        if voice_clone_prompt is not None
+                        else request.x_vector_only
+                    ),
+                    voice_clone_prompt=voice_clone_prompt,
                     emit_every_frames=config.emit_every_frames,
                     decode_window_frames=config.decode_window_frames,
                     overlap_samples=config.overlap_samples,

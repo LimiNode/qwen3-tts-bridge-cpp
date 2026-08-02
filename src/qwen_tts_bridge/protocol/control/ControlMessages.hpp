@@ -75,6 +75,8 @@ struct WorkerCapabilities {
     bool voice_clone = false; ///< Worker advertises voice-cloning support.
     bool sampling_overrides = false; ///< Worker accepts request-level sampling controls.
     bool deterministic_seed = false; ///< Worker can strictly apply explicit RNG seeds.
+    bool voice_clone_streaming = false; ///< Worker can stream clone PCM before completion.
+    bool voice_profiles = false; ///< Worker has a configured registered-voice registry.
 };
 
 /// \struct HelloMessage
@@ -101,6 +103,7 @@ struct SynthesizeMessage {
     std::string language = "auto"; ///< Requested language or auto detection.
     std::string speaker; ///< Optional worker speaker or voice identifier.
     std::string instruction; ///< Natural-language style instruction.
+    std::string voice_id; ///< Optional registered Base voice profile identifier.
     std::string reference_audio_path; ///< Local reference-audio path for Base voice cloning.
     std::string reference_text; ///< Reference-audio transcript for ICL voice cloning.
     bool x_vector_only = false; ///< Whether the Base clone uses speaker embedding only.
@@ -135,6 +138,7 @@ struct ReadyMessage {
     bool has_warmed_up = false; ///< Whether warmed_up was reported.
     bool warmed_up = false; ///< Whether model warmup completed.
     WorkerCapabilities capabilities; ///< Advertised worker features.
+    std::vector<std::string> voice_ids; ///< Registered Base voice profile identifiers.
 };
 
 /// \struct QueuedMessage

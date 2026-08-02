@@ -54,6 +54,7 @@ struct ProgramOptions {
     std::string language = "auto";
     std::string speaker;
     std::string instruction;
+    std::string voice_id;
     std::string reference_audio_path;
     std::string reference_text;
     bool x_vector_only = false;
@@ -66,6 +67,8 @@ struct ProgramOptions {
     bool sampling_overrides_supported = false;
     bool deterministic_seed_supported = false;
     bool voice_clone_supported = false;
+    bool voice_profiles_supported = false;
+    std::vector<std::string> voice_ids;
     std::uint32_t sample_rate = 24000;
     std::uint32_t channels = 1;
     int mock_chunks = 3;
@@ -300,7 +303,8 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "Interactive commands:\n"
         << "  <text>                 Cancel current generation and speak this text.\n"
         << "  /cancel                Cancel current generation and stop playback.\n"
-        << "  /voice <name>          Set the speaker for future requests.\n"
+        << "  /voice <name>          Select a registered profile, or a CustomVoice speaker.\n"
+        << "  /voices                 List registered Base voice profiles.\n"
         << "  /language <name>       Set the language for future requests.\n"
         << "  /style <text>          Set the style instruction for future requests.\n"
         << "  /temperature <value|default>  Set sampling temperature for future requests.\n"
@@ -321,6 +325,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --text <utf8>                  One-shot playback instead of interactive mode.\n"
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
+        << "  --voice-id <name>              Registered Base voice profile identifier.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
         << "  --reference-audio <path>       Local WAV reference for Base voice cloning.\n"
         << "  --reference-text <utf8>        Transcript of the reference audio.\n"
@@ -429,6 +434,9 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
             options.instruction = require_value(index, argc, argv, "--instruction");
         }
+        else if (arg == "--voice-id" || arg.rfind("--voice-id=", 0) == 0) {
+            options.voice_id = require_value(index, argc, argv, "--voice-id");
+        }
         else if (arg == "--reference-audio" || arg.rfind("--reference-audio=", 0) == 0) {
             options.reference_audio_path = require_value(index, argc, argv, "--reference-audio");
         }
@@ -536,6 +544,17 @@ void validate_options(const ProgramOptions& options) {
         (!options.reference_text.empty() || options.x_vector_only)) {
         throw std::runtime_error("--reference-text and --x-vector-only require --reference-audio");
     }
+    if (!options.reference_audio_path.empty() &&
+        options.reference_text.empty() && !options.x_vector_only) {
+        throw std::runtime_error(
+            "--reference-audio requires --reference-text unless --x-vector-only is set");
+    }
+    if (!options.voice_id.empty() &&
+        (!options.reference_audio_path.empty() || !options.reference_text.empty() ||
+         options.x_vector_only)) {
+        throw std::runtime_error(
+            "--voice-id cannot be combined with direct reference-audio options");
+    }
 }
 
 StdIoTransportOptions make_transport_options(const ProgramOptions& options) {
@@ -624,6 +643,7 @@ RequestId submit_request(
     request.language = options.language;
     request.speaker = options.speaker;
     request.instruction = options.instruction;
+    request.voice_id = options.voice_id;
     request.reference_audio_path = options.reference_audio_path;
     request.reference_text = options.reference_text;
     request.x_vector_only = options.x_vector_only;
@@ -714,6 +734,7 @@ bool wait_for_one_shot(OneShotState& state, std::chrono::milliseconds timeout) {
 
 void print_interactive_status(const ProgramOptions& options) {
     std::cout << "speaker=" << (options.speaker.empty() ? "<worker default>" : options.speaker)
+              << ", voice_id=" << (options.voice_id.empty() ? "<none>" : options.voice_id)
               << ", language=" << options.language
               << ", style=" << (options.instruction.empty() ? "<none>" : options.instruction)
               << "\n";
@@ -741,6 +762,8 @@ void print_interactive_status(const ProgramOptions& options) {
               << (options.deterministic_seed_supported ? "true" : "false")
               << ", voice_clone="
               << (options.voice_clone_supported ? "true" : "false")
+              << ", voice_profiles="
+              << (options.voice_profiles_supported ? "true" : "false")
               << '\n';
     if (!options.reference_audio_path.empty()) {
         std::cout << "voice clone: reference_audio=" << options.reference_audio_path
@@ -778,8 +801,34 @@ bool apply_interactive_command(ProgramOptions& options, const std::string& line)
     const std::string value = split == std::string::npos ? "" : line.substr(split + 1);
 
     if (command == "/voice") {
-        options.speaker = value;
-        print_interactive_status(options);
+        if (value.empty()) {
+            std::cerr << "usage: /voice <name>\n";
+        }
+        else if (options.voice_profiles_supported) {
+            options.voice_id = value;
+            options.speaker.clear();
+            print_interactive_status(options);
+        }
+        else {
+            options.speaker = value;
+            options.voice_id.clear();
+            print_interactive_status(options);
+        }
+        return true;
+    }
+    if (command == "/voices") {
+        if (!options.voice_profiles_supported) {
+            std::cout << "the active worker has no registered voice profiles\n";
+        }
+        else if (options.voice_ids.empty()) {
+            std::cout << "the voice registry is empty\n";
+        }
+        else {
+            std::cout << "registered voice profiles:\n";
+            for (const std::string& voice_id : options.voice_ids) {
+                std::cout << "  " << voice_id << '\n';
+            }
+        }
         return true;
     }
     if (command == "/language") {
@@ -983,11 +1032,19 @@ int wmain(int argc, wchar_t** argv) {
         options.sampling_overrides_supported = ready.capabilities.sampling_overrides;
         options.deterministic_seed_supported = ready.capabilities.deterministic_seed;
         options.voice_clone_supported = ready.capabilities.voice_clone;
+        options.voice_profiles_supported = ready.capabilities.voice_profiles;
+        options.voice_ids = ready.voice_ids;
         if (!options.reference_audio_path.empty() && !options.voice_clone_supported) {
             client.stop();
             throw std::runtime_error(
                 "the active worker does not advertise voice clone support; "
                 "launch a Qwen Base model with --reference-audio");
+        }
+        if (!options.voice_id.empty() && !options.voice_profiles_supported) {
+            client.stop();
+            throw std::runtime_error(
+                "the active worker has no registered voice-profile registry; "
+                "launch it with --voice-registry-path");
         }
         if (has_sampling_overrides(options) && !options.sampling_overrides_supported) {
             client.stop();

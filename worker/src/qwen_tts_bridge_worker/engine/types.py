@@ -17,6 +17,8 @@ class EngineCapabilities:
     voice_clone: bool
     sampling_overrides: bool = False
     deterministic_seed: bool = False
+    voice_clone_streaming: bool = False
+    voice_profiles: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +126,7 @@ class SynthesisRequest:
     language: str = "auto"
     speaker: str = ""
     instruction: str = ""
+    voice_id: str = ""
     reference_audio_path: str = ""
     reference_text: str = ""
     x_vector_only: bool = False

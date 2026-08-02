@@ -1,12 +1,13 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
-    [string]$ReferenceAudioPath,
+    [string]$ReferenceAudioPath = "",
     [string]$ReferenceText = "",
     # Keep the built-in default ASCII so Windows PowerShell 5.1 can parse this
     # UTF-8-without-BOM script consistently. Pass Russian text with -Text.
     [string]$Text = "I am your robot. I am your worker. I execute the order now.",
     [switch]$XVectorOnly,
+    [string]$VoiceRegistryPath = "",
+    [string]$VoiceId = "",
     [string]$Python = "",
     [string]$ModelPath = "",
     [string]$BuildDirectory = "build"
@@ -27,11 +28,30 @@ function Resolve-ExistingPath([string]$PathValue, [string]$Name) {
 if (-not (Test-Path -LiteralPath $cliPath)) {
     throw "qwen_tts_play.exe was not found: $cliPath"
 }
-if (-not $XVectorOnly -and [string]::IsNullOrWhiteSpace($ReferenceText)) {
+if (-not [string]::IsNullOrWhiteSpace($VoiceId)) {
+    if (-not [string]::IsNullOrWhiteSpace($ReferenceAudioPath) -or
+        -not [string]::IsNullOrWhiteSpace($ReferenceText) -or $XVectorOnly) {
+        throw "VoiceId cannot be combined with direct reference-audio parameters"
+    }
+    if ([string]::IsNullOrWhiteSpace($VoiceRegistryPath)) {
+        throw "VoiceRegistryPath is required with VoiceId"
+    }
+}
+elseif ([string]::IsNullOrWhiteSpace($ReferenceAudioPath)) {
+    throw "ReferenceAudioPath is required unless VoiceId selects a registered profile"
+}
+elseif (-not $XVectorOnly -and [string]::IsNullOrWhiteSpace($ReferenceText)) {
     throw "ReferenceText is required unless -XVectorOnly is used"
 }
 
-$referenceAudio = Resolve-ExistingPath $ReferenceAudioPath "Reference audio"
+$referenceAudio = ""
+if (-not [string]::IsNullOrWhiteSpace($ReferenceAudioPath)) {
+    $referenceAudio = Resolve-ExistingPath $ReferenceAudioPath "Reference audio"
+}
+$voiceRegistry = ""
+if (-not [string]::IsNullOrWhiteSpace($VoiceRegistryPath)) {
+    $voiceRegistry = Resolve-ExistingPath $VoiceRegistryPath "Voice registry"
+}
 if ([string]::IsNullOrWhiteSpace($Python)) {
     if (-not (Test-Path -LiteralPath $localConfigPath)) {
         throw "Python was not provided and playback config was not found: $localConfigPath"
@@ -41,10 +61,24 @@ if ([string]::IsNullOrWhiteSpace($Python)) {
 $pythonPath = Resolve-ExistingPath $Python "Python"
 
 if ([string]::IsNullOrWhiteSpace($ModelPath)) {
-    $cacheRoot = Join-Path $env:USERPROFILE ".cache\huggingface\hub\models--Qwen--Qwen3-TTS-12Hz-1.7B-Base\snapshots"
-    $snapshot = Get-ChildItem -LiteralPath $cacheRoot -Directory -ErrorAction SilentlyContinue |
-        Sort-Object Name -Descending |
-        Select-Object -First 1
+    $cacheRoot = Join-Path $env:USERPROFILE ".cache\huggingface\hub\models--Qwen--Qwen3-TTS-12Hz-1.7B-Base"
+    $mainRef = Join-Path $cacheRoot "refs\main"
+    $snapshot = $null
+    if (Test-Path -LiteralPath $mainRef) {
+        $revision = (Get-Content -Raw -LiteralPath $mainRef).Trim()
+        if ($revision) {
+            $candidate = Join-Path $cacheRoot "snapshots\$revision"
+            if (Test-Path -LiteralPath $candidate) {
+                $snapshot = Get-Item -LiteralPath $candidate
+            }
+        }
+    }
+    if ($null -eq $snapshot) {
+        $snapshots = @(Get-ChildItem -LiteralPath (Join-Path $cacheRoot "snapshots") -Directory -ErrorAction SilentlyContinue)
+        if ($snapshots.Count -eq 1) {
+            $snapshot = $snapshots[0]
+        }
+    }
     if ($null -eq $snapshot) {
         throw "Base model was not configured and no cached 1.7B Base snapshot was found"
     }
@@ -52,7 +86,11 @@ if ([string]::IsNullOrWhiteSpace($ModelPath)) {
 }
 $model = Resolve-ExistingPath $ModelPath "Base model"
 
-$env:PYTHONPATH = "$repoRoot\worker\src"
+$upstreamSource = Join-Path $repoRoot "external\python\Qwen3-TTS-streaming"
+if (-not (Test-Path -LiteralPath $upstreamSource)) {
+    throw "Vendored Qwen3-TTS streaming source was not found: $upstreamSource"
+}
+$env:PYTHONPATH = "$repoRoot\worker\src;$upstreamSource"
 $workerArguments = @(
     "-m", "qwen_tts_bridge_worker",
     "qwen",
@@ -65,16 +103,21 @@ $workerArguments = @(
     "--decode-window-frames", "80",
     "--max-audio-seconds-per-utterance", "30"
 )
+if ($voiceRegistry) {
+    $workerArguments += @("--voice-registry-path", $voiceRegistry)
+}
 $arguments = @("--worker", $pythonPath, "--cwd", $repoRoot)
 foreach ($workerArgument in $workerArguments) {
     $arguments += @("--worker-arg", $workerArgument)
 }
-$arguments += @(
-    "--text", $Text,
-    "--language", "Russian",
-    "--reference-audio", $referenceAudio
-)
-if ($ReferenceText) {
+$arguments += @("--text", $Text, "--language", "Russian")
+if ($VoiceId) {
+    $arguments += @("--voice-id", $VoiceId)
+}
+else {
+    $arguments += @("--reference-audio", $referenceAudio)
+}
+if ($ReferenceText -and -not $VoiceId) {
     $arguments += @("--reference-text", $ReferenceText)
 }
 if ($XVectorOnly) {

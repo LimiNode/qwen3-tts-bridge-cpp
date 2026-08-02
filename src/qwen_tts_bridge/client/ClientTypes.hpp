@@ -56,6 +56,9 @@ struct TtsRequest {
     /// \brief Natural-language style, emotion, or prosody instruction.
     std::string instruction; ///< Natural-language style, emotion, or prosody instruction.
 
+    /// \brief Registered Base voice profile selected for this request.
+    std::string voice_id; ///< Optional registered Base voice profile identifier.
+
     /// \brief Local reference-audio path for a Base voice-clone request.
     std::string reference_audio_path; ///< Local voice-clone reference-audio path.
 
