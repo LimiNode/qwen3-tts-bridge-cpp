@@ -12,6 +12,27 @@
       "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
       "reference_text": "",
       "x_vector_only": true
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_icl_period",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "Я твой слуга, я твой работник.",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_icl_period_space",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "Я твой слуга, я твой работник. ",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_icl_period_four_spaces",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "Я твой слуга, я твой работник.    ",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
     }
   ]
 }

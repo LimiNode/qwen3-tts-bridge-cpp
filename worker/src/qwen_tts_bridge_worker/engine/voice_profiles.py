@@ -53,6 +53,7 @@ class VoiceProfile:
     voice_id: str
     reference_audio_path: Path
     reference_text: str
+    preserve_reference_text_whitespace: bool
     x_vector_only: bool
     reference_audio: ReferenceAudioInfo
 
@@ -341,6 +342,10 @@ def _parse_voice_profile(registry_directory: Path, row: object) -> VoiceProfile:
     voice_id = row.get("voice_id")
     reference_audio_path = row.get("reference_audio_path")
     reference_text = row.get("reference_text", "")
+    preserve_reference_text_whitespace = row.get(
+        "preserve_reference_text_whitespace",
+        False,
+    )
     x_vector_only = row.get("x_vector_only", False)
     if not isinstance(voice_id, str) or not voice_id.strip():
         raise VoiceProfileError("voice profile voice_id must be a non-empty string")
@@ -348,9 +353,14 @@ def _parse_voice_profile(registry_directory: Path, row: object) -> VoiceProfile:
         raise VoiceProfileError(
             f"voice profile {voice_id} reference_audio_path must be a non-empty string"
         )
-    if not isinstance(reference_text, str) or not isinstance(x_vector_only, bool):
+    if (
+        not isinstance(reference_text, str)
+        or not isinstance(preserve_reference_text_whitespace, bool)
+        or not isinstance(x_vector_only, bool)
+    ):
         raise VoiceProfileError(
-            f"voice profile {voice_id} has invalid reference_text or x_vector_only"
+            f"voice profile {voice_id} has invalid reference_text, "
+            "preserve_reference_text_whitespace, or x_vector_only"
         )
     audio_path = Path(reference_audio_path).expanduser()
     if not audio_path.is_absolute():
@@ -359,7 +369,12 @@ def _parse_voice_profile(registry_directory: Path, row: object) -> VoiceProfile:
     return VoiceProfile(
         voice_id=voice_id.strip(),
         reference_audio_path=audio.path,
-        reference_text=reference_text.strip(),
+        reference_text=(
+            reference_text
+            if preserve_reference_text_whitespace
+            else reference_text.strip()
+        ),
+        preserve_reference_text_whitespace=preserve_reference_text_whitespace,
         x_vector_only=x_vector_only,
         reference_audio=audio,
     )
