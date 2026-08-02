@@ -118,7 +118,7 @@ public:
     WaveOutPlayer(const WaveOutPlayer&) = delete;
     WaveOutPlayer& operator=(const WaveOutPlayer&) = delete;
 
-    void enqueue(const PcmChunk& chunk) {
+    void enqueue(std::uint64_t playback_epoch, const PcmChunk& chunk) {
         if (chunk.format.sample_format != "s16le") {
             throw std::runtime_error("default-device playback requires s16le PCM");
         }
@@ -132,6 +132,9 @@ public:
         }
 
         std::lock_guard<std::mutex> lock(mutex_);
+        if (playback_epoch != playback_epoch_) {
+            return;
+        }
         reap_finished_locked();
         open_or_validate_locked(chunk.format);
 
@@ -156,11 +159,16 @@ public:
         buffers_.push_back(std::move(buffer));
     }
 
-    /// Stops queued and currently playing audio. It never cancels worker inference.
-    void reset() {
+    /// Stops queued and currently playing audio, invalidating prior callback epochs.
+    /// It never cancels worker inference.
+    [[nodiscard]] std::uint64_t reset() {
         std::unique_lock<std::mutex> lock(mutex_);
+        ++playback_epoch_;
+        if (playback_epoch_ == 0) {
+            ++playback_epoch_;
+        }
         if (m_handle == nullptr) {
-            return;
+            return playback_epoch_;
         }
 
         check_mmresult(waveOutReset(m_handle), "waveOutReset");
@@ -177,6 +185,7 @@ public:
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             lock.lock();
         }
+        return playback_epoch_;
     }
 
     void wait_until_idle(std::chrono::milliseconds timeout) {
@@ -261,7 +270,7 @@ private:
 
     void close_noexcept() noexcept {
         try {
-            reset();
+            static_cast<void>(reset());
         }
         catch (...) {
         }
@@ -277,6 +286,7 @@ private:
     HWAVEOUT m_handle = nullptr;
     AudioFormat m_format;
     std::vector<std::unique_ptr<Buffer>> buffers_;
+    std::uint64_t playback_epoch_ = 1;
 };
 
 struct ActiveRequestState {
@@ -613,7 +623,7 @@ void clear_active_request(ActiveRequestState& state, RequestId request_id) {
     }
 }
 
-void cancel_active_request(
+std::uint64_t cancel_active_request(
     QwenTtsClient& client,
     WaveOutPlayer& player,
     ActiveRequestState& state) {
@@ -626,7 +636,7 @@ void cancel_active_request(
     if (request_id != 0) {
         client.cancel(request_id);
     }
-    player.reset();
+    return player.reset();
 }
 
 RequestId submit_request(
@@ -636,7 +646,8 @@ RequestId submit_request(
     const ProgramOptions& options,
     const std::string& text,
     OneShotState* one_shot_state = nullptr) {
-    cancel_active_request(client, player, active_state);
+    const std::uint64_t playback_epoch =
+        cancel_active_request(client, player, active_state);
 
     TtsRequest request;
     request.text = text;
@@ -668,12 +679,12 @@ RequestId submit_request(
 
     const RequestId request_id = request.id;
     TtsCallbacks callbacks;
-    callbacks.on_audio = [&player, &active_state, request_id](const PcmChunk& chunk) {
+    callbacks.on_audio = [&player, &active_state, playback_epoch, request_id](const PcmChunk& chunk) {
         if (!is_active_request(active_state, request_id)) {
             return;
         }
         try {
-            player.enqueue(chunk);
+            player.enqueue(playback_epoch, chunk);
         }
         catch (const std::exception& exc) {
             std::cerr << "playback error: " << exc.what() << '\n';
@@ -693,7 +704,7 @@ RequestId submit_request(
     };
     callbacks.on_cancelled = [&player, &active_state, one_shot_state, request_id] {
         if (is_active_request(active_state, request_id)) {
-            player.reset();
+            static_cast<void>(player.reset());
             clear_active_request(active_state, request_id);
         }
         if (one_shot_state != nullptr) {
@@ -705,7 +716,7 @@ RequestId submit_request(
     };
     callbacks.on_error = [&player, &active_state, one_shot_state, request_id](const TtsError& error) {
         if (is_active_request(active_state, request_id)) {
-            player.reset();
+            static_cast<void>(player.reset());
             clear_active_request(active_state, request_id);
         }
         if (one_shot_state != nullptr) {
