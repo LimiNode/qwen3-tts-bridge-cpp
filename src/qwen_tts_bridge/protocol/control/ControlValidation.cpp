@@ -96,6 +96,11 @@ ControlCodecError validate_control_payload(
             error != ControlCodecError::None) {
             return error;
         }
+        if (value.reference_audio_path.empty() &&
+            (!value.reference_text.empty() || value.x_vector_only)) {
+            diagnostic = "reference_text and x_vector_only require reference_audio_path";
+            return ControlCodecError::InvalidFieldType;
+        }
         if (const auto error = validate_synthesis_sampling(value.sampling, diagnostic);
             error != ControlCodecError::None) {
             return error;

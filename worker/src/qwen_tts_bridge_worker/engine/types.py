@@ -84,8 +84,7 @@ class SamplingOptions:
         """Validate values that are present on this individual request."""
 
         if self.temperature is not None and (
-            not math.isfinite(self.temperature)
-            or not 0.0 < self.temperature <= 2.0
+            not math.isfinite(self.temperature) or not 0.0 < self.temperature <= 2.0
         ):
             raise ValueError(
                 "sampling.temperature must be finite and in the interval (0, 2]"
@@ -125,6 +124,9 @@ class SynthesisRequest:
     language: str = "auto"
     speaker: str = ""
     instruction: str = ""
+    reference_audio_path: str = ""
+    reference_text: str = ""
+    x_vector_only: bool = False
     seed: int | None = None
     sampling: SamplingOptions = field(default_factory=SamplingOptions)
     output: AudioFormat = field(default_factory=AudioFormat.default)

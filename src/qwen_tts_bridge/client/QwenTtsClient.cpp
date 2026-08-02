@@ -32,6 +32,9 @@ SynthesizeMessage to_control_message(const TtsRequest& request) {
     message.language = request.language;
     message.speaker = request.speaker;
     message.instruction = request.instruction;
+    message.reference_audio_path = request.reference_audio_path;
+    message.reference_text = request.reference_text;
+    message.x_vector_only = request.x_vector_only;
     message.has_seed = request.has_seed;
     message.seed = request.seed;
     message.sampling.temperature = request.sampling.temperature;
@@ -316,6 +319,8 @@ std::size_t QwenTtsClient::outbound_command_size(
                     message.language.size() +
                     message.speaker.size() +
                     message.instruction.size() +
+                    message.reference_audio_path.size() +
+                    message.reference_text.size() +
                     message.output.sample_format.size() +
                     (message.has_seed ? 32u : 0u);
             }

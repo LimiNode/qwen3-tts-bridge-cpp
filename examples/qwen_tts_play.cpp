@@ -54,6 +54,9 @@ struct ProgramOptions {
     std::string language = "auto";
     std::string speaker;
     std::string instruction;
+    std::string reference_audio_path;
+    std::string reference_text;
+    bool x_vector_only = false;
     std::optional<double> temperature;
     std::optional<std::uint32_t> top_k;
     std::optional<double> top_p;
@@ -62,6 +65,7 @@ struct ProgramOptions {
     std::optional<std::uint64_t> seed;
     bool sampling_overrides_supported = false;
     bool deterministic_seed_supported = false;
+    bool voice_clone_supported = false;
     std::uint32_t sample_rate = 24000;
     std::uint32_t channels = 1;
     int mock_chunks = 3;
@@ -318,6 +322,9 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
+        << "  --reference-audio <path>       Local WAV reference for Base voice cloning.\n"
+        << "  --reference-text <utf8>        Transcript of the reference audio.\n"
+        << "  --x-vector-only                Clone speaker embedding without transcript.\n"
         << "  --temperature <value>          Per-request sampling temperature.\n"
         << "  --top-k <value>                Per-request top-k candidate limit.\n"
         << "  --top-p <value>                Per-request nucleus probability.\n"
@@ -422,6 +429,15 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
             options.instruction = require_value(index, argc, argv, "--instruction");
         }
+        else if (arg == "--reference-audio" || arg.rfind("--reference-audio=", 0) == 0) {
+            options.reference_audio_path = require_value(index, argc, argv, "--reference-audio");
+        }
+        else if (arg == "--reference-text" || arg.rfind("--reference-text=", 0) == 0) {
+            options.reference_text = require_value(index, argc, argv, "--reference-text");
+        }
+        else if (arg == "--x-vector-only") {
+            options.x_vector_only = true;
+        }
         else if (arg == "--temperature" || arg.rfind("--temperature=", 0) == 0) {
             options.temperature = parse_double(
                 require_value(index, argc, argv, "--temperature"), "--temperature");
@@ -516,6 +532,10 @@ void validate_options(const ProgramOptions& options) {
          options.repetition_penalty.value() > 2.0)) {
         throw std::runtime_error("--repetition-penalty must be in the interval [1, 2]");
     }
+    if (options.reference_audio_path.empty() &&
+        (!options.reference_text.empty() || options.x_vector_only)) {
+        throw std::runtime_error("--reference-text and --x-vector-only require --reference-audio");
+    }
 }
 
 StdIoTransportOptions make_transport_options(const ProgramOptions& options) {
@@ -604,6 +624,9 @@ RequestId submit_request(
     request.language = options.language;
     request.speaker = options.speaker;
     request.instruction = options.instruction;
+    request.reference_audio_path = options.reference_audio_path;
+    request.reference_text = options.reference_text;
+    request.x_vector_only = options.x_vector_only;
     request.sampling.temperature = options.temperature;
     request.sampling.top_k = options.top_k;
     request.sampling.top_p = options.top_p;
@@ -716,7 +739,14 @@ void print_interactive_status(const ProgramOptions& options) {
               << (options.sampling_overrides_supported ? "true" : "false")
               << ", deterministic_seed="
               << (options.deterministic_seed_supported ? "true" : "false")
+              << ", voice_clone="
+              << (options.voice_clone_supported ? "true" : "false")
               << '\n';
+    if (!options.reference_audio_path.empty()) {
+        std::cout << "voice clone: reference_audio=" << options.reference_audio_path
+                  << ", mode=" << (options.x_vector_only ? "x_vector_only" : "icl")
+                  << '\n';
+    }
 }
 
 bool has_sampling_overrides(const ProgramOptions& options) {
@@ -952,6 +982,13 @@ int wmain(int argc, wchar_t** argv) {
         }
         options.sampling_overrides_supported = ready.capabilities.sampling_overrides;
         options.deterministic_seed_supported = ready.capabilities.deterministic_seed;
+        options.voice_clone_supported = ready.capabilities.voice_clone;
+        if (!options.reference_audio_path.empty() && !options.voice_clone_supported) {
+            client.stop();
+            throw std::runtime_error(
+                "the active worker does not advertise voice clone support; "
+                "launch a Qwen Base model with --reference-audio");
+        }
         if (has_sampling_overrides(options) && !options.sampling_overrides_supported) {
             client.stop();
             throw std::runtime_error(

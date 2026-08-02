@@ -86,6 +86,16 @@ class _BaseModel:
         self.model = _InnerModel("base")
 
 
+class _StreamingBaseModel:
+    def __init__(self) -> None:
+        self.model = _InnerModel("base")
+        self.stream_calls: list[dict[str, object]] = []
+
+    def stream_generate_voice_clone(self, **kwargs: object) -> object:
+        self.stream_calls.append(dict(kwargs))
+        yield [0.0, 0.25], 24000
+
+
 class _StreamingInnerModel(_InnerModel):
     def __init__(self, model_type: str) -> None:
         super().__init__(model_type)
@@ -511,6 +521,24 @@ class QwenEngineTests(unittest.TestCase):
                             speaker=speaker,
                         )
                     )
+
+    def test_custom_voice_rejects_base_voice_clone_fields(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(model_path="models/qwen-custom"),
+            model_loader=lambda _config: _CustomVoiceModel(),
+        )
+        engine.load()
+
+        with self.assertRaisesRegex(EngineRequestValidationError, "only by qwen base"):
+            engine.validate_request(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                    reference_audio_path="reference.wav",
+                    reference_text="Reference.",
+                )
+            )
 
     def test_legacy_faster_custom_voice_rejects_style_instruction(self) -> None:
         fake_model = _FasterStreamingModel(
@@ -1508,17 +1536,44 @@ class QwenEngineTests(unittest.TestCase):
         ):
             engine.validate_request(SynthesisRequest(request_id=1, text="Hello"))
 
-    def test_base_voice_clone_is_not_wired_yet(self) -> None:
+    def test_base_voice_clone_requires_reference_audio(self) -> None:
         engine = QwenTtsEngine(
             QwenEngineConfig(model_path="models/qwen-base"),
             model_loader=lambda _config: _BaseModel(),
         )
         engine.load()
 
-        with self.assertRaisesRegex(EngineRequestValidationError, "voice-clone"):
+        with self.assertRaisesRegex(
+            EngineRequestValidationError, "reference_audio_path"
+        ):
             engine.validate_request(
                 SynthesisRequest(request_id=1, text="Hello"),
             )
+
+    def test_base_voice_clone_streams_reference_audio_request(self) -> None:
+        fake_model = _StreamingBaseModel()
+        engine = QwenTtsEngine(
+            QwenEngineConfig(model_path="models/qwen-base", device="cpu"),
+            model_loader=lambda _config: fake_model,
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference = Path(temporary_directory) / "reference.wav"
+            reference.write_bytes(b"RIFF")
+            request = SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                language="English",
+                reference_audio_path=str(reference),
+                reference_text="Reference text.",
+            )
+            engine.load()
+            self.assertTrue(engine.capabilities.voice_clone)
+            chunks = list(engine.synthesize_stream(request, threading.Event()))
+
+        self.assertEqual(1, len(chunks))
+        self.assertEqual(str(reference), fake_model.stream_calls[0]["ref_audio"])
+        self.assertEqual("Reference text.", fake_model.stream_calls[0]["ref_text"])
+        self.assertFalse(cast(bool, fake_model.stream_calls[0]["x_vector_only_mode"]))
 
     def test_unsupported_audio_format_is_rejected(self) -> None:
         engine = QwenTtsEngine(QwenEngineConfig(model_path="models/qwen"))

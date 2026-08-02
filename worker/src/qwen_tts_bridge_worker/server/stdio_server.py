@@ -526,6 +526,9 @@ class StdioWorkerServer:
         language = message.get("language", "auto")
         speaker = message.get("speaker", "")
         instruction = message.get("instruction", "")
+        reference_audio_path = message.get("reference_audio_path", "")
+        reference_text = message.get("reference_text", "")
+        x_vector_only = message.get("x_vector_only", False)
         seed = message.get("seed")
         sampling_payload = message.get("sampling")
         output_payload = message.get("output")
@@ -556,6 +559,19 @@ class StdioWorkerServer:
                 "request_error",
                 "invalid_field_type",
                 "seed must be a non-negative integer when provided",
+            )
+            return None
+
+        if (
+            not isinstance(reference_audio_path, str)
+            or not isinstance(reference_text, str)
+            or not isinstance(x_vector_only, bool)
+        ):
+            self._send_error(
+                request_id,
+                "request_error",
+                "invalid_field_type",
+                "voice-clone reference fields must be strings and boolean",
             )
             return None
 
@@ -593,6 +609,9 @@ class StdioWorkerServer:
             language=language,
             speaker=speaker,
             instruction=instruction,
+            reference_audio_path=reference_audio_path,
+            reference_text=reference_text,
+            x_vector_only=x_vector_only,
             seed=seed,
             sampling=sampling,
             output=output,

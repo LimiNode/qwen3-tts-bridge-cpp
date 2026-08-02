@@ -22,8 +22,9 @@ stdin/stdout, and supports request-ID cancellation.
 - A narrowly scoped, measured `torch.compile` internal opt-in profile for one
   pinned RTX 4090 48 GiB runtime; the default remains eager and unchanged.
 
-Voice cloning is a planned worker capability, not yet a supported public
-workflow.
+Base-model voice cloning is available through the playback example; the normal
+`0.6B-CustomVoice` runtime remains a preset-speaker model. See
+[Local Voice Clone](docs/voice-clone.md) for the reference-audio workflow.
 
 ## Quick Start
 

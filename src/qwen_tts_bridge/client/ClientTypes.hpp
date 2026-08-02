@@ -56,6 +56,15 @@ struct TtsRequest {
     /// \brief Natural-language style, emotion, or prosody instruction.
     std::string instruction; ///< Natural-language style, emotion, or prosody instruction.
 
+    /// \brief Local reference-audio path for a Base voice-clone request.
+    std::string reference_audio_path; ///< Local voice-clone reference-audio path.
+
+    /// \brief Transcript of reference_audio_path for ICL voice cloning.
+    std::string reference_text; ///< Reference-audio transcript for voice cloning.
+
+    /// \brief Use only a speaker embedding and omit ICL reference speech codes.
+    bool x_vector_only = false; ///< Whether the clone request uses x-vector-only mode.
+
     /// \brief Optional deterministic seed for reproducible engine diagnostics.
     ///
     /// The worker may reject this control when its selected engine does not

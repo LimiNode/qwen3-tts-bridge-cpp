@@ -101,6 +101,9 @@ struct SynthesizeMessage {
     std::string language = "auto"; ///< Requested language or auto detection.
     std::string speaker; ///< Optional worker speaker or voice identifier.
     std::string instruction; ///< Natural-language style instruction.
+    std::string reference_audio_path; ///< Local reference-audio path for Base voice cloning.
+    std::string reference_text; ///< Reference-audio transcript for ICL voice cloning.
+    bool x_vector_only = false; ///< Whether the Base clone uses speaker embedding only.
     bool has_seed = false; ///< Whether seed contains a deterministic seed.
     std::uint64_t seed = 0; ///< Optional deterministic engine seed.
     SynthesisSamplingOptions sampling; ///< Optional per-request decoding controls.

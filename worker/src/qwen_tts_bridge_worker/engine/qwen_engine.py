@@ -80,7 +80,11 @@ class QwenTtsEngine:
             streaming=streaming,
             cancellation=streaming,
             instructions=instructions,
-            voice_clone=False,
+            voice_clone=(
+                self._model is not None
+                and _qwen_model_type(self._model) == "base"
+                and _supports_qwen_streaming(self._model)
+            ),
             sampling_overrides=(
                 self._config.runtime_backend == "faster"
                 and self._config.allow_request_sampling_overrides
@@ -160,6 +164,7 @@ class QwenTtsEngine:
         _validate_sampling_top_k_for_model(model, int(sampling["top_k"]))
         model_type = _qwen_model_type(model)
         if model_type == "custom_voice":
+            _reject_voice_clone_fields_for_non_base_model(request)
             _validate_custom_voice_request(model, request)
             if request.instruction.strip() and not _supports_custom_voice_instructions(
                 model,
@@ -174,6 +179,7 @@ class QwenTtsEngine:
             return
 
         if model_type == "voice_design":
+            _reject_voice_clone_fields_for_non_base_model(request)
             if not request.instruction.strip():
                 raise EngineRequestValidationError(
                     "missing_required_field",
@@ -182,11 +188,8 @@ class QwenTtsEngine:
             return
 
         if model_type == "base":
-            raise EngineRequestValidationError(
-                "missing_required_field",
-                "qwen base voice-clone models require reference audio; "
-                "the bridge protocol does not support voice clone requests yet",
-            )
+            _validate_voice_clone_request(request)
+            return
 
         raise EngineRequestValidationError(
             "invalid_field_type",
@@ -721,11 +724,14 @@ class QwenTtsEngine:
             )
 
         if model_type == "base":
-            raise EngineRequestValidationError(
-                "missing_required_field",
-                "qwen base voice-clone models require reference audio; "
-                "the bridge protocol does not support voice clone requests yet",
+            wavs, sample_rate = model.generate_voice_clone(
+                text=request.text,
+                language=_model_call_language(self._config, request.language),
+                ref_audio=request.reference_audio_path,
+                ref_text=request.reference_text or None,
+                x_vector_only_mode=request.x_vector_only,
             )
+            return wavs, sample_rate
 
         raise QwenEngineError(
             f"unsupported qwen tts_model_type: {model_type or 'unknown'}"
@@ -1457,6 +1463,9 @@ def _supports_qwen_streaming(model: Any) -> bool:
             return True
         return _supports_qwen_stream_generate_pcm(model)
 
+    if model_type == "base":
+        return callable(getattr(model, "stream_generate_voice_clone", None))
+
     return False
 
 
@@ -1465,6 +1474,47 @@ def _supports_qwen_instructions(model: Any, config: QwenEngineConfig) -> bool:
     if model_type == "custom_voice":
         return _supports_custom_voice_instructions(model, config)
     return model_type == "voice_design"
+
+
+def _validate_voice_clone_request(request: SynthesisRequest) -> None:
+    """Validate local Base voice-clone inputs before model inference."""
+
+    if request.speaker:
+        raise EngineRequestValidationError(
+            "unsupported_feature",
+            "qwen base voice-clone requests do not accept speaker",
+        )
+    if request.instruction:
+        raise EngineRequestValidationError(
+            "unsupported_feature",
+            "qwen base voice-clone requests do not accept instruction",
+        )
+    if not request.reference_audio_path:
+        raise EngineRequestValidationError(
+            "missing_required_field",
+            "qwen base voice-clone requests require reference_audio_path",
+        )
+    reference_audio = Path(request.reference_audio_path)
+    if not reference_audio.is_file():
+        raise EngineRequestValidationError(
+            "invalid_field_type",
+            "reference_audio_path must identify an existing local file",
+        )
+    if not request.x_vector_only and not request.reference_text.strip():
+        raise EngineRequestValidationError(
+            "missing_required_field",
+            "reference_text is required unless x_vector_only is true",
+        )
+
+
+def _reject_voice_clone_fields_for_non_base_model(request: SynthesisRequest) -> None:
+    """Reject Base-only clone inputs instead of silently ignoring them."""
+
+    if request.reference_audio_path or request.reference_text or request.x_vector_only:
+        raise EngineRequestValidationError(
+            "unsupported_feature",
+            "reference audio voice cloning is supported only by qwen base models",
+        )
 
 
 def _supports_custom_voice_instructions(
@@ -1605,6 +1655,23 @@ def _qwen_stream_generate_audio(
             instruction=request.instruction,
         )
 
+    if model_type == "base":
+        public_stream = getattr(model, "stream_generate_voice_clone", None)
+        if callable(public_stream):
+            return cast(
+                Iterable[tuple[Any, int]],
+                public_stream(
+                    text=request.text,
+                    language=language,
+                    ref_audio=request.reference_audio_path,
+                    ref_text=request.reference_text or None,
+                    x_vector_only_mode=request.x_vector_only,
+                    emit_every_frames=config.emit_every_frames,
+                    decode_window_frames=config.decode_window_frames,
+                    overlap_samples=config.overlap_samples,
+                ),
+            )
+
     return None
 
 
@@ -1670,10 +1737,7 @@ def _resolve_faster_sampling(
             "invalid_field_type",
             "sampling.top_p must be finite and in the interval (0, 1]",
         )
-    if (
-        not math.isfinite(repetition_penalty)
-        or not 1.0 <= repetition_penalty <= 2.0
-    ):
+    if not math.isfinite(repetition_penalty) or not 1.0 <= repetition_penalty <= 2.0:
         raise EngineRequestValidationError(
             "invalid_field_type",
             "sampling.repetition_penalty must be finite and in the interval [1, 2]",

@@ -28,6 +28,15 @@ Json control_message_to_json(const ControlMessage& message) {
                 if (!value.speaker.empty()) {
                     out["speaker"] = value.speaker;
                 }
+                if (!value.reference_audio_path.empty()) {
+                    out["reference_audio_path"] = value.reference_audio_path;
+                }
+                if (!value.reference_text.empty()) {
+                    out["reference_text"] = value.reference_text;
+                }
+                if (value.x_vector_only) {
+                    out["x_vector_only"] = true;
+                }
                 if (value.has_seed) {
                     out["seed"] = value.seed;
                 }

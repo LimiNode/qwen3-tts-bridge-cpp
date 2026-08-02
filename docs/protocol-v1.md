@@ -242,6 +242,9 @@ The `synthesize` payload keeps spoken text separate from style instructions:
   "language": "English",
   "speaker": "Alice",
   "instruction": "Speak with relief, but keep a little resentment.",
+  "reference_audio_path": "C:/voices/reference.wav",
+  "reference_text": "Reference-audio transcript.",
+  "x_vector_only": false,
   "seed": 4242,
   "sampling": {
     "temperature": 0.4,
@@ -264,6 +267,12 @@ engine-specific default or reject the request with `request_error` when the
 selected model requires a concrete speaker name. Clients should not use
 `"default"` as a universal magic value unless the model actually advertises a
 speaker with that exact name.
+
+`reference_audio_path` is an optional local file path for a Base voice-clone
+request. `reference_text` is its transcript and is required by ICL cloning.
+Set `x_vector_only = true` to clone only the speaker embedding without a
+transcript. These fields are model-specific: CustomVoice and VoiceDesign
+workers must reject them rather than silently changing request semantics.
 
 `seed` is an optional non-negative integer for reproducible, diagnostic
 requests. It must not be used as a production quality guarantee: support and

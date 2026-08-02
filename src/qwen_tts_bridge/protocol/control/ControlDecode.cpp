@@ -66,10 +66,14 @@ ControlDecodeResult decode_known_control_message(
 
     if (type == "synthesize") {
         SynthesizeMessage message;
+        bool has_x_vector_only = false;
         if (!read_required_string(object, "text", message.text, diagnostic, error) ||
             !read_optional_string(object, "language", message.language, diagnostic, error) ||
             !read_optional_string(object, "speaker", message.speaker, diagnostic, error) ||
             !read_optional_string(object, "instruction", message.instruction, diagnostic, error) ||
+            !read_optional_string(object, "reference_audio_path", message.reference_audio_path, diagnostic, error) ||
+            !read_optional_string(object, "reference_text", message.reference_text, diagnostic, error) ||
+            !read_optional_bool(object, "x_vector_only", message.x_vector_only, has_x_vector_only, diagnostic, error) ||
             !read_optional_u64(object, "seed", message.seed, message.has_seed, diagnostic, error) ||
             !read_optional_synthesis_sampling(object, "sampling", message.sampling, diagnostic, error) ||
             !read_optional_audio_format(object, "output", message.output, diagnostic, error)) {

@@ -146,6 +146,35 @@ void test_synthesize_sampling_round_trip() {
     CHECK(sampling.do_sample == true);
 }
 
+void test_synthesize_voice_clone_round_trip() {
+    SynthesizeMessage message;
+    message.text = "Clone this voice.";
+    message.reference_audio_path = "C:/tmp/reference.wav";
+    message.reference_text = "Reference transcript.";
+    message.x_vector_only = true;
+
+    const auto encoded = encode_control_message(ControlMessage{message});
+    CHECK(encoded);
+    const auto decoded = decode_control_message(
+        encoded.payload,
+        ControlMessageDirection::ClientToWorker);
+    CHECK(decoded);
+    const auto& clone = std::get<SynthesizeMessage>(decoded.message);
+    CHECK(clone.reference_audio_path == "C:/tmp/reference.wav");
+    CHECK(clone.reference_text == "Reference transcript.");
+    CHECK(clone.x_vector_only);
+}
+
+void test_synthesize_rejects_orphaned_voice_clone_fields() {
+    const auto result = decode_client(
+        "{\"message_type\":\"synthesize\","
+        "\"text\":\"Missing reference.\","
+        "\"reference_text\":\"Transcript.\"}");
+
+    CHECK(!result);
+    CHECK(result.error == ControlCodecError::InvalidFieldType);
+}
+
 void test_synthesize_rejects_invalid_sampling() {
     const auto result = decode_client(
         "{\"message_type\":\"synthesize\","
@@ -507,6 +536,8 @@ int main() {
     test_decode_synthesize_without_speaker();
     test_synthesize_seed_round_trip();
     test_synthesize_sampling_round_trip();
+    test_synthesize_voice_clone_round_trip();
+    test_synthesize_rejects_orphaned_voice_clone_fields();
     test_synthesize_rejects_invalid_sampling();
     test_synthesize_rejects_unknown_sampling_field();
     test_encode_synthesize_omits_unspecified_speaker();
