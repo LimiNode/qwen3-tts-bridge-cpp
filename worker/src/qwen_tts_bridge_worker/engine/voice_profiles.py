@@ -20,6 +20,7 @@ _MAX_SAMPLE_RATE = 96_000
 _MAX_REFERENCE_TEXT_CHARACTERS = 1_024
 _MAX_CLIPPED_SAMPLE_FRACTION = 0.05
 _MIN_RMS_RATIO = 0.003
+_ICL_TRAILING_SILENCE_SECONDS = 0.5
 
 
 class VoiceProfileError(ValueError):
@@ -213,7 +214,7 @@ class VoiceProfileRegistry:
                 "loaded Base model cannot create voice clone prompts"
             )
         prompt = create_prompt(
-            ref_audio=str(profile.reference_audio_path),
+            ref_audio=_prompt_reference_audio(profile),
             ref_text=profile.reference_text or None,
             x_vector_only_mode=profile.x_vector_only,
         )
@@ -231,6 +232,62 @@ def _voice_clone_prompt_builder(model: Any) -> Any:
     if callable(create_prompt):
         return create_prompt
     return getattr(getattr(model, "model", None), "create_voice_clone_prompt", None)
+
+
+def _prompt_reference_audio(profile: VoiceProfile) -> str | tuple[Any, int]:
+    """Prepare reference audio with the silence expected by ICL generation."""
+
+    if profile.x_vector_only:
+        return str(profile.reference_audio_path)
+
+    # FasterQwen's direct ICL path appends this pause to prevent the last
+    # reference phoneme from being continued into the first generated word.
+    try:
+        import numpy as np
+    except ModuleNotFoundError as exc:
+        raise VoiceProfileError(
+            "ICL voice profiles require NumPy in the model runtime"
+        ) from exc
+
+    with wave.open(str(profile.reference_audio_path), "rb") as reader:
+        raw_frames = reader.readframes(reader.getnframes())
+    samples = _pcm_bytes_to_float32(
+        raw_frames,
+        profile.reference_audio.sample_width_bytes,
+        np,
+    )
+    if profile.reference_audio.channels > 1:
+        samples = samples.reshape(-1, profile.reference_audio.channels).mean(axis=1)
+    silence = np.zeros(
+        round(profile.reference_audio.sample_rate * _ICL_TRAILING_SILENCE_SECONDS),
+        dtype=np.float32,
+    )
+    return np.concatenate((samples, silence)), profile.reference_audio.sample_rate
+
+
+def _pcm_bytes_to_float32(
+    data: bytes,
+    sample_width_bytes: int,
+    np: Any,
+) -> Any:
+    """Decode validated little-endian PCM data into normalized mono-ready samples."""
+
+    if sample_width_bytes == 1:
+        return (np.frombuffer(data, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+    if sample_width_bytes == 2:
+        return np.frombuffer(data, dtype="<i2").astype(np.float32) / 32768.0
+    if sample_width_bytes == 4:
+        return np.frombuffer(data, dtype="<i4").astype(np.float32) / 2147483648.0
+    if sample_width_bytes == 3:
+        triples = np.frombuffer(data, dtype=np.uint8).reshape(-1, 3)
+        values = (
+            triples[:, 0].astype(np.int32)
+            | (triples[:, 1].astype(np.int32) << 8)
+            | (triples[:, 2].astype(np.int32) << 16)
+        )
+        values[values & 0x800000 != 0] -= 1 << 24
+        return values.astype(np.float32) / 8388608.0
+    raise VoiceProfileError("reference audio uses an unsupported PCM width")
 
 
 def _parse_voice_profile(registry_directory: Path, row: object) -> VoiceProfile:

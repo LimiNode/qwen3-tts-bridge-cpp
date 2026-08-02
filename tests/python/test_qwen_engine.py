@@ -1744,22 +1744,30 @@ class QwenEngineTests(unittest.TestCase):
             )
             self.assertTrue(engine.capabilities.voice_profiles)
             self.assertTrue(engine.capabilities.voice_clone_streaming)
-            list(engine.synthesize_stream(request, threading.Event()))
-            list(engine.synthesize_stream(request, threading.Event()))
+            with patch(
+                "qwen_tts_bridge_worker.engine.voice_profiles._prompt_reference_audio",
+                return_value=([0.0] * 60_000, 24_000),
+            ):
+                list(engine.synthesize_stream(request, threading.Event()))
+                list(engine.synthesize_stream(request, threading.Event()))
 
         self.assertEqual(1, fake_model.create_prompt_calls)
         self.assertEqual(2, len(fake_model.stream_calls))
         self.assertIsNone(fake_model.stream_calls[0]["ref_audio"])
-        self.assertEqual(
-            {
-                "prepared": {
-                    "ref_audio": str(reference),
-                    "ref_text": "Reference text.",
-                    "x_vector_only_mode": False,
-                }
-            },
-            fake_model.stream_calls[0]["voice_clone_prompt"],
+        prepared = cast(
+            dict[str, object],
+            cast(dict[str, object], fake_model.stream_calls[0]["voice_clone_prompt"])[
+                "prepared"
+            ],
         )
+        prepared_audio, prepared_sample_rate = cast(
+            tuple[Any, int],
+            prepared["ref_audio"],
+        )
+        self.assertEqual(24_000, prepared_sample_rate)
+        self.assertEqual(60_000, len(prepared_audio))
+        self.assertEqual("Reference text.", prepared["ref_text"])
+        self.assertFalse(cast(bool, prepared["x_vector_only_mode"]))
 
     def test_faster_base_profile_uses_wrapped_prompt_builder(self) -> None:
         fake_model = _FasterBaseWithNestedPrompt()
@@ -1793,29 +1801,36 @@ class QwenEngineTests(unittest.TestCase):
                 model_loader=lambda _config: fake_model,
             )
             engine.load()
-            list(
-                engine.synthesize_stream(
-                    SynthesisRequest(
-                        request_id=1,
-                        text="Hello",
-                        language="English",
-                        voice_id="robot",
-                    ),
-                    threading.Event(),
+            with patch(
+                "qwen_tts_bridge_worker.engine.voice_profiles._prompt_reference_audio",
+                return_value=([0.0] * 60_000, 24_000),
+            ):
+                list(
+                    engine.synthesize_stream(
+                        SynthesisRequest(
+                            request_id=1,
+                            text="Hello",
+                            language="English",
+                            voice_id="robot",
+                        ),
+                        threading.Event(),
+                    )
                 )
-            )
 
         self.assertEqual(1, fake_model.model.create_prompt_calls)
-        self.assertEqual(
-            {
-                "nested_prepared": {
-                    "ref_audio": str(reference),
-                    "ref_text": "Reference text.",
-                    "x_vector_only_mode": False,
-                }
-            },
+        prepared = cast(
+            dict[str, object],
             fake_model.voice_clone_stream_calls[0]["voice_clone_prompt"],
+        )["nested_prepared"]
+        prepared_fields = cast(dict[str, object], prepared)
+        prepared_audio, prepared_sample_rate = cast(
+            tuple[Any, int],
+            prepared_fields["ref_audio"],
         )
+        self.assertEqual(24_000, prepared_sample_rate)
+        self.assertEqual(60_000, len(prepared_audio))
+        self.assertEqual("Reference text.", prepared_fields["ref_text"])
+        self.assertFalse(cast(bool, prepared_fields["x_vector_only_mode"]))
 
     def test_faster_base_profile_preload_keeps_prompt_off_request_path(self) -> None:
         fake_model = _FasterBaseWithNestedPrompt()
@@ -1853,18 +1868,22 @@ class QwenEngineTests(unittest.TestCase):
                 model_loader=lambda _config: fake_model,
             )
             engine.load()
-            warmup = engine.warmup()
-            list(
-                engine.synthesize_stream(
-                    SynthesisRequest(
-                        request_id=1,
-                        text="Hello",
-                        language="English",
-                        voice_id="robot",
-                    ),
-                    threading.Event(),
+            with patch(
+                "qwen_tts_bridge_worker.engine.voice_profiles._prompt_reference_audio",
+                return_value=([0.0] * 60_000, 24_000),
+            ):
+                warmup = engine.warmup()
+                list(
+                    engine.synthesize_stream(
+                        SynthesisRequest(
+                            request_id=1,
+                            text="Hello",
+                            language="English",
+                            voice_id="robot",
+                        ),
+                        threading.Event(),
+                    )
                 )
-            )
 
         self.assertIsNotNone(warmup)
         assert warmup is not None
