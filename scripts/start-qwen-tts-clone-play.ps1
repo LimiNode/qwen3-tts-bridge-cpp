@@ -5,6 +5,7 @@ param(
     # Keep the built-in default ASCII so Windows PowerShell 5.1 can parse this
     # UTF-8-without-BOM script consistently. Pass Russian text with -Text.
     [string]$Text = "I am your robot. I am your worker. I execute the order now.",
+    [switch]$Interactive,
     [switch]$XVectorOnly,
     [string]$VoiceRegistryPath = "",
     [string]$VoiceId = "",
@@ -110,7 +111,10 @@ $arguments = @("--worker", $pythonPath, "--cwd", $repoRoot)
 foreach ($workerArgument in $workerArguments) {
     $arguments += @("--worker-arg", $workerArgument)
 }
-$arguments += @("--text", $Text, "--language", "Russian")
+if (-not $Interactive) {
+    $arguments += @("--text", $Text)
+}
+$arguments += @("--language", "Russian")
 if ($VoiceId) {
     $arguments += @("--voice-id", $VoiceId)
 }

@@ -44,7 +44,8 @@ Copy-Item config\voice-profiles.example.json config\voice-profiles.local.json
 ```powershell
 .\scripts\start-qwen-tts-clone-play.ps1 `
   -VoiceRegistryPath .\config\voice-profiles.local.json `
-  -VoiceId kraftwerk_robot_ru
+  -VoiceId kraftwerk_robot_ru `
+  -Interactive
 ```
 
 В интерактивном CLI `/voices` выводит ID профилей, объявленных worker-ом, а

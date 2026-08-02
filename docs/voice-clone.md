@@ -44,7 +44,8 @@ Select a registered voice when starting the Base-model playback example:
 ```powershell
 .\scripts\start-qwen-tts-clone-play.ps1 `
   -VoiceRegistryPath .\config\voice-profiles.local.json `
-  -VoiceId kraftwerk_robot_ru
+  -VoiceId kraftwerk_robot_ru `
+  -Interactive
 ```
 
 In the interactive CLI, use `/voices` to list the profile IDs advertised by the
