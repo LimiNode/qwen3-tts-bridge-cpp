@@ -173,9 +173,11 @@ class QwenEngineConfig:
     warmup_text: str = "Warmup."
     warmup_language: str = "auto"
     warmup_speaker: str = ""
+    warmup_voice_id: str = ""
     warmup_instruction: str = ""
     voice_registry_path: str = ""
     voice_prompt_cache_max_entries: int = 8
+    preload_voice_profiles: bool = False
     kind: Literal["qwen"] = field(default="qwen", init=False)
 
     def __post_init__(self) -> None:
@@ -196,6 +198,10 @@ class QwenEngineConfig:
         if self.voice_prompt_cache_max_entries <= 0:
             raise ValueError(
                 "qwen.voice_prompt_cache_max_entries must be greater than zero"
+            )
+        if self.preload_voice_profiles and not self.voice_registry_path:
+            raise ValueError(
+                "qwen.preload_voice_profiles requires voice_registry_path"
             )
         if self.emit_every_frames <= 0:
             raise ValueError("qwen.emit_every_frames must be greater than zero")

@@ -5,8 +5,18 @@ robot-voice recording. The repository owner confirmed permission to include it
 as a voice-cloning demonstration asset. It is not presented as an official
 recording, endorsement, or affiliation with any artist or rights holder.
 
-The matching example profile is in
-[`config/voice-profiles.example.json`](../../config/voice-profiles.example.json).
+The matching profiles are in
+[`config/voice-profiles.example.json`](../../config/voice-profiles.example.json):
+
+- `kraftwerk_robot_ru` uses ICL conditioning, which most closely follows both
+  the timbre and delivery of the recording.
+- `kraftwerk_robot_ru_xvector` uses the same recording's speaker embedding only.
+  It is useful when the ICL profile repeats or blends words from the reference
+  transcript into a new utterance.
+
+The clone launcher preloads registered profiles and primes the selected profile
+before it accepts a text request. Its conservative default temperature is `0.45`;
+pass `-Temperature` to tune the amount of sampling variation.
 Its verified SHA-256 is:
 
 ```text

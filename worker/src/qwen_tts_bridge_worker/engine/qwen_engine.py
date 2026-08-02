@@ -164,6 +164,8 @@ class QwenTtsEngine:
         if self._model is None:
             self.load()
         warmup_fields: dict[str, object] = {}
+        if self._config.preload_voice_profiles:
+            warmup_fields.update(self._preload_voice_profiles(self._require_model()))
         if self._config.prefill_compile_policy == "exact_allowlist":
             warmup_fields.update(
                 self._run_prefill_allowlist_warmup(self._require_model())
@@ -176,6 +178,29 @@ class QwenTtsEngine:
         if self._config.warmup_synthesis_enabled:
             warmup_fields.update(self._run_warmup_synthesis())
         return warmup_fields or None
+
+    def _preload_voice_profiles(self, model: Any) -> dict[str, object]:
+        """Prepare every configured profile before the worker becomes ready."""
+
+        registry = self._voice_profiles
+        if registry is None:
+            raise QwenEngineError(
+                "voice profile preload requires a loaded voice profile registry"
+            )
+        voice_ids = registry.voice_ids
+        if len(voice_ids) > self._config.voice_prompt_cache_max_entries:
+            raise QwenEngineError(
+                "voice profile preload exceeds voice_prompt_cache_max_entries"
+            )
+
+        started_at = monotonic_seconds()
+        for voice_id in voice_ids:
+            registry.prompt_for(model, voice_id)
+        return {
+            "voice_profiles_preloaded": len(voice_ids),
+            "voice_profile_ids_preloaded": list(voice_ids),
+            "voice_profiles_preload_ms": round(elapsed_milliseconds(started_at), 3),
+        }
 
     def validate_request(
         self,
@@ -345,6 +370,8 @@ class QwenTtsEngine:
             finally:
                 if callable(close_stream):
                     close_stream()
+                if self._config.runtime_backend == "faster":
+                    _reset_after_partial_generation(model)
                 self._maybe_close_profile_pair_range(request.request_id)
 
     def pop_last_chunk_metrics(self) -> dict[str, object] | None:
@@ -405,6 +432,7 @@ class QwenTtsEngine:
             text=self._config.warmup_text,
             language=self._config.warmup_language,
             speaker=self._config.warmup_speaker,
+            voice_id=self._config.warmup_voice_id,
             instruction=self._config.warmup_instruction,
             output=AudioFormat.default(),
         )

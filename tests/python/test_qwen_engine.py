@@ -194,6 +194,7 @@ class _FasterStreamingModel:
         self.design_stream_calls: list[dict[str, object]] = []
         self.voice_clone_stream_calls: list[dict[str, object]] = []
         self.create_prompt_calls = 0
+        self.reset_calls = 0
         self.closed_streams = 0
         self.collect_generation_trace = False
         self.last_generation_trace: dict[str, object] = {}
@@ -242,6 +243,17 @@ class _FasterStreamingModel:
     def generate_voice_clone_streaming(self, **kwargs: object) -> object:
         self.voice_clone_stream_calls.append(dict(kwargs))
         return self._stream()
+
+    def reset_after_partial_generation(self) -> dict[str, object]:
+        self.reset_calls += 1
+        return {
+            "reset_api_version": 1,
+            "talker_graph_reset": True,
+            "predictor_graphs_reset": 2,
+            "compiled_prefill_cache_preserved": True,
+            "cuda_graphs_preserved": True,
+            "generation_mask_cache_preserved": True,
+        }
 
     def _stream(self) -> object:
         model = self
@@ -310,6 +322,7 @@ class _FasterBaseWithNestedPrompt:
     def __init__(self) -> None:
         self.model = _FasterNestedBasePrompt()
         self.voice_clone_stream_calls: list[dict[str, object]] = []
+        self.reset_calls = 0
 
     def generate_voice_clone_streaming(self, **kwargs: object) -> object:
         self.voice_clone_stream_calls.append(dict(kwargs))
@@ -320,6 +333,17 @@ class _FasterBaseWithNestedPrompt:
             yield [0.5], 24000, {}
 
         return stream()
+
+    def reset_after_partial_generation(self) -> dict[str, object]:
+        self.reset_calls += 1
+        return {
+            "reset_api_version": 1,
+            "talker_graph_reset": True,
+            "predictor_graphs_reset": 2,
+            "compiled_prefill_cache_preserved": True,
+            "cuda_graphs_preserved": True,
+            "generation_mask_cache_preserved": True,
+        }
 
 
 class _PrimeStreamingModel(_FasterStreamingModel):
@@ -1678,6 +1702,7 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(8, fake_model.voice_clone_stream_calls[0]["chunk_size"])
         self.assertEqual(0.4, fake_model.voice_clone_stream_calls[0]["temperature"])
         self.assertEqual(25, fake_model.voice_clone_stream_calls[0]["top_k"])
+        self.assertEqual(1, fake_model.reset_calls)
 
     def test_base_voice_profile_reuses_prepared_prompt(self) -> None:
         fake_model = _StreamingBaseModel()
@@ -1791,6 +1816,63 @@ class QwenEngineTests(unittest.TestCase):
             },
             fake_model.voice_clone_stream_calls[0]["voice_clone_prompt"],
         )
+
+    def test_faster_base_profile_preload_keeps_prompt_off_request_path(self) -> None:
+        fake_model = _FasterBaseWithNestedPrompt()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            registry = directory / "voices.json"
+            _write_reference_wav(reference)
+            registry.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voices": [
+                            {
+                                "voice_id": "robot",
+                                "reference_audio_path": "reference.wav",
+                                "reference_text": "Reference text.",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            engine = QwenTtsEngine(
+                QwenEngineConfig(
+                    model_path="models/qwen-base",
+                    runtime_backend="faster",
+                    device="cpu",
+                    voice_registry_path=str(registry),
+                    preload_voice_profiles=True,
+                    warmup_synthesis_enabled=True,
+                    warmup_voice_id="robot",
+                    warmup_text="Prime.",
+                ),
+                model_loader=lambda _config: fake_model,
+            )
+            engine.load()
+            warmup = engine.warmup()
+            list(
+                engine.synthesize_stream(
+                    SynthesisRequest(
+                        request_id=1,
+                        text="Hello",
+                        language="English",
+                        voice_id="robot",
+                    ),
+                    threading.Event(),
+                )
+            )
+
+        self.assertIsNotNone(warmup)
+        assert warmup is not None
+        self.assertEqual(1, warmup["voice_profiles_preloaded"])
+        self.assertEqual(["robot"], warmup["voice_profile_ids_preloaded"])
+        self.assertEqual(1, fake_model.model.create_prompt_calls)
+        self.assertEqual(2, len(fake_model.voice_clone_stream_calls))
+        self.assertEqual(2, fake_model.reset_calls)
 
     def test_base_voice_clone_rejects_invalid_reference_wav(self) -> None:
         engine = QwenTtsEngine(

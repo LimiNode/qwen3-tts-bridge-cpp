@@ -186,9 +186,11 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 warmup_text=args.warmup_text,
                 warmup_language=args.warmup_language,
                 warmup_speaker=args.warmup_speaker,
+                warmup_voice_id=args.warmup_voice_id,
                 warmup_instruction=args.warmup_instruction,
                 voice_registry_path=args.voice_registry_path,
                 voice_prompt_cache_max_entries=args.voice_prompt_cache_max_entries,
+                preload_voice_profiles=args.preload_voice_profiles,
             )
         raise ValueError(f"unsupported engine command: {engine_command}")
 
@@ -602,6 +604,7 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--warmup-text", default="Warmup.")
     qwen_parser.add_argument("--warmup-language", default="auto")
     qwen_parser.add_argument("--warmup-speaker", default="")
+    qwen_parser.add_argument("--warmup-voice-id", default="")
     qwen_parser.add_argument("--warmup-instruction", default="")
     qwen_parser.add_argument(
         "--voice-registry-path",
@@ -613,6 +616,14 @@ def _add_qwen_subcommand(
         type=int,
         default=8,
         help="Maximum prepared Base voice prompts retained by the persistent worker.",
+    )
+    qwen_parser.add_argument(
+        "--preload-voice-profiles",
+        action="store_true",
+        help=(
+            "Prepare every registered Base voice prompt before reporting ready; "
+            "requires the registry to fit in --voice-prompt-cache-max-entries."
+        ),
     )
     qwen_parser.add_argument(
         "--engine-startup-mode",

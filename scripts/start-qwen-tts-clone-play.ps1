@@ -11,6 +11,8 @@ param(
     [string]$VoiceId = "",
     [ValidateSet("faster", "upstream")]
     [string]$RuntimeBackend = "faster",
+    [ValidateRange(0.05, 2.0)]
+    [double]$Temperature = 0.45,
     [string]$Python = "",
     [string]$ModelPath = "",
     [string]$BuildDirectory = "build"
@@ -118,12 +120,26 @@ $workerArguments = @(
     "--attn-implementation", "sdpa",
     "--emit-every-frames", "8",
     "--decode-window-frames", "80",
-    "--max-audio-seconds-per-utterance", "30"
+    "--max-audio-seconds-per-utterance", "30",
+    "--temperature", $Temperature
 )
 if ($voiceRegistry) {
     $workerArguments += @("--voice-registry-path", $voiceRegistry)
 }
-$arguments = @("--worker", $pythonPath, "--cwd", $repoRoot)
+if ($VoiceId -and $RuntimeBackend -eq "faster") {
+    $workerArguments += @(
+        "--preload-voice-profiles",
+        "--warmup-synthesis",
+        "--warmup-voice-id", $VoiceId,
+        "--warmup-text", "Voice profile warmup.",
+        "--warmup-max-output-chunks", "2"
+    )
+}
+$arguments = @(
+    "--worker", $pythonPath,
+    "--cwd", $repoRoot,
+    "--startup-timeout-ms", "60000"
+)
 foreach ($workerArgument in $workerArguments) {
     $arguments += @("--worker-arg", $workerArgument)
 }
