@@ -192,6 +192,8 @@ class _FasterStreamingModel:
         self.supports_custom_voice_instructions = supports_custom_voice_instructions
         self.custom_stream_calls: list[dict[str, object]] = []
         self.design_stream_calls: list[dict[str, object]] = []
+        self.voice_clone_stream_calls: list[dict[str, object]] = []
+        self.create_prompt_calls = 0
         self.closed_streams = 0
         self.collect_generation_trace = False
         self.last_generation_trace: dict[str, object] = {}
@@ -231,6 +233,14 @@ class _FasterStreamingModel:
 
     def generate_voice_design_streaming(self, **kwargs: object) -> object:
         self.design_stream_calls.append(dict(kwargs))
+        return self._stream()
+
+    def create_voice_clone_prompt(self, **kwargs: object) -> object:
+        self.create_prompt_calls += 1
+        return {"prepared": dict(kwargs)}
+
+    def generate_voice_clone_streaming(self, **kwargs: object) -> object:
+        self.voice_clone_stream_calls.append(dict(kwargs))
         return self._stream()
 
     def _stream(self) -> object:
@@ -284,6 +294,32 @@ class _FasterStreamingModel:
                 model.closed_streams += 1
 
         return _Stream()
+
+
+class _FasterNestedBasePrompt:
+    def __init__(self) -> None:
+        self.model = _InnerModel("base")
+        self.create_prompt_calls = 0
+
+    def create_voice_clone_prompt(self, **kwargs: object) -> object:
+        self.create_prompt_calls += 1
+        return {"nested_prepared": dict(kwargs)}
+
+
+class _FasterBaseWithNestedPrompt:
+    def __init__(self) -> None:
+        self.model = _FasterNestedBasePrompt()
+        self.voice_clone_stream_calls: list[dict[str, object]] = []
+
+    def generate_voice_clone_streaming(self, **kwargs: object) -> object:
+        self.voice_clone_stream_calls.append(dict(kwargs))
+
+        def stream() -> Generator[
+            tuple[list[float], int, dict[str, object]], None, None
+        ]:
+            yield [0.5], 24000, {}
+
+        return stream()
 
 
 class _PrimeStreamingModel(_FasterStreamingModel):
@@ -1608,6 +1644,41 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual("Reference text.", fake_model.stream_calls[0]["ref_text"])
         self.assertFalse(cast(bool, fake_model.stream_calls[0]["x_vector_only_mode"]))
 
+    def test_faster_base_voice_clone_streams_and_preserves_sampling(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-base",
+                runtime_backend="faster",
+                device="cpu",
+                temperature=0.4,
+                top_k=25,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference = Path(temporary_directory) / "reference.wav"
+            _write_reference_wav(reference)
+            request = SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                language="English",
+                reference_audio_path=str(reference),
+                reference_text="Reference text.",
+            )
+            engine.load()
+            chunks = list(engine.synthesize_stream(request, threading.Event()))
+
+        self.assertTrue(engine.capabilities.voice_clone_streaming)
+        self.assertEqual(2, len(chunks))
+        self.assertEqual(
+            str(reference), fake_model.voice_clone_stream_calls[0]["ref_audio"]
+        )
+        self.assertEqual("English", fake_model.voice_clone_stream_calls[0]["language"])
+        self.assertEqual(8, fake_model.voice_clone_stream_calls[0]["chunk_size"])
+        self.assertEqual(0.4, fake_model.voice_clone_stream_calls[0]["temperature"])
+        self.assertEqual(25, fake_model.voice_clone_stream_calls[0]["top_k"])
+
     def test_base_voice_profile_reuses_prepared_prompt(self) -> None:
         fake_model = _StreamingBaseModel()
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -1663,6 +1734,62 @@ class QwenEngineTests(unittest.TestCase):
                 }
             },
             fake_model.stream_calls[0]["voice_clone_prompt"],
+        )
+
+    def test_faster_base_profile_uses_wrapped_prompt_builder(self) -> None:
+        fake_model = _FasterBaseWithNestedPrompt()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            registry = directory / "voices.json"
+            _write_reference_wav(reference)
+            registry.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voices": [
+                            {
+                                "voice_id": "robot",
+                                "reference_audio_path": "reference.wav",
+                                "reference_text": "Reference text.",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            engine = QwenTtsEngine(
+                QwenEngineConfig(
+                    model_path="models/qwen-base",
+                    runtime_backend="faster",
+                    device="cpu",
+                    voice_registry_path=str(registry),
+                ),
+                model_loader=lambda _config: fake_model,
+            )
+            engine.load()
+            list(
+                engine.synthesize_stream(
+                    SynthesisRequest(
+                        request_id=1,
+                        text="Hello",
+                        language="English",
+                        voice_id="robot",
+                    ),
+                    threading.Event(),
+                )
+            )
+
+        self.assertEqual(1, fake_model.model.create_prompt_calls)
+        self.assertEqual(
+            {
+                "nested_prepared": {
+                    "ref_audio": str(reference),
+                    "ref_text": "Reference text.",
+                    "x_vector_only_mode": False,
+                }
+            },
+            fake_model.voice_clone_stream_calls[0]["voice_clone_prompt"],
         )
 
     def test_base_voice_clone_rejects_invalid_reference_wav(self) -> None:

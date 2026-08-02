@@ -33,9 +33,12 @@ example:
 Copy-Item config\voice-profiles.example.json config\voice-profiles.local.json
 ```
 
-The script uses the locally cached `Qwen/Qwen3-TTS-12Hz-1.7B-Base` model when
-available and the repository's vendored `Qwen3-TTS-streaming` source. Pass
-`-ModelPath` to select another local snapshot or Hugging Face model ID.
+The launcher defaults to the locally configured FasterQwen source for this Base
+model. The tested cold request prepares the profile and CUDA graphs; once it
+starts emitting, the measured chunks arrive faster than playback. Pass
+`-RuntimeBackend upstream` for a diagnostic comparison, not for real-time
+playback. Pass `-ModelPath` to select another local snapshot or Hugging Face
+model ID.
 
 ## Use a Saved Profile
 

@@ -9,6 +9,8 @@ param(
     [switch]$XVectorOnly,
     [string]$VoiceRegistryPath = "",
     [string]$VoiceId = "",
+    [ValidateSet("faster", "upstream")]
+    [string]$RuntimeBackend = "faster",
     [string]$Python = "",
     [string]$ModelPath = "",
     [string]$BuildDirectory = "build"
@@ -53,11 +55,17 @@ $voiceRegistry = ""
 if (-not [string]::IsNullOrWhiteSpace($VoiceRegistryPath)) {
     $voiceRegistry = Resolve-ExistingPath $VoiceRegistryPath "Voice registry"
 }
+if (Test-Path -LiteralPath $localConfigPath) {
+    $runtimeConfig = Get-Content -Raw -LiteralPath $localConfigPath | ConvertFrom-Json
+}
+else {
+    $runtimeConfig = $null
+}
 if ([string]::IsNullOrWhiteSpace($Python)) {
-    if (-not (Test-Path -LiteralPath $localConfigPath)) {
+    if ($null -eq $runtimeConfig) {
         throw "Python was not provided and playback config was not found: $localConfigPath"
     }
-    $Python = (Get-Content -Raw -LiteralPath $localConfigPath | ConvertFrom-Json).python
+    $Python = $runtimeConfig.python
 }
 $pythonPath = Resolve-ExistingPath $Python "Python"
 
@@ -87,16 +95,24 @@ if ([string]::IsNullOrWhiteSpace($ModelPath)) {
 }
 $model = Resolve-ExistingPath $ModelPath "Base model"
 
-$upstreamSource = Join-Path $repoRoot "external\python\Qwen3-TTS-streaming"
-if (-not (Test-Path -LiteralPath $upstreamSource)) {
-    throw "Vendored Qwen3-TTS streaming source was not found: $upstreamSource"
+if ($RuntimeBackend -eq "faster") {
+    if ($null -eq $runtimeConfig -or [string]::IsNullOrWhiteSpace($runtimeConfig.faster_qwen_source_path)) {
+        throw "faster_qwen_source_path must be set in $localConfigPath for RuntimeBackend=faster"
+    }
+    $runtimeSource = Resolve-ExistingPath $runtimeConfig.faster_qwen_source_path "FasterQwen source"
 }
-$env:PYTHONPATH = "$repoRoot\worker\src;$upstreamSource"
+else {
+    $runtimeSource = Join-Path $repoRoot "external\python\Qwen3-TTS-streaming"
+    if (-not (Test-Path -LiteralPath $runtimeSource)) {
+        throw "Vendored Qwen3-TTS streaming source was not found: $runtimeSource"
+    }
+}
+$env:PYTHONPATH = "$runtimeSource;$repoRoot\worker\src"
 $workerArguments = @(
     "-m", "qwen_tts_bridge_worker",
     "qwen",
     "--model-path", $model,
-    "--runtime-backend", "upstream",
+    "--runtime-backend", $RuntimeBackend,
     "--device", "cuda",
     "--dtype", "bfloat16",
     "--attn-implementation", "sdpa",

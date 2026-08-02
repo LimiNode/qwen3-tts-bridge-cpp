@@ -101,6 +101,13 @@ class QwenTtsEngine:
                     or callable(
                         getattr(self._model, "stream_generate_voice_clone", None)
                     )
+                    or callable(
+                        getattr(
+                            self._model,
+                            "generate_voice_clone_streaming",
+                            None,
+                        )
+                    )
                 )
             ),
             sampling_overrides=(
@@ -111,7 +118,7 @@ class QwenTtsEngine:
             voice_clone_streaming=(
                 self._model is not None
                 and _qwen_model_type(self._model) == "base"
-                and callable(getattr(self._model, "stream_generate_voice_clone", None))
+                and _supports_base_voice_clone_streaming(self._model)
             ),
             voice_profiles=(
                 self._model is not None
@@ -1531,9 +1538,15 @@ def _supports_qwen_streaming(model: Any) -> bool:
         return _supports_qwen_stream_generate_pcm(model)
 
     if model_type == "base":
-        return callable(getattr(model, "stream_generate_voice_clone", None))
+        return _supports_base_voice_clone_streaming(model)
 
     return False
+
+
+def _supports_base_voice_clone_streaming(model: Any) -> bool:
+    return callable(getattr(model, "stream_generate_voice_clone", None)) or callable(
+        getattr(model, "generate_voice_clone_streaming", None)
+    )
 
 
 def _supports_qwen_instructions(model: Any, config: QwenEngineConfig) -> bool:
@@ -1754,6 +1767,38 @@ def _qwen_stream_generate_audio(
         )
 
     if model_type == "base":
+        if config.runtime_backend == "faster":
+            public_stream = getattr(model, "generate_voice_clone_streaming", None)
+            if callable(public_stream):
+                stream_kwargs = {
+                    "text": request.text,
+                    "language": _qwen_runtime_language(request.language),
+                    "ref_audio": (
+                        None
+                        if voice_clone_prompt is not None
+                        else request.reference_audio_path
+                    ),
+                    "ref_text": (
+                        "" if voice_clone_prompt is not None else request.reference_text
+                    ),
+                    "xvec_only": (
+                        False
+                        if voice_clone_prompt is not None
+                        else request.x_vector_only
+                    ),
+                    "voice_clone_prompt": voice_clone_prompt,
+                    "chunk_size": config.emit_every_frames,
+                    **sampling,
+                }
+                return _faster_voice_clone_stream(
+                    cast(
+                        Iterable[tuple[Any, int, dict[str, Any]]],
+                        public_stream(**stream_kwargs),
+                    ),
+                    cancel_event,
+                )
+            return None
+
         public_stream = getattr(model, "stream_generate_voice_clone", None)
         if callable(public_stream):
             return cast(
@@ -1784,6 +1829,32 @@ def _qwen_stream_generate_audio(
             )
 
     return None
+
+
+def _faster_voice_clone_stream(
+    stream: Iterable[tuple[Any, int, dict[str, Any]]],
+    cancel_event: threading.Event,
+) -> Iterator[tuple[Any, int]]:
+    """Adapt FasterQwen Base's timing-bearing stream to bridge PCM tuples."""
+
+    close = getattr(stream, "close", None)
+    try:
+        for item in stream:
+            if cancel_event.is_set():
+                return
+            if not isinstance(item, tuple) or len(item) != 3:
+                raise QwenEngineError(
+                    "FasterQwen Base streaming yielded an invalid chunk"
+                )
+            audio, sample_rate, _timing = item
+            if not isinstance(sample_rate, int) or sample_rate <= 0:
+                raise QwenEngineError(
+                    "FasterQwen Base streaming yielded an invalid sample rate"
+                )
+            yield audio, sample_rate
+    finally:
+        if callable(close):
+            close()
 
 
 def _sampling_vocab_size(model: Any) -> int | None:

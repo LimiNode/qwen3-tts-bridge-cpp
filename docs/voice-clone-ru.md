@@ -32,10 +32,12 @@ smoke-проверен через C++ CLI с кэшированной модел
 Copy-Item config\voice-profiles.example.json config\voice-profiles.local.json
 ```
 
-Скрипт использует локально кэшированную `Qwen/Qwen3-TTS-12Hz-1.7B-Base`, если
-она доступна, и vendored исходники `Qwen3-TTS-streaming` из репозитория. Чтобы
-выбрать другой локальный snapshot или Hugging Face model ID, передайте
-`-ModelPath`.
+Launcher по умолчанию использует локально настроенный FasterQwen source для
+этой Base-модели. Холодный запрос подготавливает профиль и CUDA graphs; после
+начала выдачи измеренные чанки приходят быстрее воспроизведения. Для
+диагностического сравнения, а не real-time playback, можно указать
+`-RuntimeBackend upstream`. Чтобы выбрать другой локальный snapshot или Hugging
+Face model ID, передайте `-ModelPath`.
 
 ## Использование сохранённого профиля
 

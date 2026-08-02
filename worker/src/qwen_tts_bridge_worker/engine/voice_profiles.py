@@ -207,7 +207,7 @@ class VoiceProfileRegistry:
             raise VoiceProfileError(
                 f"reference audio changed after registry load for voice_id: {voice_id}"
             )
-        create_prompt = getattr(model, "create_voice_clone_prompt", None)
+        create_prompt = _voice_clone_prompt_builder(model)
         if not callable(create_prompt):
             raise VoiceProfileError(
                 "loaded Base model cannot create voice clone prompts"
@@ -222,6 +222,15 @@ class VoiceProfileRegistry:
         while len(self._prepared) > self._max_cached_prompts:
             self._prepared.popitem(last=False)
         return prompt
+
+
+def _voice_clone_prompt_builder(model: Any) -> Any:
+    """Find the public builder or FasterQwen's wrapped upstream builder."""
+
+    create_prompt = getattr(model, "create_voice_clone_prompt", None)
+    if callable(create_prompt):
+        return create_prompt
+    return getattr(getattr(model, "model", None), "create_voice_clone_prompt", None)
 
 
 def _parse_voice_profile(registry_directory: Path, row: object) -> VoiceProfile:
