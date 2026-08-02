@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "kind": "human_listening_review",
+  "status": "not_accepted_as_product_voice_clone",
+  "review_date": "2026-08-02",
+  "reviewer": "local_listener",
+  "reference": {
+    "voice_id": "kraftwerk_robot_ru_xvector",
+    "mode": "Base x-vector-only",
+    "reference_audio_sha256": "baba7f26a9eb8de1df53a51c4b33ac6cb3625fe70509d7c1a281b64d4827000b"
+  },
+  "runtime": {
+    "bridge_commit": "cb5fb87",
+    "faster_commit": "e4ac767277aad59095122cada01b174fbbb4f429",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "python": "3.12.10",
+    "torch": "2.10.0+cu128"
+  },
+  "matrix": {
+    "target_text_count": 10,
+    "seed": 4242,
+    "temperature": 0.4,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "variants": [
+      {"label": "baseline", "carrier_text": ""},
+      {"label": "carrier-itak", "carrier_text": "Итак."},
+      {"label": "carrier-gotovo", "carrier_text": "Готово."},
+      {"label": "carrier-system", "carrier_text": "Система активирована."}
+    ]
+  },
+  "listener_assessment": {
+    "robot_like_character_retained": true,
+    "ordinary_male_narrator_fallback_detected": false,
+    "reference_similarity_ranking": [2, 9, 7, 8],
+    "reference_identity_retained_consistently": false,
+    "carrier_changes_target_voice": false,
+    "conclusion": "x-vector-only was perceptually more stable and closer to the reference than ICL for several outputs, but is still character similarity rather than reliable voice cloning."
+  },
+  "artifact_provenance": {
+    "summary_sha256": "04dd2906a71efca07f277ff5c3d2f738bd5a9f37688cc5764f617041c1007cef",
+    "generated_wav_policy": "Generated WAV files remain outside version control."
+  },
+  "product_decision": {
+    "base_xvector": "stronger_experimental_character_voice",
+    "production_voice_clone": "not_supported",
+    "carrier_phrase": "not_adopted"
+  }
+}

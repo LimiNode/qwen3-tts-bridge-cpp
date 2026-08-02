@@ -103,7 +103,7 @@ cap, so greedy decoding is not adopted as a real-time default.
 
 ## Follow-up Listening Results
 
-Three small listening experiments were run on the same warmed ICL profile after
+Four small listening experiments were run on warmed Base profiles after
 the initial diagnosis:
 
 1. A fixed-seed text sweep: ten Russian target texts at seed `4242` and
@@ -113,6 +113,8 @@ the initial diagnosis:
    preserve the male robotic identity of the reference.
 3. A carrier-phrase sweep: the same ten target texts with no carrier or one of
    three Russian carriers before the target sentence.
+4. An x-vector-only carrier-phrase sweep with the same target texts and
+   sampling settings.
 
 The profile with a period-terminated reference transcript removed the reported
 opening reference-tail artefact in the 30 transcript-profile samples reviewed
@@ -136,11 +138,20 @@ voice that settled before the target. Carrier generation and subsequent crop
 are therefore rejected for this profile. The review is recorded in
 [`voice-clone-carrier-listening-review.json`](benchmark-artifacts/rtx4090-2026-08-02/voice-clone-carrier-listening-review.json).
 
+The x-vector-only profile gave a more consistent robot-like character than the
+ICL profile and did not fall back to an ordinary male narrator in the listener
+review. The strongest outputs were ranked `02`, `09`, `07`, then `08`, but the
+profile still drifted enough that it did not meet the voice-clone quality gate.
+The same carrier phrases again had no target-only effect. The review is
+recorded in
+[`voice-clone-xvector-listening-review.json`](benchmark-artifacts/rtx4090-2026-08-02/voice-clone-xvector-listening-review.json).
+
 ## Product Policy
 
-- `kraftwerk_robot_ru_xvector` is an experimental clean-boundary real-time
-  profile. It avoids reference-code continuation, but does not claim close
-  speaker similarity.
+- `kraftwerk_robot_ru_xvector` is the stronger experimental clean-boundary
+  character-voice profile for this reference. It avoids reference-code
+  continuation and better retains a robot-like character than ICL, but it does
+  not claim close speaker similarity or production-grade cloning.
 - `kraftwerk_robot_ru` is an experimental ICL profile. It can occasionally
   sound closer to the reference, but has reference-tail and identity-drift
   risks. It must not be advertised as a production voice clone.
