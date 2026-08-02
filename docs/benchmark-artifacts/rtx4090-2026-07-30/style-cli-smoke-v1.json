@@ -1,0 +1,127 @@
+﻿{
+    "schema_version":  1,
+    "experiment":  "style_experiment_cpp_cli_stdio_smoke",
+    "exit_code":  0,
+    "checks":  {
+                   "worker_advertised_sampling_capabilities":  true,
+                   "invalid_numeric_command_kept_cli_running":  true,
+                   "oversized_top_k_rejected_by_worker":  true,
+                   "temperature_04_reached_worker":  true,
+                   "temperature_09_reached_worker":  true,
+                   "explicit_seed_reached_worker":  true,
+                   "speaker_switches_kept_cli_running":  true
+               },
+    "effective_settings":  [
+                               {
+                                   "effective_do_sample":  true,
+                                   "effective_repetition_penalty":  1.05,
+                                   "effective_seed":  4242,
+                                   "effective_seed_explicit":  true,
+                                   "effective_temperature":  0.4,
+                                   "effective_top_k":  50,
+                                   "effective_top_p":  1.0,
+                                   "event":  "request_effective_generation_settings",
+                                   "request_id":  1
+                               },
+                               {
+                                   "effective_do_sample":  true,
+                                   "effective_repetition_penalty":  1.05,
+                                   "effective_seed":  4242,
+                                   "effective_seed_explicit":  true,
+                                   "effective_temperature":  0.9,
+                                   "effective_top_k":  50,
+                                   "effective_top_p":  1.0,
+                                   "event":  "request_effective_generation_settings",
+                                   "request_id":  3
+                               },
+                               {
+                                   "effective_do_sample":  true,
+                                   "effective_repetition_penalty":  1.05,
+                                   "effective_seed":  4242,
+                                   "effective_seed_explicit":  true,
+                                   "effective_temperature":  0.9,
+                                   "effective_top_k":  50,
+                                   "effective_top_p":  1.0,
+                                   "event":  "request_effective_generation_settings",
+                                   "request_id":  4
+                               },
+                               {
+                                   "effective_do_sample":  true,
+                                   "effective_repetition_penalty":  1.05,
+                                   "effective_seed":  4242,
+                                   "effective_seed_explicit":  true,
+                                   "effective_temperature":  0.9,
+                                   "effective_top_k":  50,
+                                   "effective_top_p":  1.0,
+                                   "event":  "request_effective_generation_settings",
+                                   "request_id":  5
+                               }
+                           ],
+    "request_finished":  [
+                             {
+                                 "audio_bytes":  184320,
+                                 "audio_chunks":  6,
+                                 "audio_duration_ms":  3840.0,
+                                 "event":  "request_finished",
+                                 "final_pcm_chunk_index":  5,
+                                 "first_audio_ms":  500.249,
+                                 "queue_ms":  1.993,
+                                 "real_time_factor":  0.437302,
+                                 "request_id":  1,
+                                 "synthesis_ms":  1679.239,
+                                 "terminal_state":  "completed",
+                                 "total_ms":  1681.232
+                             },
+                             {
+                                 "audio_bytes":  0,
+                                 "audio_chunks":  0,
+                                 "event":  "request_finished",
+                                 "request_id":  2,
+                                 "terminal_state":  "failed",
+                                 "total_ms":  0.38
+                             },
+                             {
+                                 "audio_bytes":  176640,
+                                 "audio_chunks":  6,
+                                 "audio_duration_ms":  3680.0,
+                                 "event":  "request_finished",
+                                 "final_pcm_chunk_index":  5,
+                                 "first_audio_ms":  508.867,
+                                 "queue_ms":  1.471,
+                                 "real_time_factor":  0.458884,
+                                 "request_id":  3,
+                                 "synthesis_ms":  1688.693,
+                                 "terminal_state":  "completed",
+                                 "total_ms":  1690.163
+                             },
+                             {
+                                 "audio_bytes":  176640,
+                                 "audio_chunks":  6,
+                                 "audio_duration_ms":  3680.0,
+                                 "event":  "request_finished",
+                                 "final_pcm_chunk_index":  5,
+                                 "first_audio_ms":  597.503,
+                                 "queue_ms":  1.786,
+                                 "real_time_factor":  0.453308,
+                                 "request_id":  4,
+                                 "synthesis_ms":  1668.172,
+                                 "terminal_state":  "completed",
+                                 "total_ms":  1669.959
+                             },
+                             {
+                                 "audio_bytes":  176640,
+                                 "audio_chunks":  6,
+                                 "audio_duration_ms":  3680.0,
+                                 "event":  "request_finished",
+                                 "final_pcm_chunk_index":  5,
+                                 "first_audio_ms":  634.974,
+                                 "queue_ms":  2.017,
+                                 "real_time_factor":  0.477802,
+                                 "request_id":  5,
+                                 "synthesis_ms":  1758.311,
+                                 "terminal_state":  "completed",
+                                 "total_ms":  1760.328
+                             }
+                         ],
+    "acceptance_pass":  true
+}
