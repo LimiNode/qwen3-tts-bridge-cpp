@@ -67,7 +67,7 @@ def main() -> int:
     parser.add_argument("--alternate-seed", type=int, default=7331)
     parser.add_argument("--temperature", type=float, default=0.4)
     parser.add_argument("--alternate-temperature", type=float, default=0.9)
-    parser.add_argument("--top-k-values", default="10,50,200")
+    parser.add_argument("--top-k-values", default="1,10,50")
     parser.add_argument("--top-p-values", default="0.7,0.9,1.0")
     parser.add_argument("--repetition-penalty-values", default="1.0,1.05,1.2")
     parser.add_argument("--max-audio-seconds", type=float, default=30.0)

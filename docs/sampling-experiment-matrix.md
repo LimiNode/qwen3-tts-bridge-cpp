@@ -20,7 +20,7 @@ sampled and greedy controls, it sweeps these values one parameter at a time:
 
 | Control | Values | Fixed controls |
 | --- | --- | --- |
-| `top_k` | `10, 50, 200` | temperature 0.4, top-p 1.0, repetition penalty 1.05 |
+| `top_k` | `1, 10, 50` | temperature 0.4, top-p 1.0, repetition penalty 1.05 |
 | `top_p` | `0.7, 0.9, 1.0` | temperature 0.4, top-k 50, repetition penalty 1.05 |
 | repetition penalty | `1.0, 1.05, 1.2` | temperature 0.4, top-k 50, top-p 1.0 |
 
