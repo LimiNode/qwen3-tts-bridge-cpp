@@ -10,6 +10,11 @@ been smoke-tested through the C++ CLI with the cached `1.7B-Base` model. A few
 seconds of clear reference speech can be enough, but quality remains sensitive
 to recording quality, transcript accuracy, and the target text.
 
+For this repository's processed robotic reference, zero-shot Base ICL has not
+met the product-quality gate for voice identity retention. Treat the example
+profiles as diagnostics, not as production voice clones. See the detailed
+[ICL diagnosis](voice-clone-diagnosis.md) before using them beyond local tests.
+
 ## Create, Test, and Save a Profile
 
 Use the dedicated creation command to preflight a reference WAV, run a short

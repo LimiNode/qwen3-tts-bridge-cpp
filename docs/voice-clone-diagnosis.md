@@ -92,23 +92,51 @@ The bridge does not account for the reported reference-text leak:
   which describes generated audio reproducing a reference-text suffix in a
   fresh official-process reproduction.
 
-Fixed seed eliminates ordinary sampling variation after warmup. The observed
-timbre changes in interactive use can therefore combine two distinct causes:
-the cold first-request difference and stochastic sampling when no fixed seed is
-selected. They should not be attributed to stale bridge PCM.
+For one warmed model, fixed seed makes repeated requests with the same prompt
+and target text reproducible. It does not guarantee that Base ICL will retain
+the same perceived identity for different target texts. The observed timbre
+changes should not be attributed to stale bridge PCM.
 
 `do_sample=false` was also checked with a 4-second direct safety cap. It was
 deterministic, but Base ICL did not reach a useful terminal result before the
 cap, so greedy decoding is not adopted as a real-time default.
 
+## Follow-up Listening Results
+
+Two small listening experiments were run on the same warmed ICL profile after
+the initial diagnosis:
+
+1. A fixed-seed text sweep: ten Russian target texts at seed `4242` and
+   temperature `0.4`.
+2. An identity-instruction A/B: the same ten texts, seed, sampling settings,
+   and precomputed prompt, with either no instruction or a direct request to
+   preserve the male robotic identity of the reference.
+
+The profile with a period-terminated reference transcript removed the reported
+opening reference-tail artefact in the 30 transcript-profile samples reviewed
+by the local listener. That workaround addresses the request boundary only.
+
+The fixed-seed sweep sounded close to the reference for only three of ten
+target texts. The identity instruction made speech more robotic but did not
+improve identity retention: it produced different robotic voices rather than a
+consistent clone. The full listening decision and reproducibility hashes are
+recorded in
+[`voice-clone-identity-instruction-listening-review.json`](benchmark-artifacts/rtx4090-2026-08-02/voice-clone-identity-instruction-listening-review.json).
+
+This is a failed product-quality gate for zero-shot cloning of this reference.
+It is not evidence of a C++ playback, bridge prompt-cache, or reset bug.
+
 ## Product Policy
 
-- `kraftwerk_robot_ru_xvector` is the reliable low-latency profile. It avoids
-  reference-code continuation and is the appropriate default for real-time
-  applications that prioritize clean request boundaries.
-- `kraftwerk_robot_ru` is an experimental, higher-fidelity ICL profile. It can
-  sound closer to the reference, but callers must expect a possible
-  reference-tail echo from the underlying Base model.
+- `kraftwerk_robot_ru_xvector` is an experimental clean-boundary real-time
+  profile. It avoids reference-code continuation, but does not claim close
+  speaker similarity.
+- `kraftwerk_robot_ru` is an experimental ICL profile. It can occasionally
+  sound closer to the reference, but has reference-tail and identity-drift
+  risks. It must not be advertised as a production voice clone.
+- Base ICL instructions remain a direct diagnostic feature. They are not
+  exposed through the bridge CLI because the tested identity instruction
+  changed style without meeting the clone-quality gate.
 - A profile should be prepared during worker warmup or explicitly after voice
   selection. It must not first be prepared only when a time-critical text
   request is submitted.

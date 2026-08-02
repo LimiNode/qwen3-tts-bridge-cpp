@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "kind": "human_listening_review",
+  "status": "not_accepted_as_product_voice_clone",
+  "review_date": "2026-08-02",
+  "reviewer": "local_listener",
+  "reference": {
+    "voice_id": "kraftwerk_robot_ru_icl_period",
+    "reference_audio_sha256": "baba7f26a9eb8de1df53a51c4b33ac6cb3625fe70509d7c1a281b64d4827000b",
+    "reference_text": "Я твой слуга, я твой работник.",
+    "mode": "Base ICL"
+  },
+  "runtime": {
+    "bridge_commit": "8c3deba8cdd69264ac9d52926b4b0df2ae280c4e",
+    "faster_commit": "e4ac767277aad59095122cada01b174fbbb4f429",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "python": "3.12.10",
+    "torch": "2.10.0+cu128"
+  },
+  "fixed_seed_text_sweep": {
+    "sample_count": 10,
+    "seed": 4242,
+    "temperature": 0.4,
+    "listener_assessment": {
+      "reference_like_sample_count": 3,
+      "reference_like_indices": [1, 6, 8],
+      "conclusion": "Identity is not retained consistently across target texts."
+    }
+  },
+  "identity_instruction_ab": {
+    "sample_count_per_variant": 10,
+    "seed": 4242,
+    "temperature": 0.4,
+    "baseline_instruction": "",
+    "identity_instruction": "Use the exact vocal identity of the reference audio: a male Russian robotic singer with the same electronic, vocoder-like metallic timbre. Keep the voice synthetic, low-pitched, even, and controlled. Do not switch to a natural human voice or change gender.",
+    "listener_assessment": {
+      "robot_effect_increased": true,
+      "reference_identity_improved": false,
+      "conclusion": "The instruction produced different robotic voices, not a consistently closer clone."
+    }
+  },
+  "artifact_provenance": {
+    "timbre_stability_summary_sha256": "f3ce5dadfe0e0432f630a28054a3e91fb95723cfdc0e133c2ba502b0eecae24f",
+    "identity_instruction_summary_sha256": "9a4b14d5fc11b1593c38d122d96e4921275cce6efeb398380ba4de7e544ec7a8",
+    "generated_wav_policy": "Generated WAV files remain outside version control."
+  },
+  "product_decision": {
+    "base_icl_clone": "experimental_only",
+    "base_icl_instruction_in_cli": "not_enabled",
+    "next_investigation": "Compare fresh official-Qwen and FasterQwen runs, then evaluate a longer clean reference or a separately curated synthetic-bootstrap experiment."
+  }
+}
