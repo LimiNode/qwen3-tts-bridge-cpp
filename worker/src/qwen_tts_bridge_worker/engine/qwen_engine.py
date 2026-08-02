@@ -323,6 +323,7 @@ class QwenTtsEngine:
             emitted_audio_bytes = 0
             max_audio_bytes = _max_audio_bytes(self._config, request)
             close_stream = getattr(audio_stream, "close", None)
+            completed = False
             try:
                 iterator = iter(audio_stream)
                 while not cancel_event.is_set():
@@ -377,13 +378,15 @@ class QwenTtsEngine:
                                 emitted_audio_bytes,
                                 request,
                             )
-                if not cancel_event.is_set():
-                    self._capture_generation_trace(model)
+                completed = not cancel_event.is_set()
             finally:
                 if callable(close_stream):
                     close_stream()
+                reset_metadata: dict[str, object] | None = None
                 if self._config.runtime_backend == "faster":
-                    _reset_after_partial_generation(model)
+                    reset_metadata = _reset_after_partial_generation(model)
+                if completed:
+                    self._capture_generation_trace(model, reset_metadata)
                 self._maybe_close_profile_pair_range(request.request_id)
 
     def pop_last_chunk_metrics(self) -> dict[str, object] | None:
@@ -400,13 +403,20 @@ class QwenTtsEngine:
         self._last_generation_trace = None
         return trace
 
-    def _capture_generation_trace(self, model: Any) -> None:
+    def _capture_generation_trace(
+        self,
+        model: Any,
+        reset_metadata: dict[str, object] | None = None,
+    ) -> None:
         if not self._config.collect_generation_trace:
             return
         trace = getattr(model, "last_generation_trace", None)
         if not isinstance(trace, dict):
             raise QwenEngineError("faster backend did not produce a generation trace")
-        self._last_generation_trace = {str(key): value for key, value in trace.items()}
+        captured_trace = {str(key): value for key, value in trace.items()}
+        if reset_metadata is not None:
+            captured_trace["bridge_reset_after_generation"] = reset_metadata
+        self._last_generation_trace = captured_trace
 
     def close(self) -> None:
         """Release the loaded model reference."""

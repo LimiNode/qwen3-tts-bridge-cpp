@@ -1271,9 +1271,16 @@ class QwenEngineTests(unittest.TestCase):
         )
 
         self.assertTrue(fake_model.collect_generation_trace)
+        trace = engine.pop_last_generation_trace()
+        self.assertIsNotNone(trace)
+        self.assertEqual(fake_model.last_generation_trace, {
+            key: value
+            for key, value in trace.items()
+            if key != "bridge_reset_after_generation"
+        })
         self.assertEqual(
-            fake_model.last_generation_trace,
-            engine.pop_last_generation_trace(),
+            fake_model.reset_after_partial_generation(),
+            trace["bridge_reset_after_generation"],
         )
         self.assertIsNone(engine.pop_last_generation_trace())
 
