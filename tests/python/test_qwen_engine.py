@@ -27,6 +27,7 @@ from qwen_tts_bridge_worker.engine.qwen_engine import (
     _prefill_snapshot_max_abs,
     _preserved_rng_state,
     _reset_after_partial_generation,
+    _sampling_vocab_size,
     _seed_runtime,
 )
 
@@ -1053,6 +1054,19 @@ class QwenEngineTests(unittest.TestCase):
                     sampling=SamplingOptions(top_k=2049),
                 )
             )
+
+    def test_sampling_vocab_size_reads_fasterqwen_talker_config(self) -> None:
+        model = SimpleNamespace(
+            model=SimpleNamespace(
+                model=SimpleNamespace(
+                    talker=SimpleNamespace(
+                        config=SimpleNamespace(vocab_size=3072),
+                    ),
+                ),
+            ),
+        )
+
+        self.assertEqual(3072, _sampling_vocab_size(model))
 
     def test_describe_request_reports_effective_sampling_and_explicit_seed(
         self,

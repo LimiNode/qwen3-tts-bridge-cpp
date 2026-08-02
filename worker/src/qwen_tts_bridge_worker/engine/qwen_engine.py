@@ -1614,6 +1614,8 @@ def _sampling_vocab_size(model: Any) -> int | None:
     for path in (
         ("model", "config", "vocab_size"),
         ("model", "model", "config", "vocab_size"),
+        ("model", "model", "talker", "config", "vocab_size"),
+        ("model", "model", "talker", "model", "config", "vocab_size"),
         ("config", "vocab_size"),
     ):
         value = _nested_attr(model, path)

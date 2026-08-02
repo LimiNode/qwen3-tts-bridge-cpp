@@ -29,6 +29,7 @@
   "prefill_generation_prime": false,
   "warmup_synthesis": true,
   "warmup_synthesis_passes": 1,
+  "warmup_seed": 4242,
   "warmup_unbounded_passes": 1,
   "warmup_max_output_chunks": null,
   "warmup_text": "Проверка готовности завершена.",

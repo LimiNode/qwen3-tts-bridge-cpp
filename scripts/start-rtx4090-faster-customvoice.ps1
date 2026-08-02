@@ -101,6 +101,9 @@ if ($profile.prefill_generation_prime) {
 }
 if ($profile.warmup_synthesis) {
     $arguments += "--warmup-synthesis"
+    if ($null -ne $profile.warmup_seed) {
+        $arguments += @("--warmup-seed", $profile.warmup_seed)
+    }
     if ($null -ne $profile.warmup_synthesis_passes) {
         $arguments += @(
             "--warmup-synthesis-passes", $profile.warmup_synthesis_passes
