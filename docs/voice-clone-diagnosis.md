@@ -103,7 +103,7 @@ cap, so greedy decoding is not adopted as a real-time default.
 
 ## Follow-up Listening Results
 
-Two small listening experiments were run on the same warmed ICL profile after
+Three small listening experiments were run on the same warmed ICL profile after
 the initial diagnosis:
 
 1. A fixed-seed text sweep: ten Russian target texts at seed `4242` and
@@ -111,6 +111,8 @@ the initial diagnosis:
 2. An identity-instruction A/B: the same ten texts, seed, sampling settings,
    and precomputed prompt, with either no instruction or a direct request to
    preserve the male robotic identity of the reference.
+3. A carrier-phrase sweep: the same ten target texts with no carrier or one of
+   three Russian carriers before the target sentence.
 
 The profile with a period-terminated reference transcript removed the reported
 opening reference-tail artefact in the 30 transcript-profile samples reviewed
@@ -126,6 +128,14 @@ recorded in
 This is a failed product-quality gate for zero-shot cloning of this reference.
 It is not evidence of a C++ playback, bridge prompt-cache, or reset bug.
 
+The carrier phrases did not provide an in-utterance voice warmup. The baseline
+again had three reference-like outputs out of ten; `Итак.` had none, `Готово.`
+had one, and `Система активирована.` had three. In all variants the listener
+heard one voice across the carrier and target rather than an initially unstable
+voice that settled before the target. Carrier generation and subsequent crop
+are therefore rejected for this profile. The review is recorded in
+[`voice-clone-carrier-listening-review.json`](benchmark-artifacts/rtx4090-2026-08-02/voice-clone-carrier-listening-review.json).
+
 ## Product Policy
 
 - `kraftwerk_robot_ru_xvector` is an experimental clean-boundary real-time
@@ -137,6 +147,8 @@ It is not evidence of a C++ playback, bridge prompt-cache, or reset bug.
 - Base ICL instructions remain a direct diagnostic feature. They are not
   exposed through the bridge CLI because the tested identity instruction
   changed style without meeting the clone-quality gate.
+- Carrier phrases and forced-alignment crop are not adopted: the direct
+  listening test found no target-only identity improvement to crop toward.
 - A profile should be prepared during worker warmup or explicitly after voice
   selection. It must not first be prepared only when a time-critical text
   request is submitted.

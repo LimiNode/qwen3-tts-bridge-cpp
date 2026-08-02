@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "kind": "human_listening_review",
+  "status": "rejected_carrier_warmup_workaround",
+  "review_date": "2026-08-02",
+  "reviewer": "local_listener",
+  "reference": {
+    "voice_id": "kraftwerk_robot_ru_icl_period",
+    "mode": "Base ICL",
+    "reference_audio_sha256": "baba7f26a9eb8de1df53a51c4b33ac6cb3625fe70509d7c1a281b64d4827000b"
+  },
+  "runtime": {
+    "bridge_commit": "293a412",
+    "faster_commit": "e4ac767277aad59095122cada01b174fbbb4f429",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "python": "3.12.10",
+    "torch": "2.10.0+cu128"
+  },
+  "matrix": {
+    "target_text_count": 10,
+    "seed": 4242,
+    "temperature": 0.4,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "variants": [
+      {"label": "baseline", "carrier_text": "", "reference_like_indices": [1, 6, 8]},
+      {"label": "carrier-itak", "carrier_text": "Итак.", "reference_like_indices": []},
+      {"label": "carrier-gotovo", "carrier_text": "Готово.", "reference_like_indices": [7]},
+      {"label": "carrier-system", "carrier_text": "Система активирована.", "reference_like_indices": [4, 9, 10]}
+    ]
+  },
+  "listener_assessment": {
+    "target_voice_settles_after_carrier": false,
+    "carrier_and_target_use_one_voice": true,
+    "carrier_improves_identity_retention": false,
+    "conclusion": "Carrier text changes the whole utterance's selected voice rather than warming it up before the target sentence."
+  },
+  "artifact_provenance": {
+    "summary_sha256": "44ddd30ea7e4c1f8c4c63b00429434851f7b63c7971137af701d203146a27d52",
+    "generated_wav_policy": "Generated WAV files remain outside version control."
+  },
+  "product_decision": {
+    "carrier_phrase": "not_adopted",
+    "forced_alignment_crop": "not_pursued",
+    "reason": "No target-only identity improvement exists to preserve by cropping."
+  }
+}
