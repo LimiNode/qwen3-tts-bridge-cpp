@@ -15,6 +15,7 @@ import random
 import threading
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -30,6 +31,7 @@ from qwen_tts_bridge_worker.engine.types import (
 from qwen_tts_bridge_worker.engine.voice_profiles import (
     VoiceProfileError,
     VoiceProfileRegistry,
+    VoicePromptPolicy,
     preflight_reference_audio,
 )
 from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
@@ -37,6 +39,16 @@ from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_second
 QwenModelLoader = Callable[[QwenEngineConfig], Any]
 
 _STREAM_MAX_FRAMES = 10000
+
+
+@dataclass(frozen=True, slots=True)
+class _VoiceCloneInputs:
+    """Resolved Base-model inputs for one generation request."""
+
+    prompt: Any | None
+    reference_audio_path: str
+    reference_text: str
+    x_vector_only: bool
 
 
 class QwenEngineError(RuntimeError):
@@ -799,24 +811,26 @@ class QwenTtsEngine:
             )
 
         if model_type == "base":
-            voice_clone_prompt = self._voice_clone_prompt_for(model, request)
+            clone_inputs = self._voice_clone_inputs_for(model, request)
             wavs, sample_rate = model.generate_voice_clone(
                 text=request.text,
                 language=_model_call_language(self._config, request.language),
                 ref_audio=(
                     None
-                    if voice_clone_prompt is not None
-                    else request.reference_audio_path
+                    if clone_inputs.prompt is not None
+                    else clone_inputs.reference_audio_path
                 ),
                 ref_text=(
                     None
-                    if voice_clone_prompt is not None
-                    else request.reference_text or None
+                    if clone_inputs.prompt is not None
+                    else clone_inputs.reference_text or None
                 ),
                 x_vector_only_mode=(
-                    False if voice_clone_prompt is not None else request.x_vector_only
+                    False
+                    if clone_inputs.prompt is not None
+                    else clone_inputs.x_vector_only
                 ),
-                voice_clone_prompt=voice_clone_prompt,
+                voice_clone_prompt=clone_inputs.prompt,
             )
             return wavs, sample_rate
 
@@ -830,29 +844,53 @@ class QwenTtsEngine:
         request: SynthesisRequest,
         cancel_event: threading.Event,
     ) -> Iterable[tuple[Any, int]]:
+        clone_inputs = self._voice_clone_inputs_for(model, request)
         stream = _qwen_stream_generate_audio(
             model,
             self._config,
             request,
             cancel_event,
-            voice_clone_prompt=self._voice_clone_prompt_for(model, request),
+            voice_clone_inputs=clone_inputs,
         )
         if stream is not None:
             return stream
 
         return _qwen_full_audio_as_stream(self._generate_audio(model, request))
 
-    def _voice_clone_prompt_for(
+    def _voice_clone_inputs_for(
         self,
         model: Any,
         request: SynthesisRequest,
-    ) -> Any | None:
+    ) -> _VoiceCloneInputs:
         if not request.voice_id:
-            return None
+            return _VoiceCloneInputs(
+                prompt=None,
+                reference_audio_path=request.reference_audio_path,
+                reference_text=request.reference_text,
+                x_vector_only=request.x_vector_only,
+            )
         if self._voice_profiles is None:
             raise QwenEngineError("the loaded worker has no voice profile registry")
         try:
-            return self._voice_profiles.prompt_for(model, request.voice_id)
+            profile = self._voice_profiles.profile_for(request.voice_id)
+            policy: VoicePromptPolicy = self._config.voice_profile_prompt_policy
+            if policy == "direct_reference":
+                return _VoiceCloneInputs(
+                    prompt=None,
+                    reference_audio_path=str(profile.reference_audio_path),
+                    reference_text=profile.reference_text,
+                    x_vector_only=profile.x_vector_only,
+                )
+            return _VoiceCloneInputs(
+                prompt=self._voice_profiles.prompt_for(
+                    model,
+                    request.voice_id,
+                    policy=policy,
+                ),
+                reference_audio_path="",
+                reference_text="",
+                x_vector_only=False,
+            )
         except VoiceProfileError as exc:
             raise QwenEngineError(str(exc)) from exc
 
@@ -1676,7 +1714,7 @@ def _qwen_stream_generate_audio(
     config: QwenEngineConfig,
     request: SynthesisRequest,
     cancel_event: threading.Event,
-    voice_clone_prompt: Any | None = None,
+    voice_clone_inputs: _VoiceCloneInputs | None = None,
 ) -> Iterable[tuple[Any, int]] | None:
     model_type = _qwen_model_type(model)
     language = _qwen_language(request.language)
@@ -1795,6 +1833,12 @@ def _qwen_stream_generate_audio(
         )
 
     if model_type == "base":
+        clone_inputs = voice_clone_inputs or _VoiceCloneInputs(
+            prompt=None,
+            reference_audio_path=request.reference_audio_path,
+            reference_text=request.reference_text,
+            x_vector_only=request.x_vector_only,
+        )
         if config.runtime_backend == "faster":
             public_stream = getattr(model, "generate_voice_clone_streaming", None)
             if callable(public_stream):
@@ -1803,18 +1847,20 @@ def _qwen_stream_generate_audio(
                     "language": _qwen_runtime_language(request.language),
                     "ref_audio": (
                         None
-                        if voice_clone_prompt is not None
-                        else request.reference_audio_path
+                        if clone_inputs.prompt is not None
+                        else clone_inputs.reference_audio_path
                     ),
                     "ref_text": (
-                        "" if voice_clone_prompt is not None else request.reference_text
+                        ""
+                        if clone_inputs.prompt is not None
+                        else clone_inputs.reference_text
                     ),
                     "xvec_only": (
                         False
-                        if voice_clone_prompt is not None
-                        else request.x_vector_only
+                        if clone_inputs.prompt is not None
+                        else clone_inputs.x_vector_only
                     ),
-                    "voice_clone_prompt": voice_clone_prompt,
+                    "voice_clone_prompt": clone_inputs.prompt,
                     "chunk_size": config.emit_every_frames,
                     **sampling,
                 }
@@ -1836,20 +1882,20 @@ def _qwen_stream_generate_audio(
                     language=language,
                     ref_audio=(
                         None
-                        if voice_clone_prompt is not None
-                        else request.reference_audio_path
+                        if clone_inputs.prompt is not None
+                        else clone_inputs.reference_audio_path
                     ),
                     ref_text=(
                         None
-                        if voice_clone_prompt is not None
-                        else request.reference_text or None
+                        if clone_inputs.prompt is not None
+                        else clone_inputs.reference_text or None
                     ),
                     x_vector_only_mode=(
                         False
-                        if voice_clone_prompt is not None
-                        else request.x_vector_only
+                        if clone_inputs.prompt is not None
+                        else clone_inputs.x_vector_only
                     ),
-                    voice_clone_prompt=voice_clone_prompt,
+                    voice_clone_prompt=clone_inputs.prompt,
                     emit_every_frames=config.emit_every_frames,
                     decode_window_frames=config.decode_window_frames,
                     overlap_samples=config.overlap_samples,

@@ -190,6 +190,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 warmup_instruction=args.warmup_instruction,
                 voice_registry_path=args.voice_registry_path,
                 voice_prompt_cache_max_entries=args.voice_prompt_cache_max_entries,
+                voice_profile_prompt_policy=args.voice_profile_prompt_policy,
                 preload_voice_profiles=args.preload_voice_profiles,
             )
         raise ValueError(f"unsupported engine command: {engine_command}")
@@ -616,6 +617,20 @@ def _add_qwen_subcommand(
         type=int,
         default=8,
         help="Maximum prepared Base voice prompts retained by the persistent worker.",
+    )
+    qwen_parser.add_argument(
+        "--voice-profile-prompt-policy",
+        choices=(
+            "shared",
+            "clone_per_request",
+            "rebuild_per_request",
+            "direct_reference",
+        ),
+        default="shared",
+        help=(
+            "Select an experimental Base voice profile prompt policy. "
+            "The default shared policy is the production path."
+        ),
     )
     qwen_parser.add_argument(
         "--preload-voice-profiles",

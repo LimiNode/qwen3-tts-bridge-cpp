@@ -7,9 +7,10 @@ import json
 import math
 import wave
 from collections import OrderedDict
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 _VOICE_PROFILE_SCHEMA_VERSION = 1
 _MAX_REFERENCE_AUDIO_BYTES = 16 * 1024 * 1024
@@ -21,6 +22,10 @@ _MAX_REFERENCE_TEXT_CHARACTERS = 1_024
 _MAX_CLIPPED_SAMPLE_FRACTION = 0.05
 _MIN_RMS_RATIO = 0.003
 _ICL_TRAILING_SILENCE_SECONDS = 0.5
+
+VoicePromptPolicy = Literal[
+    "shared", "clone_per_request", "rebuild_per_request", "direct_reference"
+]
 
 
 class VoiceProfileError(ValueError):
@@ -186,17 +191,49 @@ class VoiceProfileRegistry:
 
         return voice_id in self._profiles
 
-    def prompt_for(self, model: Any, voice_id: str) -> Any:
-        """Return a cached prompt or build it once from a validated profile."""
-
-        prepared = self._prepared.get(voice_id)
-        if prepared is not None:
-            self._prepared.move_to_end(voice_id)
-            return prepared.prompt
+    def profile_for(self, voice_id: str) -> VoiceProfile:
+        """Return the immutable metadata for one registered voice."""
 
         profile = self._profiles.get(voice_id)
         if profile is None:
             raise VoiceProfileError(f"unknown voice profile: {voice_id}")
+        return profile
+
+    def prompt_for(
+        self,
+        model: Any,
+        voice_id: str,
+        *,
+        policy: VoicePromptPolicy = "shared",
+    ) -> Any:
+        """Return a prepared prompt according to an explicit diagnostic policy."""
+
+        if policy == "direct_reference":
+            raise VoiceProfileError(
+                "direct_reference does not prepare a reusable voice prompt"
+            )
+        profile = self.profile_for(voice_id)
+        if policy == "rebuild_per_request":
+            return self._build_prompt(model, profile)
+
+        prepared = self._prepared.get(voice_id)
+        if prepared is not None:
+            self._prepared.move_to_end(voice_id)
+            return (
+                _clone_prompt(prepared.prompt)
+                if policy == "clone_per_request"
+                else prepared.prompt
+            )
+
+        prompt = self._build_prompt(model, profile)
+        self._prepared[voice_id] = _PreparedVoiceProfile(profile=profile, prompt=prompt)
+        self._prepared.move_to_end(voice_id)
+        while len(self._prepared) > self._max_cached_prompts:
+            self._prepared.popitem(last=False)
+        return _clone_prompt(prompt) if policy == "clone_per_request" else prompt
+
+    def _build_prompt(self, model: Any, profile: VoiceProfile) -> Any:
+        """Create one model-owned prompt after revalidating its source WAV."""
 
         # Re-check the source hash only when creating a new GPU prompt.
         audio = preflight_reference_audio(
@@ -206,7 +243,8 @@ class VoiceProfileRegistry:
         )
         if audio.sha256 != profile.reference_audio.sha256:
             raise VoiceProfileError(
-                f"reference audio changed after registry load for voice_id: {voice_id}"
+                "reference audio changed after registry load for voice_id: "
+                f"{profile.voice_id}"
             )
         create_prompt = _voice_clone_prompt_builder(model)
         if not callable(create_prompt):
@@ -218,11 +256,18 @@ class VoiceProfileRegistry:
             ref_text=profile.reference_text or None,
             x_vector_only_mode=profile.x_vector_only,
         )
-        self._prepared[voice_id] = _PreparedVoiceProfile(profile=profile, prompt=prompt)
-        self._prepared.move_to_end(voice_id)
-        while len(self._prepared) > self._max_cached_prompts:
-            self._prepared.popitem(last=False)
         return prompt
+
+
+def _clone_prompt(prompt: Any) -> Any:
+    """Deep-copy a model prompt for the clone-per-request diagnostic policy."""
+
+    try:
+        return deepcopy(prompt)
+    except Exception as exc:
+        raise VoiceProfileError(
+            "voice prompt cannot be copied for clone_per_request diagnostics"
+        ) from exc
 
 
 def _voice_clone_prompt_builder(model: Any) -> Any:

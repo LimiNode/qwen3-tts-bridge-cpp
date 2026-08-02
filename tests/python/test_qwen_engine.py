@@ -1893,6 +1893,89 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(2, len(fake_model.voice_clone_stream_calls))
         self.assertEqual(2, fake_model.reset_calls)
 
+    def test_faster_base_profile_prompt_policies_are_explicit(self) -> None:
+        cases = {
+            "shared": (1, True, False),
+            "clone_per_request": (1, False, False),
+            "rebuild_per_request": (2, False, False),
+            "direct_reference": (0, False, True),
+        }
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            registry = directory / "voices.json"
+            _write_reference_wav(reference)
+            registry.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voices": [
+                            {
+                                "voice_id": "robot",
+                                "reference_audio_path": "reference.wav",
+                                "reference_text": "Reference text.",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            for policy, (expected_builds, shares_prompt, direct) in cases.items():
+                with self.subTest(policy=policy):
+                    fake_model = _FasterBaseWithNestedPrompt()
+                    engine = QwenTtsEngine(
+                        QwenEngineConfig(
+                            model_path="models/qwen-base",
+                            runtime_backend="faster",
+                            device="cpu",
+                            voice_registry_path=str(registry),
+                            voice_profile_prompt_policy=policy,
+                        ),
+                        model_loader=lambda _config, model=fake_model: model,
+                    )
+                    engine.load()
+                    with patch(
+                        "qwen_tts_bridge_worker.engine.voice_profiles._prompt_reference_audio",
+                        return_value=([0.0] * 60_000, 24_000),
+                    ):
+                        for request_id in (1, 2):
+                            list(
+                                engine.synthesize_stream(
+                                    SynthesisRequest(
+                                        request_id=request_id,
+                                        text="Hello",
+                                        language="English",
+                                        voice_id="robot",
+                                    ),
+                                    threading.Event(),
+                                )
+                            )
+
+                    self.assertEqual(
+                        expected_builds,
+                        fake_model.model.create_prompt_calls,
+                    )
+                    first = fake_model.voice_clone_stream_calls[0]
+                    second = fake_model.voice_clone_stream_calls[1]
+                    if direct:
+                        self.assertIsNone(first["voice_clone_prompt"])
+                        self.assertEqual(str(reference.resolve()), first["ref_audio"])
+                        self.assertEqual("Reference text.", first["ref_text"])
+                        self.assertFalse(cast(bool, first["xvec_only"]))
+                    else:
+                        self.assertIsNone(first["ref_audio"])
+                        self.assertEqual("", first["ref_text"])
+                        if shares_prompt:
+                            self.assertIs(
+                                first["voice_clone_prompt"],
+                                second["voice_clone_prompt"],
+                            )
+                        else:
+                            self.assertIsNot(
+                                first["voice_clone_prompt"],
+                                second["voice_clone_prompt"],
+                            )
+
     def test_base_voice_clone_rejects_invalid_reference_wav(self) -> None:
         engine = QwenTtsEngine(
             QwenEngineConfig(model_path="models/qwen-base", device="cpu"),

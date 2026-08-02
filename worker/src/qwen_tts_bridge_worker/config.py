@@ -177,6 +177,9 @@ class QwenEngineConfig:
     warmup_instruction: str = ""
     voice_registry_path: str = ""
     voice_prompt_cache_max_entries: int = 8
+    voice_profile_prompt_policy: Literal[
+        "shared", "clone_per_request", "rebuild_per_request", "direct_reference"
+    ] = "shared"
     preload_voice_profiles: bool = False
     kind: Literal["qwen"] = field(default="qwen", init=False)
 
@@ -202,6 +205,24 @@ class QwenEngineConfig:
         if self.preload_voice_profiles and not self.voice_registry_path:
             raise ValueError(
                 "qwen.preload_voice_profiles requires voice_registry_path"
+            )
+        if self.voice_profile_prompt_policy not in {
+            "shared",
+            "clone_per_request",
+            "rebuild_per_request",
+            "direct_reference",
+        }:
+            raise ValueError(
+                "qwen.voice_profile_prompt_policy must be shared, "
+                "clone_per_request, rebuild_per_request, or direct_reference"
+            )
+        if (
+            self.voice_profile_prompt_policy == "direct_reference"
+            and self.runtime_backend != "faster"
+        ):
+            raise ValueError(
+                "qwen.voice_profile_prompt_policy=direct_reference requires "
+                "runtime_backend=faster"
             )
         if self.emit_every_frames <= 0:
             raise ValueError("qwen.emit_every_frames must be greater than zero")
