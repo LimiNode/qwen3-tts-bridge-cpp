@@ -31,6 +31,7 @@ from qwen_tts_bridge_worker.engine.qwen_engine import (
     _sampling_vocab_size,
     _seed_runtime,
 )
+from qwen_tts_bridge_worker.engine.voice_profiles import VoicePromptPolicy
 
 
 class _InnerModel:
@@ -1273,6 +1274,7 @@ class QwenEngineTests(unittest.TestCase):
         self.assertTrue(fake_model.collect_generation_trace)
         trace = engine.pop_last_generation_trace()
         self.assertIsNotNone(trace)
+        assert trace is not None
         self.assertEqual(fake_model.last_generation_trace, {
             key: value
             for key, value in trace.items()
@@ -1901,7 +1903,7 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(2, fake_model.reset_calls)
 
     def test_faster_base_profile_prompt_policies_are_explicit(self) -> None:
-        cases = {
+        cases: dict[VoicePromptPolicy, tuple[int, bool, bool]] = {
             "shared": (1, True, False),
             "clone_per_request": (1, False, False),
             "rebuild_per_request": (2, False, False),
