@@ -28,25 +28,56 @@ def _load_runner() -> Any:
 RUNNER = _load_runner()
 
 
+def _experiment_contract() -> dict[str, object]:
+    return {"schema_version": 2, "runner": {"sha256": "a" * 64}}
+
+
+def _candidate_contract(experiment_contract: dict[str, object]) -> dict[str, object]:
+    return {
+        "experiment_contract_sha256": RUNNER._sha256(
+            RUNNER._canonical_json_bytes(experiment_contract)
+        ),
+        "voice_id": "test",
+        "seed": 7,
+    }
+
+
+def _stream_outcome() -> dict[str, object]:
+    return {
+        "stream_exhausted": True,
+        "safety_truncated": False,
+        "final_metadata": {
+            "is_final": True,
+            "termination_reason": "eos",
+            "hit_eos": True,
+            "hit_max_new_tokens": False,
+            "hit_max_seq_len": False,
+            "terminal_step_index": 32,
+            "generated_steps": 32,
+            "emitted_steps": 32,
+        },
+    }
+
+
+def _trace() -> dict[str, object]:
+    return {
+        "trace_kind": "voice_clone_streaming_v1",
+        "generated_codec_sha256": "a" * 64,
+        "generated_codec_frame_count": 32,
+        "terminal_step_index": 32,
+        "generated_steps": 32,
+        "emitted_steps": 32,
+        "hit_eos": True,
+        "hit_max_new_tokens": False,
+        "hit_max_seq_len": False,
+    }
+
+
 class BootstrapCandidateRunnerTests(unittest.TestCase):
     def test_terminal_outcome_requires_eos_trace_and_reset(self) -> None:
         outcome = RUNNER._terminal_outcome(
-            {
-                "stream_exhausted": True,
-                "safety_truncated": False,
-                "final_metadata": {
-                    "is_final": True,
-                    "termination_reason": "eos",
-                    "hit_eos": True,
-                    "hit_max_new_tokens": False,
-                    "hit_max_seq_len": False,
-                },
-            },
-            {
-                "trace_kind": "voice_clone_streaming_v1",
-                "generated_codec_sha256": "a" * 64,
-                "generated_codec_frame_count": 32,
-            },
+            _stream_outcome(),
+            _trace(),
             {
                 "talker_graph_reset": True,
                 "predictor_graphs_reset": 2,
@@ -87,28 +118,11 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
         self.assertIn("generation_reset_incomplete", outcome["failures"])
 
     def test_resume_requires_matching_completed_sidecar(self) -> None:
-        contract = {
-            "experiment_contract_sha256": "a" * 64,
-            "voice_id": "test",
-            "seed": 7,
-        }
+        experiment_contract = _experiment_contract()
+        contract = _candidate_contract(experiment_contract)
         pcm = b"\x00\x00\x10\x00"
-        stream_outcome = {
-            "stream_exhausted": True,
-            "safety_truncated": False,
-            "final_metadata": {
-                "is_final": True,
-                "termination_reason": "eos",
-                "hit_eos": True,
-                "hit_max_new_tokens": False,
-                "hit_max_seq_len": False,
-            },
-        }
-        trace = {
-            "trace_kind": "voice_clone_streaming_v1",
-            "generated_codec_sha256": "a" * 64,
-            "generated_codec_frame_count": 32,
-        }
+        stream_outcome = _stream_outcome()
+        trace = _trace()
         reset = {
             "talker_graph_reset": True,
             "predictor_graphs_reset": 2,
@@ -122,12 +136,13 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             output_path = Path(temporary_directory) / "candidate.wav"
             RUNNER._write_wav(output_path, pcm, 24_000)
             with self.assertRaisesRegex(ValueError, "requires candidate sidecar"):
-                RUNNER._read_existing(output_path, contract)
+                RUNNER._read_existing(output_path, contract, experiment_contract)
             RUNNER._write_json(
                 RUNNER._sidecar_path(output_path),
                 {
-                    "schema_version": 3,
+                    "schema_version": 4,
                     "candidate_contract": contract,
+                    "experiment_contract": experiment_contract,
                     "status": "completed",
                     "stream_outcome": stream_outcome,
                     "trace": trace,
@@ -140,16 +155,59 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
                 },
             )
 
-            resumed = RUNNER._read_existing(output_path, contract)
+            resumed = RUNNER._read_existing(
+                output_path,
+                contract,
+                experiment_contract,
+            )
             self.assertEqual("resumed", resumed["status"])
+
+            tampered_contract = {
+                "schema_version": 2,
+                "runner": {"sha256": "b" * 64},
+            }
+            RUNNER._write_json(
+                RUNNER._sidecar_path(output_path),
+                {
+                    "schema_version": 4,
+                    "candidate_contract": contract,
+                    "experiment_contract": tampered_contract,
+                    "status": "completed",
+                    "stream_outcome": stream_outcome,
+                    "trace": trace,
+                    "reset": reset,
+                    "terminal": terminal,
+                    "pcm_sha256": RUNNER._sha256(pcm),
+                    "pcm_bytes": len(pcm),
+                    "sample_rate": 24_000,
+                    "wav_sha256": RUNNER._sha256_file(output_path),
+                },
+            )
+            with self.assertRaisesRegex(ValueError, "contract SHA is invalid"):
+                RUNNER._read_existing(output_path, contract, experiment_contract)
+
+            RUNNER._write_json(
+                RUNNER._sidecar_path(output_path),
+                {
+                    "schema_version": 4,
+                    "candidate_contract": contract,
+                    "experiment_contract": experiment_contract,
+                    "status": "completed",
+                    "stream_outcome": stream_outcome,
+                    "trace": trace,
+                    "reset": reset,
+                    "terminal": terminal,
+                    "pcm_sha256": RUNNER._sha256(pcm),
+                    "pcm_bytes": len(pcm),
+                    "sample_rate": 24_000,
+                    "wav_sha256": RUNNER._sha256_file(output_path),
+                },
+            )
             with self.assertRaisesRegex(ValueError, "does not match"):
                 RUNNER._read_existing(
                     output_path,
-                    {
-                        "experiment_contract_sha256": "b" * 64,
-                        "voice_id": "other",
-                        "seed": 7,
-                    },
+                    {**contract, "experiment_contract_sha256": "b" * 64},
+                    experiment_contract,
                 )
 
             reset["diagnostic_reset_state"] = {
@@ -159,8 +217,9 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             RUNNER._write_json(
                 RUNNER._sidecar_path(output_path),
                 {
-                    "schema_version": 3,
+                    "schema_version": 4,
                     "candidate_contract": contract,
+                    "experiment_contract": experiment_contract,
                     "status": "completed",
                     "stream_outcome": stream_outcome,
                     "trace": trace,
@@ -173,7 +232,7 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
                 },
             )
             with self.assertRaisesRegex(ValueError, "terminal evidence does not pass"):
-                RUNNER._read_existing(output_path, contract)
+                RUNNER._read_existing(output_path, contract, experiment_contract)
 
     def test_generation_resets_graphs_after_consume_failure(self) -> None:
         class FakeModel:
@@ -218,6 +277,7 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
                     seed=7,
                     candidate_contract={"voice_id": "test", "seed": 7},
                     experiment_contract={},
+                    experiment_locations={},
                     args=arguments,
                 )
 
@@ -270,6 +330,7 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
                     seed=7,
                     candidate_contract={"voice_id": "test", "seed": 7},
                     experiment_contract={},
+                    experiment_locations={},
                     args=arguments,
                 )
 
@@ -322,6 +383,7 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
                     seed=7,
                     candidate_contract={"voice_id": "test", "seed": 7},
                     experiment_contract={},
+                    experiment_locations={},
                     args=arguments,
                 )
 

@@ -15,7 +15,7 @@ import wave
 from pathlib import Path
 from typing import Any, Iterable
 
-_SCHEMA_VERSION = 3
+_SCHEMA_VERSION = 4
 _LANGUAGE = "Russian"
 DEFAULT_TEXT = (
     "Привет! Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; "
@@ -51,13 +51,21 @@ def main() -> int:
     model_manifest_path = Path(args.model_runtime_manifest).resolve()
     model_manifest = _load_json_object(model_manifest_path)
     _verify_model_runtime_manifest(Path(args.model_path).resolve(), model_manifest)
+    python_runtime_manifest_path = Path(args.python_runtime_manifest).resolve()
+    python_runtime_manifest = _load_json_object(python_runtime_manifest_path)
+    _verify_python_runtime_manifest(python_runtime_manifest)
     experiment_contract = _experiment_contract(
         args=args,
         torch=torch,
-        model_manifest_path=model_manifest_path,
         model_manifest=model_manifest,
+        python_runtime_manifest=python_runtime_manifest,
     )
     experiment_contract_sha256 = _sha256(_canonical_json_bytes(experiment_contract))
+    experiment_locations = _experiment_locations(
+        args=args,
+        model_manifest_path=model_manifest_path,
+        python_runtime_manifest_path=python_runtime_manifest_path,
+    )
     registry_path = Path(args.voice_registry).resolve()
     registry = VoiceProfileRegistry.from_json_file(registry_path, len(args.voice_id))
     missing_voice_ids = [voice_id for voice_id in args.voice_id if not registry.has_voice(voice_id)]
@@ -93,7 +101,13 @@ def main() -> int:
                 experiment_contract_sha256=experiment_contract_sha256,
             )
             if args.resume and output_path.is_file():
-                results.append(_read_existing(output_path, candidate_contract))
+                results.append(
+                    _read_existing(
+                        output_path,
+                        candidate_contract,
+                        experiment_contract,
+                    )
+                )
             else:
                 result = _generate_one(
                     model=model,
@@ -104,6 +118,7 @@ def main() -> int:
                     seed=seed,
                     candidate_contract=candidate_contract,
                     experiment_contract=experiment_contract,
+                    experiment_locations=experiment_locations,
                     args=args,
                 )
                 _write_json(_sidecar_path(output_path), result)
@@ -119,6 +134,7 @@ def main() -> int:
         "purpose": "synthetic reference bootstrap candidate search",
         "experiment_contract": experiment_contract,
         "experiment_contract_sha256": experiment_contract_sha256,
+        "experiment_locations": experiment_locations,
         "inputs": {
             "voice_registry": {
                 "path": str(registry_path),
@@ -175,6 +191,11 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Content manifest produced by scripts/model_runtime_manifest.py.",
     )
+    parser.add_argument(
+        "--python-runtime-manifest",
+        required=True,
+        help="Verified manifest produced by scripts/python_runtime_manifest.py.",
+    )
     parser.add_argument("--faster-source", required=True)
     parser.add_argument("--voice-registry", required=True)
     parser.add_argument(
@@ -218,6 +239,7 @@ def _generate_one(
     seed: int,
     candidate_contract: dict[str, object],
     experiment_contract: dict[str, object],
+    experiment_locations: dict[str, object],
     args: argparse.Namespace,
 ) -> dict[str, object]:
     _seed(seed, np, torch)
@@ -284,6 +306,7 @@ def _generate_one(
         "schema_version": _SCHEMA_VERSION,
         "candidate_contract": candidate_contract,
         "experiment_contract": experiment_contract,
+        "experiment_locations": experiment_locations,
         "duration_ms": round((time.perf_counter() - started) * 1000.0, 3),
         "audio_duration_ms": round(len(pcm) / 2 / sample_rate * 1000.0, 3),
         "sample_rate": sample_rate,
@@ -302,6 +325,7 @@ def _generate_one(
 def _read_existing(
     output_path: Path,
     candidate_contract: dict[str, object],
+    experiment_contract: dict[str, object],
 ) -> dict[str, object]:
     sidecar_path = _sidecar_path(output_path)
     if not sidecar_path.is_file():
@@ -311,6 +335,14 @@ def _read_existing(
         raise ValueError(f"candidate sidecar has unsupported schema: {sidecar_path}")
     if existing.get("candidate_contract") != candidate_contract:
         raise ValueError(f"candidate sidecar does not match current request: {sidecar_path}")
+    existing_contract = existing.get("experiment_contract")
+    if not isinstance(existing_contract, dict):
+        raise ValueError(f"candidate sidecar lacks experiment contract: {sidecar_path}")
+    existing_contract_sha256 = _sha256(_canonical_json_bytes(existing_contract))
+    if existing_contract_sha256 != candidate_contract.get("experiment_contract_sha256"):
+        raise ValueError(f"candidate sidecar experiment contract SHA is invalid: {sidecar_path}")
+    if existing_contract != experiment_contract:
+        raise ValueError(f"candidate sidecar experiment contract does not match: {sidecar_path}")
     if existing.get("status") != "completed":
         raise ValueError(f"candidate sidecar is not completed: {sidecar_path}")
     terminal = existing.get("terminal")
@@ -531,6 +563,10 @@ def _terminal_outcome(
     if not trace_complete:
         failures.append("generation_trace_incomplete")
 
+    trace_consistent = _trace_matches_terminal_metadata(final_metadata, trace)
+    if not trace_consistent:
+        failures.append("generation_trace_inconsistent")
+
     predictor_graphs_reset = reset.get("predictor_graphs_reset")
     diagnostic_reset_state = reset.get("diagnostic_reset_state")
     talker_cache_length: object = None
@@ -565,38 +601,78 @@ def _terminal_outcome(
         "safety_truncated": stream_outcome.get("safety_truncated") is True,
         "final_metadata": final_metadata,
         "trace_complete": trace_complete,
+        "trace_consistent": trace_consistent,
         "reset_passed": reset_passed,
         "cache_lengths_reset": cache_lengths_reset,
     }
+
+
+def _trace_matches_terminal_metadata(
+    final_metadata: dict[str, object],
+    trace: dict[str, object],
+) -> bool:
+    for field in (
+        "terminal_step_index",
+        "generated_steps",
+        "emitted_steps",
+        "hit_eos",
+        "hit_max_new_tokens",
+        "hit_max_seq_len",
+    ):
+        if final_metadata.get(field) != trace.get(field):
+            return False
+    trace_frames = trace.get("generated_codec_frame_count")
+    emitted_steps = trace.get("emitted_steps")
+    return (
+        isinstance(trace_frames, int)
+        and trace_frames > 0
+        and trace_frames == emitted_steps
+    )
 
 
 def _experiment_contract(
     *,
     args: argparse.Namespace,
     torch: Any,
-    model_manifest_path: Path,
     model_manifest: dict[str, object],
+    python_runtime_manifest: dict[str, object],
 ) -> dict[str, object]:
-    repo_root = Path(__file__).resolve().parents[1]
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "runner": {
-            "path": str(Path(__file__).resolve()),
             "sha256": _sha256_file(Path(__file__).resolve()),
         },
         "model_runtime_manifest": {
-            "path": str(model_manifest_path),
-            "sha256": _sha256_file(model_manifest_path),
             "directory_manifest_sha256": model_manifest.get(
                 "directory_manifest_sha256"
             ),
             "repository": model_manifest.get("repository"),
             "revision": model_manifest.get("revision"),
         },
-        "model_path": str(Path(args.model_path).resolve()),
         "faster_source": _git_source_metadata(Path(args.faster_source)),
-        "bridge_source": _git_source_metadata(repo_root),
+        "bridge_source": _git_source_metadata(Path(__file__).resolve().parents[1]),
         "runtime": _runtime_metadata(torch),
+        "python_runtime_manifest": {
+            "installed_distributions_manifest_sha256": python_runtime_manifest.get(
+                "installed_distributions_manifest_sha256"
+            ),
+        },
+    }
+
+
+def _experiment_locations(
+    *,
+    args: argparse.Namespace,
+    model_manifest_path: Path,
+    python_runtime_manifest_path: Path,
+) -> dict[str, object]:
+    return {
+        "runner_path": str(Path(__file__).resolve()),
+        "model_path": str(Path(args.model_path).resolve()),
+        "model_runtime_manifest_path": str(model_manifest_path),
+        "python_runtime_manifest_path": str(python_runtime_manifest_path),
+        "faster_source_path": str(Path(args.faster_source).resolve()),
+        "bridge_source_path": str(Path(__file__).resolve().parents[1]),
     }
 
 
@@ -609,6 +685,12 @@ def _verify_model_runtime_manifest(
     verify_manifest(model_path, manifest)
 
 
+def _verify_python_runtime_manifest(manifest: dict[str, object]) -> None:
+    from python_runtime_manifest import verify_manifest
+
+    verify_manifest(manifest)
+
+
 def _canonical_json_bytes(value: object) -> bytes:
     return (
         json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n"
@@ -619,7 +701,6 @@ def _git_source_metadata(source_path: Path) -> dict[str, object]:
     source_path = source_path.resolve()
     status = _git_command(source_path, "status", "--porcelain")
     return {
-        "path": str(source_path),
         "commit": _git_command(source_path, "rev-parse", "HEAD"),
         "tree": _git_command(source_path, "rev-parse", "HEAD^{tree}"),
         "dirty": bool(status),
@@ -652,7 +733,6 @@ def _profile_metadata(profile: Any) -> dict[str, object]:
     audio = profile.reference_audio
     return {
         "voice_id": profile.voice_id,
-        "reference_audio_path": str(profile.reference_audio_path),
         "reference_audio_sha256": audio.sha256,
         "reference_audio_duration_seconds": audio.duration_seconds,
         "reference_text_repr": repr(profile.reference_text),
@@ -688,8 +768,12 @@ def _nvidia_driver_version() -> str:
 
 def _source_bundle_sha256(root: Path) -> str:
     digest = hashlib.sha256()
-    for path in sorted(root.rglob("*.py")):
-        relative = path.relative_to(root).as_posix().encode("utf-8")
+    tracked_files = _git_command(root, "ls-files", "-z", "--", "*.py")
+    for relative_path in sorted(filter(None, tracked_files.split("\0"))):
+        path = root / relative_path
+        if not path.is_file():
+            raise ValueError(f"tracked Python source file is missing: {path}")
+        relative = relative_path.replace("\\", "/").encode("utf-8")
         digest.update(len(relative).to_bytes(4, "big"))
         digest.update(relative)
         content = path.read_bytes()

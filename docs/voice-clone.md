@@ -36,16 +36,18 @@ candidate as a WAV plus a neighbouring `.wav.json` sidecar. The sidecar pins
 the source text, voice-profile reference hashes, sampling settings, generation
 limits, PCM/WAV hashes, full terminal-stream evidence, generation trace, and
 graph-reset result. It also records the SHA-256 of a shared experiment contract
-that pins the model content manifest, Faster and bridge source trees, runner
-source, and Python/CUDA runtime provenance.
+that pins the model content manifest, exact installed Python-distribution
+content, Faster and bridge source trees, runner source, and Python/CUDA runtime
+provenance. Absolute paths are saved only as diagnostic locations and do not
+affect the identity hash.
 
 `--resume` accepts only a matching completed sidecar. It will refuse an
 untracked WAV, a changed model/runtime/code contract, a changed
 seed/profile/text/sampling contract, a changed WAV, or a candidate whose saved
 terminal evidence no longer proves an EOS completion and cache reset. The audio
 cap is also fail-closed: a truncated stream is not written as a selectable
-candidate. Sidecars written by schema 2 remain historical evidence and cannot
-be resumed under schema 3.
+candidate. Sidecars written by older schemas remain historical evidence and
+cannot be resumed under schema 4.
 
 Before a bootstrap run, build a model content manifest once for the exact local
 snapshot and keep it with the experiment evidence:
@@ -61,6 +63,17 @@ snapshot and keep it with the experiment evidence:
 Pass that file to every bootstrap invocation with
 `--model-runtime-manifest`. The runner verifies the complete local model file
 set before generating or resuming candidates.
+
+Build and verify a matching Python runtime manifest in the same interpreter:
+
+```powershell
+.venv-faster-qwen\Scripts\python.exe scripts\python_runtime_manifest.py build `
+  --output tmp\voice-clone-bootstrap\python-runtime-manifest.json
+```
+
+Pass it as `--python-runtime-manifest`. The runner verifies all distributions
+installed in the active environment, including their recorded package files,
+before generating or resuming candidates.
 
 These guarantees make a listening selection reproducible; they do not turn a
 synthetic bootstrap candidate into a verified identity clone.
