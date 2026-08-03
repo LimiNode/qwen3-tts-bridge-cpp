@@ -9,6 +9,9 @@ reproducible evidence retained under `docs/benchmark-artifacts/`.
   construction, review process, and frozen-holdout rules.
 - [Optimization decisions](optimization-decisions.md): accepted, rejected, and
   deferred performance approaches with their rationale.
+- [Authoritative baseline, 2026-08-03](authoritative-baseline-2026-08-03.md):
+  clean-worktree quality gates and stdio worker-handshake evidence before the
+  next voice-clone runner changes.
 
 These reports describe a narrow internal configuration. They do not make
 performance or compatibility claims for arbitrary models, drivers, CUDA stacks,

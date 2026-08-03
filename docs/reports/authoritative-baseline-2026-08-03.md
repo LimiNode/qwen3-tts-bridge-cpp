@@ -1,0 +1,61 @@
+# Authoritative Baseline: 2026-08-03
+
+## Scope
+
+This report records the repository-quality baseline used before further
+voice-clone runner changes. It is not a real-model latency benchmark or an
+acceptance claim for a GPU runtime profile.
+
+The checks ran in a detached, clean source worktree at commit
+`4e07ba9e9af51d446791d483cff8c07207bff961`
+(`test(transport): diagnose worker handshake timeouts`). The worktree had no
+tracked modifications. Its disposable Python virtual environment was excluded
+from the source-state check.
+
+## Environment
+
+| Field | Value |
+| --- | --- |
+| OS | Windows x64 |
+| CMake | 4.3.3 |
+| C++ compiler | MinGW-w64 GCC 16.1.0, UCRT, POSIX, SEH |
+| CMake generator | MinGW Makefiles |
+| Python | 3.12.10 |
+| nlohmann/json submodule | `55f93686c01528224f448c19128836e7df245f72` |
+| tiny-process-library submodule | `8bbb5a211c5c9df8ee69301da9d22fb977b27dc1` |
+| Qwen3-TTS-streaming submodule | `408236366b7cab3567e57c6b9183303e1f3700d9` |
+
+## Results
+
+| Gate | Result |
+| --- | --- |
+| `scripts/check-python.ps1` | PASS |
+| Ruff | PASS |
+| Pyright | PASS, 0 errors / 0 warnings |
+| Python unit tests | PASS, 410 tests, 6 skipped |
+| MinGW full CMake build | PASS |
+| Full CTest | PASS, 10/10 in 54.95 s |
+
+## Stdio Handshake Check
+
+`stdio_transport_test` exercises a freshly launched mock Python worker for
+each run. The test now has a 15-second startup deadline for the `ready` frame,
+a 60-second CTest watchdog, and emits queued-frame, transport-error, worker
+stderr, and exit-status diagnostics on failure. It has no retry path.
+
+Two independent cold-start series were completed on the same local machine:
+
+| Series | Result | Duration |
+| --- | --- | --- |
+| `ctest --repeat until-fail:100` | 100/100 PASS | 470.22 s total; max 5.15 s, p99 5.09 s |
+| Post-diagnostic-change repeat | 20/20 PASS | 94.36 s total; max 5.00 s |
+
+The earlier isolated timeout was therefore not reproduced, but a future
+recurrence now fails visibly rather than silently consuming a generic
+five-second frame wait.
+
+## Boundary
+
+This baseline unblocks deterministic bootstrap-runner hardening. It does not
+replace the separate CUDA/model validation required for a voice-profile or
+runtime-performance claim.
