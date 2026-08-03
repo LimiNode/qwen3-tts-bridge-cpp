@@ -13,6 +13,7 @@ param(
     [string]$RuntimeBackend = "faster",
     [ValidateRange(0.05, 2.0)]
     [double]$Temperature = 0.45,
+    [switch]$StyleExperiment,
     [string]$Python = "",
     [string]$ModelPath = "",
     [string]$BuildDirectory = "build"
@@ -126,9 +127,13 @@ $workerArguments = @(
 if ($voiceRegistry) {
     $workerArguments += @("--voice-registry-path", $voiceRegistry)
 }
+if ($StyleExperiment) {
+    $workerArguments += "--allow-request-sampling-overrides"
+}
 if ($VoiceId -and $RuntimeBackend -eq "faster") {
+    # The warmup request prepares only the selected profile. Preloading the
+    # entire local registry is unnecessary and can exceed its bounded LRU cache.
     $workerArguments += @(
-        "--preload-voice-profiles",
         "--warmup-synthesis",
         "--warmup-voice-id", $VoiceId,
         "--warmup-text", "Voice profile warmup.",
