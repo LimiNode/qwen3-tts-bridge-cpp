@@ -79,6 +79,26 @@ checked in the same clean detached worktree setup.
 | MinGW full CMake build | PASS |
 | Full CTest | PASS, 10/10 in 53.34 s |
 
-This addendum records repository health at that exact head. It does not claim
-that the schema-3 provenance changes introduced after `c688afe` were included
-in this run; those changes require their own validation result.
+This addendum records repository health at that exact head.
+
+## Schema-3 Validation Addendum
+
+The current provenance implementation was then validated from a clean detached
+source worktree at
+`d08684dfcd55a741efb0ae794da661274672bc10`
+(`docs(voice-clone): document reproducible candidate evidence`). As before,
+the worktree had no tracked modifications; its disposable virtual environments
+were untracked local tooling.
+
+| Gate | Result |
+| --- | --- |
+| `scripts/check-python.ps1` | PASS |
+| Ruff | PASS |
+| Pyright | PASS, 0 errors / 0 warnings |
+| Python unit tests | PASS, 416 tests, 6 skipped |
+| MinGW full CMake build | PASS |
+| Full CTest | PASS, 10/10 in 54.65 s |
+
+The runner's real-model CUDA smoke remains separate evidence: this source-only
+gate verifies the schema-3 fail-closed contracts and their regression tests,
+not model audio quality or clone identity.
