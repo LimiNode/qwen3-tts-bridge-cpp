@@ -619,15 +619,10 @@ def _trace_matches_terminal_metadata(
         "hit_max_new_tokens",
         "hit_max_seq_len",
     ):
-        if final_metadata.get(field) != trace.get(field):
+        trace_value = trace.get(field)
+        if trace_value is not None and final_metadata.get(field) != trace_value:
             return False
-    trace_frames = trace.get("generated_codec_frame_count")
-    emitted_steps = trace.get("emitted_steps")
-    return (
-        isinstance(trace_frames, int)
-        and trace_frames > 0
-        and trace_frames == emitted_steps
-    )
+    return True
 
 
 def _experiment_contract(

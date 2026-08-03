@@ -92,6 +92,22 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
         self.assertTrue(outcome["passed"])
         self.assertEqual([], outcome["failures"])
 
+        mismatched_trace = _trace()
+        mismatched_trace["emitted_steps"] = 31
+        mismatched = RUNNER._terminal_outcome(
+            _stream_outcome(),
+            mismatched_trace,
+            {
+                "talker_graph_reset": True,
+                "predictor_graphs_reset": 2,
+                "diagnostic_reset_state": {
+                    "talker_static_cache_sequence_length": 0,
+                    "predictor_static_cache_sequence_lengths": [0, 0],
+                },
+            },
+        )
+        self.assertIn("generation_trace_inconsistent", mismatched["failures"])
+
     def test_terminal_outcome_rejects_safety_or_budget_truncation(self) -> None:
         outcome = RUNNER._terminal_outcome(
             {

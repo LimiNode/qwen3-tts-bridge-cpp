@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import importlib.metadata
 import json
@@ -116,9 +117,7 @@ def _distribution_entry(
         "files": [
             {
                 "path": path.as_posix(),
-                "sha256": _sha256(
-                    Path(str(distribution.locate_file(path))).read_bytes()
-                ),
+                "sha256": _recorded_file_sha256(distribution, path),
             }
             for path in sorted(
                 _regular_files(distribution, files),
@@ -136,6 +135,21 @@ def _regular_files(
         resolved = Path(str(distribution.locate_file(path)))
         if resolved.is_file():
             yield path
+
+
+def _recorded_file_sha256(
+    distribution: importlib.metadata.Distribution,
+    path: importlib.metadata.PackagePath,
+) -> str:
+    file_hash = path.hash
+    if file_hash is None:
+        return _sha256(Path(str(distribution.locate_file(path))).read_bytes())
+    if file_hash.mode != "sha256":
+        raise ValueError(
+            f"installed Python distribution file has unsupported RECORD hash: {path}"
+        )
+    encoded = file_hash.value.encode("ascii")
+    return base64.urlsafe_b64decode(encoded + b"=" * (-len(encoded) % 4)).hex()
 
 
 def _normalize_name(value: str) -> str:
