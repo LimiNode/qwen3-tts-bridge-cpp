@@ -102,3 +102,20 @@ were untracked local tooling.
 The runner's real-model CUDA smoke remains separate evidence: this source-only
 gate verifies the schema-3 fail-closed contracts and their regression tests,
 not model audio quality or clone identity.
+
+## Schema-4 Provenance Addendum
+
+Schema 4 adds a verified installed-distribution content manifest to the
+bootstrap contract, separates diagnostic locations from identity, revalidates
+the embedded contract during resume, and hashes only tracked Python sources.
+It also checks terminal trace fields against final stream metadata. The schema
+is intentionally incompatible with earlier candidate sidecars.
+
+The source-only gate passed before this addendum was written:
+
+| Gate | Result |
+| --- | --- |
+| `scripts/check-python.ps1` | PASS |
+| Ruff | PASS |
+| Pyright | PASS, 0 errors / 0 warnings |
+| Python unit tests | PASS, 418 tests, 6 skipped |
