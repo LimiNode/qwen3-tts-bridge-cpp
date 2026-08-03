@@ -56,6 +56,8 @@ with `.qtb-portable-worker-root`. When launching it through `StdIoTransport`,
 set `environment_overrides` as a complete replacement environment containing
 `PYTHONHOME`, `PYTHONPATH`, and the required Windows runtime variables; do not
 inherit an arbitrary development Python environment into the packaged worker.
+The current packaging boundary and the real-model acceptance requirements are
+documented in [Portable Worker Beta](docs/portable-worker-beta.md).
 
 ## Interactive Playback CLI
 

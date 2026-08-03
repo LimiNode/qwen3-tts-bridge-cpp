@@ -36,7 +36,7 @@ candidate as a WAV plus a neighbouring `.wav.json` sidecar. The sidecar pins
 the source text, voice-profile reference hashes, sampling settings, generation
 limits, PCM/WAV hashes, full terminal-stream evidence, generation trace, and
 graph-reset result. It also records the SHA-256 of a shared experiment contract
-that pins the model content manifest, exact installed Python-distribution
+that pins the model content manifest and the installed Python-distribution
 content, Faster and bridge source trees, runner source, and Python/CUDA runtime
 provenance. Absolute paths are saved only as diagnostic locations and do not
 affect the identity hash.
@@ -64,7 +64,9 @@ Pass that file to every bootstrap invocation with
 `--model-runtime-manifest`. The runner verifies the complete local model file
 set before generating or resuming candidates.
 
-Build and verify a matching Python runtime manifest in the same interpreter:
+Build and verify a matching Python runtime manifest in the same interpreter.
+The manifest records wheel `RECORD` file hashes for installed distributions;
+it is intentionally separate from the bridge source bundle:
 
 ```powershell
 .venv-faster-qwen\Scripts\python.exe scripts\python_runtime_manifest.py build `
