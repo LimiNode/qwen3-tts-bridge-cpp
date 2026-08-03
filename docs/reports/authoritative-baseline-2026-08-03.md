@@ -43,7 +43,9 @@ each run. The test now has a 15-second startup deadline for the `ready` frame,
 a 60-second CTest watchdog, and emits queued-frame, transport-error, worker
 stderr, and exit-status diagnostics on failure. It has no retry path.
 
-Two independent cold-start series were completed on the same local machine:
+Two independent fresh-process startup series were completed on the same local
+machine. They measure a newly launched worker, not a cold operating-system,
+filesystem, Defender, or Python-package cache state:
 
 | Series | Result | Duration |
 | --- | --- | --- |
@@ -59,3 +61,24 @@ five-second frame wait.
 This baseline unblocks deterministic bootstrap-runner hardening. It does not
 replace the separate CUDA/model validation required for a voice-profile or
 runtime-performance claim.
+
+## Post-Hardening Addendum
+
+The historical baseline above intentionally remains tied to `4e07ba9`. After
+bootstrap-runner hardening, the exact source head
+`c688afeb3094732763a2dee0628392a25f3fa844`
+(`fix(voice-clone): harden bootstrap candidate evidence`) was independently
+checked in the same clean detached worktree setup.
+
+| Gate | Result |
+| --- | --- |
+| `scripts/check-python.ps1` | PASS |
+| Ruff | PASS |
+| Pyright | PASS, 0 errors / 0 warnings |
+| Python unit tests | PASS, 414 tests, 6 skipped |
+| MinGW full CMake build | PASS |
+| Full CTest | PASS, 10/10 in 53.34 s |
+
+This addendum records repository health at that exact head. It does not claim
+that the schema-3 provenance changes introduced after `c688afe` were included
+in this run; those changes require their own validation result.
