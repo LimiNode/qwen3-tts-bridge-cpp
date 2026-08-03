@@ -29,6 +29,22 @@ small listening gate, then start a larger candidate search only if the gate is
 clean. This is a tested workaround for this overlap pattern, not a general
 guarantee against every Base ICL artefact.
 
+## Bootstrap Candidate Evidence
+
+`scripts/run-voice-clone-bootstrap-candidates.py` writes each accepted
+candidate as a WAV plus a neighbouring `.wav.json` sidecar. The sidecar pins
+the source text, voice-profile reference hashes, sampling settings, generation
+limits, Faster source bundle, Python/Torch/CUDA environment, PCM/WAV hashes,
+terminal EOS metadata, generation trace, and graph-reset result.
+
+`--resume` accepts only a matching completed sidecar. It will refuse an
+untracked WAV, a changed seed/profile/text/sampling contract, a changed WAV,
+or a candidate that did not end through EOS. The audio cap is also fail-closed:
+a truncated stream is not written as a selectable candidate.
+
+These guarantees make a listening selection reproducible; they do not turn a
+synthetic bootstrap candidate into a verified identity clone.
+
 ## Create, Test, and Save a Profile
 
 Use the dedicated creation command to preflight a reference WAV, run a short

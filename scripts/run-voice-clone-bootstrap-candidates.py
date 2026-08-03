@@ -15,7 +15,8 @@ import wave
 from pathlib import Path
 from typing import Any, Iterable
 
-
+_SCHEMA_VERSION = 2
+_LANGUAGE = "Russian"
 DEFAULT_TEXT = (
     "Привет! Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; "
     "внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, "
@@ -35,6 +36,8 @@ def main() -> int:
         raise ValueError("candidates_per_voice must be greater than zero")
     if args.candidate_index_start < 0:
         raise ValueError("candidate_index_start must not be negative")
+    if args.max_audio_seconds <= 0:
+        raise ValueError("max_audio_seconds must be greater than zero")
     _prepend_paths(args)
 
     import numpy as np
@@ -45,12 +48,13 @@ def main() -> int:
 
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    registry = VoiceProfileRegistry.from_json_file(args.voice_registry, len(args.voice_id))
+    registry_path = Path(args.voice_registry).resolve()
+    registry = VoiceProfileRegistry.from_json_file(registry_path, len(args.voice_id))
     missing_voice_ids = [voice_id for voice_id in args.voice_id if not registry.has_voice(voice_id)]
     if missing_voice_ids:
         raise ValueError(f"voice registry lacks: {', '.join(missing_voice_ids)}")
 
-    model = FasterQwen3TTS.from_pretrained(
+    model: Any = FasterQwen3TTS.from_pretrained(
         args.model_path,
         device=args.device,
         dtype=args.dtype,
@@ -71,21 +75,27 @@ def main() -> int:
             candidate_index = args.candidate_index_start + local_index
             seed = args.seed_start + candidate_index
             output_path = voice_dir / f"{candidate_index + 1:03d}-seed-{seed}.wav"
+            candidate_contract = _candidate_contract(
+                args=args,
+                voice_id=voice_id,
+                seed=seed,
+                profile=registry.profile_for(voice_id),
+            )
             if args.resume and output_path.is_file():
-                results.append(_read_existing(output_path, voice_id, seed, args))
+                results.append(_read_existing(output_path, candidate_contract))
             else:
-                results.append(
-                    _generate_one(
-                        model=model,
-                        np=np,
-                        torch=torch,
-                        prompt=prompts[voice_id],
-                        output_path=output_path,
-                        voice_id=voice_id,
-                        seed=seed,
-                        args=args,
-                    )
+                result = _generate_one(
+                    model=model,
+                    np=np,
+                    torch=torch,
+                    prompt=prompts[voice_id],
+                    output_path=output_path,
+                    seed=seed,
+                    candidate_contract=candidate_contract,
+                    args=args,
                 )
+                _write_json(_sidecar_path(output_path), result)
+                results.append(result)
             print(
                 f"[{voice_id}] {candidate_index + 1} "
                 f"seed={seed} duration={results[-1]['audio_duration_ms']} ms "
@@ -93,11 +103,17 @@ def main() -> int:
             )
 
     summary = {
-        "schema_version": 1,
+        "schema_version": _SCHEMA_VERSION,
         "purpose": "synthetic reference bootstrap candidate search",
         "inputs": {
             "model_path": str(Path(args.model_path).resolve()),
             "faster_source": _git_source_metadata(Path(args.faster_source)),
+            "runtime": _runtime_metadata(torch),
+            "bridge_commit": _git_command(Path(__file__).resolve().parents[1], "rev-parse", "HEAD"),
+            "voice_registry": {
+                "path": str(registry_path),
+                "sha256": _sha256_file(registry_path),
+            },
             "voice_profiles": {
                 voice_id: _profile_metadata(registry.profile_for(voice_id))
                 for voice_id in args.voice_id
@@ -120,6 +136,7 @@ def main() -> int:
             ],
         },
         "source_text": args.text,
+        "source_text_sha256": _sha256(args.text.encode("utf-8")),
         "sampling": {
             "seed_start": args.seed_start,
             "candidate_index_start": args.candidate_index_start,
@@ -172,6 +189,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--repetition-penalty", type=float, default=1.05)
     parser.add_argument("--chunk-frames", type=int, default=8)
     parser.add_argument("--max-new-tokens", type=int, default=512)
+    parser.add_argument("--max-audio-seconds", type=float, default=30.0)
     return parser
 
 
@@ -182,51 +200,87 @@ def _generate_one(
     torch: Any,
     prompt: Any,
     output_path: Path,
-    voice_id: str,
     seed: int,
+    candidate_contract: dict[str, object],
     args: argparse.Namespace,
 ) -> dict[str, object]:
     _seed(seed, np, torch)
     started = time.perf_counter()
-    stream = model.generate_voice_clone_streaming(
-        text=args.text,
-        language="Russian",
-        voice_clone_prompt=prompt,
-        chunk_size=args.chunk_frames,
-        max_new_tokens=args.max_new_tokens,
-        temperature=args.temperature,
-        top_k=args.top_k,
-        top_p=args.top_p,
-        repetition_penalty=args.repetition_penalty,
-        do_sample=True,
-    )
-    pcm, sample_rate = _consume(stream, np)
-    _sync_cuda(torch)
-    reset = model.reset_after_partial_generation()
+    stream: Any = None
+    reset: dict[str, object] = {}
+    try:
+        stream = model.generate_voice_clone_streaming(
+            text=args.text,
+            language=_LANGUAGE,
+            voice_clone_prompt=prompt,
+            chunk_size=args.chunk_frames,
+            max_new_tokens=args.max_new_tokens,
+            temperature=args.temperature,
+            top_k=args.top_k,
+            top_p=args.top_p,
+            repetition_penalty=args.repetition_penalty,
+            do_sample=True,
+        )
+        pcm, sample_rate, stream_outcome = _consume(
+            stream,
+            np,
+            args.max_audio_seconds,
+        )
+        _sync_cuda(torch)
+        trace = _copy_trace(getattr(model, "last_generation_trace", None))
+    finally:
+        close = getattr(stream, "close", None)
+        if callable(close):
+            close()
+        _sync_cuda(torch)
+        reset = _copy_trace(model.reset_after_partial_generation())
+
+    terminal = _terminal_outcome(stream_outcome, trace, reset)
+    if not terminal["passed"]:
+        failures = terminal["failures"]
+        assert isinstance(failures, list)
+        raise RuntimeError(
+            "candidate did not reach a clean terminal outcome: "
+            + ", ".join(str(failure) for failure in failures)
+        )
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     _write_wav(output_path, pcm, sample_rate)
     return {
-        "voice_id": voice_id,
-        "seed": seed,
-        "text": args.text,
-        "temperature": args.temperature,
+        "schema_version": _SCHEMA_VERSION,
+        "candidate_contract": candidate_contract,
         "duration_ms": round((time.perf_counter() - started) * 1000.0, 3),
         "audio_duration_ms": round(len(pcm) / 2 / sample_rate * 1000.0, 3),
         "sample_rate": sample_rate,
         "pcm_sha256": _sha256(pcm),
         "pcm_bytes": len(pcm),
+        "wav_sha256": _sha256_file(output_path),
         "output_wav": str(output_path),
         "reset": reset,
-        "status": "generated",
+        "trace": trace,
+        "terminal": terminal,
+        "status": "completed",
     }
 
 
 def _read_existing(
     output_path: Path,
-    voice_id: str,
-    seed: int,
-    args: argparse.Namespace,
+    candidate_contract: dict[str, object],
 ) -> dict[str, object]:
+    sidecar_path = _sidecar_path(output_path)
+    if not sidecar_path.is_file():
+        raise ValueError(f"resume requires candidate sidecar: {sidecar_path}")
+    existing = _load_json_object(sidecar_path)
+    if existing.get("schema_version") != _SCHEMA_VERSION:
+        raise ValueError(f"candidate sidecar has unsupported schema: {sidecar_path}")
+    if existing.get("candidate_contract") != candidate_contract:
+        raise ValueError(f"candidate sidecar does not match current request: {sidecar_path}")
+    if existing.get("status") != "completed":
+        raise ValueError(f"candidate sidecar is not completed: {sidecar_path}")
+    terminal = existing.get("terminal")
+    if not isinstance(terminal, dict) or terminal.get("passed") is not True:
+        raise ValueError(f"candidate sidecar lacks a passing terminal outcome: {sidecar_path}")
+
     with wave.open(str(output_path), "rb") as reader:
         if reader.getnchannels() != 1 or reader.getsampwidth() != 2:
             raise ValueError(f"existing candidate has unexpected PCM format: {output_path}")
@@ -234,20 +288,16 @@ def _read_existing(
         pcm = reader.readframes(reader.getnframes())
     if not pcm:
         raise ValueError(f"existing candidate is empty: {output_path}")
-    return {
-        "voice_id": voice_id,
-        "seed": seed,
-        "text": args.text,
-        "temperature": args.temperature,
-        "duration_ms": None,
-        "audio_duration_ms": round(len(pcm) / 2 / sample_rate * 1000.0, 3),
-        "sample_rate": sample_rate,
-        "pcm_sha256": _sha256(pcm),
-        "pcm_bytes": len(pcm),
-        "output_wav": str(output_path),
-        "reset": None,
-        "status": "existing",
-    }
+    if existing.get("pcm_sha256") != _sha256(pcm):
+        raise ValueError(f"candidate PCM hash does not match sidecar: {output_path}")
+    if existing.get("pcm_bytes") != len(pcm):
+        raise ValueError(f"candidate PCM size does not match sidecar: {output_path}")
+    if existing.get("sample_rate") != sample_rate:
+        raise ValueError(f"candidate sample rate does not match sidecar: {output_path}")
+    if existing.get("wav_sha256") != _sha256_file(output_path):
+        raise ValueError(f"candidate WAV hash does not match sidecar: {output_path}")
+    existing["status"] = "resumed"
+    return existing
 
 
 def _prepend_paths(args: argparse.Namespace) -> None:
@@ -270,28 +320,43 @@ def _seed(seed: int, np: Any, torch: Any) -> None:
 def _consume(
     stream: Iterable[tuple[Any, int, dict[str, object]]],
     np: Any,
-) -> tuple[bytes, int]:
+    max_audio_seconds: float,
+) -> tuple[bytes, int, dict[str, object]]:
+    if max_audio_seconds <= 0:
+        raise ValueError("max_audio_seconds must be greater than zero")
+
     sample_rate = 24_000
     chunks: list[bytes] = []
-    close = getattr(stream, "close", None)
-    try:
-        for audio, sample_rate, _metadata in stream:
-            samples = np.asarray(audio, dtype=np.float32).reshape(-1)
-            chunks.append(
-                (np.clip(samples, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
-            )
-    finally:
-        if callable(close):
-            close()
-    return b"".join(chunks), sample_rate
+    final_metadata: dict[str, object] = {}
+    stream_exhausted = True
+    safety_truncated = False
+    for audio, sample_rate, metadata in stream:
+        samples = np.asarray(audio, dtype=np.float32).reshape(-1)
+        pcm = (np.clip(samples, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+        maximum_pcm_bytes = int(max_audio_seconds * sample_rate * 2)
+        remaining = maximum_pcm_bytes - sum(len(chunk) for chunk in chunks)
+        if remaining < len(pcm):
+            safety_truncated = True
+            stream_exhausted = False
+            break
+        chunks.append(pcm)
+        if isinstance(metadata, dict) and metadata.get("is_final") is True:
+            final_metadata = _terminal_metadata(metadata)
+    return b"".join(chunks), sample_rate, {
+        "stream_exhausted": stream_exhausted,
+        "safety_truncated": safety_truncated,
+        "final_metadata": final_metadata,
+    }
 
 
 def _write_wav(path: Path, pcm: bytes, sample_rate: int) -> None:
-    with wave.open(str(path), "wb") as writer:
+    temporary_path = path.with_suffix(path.suffix + ".tmp")
+    with wave.open(str(temporary_path), "wb") as writer:
         writer.setnchannels(1)
         writer.setsampwidth(2)
         writer.setframerate(sample_rate)
         writer.writeframes(pcm)
+    temporary_path.replace(path)
 
 
 def _sync_cuda(torch: Any) -> None:
@@ -303,13 +368,166 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _sidecar_path(output_path: Path) -> Path:
+    return output_path.with_suffix(output_path.suffix + ".json")
+
+
+def _write_json(path: Path, payload: object) -> None:
+    temporary_path = path.with_suffix(path.suffix + ".tmp")
+    temporary_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(path)
+
+
+def _load_json_object(path: Path) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"candidate sidecar is not valid JSON: {path}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"candidate sidecar must contain an object: {path}")
+    return value
+
+
+def _candidate_contract(
+    *,
+    args: argparse.Namespace,
+    voice_id: str,
+    seed: int,
+    profile: Any,
+) -> dict[str, object]:
+    return {
+        "voice_id": voice_id,
+        "seed": seed,
+        "text": args.text,
+        "language": _LANGUAGE,
+        "sampling": {
+            "temperature": args.temperature,
+            "top_k": args.top_k,
+            "top_p": args.top_p,
+            "repetition_penalty": args.repetition_penalty,
+            "do_sample": True,
+        },
+        "generation": {
+            "chunk_frames": args.chunk_frames,
+            "max_new_tokens": args.max_new_tokens,
+            "max_audio_seconds": args.max_audio_seconds,
+        },
+        "voice_profile": _profile_metadata(profile),
+    }
+
+
+def _terminal_metadata(metadata: dict[str, object]) -> dict[str, object]:
+    keys = (
+        "is_final",
+        "termination_reason",
+        "hit_eos",
+        "hit_max_new_tokens",
+        "hit_max_seq_len",
+        "terminal_token_id",
+        "terminal_step_index",
+        "generated_steps",
+        "emitted_steps",
+    )
+    return {key: metadata.get(key) for key in keys}
+
+
+def _copy_trace(value: Any) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    return {str(key): item for key, item in value.items()}
+
+
+def _terminal_outcome(
+    stream_outcome: dict[str, object],
+    trace: dict[str, object],
+    reset: dict[str, object],
+) -> dict[str, object]:
+    failures: list[str] = []
+    final_metadata = stream_outcome.get("final_metadata")
+    if stream_outcome.get("stream_exhausted") is not True:
+        failures.append("stream_not_exhausted")
+    if stream_outcome.get("safety_truncated") is not False:
+        failures.append("safety_truncated")
+    if not isinstance(final_metadata, dict):
+        failures.append("missing_final_metadata")
+        final_metadata = {}
+    if final_metadata.get("is_final") is not True:
+        failures.append("final_chunk_not_marked")
+    if final_metadata.get("termination_reason") != "eos":
+        failures.append("terminal_reason_not_eos")
+    if final_metadata.get("hit_eos") is not True:
+        failures.append("terminal_eos_not_confirmed")
+    if final_metadata.get("hit_max_new_tokens") is not False:
+        failures.append("terminal_hit_max_new_tokens")
+    if final_metadata.get("hit_max_seq_len") is not False:
+        failures.append("terminal_hit_max_seq_len")
+
+    generated_codec_sha256 = trace.get("generated_codec_sha256")
+    generated_codec_frame_count = trace.get("generated_codec_frame_count")
+    trace_complete = (
+        trace.get("trace_kind") == "voice_clone_streaming_v1"
+        and isinstance(generated_codec_sha256, str)
+        and bool(generated_codec_sha256)
+        and isinstance(generated_codec_frame_count, int)
+        and generated_codec_frame_count > 0
+    )
+    if not trace_complete:
+        failures.append("generation_trace_incomplete")
+
+    predictor_graphs_reset = reset.get("predictor_graphs_reset")
+    reset_passed = (
+        reset.get("talker_graph_reset") is True
+        and isinstance(predictor_graphs_reset, int)
+        and predictor_graphs_reset > 0
+    )
+    if not reset_passed:
+        failures.append("generation_reset_incomplete")
+
+    return {
+        "status": "completed" if not failures else "failed",
+        "passed": not failures,
+        "failures": failures,
+        "stream_exhausted": stream_outcome.get("stream_exhausted") is True,
+        "safety_truncated": stream_outcome.get("safety_truncated") is True,
+        "final_metadata": final_metadata,
+        "trace_complete": trace_complete,
+        "reset_passed": reset_passed,
+    }
+
+
 def _git_source_metadata(source_path: Path) -> dict[str, object]:
     source_path = source_path.resolve()
     return {
         "path": str(source_path),
         "commit": _git_command(source_path, "rev-parse", "HEAD"),
         "tree": _git_command(source_path, "rev-parse", "HEAD^{tree}"),
-        "dirty": bool(_git_command(source_path, "status", "--porcelain")),
+        "status": _git_command(source_path, "status", "--porcelain"),
+        "module_bundle_sha256": _source_bundle_sha256(source_path),
+    }
+
+
+def _runtime_metadata(torch: Any) -> dict[str, object]:
+    gpu = torch.cuda.get_device_properties(0) if torch.cuda.is_available() else None
+    return {
+        "python": sys.version,
+        "torch": str(torch.__version__),
+        "cuda_runtime": str(torch.version.cuda),
+        "triton": _module_version("triton"),
+        "nvidia_driver_version": _nvidia_driver_version(),
+        "gpu_name": getattr(gpu, "name", None),
+        "gpu_capability": list(torch.cuda.get_device_capability(0)) if gpu else None,
+        "gpu_total_memory_bytes": getattr(gpu, "total_memory", None),
     }
 
 
@@ -327,8 +545,46 @@ def _profile_metadata(profile: Any) -> dict[str, object]:
         "reference_audio_sha256": audio.sha256,
         "reference_audio_duration_seconds": audio.duration_seconds,
         "reference_text_repr": repr(profile.reference_text),
+        "reference_text_sha256": _sha256(profile.reference_text.encode("utf-8")),
         "x_vector_only": profile.x_vector_only,
     }
+
+
+def _module_version(name: str) -> str:
+    try:
+        module = __import__(name)
+    except ModuleNotFoundError:
+        return ""
+    return str(getattr(module, "__version__", ""))
+
+
+def _nvidia_driver_version() -> str:
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=driver_version",
+                "--format=csv,noheader",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+    return result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+
+
+def _source_bundle_sha256(root: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*.py")):
+        relative = path.relative_to(root).as_posix().encode("utf-8")
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        content = path.read_bytes()
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
 
 
 if __name__ == "__main__":
