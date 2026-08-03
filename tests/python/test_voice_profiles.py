@@ -46,6 +46,23 @@ class VoiceProfilePreflightTests(unittest.TestCase):
             with self.assertRaisesRegex(VoiceProfileError, "effectively silent"):
                 preflight_reference_audio(reference, "Reference text.", False)
 
+    def test_accepts_twenty_second_reference_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference = Path(temporary_directory) / "twenty-seconds.wav"
+            _write_pcm_wav(reference, seconds=20.0)
+
+            info = preflight_reference_audio(reference, "Reference text.", False)
+
+        self.assertEqual(20.0, info.duration_seconds)
+
+    def test_rejects_reference_wav_longer_than_twenty_seconds(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference = Path(temporary_directory) / "too-long.wav"
+            _write_pcm_wav(reference, seconds=20.1)
+
+            with self.assertRaisesRegex(VoiceProfileError, "between 2 and 20 seconds"):
+                preflight_reference_audio(reference, "Reference text.", False)
+
     def test_rejects_oversized_wav_before_decoding(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             reference = Path(temporary_directory) / "oversized.wav"
