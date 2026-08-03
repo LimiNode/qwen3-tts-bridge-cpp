@@ -203,6 +203,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
 
         add_test(NAME stdio_transport_test COMMAND stdio_transport_test)
+        set_tests_properties(stdio_transport_test PROPERTIES TIMEOUT 60)
 
         add_executable(worker_session_test
             tests/worker_session_test.cpp
