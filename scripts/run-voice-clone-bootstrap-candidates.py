@@ -15,7 +15,7 @@ import wave
 from pathlib import Path
 from typing import Any, Iterable
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 _LANGUAGE = "Russian"
 DEFAULT_TEXT = (
     "Привет! Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; "
@@ -48,6 +48,16 @@ def main() -> int:
 
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    model_manifest_path = Path(args.model_runtime_manifest).resolve()
+    model_manifest = _load_json_object(model_manifest_path)
+    _verify_model_runtime_manifest(Path(args.model_path).resolve(), model_manifest)
+    experiment_contract = _experiment_contract(
+        args=args,
+        torch=torch,
+        model_manifest_path=model_manifest_path,
+        model_manifest=model_manifest,
+    )
+    experiment_contract_sha256 = _sha256(_canonical_json_bytes(experiment_contract))
     registry_path = Path(args.voice_registry).resolve()
     registry = VoiceProfileRegistry.from_json_file(registry_path, len(args.voice_id))
     missing_voice_ids = [voice_id for voice_id in args.voice_id if not registry.has_voice(voice_id)]
@@ -80,6 +90,7 @@ def main() -> int:
                 voice_id=voice_id,
                 seed=seed,
                 profile=registry.profile_for(voice_id),
+                experiment_contract_sha256=experiment_contract_sha256,
             )
             if args.resume and output_path.is_file():
                 results.append(_read_existing(output_path, candidate_contract))
@@ -92,6 +103,7 @@ def main() -> int:
                     output_path=output_path,
                     seed=seed,
                     candidate_contract=candidate_contract,
+                    experiment_contract=experiment_contract,
                     args=args,
                 )
                 _write_json(_sidecar_path(output_path), result)
@@ -105,11 +117,9 @@ def main() -> int:
     summary = {
         "schema_version": _SCHEMA_VERSION,
         "purpose": "synthetic reference bootstrap candidate search",
+        "experiment_contract": experiment_contract,
+        "experiment_contract_sha256": experiment_contract_sha256,
         "inputs": {
-            "model_path": str(Path(args.model_path).resolve()),
-            "faster_source": _git_source_metadata(Path(args.faster_source)),
-            "runtime": _runtime_metadata(torch),
-            "bridge_commit": _git_command(Path(__file__).resolve().parents[1], "rev-parse", "HEAD"),
             "voice_registry": {
                 "path": str(registry_path),
                 "sha256": _sha256_file(registry_path),
@@ -160,6 +170,11 @@ def main() -> int:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-path", required=True)
+    parser.add_argument(
+        "--model-runtime-manifest",
+        required=True,
+        help="Content manifest produced by scripts/model_runtime_manifest.py.",
+    )
     parser.add_argument("--faster-source", required=True)
     parser.add_argument("--voice-registry", required=True)
     parser.add_argument(
@@ -202,12 +217,16 @@ def _generate_one(
     output_path: Path,
     seed: int,
     candidate_contract: dict[str, object],
+    experiment_contract: dict[str, object],
     args: argparse.Namespace,
 ) -> dict[str, object]:
     _seed(seed, np, torch)
     started = time.perf_counter()
     stream: Any = None
     reset: dict[str, object] = {}
+    trace: dict[str, object] = {}
+    stream_outcome: dict[str, object] = {}
+    primary_error: BaseException | None = None
     try:
         stream = model.generate_voice_clone_streaming(
             text=args.text,
@@ -228,12 +247,27 @@ def _generate_one(
         )
         _sync_cuda(torch)
         trace = _copy_trace(getattr(model, "last_generation_trace", None))
-    finally:
-        close = getattr(stream, "close", None)
-        if callable(close):
+    except BaseException as exc:
+        primary_error = exc
+
+    cleanup_errors: list[BaseException] = []
+    close = getattr(stream, "close", None)
+    if callable(close):
+        try:
             close()
+        except BaseException as exc:
+            cleanup_errors.append(exc)
+    try:
         _sync_cuda(torch)
         reset = _copy_trace(model.reset_after_partial_generation())
+    except BaseException as exc:
+        cleanup_errors.append(exc)
+
+    if primary_error is not None or cleanup_errors:
+        errors = ([primary_error] if primary_error is not None else []) + cleanup_errors
+        if len(errors) == 1:
+            raise errors[0]
+        raise BaseExceptionGroup("candidate generation cleanup failed", errors)
 
     terminal = _terminal_outcome(stream_outcome, trace, reset)
     if not terminal["passed"]:
@@ -249,6 +283,7 @@ def _generate_one(
     return {
         "schema_version": _SCHEMA_VERSION,
         "candidate_contract": candidate_contract,
+        "experiment_contract": experiment_contract,
         "duration_ms": round((time.perf_counter() - started) * 1000.0, 3),
         "audio_duration_ms": round(len(pcm) / 2 / sample_rate * 1000.0, 3),
         "sample_rate": sample_rate,
@@ -257,6 +292,7 @@ def _generate_one(
         "wav_sha256": _sha256_file(output_path),
         "output_wav": str(output_path),
         "reset": reset,
+        "stream_outcome": stream_outcome,
         "trace": trace,
         "terminal": terminal,
         "status": "completed",
@@ -278,8 +314,16 @@ def _read_existing(
     if existing.get("status") != "completed":
         raise ValueError(f"candidate sidecar is not completed: {sidecar_path}")
     terminal = existing.get("terminal")
-    if not isinstance(terminal, dict) or terminal.get("passed") is not True:
-        raise ValueError(f"candidate sidecar lacks a passing terminal outcome: {sidecar_path}")
+    stream_outcome = existing.get("stream_outcome")
+    trace = existing.get("trace")
+    reset = existing.get("reset")
+    if not isinstance(stream_outcome, dict) or not isinstance(trace, dict) or not isinstance(reset, dict):
+        raise ValueError(f"candidate sidecar lacks terminal evidence: {sidecar_path}")
+    recomputed_terminal = _terminal_outcome(stream_outcome, trace, reset)
+    if recomputed_terminal.get("passed") is not True:
+        raise ValueError(f"candidate sidecar terminal evidence does not pass: {sidecar_path}")
+    if terminal != recomputed_terminal:
+        raise ValueError(f"candidate sidecar terminal outcome does not match evidence: {sidecar_path}")
 
     with wave.open(str(output_path), "rb") as reader:
         if reader.getnchannels() != 1 or reader.getsampwidth() != 2:
@@ -405,8 +449,10 @@ def _candidate_contract(
     voice_id: str,
     seed: int,
     profile: Any,
+    experiment_contract_sha256: str,
 ) -> dict[str, object]:
     return {
+        "experiment_contract_sha256": experiment_contract_sha256,
         "voice_id": voice_id,
         "seed": seed,
         "text": args.text,
@@ -486,10 +532,27 @@ def _terminal_outcome(
         failures.append("generation_trace_incomplete")
 
     predictor_graphs_reset = reset.get("predictor_graphs_reset")
+    diagnostic_reset_state = reset.get("diagnostic_reset_state")
+    talker_cache_length: object = None
+    predictor_cache_lengths: object = None
+    if isinstance(diagnostic_reset_state, dict):
+        talker_cache_length = diagnostic_reset_state.get(
+            "talker_static_cache_sequence_length"
+        )
+        predictor_cache_lengths = diagnostic_reset_state.get(
+            "predictor_static_cache_sequence_lengths"
+        )
+    cache_lengths_reset = (
+        talker_cache_length == 0
+        and isinstance(predictor_cache_lengths, list)
+        and bool(predictor_cache_lengths)
+        and all(length == 0 for length in predictor_cache_lengths)
+    )
     reset_passed = (
         reset.get("talker_graph_reset") is True
         and isinstance(predictor_graphs_reset, int)
         and predictor_graphs_reset > 0
+        and cache_lengths_reset
     )
     if not reset_passed:
         failures.append("generation_reset_incomplete")
@@ -503,16 +566,64 @@ def _terminal_outcome(
         "final_metadata": final_metadata,
         "trace_complete": trace_complete,
         "reset_passed": reset_passed,
+        "cache_lengths_reset": cache_lengths_reset,
     }
+
+
+def _experiment_contract(
+    *,
+    args: argparse.Namespace,
+    torch: Any,
+    model_manifest_path: Path,
+    model_manifest: dict[str, object],
+) -> dict[str, object]:
+    repo_root = Path(__file__).resolve().parents[1]
+    return {
+        "schema_version": 1,
+        "runner": {
+            "path": str(Path(__file__).resolve()),
+            "sha256": _sha256_file(Path(__file__).resolve()),
+        },
+        "model_runtime_manifest": {
+            "path": str(model_manifest_path),
+            "sha256": _sha256_file(model_manifest_path),
+            "directory_manifest_sha256": model_manifest.get(
+                "directory_manifest_sha256"
+            ),
+            "repository": model_manifest.get("repository"),
+            "revision": model_manifest.get("revision"),
+        },
+        "model_path": str(Path(args.model_path).resolve()),
+        "faster_source": _git_source_metadata(Path(args.faster_source)),
+        "bridge_source": _git_source_metadata(repo_root),
+        "runtime": _runtime_metadata(torch),
+    }
+
+
+def _verify_model_runtime_manifest(
+    model_path: Path,
+    manifest: dict[str, object],
+) -> None:
+    from model_runtime_manifest import verify_manifest
+
+    verify_manifest(model_path, manifest)
+
+
+def _canonical_json_bytes(value: object) -> bytes:
+    return (
+        json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
 
 
 def _git_source_metadata(source_path: Path) -> dict[str, object]:
     source_path = source_path.resolve()
+    status = _git_command(source_path, "status", "--porcelain")
     return {
         "path": str(source_path),
         "commit": _git_command(source_path, "rev-parse", "HEAD"),
         "tree": _git_command(source_path, "rev-parse", "HEAD^{tree}"),
-        "status": _git_command(source_path, "status", "--porcelain"),
+        "dirty": bool(status),
+        "status_sha256": _sha256(status.encode("utf-8")),
         "module_bundle_sha256": _source_bundle_sha256(source_path),
     }
 

@@ -47,7 +47,14 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
                 "generated_codec_sha256": "a" * 64,
                 "generated_codec_frame_count": 32,
             },
-            {"talker_graph_reset": True, "predictor_graphs_reset": 2},
+            {
+                "talker_graph_reset": True,
+                "predictor_graphs_reset": 2,
+                "diagnostic_reset_state": {
+                    "talker_static_cache_sequence_length": 0,
+                    "predictor_static_cache_sequence_lengths": [0, 0],
+                },
+            },
         )
 
         self.assertEqual("completed", outcome["status"])
@@ -80,8 +87,37 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
         self.assertIn("generation_reset_incomplete", outcome["failures"])
 
     def test_resume_requires_matching_completed_sidecar(self) -> None:
-        contract = {"voice_id": "test", "seed": 7}
+        contract = {
+            "experiment_contract_sha256": "a" * 64,
+            "voice_id": "test",
+            "seed": 7,
+        }
         pcm = b"\x00\x00\x10\x00"
+        stream_outcome = {
+            "stream_exhausted": True,
+            "safety_truncated": False,
+            "final_metadata": {
+                "is_final": True,
+                "termination_reason": "eos",
+                "hit_eos": True,
+                "hit_max_new_tokens": False,
+                "hit_max_seq_len": False,
+            },
+        }
+        trace = {
+            "trace_kind": "voice_clone_streaming_v1",
+            "generated_codec_sha256": "a" * 64,
+            "generated_codec_frame_count": 32,
+        }
+        reset = {
+            "talker_graph_reset": True,
+            "predictor_graphs_reset": 2,
+            "diagnostic_reset_state": {
+                "talker_static_cache_sequence_length": 0,
+                "predictor_static_cache_sequence_lengths": [0, 0],
+            },
+        }
+        terminal = RUNNER._terminal_outcome(stream_outcome, trace, reset)
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_path = Path(temporary_directory) / "candidate.wav"
             RUNNER._write_wav(output_path, pcm, 24_000)
@@ -90,10 +126,13 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             RUNNER._write_json(
                 RUNNER._sidecar_path(output_path),
                 {
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "candidate_contract": contract,
                     "status": "completed",
-                    "terminal": {"passed": True},
+                    "stream_outcome": stream_outcome,
+                    "trace": trace,
+                    "reset": reset,
+                    "terminal": terminal,
                     "pcm_sha256": RUNNER._sha256(pcm),
                     "pcm_bytes": len(pcm),
                     "sample_rate": 24_000,
@@ -104,7 +143,37 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             resumed = RUNNER._read_existing(output_path, contract)
             self.assertEqual("resumed", resumed["status"])
             with self.assertRaisesRegex(ValueError, "does not match"):
-                RUNNER._read_existing(output_path, {"voice_id": "other", "seed": 7})
+                RUNNER._read_existing(
+                    output_path,
+                    {
+                        "experiment_contract_sha256": "b" * 64,
+                        "voice_id": "other",
+                        "seed": 7,
+                    },
+                )
+
+            reset["diagnostic_reset_state"] = {
+                "talker_static_cache_sequence_length": 1,
+                "predictor_static_cache_sequence_lengths": [0, 0],
+            }
+            RUNNER._write_json(
+                RUNNER._sidecar_path(output_path),
+                {
+                    "schema_version": 3,
+                    "candidate_contract": contract,
+                    "status": "completed",
+                    "stream_outcome": stream_outcome,
+                    "trace": trace,
+                    "reset": reset,
+                    "terminal": terminal,
+                    "pcm_sha256": RUNNER._sha256(pcm),
+                    "pcm_bytes": len(pcm),
+                    "sample_rate": 24_000,
+                    "wav_sha256": RUNNER._sha256_file(output_path),
+                },
+            )
+            with self.assertRaisesRegex(ValueError, "terminal evidence does not pass"):
+                RUNNER._read_existing(output_path, contract)
 
     def test_generation_resets_graphs_after_consume_failure(self) -> None:
         class FakeModel:
@@ -148,10 +217,119 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
                     output_path=Path(temporary_directory) / "candidate.wav",
                     seed=7,
                     candidate_contract={"voice_id": "test", "seed": 7},
+                    experiment_contract={},
                     args=arguments,
                 )
 
         self.assertEqual(1, model.reset_calls)
+
+    def test_generation_resets_graphs_when_stream_close_fails(self) -> None:
+        class FailingCloseStream:
+            def close(self) -> None:
+                raise RuntimeError("close failed")
+
+        class FakeModel:
+            def __init__(self) -> None:
+                self.reset_calls = 0
+
+            def generate_voice_clone_streaming(self, **_kwargs: object) -> object:
+                return FailingCloseStream()
+
+            def reset_after_partial_generation(self) -> dict[str, object]:
+                self.reset_calls += 1
+                return {"talker_graph_reset": True, "predictor_graphs_reset": 2}
+
+        arguments = SimpleNamespace(
+            text="test",
+            chunk_frames=8,
+            max_new_tokens=512,
+            temperature=0.4,
+            top_k=50,
+            top_p=1.0,
+            repetition_penalty=1.05,
+            max_audio_seconds=30.0,
+        )
+        model = FakeModel()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            with (
+                patch.object(RUNNER, "_seed"),
+                patch.object(RUNNER, "_sync_cuda"),
+                patch.object(
+                    RUNNER,
+                    "_consume",
+                    return_value=(b"\x00\x00", 24_000, {}),
+                ),
+                self.assertRaisesRegex(RuntimeError, "close failed"),
+            ):
+                RUNNER._generate_one(
+                    model=model,
+                    np=object(),
+                    torch=object(),
+                    prompt=object(),
+                    output_path=Path(temporary_directory) / "candidate.wav",
+                    seed=7,
+                    candidate_contract={"voice_id": "test", "seed": 7},
+                    experiment_contract={},
+                    args=arguments,
+                )
+
+        self.assertEqual(1, model.reset_calls)
+
+    def test_generation_preserves_primary_and_cleanup_errors(self) -> None:
+        class FailingCloseStream:
+            def close(self) -> None:
+                raise RuntimeError("close failed")
+
+        class FakeModel:
+            def __init__(self) -> None:
+                self.reset_calls = 0
+
+            def generate_voice_clone_streaming(self, **_kwargs: object) -> object:
+                return FailingCloseStream()
+
+            def reset_after_partial_generation(self) -> dict[str, object]:
+                self.reset_calls += 1
+                return {"talker_graph_reset": True, "predictor_graphs_reset": 2}
+
+        arguments = SimpleNamespace(
+            text="test",
+            chunk_frames=8,
+            max_new_tokens=512,
+            temperature=0.4,
+            top_k=50,
+            top_p=1.0,
+            repetition_penalty=1.05,
+            max_audio_seconds=30.0,
+        )
+        model = FakeModel()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            with (
+                patch.object(RUNNER, "_seed"),
+                patch.object(RUNNER, "_sync_cuda"),
+                patch.object(
+                    RUNNER,
+                    "_consume",
+                    side_effect=RuntimeError("consume failed"),
+                ),
+                self.assertRaises(BaseExceptionGroup) as caught,
+            ):
+                RUNNER._generate_one(
+                    model=model,
+                    np=object(),
+                    torch=object(),
+                    prompt=object(),
+                    output_path=Path(temporary_directory) / "candidate.wav",
+                    seed=7,
+                    candidate_contract={"voice_id": "test", "seed": 7},
+                    experiment_contract={},
+                    args=arguments,
+                )
+
+        self.assertEqual(1, model.reset_calls)
+        self.assertEqual(
+            ["consume failed", "close failed"],
+            [str(error) for error in caught.exception.exceptions],
+        )
 
 
 if __name__ == "__main__":
