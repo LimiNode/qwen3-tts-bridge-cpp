@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "date": "2026-08-03",
+  "review_type": "local_live_human_listening",
+  "status": "accepted_experimental_character_profiles",
+  "profiles": [
+    {
+      "voice_id": "kraftwerk_robot_ru_source_like",
+      "asset_path": "examples/assets/voice-profiles/kraftwerk_robot_ru_source_like.wav",
+      "audio_sha256": "b2480523e3dae70f2267260e3d60dce0c04dbe19f332f3fae6b031a54ab640f3",
+      "duration_seconds": 12.730875,
+      "reference_text": "Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду.",
+      "acceptance": "Identity remains stable during live CLI testing. The profile is source-like, not identity-equal."
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_warm_metal",
+      "asset_path": "examples/assets/voice-profiles/kraftwerk_robot_ru_warm_metal.wav",
+      "audio_sha256": "9c96c277ffb61709a511a01ee715bd4c15b1ccc669c9c55ca900f2229bb2799a",
+      "duration_seconds": 13.02225,
+      "reference_text": "Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду.",
+      "acceptance": "Identity remains stable during live CLI testing. The profile is a distinct warm metallic robotic character."
+    }
+  ],
+  "provenance": {
+    "source": "User-provided processed versions of selected synthetic bootstrap candidates.",
+    "processing": "The initial overlap-avoidance phrase was removed; the remaining spoken content is unchanged."
+  },
+  "limitations": [
+    "Acceptance is local human listening, not an objective speaker-similarity score.",
+    "These are synthesized experimental character profiles, not authentic source recordings or production identity-clone claims."
+  ]
+}

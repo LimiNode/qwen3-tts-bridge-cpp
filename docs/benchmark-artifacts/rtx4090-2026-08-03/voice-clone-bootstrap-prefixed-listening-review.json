@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "date": "2026-08-03",
+  "review_type": "local_human_listening",
+  "status": "selected_two_experimental_profiles",
+  "source_sweep": {
+    "directory": "tmp/voice-clone-bootstrap-repeated-source-prefixed-candidates",
+    "voice_id": "kraftwerk_robot_ru_repeated_source",
+    "candidate_count": 100,
+    "seed_range": [40000, 40099],
+    "target_text": "Привет! Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду.",
+    "sampling": {
+      "temperature": 0.4,
+      "top_k": 50,
+      "top_p": 1.0,
+      "repetition_penalty": 1.05,
+      "do_sample": true
+    }
+  },
+  "audible_candidates": [
+    "001-seed-40000.wav",
+    "011-seed-40010.wav",
+    "014-seed-40013.wav",
+    "015-seed-40014.wav",
+    "016-seed-40015.wav",
+    "020-seed-40019.wav",
+    "024-seed-40023.wav",
+    "025-seed-40024.wav",
+    "035-seed-40034.wav",
+    "039-seed-40038.wav",
+    "046-seed-40045.wav",
+    "052-seed-40051.wav",
+    "054-seed-40053.wav",
+    "057-seed-40056.wav",
+    "061-seed-40060.wav",
+    "068-seed-40067.wav",
+    "070-seed-40069.wav",
+    "073-seed-40072.wav",
+    "075-seed-40074.wav",
+    "086-seed-40085.wav",
+    "094-seed-40093.wav",
+    "095-seed-40094.wav",
+    "099-seed-40098.wav"
+  ],
+  "selected_profiles": [
+    {
+      "voice_id": "kraftwerk_robot_ru_source_like",
+      "candidate": "061-seed-40060.wav",
+      "seed": 40060,
+      "audio_sha256": "df4c2f19463408f4d5e98b1830ae28ef5502ac8b404dcef73d33d577c8b1a860",
+      "duration_seconds": 18.0,
+      "listening_decision": "Closest to the processed source, with slightly more expressive delivery and less robotic character. It is source-like, not an identity-equal clone."
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_warm_metal",
+      "candidate": "095-seed-40094.wav",
+      "seed": 40094,
+      "audio_sha256": "995882672c68060826f71e9853aff9f44f129d10009d22b62a31975e31052c50",
+      "duration_seconds": 16.88,
+      "listening_decision": "A distinct warm metallic robotic character; pleasant, non-monotone, and intentionally retained as a separate profile."
+    }
+  ],
+  "limitations": [
+    "The selected references are synthesized bootstrap candidates rather than new recordings of the source speaker.",
+    "Selection is based on local human listening, not an objective speaker-similarity metric.",
+    "The profiles remain experimental and must not be represented as production-grade identity clones."
+  ]
+}

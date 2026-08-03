@@ -15,6 +15,20 @@ met the product-quality gate for voice identity retention. Treat the example
 profiles as diagnostics, not as production voice clones. See the detailed
 [ICL diagnosis](voice-clone-diagnosis.md) before using them beyond local tests.
 
+## Candidate Text Prefix
+
+When making a longer synthetic reference from an ICL result, do not begin the
+candidate text with the reference transcript or a close continuation of it. In
+one repeated-source experiment, that overlap made the first generated utterance
+repeat part of the reference before speaking the requested text.
+
+Prefix the target with one short, neutral phrase that is absent from the
+reference, for example `Привет! `. Keep that prefix in the candidate's exact
+transcript if the generated WAV is later registered as a profile. First run a
+small listening gate, then start a larger candidate search only if the gate is
+clean. This is a tested workaround for this overlap pattern, not a general
+guarantee against every Base ICL artefact.
+
 ## Create, Test, and Save a Profile
 
 Use the dedicated creation command to preflight a reference WAV, run a short
@@ -60,6 +74,12 @@ In the interactive CLI, use `/voices` to list the profile IDs advertised by the
 worker and `/voice kraftwerk_robot_ru` to select one for future requests. A
 new line of spoken text cancels the prior generation as usual.
 
+The normal clone launcher keeps request-level sampling controls sealed for a
+repeatable default. Start it with `-StyleExperiment` when comparing sampling
+or style interactively; only that explicit mode enables `/temperature`,
+`/seed`, `/top-k`, `/top-p`, `/repetition-penalty`, and `/sample` for future
+requests. Do not use those ad hoc settings as performance evidence.
+
 Registry JSON is durable metadata, not a serialized GPU prompt. In a running
 worker, the selected profile is converted into a Base-model voice prompt once
 and retained in a bounded LRU cache. Restarting the worker re-creates that
@@ -67,7 +87,7 @@ in-memory prompt on the first use, but it does not require reauthoring or
 re-entering the profile.
 
 The preflight accepts local uncompressed PCM WAV files only: mono or stereo,
-8--96 kHz, 8/16/24/32-bit, 2--15 seconds, non-silent, and at most 16 MiB. ICL
+8--96 kHz, 8/16/24/32-bit, 2--20 seconds, non-silent, and at most 16 MiB. ICL
 profiles require an accurate transcript; `-XVectorOnly` is an explicit fallback
 that omits it.
 

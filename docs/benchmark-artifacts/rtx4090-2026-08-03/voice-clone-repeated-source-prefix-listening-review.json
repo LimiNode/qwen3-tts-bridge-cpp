@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "date": "2026-08-03",
+  "review_type": "local_human_listening",
+  "status": "pass",
+  "model": {
+    "id": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "runtime": "FasterQwen Base ICL"
+  },
+  "reference": {
+    "voice_id": "kraftwerk_robot_ru_repeated_source",
+    "audio_sha256": "18ad5e382a311affeee0fc4ef952ef1f7d28f75673eb32d0670e7356672fa65a",
+    "duration_seconds": 16.251451,
+    "transcript": "Я твой слуга. Я твой работник. Я твой слуга. Я твой работник. Я твой слуга. Я твой работник. Я твой слуга. Твой."
+  },
+  "comparison": {
+    "failed_target_prefix": "Я твой слуга, я твой работник.",
+    "accepted_target_prefix": "Привет! Я твой слуга, я твой работник.",
+    "candidate_count": 10,
+    "seed_start": 30000,
+    "sampling": {
+      "temperature": 0.4,
+      "top_k": 50,
+      "top_p": 1.0,
+      "repetition_penalty": 1.05,
+      "do_sample": true
+    }
+  },
+  "decision": {
+    "target_prefix_workaround_accepted": true,
+    "scope": "Base ICL candidate generation when the target would otherwise begin with repeated reference text.",
+    "requirements": [
+      "Use a short prefix absent from the reference transcript.",
+      "Keep the prefix in the exact transcript of any selected candidate WAV.",
+      "Repeat a small listening gate when the reference, model, or runtime changes."
+    ],
+    "non_claims": [
+      "This does not establish a universal fix for Base ICL reference-tail artefacts.",
+      "This does not establish production-grade voice identity retention."
+    ]
+  }
+}

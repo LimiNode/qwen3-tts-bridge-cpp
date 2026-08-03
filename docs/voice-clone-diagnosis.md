@@ -120,6 +120,45 @@ The profile with a period-terminated reference transcript removed the reported
 opening reference-tail artefact in the 30 transcript-profile samples reviewed
 by the local listener. That workaround addresses the request boundary only.
 
+## Repeated-Source Target Prefix Gate
+
+On 2026-08-03, a separate 16.251-second repeated-source reference was used for
+a synthetic-reference candidate search. Its transcript begins repeatedly with
+`Я твой слуга. Я твой работник.`. A 100-candidate ICL attempt that began the
+target with the same phrase reproduced reference material before the intended
+target text. Changing trailing whitespace in the transcript did not address
+that first-target overlap.
+
+A ten-candidate gate then prefixed the target with `Привет! `, a phrase absent
+from the reference transcript. The local listener reported that the opening
+reference continuation was gone. The test inputs, sampling values, and review
+decision are recorded in
+[`voice-clone-repeated-source-prefix-listening-review.json`](benchmark-artifacts/rtx4090-2026-08-03/voice-clone-repeated-source-prefix-listening-review.json).
+
+For synthetic-reference searches using this pattern, begin the target with a
+short phrase absent from the reference transcript, preserve that prefix in the
+selected candidate's transcript, and run a small listening gate before a full
+candidate sweep. This is a narrowly scoped mitigation for target/reference
+prefix overlap; it does not supersede the identity-retention findings below.
+
+## Bootstrap Profile Follow-up
+
+The prefixed repeated-source sweep informed two locally selected 1.7B Base ICL
+profiles: `kraftwerk_robot_ru_source_like` and
+`kraftwerk_robot_ru_warm_metal`. Their final references are user-provided
+processed WAVs with the initial overlap-avoidance phrase removed. In subsequent
+local live listening, both retained their selected character across utterances;
+the first was judged closest to the processed source without claiming identity
+equality, and the second a warmer, metallic robotic character.
+
+These are synthetic bootstrap profiles, not additional recordings of the
+source speaker. They are useful local character-voice experiments, but do not
+turn the original short reference into a verified production voice clone. The
+selection notes and exact candidate hashes are recorded in
+[`voice-clone-bootstrap-prefixed-listening-review.json`](benchmark-artifacts/rtx4090-2026-08-03/voice-clone-bootstrap-prefixed-listening-review.json).
+The final processed-asset acceptance is recorded in
+[`voice-clone-processed-profile-acceptance.json`](benchmark-artifacts/rtx4090-2026-08-03/voice-clone-processed-profile-acceptance.json).
+
 The fixed-seed sweep sounded close to the reference for only three of ten
 target texts. The identity instruction made speech more robotic but did not
 improve identity retention: it produced different robotic voices rather than a
