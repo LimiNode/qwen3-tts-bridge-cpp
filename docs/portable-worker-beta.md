@@ -84,13 +84,22 @@ scripts\setup-python-packaging.ps1 -UseVenv -InstallQwenFork -InstallFasterQwen 
   -FasterQwenSourcePath C:\path\to\faster-qwen3-tts
 scripts\package-python-worker.ps1 -UseVenv -IncludeQwenFork -IncludeFasterQwen `
   -FasterQwenSourcePath C:\path\to\faster-qwen3-tts
-scripts\test-packaged-qwen-worker.ps1 -UseVenv `
-  -ModelPath C:\models\Qwen3-TTS-12Hz-0.6B-CustomVoice
+scripts\model_runtime_manifest.py build `
+  --model-path C:\models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --repository Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  --revision <pinned-revision> `
+  --output .\tmp\customvoice-model-manifest.json
+scripts\test-portable-python-qwen-worker.ps1 -UseVenv `
+  -ModelPath C:\models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
+  -ModelManifest .\tmp\customvoice-model-manifest.json `
+  -RuntimeBackend faster
 ```
 
-The real-model probe is intentionally manual: it depends on the model family,
-the model files, CUDA driver/runtime compatibility, and the chosen GPU. A
-successful mock package does not establish those conditions.
+The real-model probe is intentionally manual: it hashes the staged runtime and
+model with the packaged doctor, requires CUDA, then exchanges PCM with the
+staged worker. It uses eager prefill and disables compilation/CUDA graphs so it
+tests packaging rather than an experimental performance policy. A successful
+mock package does not establish those conditions.
 
 ## Current Acceptance
 

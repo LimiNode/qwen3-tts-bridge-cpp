@@ -14,6 +14,9 @@ _TEST_PORTABLE_PYTHON_WORKER_SCRIPT = (
 _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT = (
     _REPO_ROOT / "scripts" / "test-portable-python-worker-cpp.ps1"
 )
+_TEST_PORTABLE_PYTHON_QWEN_WORKER_SCRIPT = (
+    _REPO_ROOT / "scripts" / "test-portable-python-qwen-worker.ps1"
+)
 _README = _REPO_ROOT / "README.md"
 _PYTHON_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "python-checks.yml"
 _CPP_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "cpp-checks.yml"
@@ -258,6 +261,22 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("worker-python/qwen_tts_worker.cmd", script)
         self.assertIn("$PreviousPythonPath", script)
         self.assertIn("finally", script)
+
+    def test_portable_qwen_smoke_requires_doctor_and_model_manifest(self) -> None:
+        script = _TEST_PORTABLE_PYTHON_QWEN_WORKER_SCRIPT.read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("[string]$ModelPath", script)
+        self.assertIn("[string]$ModelManifest", script)
+        self.assertIn("qwen_tts_doctor.cmd", script)
+        self.assertIn("--model-manifest $ResolvedModelManifest", script)
+        self.assertIn("--require-cuda", script)
+        self.assertIn("verify_packaged_worker.py", script)
+        self.assertIn("--engine qwen", script)
+        self.assertIn("--prefill-backend eager", script)
+        self.assertIn("--no-compile", script)
+        self.assertIn("--no-cuda-graphs", script)
 
     def test_portable_worker_cpp_smoke_uses_direct_python_executable(self) -> None:
         script = _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT.read_text(encoding="utf-8")
