@@ -240,17 +240,21 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("qwen_tts_worker.cmd", script)
+        self.assertIn("qwen_tts_doctor.cmd", script)
         self.assertIn("PYTHONHOME", script)
         self.assertIn("PYTHONPATH", script)
         self.assertIn("PYTHONNOUSERSITE", script)
         self.assertIn("PYTHONDONTWRITEBYTECODE", script)
         self.assertIn("-B -P -s -m qwen_tts_bridge_worker", script)
         self.assertIn("-m qwen_tts_bridge_worker", script)
+        self.assertIn("-m qwen_tts_bridge_worker.doctor", script)
+        self.assertIn('--portable-root "%WORKER_ROOT%."', script)
 
     def test_portable_worker_smoke_wrapper_uses_protocol_verifier(self) -> None:
         script = _TEST_PORTABLE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("verify_packaged_worker.py", script)
+        self.assertIn("qwen_tts_doctor.cmd", script)
         self.assertIn("worker-python/qwen_tts_worker.cmd", script)
         self.assertIn("$PreviousPythonPath", script)
         self.assertIn("finally", script)

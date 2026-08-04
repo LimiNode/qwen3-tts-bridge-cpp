@@ -11,6 +11,8 @@ the worker wheel, its local wheel artifact, and a build manifest under
 `dist/QwenTTSBridge/worker-python`. The generated
 `qwen_tts_worker.cmd` sets `PYTHONHOME`, `PYTHONPATH`, and disables user-site
 imports, so the launched worker does not need a user-installed Python.
+The package also includes `qwen_tts_doctor.cmd`, an explicit integrity check;
+it is not run for every synthesis request.
 
 After the staged isolation probe and a final bytecode cleanup, packaging writes
 and immediately verifies
@@ -38,6 +40,25 @@ scripts\test-portable-python-worker.ps1 -UseVenv
 The last command starts the staged worker with the mock backend. It verifies
 that the private runtime can import the staged worker without leaking the
 source tree into `sys.path`.
+
+Before the first real-model start, after unpacking an update, or when diagnosing
+a machine, run the packaged doctor:
+
+```powershell
+.\dist\QwenTTSBridge\worker-python\qwen_tts_doctor.cmd `
+  --model-path C:\models\Qwen3-TTS-12Hz-1.7B-Base `
+  --model-manifest C:\models\Qwen3-TTS-12Hz-1.7B-Base.manifest.json `
+  --voice-registry .\config\voice-profiles.local.json `
+  --require-cuda `
+  --minimum-compute-capability 8.0
+```
+
+The doctor rehashes the staged Python runtime, checks that its tree manifest is
+the one named by `build-manifest.json`, verifies an optional model content
+manifest, preflights every selected voice WAV/profile, and reports CUDA, GPU,
+and NVIDIA driver data. It fails before a model load when any requested check
+does not match. It does not make a package cryptographically signed; distribute
+the final archive itself with a separately published checksum.
 
 For an additional bridge check, point a MinGW-built example at the staged
 launcher:

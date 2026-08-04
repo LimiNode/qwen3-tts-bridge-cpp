@@ -773,6 +773,7 @@ $PortableRuntimeTreeManifestPath = Join-Path $WorkerOutput "portable-python-tree
 $WorkerPackageSource = Resolve-RepoPath "worker/src/qwen_tts_bridge_worker"
 $WorkerProjectSource = Resolve-RepoPath "worker"
 $LauncherPath = Join-Path $WorkerOutput "qwen_tts_worker.cmd"
+$DoctorLauncherPath = Join-Path $WorkerOutput "qwen_tts_doctor.cmd"
 
 Assert-UnderRepo $PackageRoot
 Assert-UnderRepo $WorkerOutput
@@ -903,6 +904,28 @@ if (Test-Path -LiteralPath $WheelWorkRoot) {
     Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force
 }
 
+function Write-DoctorLauncher {
+    param(
+        [string]$LauncherPath
+    )
+
+    $LauncherContent = @'
+@echo off
+setlocal
+set "WORKER_ROOT=%~dp0"
+set "PYTHONHOME=%WORKER_ROOT%python"
+set "PYTHONPATH=%WORKER_ROOT%python\Lib\site-packages"
+set "PYTHONNOUSERSITE=1"
+set "PYTHONDONTWRITEBYTECODE=1"
+"%WORKER_ROOT%python\python.exe" -B -P -s -m qwen_tts_bridge_worker.doctor --portable-root "%WORKER_ROOT%." %*
+'@
+    [IO.File]::WriteAllText(
+        $LauncherPath,
+        $LauncherContent.Replace("`n", "`r`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
 Assert-PortableSitePaths -SitePackages $SitePackagesOutput
 Invoke-StagedPythonIsolationProbe `
     -PythonRoot $PythonOutput `
@@ -946,11 +969,16 @@ Write-BuildManifest `
     -PortableRuntimeTreeManifest $PortableRuntimeTreeManifestPath
 
 Write-WorkerLauncher -LauncherPath $LauncherPath
+Write-DoctorLauncher -LauncherPath $DoctorLauncherPath
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "models") | Out-Null
 
-if (-not (Test-Path -LiteralPath $LauncherPath)) {
-    throw "Portable Python worker launcher was not found: $LauncherPath"
+if (
+    -not (Test-Path -LiteralPath $LauncherPath) -or
+    -not (Test-Path -LiteralPath $DoctorLauncherPath)
+) {
+    throw "Portable Python worker launchers were not found under: $WorkerOutput"
 }
 
 Write-Host "Portable Python worker launcher: $LauncherPath"
+Write-Host "Portable Python worker doctor: $DoctorLauncherPath"
