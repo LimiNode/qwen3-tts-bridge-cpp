@@ -12,7 +12,8 @@ the worker wheel, its local wheel artifact, and a build manifest under
 `qwen_tts_worker.cmd` sets `PYTHONHOME`, `PYTHONPATH`, and disables user-site
 imports, so the launched worker does not need a user-installed Python.
 
-After bytecode cleanup, packaging writes and immediately verifies
+After the staged isolation probe and a final bytecode cleanup, packaging writes
+and immediately verifies
 `portable-python-tree-manifest.json`. It hashes the actual contents of the
 complete staged `worker-python/python` tree, including the interpreter, DLLs,
 standard library, and `site-packages`. `build-manifest.json` records its

@@ -99,6 +99,59 @@ class PythonRuntimeManifestTests(unittest.TestCase):
                 [entry["path"] for entry in changed_entries],
             )
 
+    def test_verification_rejects_mutated_base_dll(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            base = root / "base"
+            prefix = root / "venv"
+            dll = base / "DLLs" / "_test.pyd"
+            dll.parent.mkdir(parents=True)
+            dll.write_bytes(b"before")
+            (base / "python.exe").write_bytes(b"base executable")
+            (prefix / "Scripts").mkdir(parents=True)
+            (prefix / "Scripts" / "python.exe").write_bytes(b"venv executable")
+            stdlib = base / "Lib"
+            purelib = prefix / "Lib" / "site-packages"
+            stdlib.mkdir(parents=True)
+            purelib.mkdir(parents=True)
+            paths = {
+                "stdlib": str(stdlib),
+                "platstdlib": str(prefix / "Lib"),
+                "purelib": str(purelib),
+                "platlib": str(purelib),
+            }
+            with (
+                patch.object(manifest.sys, "base_prefix", str(base)),
+                patch.object(manifest.sys, "prefix", str(prefix)),
+                patch.object(
+                    manifest.sys,
+                    "executable",
+                    str(prefix / "Scripts" / "python.exe"),
+                ),
+                patch.object(manifest.sysconfig, "get_paths", return_value=paths),
+                patch.object(
+                    manifest,
+                    "_installed_distributions",
+                    return_value=[{"name": "example", "version": "1", "files": []}],
+                ),
+                ):
+                expected = manifest.build_manifest()
+                runtime_files = expected["runtime_files"]
+                if not isinstance(runtime_files, list):
+                    self.fail("runtime manifest must contain a file list")
+                self.assertTrue(
+                    any(
+                        entry["root"] == "base_dlls" and entry["path"] == "_test.pyd"
+                        for entry in runtime_files
+                        if isinstance(entry, dict)
+                    )
+                )
+                manifest.verify_manifest(expected)
+
+                dll.write_bytes(b"after")
+                with self.assertRaisesRegex(ValueError, "does not match"):
+                    manifest.verify_manifest(expected)
+
 
 def _record_hash(value: bytes) -> str:
     digest = hashlib.sha256(value).digest()

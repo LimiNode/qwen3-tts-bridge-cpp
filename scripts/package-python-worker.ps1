@@ -903,6 +903,22 @@ if (Test-Path -LiteralPath $WheelWorkRoot) {
     Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force
 }
 
+Assert-PortableSitePaths -SitePackages $SitePackagesOutput
+Invoke-StagedPythonIsolationProbe `
+    -PythonRoot $PythonOutput `
+    -SitePackages $SitePackagesOutput `
+    -ForbiddenRoots @(
+        $WorkerPackageSource,
+        $PureLib,
+        $PlatLib,
+        $QwenPackageSource,
+        $FasterQwenPackageSource
+    ) `
+    -ProbeQwenImport:($null -ne $QwenPackageSource) `
+    -ProbeFasterQwenImport:($null -ne $FasterQwenPackageSource)
+
+# The probe imports the staged runtime. Seal the final tree only after removing
+# every transient file it could have created.
 Remove-PythonBytecode -Root $PythonOutput
 Invoke-ProjectPython @(
     "scripts/runtime_tree_manifest.py",
@@ -928,20 +944,6 @@ Write-BuildManifest `
     -ToolVersions $PythonToolVersions `
     -PipFreeze $PythonPipFreeze `
     -PortableRuntimeTreeManifest $PortableRuntimeTreeManifestPath
-
-Assert-PortableSitePaths -SitePackages $SitePackagesOutput
-Invoke-StagedPythonIsolationProbe `
-    -PythonRoot $PythonOutput `
-    -SitePackages $SitePackagesOutput `
-    -ForbiddenRoots @(
-        $WorkerPackageSource,
-        $PureLib,
-        $PlatLib,
-        $QwenPackageSource,
-        $FasterQwenPackageSource
-    ) `
-    -ProbeQwenImport:($null -ne $QwenPackageSource) `
-    -ProbeFasterQwenImport:($null -ne $FasterQwenPackageSource)
 
 Write-WorkerLauncher -LauncherPath $LauncherPath
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null

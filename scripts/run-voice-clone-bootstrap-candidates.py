@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import random
 import subprocess
@@ -38,6 +39,7 @@ def main() -> int:
         raise ValueError("candidate_index_start must not be negative")
     if args.max_audio_seconds <= 0:
         raise ValueError("max_audio_seconds must be greater than zero")
+    _require_isolated_runtime()
     _prepend_paths(args)
 
     import numpy as np
@@ -385,6 +387,39 @@ def _prepend_paths(args: argparse.Namespace) -> None:
             sys.path.insert(0, path_text)
 
 
+def _require_isolated_runtime() -> None:
+    if not sys.flags.isolated:
+        raise ValueError(
+            "authoritative bootstrap requires Python isolated mode; "
+            "use scripts/run-authoritative-voice-clone-bootstrap.ps1"
+        )
+    if not sys.flags.no_user_site or not sys.flags.safe_path:
+        raise ValueError("authoritative bootstrap requires Python -I isolation")
+
+    allowed_roots = (Path(sys.prefix).resolve(), Path(sys.base_prefix).resolve())
+    unexpected_paths: list[str] = []
+    for entry in sys.path:
+        if not entry:
+            unexpected_paths.append("<current-directory>")
+            continue
+        path = Path(entry).resolve()
+        if not any(_is_under_path(root, path) for root in allowed_roots):
+            unexpected_paths.append(str(path))
+    if unexpected_paths:
+        raise ValueError(
+            "authoritative bootstrap has unexpected sys.path entries: "
+            + "; ".join(unexpected_paths)
+        )
+
+
+def _is_under_path(root: Path, path: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
 def _seed(seed: int, np: Any, torch: Any) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -642,12 +677,13 @@ def _trace_matches_terminal_metadata(
 
 
 def _trace_is_complete(trace: dict[str, object]) -> bool:
+    generated_codec_frame_count = trace.get("generated_codec_frame_count")
     return (
         trace.get("trace_kind") == "voice_clone_streaming_v1"
         and isinstance(trace.get("generated_codec_sha256"), str)
         and bool(trace.get("generated_codec_sha256"))
-        and isinstance(trace.get("generated_codec_frame_count"), int)
-        and trace["generated_codec_frame_count"] > 0
+        and isinstance(generated_codec_frame_count, int)
+        and generated_codec_frame_count > 0
         and trace.get("termination_reason") == "eos"
         and isinstance(trace.get("terminal_step_index"), int)
         and isinstance(trace.get("generated_steps"), int)
@@ -708,15 +744,24 @@ def _verify_model_runtime_manifest(
     model_path: Path,
     manifest: dict[str, object],
 ) -> None:
-    from model_runtime_manifest import verify_manifest
-
-    verify_manifest(model_path, manifest)
+    _load_sibling_module("model_runtime_manifest").verify_manifest(
+        model_path,
+        manifest,
+    )
 
 
 def _verify_python_runtime_manifest(manifest: dict[str, object]) -> None:
-    from python_runtime_manifest import verify_manifest
+    _load_sibling_module("python_runtime_manifest").verify_manifest(manifest)
 
-    verify_manifest(manifest)
+
+def _load_sibling_module(name: str) -> Any:
+    path = Path(__file__).with_name(f"{name}.py")
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"cannot load required runner module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _canonical_json_bytes(value: object) -> bytes:

@@ -168,6 +168,44 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "clean source tree"):
                 RUNNER._git_source_metadata(source)
 
+    def test_authoritative_runtime_requires_isolated_python_without_external_paths(
+        self,
+    ) -> None:
+        with patch.object(
+            RUNNER.sys,
+            "flags",
+            SimpleNamespace(isolated=1, no_user_site=1, safe_path=True),
+        ), patch.object(RUNNER.sys, "prefix", "C:/venv"), patch.object(
+            RUNNER.sys,
+            "base_prefix",
+            "C:/base",
+        ), patch.object(
+            RUNNER.sys,
+            "path",
+            ["C:/base/Lib", "C:/venv/Lib/site-packages"],
+        ):
+            RUNNER._require_isolated_runtime()
+
+        with patch.object(
+            RUNNER.sys,
+            "flags",
+            SimpleNamespace(isolated=0, no_user_site=1, safe_path=True),
+        ):
+            with self.assertRaisesRegex(ValueError, "isolated mode"):
+                RUNNER._require_isolated_runtime()
+
+        with patch.object(
+            RUNNER.sys,
+            "flags",
+            SimpleNamespace(isolated=1, no_user_site=1, safe_path=True),
+        ), patch.object(RUNNER.sys, "prefix", "C:/venv"), patch.object(
+            RUNNER.sys,
+            "base_prefix",
+            "C:/base",
+        ), patch.object(RUNNER.sys, "path", ["C:/base/Lib", "C:/external"]):
+            with self.assertRaisesRegex(ValueError, "unexpected sys.path"):
+                RUNNER._require_isolated_runtime()
+
     def test_resume_requires_matching_completed_sidecar(self) -> None:
         experiment_contract = _experiment_contract()
         contract = _candidate_contract(experiment_contract)

@@ -13,7 +13,7 @@ import sysconfig
 from pathlib import Path
 from typing import Iterable
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 _TRANSIENT_DIRECTORY_NAMES = {"__pycache__"}
 _TRANSIENT_FILE_SUFFIXES = {".pyc", ".pyo"}
 
@@ -213,8 +213,19 @@ def _runtime_files(file_hasher: _FileHasher) -> list[dict[str, object]]:
 
 def _runtime_file_roots() -> list[tuple[str, Path]]:
     paths = sysconfig.get_paths()
+    base_prefix = Path(sys.base_prefix)
+    prefix = Path(sys.prefix)
+    base_stdlib_zip = base_prefix / (
+        f"python{sys.version_info.major}{sys.version_info.minor}.zip"
+    )
+    base_python_dlls = sorted(base_prefix.glob("python*.dll"))
     candidates = [
         ("executable", Path(sys.executable)),
+        ("base_executable", base_prefix / "python.exe"),
+        ("base_stdlib_zip", base_stdlib_zip),
+        *(("base_python_dll", path) for path in base_python_dlls),
+        ("base_dlls", base_prefix / "DLLs"),
+        ("prefix_dlls", prefix / "DLLs"),
         ("stdlib", Path(paths["stdlib"])),
         ("platstdlib", Path(paths["platstdlib"])),
         ("purelib", Path(paths["purelib"])),
@@ -224,12 +235,14 @@ def _runtime_file_roots() -> list[tuple[str, Path]]:
     seen: set[Path] = set()
     for root_name, root in candidates:
         resolved = root.resolve()
+        if not resolved.exists():
+            continue
         if resolved in seen:
             continue
-        if not resolved.exists():
-            raise ValueError(f"Python runtime root is missing: {resolved}")
         seen.add(resolved)
         roots.append((root_name, resolved))
+    if not any(root_name == "executable" for root_name, _ in roots):
+        raise ValueError(f"Python executable is missing: {sys.executable}")
     return roots
 
 

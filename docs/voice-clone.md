@@ -66,10 +66,11 @@ Pass that file to every bootstrap invocation with
 set before generating or resuming candidates.
 
 Build and verify a matching Python runtime manifest in the same interpreter.
-Schema 5 hashes actual bytes for the active interpreter, standard library,
-active site-packages, and every recorded distribution file. It also records
-the wheel `RECORD` SHA only as supply-chain diagnostics and rejects extra files
-under the active runtime roots:
+Schema 5.1 hashes actual bytes for the active interpreter, base Python runtime,
+native `DLLs`, standard-library zip, standard library, active site-packages,
+and every recorded distribution file. It also records the wheel `RECORD` SHA
+only as supply-chain diagnostics and rejects extra files under the active
+runtime roots:
 
 ```powershell
 .venv-faster-qwen\Scripts\python.exe scripts\python_runtime_manifest.py build `
@@ -78,9 +79,21 @@ under the active runtime roots:
 
 Pass it as `--python-runtime-manifest`. The runner rehashes the active runtime
 before generating or resuming candidates. This takes minutes for the local
-Torch/CUDA environment and is deliberately fail-closed. An authoritative run
-also requires both the FasterQwen and bridge source trees to be fully clean,
-including no untracked files.
+Torch/CUDA environment and is deliberately fail-closed. Run candidates through
+the authoritative launcher, which clears Python path overrides and invokes the
+interpreter with `-I`:
+
+```powershell
+.\scripts\run-authoritative-voice-clone-bootstrap.ps1 -- `
+  --model-path C:\models\Qwen3-TTS-12Hz-1.7B-Base `
+  --model-runtime-manifest tmp\voice-clone-bootstrap\model-runtime-manifest.json `
+  --python-runtime-manifest tmp\voice-clone-bootstrap\python-runtime-manifest.json `
+  --faster-source C:\repo\faster-qwen3-tts `
+  --voice-registry config\voice-profiles.local.json
+```
+
+An authoritative run also requires both the FasterQwen and bridge source trees
+to be fully clean, including no untracked files.
 
 Schema 5 additionally requires the voice-clone generation trace to contain EOS
 termination, step accounting, frame count, and codec hash fields that agree

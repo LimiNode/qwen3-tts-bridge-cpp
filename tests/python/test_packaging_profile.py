@@ -225,6 +225,17 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("QTB_FORBIDDEN_SYS_PATH_ROOTS", script)
         self.assertIn("portable worker sys.path leaks source paths", script)
 
+    def test_portable_worker_tree_is_sealed_after_isolation_probe(self) -> None:
+        script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
+
+        probe_index = script.rindex("Invoke-StagedPythonIsolationProbe `")
+        cleanup_index = script.rindex("Remove-PythonBytecode -Root $PythonOutput")
+        tree_build_index = script.rindex("scripts/runtime_tree_manifest.py")
+        manifest_index = script.rindex("Write-BuildManifest `")
+        self.assertLess(probe_index, cleanup_index)
+        self.assertLess(cleanup_index, tree_build_index)
+        self.assertLess(tree_build_index, manifest_index)
+
     def test_portable_worker_script_writes_cmd_launcher(self) -> None:
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
