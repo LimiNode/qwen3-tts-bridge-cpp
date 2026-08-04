@@ -120,3 +120,38 @@ The source-only gate passed before this addendum was written:
 | Ruff | PASS |
 | Pyright | PASS, 0 errors / 0 warnings |
 | Python unit tests | PASS, 418 tests, 6 skipped |
+
+## Schema-5 Actual-Content Addendum
+
+Schema 5 replaces the historical wheel-`RECORD` identity with an actual-byte
+manifest of the active Python runtime. It also requires a clean tracked and
+untracked source tree, a complete terminal generation trace, and an actual-byte
+tree manifest for the staged portable Python runtime. A candidate run therefore
+fails closed when an installed package file changes without a corresponding
+`RECORD` update, when an unrecorded runtime file appears, or when the model
+trace cannot prove EOS completion.
+
+The implementation head was
+`218cddd6d2e806a81c33e9dceba2cc7a90776c22`
+(`fix(provenance): verify runtime bytes for voice clone evidence`). The runtime
+checks below were performed from a clean detached staging worktree so that the
+clean-source policy was part of the tested contract.
+
+| Gate | Result |
+| --- | --- |
+| `scripts/check-python.ps1 -UseVenv` | PASS |
+| Ruff | PASS |
+| Pyright | PASS, 0 errors |
+| Python unit tests | PASS, 422 tests, 6 skipped |
+| MinGW full CMake build | PASS |
+| Full CTest | PASS, 10/10 in 51.72 s |
+| Strict Python runtime manifest | PASS; build 190.03 s, verify about 90 s, 17.9 MB manifest |
+| Portable Python package mock smoke | PASS; staged tree manifest built and reverified |
+| C++ against staged portable mock worker | PASS; 14,400 PCM bytes in 3 chunks |
+| Schema-5 CUDA clone smoke | PASS; `eos`, 50 generated/emitted codec steps, 50 PCM frames |
+
+The strict runtime rehash is deliberately expensive: it is an authoritative
+integrity gate rather than a per-request operation. The portable package check
+continues to be a mock-worker packaging smoke. A real Qwen/CUDA one-folder
+package and the deferred blind four-profile identity evaluation remain separate
+release work; neither is claimed by this report.
