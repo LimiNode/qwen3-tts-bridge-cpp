@@ -1,4 +1,4 @@
-"""Build and verify content manifests for installed Python distributions."""
+"""Build and verify actual-content manifests for the active Python runtime."""
 
 from __future__ import annotations
 
@@ -9,10 +9,13 @@ import importlib.metadata
 import json
 import platform
 import sys
+import sysconfig
 from pathlib import Path
 from typing import Iterable
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
+_TRANSIENT_DIRECTORY_NAMES = {"__pycache__"}
+_TRANSIENT_FILE_SUFFIXES = {".pyc", ".pyo"}
 
 
 def main() -> int:
@@ -34,9 +37,10 @@ def main() -> int:
 
 
 def build_manifest() -> dict[str, object]:
-    """Return a deterministic content manifest for this Python environment."""
+    """Return a deterministic actual-content manifest for this Python runtime."""
 
-    distributions = _installed_distributions()
+    file_hasher = _FileHasher()
+    distributions = _installed_distributions(file_hasher)
     if not distributions:
         raise ValueError("Python environment has no installed distributions")
     payload: dict[str, object] = {
@@ -46,33 +50,52 @@ def build_manifest() -> dict[str, object]:
             "version_info": list(sys.version_info[:3]),
         },
         "distributions": distributions,
+        "runtime_files": _runtime_files(file_hasher),
     }
-    payload["installed_distributions_manifest_sha256"] = _sha256(
-        _json_bytes(payload)
-    )
+    payload["python_runtime_manifest_sha256"] = _sha256(_json_bytes(payload))
     return payload
 
 
 def verify_manifest(manifest: dict[str, object]) -> None:
-    """Raise ``ValueError`` unless this environment matches ``manifest``."""
+    """Raise ``ValueError`` unless the active runtime matches ``manifest``."""
 
     if manifest.get("python_runtime_manifest_schema_version") != _SCHEMA_VERSION:
         raise ValueError("unsupported Python runtime manifest schema")
-    expected_hash = manifest.get("installed_distributions_manifest_sha256")
+    expected_hash = manifest.get("python_runtime_manifest_sha256")
     unsigned = dict(manifest)
-    unsigned.pop("installed_distributions_manifest_sha256", None)
+    unsigned.pop("python_runtime_manifest_sha256", None)
     if (
         not isinstance(expected_hash, str)
         or _sha256(_json_bytes(unsigned)) != expected_hash
     ):
         raise ValueError("Python runtime manifest SHA is invalid")
     if manifest != build_manifest():
-        raise ValueError("installed Python distributions do not match manifest")
+        raise ValueError("active Python runtime does not match manifest")
 
 
-def _installed_distributions() -> list[dict[str, object]]:
+class _FileHasher:
+    """Avoid reading the same runtime file twice while building one manifest."""
+
+    def __init__(self) -> None:
+        self._cache: dict[Path, str] = {}
+
+    def sha256(self, path: Path) -> str:
+        resolved = path.resolve()
+        cached = self._cache.get(resolved)
+        if cached is not None:
+            return cached
+        digest = hashlib.sha256()
+        with resolved.open("rb") as source:
+            while chunk := source.read(1024 * 1024):
+                digest.update(chunk)
+        result = digest.hexdigest()
+        self._cache[resolved] = result
+        return result
+
+
+def _installed_distributions(file_hasher: _FileHasher) -> list[dict[str, object]]:
     entries = [
-        _distribution_entry(distribution)
+        _distribution_entry(distribution, file_hasher)
         for distribution in importlib.metadata.distributions()
         if _is_installed_in_active_environment(distribution)
     ]
@@ -99,6 +122,7 @@ def _is_installed_in_active_environment(
 
 def _distribution_entry(
     distribution: importlib.metadata.Distribution,
+    file_hasher: _FileHasher,
 ) -> dict[str, object]:
     try:
         raw_name = distribution.metadata["Name"]
@@ -115,15 +139,26 @@ def _distribution_entry(
         "name": _normalize_name(raw_name),
         "version": distribution.version,
         "files": [
-            {
-                "path": path.as_posix(),
-                "sha256": _recorded_file_sha256(distribution, path),
-            }
+            _distribution_file_entry(distribution, path, file_hasher)
             for path in sorted(
                 _regular_files(distribution, files),
                 key=lambda item: item.as_posix(),
             )
         ],
+    }
+
+
+def _distribution_file_entry(
+    distribution: importlib.metadata.Distribution,
+    path: importlib.metadata.PackagePath,
+    file_hasher: _FileHasher,
+) -> dict[str, object]:
+    resolved = Path(str(distribution.locate_file(path)))
+    return {
+        "path": path.as_posix(),
+        "recorded_sha256": _recorded_file_sha256(path),
+        "actual_sha256": file_hasher.sha256(resolved),
+        "size_bytes": resolved.stat().st_size,
     }
 
 
@@ -133,23 +168,91 @@ def _regular_files(
 ) -> Iterable[importlib.metadata.PackagePath]:
     for path in files:
         resolved = Path(str(distribution.locate_file(path)))
-        if resolved.is_file():
+        if resolved.is_file() and not _is_transient_path(Path(str(path))):
             yield path
 
 
-def _recorded_file_sha256(
-    distribution: importlib.metadata.Distribution,
-    path: importlib.metadata.PackagePath,
-) -> str:
+def _recorded_file_sha256(path: importlib.metadata.PackagePath) -> str | None:
     file_hash = path.hash
     if file_hash is None:
-        return _sha256(Path(str(distribution.locate_file(path))).read_bytes())
+        return None
     if file_hash.mode != "sha256":
         raise ValueError(
             f"installed Python distribution file has unsupported RECORD hash: {path}"
         )
     encoded = file_hash.value.encode("ascii")
     return base64.urlsafe_b64decode(encoded + b"=" * (-len(encoded) % 4)).hex()
+
+
+def _runtime_files(file_hasher: _FileHasher) -> list[dict[str, object]]:
+    entries: list[dict[str, object]] = []
+    for root_name, root in _runtime_file_roots():
+        if root.is_file():
+            entries.append(
+                {
+                    "root": root_name,
+                    "path": root.name,
+                    "sha256": file_hasher.sha256(root),
+                    "size_bytes": root.stat().st_size,
+                }
+            )
+            continue
+        for path in _files_under_root(root, root_name):
+            entries.append(
+                {
+                    "root": root_name,
+                    "path": path.relative_to(root).as_posix(),
+                    "sha256": file_hasher.sha256(path),
+                    "size_bytes": path.stat().st_size,
+                }
+            )
+    if not entries:
+        raise ValueError("Python runtime has no manifestable files")
+    return entries
+
+
+def _runtime_file_roots() -> list[tuple[str, Path]]:
+    paths = sysconfig.get_paths()
+    candidates = [
+        ("executable", Path(sys.executable)),
+        ("stdlib", Path(paths["stdlib"])),
+        ("platstdlib", Path(paths["platstdlib"])),
+        ("purelib", Path(paths["purelib"])),
+        ("platlib", Path(paths["platlib"])),
+    ]
+    roots: list[tuple[str, Path]] = []
+    seen: set[Path] = set()
+    for root_name, root in candidates:
+        resolved = root.resolve()
+        if resolved in seen:
+            continue
+        if not resolved.exists():
+            raise ValueError(f"Python runtime root is missing: {resolved}")
+        seen.add(resolved)
+        roots.append((root_name, resolved))
+    return roots
+
+
+def _files_under_root(root: Path, root_name: str) -> list[Path]:
+    if not root.is_dir():
+        raise ValueError(f"Python runtime root is not a directory: {root}")
+    files = [
+        path
+        for path in root.rglob("*")
+        if path.is_file()
+        and not _is_transient_path(path.relative_to(root))
+        and not (
+            root_name == "stdlib"
+            and path.relative_to(root).parts[0] == "site-packages"
+        )
+    ]
+    return sorted(files, key=lambda path: path.relative_to(root).as_posix())
+
+
+def _is_transient_path(relative_path: Path) -> bool:
+    return bool(
+        set(relative_path.parts).intersection(_TRANSIENT_DIRECTORY_NAMES)
+    ) or relative_path.name.endswith(tuple(_TRANSIENT_FILE_SUFFIXES))
 
 
 def _normalize_name(value: str) -> str:

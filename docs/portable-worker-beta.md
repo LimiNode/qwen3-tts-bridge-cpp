@@ -12,6 +12,13 @@ the worker wheel, its local wheel artifact, and a build manifest under
 `qwen_tts_worker.cmd` sets `PYTHONHOME`, `PYTHONPATH`, and disables user-site
 imports, so the launched worker does not need a user-installed Python.
 
+After bytecode cleanup, packaging writes and immediately verifies
+`portable-python-tree-manifest.json`. It hashes the actual contents of the
+complete staged `worker-python/python` tree, including the interpreter, DLLs,
+standard library, and `site-packages`. `build-manifest.json` records its
+SHA-256. The manifest excludes only transient `__pycache__`, `.pyc`, and `.pyo`
+files.
+
 Model weights are deliberately external. Copy a compatible model directory
 next to the distribution or provide its absolute path at launch; do not put
 model weights in Git or in the worker package.

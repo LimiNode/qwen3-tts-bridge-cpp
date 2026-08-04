@@ -15,7 +15,7 @@ import wave
 from pathlib import Path
 from typing import Any, Iterable
 
-_SCHEMA_VERSION = 4
+_SCHEMA_VERSION = 5
 _LANGUAGE = "Russian"
 DEFAULT_TEXT = (
     "Привет! Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; "
@@ -551,15 +551,7 @@ def _terminal_outcome(
     if final_metadata.get("hit_max_seq_len") is not False:
         failures.append("terminal_hit_max_seq_len")
 
-    generated_codec_sha256 = trace.get("generated_codec_sha256")
-    generated_codec_frame_count = trace.get("generated_codec_frame_count")
-    trace_complete = (
-        trace.get("trace_kind") == "voice_clone_streaming_v1"
-        and isinstance(generated_codec_sha256, str)
-        and bool(generated_codec_sha256)
-        and isinstance(generated_codec_frame_count, int)
-        and generated_codec_frame_count > 0
-    )
+    trace_complete = _trace_is_complete(trace)
     if not trace_complete:
         failures.append("generation_trace_incomplete")
 
@@ -611,7 +603,10 @@ def _trace_matches_terminal_metadata(
     final_metadata: dict[str, object],
     trace: dict[str, object],
 ) -> bool:
+    if not _trace_is_complete(trace):
+        return False
     for field in (
+        "termination_reason",
         "terminal_step_index",
         "generated_steps",
         "emitted_steps",
@@ -619,10 +614,48 @@ def _trace_matches_terminal_metadata(
         "hit_max_new_tokens",
         "hit_max_seq_len",
     ):
-        trace_value = trace.get(field)
-        if trace_value is not None and final_metadata.get(field) != trace_value:
+        if final_metadata.get(field) != trace.get(field):
             return False
-    return True
+    generated_steps = trace.get("generated_steps")
+    emitted_steps = trace.get("emitted_steps")
+    terminal_step_index = trace.get("terminal_step_index")
+    generated_codec_frame_count = trace.get("generated_codec_frame_count")
+    if not all(
+        isinstance(value, int)
+        for value in (
+            generated_steps,
+            emitted_steps,
+            terminal_step_index,
+            generated_codec_frame_count,
+        )
+    ):
+        return False
+    assert isinstance(generated_steps, int)
+    assert isinstance(emitted_steps, int)
+    assert isinstance(terminal_step_index, int)
+    assert isinstance(generated_codec_frame_count, int)
+    return (
+        generated_steps >= emitted_steps > 0
+        and emitted_steps == generated_codec_frame_count
+        and generated_steps - 1 <= terminal_step_index <= generated_steps + 1
+    )
+
+
+def _trace_is_complete(trace: dict[str, object]) -> bool:
+    return (
+        trace.get("trace_kind") == "voice_clone_streaming_v1"
+        and isinstance(trace.get("generated_codec_sha256"), str)
+        and bool(trace.get("generated_codec_sha256"))
+        and isinstance(trace.get("generated_codec_frame_count"), int)
+        and trace["generated_codec_frame_count"] > 0
+        and trace.get("termination_reason") == "eos"
+        and isinstance(trace.get("terminal_step_index"), int)
+        and isinstance(trace.get("generated_steps"), int)
+        and isinstance(trace.get("emitted_steps"), int)
+        and trace.get("hit_eos") is True
+        and trace.get("hit_max_new_tokens") is False
+        and trace.get("hit_max_seq_len") is False
+    )
 
 
 def _experiment_contract(
@@ -648,8 +681,8 @@ def _experiment_contract(
         "bridge_source": _git_source_metadata(Path(__file__).resolve().parents[1]),
         "runtime": _runtime_metadata(torch),
         "python_runtime_manifest": {
-            "installed_distributions_manifest_sha256": python_runtime_manifest.get(
-                "installed_distributions_manifest_sha256"
+            "python_runtime_manifest_sha256": python_runtime_manifest.get(
+                "python_runtime_manifest_sha256"
             ),
         },
     }
@@ -694,12 +727,22 @@ def _canonical_json_bytes(value: object) -> bytes:
 
 def _git_source_metadata(source_path: Path) -> dict[str, object]:
     source_path = source_path.resolve()
-    status = _git_command(source_path, "status", "--porcelain")
+    status = _git_command(
+        source_path,
+        "status",
+        "--porcelain",
+        "--untracked-files=all",
+    )
+    if status:
+        raise ValueError(
+            "authoritative bootstrap requires a clean source tree: "
+            f"{source_path}"
+        )
     return {
         "commit": _git_command(source_path, "rev-parse", "HEAD"),
         "tree": _git_command(source_path, "rev-parse", "HEAD^{tree}"),
-        "dirty": bool(status),
-        "status_sha256": _sha256(status.encode("utf-8")),
+        "dirty": False,
+        "status_sha256": _sha256(b""),
         "module_bundle_sha256": _source_bundle_sha256(source_path),
     }
 

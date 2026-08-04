@@ -540,7 +540,8 @@ function Write-BuildManifest {
         [object[]]$Wheels,
         [object]$PythonEnvironment,
         [object]$ToolVersions,
-        [string[]]$PipFreeze
+        [string[]]$PipFreeze,
+        [string]$PortableRuntimeTreeManifest
     )
 
     $Manifest = [ordered]@{
@@ -556,6 +557,10 @@ function Write-BuildManifest {
         python_tools = $ToolVersions
         pip_freeze = $PipFreeze
         wheels = $Wheels
+        portable_runtime_tree_manifest = [ordered]@{
+            path = Split-Path -Leaf $PortableRuntimeTreeManifest
+            sha256 = Get-FileSha256 $PortableRuntimeTreeManifest
+        }
     }
     $Json = $Manifest | ConvertTo-Json -Depth 8
     [IO.File]::WriteAllText(
@@ -764,6 +769,7 @@ $PythonOutput = Join-Path $WorkerOutput "python"
 $SitePackagesOutput = Join-Path $PythonOutput "Lib/site-packages"
 $WheelWorkRoot = Join-Path $WorkerOutput ".wheel-build"
 $WheelArtifactRoot = Join-Path $WorkerOutput "wheels"
+$PortableRuntimeTreeManifestPath = Join-Path $WorkerOutput "portable-python-tree-manifest.json"
 $WorkerPackageSource = Resolve-RepoPath "worker/src/qwen_tts_bridge_worker"
 $WorkerProjectSource = Resolve-RepoPath "worker"
 $LauncherPath = Join-Path $WorkerOutput "qwen_tts_worker.cmd"
@@ -893,18 +899,36 @@ if ($null -ne $FasterQwenPackageSource) {
 Assert-CleanSources -Wheels $WheelReports
 $PythonPipFreeze = Get-PipFreeze -Path $SitePackagesOutput
 
-Write-BuildManifest `
-    -Path (Join-Path $WorkerOutput "build-manifest.json") `
-    -Wheels $WheelReports `
-    -PythonEnvironment $PythonEnvironment `
-    -ToolVersions $PythonToolVersions `
-    -PipFreeze $PythonPipFreeze
-
 if (Test-Path -LiteralPath $WheelWorkRoot) {
     Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force
 }
 
 Remove-PythonBytecode -Root $PythonOutput
+Invoke-ProjectPython @(
+    "scripts/runtime_tree_manifest.py",
+    "build",
+    "--root",
+    $PythonOutput,
+    "--output",
+    $PortableRuntimeTreeManifestPath
+)
+Invoke-ProjectPython @(
+    "scripts/runtime_tree_manifest.py",
+    "verify",
+    "--root",
+    $PythonOutput,
+    "--manifest",
+    $PortableRuntimeTreeManifestPath
+)
+
+Write-BuildManifest `
+    -Path (Join-Path $WorkerOutput "build-manifest.json") `
+    -Wheels $WheelReports `
+    -PythonEnvironment $PythonEnvironment `
+    -ToolVersions $PythonToolVersions `
+    -PipFreeze $PythonPipFreeze `
+    -PortableRuntimeTreeManifest $PortableRuntimeTreeManifestPath
+
 Assert-PortableSitePaths -SitePackages $SitePackagesOutput
 Invoke-StagedPythonIsolationProbe `
     -PythonRoot $PythonOutput `
@@ -918,7 +942,6 @@ Invoke-StagedPythonIsolationProbe `
     ) `
     -ProbeQwenImport:($null -ne $QwenPackageSource) `
     -ProbeFasterQwenImport:($null -ne $FasterQwenPackageSource)
-Remove-PythonBytecode -Root $PythonOutput
 
 Write-WorkerLauncher -LauncherPath $LauncherPath
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null

@@ -36,10 +36,10 @@ candidate as a WAV plus a neighbouring `.wav.json` sidecar. The sidecar pins
 the source text, voice-profile reference hashes, sampling settings, generation
 limits, PCM/WAV hashes, full terminal-stream evidence, generation trace, and
 graph-reset result. It also records the SHA-256 of a shared experiment contract
-that pins the model content manifest and the installed Python-distribution
-content, Faster and bridge source trees, runner source, and Python/CUDA runtime
-provenance. Absolute paths are saved only as diagnostic locations and do not
-affect the identity hash.
+that pins the model content manifest, actual Python runtime bytes, clean Faster
+and bridge source trees, runner source, and Python/CUDA runtime provenance.
+Absolute paths are saved only as diagnostic locations and do not affect the
+identity hash.
 
 `--resume` accepts only a matching completed sidecar. It will refuse an
 untracked WAV, a changed model/runtime/code contract, a changed
@@ -47,7 +47,8 @@ seed/profile/text/sampling contract, a changed WAV, or a candidate whose saved
 terminal evidence no longer proves an EOS completion and cache reset. The audio
 cap is also fail-closed: a truncated stream is not written as a selectable
 candidate. Sidecars written by older schemas remain historical evidence and
-cannot be resumed under schema 4.
+cannot be resumed under schema 5. Schema 4 recorded wheel `RECORD` hashes and
+remains historical evidence only; it did not rehash the installed file bytes.
 
 Before a bootstrap run, build a model content manifest once for the exact local
 snapshot and keep it with the experiment evidence:
@@ -65,17 +66,26 @@ Pass that file to every bootstrap invocation with
 set before generating or resuming candidates.
 
 Build and verify a matching Python runtime manifest in the same interpreter.
-The manifest records wheel `RECORD` file hashes for installed distributions;
-it is intentionally separate from the bridge source bundle:
+Schema 5 hashes actual bytes for the active interpreter, standard library,
+active site-packages, and every recorded distribution file. It also records
+the wheel `RECORD` SHA only as supply-chain diagnostics and rejects extra files
+under the active runtime roots:
 
 ```powershell
 .venv-faster-qwen\Scripts\python.exe scripts\python_runtime_manifest.py build `
   --output tmp\voice-clone-bootstrap\python-runtime-manifest.json
 ```
 
-Pass it as `--python-runtime-manifest`. The runner verifies all distributions
-installed in the active environment, including their recorded package files,
-before generating or resuming candidates.
+Pass it as `--python-runtime-manifest`. The runner rehashes the active runtime
+before generating or resuming candidates. This takes minutes for the local
+Torch/CUDA environment and is deliberately fail-closed. An authoritative run
+also requires both the FasterQwen and bridge source trees to be fully clean,
+including no untracked files.
+
+Schema 5 additionally requires the voice-clone generation trace to contain EOS
+termination, step accounting, frame count, and codec hash fields that agree
+with the final stream metadata. Older FasterQwen revisions cannot satisfy this
+contract.
 
 These guarantees make a listening selection reproducible; they do not turn a
 synthetic bootstrap candidate into a verified identity clone.

@@ -12,6 +12,8 @@ reproducible evidence retained under `docs/benchmark-artifacts/`.
 - [Authoritative baseline, 2026-08-03](authoritative-baseline-2026-08-03.md):
   clean-worktree quality gates and stdio worker-handshake evidence before the
   next voice-clone runner changes.
+- [Schema 5 provenance plan](schema-5-provenance-plan.md): actual-byte runtime
+  evidence and migration rules for authoritative voice-clone candidates.
 
 These reports describe a narrow internal configuration. They do not make
 performance or compatibility claims for arbitrary models, drivers, CUDA stacks,

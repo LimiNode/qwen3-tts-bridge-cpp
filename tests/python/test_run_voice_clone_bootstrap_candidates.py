@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -64,6 +65,7 @@ def _trace() -> dict[str, object]:
         "trace_kind": "voice_clone_streaming_v1",
         "generated_codec_sha256": "a" * 64,
         "generated_codec_frame_count": 32,
+        "termination_reason": "eos",
         "terminal_step_index": 32,
         "generated_steps": 32,
         "emitted_steps": 32,
@@ -108,6 +110,22 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
         )
         self.assertIn("generation_trace_inconsistent", mismatched["failures"])
 
+        incomplete_trace = _trace()
+        incomplete_trace.pop("generated_steps")
+        incomplete = RUNNER._terminal_outcome(
+            _stream_outcome(),
+            incomplete_trace,
+            {
+                "talker_graph_reset": True,
+                "predictor_graphs_reset": 2,
+                "diagnostic_reset_state": {
+                    "talker_static_cache_sequence_length": 0,
+                    "predictor_static_cache_sequence_lengths": [0, 0],
+                },
+            },
+        )
+        self.assertIn("generation_trace_incomplete", incomplete["failures"])
+
     def test_terminal_outcome_rejects_safety_or_budget_truncation(self) -> None:
         outcome = RUNNER._terminal_outcome(
             {
@@ -133,6 +151,23 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
         self.assertIn("generation_trace_incomplete", outcome["failures"])
         self.assertIn("generation_reset_incomplete", outcome["failures"])
 
+    def test_authoritative_source_metadata_requires_clean_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source = Path(temporary_directory)
+            _git(source, "init")
+            _git(source, "config", "user.email", "tests@example.invalid")
+            _git(source, "config", "user.name", "Tests")
+            (source / "module.py").write_text("value = 1\n", encoding="utf-8")
+            _git(source, "add", "module.py")
+            _git(source, "commit", "-m", "initial")
+
+            metadata = RUNNER._git_source_metadata(source)
+            self.assertFalse(metadata["dirty"])
+
+            (source / "extra.py").write_text("value = 2\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "clean source tree"):
+                RUNNER._git_source_metadata(source)
+
     def test_resume_requires_matching_completed_sidecar(self) -> None:
         experiment_contract = _experiment_contract()
         contract = _candidate_contract(experiment_contract)
@@ -156,7 +191,7 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             RUNNER._write_json(
                 RUNNER._sidecar_path(output_path),
                 {
-                    "schema_version": 4,
+                    "schema_version": 5,
                     "candidate_contract": contract,
                     "experiment_contract": experiment_contract,
                     "status": "completed",
@@ -185,7 +220,7 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             RUNNER._write_json(
                 RUNNER._sidecar_path(output_path),
                 {
-                    "schema_version": 4,
+                    "schema_version": 5,
                     "candidate_contract": contract,
                     "experiment_contract": tampered_contract,
                     "status": "completed",
@@ -205,7 +240,7 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             RUNNER._write_json(
                 RUNNER._sidecar_path(output_path),
                 {
-                    "schema_version": 4,
+                    "schema_version": 5,
                     "candidate_contract": contract,
                     "experiment_contract": experiment_contract,
                     "status": "completed",
@@ -233,7 +268,7 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
             RUNNER._write_json(
                 RUNNER._sidecar_path(output_path),
                 {
-                    "schema_version": 4,
+                    "schema_version": 5,
                     "candidate_contract": contract,
                     "experiment_contract": experiment_contract,
                     "status": "completed",
@@ -412,3 +447,12 @@ class BootstrapCandidateRunnerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _git(path: Path, *arguments: str) -> None:
+    subprocess.run(
+        ["git", "-C", str(path), *arguments],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
