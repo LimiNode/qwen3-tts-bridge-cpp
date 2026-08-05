@@ -25,6 +25,16 @@ function Assert-Test {
     }
 }
 
+function Get-MarkerSha256 {
+    param([string]$PackagePath)
+
+    $marker = Join-Path $PackagePath "marker.txt"
+    if (-not (Test-Path -LiteralPath $marker)) {
+        return $null
+    }
+    return (Get-FileHash -LiteralPath $marker -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
 function Write-FaultReport {
     param([string]$Path, [object[]]$Cases)
 
@@ -43,7 +53,7 @@ function Write-FaultReport {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $report) | Out-Null
     $acceptancePass = @($Cases | Where-Object { -not $_.pass }).Count -eq 0
     $value = [ordered]@{
-        schema_version = 1
+        schema_version = 2
         acceptance_pass = $acceptancePass
         cases = @($Cases)
     }
@@ -56,20 +66,26 @@ function Write-FaultReport {
 
 try {
     $cases = @(
-        [ordered]@{ name = "success"; failure_point = ""; validation_failure = $false },
-        [ordered]@{ name = "before_backup"; failure_point = "before_backup"; validation_failure = $false },
-        [ordered]@{ name = "after_backup"; failure_point = "after_backup"; validation_failure = $false },
-        [ordered]@{ name = "after_swap"; failure_point = "after_swap"; validation_failure = $false },
-        [ordered]@{ name = "post_publish_validation"; failure_point = ""; validation_failure = $true },
-        [ordered]@{ name = "before_backup_cleanup"; failure_point = "before_backup_cleanup"; validation_failure = $false }
+        [ordered]@{ name = "replace_success"; has_existing_package = $true; failure_point = ""; validation_failure = $false; expected_final = "new" },
+        [ordered]@{ name = "replace_before_backup"; has_existing_package = $true; failure_point = "before_backup"; validation_failure = $false; expected_final = "old" },
+        [ordered]@{ name = "replace_after_backup"; has_existing_package = $true; failure_point = "after_backup"; validation_failure = $false; expected_final = "old" },
+        [ordered]@{ name = "replace_after_swap"; has_existing_package = $true; failure_point = "after_swap"; validation_failure = $false; expected_final = "old" },
+        [ordered]@{ name = "replace_published_validation_failure"; has_existing_package = $true; failure_point = ""; validation_failure = $true; expected_final = "old" },
+        [ordered]@{ name = "replace_before_backup_cleanup"; has_existing_package = $true; failure_point = "before_backup_cleanup"; validation_failure = $false; expected_final = "old" },
+        [ordered]@{ name = "first_publish_after_swap"; has_existing_package = $false; failure_point = "after_swap"; validation_failure = $false; expected_final = "absent" },
+        [ordered]@{ name = "first_publish_validation_failure"; has_existing_package = $false; failure_point = ""; validation_failure = $true; expected_final = "absent" }
     )
 
     foreach ($case in $cases) {
         $caseRoot = Join-Path $temporaryRoot $case.name
         $final = Join-Path $caseRoot "final"
         $candidate = Join-Path $caseRoot "candidate"
-        New-TestPackage -Path $final -Content "old"
+        if ($case.has_existing_package) {
+            New-TestPackage -Path $final -Content "old"
+        }
         New-TestPackage -Path $candidate -Content "new"
+        $oldMarkerSha256 = Get-MarkerSha256 -PackagePath $final
+        $newMarkerSha256 = Get-MarkerSha256 -PackagePath $candidate
 
         $threw = $false
         try {
@@ -91,22 +107,43 @@ try {
             $threw = $true
         }
 
-        $expectedFailure = $case.name -ne "success"
-        $finalMarker = [string](Get-Content -LiteralPath (Join-Path $final "marker.txt") -Raw)
+        $expectedFailure = $case.expected_final -ne "new"
+        $finalMarkerSha256 = Get-MarkerSha256 -PackagePath $final
+        $finalExists = Test-Path -LiteralPath $final
         $backupCount = @(Get-ChildItem -LiteralPath $caseRoot -Directory -Filter "final.backup-*").Count
-        $casePass = if ($expectedFailure) {
-            $threw -and $finalMarker -eq "old" -and $backupCount -eq 0
-        }
-        else {
-            -not $threw -and $finalMarker -eq "new" -and $backupCount -eq 0
+        $oldPackageRestored = $case.has_existing_package -and $finalMarkerSha256 -eq $oldMarkerSha256
+        $finalPackageAbsent = -not $finalExists
+        $newPackageAbsent = $finalPackageAbsent -or $finalMarkerSha256 -ne $newMarkerSha256
+        $casePass = switch ($case.expected_final) {
+            "new" {
+                -not $threw -and $finalMarkerSha256 -eq $newMarkerSha256 -and $backupCount -eq 0
+                break
+            }
+            "old" {
+                $threw -and $oldPackageRestored -and $newPackageAbsent -and $backupCount -eq 0
+                break
+            }
+            "absent" {
+                $threw -and $finalPackageAbsent -and $backupCount -eq 0
+                break
+            }
+            default {
+                throw "Unknown expected final state: $($case.expected_final)"
+            }
         }
         $caseResults.Add([ordered]@{
             name = $case.name
+            has_existing_package = [bool]$case.has_existing_package
             injected_failure_point = if ($case.failure_point) { $case.failure_point } else { $null }
             validation_failure = [bool]$case.validation_failure
             expected_failure = $expectedFailure
             threw = $threw
-            final_marker = $finalMarker
+            old_marker_sha256 = $oldMarkerSha256
+            new_marker_sha256 = $newMarkerSha256
+            final_marker_sha256 = $finalMarkerSha256
+            old_package_restored = $oldPackageRestored
+            final_package_absent = $finalPackageAbsent
+            new_package_absent = $newPackageAbsent
             candidate_exists_after = Test-Path -LiteralPath $candidate
             backup_count_after = $backupCount
             pass = $casePass

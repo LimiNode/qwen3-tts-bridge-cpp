@@ -90,15 +90,33 @@ function Get-CleanSourceProvenance {
 function Test-RelocationAcceptanceReport {
     param([object]$Report, [string]$Name)
 
-    if (-not $Report.acceptance_pass -or $null -eq $Report.required_gates) {
+    $requiredGateNames = @(
+        "package_tree_pre_smoke",
+        "voice_assets_pre_smoke",
+        "native_closure",
+        "custom_voice_doctor_pre_smoke",
+        "base_doctor_pre_smoke",
+        "custom_voice_natural_eos",
+        "base_natural_eos",
+        "custom_voice_doctor_post_smoke",
+        "base_doctor_post_smoke",
+        "no_bytecode",
+        "package_tree_post_smoke",
+        "voice_assets_post_smoke"
+    )
+    if ($Report.schema_version -ne 4 -or -not $Report.acceptance_pass -or $null -eq $Report.required_gates) {
         throw "$Name report does not declare a passing required-gate set."
     }
-    $failed = @(
-        $Report.required_gates.PSObject.Properties |
-            Where-Object { -not $_.Value }
-    )
-    if ($failed.Count -ne 0) {
-        throw "$Name report has failed required gates: $($failed.Name -join ', ')"
+    $actualGateNames = @($Report.required_gates.PSObject.Properties.Name)
+    if (@($actualGateNames | Where-Object { $_ -notin $requiredGateNames }).Count -ne 0 -or
+        @($requiredGateNames | Where-Object { $_ -notin $actualGateNames }).Count -ne 0 -or
+        $actualGateNames.Count -ne $requiredGateNames.Count) {
+        throw "$Name report does not contain the exact required-gate set."
+    }
+    foreach ($gateName in $requiredGateNames) {
+        if ($Report.required_gates.$gateName -isnot [bool] -or -not $Report.required_gates.$gateName) {
+            throw "$Name report has a non-passing required gate: $gateName"
+        }
     }
 }
 
@@ -106,17 +124,36 @@ function Test-FaultInjectionReport {
     param([object]$Report)
 
     $requiredCases = @(
-        "success", "before_backup", "after_backup", "after_swap",
-        "post_publish_validation", "before_backup_cleanup"
+        "replace_success", "replace_before_backup", "replace_after_backup",
+        "replace_after_swap", "replace_published_validation_failure",
+        "replace_before_backup_cleanup", "first_publish_after_swap",
+        "first_publish_validation_failure"
     )
-    if (-not $Report.acceptance_pass) {
+    if ($Report.schema_version -ne 2 -or -not $Report.acceptance_pass) {
         throw "Fault-injection report did not pass."
+    }
+    $actualCaseNames = @($Report.cases | ForEach-Object { $_.name })
+    if (@($actualCaseNames | Where-Object { $_ -notin $requiredCases }).Count -ne 0 -or
+        @($requiredCases | Where-Object { $_ -notin $actualCaseNames }).Count -ne 0 -or
+        $actualCaseNames.Count -ne $requiredCases.Count) {
+        throw "Fault-injection report does not contain the exact case set."
     }
     foreach ($name in $requiredCases) {
         $case = @($Report.cases | Where-Object { $_.name -eq $name })
         if ($case.Count -ne 1 -or -not $case[0].pass) {
             throw "Fault-injection report is missing a passing case: $name"
         }
+    }
+}
+
+function Test-TechnicalBetaEvidenceSchema {
+    param([string]$Kind, [string]$ReportPath)
+
+    & $VerifierPython (Join-Path $PSScriptRoot "validate_technical_beta_acceptance.py") `
+        --kind $Kind `
+        --report $ReportPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Technical-beta $Kind evidence failed fail-closed schema validation."
     }
 }
 
@@ -150,6 +187,7 @@ try {
         throw "Technical-beta publication fault-injection tests failed."
     }
     $faultInjection = Get-Content -LiteralPath $faultReport -Raw | ConvertFrom-Json
+    Test-TechnicalBetaEvidenceSchema -Kind "fault" -ReportPath $faultReport
     Test-FaultInjectionReport -Report $faultInjection
 
     & (Join-Path $PSScriptRoot "package-technical-beta.ps1") `
@@ -203,18 +241,20 @@ try {
     $baseManifest = Get-Content -LiteralPath $BaseModelManifest -Raw | ConvertFrom-Json
     $relocation = Get-Content -LiteralPath $relocationReport -Raw | ConvertFrom-Json
     $published = Get-Content -LiteralPath $publishedReport -Raw | ConvertFrom-Json
+    Test-TechnicalBetaEvidenceSchema -Kind "relocation" -ReportPath $relocationReport
+    Test-TechnicalBetaEvidenceSchema -Kind "relocation" -ReportPath $publishedReport
     Test-RelocationAcceptanceReport -Report $relocation -Name "Relocated candidate"
     Test-RelocationAcceptanceReport -Report $published -Name "Published destination"
-    $candidateRootDigest = $relocation.package.root_digest
-    $publishedRootDigest = $published.package.root_digest
-    if ($candidateRootDigest -ne $publishedRootDigest) {
-        throw "Candidate and published package root digests differ."
+    $candidateManifestDigest = $relocation.package.verified_manifest_digest
+    $publishedManifestDigest = $published.package.verified_manifest_digest
+    if ($candidateManifestDigest -ne $publishedManifestDigest) {
+        throw "Candidate and published verified manifest digests differ."
     }
     $files = Get-ChildItem -LiteralPath $finalRoot -Recurse -Force -File
     $requiredGates = [ordered]@{
         pre_publish_validation = $relocation.acceptance_pass
         post_publish_validation = $published.acceptance_pass
-        root_digest_match = $candidateRootDigest -eq $publishedRootDigest
+        verified_manifest_digest_match = $candidateManifestDigest -eq $publishedManifestDigest
         sealed_tree_unchanged = (
             $relocation.post_smoke.sealed_tree_unchanged -and
             $published.post_smoke.sealed_tree_unchanged
@@ -232,7 +272,7 @@ try {
         throw "Technical-beta acceptance has failed required gates."
     }
     $acceptance = [ordered]@{
-        schema_version = 3
+        schema_version = 4
         acceptance_pass = $acceptancePass
         package_id = "QwenTTSBridge-technical-beta-r3"
         provenance = $sourceProvenance
@@ -241,9 +281,9 @@ try {
             file_count = @($files).Count
             size_bytes = [long](($files | Measure-Object -Property Length -Sum).Sum)
             package_tree_manifest_sha256 = $packageTree.package_tree_manifest_sha256
-            candidate_root_digest = $candidateRootDigest
-            published_root_digest = $publishedRootDigest
-            root_digest_algorithm = "sha256(package-tree-manifest)"
+            candidate_verified_manifest_digest = $candidateManifestDigest
+            published_verified_manifest_digest = $publishedManifestDigest
+            verified_manifest_digest_algorithm = "sha256(package-tree-manifest)"
             voice_assets_manifest_sha256 = $voiceAssets.voice_assets_manifest_sha256
             worker_build_manifest_sha256 = Get-FileSha256 (Join-Path $finalRoot "worker\build-manifest.json")
             immutable_tree_policy = $published.package.immutable_tree_policy

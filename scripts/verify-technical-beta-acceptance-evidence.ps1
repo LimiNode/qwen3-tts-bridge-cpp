@@ -88,6 +88,34 @@ function Get-CleanEvidenceProvenance {
     }
 }
 
+function Get-OriginalAcceptanceReportProvenance {
+    param([string]$Path)
+
+    $fullPath = if ([IO.Path]::IsPathRooted($Path)) {
+        [IO.Path]::GetFullPath($Path)
+    }
+    else {
+        [IO.Path]::GetFullPath((Join-Path (Get-Location).Path $Path))
+    }
+    $repoRootPath = [IO.Path]::GetFullPath($RepoRoot).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $repoPrefix = "$repoRootPath$([IO.Path]::DirectorySeparatorChar)"
+    if (-not $fullPath.StartsWith($repoPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Historical acceptance report must be inside the repository: $fullPath"
+    }
+    $relativePath = $fullPath.Substring($repoPrefix.Length).Replace("\", "/")
+    $commit = (& git -C $RepoRoot log -1 --format=%H -- $relativePath).Trim()
+    if (-not $commit) {
+        throw "Historical acceptance report is not tracked by Git: $relativePath"
+    }
+    return [ordered]@{
+        original_acceptance_report_commit = $commit
+        original_acceptance_report_sha256 = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+}
+
 $outputPath = if ([IO.Path]::IsPathRooted($Output)) {
     [IO.Path]::GetFullPath($Output)
 }
@@ -100,24 +128,31 @@ if (Test-Path -LiteralPath $outputPath) {
 $provenance = Get-CleanEvidenceProvenance
 $historical = Get-Content -LiteralPath $AcceptanceReport -Raw | ConvertFrom-Json
 $faults = Get-Content -LiteralPath $FaultReport -Raw | ConvertFrom-Json
+$historicalReportProvenance = Get-OriginalAcceptanceReportProvenance -Path $AcceptanceReport
 
 $candidate = $historical.acceptance.relocated_candidate
 $published = $historical.acceptance.published_destination
 $candidateDigest = $candidate.package.package_tree_manifest_sha256
 $publishedDigest = $published.package.package_tree_manifest_sha256
+$baseVoiceProfileIds = @(
+    $candidate.smokes.base.voice_id,
+    $published.smokes.base.voice_id
+) | Select-Object -Unique
 $faultCases = @($faults.cases)
 $requiredFaultCases = @(
-    "success", "before_backup", "after_backup", "after_swap",
-    "post_publish_validation", "before_backup_cleanup"
+    "replace_success", "replace_before_backup", "replace_after_backup",
+    "replace_after_swap", "replace_published_validation_failure",
+    "replace_before_backup_cleanup", "first_publish_after_swap",
+    "first_publish_validation_failure"
 )
-$faultMatrixPass = $faults.acceptance_pass -and @($requiredFaultCases | Where-Object {
+$faultMatrixPass = $faults.schema_version -eq 2 -and $faults.acceptance_pass -and
+    $faultCases.Count -eq $requiredFaultCases.Count -and @($requiredFaultCases | Where-Object {
     $requiredCase = $_
     $match = @($faultCases | Where-Object { $_.name -eq $requiredCase })
     $match.Count -ne 1 -or -not $match[0].pass
 }).Count -eq 0
 
 $requiredGates = [ordered]@{
-    historical_root_acceptance = [bool]$historical.acceptance_pass
     historical_source_clean = [bool]$historical.source.source_tree_clean
     artifact_commit_consistency = (
         $historical.source.source_commit -eq $historical.source.package_source_commit -and
@@ -127,7 +162,7 @@ $requiredGates = [ordered]@{
     relocated_candidate_validation = Test-RelocationEvidence -Report $candidate
     published_destination_validation = Test-RelocationEvidence -Report $published
     published_runtime_isolation = Test-RuntimeIsolation -Report $published
-    candidate_published_root_digest_match = (
+    candidate_published_manifest_digest_match = (
         $candidateDigest -eq $publishedDigest -and
         $candidateDigest -eq $historical.package.package_tree_manifest_sha256
     )
@@ -144,16 +179,22 @@ $report = [ordered]@{
     package_id = $historical.package_id
     provenance = [ordered]@{
         artifact_source_commit = $historical.source.package_source_commit
-        original_acceptance_tooling_commit = $historical.source.test_tree_commit
-        original_report_source_commit = $historical.source.source_commit
+        acceptance_execution_commit = $historical.source.test_tree_commit
+        original_acceptance_report_commit = $historicalReportProvenance.original_acceptance_report_commit
+        original_acceptance_report_sha256 = $historicalReportProvenance.original_acceptance_report_sha256
         evidence_augmentation = $provenance
     }
     package = [ordered]@{
-        candidate_root_digest = $candidateDigest
-        published_root_digest = $publishedDigest
-        root_digest_algorithm = "sha256(package-tree-manifest)"
+        candidate_verified_manifest_digest = $candidateDigest
+        published_verified_manifest_digest = $publishedDigest
+        verified_manifest_digest_algorithm = "sha256(package-tree-manifest)"
         voice_assets_manifest_sha256 = $historical.package.voice_assets_manifest_sha256
         worker_build_manifest_sha256 = $historical.package.worker_build_manifest_sha256
+    }
+    voice_profile_smoke_scope = [ordered]@{
+        custom_voice_smoked = $true
+        base_voice_profile_ids = @($baseVoiceProfileIds)
+        coverage = "one selected Base profile per destination"
     }
     required_gates = $requiredGates
     fault_injection = [ordered]@{

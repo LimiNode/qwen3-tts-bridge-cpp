@@ -341,6 +341,8 @@ $requiredGates = [ordered]@{
     package_tree_pre_smoke = Test-CommandPassed "verify_package_tree_pre_smoke"
     voice_assets_pre_smoke = Test-CommandPassed "verify_voice_assets_pre_smoke"
     native_closure = Test-CommandPassed "verify_native_closure"
+    custom_voice_doctor_pre_smoke = Test-CommandPassed "doctor_custom_voice_pre_smoke"
+    base_doctor_pre_smoke = Test-CommandPassed "doctor_base_pre_smoke"
     custom_voice_natural_eos = (
         $customSmoke.terminal_state -eq "completed" -and
         $customSmoke.execution_outcome -eq "completed" -and
@@ -353,8 +355,8 @@ $requiredGates = [ordered]@{
         $baseSmoke.termination_reason -eq "eos" -and
         $baseSmoke.hit_eos
     )
-    custom_voice_post_smoke = Test-CommandPassed "doctor_custom_voice_post_smoke"
-    base_post_smoke = Test-CommandPassed "doctor_base_post_smoke"
+    custom_voice_doctor_post_smoke = Test-CommandPassed "doctor_custom_voice_post_smoke"
+    base_doctor_post_smoke = Test-CommandPassed "doctor_base_post_smoke"
     no_bytecode = $bytecode.Count -eq 0
     package_tree_post_smoke = Test-CommandPassed "verify_package_tree_post_smoke"
     voice_assets_post_smoke = Test-CommandPassed "verify_voice_assets_post_smoke"
@@ -364,12 +366,12 @@ if (-not $acceptancePass) {
     throw "Technical-beta relocation acceptance has failed required gates."
 }
 $reportValue = [ordered]@{
-    schema_version = 3
+    schema_version = 4
     acceptance_pass = $acceptancePass
     validation_kind = if ($InPlace) { "same_host_published_private_runtime" } else { "same_host_relocated_private_runtime" }
     package = [ordered]@{
-        root_digest = $packageManifest.package_tree_manifest_sha256
-        root_digest_algorithm = "sha256(package-tree-manifest)"
+        verified_manifest_digest = $packageManifest.package_tree_manifest_sha256
+        verified_manifest_digest_algorithm = "sha256(package-tree-manifest)"
         package_tree_manifest_sha256 = $packageManifest.package_tree_manifest_sha256
         voice_assets_manifest_sha256 = $voiceManifest.voice_assets_manifest_sha256
         immutable_tree_policy = [ordered]@{

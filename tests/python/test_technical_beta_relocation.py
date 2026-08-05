@@ -20,7 +20,7 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("Split-Path -Parent $report", script)
         self.assertIn("$acceptancePass =", script)
         self.assertIn("required_gates = $requiredGates", script)
-        self.assertIn("root_digest_algorithm", script)
+        self.assertIn("verified_manifest_digest_algorithm", script)
         self.assertIn("scripts/package_tree_manifest.py", script)
         self.assertIn("scripts/voice_assets_manifest.py", script)
         self.assertIn("Assert-NativeClosure", script)
@@ -79,8 +79,8 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         )
         self.assertIn("source_diff_sha256", script)
         self.assertIn("Test-FaultInjectionReport", script)
-        self.assertIn("candidate_root_digest", script)
-        self.assertIn("published_root_digest", script)
+        self.assertIn("candidate_verified_manifest_digest", script)
+        self.assertIn("published_verified_manifest_digest", script)
         self.assertIn("required_gates = $requiredGates", script)
 
     def test_publication_fault_matrix_covers_atomic_replacement_boundaries(
@@ -91,10 +91,11 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("before_backup", script)
         self.assertIn("after_backup", script)
         self.assertIn("after_swap", script)
-        self.assertIn("post_publish_validation", script)
+        self.assertIn("replace_published_validation_failure", script)
         self.assertIn("before_backup_cleanup", script)
         self.assertIn("acceptance_pass = $acceptancePass", script)
-        self.assertIn("final_marker", script)
+        self.assertIn("old_marker_sha256", script)
+        self.assertIn("first_publish_after_swap", script)
         self.assertIn("Join-Path (Get-Location).Path $Path", script)
 
     def test_evidence_verifier_derives_r3_gates_without_rewriting_history(
@@ -104,11 +105,13 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
 
         self.assertIn("Evidence verification requires a clean source worktree", script)
         self.assertIn("Test-NaturalEos", script)
-        self.assertIn("candidate_published_root_digest_match", script)
+        self.assertIn("candidate_published_manifest_digest_match", script)
         self.assertIn("publication_fault_injection", script)
-        self.assertIn("original_acceptance_tooling_commit", script)
+        self.assertIn("original_acceptance_report_commit", script)
+        self.assertIn("original_acceptance_report_sha256", script)
         self.assertIn("evidence_augmentation", script)
         self.assertIn("Join-Path (Get-Location).Path $Output", script)
+        self.assertIn("Join-Path (Get-Location).Path $Path", script)
 
 
 if __name__ == "__main__":

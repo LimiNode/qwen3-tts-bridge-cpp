@@ -22,13 +22,15 @@ directories; Python bytecode files are always rejected. The relocated and
 published-destination reports record pre/post manifest verification.
 
 The script writes generated acceptance JSON supplied through
-`-AcceptanceOutput`. Schema 3 computes `acceptance_pass` from named
+`-AcceptanceOutput`. Schema 4 computes `acceptance_pass` from named
 `required_gates`; it is never a hard-coded success marker. It records the
 `artifact_source_commit` for the packaged source and the
 `acceptance_tooling_commit` / `report_generation_commit` for the clean source
-tree that produced the evidence. It also records candidate and published root
-digests and requires them to match. The report deliberately contains no local
-absolute paths and does not replace a clean-machine test on a second host.
+tree that produced the evidence. It also records candidate and published
+verified package-manifest digests and requires them to match. These are
+SHA-256 hashes of the sealed package-tree manifest, not an independent
+byte-level Merkle root. The report deliberately contains no local absolute
+paths and does not replace a clean-machine test on a second host.
 
 During validation the worker starts from its package directory with private
 `PYTHONHOME` and `PYTHONPATH`, disabled user-site and bytecode writes, package
@@ -41,7 +43,8 @@ published destination has passed its validation. The lightweight
 `scripts/test-technical-beta-publication.ps1` injects failures before the
 backup rename, after the backup rename, after the swap, during published
 validation, and before backup cleanup. It writes an optional machine-readable
-case matrix and verifies rollback without requiring CUDA. The publisher runs
+case matrix, including first-publish failures with no prior destination, and
+verifies rollback without requiring CUDA. The publisher runs
 that matrix before packaging and embeds the passing result in the acceptance
 report.
 
@@ -49,7 +52,11 @@ For a legacy acceptance report that predates schema 3, use
 `scripts/verify-technical-beta-acceptance-evidence.ps1` from a clean worktree.
 It produces a separate augmentation report: it derives gates from the immutable
 historical smoke evidence and combines them with the current fault matrix. It
-does not overwrite or relabel the original package report.
+records the Git commit and SHA-256 of the original acceptance JSON, so the
+report commit is not confused with the package source commit. It does not
+overwrite or relabel the original package report. Historical R3 evidence covers
+CustomVoice and one selected Base voice profile per destination; it is not a
+four-profile Base synthesis matrix.
 
 For example, on the pinned validation host:
 
