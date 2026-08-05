@@ -86,7 +86,7 @@ function Get-CleanSourceProvenance {
 
 $finalRoot = Resolve-RepoPath $OutputRoot
 $finalParent = Split-Path -Parent $finalRoot
-$candidateRoot = Join-Path $finalParent ".$(Split-Path -Leaf $finalRoot).pending-$([Guid]::NewGuid().ToString('N'))"
+$candidateRoot = Join-Path $finalParent ".__qtb-$([Guid]::NewGuid().ToString('N'))"
 $validationRoot = Join-Path (Split-Path -Parent $candidateRoot) `
     "$(Split-Path -Leaf $candidateRoot)-relocated"
 $relocationReport = "$validationRoot-report.json"
@@ -98,6 +98,14 @@ if (Test-Path -LiteralPath $acceptancePath) {
     throw "AcceptanceOutput already exists; choose a new report path: $acceptancePath"
 }
 $sourceProvenance = Get-CleanSourceProvenance
+
+# PyTorch loads DLLs by their absolute path. Keep the staging root deliberately
+# short so package validation does not fail before the atomic publish step.
+$longestStagedDll = Join-Path $candidateRoot `
+    "worker\python\Lib\site-packages\torch\lib\cudnn_engines_precompiled64_9.dll"
+if ($longestStagedDll.Length -gt 240) {
+    throw "Technical-beta staging path is too long for Windows DLL loading ($($longestStagedDll.Length) characters): $longestStagedDll"
+}
 
 try {
     & (Join-Path $PSScriptRoot "package-technical-beta.ps1") `
