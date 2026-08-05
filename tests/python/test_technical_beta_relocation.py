@@ -16,6 +16,7 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("RelocationRoot must not already exist", script)
         self.assertIn("ReportPath must not already exist", script)
         self.assertIn("Split-Path -Parent $report", script)
+        self.assertIn("acceptance_pass = $true", script)
         self.assertIn("scripts/package_tree_manifest.py", script)
         self.assertIn("scripts/voice_assets_manifest.py", script)
         self.assertIn("Assert-NativeClosure", script)

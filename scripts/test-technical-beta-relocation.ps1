@@ -332,6 +332,7 @@ $voiceManifest = Get-Content -LiteralPath (Join-Path $relocated "manifests/voice
     ConvertFrom-Json
 $reportValue = [ordered]@{
     schema_version = 2
+    acceptance_pass = $true
     validation_kind = if ($InPlace) { "same_host_published_private_runtime" } else { "same_host_relocated_private_runtime" }
     package = [ordered]@{
         package_tree_manifest_sha256 = $packageManifest.package_tree_manifest_sha256
