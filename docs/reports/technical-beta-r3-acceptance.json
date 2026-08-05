@@ -1,0 +1,317 @@
+{
+    "schema_version":  2,
+    "acceptance_pass":  true,
+    "package_id":  "QwenTTSBridge-technical-beta-r3",
+    "source":  {
+                   "source_commit":  "a04be8ac3e11b14ca00839c52dcc78215039fdd1",
+                   "source_tree":  "563355b288276ca830e71982b9b314bc067c97df",
+                   "source_tree_clean":  true,
+                   "source_diff_sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                   "test_tree_commit":  "a04be8ac3e11b14ca00839c52dcc78215039fdd1",
+                   "package_source_commit":  "a04be8ac3e11b14ca00839c52dcc78215039fdd1"
+               },
+    "package":  {
+                    "file_count":  34645,
+                    "size_bytes":  5324408428,
+                    "package_tree_manifest_sha256":  "c2a5133e843d5660b2fd0ca3c2b633f54154195c6fc1c76e7d0994542211ecfc",
+                    "voice_assets_manifest_sha256":  "2681e43af18a677aac5720bb57bd9ca5355a20557ddbd8d60b50391aa45ef515",
+                    "worker_build_manifest_sha256":  "d8ed2163412e4c168a81ec6a3523d9ecced5857abb4f46f3630fd5e3b52e1e7c",
+                    "immutable_tree_policy":  {
+                                                  "sealed_files":  "all",
+                                                  "sealed_directories":  "all_except_empty_named_mutable_directories",
+                                                  "mutable_empty_directory_names":  [
+                                                                                        "__pycache__"
+                                                                                    ],
+                                                  "pre_smoke_manifest":  "passed",
+                                                  "post_smoke_manifest":  "passed"
+                                              }
+                },
+    "models":  {
+                   "custom_voice":  {
+                                        "repository":  "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+                                        "revision":  "85e237c12c027371202489a0ec509ded67b5e4b5",
+                                        "directory_manifest_sha256":  "6d2e50c2ca1ee8b9845fda1669c5fff6e9e856537266ac3e9f01a28882db01f0"
+                                    },
+                   "base":  {
+                                "repository":  "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+                                "revision":  "fd4b254389122332181a7c3db7f27e918eec64e3",
+                                "directory_manifest_sha256":  "12eadbdf67917321dc3b1edfff444330297652f2be89eb9110a2dade520649ef"
+                            }
+               },
+    "acceptance":  {
+                       "relocated_candidate":  {
+                                                   "schema_version":  2,
+                                                   "validation_kind":  "same_host_published_private_runtime",
+                                                   "package":  {
+                                                                   "package_tree_manifest_sha256":  "c2a5133e843d5660b2fd0ca3c2b633f54154195c6fc1c76e7d0994542211ecfc",
+                                                                   "voice_assets_manifest_sha256":  "2681e43af18a677aac5720bb57bd9ca5355a20557ddbd8d60b50391aa45ef515",
+                                                                   "immutable_tree_policy":  {
+                                                                                                 "sealed_files":  "all",
+                                                                                                 "sealed_directories":  "all_except_empty_named_mutable_directories",
+                                                                                                 "mutable_empty_directory_names":  [
+                                                                                                                                       "__pycache__"
+                                                                                                                                   ],
+                                                                                                 "pre_smoke_manifest":  "passed",
+                                                                                                 "post_smoke_manifest":  "passed"
+                                                                                             }
+                                                               },
+                                                   "isolation":  {
+                                                                     "working_directory":  "package_worker",
+                                                                     "pythonhome":  "package_worker_python",
+                                                                     "pythonpath":  "package_worker_site_packages",
+                                                                     "user_site_disabled":  true,
+                                                                     "bytecode_disabled":  true,
+                                                                     "hf_offline":  true,
+                                                                     "transformers_offline":  true,
+                                                                     "base_voice_registry":  "package_config/voice-profiles.json"
+                                                                 },
+                                                   "commands":  [
+                                                                    {
+                                                                        "name":  "verify_package_tree_pre_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  71598.391
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_voice_assets_pre_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  174.268
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_native_closure",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  0
+                                                                    },
+                                                                    {
+                                                                        "name":  "doctor_custom_voice_pre_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  66004.276
+                                                                    },
+                                                                    {
+                                                                        "name":  "doctor_base_pre_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  67739.591
+                                                                    },
+                                                                    {
+                                                                        "name":  "smoke_.__qtb-r3final-customvoice-eos",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  31567.634
+                                                                    },
+                                                                    {
+                                                                        "name":  "smoke_.__qtb-r3final-base-eos",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  35567.292
+                                                                    },
+                                                                    {
+                                                                        "name":  "doctor_custom_voice_post_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  62539.959
+                                                                    },
+                                                                    {
+                                                                        "name":  "doctor_base_post_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  70246.767
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_package_tree_post_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  64435.577
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_voice_assets_post_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  160.498
+                                                                    }
+                                                                ],
+                                                   "smokes":  {
+                                                                  "custom_voice":  {
+                                                                                       "result":  [
+                                                                                                      "Wrote 206250 PCM bytes in 7 chunks to C:\\_repoz\\qwen3-tts-bridge-cpp-technical-beta-r3-sealing\\dist\\.__qtb-r3final-customvoice-eos.wav",
+                                                                                                      "completion: outcome=completed, termination_reason=eos, hit_eos=true, codec_frames=54",
+                                                                                                      {
+                                                                                                          "schema_version":  1,
+                                                                                                          "request_id":  1,
+                                                                                                          "terminal_state":  "completed",
+                                                                                                          "audio_chunks":  7,
+                                                                                                          "audio_bytes":  206250,
+                                                                                                          "completion_metadata_received":  true,
+                                                                                                          "execution_outcome":  "completed",
+                                                                                                          "termination_reason":  "eos",
+                                                                                                          "hit_eos":  true,
+                                                                                                          "hit_max_seq_len":  false,
+                                                                                                          "hit_max_new_tokens":  false,
+                                                                                                          "codec_frame_count":  54
+                                                                                                      }
+                                                                                                  ],
+                                                                                       "output_sha256":  "e869ff050042f0cb61457079b851892e25469bc419acdf491163da375540cacb"
+                                                                                   },
+                                                                  "base":  {
+                                                                               "voice_id":  "kraftwerk_robot_ru_bootstrap_fidelity",
+                                                                               "result":  [
+                                                                                              "Wrote 171956 PCM bytes in 6 chunks to C:\\_repoz\\qwen3-tts-bridge-cpp-technical-beta-r3-sealing\\dist\\.__qtb-r3final-base-eos.wav",
+                                                                                              "completion: outcome=completed, termination_reason=eos, hit_eos=true, codec_frames=46",
+                                                                                              {
+                                                                                                  "schema_version":  1,
+                                                                                                  "request_id":  1,
+                                                                                                  "terminal_state":  "completed",
+                                                                                                  "audio_chunks":  6,
+                                                                                                  "audio_bytes":  171956,
+                                                                                                  "completion_metadata_received":  true,
+                                                                                                  "execution_outcome":  "completed",
+                                                                                                  "termination_reason":  "eos",
+                                                                                                  "hit_eos":  true,
+                                                                                                  "hit_max_seq_len":  false,
+                                                                                                  "hit_max_new_tokens":  false,
+                                                                                                  "codec_frame_count":  46
+                                                                                              }
+                                                                                          ],
+                                                                               "output_sha256":  "8266909658a8fd3ecd6e0e7dde2ba8ad49c1eb79a5caaa9d1178c9342ef6303f"
+                                                                           }
+                                                              },
+                                                   "post_smoke":  {
+                                                                      "doctor_custom_voice":  "passed",
+                                                                      "doctor_base":  "passed",
+                                                                      "bytecode_files":  0,
+                                                                      "package_tree_manifest":  "passed",
+                                                                      "voice_assets_manifest":  "passed",
+                                                                      "native_closure":  "passed"
+                                                                  }
+                                               },
+                       "published_destination":  {
+                                                     "schema_version":  2,
+                                                     "validation_kind":  "same_host_published_private_runtime",
+                                                     "package":  {
+                                                                     "package_tree_manifest_sha256":  "c2a5133e843d5660b2fd0ca3c2b633f54154195c6fc1c76e7d0994542211ecfc",
+                                                                     "voice_assets_manifest_sha256":  "2681e43af18a677aac5720bb57bd9ca5355a20557ddbd8d60b50391aa45ef515",
+                                                                     "immutable_tree_policy":  {
+                                                                                                   "sealed_files":  "all",
+                                                                                                   "sealed_directories":  "all_except_empty_named_mutable_directories",
+                                                                                                   "mutable_empty_directory_names":  [
+                                                                                                                                         "__pycache__"
+                                                                                                                                     ],
+                                                                                                   "pre_smoke_manifest":  "passed",
+                                                                                                   "post_smoke_manifest":  "passed"
+                                                                                               }
+                                                                 },
+                                                     "isolation":  {
+                                                                       "working_directory":  "package_worker",
+                                                                       "pythonhome":  "package_worker_python",
+                                                                       "pythonpath":  "package_worker_site_packages",
+                                                                       "user_site_disabled":  true,
+                                                                       "bytecode_disabled":  true,
+                                                                       "hf_offline":  true,
+                                                                       "transformers_offline":  true,
+                                                                       "base_voice_registry":  "package_config/voice-profiles.json"
+                                                                   },
+                                                     "commands":  [
+                                                                      {
+                                                                          "name":  "verify_package_tree_pre_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  71167.464
+                                                                      },
+                                                                      {
+                                                                          "name":  "verify_voice_assets_pre_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  166.92
+                                                                      },
+                                                                      {
+                                                                          "name":  "verify_native_closure",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  0
+                                                                      },
+                                                                      {
+                                                                          "name":  "doctor_custom_voice_pre_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  62170.567
+                                                                      },
+                                                                      {
+                                                                          "name":  "doctor_base_pre_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  70327.395
+                                                                      },
+                                                                      {
+                                                                          "name":  "smoke_QwenTTSBridge-technical-beta-r3-customvoice-eos",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  31244.535
+                                                                      },
+                                                                      {
+                                                                          "name":  "smoke_QwenTTSBridge-technical-beta-r3-base-eos",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  35671.924
+                                                                      },
+                                                                      {
+                                                                          "name":  "doctor_custom_voice_post_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  59392.218
+                                                                      },
+                                                                      {
+                                                                          "name":  "doctor_base_post_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  65770.575
+                                                                      },
+                                                                      {
+                                                                          "name":  "verify_package_tree_post_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  64749.394
+                                                                      },
+                                                                      {
+                                                                          "name":  "verify_voice_assets_post_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  159.426
+                                                                      }
+                                                                  ],
+                                                     "smokes":  {
+                                                                    "custom_voice":  {
+                                                                                         "result":  [
+                                                                                                        "Wrote 210090 PCM bytes in 7 chunks to C:\\_repoz\\qwen3-tts-bridge-cpp-technical-beta-r3-sealing\\dist\\QwenTTSBridge-technical-beta-r3-customvoice-eos.wav",
+                                                                                                        "completion: outcome=completed, termination_reason=eos, hit_eos=true, codec_frames=55",
+                                                                                                        {
+                                                                                                            "schema_version":  1,
+                                                                                                            "request_id":  1,
+                                                                                                            "terminal_state":  "completed",
+                                                                                                            "audio_chunks":  7,
+                                                                                                            "audio_bytes":  210090,
+                                                                                                            "completion_metadata_received":  true,
+                                                                                                            "execution_outcome":  "completed",
+                                                                                                            "termination_reason":  "eos",
+                                                                                                            "hit_eos":  true,
+                                                                                                            "hit_max_seq_len":  false,
+                                                                                                            "hit_max_new_tokens":  false,
+                                                                                                            "codec_frame_count":  55
+                                                                                                        }
+                                                                                                    ],
+                                                                                         "output_sha256":  "8e5c476496ebd0ca87c0025b155428e93acaac497abff96e10fdc1898e251aca"
+                                                                                     },
+                                                                    "base":  {
+                                                                                 "voice_id":  "kraftwerk_robot_ru_bootstrap_fidelity",
+                                                                                 "result":  [
+                                                                                                "Wrote 188852 PCM bytes in 7 chunks to C:\\_repoz\\qwen3-tts-bridge-cpp-technical-beta-r3-sealing\\dist\\QwenTTSBridge-technical-beta-r3-base-eos.wav",
+                                                                                                "completion: outcome=completed, termination_reason=eos, hit_eos=true, codec_frames=50",
+                                                                                                {
+                                                                                                    "schema_version":  1,
+                                                                                                    "request_id":  1,
+                                                                                                    "terminal_state":  "completed",
+                                                                                                    "audio_chunks":  7,
+                                                                                                    "audio_bytes":  188852,
+                                                                                                    "completion_metadata_received":  true,
+                                                                                                    "execution_outcome":  "completed",
+                                                                                                    "termination_reason":  "eos",
+                                                                                                    "hit_eos":  true,
+                                                                                                    "hit_max_seq_len":  false,
+                                                                                                    "hit_max_new_tokens":  false,
+                                                                                                    "codec_frame_count":  50
+                                                                                                }
+                                                                                            ],
+                                                                                 "output_sha256":  "142057274310a50054c2622fe2db912c272a99739dbf656a7a440db032f18267"
+                                                                             }
+                                                                },
+                                                     "post_smoke":  {
+                                                                        "doctor_custom_voice":  "passed",
+                                                                        "doctor_base":  "passed",
+                                                                        "bytecode_files":  0,
+                                                                        "package_tree_manifest":  "passed",
+                                                                        "voice_assets_manifest":  "passed",
+                                                                        "native_closure":  "passed"
+                                                                    }
+                                                 }
+                   }
+}
