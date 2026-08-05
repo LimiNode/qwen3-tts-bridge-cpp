@@ -53,6 +53,7 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("Replace-DirectoryAtomically", script)
         self.assertIn("AcceptanceOutput already exists", script)
         self.assertIn("dist\\.p-", script)
+        self.assertIn("worker\\build-manifest.json", script)
         self.assertIn("custom_voice_natural_eos_sha256", script)
         self.assertIn("base_natural_eos_sha256", script)
 

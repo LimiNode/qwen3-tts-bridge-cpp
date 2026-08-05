@@ -132,7 +132,7 @@ try {
             size_bytes = [long](($files | Measure-Object -Property Length -Sum).Sum)
             package_tree_manifest_sha256 = $packageTree.package_tree_manifest_sha256
             voice_assets_manifest_sha256 = $voiceAssets.voice_assets_manifest_sha256
-            worker_build_manifest_sha256 = Get-FileSha256 (Join-Path $candidateRoot "worker\worker-build-manifest.json")
+            worker_build_manifest_sha256 = Get-FileSha256 (Join-Path $candidateRoot "worker\build-manifest.json")
         }
         models = [ordered]@{
             custom_voice = [ordered]@{
