@@ -1,0 +1,182 @@
+{
+    "schema_version":  1,
+    "acceptance_pass":  true,
+    "package_id":  "QwenTTSBridge-technical-beta-r3",
+    "provenance":  {
+                       "artifact_source_commit":  "a04be8ac3e11b14ca00839c52dcc78215039fdd1",
+                       "acceptance_execution_commit":  "a04be8ac3e11b14ca00839c52dcc78215039fdd1",
+                       "original_acceptance_report_commit":  "f700c59f5589d14f8bed45660c4dda8a986be938",
+                       "original_acceptance_report_sha256":  "4ee734a644ed599c07180bfabc1dd0578b3ac827067a06dc4ea6b3863f5cc999",
+                       "evidence_augmentation":  {
+                                                     "acceptance_tooling_commit":  "94a6abc4ca9b2db643d23d76a71892b29897c25f",
+                                                     "evidence_generation_commit":  "94a6abc4ca9b2db643d23d76a71892b29897c25f",
+                                                     "evidence_generation_tree":  "758e6d0a8ea39e5bb654b626e8002060da1b8bcb",
+                                                     "evidence_generation_tree_clean":  true
+                                                 }
+                   },
+    "package":  {
+                    "candidate_verified_manifest_digest":  "c2a5133e843d5660b2fd0ca3c2b633f54154195c6fc1c76e7d0994542211ecfc",
+                    "published_verified_manifest_digest":  "c2a5133e843d5660b2fd0ca3c2b633f54154195c6fc1c76e7d0994542211ecfc",
+                    "verified_manifest_digest_algorithm":  "sha256(package-tree-manifest)",
+                    "voice_assets_manifest_sha256":  "2681e43af18a677aac5720bb57bd9ca5355a20557ddbd8d60b50391aa45ef515",
+                    "worker_build_manifest_sha256":  "d8ed2163412e4c168a81ec6a3523d9ecced5857abb4f46f3630fd5e3b52e1e7c"
+                },
+    "voice_profile_smoke_scope":  {
+                                      "custom_voice_smoked":  true,
+                                      "base_voice_profile_ids":  [
+                                                                     "kraftwerk_robot_ru_bootstrap_fidelity"
+                                                                 ],
+                                      "coverage":  "one selected Base profile per destination"
+                                  },
+    "required_gates":  {
+                           "historical_source_clean":  true,
+                           "artifact_commit_consistency":  true,
+                           "relocated_candidate_validation":  true,
+                           "published_destination_validation":  true,
+                           "published_runtime_isolation":  true,
+                           "candidate_published_manifest_digest_match":  true,
+                           "publication_fault_injection":  true
+                       },
+    "fault_injection":  {
+                            "schema_version":  2,
+                            "acceptance_pass":  true,
+                            "cases":  [
+                                          {
+                                              "name":  "replace_success",
+                                              "has_existing_package":  true,
+                                              "injected_failure_point":  null,
+                                              "validation_failure":  false,
+                                              "expected_failure":  false,
+                                              "threw":  false,
+                                              "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "final_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "old_package_restored":  false,
+                                              "final_package_absent":  false,
+                                              "new_package_absent":  false,
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "replace_before_backup",
+                                              "has_existing_package":  true,
+                                              "injected_failure_point":  "before_backup",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "old_package_restored":  true,
+                                              "final_package_absent":  false,
+                                              "new_package_absent":  true,
+                                              "candidate_exists_after":  true,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "replace_after_backup",
+                                              "has_existing_package":  true,
+                                              "injected_failure_point":  "after_backup",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "old_package_restored":  true,
+                                              "final_package_absent":  false,
+                                              "new_package_absent":  true,
+                                              "candidate_exists_after":  true,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "replace_after_swap",
+                                              "has_existing_package":  true,
+                                              "injected_failure_point":  "after_swap",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "old_package_restored":  true,
+                                              "final_package_absent":  false,
+                                              "new_package_absent":  true,
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "replace_published_validation_failure",
+                                              "has_existing_package":  true,
+                                              "injected_failure_point":  null,
+                                              "validation_failure":  true,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "old_package_restored":  true,
+                                              "final_package_absent":  false,
+                                              "new_package_absent":  true,
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "replace_before_backup_cleanup",
+                                              "has_existing_package":  true,
+                                              "injected_failure_point":  "before_backup_cleanup",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                              "old_package_restored":  true,
+                                              "final_package_absent":  false,
+                                              "new_package_absent":  true,
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "first_publish_after_swap",
+                                              "has_existing_package":  false,
+                                              "injected_failure_point":  "after_swap",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "old_marker_sha256":  null,
+                                              "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "final_marker_sha256":  null,
+                                              "old_package_restored":  false,
+                                              "final_package_absent":  true,
+                                              "new_package_absent":  true,
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "first_publish_validation_failure",
+                                              "has_existing_package":  false,
+                                              "injected_failure_point":  null,
+                                              "validation_failure":  true,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "old_marker_sha256":  null,
+                                              "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                              "final_marker_sha256":  null,
+                                              "old_package_restored":  false,
+                                              "final_package_absent":  true,
+                                              "new_package_absent":  true,
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          }
+                                      ]
+                        }
+}

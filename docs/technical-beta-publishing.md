@@ -50,7 +50,7 @@ report.
 
 For a legacy acceptance report that predates schema 3, use
 `scripts/verify-technical-beta-acceptance-evidence.ps1` from a clean worktree.
-It produces a separate augmentation report: it derives gates from the immutable
+It produces a separate evidence attestation: it derives gates from the immutable
 historical smoke evidence and combines them with the current fault matrix. It
 records the Git commit and SHA-256 of the original acceptance JSON, so the
 report commit is not confused with the package source commit. It does not
