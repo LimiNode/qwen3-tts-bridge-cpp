@@ -16,6 +16,8 @@ reproducible evidence retained under `docs/benchmark-artifacts/`.
   evidence and migration rules for authoritative voice-clone candidates.
 - [Technical-beta publishing](../technical-beta-publishing.md): sealed package
   replacement, dual-model relocated validation, and acceptance-evidence rules.
+- [Technical-beta R2 acceptance](technical-beta-r2-acceptance.json): compact
+  same-host relocated CustomVoice and Base natural-EOS evidence.
 
 These reports describe a narrow internal configuration. They do not make
 performance or compatibility claims for arbitrary models, drivers, CUDA stacks,

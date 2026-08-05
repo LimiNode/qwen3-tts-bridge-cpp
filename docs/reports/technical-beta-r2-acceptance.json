@@ -1,0 +1,33 @@
+{
+    "schema_version":  1,
+    "package_id":  "QwenTTSBridge-technical-beta-r2",
+    "source_commit":  "32fcbe8c187609b6f70e6de6cea8ed565d06cd5a",
+    "package":  {
+                    "file_count":  34645,
+                    "size_bytes":  5324234933,
+                    "package_tree_manifest_sha256":  "16ac65712e44e25f123f4f91876b1968d128930d022bc4060056512db6253125",
+                    "voice_assets_manifest_sha256":  "2681e43af18a677aac5720bb57bd9ca5355a20557ddbd8d60b50391aa45ef515",
+                    "worker_build_manifest_sha256":  "23f186bb3c43cd4b5351df6be3be7bed278d48a3a427671aa7061df3f65e7317"
+                },
+    "models":  {
+                   "custom_voice":  {
+                                        "repository":  "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+                                        "revision":  "85e237c12c027371202489a0ec509ded67b5e4b5",
+                                        "directory_manifest_sha256":  "6d2e50c2ca1ee8b9845fda1669c5fff6e9e856537266ac3e9f01a28882db01f0"
+                                    },
+                   "base":  {
+                                "repository":  "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+                                "revision":  "fd4b254389122332181a7c3db7f27e918eec64e3",
+                                "directory_manifest_sha256":  "12eadbdf67917321dc3b1edfff444330297652f2be89eb9110a2dade520649ef"
+                            }
+               },
+    "acceptance":  {
+                       "validation_kind":  "same_host_relocated_private_runtime",
+                       "native_closure":  "passed",
+                       "manifests_before_and_after_smokes":  "passed",
+                       "custom_voice_natural_eos_sha256":  "5868be4d036790a64a0ad36853444cb7afed18fda080457782cd9cac444bb3cd",
+                       "base_natural_eos_sha256":  "96ce702a258bd4374d9025c889f1a5130c81e75380571f49d3d5bb9296ab072a",
+                       "base_voice_id":  "kraftwerk_robot_ru_bootstrap_fidelity",
+                       "bytecode_files":  0
+                   }
+}
