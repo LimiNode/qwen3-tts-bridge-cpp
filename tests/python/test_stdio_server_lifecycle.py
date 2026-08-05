@@ -587,7 +587,9 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertEqual("completed", completed["execution_outcome"])
         self.assertEqual(
             "eos",
-            cast(dict[str, object], completed["generation_trace"])["termination_reason"],
+            cast(dict[str, object], completed["generation_trace"])[
+                "termination_reason"
+            ],
         )
 
     def test_safety_limit_is_preserved_on_terminal_metric(self) -> None:

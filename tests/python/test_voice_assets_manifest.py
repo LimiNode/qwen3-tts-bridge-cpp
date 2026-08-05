@@ -69,11 +69,19 @@ class VoiceAssetsManifestTests(unittest.TestCase):
             )
 
             verify_manifest(package_root, manifest)
-            self.assertEqual("icl", manifest["voices"][0]["mode"])
-            first_voice = manifest["voices"][0]
+            voices = manifest["voices"]
+            self.assertIsInstance(voices, list)
+            assert isinstance(voices, list)
+            first_voice = voices[0]
+            self.assertIsInstance(first_voice, dict)
+            assert isinstance(first_voice, dict)
+            self.assertEqual("icl", first_voice["mode"])
+            reference_audio = first_voice["reference_audio"]
+            self.assertIsInstance(reference_audio, dict)
+            assert isinstance(reference_audio, dict)
             self.assertEqual(
                 0.1,
-                first_voice["reference_audio"]["duration_seconds"],
+                reference_audio["duration_seconds"],
             )
             (package_root / "voices" / "voice.wav").write_bytes(b"changed")
             with self.assertRaisesRegex(

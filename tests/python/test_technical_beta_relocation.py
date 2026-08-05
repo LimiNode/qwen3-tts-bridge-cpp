@@ -1,10 +1,7 @@
 """Static contracts for the portable technical-beta relocation smoke."""
 
-from __future__ import annotations
-
 import unittest
 from pathlib import Path
-
 
 _ROOT = Path(__file__).resolve().parents[2]
 _SCRIPT = _ROOT / "scripts" / "test-technical-beta-relocation.ps1"
