@@ -1,0 +1,105 @@
+{
+    "schema_version":  1,
+    "acceptance_pass":  true,
+    "package_id":  "QwenTTSBridge-technical-beta-r3",
+    "provenance":  {
+                       "artifact_source_commit":  "a04be8ac3e11b14ca00839c52dcc78215039fdd1",
+                       "original_acceptance_tooling_commit":  "a04be8ac3e11b14ca00839c52dcc78215039fdd1",
+                       "original_report_source_commit":  "a04be8ac3e11b14ca00839c52dcc78215039fdd1",
+                       "evidence_augmentation":  {
+                                                     "acceptance_tooling_commit":  "bc8bc202e9d4e0078ac1fa8463eab99770e7de2b",
+                                                     "evidence_generation_commit":  "bc8bc202e9d4e0078ac1fa8463eab99770e7de2b",
+                                                     "evidence_generation_tree":  "cb1fa0a2f9807fe2459f7e9614e42fcba323e161",
+                                                     "evidence_generation_tree_clean":  true
+                                                 }
+                   },
+    "package":  {
+                    "candidate_root_digest":  "c2a5133e843d5660b2fd0ca3c2b633f54154195c6fc1c76e7d0994542211ecfc",
+                    "published_root_digest":  "c2a5133e843d5660b2fd0ca3c2b633f54154195c6fc1c76e7d0994542211ecfc",
+                    "root_digest_algorithm":  "sha256(package-tree-manifest)",
+                    "voice_assets_manifest_sha256":  "2681e43af18a677aac5720bb57bd9ca5355a20557ddbd8d60b50391aa45ef515",
+                    "worker_build_manifest_sha256":  "d8ed2163412e4c168a81ec6a3523d9ecced5857abb4f46f3630fd5e3b52e1e7c"
+                },
+    "required_gates":  {
+                           "historical_root_acceptance":  true,
+                           "historical_source_clean":  true,
+                           "artifact_commit_consistency":  true,
+                           "relocated_candidate_validation":  true,
+                           "published_destination_validation":  true,
+                           "published_runtime_isolation":  true,
+                           "candidate_published_root_digest_match":  true,
+                           "publication_fault_injection":  true
+                       },
+    "fault_injection":  {
+                            "schema_version":  1,
+                            "acceptance_pass":  true,
+                            "cases":  [
+                                          {
+                                              "name":  "success",
+                                              "injected_failure_point":  null,
+                                              "validation_failure":  false,
+                                              "expected_failure":  false,
+                                              "threw":  false,
+                                              "final_marker":  "new",
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "before_backup",
+                                              "injected_failure_point":  "before_backup",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "final_marker":  "old",
+                                              "candidate_exists_after":  true,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "after_backup",
+                                              "injected_failure_point":  "after_backup",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "final_marker":  "old",
+                                              "candidate_exists_after":  true,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "after_swap",
+                                              "injected_failure_point":  "after_swap",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "final_marker":  "old",
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "post_publish_validation",
+                                              "injected_failure_point":  null,
+                                              "validation_failure":  true,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "final_marker":  "old",
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          },
+                                          {
+                                              "name":  "before_backup_cleanup",
+                                              "injected_failure_point":  "before_backup_cleanup",
+                                              "validation_failure":  false,
+                                              "expected_failure":  true,
+                                              "threw":  true,
+                                              "final_marker":  "old",
+                                              "candidate_exists_after":  false,
+                                              "backup_count_after":  0,
+                                              "pass":  true
+                                          }
+                                      ]
+                        }
+}
