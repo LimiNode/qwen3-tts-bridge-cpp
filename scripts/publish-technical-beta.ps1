@@ -77,7 +77,7 @@ function Get-FileSha256 {
 }
 
 $finalRoot = Resolve-RepoPath $OutputRoot
-$candidateRoot = "$finalRoot.candidate-$([Guid]::NewGuid().ToString('N'))"
+$candidateRoot = Join-Path $RepoRoot ".qtb-publish-$([Guid]::NewGuid().ToString('N'))"
 $validationRoot = Join-Path (Split-Path -Parent $candidateRoot) `
     "$(Split-Path -Leaf $candidateRoot)-relocated"
 $relocationReport = "$validationRoot-report.json"
