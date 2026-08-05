@@ -276,7 +276,11 @@ $reportValue = [ordered]@{
         native_closure = "passed"
     }
 }
-$reportValue | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $report -Encoding UTF8
+[IO.File]::WriteAllText(
+    $report,
+    (($reportValue | ConvertTo-Json -Depth 6) + [Environment]::NewLine),
+    [Text.UTF8Encoding]::new($false)
+)
 
 Write-Host "Technical-beta relocation smoke passed: $relocated"
 Write-Host "Technical-beta relocation report: $report"

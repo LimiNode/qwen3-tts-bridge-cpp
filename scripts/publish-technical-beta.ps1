@@ -157,7 +157,11 @@ try {
         }
     }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $acceptanceStage) | Out-Null
-    $acceptance | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $acceptanceStage -Encoding UTF8
+    [IO.File]::WriteAllText(
+        $acceptanceStage,
+        (($acceptance | ConvertTo-Json -Depth 6) + [Environment]::NewLine),
+        [Text.UTF8Encoding]::new($false)
+    )
 
     Replace-DirectoryAtomically -Candidate $candidateRoot -Final $finalRoot `
         -AllowReplacement:$ReplaceExisting
