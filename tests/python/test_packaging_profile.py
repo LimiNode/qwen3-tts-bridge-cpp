@@ -226,6 +226,7 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("& robocopy", script)
+        self.assertIn("/NJS | Out-Null", script)
         self.assertIn("if ($LASTEXITCODE -gt 7)", script)
         self.assertIn("robocopy failed while staging portable worker files", script)
 

@@ -304,7 +304,7 @@ function Copy-DirectoryContents {
         /NFL `
         /NDL `
         /NJH `
-        /NJS
+        /NJS | Out-Null
     if ($LASTEXITCODE -gt 7) {
         throw "robocopy failed while staging portable worker files: $Source -> $Destination (exit $LASTEXITCODE)"
     }
