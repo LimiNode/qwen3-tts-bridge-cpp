@@ -2,8 +2,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$PackageRoot,
-    [Parameter(Mandatory = $true)]
     [string]$RelocationRoot,
+    [switch]$InPlace,
     [Parameter(Mandatory = $true)]
     [string]$CustomVoiceModelPath,
     [Parameter(Mandatory = $true)]
@@ -32,11 +32,24 @@ function Resolve-ExistingPath {
     return (Resolve-Path -LiteralPath $Path).Path
 }
 
-function Invoke-Checked {
-    param([string]$FilePath, [string[]]$Arguments)
+$CommandResults = [System.Collections.Generic.List[object]]::new()
 
+function Invoke-Checked {
+    param(
+        [string]$Name,
+        [string]$FilePath,
+        [string[]]$Arguments
+    )
+
+    $started = [DateTime]::UtcNow
     & $FilePath @Arguments
-    if ($LASTEXITCODE -ne 0) {
+    $exitCode = $LASTEXITCODE
+    $CommandResults.Add([ordered]@{
+        name = $Name
+        exit_code = $exitCode
+        duration_ms = [math]::Round(([DateTime]::UtcNow - $started).TotalMilliseconds, 3)
+    })
+    if ($exitCode -ne 0) {
         throw "Command failed: $FilePath $($Arguments -join ' ')"
     }
 }
@@ -99,7 +112,8 @@ function Invoke-QwenSmoke {
         [string]$Language,
         [string]$Speaker,
         [string]$VoiceId,
-        [int]$TimeoutMilliseconds
+        [int]$TimeoutMilliseconds,
+        [string]$ResultJson
     )
 
     $arguments = @(
@@ -115,6 +129,7 @@ function Invoke-QwenSmoke {
         "--worker-arg", "--no-compile", "--worker-arg", "--no-cuda-graphs",
         "--worker-arg", "--collect-generation-trace",
         "--output", $Output,
+        "--result-json", $ResultJson,
         "--text", $Text,
         "--language", $Language,
         "--request-timeout-ms", $TimeoutMilliseconds,
@@ -130,7 +145,28 @@ function Invoke-QwenSmoke {
             "--voice-id", $VoiceId
         )
     }
-    Invoke-Checked -FilePath (Join-Path $Bin "qwen_tts_save_wav.exe") -Arguments $arguments
+    Invoke-Checked -Name "smoke_$([IO.Path]::GetFileNameWithoutExtension($Output))" `
+        -FilePath (Join-Path $Bin "qwen_tts_save_wav.exe") -Arguments $arguments
+    if (-not (Test-Path -LiteralPath $ResultJson)) {
+        throw "Smoke did not write result JSON: $ResultJson"
+    }
+    $result = Get-Content -LiteralPath $ResultJson -Raw | ConvertFrom-Json
+    if (
+        $result.schema_version -ne 1 -or
+        $result.terminal_state -ne "completed" -or
+        -not $result.completion_metadata_received -or
+        $result.execution_outcome -ne "completed" -or
+        $result.termination_reason -ne "eos" -or
+        -not $result.hit_eos -or
+        $result.hit_max_seq_len -or
+        $result.hit_max_new_tokens -or
+        $result.audio_chunks -lt 1 -or
+        $result.audio_bytes -lt 1 -or
+        $result.codec_frame_count -lt 1
+    ) {
+        throw "Smoke result JSON does not prove one natural-EOS completion: $ResultJson"
+    }
+    return $result
 }
 
 $source = Resolve-ExistingPath $PackageRoot "Technical-beta package"
@@ -145,10 +181,21 @@ if (-not (Test-Path -LiteralPath $objectDump)) {
     throw "MinGW objdump.exe was not found: $objectDump"
 }
 
-if (Test-Path -LiteralPath $RelocationRoot) {
-    throw "RelocationRoot must not already exist: $RelocationRoot"
+if ($InPlace -and $RelocationRoot) {
+    throw "RelocationRoot cannot be used with -InPlace"
 }
-$relocated = [IO.Path]::GetFullPath($RelocationRoot)
+if (-not $InPlace -and -not $RelocationRoot) {
+    throw "RelocationRoot is required unless -InPlace is selected"
+}
+if ($InPlace) {
+    $relocated = $source
+}
+else {
+    if (Test-Path -LiteralPath $RelocationRoot) {
+        throw "RelocationRoot must not already exist: $RelocationRoot"
+    }
+    $relocated = [IO.Path]::GetFullPath($RelocationRoot)
+}
 $relocationParent = Split-Path -Parent $relocated
 New-Item -ItemType Directory -Force -Path $relocationParent | Out-Null
 if (-not $ReportPath) {
@@ -159,25 +206,41 @@ if (Test-Path -LiteralPath $report) {
     throw "ReportPath must not already exist: $report"
 }
 
-& robocopy $source $relocated /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS | Out-Null
-if ($LASTEXITCODE -gt 7) {
-    throw "robocopy failed while relocating technical-beta package (exit $LASTEXITCODE)"
+if (-not $InPlace) {
+    & robocopy $source $relocated /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS | Out-Null
+    if ($LASTEXITCODE -gt 7) {
+        throw "robocopy failed while relocating technical-beta package (exit $LASTEXITCODE)"
+    }
+    $CommandResults.Add([ordered]@{
+        name = "relocate_package"
+        exit_code = 0
+        duration_ms = 0
+    })
 }
 
-Invoke-Checked -FilePath $python -Arguments @(
+Invoke-Checked -Name "verify_package_tree_pre_smoke" -FilePath $python -Arguments @(
     "scripts/package_tree_manifest.py", "verify",
     "--root", $relocated,
     "--manifest", (Join-Path $relocated "manifests/package-tree-manifest.json")
 )
-Invoke-Checked -FilePath $python -Arguments @(
+Invoke-Checked -Name "verify_voice_assets_pre_smoke" -FilePath $python -Arguments @(
     "scripts/voice_assets_manifest.py", "verify",
     "--root", $relocated,
     "--manifest", (Join-Path $relocated "manifests/voice-assets-manifest.json")
 )
 Assert-NativeClosure -Root $relocated -ObjectDump $objectDump
+$CommandResults.Add([ordered]@{
+    name = "verify_native_closure"
+    exit_code = 0
+    duration_ms = 0
+})
 
 $previousEnvironment = @{}
-foreach ($name in @("PATH", "PYTHONHOME", "PYTHONPATH", "PYTHONNOUSERSITE", "PYTHONDONTWRITEBYTECODE")) {
+foreach ($name in @(
+    "PATH", "PYTHONHOME", "PYTHONPATH", "PYTHONNOUSERSITE", "PYTHONDONTWRITEBYTECODE",
+    "HF_HOME", "HF_HUB_CACHE", "TRANSFORMERS_CACHE", "TORCH_HOME", "XDG_CACHE_HOME",
+    "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"
+)) {
     $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
 }
 try {
@@ -188,33 +251,49 @@ try {
     $env:PYTHONPATH = Join-Path $worker "python\Lib\site-packages"
     $env:PYTHONNOUSERSITE = "1"
     $env:PYTHONDONTWRITEBYTECODE = "1"
+    $env:HF_HOME = Join-Path $worker "runtime-cache\huggingface"
+    $env:HF_HUB_CACHE = Join-Path $worker "runtime-cache\huggingface\hub"
+    $env:TRANSFORMERS_CACHE = Join-Path $worker "runtime-cache\transformers"
+    $env:TORCH_HOME = Join-Path $worker "runtime-cache\torch"
+    $env:XDG_CACHE_HOME = Join-Path $worker "runtime-cache"
+    $env:HF_HUB_OFFLINE = "1"
+    $env:TRANSFORMERS_OFFLINE = "1"
+    Push-Location $worker
 
-    Invoke-Checked -FilePath (Join-Path $worker "qwen_tts_doctor.cmd") -Arguments @(
+    Invoke-Checked -Name "doctor_custom_voice_pre_smoke" `
+        -FilePath (Join-Path $worker "qwen_tts_doctor.cmd") -Arguments @(
         "--model-path", $customVoiceModel,
         "--model-manifest", $customVoiceManifest,
         "--require-cuda"
     )
-    Invoke-Checked -FilePath (Join-Path $worker "qwen_tts_doctor.cmd") -Arguments @(
+    Invoke-Checked -Name "doctor_base_pre_smoke" `
+        -FilePath (Join-Path $worker "qwen_tts_doctor.cmd") -Arguments @(
         "--model-path", $baseModel,
         "--model-manifest", $baseManifest,
         "--voice-registry", (Join-Path $relocated "config\voice-profiles.json"),
         "--require-cuda"
     )
     $customOutput = Join-Path $relocationParent "$(Split-Path -Leaf $relocated)-customvoice-eos.wav"
-    Invoke-QwenSmoke -Bin $bin -Worker $worker -Model $customVoiceModel `
+    $customResultJson = Join-Path $relocationParent "$(Split-Path -Leaf $relocated)-customvoice-eos.json"
+    $customSmoke = Invoke-QwenSmoke -Bin $bin -Worker $worker -Model $customVoiceModel `
         -Text "Relocated portable worker reaches natural EOS." -Output $customOutput `
-        -Language "English" -Speaker "serena" -VoiceId "" -TimeoutMilliseconds 180000
+        -Language "English" -Speaker "serena" -VoiceId "" -TimeoutMilliseconds 180000 `
+        -ResultJson $customResultJson
     $baseOutput = Join-Path $relocationParent "$(Split-Path -Leaf $relocated)-base-eos.wav"
-    Invoke-QwenSmoke -Bin $bin -Worker $worker -Model $baseModel `
+    $baseResultJson = Join-Path $relocationParent "$(Split-Path -Leaf $relocated)-base-eos.json"
+    $baseSmoke = Invoke-QwenSmoke -Bin $bin -Worker $worker -Model $baseModel `
         -Text "Relocated Base worker reaches natural EOS." -Output $baseOutput `
-        -Language "English" -Speaker "" -VoiceId $BaseVoiceId -TimeoutMilliseconds 300000
+        -Language "English" -Speaker "" -VoiceId $BaseVoiceId -TimeoutMilliseconds 300000 `
+        -ResultJson $baseResultJson
 
-    Invoke-Checked -FilePath (Join-Path $worker "qwen_tts_doctor.cmd") -Arguments @(
+    Invoke-Checked -Name "doctor_custom_voice_post_smoke" `
+        -FilePath (Join-Path $worker "qwen_tts_doctor.cmd") -Arguments @(
         "--model-path", $customVoiceModel,
         "--model-manifest", $customVoiceManifest,
         "--require-cuda"
     )
-    Invoke-Checked -FilePath (Join-Path $worker "qwen_tts_doctor.cmd") -Arguments @(
+    Invoke-Checked -Name "doctor_base_post_smoke" `
+        -FilePath (Join-Path $worker "qwen_tts_doctor.cmd") -Arguments @(
         "--model-path", $baseModel,
         "--model-manifest", $baseManifest,
         "--voice-registry", (Join-Path $relocated "config\voice-profiles.json"),
@@ -222,6 +301,9 @@ try {
     )
 }
 finally {
+    if ((Get-Location).Path -eq $worker) {
+        Pop-Location
+    }
     foreach ($name in $previousEnvironment.Keys) {
         [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], "Process")
     }
@@ -232,12 +314,12 @@ $bytecode = Get-ChildItem -LiteralPath $relocated -Recurse -Force -File |
 if ($bytecode.Count -ne 0) {
     throw "Relocated package wrote Python bytecode."
 }
-Invoke-Checked -FilePath $python -Arguments @(
+Invoke-Checked -Name "verify_package_tree_post_smoke" -FilePath $python -Arguments @(
     "scripts/package_tree_manifest.py", "verify",
     "--root", $relocated,
     "--manifest", (Join-Path $relocated "manifests/package-tree-manifest.json")
 )
-Invoke-Checked -FilePath $python -Arguments @(
+Invoke-Checked -Name "verify_voice_assets_post_smoke" -FilePath $python -Arguments @(
     "scripts/voice_assets_manifest.py", "verify",
     "--root", $relocated,
     "--manifest", (Join-Path $relocated "manifests/voice-assets-manifest.json")
@@ -248,22 +330,38 @@ $packageManifest = Get-Content -LiteralPath (Join-Path $relocated "manifests/pac
 $voiceManifest = Get-Content -LiteralPath (Join-Path $relocated "manifests/voice-assets-manifest.json") -Raw |
     ConvertFrom-Json
 $reportValue = [ordered]@{
-    schema_version = 1
-    validation_kind = "same_host_relocated_private_runtime"
+    schema_version = 2
+    validation_kind = if ($InPlace) { "same_host_published_private_runtime" } else { "same_host_relocated_private_runtime" }
     package = [ordered]@{
         package_tree_manifest_sha256 = $packageManifest.package_tree_manifest_sha256
         voice_assets_manifest_sha256 = $voiceManifest.voice_assets_manifest_sha256
+        immutable_tree_policy = [ordered]@{
+            sealed_files = "all"
+            sealed_directories = "all_except_empty_named_mutable_directories"
+            mutable_empty_directory_names = @($packageManifest.mutable_empty_directory_names)
+            pre_smoke_manifest = "passed"
+            post_smoke_manifest = "passed"
+        }
     }
+    isolation = [ordered]@{
+        working_directory = "package_worker"
+        pythonhome = "package_worker_python"
+        pythonpath = "package_worker_site_packages"
+        user_site_disabled = $true
+        bytecode_disabled = $true
+        hf_offline = $true
+        transformers_offline = $true
+        base_voice_registry = "package_config/voice-profiles.json"
+    }
+    commands = @($CommandResults)
     smokes = [ordered]@{
         custom_voice = [ordered]@{
-            terminal_state = "completed"
-            termination_reason = "eos"
+            result = $customSmoke
             output_sha256 = (Get-FileHash -LiteralPath $customOutput -Algorithm SHA256).Hash.ToLowerInvariant()
         }
         base = [ordered]@{
-            terminal_state = "completed"
-            termination_reason = "eos"
             voice_id = $BaseVoiceId
+            result = $baseSmoke
             output_sha256 = (Get-FileHash -LiteralPath $baseOutput -Algorithm SHA256).Hash.ToLowerInvariant()
         }
     }

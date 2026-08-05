@@ -20,7 +20,12 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("Assert-NativeClosure", script)
         self.assertIn("$env:PYTHONHOME", script)
         self.assertIn("$env:PYTHONPATH", script)
+        self.assertIn("$env:HF_HUB_OFFLINE", script)
+        self.assertIn("$env:TRANSFORMERS_OFFLINE", script)
+        self.assertIn("Push-Location $worker", script)
         self.assertIn("--require-natural-eos", script)
+        self.assertIn("--result-json", script)
+        self.assertIn("Smoke result JSON does not prove", script)
         self.assertIn("$baseModel", script)
         self.assertIn("--voice-registry", script)
         self.assertIn("doctor_base", script)
@@ -50,13 +55,21 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
 
         self.assertIn("package-technical-beta.ps1", script)
         self.assertIn("test-technical-beta-relocation.ps1", script)
-        self.assertIn("Replace-DirectoryAtomically", script)
+        self.assertIn("Move-TechnicalBetaDirectoryAtomically", script)
+        self.assertIn("Get-CleanSourceProvenance", script)
+        self.assertIn("test-technical-beta-relocation.ps1", script)
+        self.assertIn("-InPlace", script)
         self.assertIn("AcceptanceOutput already exists", script)
-        self.assertIn("dist\\.p-", script)
+        self.assertIn(".pending-", script)
         self.assertIn("worker\\build-manifest.json", script)
         self.assertIn("UTF8Encoding]::new($false)", script)
-        self.assertIn("custom_voice_natural_eos_sha256", script)
-        self.assertIn("base_natural_eos_sha256", script)
+        self.assertIn("published_destination", script)
+        self.assertIn("immutable_tree_policy", script)
+        self.assertIn(
+            "Technical-beta publication requires a clean source worktree",
+            script,
+        )
+        self.assertIn("source_diff_sha256", script)
 
 
 if __name__ == "__main__":

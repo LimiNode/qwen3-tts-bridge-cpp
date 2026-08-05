@@ -34,6 +34,26 @@ class PackageTreeManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "forbidden bytecode"):
                 verify_manifest(root, manifest_path)
 
+    def test_rejects_unexpected_directories_and_nonempty_mutable_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory) / "package"
+            manifest_path = root / "manifests" / "package-tree.json"
+            (root / "worker").mkdir(parents=True)
+            (root / "worker" / "worker.py").write_text("pass\n", encoding="ascii")
+            manifest_path.parent.mkdir()
+            manifest_path.write_bytes(build_manifest(root, manifest_path))
+
+            (root / "unexpected").mkdir()
+            with self.assertRaisesRegex(ValueError, "unexpected directory"):
+                verify_manifest(root, manifest_path)
+
+            (root / "unexpected").rmdir()
+            cache = root / "worker" / "__pycache__"
+            cache.mkdir()
+            (cache / "note.txt").write_text("not cache bytecode", encoding="ascii")
+            with self.assertRaisesRegex(ValueError, "must remain empty"):
+                verify_manifest(root, manifest_path)
+
 
 if __name__ == "__main__":
     unittest.main()

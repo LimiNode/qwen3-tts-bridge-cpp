@@ -19,13 +19,15 @@ param(
     [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
     [string]$FasterQwenSourcePath = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean",
     [string]$MinGwBin = "C:\MinGW\winlibs-x86_64-posix-seh-gcc-16.1.0-mingw-w64ucrt-14.0.0-r3\mingw64\bin",
-    [switch]$ReplaceExisting
+    [switch]$ReplaceExisting,
+    [ValidateSet("", "after_backup", "after_swap", "before_backup_cleanup")]
+    [string]$FailurePoint = ""
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
-$MarkerName = ".qtb-technical-beta-root"
+Import-Module (Join-Path $PSScriptRoot "TechnicalBetaPublication.psm1") -Force
 
 function Resolve-RepoPath {
     param([string]$Path)
@@ -36,57 +38,66 @@ function Resolve-RepoPath {
     return [IO.Path]::GetFullPath((Join-Path $RepoRoot $Path))
 }
 
-function Assert-ExistingTechnicalBetaRoot {
-    param([string]$Path)
-
-    if (-not (Test-Path -LiteralPath (Join-Path $Path $MarkerName))) {
-        throw "Refusing to replace output without technical-beta marker: $Path"
-    }
-}
-
-function Replace-DirectoryAtomically {
-    param([string]$Candidate, [string]$Final, [switch]$AllowReplacement)
-
-    if (-not (Test-Path -LiteralPath $Final)) {
-        Move-Item -LiteralPath $Candidate -Destination $Final
-        return
-    }
-    Assert-ExistingTechnicalBetaRoot $Final
-    if (-not $AllowReplacement) {
-        throw "Output already exists; pass -ReplaceExisting to publish a validated replacement: $Final"
-    }
-
-    $backup = "$Final.backup-$([Guid]::NewGuid().ToString('N'))"
-    Move-Item -LiteralPath $Final -Destination $backup
-    try {
-        Move-Item -LiteralPath $Candidate -Destination $Final
-    }
-    catch {
-        if (-not (Test-Path -LiteralPath $Final) -and (Test-Path -LiteralPath $backup)) {
-            Move-Item -LiteralPath $backup -Destination $Final
-        }
-        throw
-    }
-    Remove-Item -LiteralPath $backup -Recurse -Force
-}
-
 function Get-FileSha256 {
     param([string]$Path)
 
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+function Get-TextSha256 {
+    param([string]$Text)
+
+    $bytes = [Text.Encoding]::UTF8.GetBytes($Text)
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
+function Get-CleanSourceProvenance {
+    $status = @(& git status --porcelain=v1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to inspect source worktree status."
+    }
+    if ($status.Count -ne 0) {
+        throw "Technical-beta publication requires a clean source worktree."
+    }
+    $commit = (& git rev-parse HEAD).Trim()
+    $tree = (& git rev-parse "HEAD^{tree}").Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to resolve source tree provenance."
+    }
+    $diff = ((& git diff --no-ext-diff --binary HEAD) -join "`n")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to resolve source diff provenance."
+    }
+    return [ordered]@{
+        source_commit = $commit
+        source_tree = $tree
+        source_tree_clean = $true
+        source_diff_sha256 = Get-TextSha256 $diff
+        test_tree_commit = $commit
+        package_source_commit = $commit
+    }
+}
+
 $finalRoot = Resolve-RepoPath $OutputRoot
-$candidateRoot = Join-Path $RepoRoot "dist\.p-$([Guid]::NewGuid().ToString('N'))"
+$finalParent = Split-Path -Parent $finalRoot
+$candidateRoot = Join-Path $finalParent ".$(Split-Path -Leaf $finalRoot).pending-$([Guid]::NewGuid().ToString('N'))"
 $validationRoot = Join-Path (Split-Path -Parent $candidateRoot) `
     "$(Split-Path -Leaf $candidateRoot)-relocated"
 $relocationReport = "$validationRoot-report.json"
+$publishedReport = Join-Path $RepoRoot "tmp\technical-beta-published-$([Guid]::NewGuid().ToString('N')).json"
 $acceptancePath = Resolve-RepoPath $AcceptanceOutput
 $acceptanceStage = "$acceptancePath.pending-$([Guid]::NewGuid().ToString('N'))"
 
 if (Test-Path -LiteralPath $acceptancePath) {
     throw "AcceptanceOutput already exists; choose a new report path: $acceptancePath"
 }
+$sourceProvenance = Get-CleanSourceProvenance
 
 try {
     & (Join-Path $PSScriptRoot "package-technical-beta.ps1") `
@@ -115,24 +126,43 @@ try {
         throw "Technical-beta relocated acceptance failed."
     }
 
-    $packageTree = Get-Content -LiteralPath (Join-Path $candidateRoot "manifests/package-tree-manifest.json") -Raw |
-        ConvertFrom-Json
-    $voiceAssets = Get-Content -LiteralPath (Join-Path $candidateRoot "manifests/voice-assets-manifest.json") -Raw |
-        ConvertFrom-Json
+    Move-TechnicalBetaDirectoryAtomically -Candidate $candidateRoot -Final $finalRoot `
+        -AllowReplacement:$ReplaceExisting -FailurePoint $FailurePoint -ValidatePublished {
+            param($publishedRoot)
+            & (Join-Path $PSScriptRoot "test-technical-beta-relocation.ps1") `
+                -PackageRoot $publishedRoot `
+                -InPlace `
+                -CustomVoiceModelPath $CustomVoiceModelPath `
+                -CustomVoiceModelManifest $CustomVoiceModelManifest `
+                -BaseModelPath $BaseModelPath `
+                -BaseModelManifest $BaseModelManifest `
+                -VerifierPython $VerifierPython `
+                -BaseVoiceId $BaseVoiceId `
+                -ReportPath $publishedReport `
+                -MinGwBin $MinGwBin
+            if ($LASTEXITCODE -ne 0) {
+                throw "Published technical-beta validation failed."
+            }
+        }
+
+    $packageTree = Get-Content -LiteralPath (Join-Path $finalRoot "manifests/package-tree-manifest.json") -Raw | ConvertFrom-Json
+    $voiceAssets = Get-Content -LiteralPath (Join-Path $finalRoot "manifests/voice-assets-manifest.json") -Raw | ConvertFrom-Json
     $customManifest = Get-Content -LiteralPath $CustomVoiceModelManifest -Raw | ConvertFrom-Json
     $baseManifest = Get-Content -LiteralPath $BaseModelManifest -Raw | ConvertFrom-Json
     $relocation = Get-Content -LiteralPath $relocationReport -Raw | ConvertFrom-Json
-    $files = Get-ChildItem -LiteralPath $candidateRoot -Recurse -Force -File
+    $published = Get-Content -LiteralPath $publishedReport -Raw | ConvertFrom-Json
+    $files = Get-ChildItem -LiteralPath $finalRoot -Recurse -Force -File
     $acceptance = [ordered]@{
-        schema_version = 1
-        package_id = "QwenTTSBridge-technical-beta-r2"
-        source_commit = ((& git rev-parse HEAD).Trim())
+        schema_version = 2
+        package_id = "QwenTTSBridge-technical-beta-r3"
+        source = $sourceProvenance
         package = [ordered]@{
             file_count = @($files).Count
             size_bytes = [long](($files | Measure-Object -Property Length -Sum).Sum)
             package_tree_manifest_sha256 = $packageTree.package_tree_manifest_sha256
             voice_assets_manifest_sha256 = $voiceAssets.voice_assets_manifest_sha256
-            worker_build_manifest_sha256 = Get-FileSha256 (Join-Path $candidateRoot "worker\build-manifest.json")
+            worker_build_manifest_sha256 = Get-FileSha256 (Join-Path $finalRoot "worker\build-manifest.json")
+            immutable_tree_policy = $published.package.immutable_tree_policy
         }
         models = [ordered]@{
             custom_voice = [ordered]@{
@@ -147,25 +177,18 @@ try {
             }
         }
         acceptance = [ordered]@{
-            validation_kind = $relocation.validation_kind
-            native_closure = "passed"
-            manifests_before_and_after_smokes = "passed"
-            custom_voice_natural_eos_sha256 = $relocation.smokes.custom_voice.output_sha256
-            base_natural_eos_sha256 = $relocation.smokes.base.output_sha256
-            base_voice_id = $BaseVoiceId
-            bytecode_files = 0
+            relocated_candidate = $relocation
+            published_destination = $published
         }
     }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $acceptanceStage) | Out-Null
     [IO.File]::WriteAllText(
         $acceptanceStage,
-        (($acceptance | ConvertTo-Json -Depth 6) + [Environment]::NewLine),
+        (($acceptance | ConvertTo-Json -Depth 12) + [Environment]::NewLine),
         [Text.UTF8Encoding]::new($false)
     )
-
-    Replace-DirectoryAtomically -Candidate $candidateRoot -Final $finalRoot `
-        -AllowReplacement:$ReplaceExisting
     Move-Item -LiteralPath $acceptanceStage -Destination $acceptancePath
+    Remove-Item -LiteralPath $publishedReport -Force
 }
 catch {
     if (Test-Path -LiteralPath $candidateRoot) {
@@ -173,6 +196,9 @@ catch {
     }
     if (Test-Path -LiteralPath $acceptanceStage) {
         Remove-Item -LiteralPath $acceptanceStage -Force
+    }
+    if (Test-Path -LiteralPath $publishedReport) {
+        Remove-Item -LiteralPath $publishedReport -Force
     }
     throw
 }

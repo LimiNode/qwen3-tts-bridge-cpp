@@ -8,8 +8,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 _FORBIDDEN_FILE_SUFFIXES = {".pyc", ".pyo"}
+_MUTABLE_EMPTY_DIRECTORY_NAMES = {"__pycache__"}
 
 
 def main() -> int:
@@ -33,7 +34,7 @@ def main() -> int:
 
 
 def build_manifest(root: Path, output: Path) -> bytes:
-    """Return a canonical manifest for every package file except itself."""
+    """Return a canonical manifest for the sealed package tree except itself."""
 
     root = root.resolve()
     output = output.resolve()
@@ -44,6 +45,11 @@ def build_manifest(root: Path, output: Path) -> bytes:
     payload: dict[str, object] = {
         "package_tree_manifest_schema_version": _SCHEMA_VERSION,
         "manifest_path": output.relative_to(root).as_posix(),
+        "mutable_empty_directory_names": sorted(_MUTABLE_EMPTY_DIRECTORY_NAMES),
+        "package_directories": [
+            path.relative_to(root).as_posix()
+            for path in _package_directories(root)
+        ],
         "package_files": [
             {
                 "path": path.relative_to(root).as_posix(),
@@ -58,7 +64,7 @@ def build_manifest(root: Path, output: Path) -> bytes:
 
 
 def verify_manifest(root: Path, manifest_path: Path) -> None:
-    """Raise ``ValueError`` unless the package has exactly its sealed file set."""
+    """Raise ``ValueError`` unless the package has its sealed tree and files."""
 
     root = root.resolve()
     manifest_path = manifest_path.resolve()
@@ -79,6 +85,8 @@ def verify_manifest(root: Path, manifest_path: Path) -> None:
         or _sha256(_canonical_json_bytes(unsigned)) != expected_hash
     ):
         raise ValueError("package tree manifest SHA is invalid")
+    _verify_forbidden_bytecode(root)
+    _verify_directories(root, manifest)
     actual = build_manifest(root, manifest_path)
     if _canonical_json_bytes(manifest) != actual:
         raise ValueError("package tree does not match manifest")
@@ -97,6 +105,74 @@ def _package_files(root: Path, manifest_path: Path) -> list[Path]:
         if path.is_file() and path.resolve() != manifest_path:
             files.append(path)
     return sorted(files, key=lambda item: item.relative_to(root).as_posix())
+
+
+def _package_directories(root: Path) -> list[Path]:
+    """Return every sealed directory below the package root."""
+
+    if not root.is_dir():
+        raise ValueError(f"package root is not a directory: {root}")
+    return sorted(
+        (
+            path
+            for path in root.rglob("*")
+            if path.is_dir() and path.name not in _MUTABLE_EMPTY_DIRECTORY_NAMES
+        ),
+        key=lambda item: item.relative_to(root).as_posix(),
+    )
+
+
+def _verify_forbidden_bytecode(root: Path) -> None:
+    """Reject bytecode before checking permitted empty transient directories."""
+
+    for path in root.rglob("*"):
+        if path.is_file() and path.suffix in _FORBIDDEN_FILE_SUFFIXES:
+            relative = path.relative_to(root).as_posix()
+            raise ValueError(f"package contains forbidden bytecode: {relative}")
+
+
+def _all_package_directories(root: Path) -> list[Path]:
+    """Return every directory, including explicitly mutable cache directories."""
+
+    return sorted(
+        (path for path in root.rglob("*") if path.is_dir()),
+        key=lambda item: item.relative_to(root).as_posix(),
+    )
+
+
+def _verify_directories(root: Path, manifest: dict[str, Any]) -> None:
+    """Reject missing or unexpected directories outside explicit empty cache roots."""
+
+    expected = manifest.get("package_directories")
+    mutable_names = manifest.get("mutable_empty_directory_names")
+    if (
+        not isinstance(expected, list)
+        or not all(isinstance(path, str) for path in expected)
+        or not isinstance(mutable_names, list)
+        or not all(isinstance(name, str) for name in mutable_names)
+    ):
+        raise ValueError("package tree directory policy is invalid")
+
+    expected_paths = set(expected)
+    actual_paths: set[str] = set()
+    for directory in _all_package_directories(root):
+        relative = directory.relative_to(root).as_posix()
+        if relative in expected_paths:
+            actual_paths.add(relative)
+            continue
+        if directory.name not in mutable_names:
+            raise ValueError(f"package contains unexpected directory: {relative}")
+        if any(path.is_file() for path in directory.rglob("*")):
+            raise ValueError(
+                "package mutable cache directory must remain empty: "
+                f"{relative}"
+            )
+
+    if actual_paths != expected_paths:
+        missing = sorted(expected_paths - actual_paths)
+        raise ValueError(
+            "package is missing sealed directories: " + ", ".join(missing)
+        )
 
 
 def _load_json(path: Path) -> dict[str, Any]:
