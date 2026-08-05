@@ -1284,6 +1284,34 @@ class QwenEngineTests(unittest.TestCase):
             fake_model.reset_after_partial_generation(),
             trace["bridge_reset_after_generation"],
         )
+
+    def test_base_generation_trace_normalizes_generated_codec_frame_count(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-base",
+                runtime_backend="faster",
+                collect_generation_trace=True,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+        fake_model.last_generation_trace = {
+            "generated_codec_frame_count": 3,
+            "termination_reason": "eos",
+            "terminal_step_index": 3,
+            "generated_steps": 3,
+            "emitted_steps": 3,
+            "hit_eos": True,
+            "hit_max_new_tokens": False,
+            "hit_max_seq_len": False,
+        }
+        engine._capture_generation_trace(fake_model)
+
+        trace = engine.pop_last_generation_trace()
+        self.assertIsNotNone(trace)
+        assert trace is not None
+        self.assertEqual(3, trace["codec_frame_count"])
         self.assertIsNone(engine.pop_last_generation_trace())
 
     def test_faster_stream_preserves_timing_input_metadata(self) -> None:

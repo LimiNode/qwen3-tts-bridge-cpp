@@ -414,6 +414,14 @@ class QwenTtsEngine:
         if not isinstance(trace, dict):
             raise QwenEngineError("faster backend did not produce a generation trace")
         captured_trace = {str(key): value for key, value in trace.items()}
+        # FasterQwen's Base clone stream reports this count under a more
+        # specific key than CustomVoice. The wire contract uses one field.
+        if "codec_frame_count" not in captured_trace:
+            generated_codec_frame_count = captured_trace.get(
+                "generated_codec_frame_count"
+            )
+            if isinstance(generated_codec_frame_count, int):
+                captured_trace["codec_frame_count"] = generated_codec_frame_count
         if reset_metadata is not None:
             captured_trace["bridge_reset_after_generation"] = reset_metadata
         self._last_generation_trace = captured_trace
