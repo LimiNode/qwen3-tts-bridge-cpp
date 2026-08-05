@@ -205,6 +205,7 @@ $report = [IO.Path]::GetFullPath($ReportPath)
 if (Test-Path -LiteralPath $report) {
     throw "ReportPath must not already exist: $report"
 }
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $report) | Out-Null
 
 if (-not $InPlace) {
     & robocopy $source $relocated /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS | Out-Null

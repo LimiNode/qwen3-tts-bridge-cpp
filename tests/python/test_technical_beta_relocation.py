@@ -67,6 +67,7 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("UTF8Encoding]::new($false)", script)
         self.assertIn("published_destination", script)
         self.assertIn("immutable_tree_policy", script)
+        self.assertIn("Split-Path -Parent $report", script)
         self.assertIn(
             "Technical-beta publication requires a clean source worktree",
             script,
