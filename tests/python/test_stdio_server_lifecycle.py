@@ -196,6 +196,18 @@ class SettingsEngine:
         self.completed.set()
         return ()
 
+    def pop_last_generation_trace(self) -> dict[str, object]:
+        return {
+            "termination_reason": "eos",
+            "hit_eos": True,
+            "hit_max_seq_len": False,
+            "hit_max_new_tokens": False,
+            "codec_frame_count": 8,
+            "generated_steps": 8,
+            "emitted_steps": 8,
+            "terminal_step_index": 8,
+        }
+
     def close(self) -> None:
         pass
 
@@ -570,6 +582,13 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertEqual(4242, effective["effective_seed"])
         self.assertEqual(0.4, effective["effective_temperature"])
         self.assertTrue(effective["effective_do_sample"])
+        completed = _payload(frames[-1])
+        self.assertEqual("completed", completed["message_type"])
+        self.assertEqual("completed", completed["execution_outcome"])
+        self.assertEqual(
+            "eos",
+            cast(dict[str, object], completed["generation_trace"])["termination_reason"],
+        )
 
     def test_safety_limit_is_preserved_on_terminal_metric(self) -> None:
         payload = (

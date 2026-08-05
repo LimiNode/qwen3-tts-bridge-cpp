@@ -1,10 +1,47 @@
 import argparse
 import unittest
 
-from verify_packaged_worker import _expected_warmed_up, _worker_process_args
+from verify_packaged_worker import (
+    _expected_warmed_up,
+    _require_natural_eos,
+    _worker_process_args,
+)
 
 
 class VerifyPackagedWorkerTests(unittest.TestCase):
+    def test_natural_eos_requires_complete_consistent_trace(self) -> None:
+        _require_natural_eos(
+            {
+                "execution_outcome": "completed",
+                "generation_trace": {
+                    "termination_reason": "eos",
+                    "hit_eos": True,
+                    "hit_max_seq_len": False,
+                    "hit_max_new_tokens": False,
+                    "codec_frame_count": 8,
+                    "generated_steps": 8,
+                    "emitted_steps": 8,
+                    "terminal_step_index": 8,
+                },
+            }
+        )
+        with self.assertRaisesRegex(RuntimeError, "termination_reason"):
+            _require_natural_eos(
+                {
+                    "execution_outcome": "completed",
+                    "generation_trace": {
+                        "termination_reason": "max_new_tokens",
+                        "hit_eos": False,
+                        "hit_max_seq_len": False,
+                        "hit_max_new_tokens": True,
+                        "codec_frame_count": 8,
+                        "generated_steps": 8,
+                        "emitted_steps": 8,
+                        "terminal_step_index": 8,
+                    },
+                }
+            )
+
     def test_auto_warmup_expectation_matches_engine_contract(self) -> None:
         cases = (
             ("mock", False, True),

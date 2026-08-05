@@ -177,6 +177,7 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("Remove-StagedPackageArtifacts", script)
         self.assertIn("Install-ProjectWheelToTarget", script)
         self.assertIn("Write-BuildManifest", script)
+        self.assertIn("build_manifest_schema_version = 1", script)
         self.assertIn("build-manifest.json", script)
         self.assertIn("portable-python-tree-manifest.json", script)
         self.assertIn("scripts/runtime_tree_manifest.py", script)
@@ -277,6 +278,7 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("--prefill-backend eager", script)
         self.assertIn("--no-compile", script)
         self.assertIn("--no-cuda-graphs", script)
+        self.assertIn("--require-natural-eos", script)
 
     def test_portable_worker_cpp_smoke_uses_direct_python_executable(self) -> None:
         script = _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT.read_text(encoding="utf-8")

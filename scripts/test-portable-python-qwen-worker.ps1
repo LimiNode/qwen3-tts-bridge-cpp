@@ -128,6 +128,7 @@ try {
         --prefill-backend eager `
         --no-compile `
         --no-cuda-graphs `
+        --require-natural-eos `
         --timeout-seconds "$TimeoutSeconds" `
         --text $Text `
         --language $Language `

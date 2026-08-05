@@ -1037,7 +1037,13 @@ class StdioWorkerServer:
                     **generation_trace,
                 )
             self._emit_request_finished(slot, "completed")
-            self._writer.send(control_frame(request_id, {"message_type": "completed"}))
+            completed_message: dict[str, object] = {
+                "message_type": "completed",
+                "execution_outcome": "completed",
+            }
+            if generation_trace:
+                completed_message["generation_trace"] = generation_trace
+            self._writer.send(control_frame(request_id, completed_message))
 
     def _finish_cancelled(self, slot: _RequestSlot) -> None:
         request_id = slot.request.request_id

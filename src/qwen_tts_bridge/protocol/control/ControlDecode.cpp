@@ -153,7 +153,11 @@ ControlDecodeResult decode_known_control_message(
     }
 
     if (type == "completed") {
-        return make_control_message(CompletedMessage{});
+        CompletedMessage message;
+        if (!read_completed_message(object, message, diagnostic, error)) {
+            return control_error(error, diagnostic);
+        }
+        return make_control_message(std::move(message));
     }
 
     if (type == "cancelled") {

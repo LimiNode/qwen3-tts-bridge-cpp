@@ -342,6 +342,27 @@ bool read_required_audio_format(
     return read_audio_format(*value, out, diagnostic, error);
 }
 
+bool read_required_u64(
+    const Json& object,
+    const char* name,
+    std::uint64_t& out,
+    std::string& diagnostic,
+    ControlCodecError& error) {
+    const Json* value = find_field(object, name);
+    if (value == nullptr) {
+        diagnostic = std::string("missing required field: ") + name;
+        error = ControlCodecError::MissingRequiredField;
+        return false;
+    }
+    if (!value->is_number_unsigned()) {
+        diagnostic = std::string("field must be an unsigned integer: ") + name;
+        error = ControlCodecError::InvalidFieldType;
+        return false;
+    }
+    out = value->get<std::uint64_t>();
+    return true;
+}
+
 bool read_optional_finite_double(
     const Json& object,
     const char* name,
@@ -405,6 +426,85 @@ bool read_optional_synthesis_sampling(
     }
     out.top_k = top_k_present ? std::optional<std::uint32_t>(top_k) : std::nullopt;
     out.do_sample = do_sample_present ? std::optional<bool>(do_sample) : std::nullopt;
+    return true;
+}
+
+bool read_completed_message(
+    const Json& object,
+    CompletedMessage& out,
+    std::string& diagnostic,
+    ControlCodecError& error) {
+    if (!read_optional_string(
+            object,
+            "execution_outcome",
+            out.execution_outcome,
+            diagnostic,
+            error)) {
+        return false;
+    }
+    out.has_execution_outcome = find_field(object, "execution_outcome") != nullptr;
+
+    const Json* trace = find_field(object, "generation_trace");
+    if (trace == nullptr) {
+        return true;
+    }
+    if (!trace->is_object()) {
+        diagnostic = "generation_trace must be an object";
+        error = ControlCodecError::InvalidFieldType;
+        return false;
+    }
+
+    if (!read_required_string(
+            *trace,
+            "termination_reason",
+            out.generation_trace.termination_reason,
+            diagnostic,
+            error) ||
+        !read_required_bool(
+            *trace,
+            "hit_eos",
+            out.generation_trace.hit_eos,
+            diagnostic,
+            error) ||
+        !read_required_bool(
+            *trace,
+            "hit_max_seq_len",
+            out.generation_trace.hit_max_seq_len,
+            diagnostic,
+            error) ||
+        !read_required_bool(
+            *trace,
+            "hit_max_new_tokens",
+            out.generation_trace.hit_max_new_tokens,
+            diagnostic,
+            error) ||
+        !read_required_u64(
+            *trace,
+            "codec_frame_count",
+            out.generation_trace.codec_frame_count,
+            diagnostic,
+            error) ||
+        !read_required_u64(
+            *trace,
+            "generated_steps",
+            out.generation_trace.generated_steps,
+            diagnostic,
+            error) ||
+        !read_required_u64(
+            *trace,
+            "emitted_steps",
+            out.generation_trace.emitted_steps,
+            diagnostic,
+            error) ||
+        !read_required_u64(
+            *trace,
+            "terminal_step_index",
+            out.generation_trace.terminal_step_index,
+            diagnostic,
+            error)) {
+        return false;
+    }
+    out.has_generation_trace = true;
     return true;
 }
 

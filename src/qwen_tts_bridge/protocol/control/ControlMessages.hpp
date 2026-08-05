@@ -154,9 +154,27 @@ struct StartedMessage {
     AudioFormat audio_format; ///< PCM format used for subsequent audio frames.
 };
 
+/// \struct GenerationTrace
+/// \brief Optional worker generation terminal metadata for diagnostic callers.
+struct GenerationTrace {
+    std::string termination_reason; ///< Model terminal reason such as ``eos``.
+    bool hit_eos = false; ///< Whether the model emitted its natural EOS token.
+    bool hit_max_seq_len = false; ///< Whether generation reached the sequence limit.
+    bool hit_max_new_tokens = false; ///< Whether generation reached the token limit.
+    std::uint64_t codec_frame_count = 0; ///< Generated codec-frame count.
+    std::uint64_t generated_steps = 0; ///< Generated decoder step count.
+    std::uint64_t emitted_steps = 0; ///< Emitted decoder step count.
+    std::uint64_t terminal_step_index = 0; ///< Index of the terminal decoder step.
+};
+
 /// \struct CompletedMessage
 /// \brief Worker-to-client terminal success event.
-struct CompletedMessage {};
+struct CompletedMessage {
+    bool has_execution_outcome = false; ///< Whether the worker reported its outcome.
+    std::string execution_outcome; ///< Worker-reported terminal outcome.
+    bool has_generation_trace = false; ///< Whether diagnostic generation metadata is present.
+    GenerationTrace generation_trace; ///< Optional terminal generation metadata.
+};
 
 /// \struct CancelledMessage
 /// \brief Worker-to-client terminal cancellation event.

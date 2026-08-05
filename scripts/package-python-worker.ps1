@@ -545,6 +545,7 @@ function Write-BuildManifest {
     )
 
     $Manifest = [ordered]@{
+        build_manifest_schema_version = 1
         generated_at_utc = [DateTime]::UtcNow.ToString("o")
         python = [ordered]@{
             base_prefix = Get-PortableSourcePath ([string]$PythonEnvironment.base_prefix)

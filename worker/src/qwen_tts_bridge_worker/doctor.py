@@ -10,13 +10,12 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from qwen_tts_bridge_worker.engine.voice_profiles import VoiceProfileRegistry
-
 _PORTABLE_MARKER = ".qtb-portable-worker-root"
 _RUNTIME_TREE_SCHEMA = 1
 _MODEL_MANIFEST_SCHEMA = 2
-_TRANSIENT_RUNTIME_DIRECTORIES = {"__pycache__"}
-_TRANSIENT_RUNTIME_SUFFIXES = {".pyc", ".pyo"}
+_BUILD_MANIFEST_SCHEMA = 1
+_FORBIDDEN_RUNTIME_DIRECTORIES = {"__pycache__"}
+_FORBIDDEN_RUNTIME_SUFFIXES = {".pyc", ".pyo"}
 _TRANSIENT_MODEL_DIRECTORIES = {".cache"}
 _TRANSIENT_MODEL_SUFFIXES = {".incomplete", ".lock", ".partial", ".tmp"}
 
@@ -70,6 +69,9 @@ def inspect_portable_runtime(
             _load_json_object(model_manifest.resolve()),
         )
     if voice_registry is not None:
+        # Import only after the staged worker tree has passed its byte checks.
+        from qwen_tts_bridge_worker.engine.voice_profiles import VoiceProfileRegistry
+
         registry = VoiceProfileRegistry.from_json_file(voice_registry.resolve(), 1)
         report["voice_profiles"] = {
             "registry": str(voice_registry.resolve()),
@@ -106,6 +108,7 @@ def _verify_portable_runtime(root: Path) -> dict[str, object]:
     python_root = root / "python"
     build_manifest_path = root / "build-manifest.json"
     build_manifest = _load_json_object(build_manifest_path)
+    _verify_build_manifest(root, build_manifest)
     tree_entry = build_manifest.get("portable_runtime_tree_manifest")
     if not isinstance(tree_entry, dict):
         raise ValueError("portable build manifest has no runtime tree entry")
@@ -132,6 +135,95 @@ def _verify_portable_runtime(root: Path) -> dict[str, object]:
         "runtime_tree_manifest": str(tree_manifest_path),
         "runtime_tree_manifest_sha256": expected_tree_sha256,
     }
+
+
+def _verify_build_manifest(root: Path, manifest: dict[str, object]) -> None:
+    if manifest.get("build_manifest_schema_version") != _BUILD_MANIFEST_SCHEMA:
+        raise ValueError("unsupported portable build manifest schema")
+    if not isinstance(manifest.get("generated_at_utc"), str):
+        raise ValueError("portable build manifest generated_at_utc is invalid")
+    python = manifest.get("python")
+    if not isinstance(python, dict):
+        raise ValueError("portable build manifest python record is invalid")
+    for key in ("implementation", "version", "base_prefix", "purelib", "platlib"):
+        if not isinstance(python.get(key), (str, dict)):
+            raise ValueError(f"portable build manifest python.{key} is invalid")
+    version_info = python.get("version_info")
+    if (
+        not isinstance(version_info, list)
+        or len(version_info) != 3
+        or any(not isinstance(value, int) for value in version_info)
+    ):
+        raise ValueError("portable build manifest python.version_info is invalid")
+    python_tools = manifest.get("python_tools")
+    if not isinstance(python_tools, dict):
+        raise ValueError("portable build manifest python_tools is invalid")
+    for key in ("pip", "setuptools", "wheel", "torch", "transformers", "torch_cuda"):
+        if not isinstance(python_tools.get(key), str):
+            raise ValueError(f"portable build manifest python_tools.{key} is invalid")
+    if not isinstance(python_tools.get("torch_cuda_available"), str):
+        raise ValueError(
+            "portable build manifest python_tools.torch_cuda_available is invalid"
+        )
+    pip_freeze = manifest.get("pip_freeze")
+    if not isinstance(pip_freeze, list) or any(
+        not isinstance(value, str) for value in pip_freeze
+    ):
+        raise ValueError("portable build manifest pip_freeze is invalid")
+    wheels = manifest.get("wheels")
+    if not isinstance(wheels, list) or not wheels:
+        raise ValueError("portable build manifest wheels are invalid")
+    labels: set[str] = set()
+    for wheel in wheels:
+        _verify_build_manifest_wheel(root, wheel, labels)
+    if "worker" not in labels:
+        raise ValueError("portable build manifest has no worker wheel")
+
+
+def _verify_build_manifest_wheel(
+    root: Path,
+    wheel: object,
+    labels: set[str],
+) -> None:
+    if not isinstance(wheel, dict):
+        raise ValueError("portable build manifest wheel entry is invalid")
+    label = wheel.get("label")
+    requirement = wheel.get("requirement")
+    wheel_name = wheel.get("wheel")
+    wheel_sha256 = wheel.get("wheel_sha256")
+    artifact = wheel.get("wheel_artifact")
+    source = wheel.get("source")
+    if (
+        not isinstance(label, str)
+        or not label
+        or label in labels
+        or not isinstance(requirement, str)
+        or not requirement
+        or not isinstance(wheel_name, str)
+        or Path(wheel_name).name != wheel_name
+        or not isinstance(wheel_sha256, str)
+        or len(wheel_sha256) != 64
+        or not isinstance(artifact, str)
+        or not _is_safe_relative_path(artifact)
+        or not isinstance(source, dict)
+    ):
+        raise ValueError("portable build manifest wheel entry is invalid")
+    for key in ("path", "path_kind", "git_commit", "git_dirty", "git_status"):
+        if key not in source:
+            raise ValueError("portable build manifest wheel source is invalid")
+    if (
+        not isinstance(source["path"], str)
+        or not isinstance(source["path_kind"], str)
+        or not isinstance(source["git_commit"], str)
+        or len(source["git_commit"]) != 40
+        or not isinstance(source["git_dirty"], bool)
+        or not isinstance(source["git_status"], list)
+    ):
+        raise ValueError("portable build manifest wheel source is invalid")
+    artifact_path = root / artifact
+    if not artifact_path.is_file() or _sha256_file(artifact_path) != wheel_sha256:
+        raise ValueError(f"portable build manifest wheel SHA does not match: {label}")
+    labels.add(label)
 
 
 def _verify_runtime_tree_manifest(root: Path, manifest: dict[str, object]) -> None:
@@ -281,11 +373,17 @@ def _gpu_report(
 def _runtime_files(root: Path) -> list[Path]:
     if not root.is_dir():
         raise ValueError(f"portable runtime root is not a directory: {root}")
+    forbidden = _find_forbidden_runtime_paths(root)
+    if forbidden:
+        raise ValueError(
+            "portable runtime contains forbidden bytecode: "
+            + ", ".join(forbidden)
+        )
     return sorted(
         (
             path
             for path in root.rglob("*")
-            if path.is_file() and not _is_transient_runtime_path(path.relative_to(root))
+            if path.is_file()
         ),
         key=lambda path: path.relative_to(root).as_posix(),
     )
@@ -304,10 +402,16 @@ def _model_files(root: Path) -> list[Path]:
     )
 
 
-def _is_transient_runtime_path(path: Path) -> bool:
-    return bool(set(path.parts).intersection(_TRANSIENT_RUNTIME_DIRECTORIES)) or (
-        path.suffix in _TRANSIENT_RUNTIME_SUFFIXES
-    )
+def _find_forbidden_runtime_paths(root: Path) -> list[str]:
+    forbidden: list[str] = []
+    for path in root.rglob("*"):
+        relative_path = path.relative_to(root)
+        if (
+            bool(set(relative_path.parts).intersection(_FORBIDDEN_RUNTIME_DIRECTORIES))
+            or path.suffix in _FORBIDDEN_RUNTIME_SUFFIXES
+        ):
+            forbidden.append(relative_path.as_posix())
+    return sorted(forbidden)
 
 
 def _is_transient_model_path(path: Path) -> bool:
@@ -362,6 +466,11 @@ def _sha256_file(path: Path) -> str:
 
 def _sha256(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def _is_safe_relative_path(value: str) -> bool:
+    path = Path(value)
+    return not path.is_absolute() and ".." not in path.parts and value != ""
 
 
 if __name__ == "__main__":

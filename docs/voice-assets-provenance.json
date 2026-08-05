@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "purpose": "Portable-package provenance for the accepted experimental robot character profiles.",
+  "profiles": [
+    {
+      "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+      "quality_status": "accepted_experimental_character_profile",
+      "source": "Selected synthetic bootstrap candidate derived from the authorized demonstration workflow.",
+      "limitations": "Source-like character only; not an identity-equality or production-clone claim."
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_bootstrap_warm",
+      "quality_status": "accepted_experimental_character_profile",
+      "source": "Selected synthetic bootstrap candidate derived from the authorized demonstration workflow.",
+      "limitations": "Warm robotic character only; not an identity-equality or production-clone claim."
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_source_like",
+      "quality_status": "accepted_experimental_character_profile",
+      "source": "User-provided processed version of a selected synthetic bootstrap candidate; local live listening accepted stable source-like character behavior.",
+      "limitations": "Source-like character only; not an identity-equality or production-clone claim."
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_warm_metal",
+      "quality_status": "accepted_experimental_character_profile",
+      "source": "User-provided processed version of a selected synthetic bootstrap candidate; local live listening accepted stable warm metallic character behavior.",
+      "limitations": "Experimental character profile only; not an identity-equality or production-clone claim."
+    }
+  ],
+  "related_evidence": [
+    "docs/benchmark-artifacts/rtx4090-2026-08-03/voice-clone-bootstrap-prefixed-listening-review.json",
+    "docs/benchmark-artifacts/rtx4090-2026-08-03/voice-clone-processed-profile-acceptance.json"
+  ]
+}

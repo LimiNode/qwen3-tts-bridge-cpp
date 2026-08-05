@@ -94,7 +94,23 @@ Json control_message_to_json(const ControlMessage& message) {
                 };
             }
             else if constexpr (std::is_same_v<Message, CompletedMessage>) {
-                return Json{{kMessageType, "completed"}};
+                Json out = {{kMessageType, "completed"}};
+                if (value.has_execution_outcome) {
+                    out["execution_outcome"] = value.execution_outcome;
+                }
+                if (value.has_generation_trace) {
+                    out["generation_trace"] = {
+                        {"termination_reason", value.generation_trace.termination_reason},
+                        {"hit_eos", value.generation_trace.hit_eos},
+                        {"hit_max_seq_len", value.generation_trace.hit_max_seq_len},
+                        {"hit_max_new_tokens", value.generation_trace.hit_max_new_tokens},
+                        {"codec_frame_count", value.generation_trace.codec_frame_count},
+                        {"generated_steps", value.generation_trace.generated_steps},
+                        {"emitted_steps", value.generation_trace.emitted_steps},
+                        {"terminal_step_index", value.generation_trace.terminal_step_index}
+                    };
+                }
+                return out;
             }
             else if constexpr (std::is_same_v<Message, CancelledMessage>) {
                 return Json{{kMessageType, "cancelled"}};

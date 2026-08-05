@@ -452,7 +452,7 @@ void QwenTtsClient::handle_control_event(const WorkerSessionEvent& event) {
         break;
     }
     case ControlMessageType::Completed:
-        complete_request(event.request_id);
+        complete_request(event.request_id, std::get<CompletedMessage>(event.control));
         break;
     case ControlMessageType::Cancelled:
         cancel_request_locally(event.request_id);
@@ -542,7 +542,9 @@ void QwenTtsClient::handle_local_error(
         message));
 }
 
-void QwenTtsClient::complete_request(RequestId request_id) {
+void QwenTtsClient::complete_request(
+    RequestId request_id,
+    const CompletedMessage& completed) {
     TtsCallbacks callbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -552,6 +554,23 @@ void QwenTtsClient::complete_request(RequestId request_id) {
         }
         callbacks = std::move(it->second.callbacks);
         active_requests_.erase(it);
+    }
+
+    if (callbacks.on_completion_metadata) {
+        TtsCompletion completion;
+        completion.execution_outcome = completed.execution_outcome;
+        completion.has_generation_trace = completed.has_generation_trace;
+        completion.termination_reason = completed.generation_trace.termination_reason;
+        completion.hit_eos = completed.generation_trace.hit_eos;
+        completion.hit_max_seq_len = completed.generation_trace.hit_max_seq_len;
+        completion.hit_max_new_tokens = completed.generation_trace.hit_max_new_tokens;
+        completion.codec_frame_count = completed.generation_trace.codec_frame_count;
+        completion.generated_steps = completed.generation_trace.generated_steps;
+        completion.emitted_steps = completed.generation_trace.emitted_steps;
+        completion.terminal_step_index = completed.generation_trace.terminal_step_index;
+        invoke_user_callback([&callbacks, &completion]() {
+            callbacks.on_completion_metadata(completion);
+        });
     }
 
     if (callbacks.on_completed) {

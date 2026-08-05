@@ -111,6 +111,21 @@ struct TtsError {
     std::string message; ///< Human-readable diagnostic message.
 };
 
+/// \struct TtsCompletion
+/// \brief Optional terminal metadata reported with a completed synthesis request.
+struct TtsCompletion {
+    std::string execution_outcome; ///< Worker-reported terminal outcome when available.
+    bool has_generation_trace = false; ///< Whether EOS and decoder trace fields are available.
+    std::string termination_reason; ///< Model terminal reason such as ``eos``.
+    bool hit_eos = false; ///< Whether the model emitted natural EOS.
+    bool hit_max_seq_len = false; ///< Whether the model reached its sequence limit.
+    bool hit_max_new_tokens = false; ///< Whether the model reached its token limit.
+    std::uint64_t codec_frame_count = 0; ///< Generated codec-frame count.
+    std::uint64_t generated_steps = 0; ///< Generated decoder step count.
+    std::uint64_t emitted_steps = 0; ///< Emitted decoder step count.
+    std::uint64_t terminal_step_index = 0; ///< Terminal decoder-step index.
+};
+
 /// \struct TtsCallbacks
 /// \brief Callback set for one synthesis request.
 struct TtsCallbacks {
@@ -119,6 +134,9 @@ struct TtsCallbacks {
 
     /// \brief Called exactly once when synthesis completes successfully.
     std::function<void()> on_completed; ///< Called exactly once after completion.
+
+    /// \brief Called exactly once with optional worker terminal metadata.
+    std::function<void(const TtsCompletion&)> on_completion_metadata; ///< Completed metadata callback.
 
     /// \brief Called exactly once when synthesis is cancelled.
     std::function<void()> on_cancelled; ///< Called exactly once after cancellation.

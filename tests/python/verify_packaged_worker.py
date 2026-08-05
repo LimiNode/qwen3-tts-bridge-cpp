@@ -330,6 +330,11 @@ def main() -> int:
     parser.add_argument("--language", default="auto")
     parser.add_argument("--speaker", default="")
     parser.add_argument("--instruction", default="")
+    parser.add_argument(
+        "--require-natural-eos",
+        action="store_true",
+        help="Require FasterQwen terminal telemetry to prove natural EOS.",
+    )
     args = parser.parse_args()
 
     worker_executable = args.worker_executable.resolve()
@@ -337,6 +342,12 @@ def main() -> int:
         parser.error(f"worker executable was not found: {worker_executable}")
     if args.engine == "qwen" and not args.model_path:
         parser.error("--model-path is required for --engine qwen")
+    if args.require_natural_eos and (
+        args.engine != "qwen" or args.runtime_backend != "faster"
+    ):
+        parser.error(
+            "--require-natural-eos requires --engine qwen --runtime-backend faster"
+        )
 
     harness = PackagedWorkerHarness(
         worker_executable=worker_executable,
@@ -351,6 +362,7 @@ def main() -> int:
             speaker=args.speaker,
             instruction=args.instruction,
             expect_warmed_up=_expected_warmed_up(args),
+            require_natural_eos=args.require_natural_eos,
         )
     finally:
         harness.close()
@@ -411,7 +423,9 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.append("--profile-prefill")
     if getattr(args, "profile_nvtx", False):
         worker_args.append("--profile-nvtx")
-    if getattr(args, "collect_generation_trace", False):
+    if getattr(args, "collect_generation_trace", False) or getattr(
+        args, "require_natural_eos", False
+    ):
         worker_args.append("--collect-generation-trace")
     prefill_backend = str(getattr(args, "prefill_backend", "eager"))
     if prefill_backend:
@@ -548,6 +562,7 @@ def _exercise_worker(
     speaker: str,
     instruction: str,
     expect_warmed_up: bool,
+    require_natural_eos: bool,
 ) -> None:
     harness.send_control(
         0,
@@ -583,12 +598,56 @@ def _exercise_worker(
         and frame.header.request_id == 1
     )
     _expect(len(audio.payload) > 0, "packaged worker produced an empty PCM frame")
-    harness.read_frame(lambda frame: _is_control_message(frame, "completed", 1))
+    completed = _control_payload(
+        harness.read_frame(lambda frame: _is_control_message(frame, "completed", 1))
+    )
+    if require_natural_eos:
+        _require_natural_eos(completed)
 
     harness.send_control(0, {"message_type": "shutdown", "mode": "cancel"})
     harness.read_frame(lambda frame: _is_control_message(frame, "shutdown_ack", 0))
     exit_code = harness.wait()
     _expect(exit_code == 0, f"packaged worker exited with code {exit_code}")
+
+
+def _require_natural_eos(completed: dict[str, object]) -> None:
+    _expect(
+        completed.get("execution_outcome") == "completed",
+        "completed event does not report execution_outcome=completed",
+    )
+    trace = completed.get("generation_trace")
+    _expect(isinstance(trace, dict), "completed event has no generation_trace")
+    trace = cast(dict[str, object], trace)
+    _expect(
+        trace.get("termination_reason") == "eos",
+        "generation trace termination_reason is not eos",
+    )
+    _expect(trace.get("hit_eos") is True, "generation trace did not hit EOS")
+    _expect(
+        trace.get("hit_max_seq_len") is False,
+        "generation trace reached max_seq_len",
+    )
+    _expect(
+        trace.get("hit_max_new_tokens") is False,
+        "generation trace reached max_new_tokens",
+    )
+    counters = {
+        name: trace.get(name)
+        for name in (
+            "codec_frame_count",
+            "generated_steps",
+            "emitted_steps",
+            "terminal_step_index",
+        )
+    }
+    _expect(
+        all(isinstance(value, int) and value > 0 for value in counters.values()),
+        "generation trace counters are incomplete",
+    )
+    _expect(
+        len(set(cast(int, value) for value in counters.values())) == 1,
+        "generation trace counters are inconsistent",
+    )
 
 
 def _synthesize_payload(

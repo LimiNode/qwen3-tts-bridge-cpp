@@ -283,6 +283,36 @@ void test_decode_ready() {
     CHECK(ready.voice_ids.front() == "kraftwerk_robot_ru");
 }
 
+void test_decode_completed_generation_trace() {
+    const auto result = decode_worker(
+        "{\"message_type\":\"completed\","
+        "\"execution_outcome\":\"completed\","
+        "\"generation_trace\":{"
+        "\"termination_reason\":\"eos\","
+        "\"hit_eos\":true,"
+        "\"hit_max_seq_len\":false,"
+        "\"hit_max_new_tokens\":false,"
+        "\"codec_frame_count\":8,"
+        "\"generated_steps\":8,"
+        "\"emitted_steps\":8,"
+        "\"terminal_step_index\":8}}"
+    );
+
+    CHECK(result);
+    const auto& completed = std::get<CompletedMessage>(result.message);
+    CHECK(completed.has_execution_outcome);
+    CHECK(completed.execution_outcome == "completed");
+    CHECK(completed.has_generation_trace);
+    CHECK(completed.generation_trace.termination_reason == "eos");
+    CHECK(completed.generation_trace.hit_eos);
+    CHECK(!completed.generation_trace.hit_max_seq_len);
+    CHECK(!completed.generation_trace.hit_max_new_tokens);
+    CHECK(completed.generation_trace.codec_frame_count == 8);
+    CHECK(completed.generation_trace.generated_steps == 8);
+    CHECK(completed.generation_trace.emitted_steps == 8);
+    CHECK(completed.generation_trace.terminal_step_index == 8);
+}
+
 void test_decode_ready_without_optional_sampling_capabilities() {
     const auto result = decode_worker(
         "{\"message_type\":\"ready\","
@@ -578,6 +608,7 @@ int main() {
     test_encode_synthesize_omits_unspecified_speaker();
     test_encode_synthesize_with_explicit_speaker();
     test_decode_ready();
+    test_decode_completed_generation_trace();
     test_decode_ready_without_optional_sampling_capabilities();
     test_encode_ping_round_trip();
     test_decode_started_audio_format();

@@ -139,7 +139,7 @@ private:
         const WorkerSessionEvent& event,
         const std::string& category,
         const std::string& code);
-    void complete_request(RequestId request_id);
+    void complete_request(RequestId request_id, const CompletedMessage& completed);
     void cancel_request_locally(RequestId request_id);
     void fail_request(RequestId request_id, TtsError error);
     void fail_all_requests(TtsError error);
