@@ -52,7 +52,7 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("test-technical-beta-relocation.ps1", script)
         self.assertIn("Replace-DirectoryAtomically", script)
         self.assertIn("AcceptanceOutput already exists", script)
-        self.assertIn(".qtb-publish-", script)
+        self.assertIn("dist\\.p-", script)
         self.assertIn("custom_voice_natural_eos_sha256", script)
         self.assertIn("base_natural_eos_sha256", script)
 
