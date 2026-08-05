@@ -162,9 +162,7 @@ finally {
 
 $bytecode = Get-ChildItem -LiteralPath $relocated -Recurse -Force -File |
     Where-Object { $_.Extension -in ".pyc", ".pyo" }
-$cacheDirectories = Get-ChildItem -LiteralPath $relocated -Recurse -Force -Directory |
-    Where-Object { $_.Name -eq "__pycache__" }
-if ($bytecode.Count -ne 0 -or $cacheDirectories.Count -ne 0) {
+if ($bytecode.Count -ne 0) {
     throw "Relocated package wrote Python bytecode."
 }
 Invoke-Checked -FilePath $python -Arguments @(

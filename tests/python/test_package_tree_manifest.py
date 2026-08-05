@@ -29,6 +29,7 @@ class PackageTreeManifestTests(unittest.TestCase):
 
             manifest_path.write_bytes(build_manifest(root, manifest_path))
             (root / "worker" / "__pycache__").mkdir()
+            verify_manifest(root, manifest_path)
             (root / "worker" / "__pycache__" / "worker.pyc").write_bytes(b"pyc")
             with self.assertRaisesRegex(ValueError, "forbidden bytecode"):
                 verify_manifest(root, manifest_path)

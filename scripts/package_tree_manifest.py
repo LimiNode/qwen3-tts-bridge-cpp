@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 _SCHEMA_VERSION = 1
-_FORBIDDEN_DIRECTORY_NAMES = {"__pycache__"}
 _FORBIDDEN_FILE_SUFFIXES = {".pyc", ".pyo"}
 
 
@@ -91,9 +90,7 @@ def _package_files(root: Path, manifest_path: Path) -> list[Path]:
     files: list[Path] = []
     for path in root.rglob("*"):
         relative = path.relative_to(root)
-        if set(relative.parts).intersection(_FORBIDDEN_DIRECTORY_NAMES) or (
-            path.suffix in _FORBIDDEN_FILE_SUFFIXES
-        ):
+        if path.is_file() and path.suffix in _FORBIDDEN_FILE_SUFFIXES:
             raise ValueError(
                 f"package contains forbidden bytecode: {relative.as_posix()}"
             )

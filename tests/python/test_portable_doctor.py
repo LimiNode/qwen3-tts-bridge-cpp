@@ -59,6 +59,8 @@ class PortableDoctorTests(unittest.TestCase):
 
             cache = python_root / "Lib" / "__pycache__"
             cache.mkdir(parents=True)
+            report = doctor.inspect_portable_runtime(portable_root=root)
+            self.assertTrue(report["acceptance_pass"])
             (cache / "doctor.cpython-311.pyc").write_bytes(b"bytecode")
             with self.assertRaisesRegex(ValueError, "forbidden bytecode"):
                 doctor.inspect_portable_runtime(portable_root=root)

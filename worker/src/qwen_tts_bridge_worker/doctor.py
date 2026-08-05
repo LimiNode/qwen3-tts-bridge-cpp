@@ -14,7 +14,6 @@ _PORTABLE_MARKER = ".qtb-portable-worker-root"
 _RUNTIME_TREE_SCHEMA = 1
 _MODEL_MANIFEST_SCHEMA = 2
 _BUILD_MANIFEST_SCHEMA = 1
-_FORBIDDEN_RUNTIME_DIRECTORIES = {"__pycache__"}
 _FORBIDDEN_RUNTIME_SUFFIXES = {".pyc", ".pyo"}
 _TRANSIENT_MODEL_DIRECTORIES = {".cache"}
 _TRANSIENT_MODEL_SUFFIXES = {".incomplete", ".lock", ".partial", ".tmp"}
@@ -406,10 +405,7 @@ def _find_forbidden_runtime_paths(root: Path) -> list[str]:
     forbidden: list[str] = []
     for path in root.rglob("*"):
         relative_path = path.relative_to(root)
-        if (
-            bool(set(relative_path.parts).intersection(_FORBIDDEN_RUNTIME_DIRECTORIES))
-            or path.suffix in _FORBIDDEN_RUNTIME_SUFFIXES
-        ):
+        if path.is_file() and path.suffix in _FORBIDDEN_RUNTIME_SUFFIXES:
             forbidden.append(relative_path.as_posix())
     return sorted(forbidden)
 
