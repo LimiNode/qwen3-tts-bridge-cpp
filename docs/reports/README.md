@@ -14,6 +14,8 @@ reproducible evidence retained under `docs/benchmark-artifacts/`.
   next voice-clone runner changes.
 - [Schema 5 provenance plan](schema-5-provenance-plan.md): actual-byte runtime
   evidence and migration rules for authoritative voice-clone candidates.
+- [Technical-beta publishing](../technical-beta-publishing.md): sealed package
+  replacement, dual-model relocated validation, and acceptance-evidence rules.
 
 These reports describe a narrow internal configuration. They do not make
 performance or compatibility claims for arbitrary models, drivers, CUDA stacks,

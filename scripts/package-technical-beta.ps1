@@ -139,10 +139,10 @@ if (Test-Path -LiteralPath $FinalRoot) {
     if (-not $Clean) {
         throw "Output already exists; pass -Clean to replace it: $FinalRoot"
     }
-    Remove-Item -LiteralPath $FinalRoot -Recurse -Force
 }
 
 $StageRoot = "$FinalRoot.pending-$([Guid]::NewGuid().ToString('N'))"
+$BackupRoot = $null
 New-Item -ItemType Directory -Force -Path $StageRoot | Out-Null
 [IO.File]::WriteAllText(
     (Join-Path $StageRoot $MarkerName),
@@ -232,9 +232,32 @@ try {
         "--manifest", $PackageManifest
     )
 
-    Move-Item -LiteralPath $StageRoot -Destination $FinalRoot
+    if (Test-Path -LiteralPath $FinalRoot) {
+        $BackupRoot = "$FinalRoot.backup-$([Guid]::NewGuid().ToString('N'))"
+        Move-Item -LiteralPath $FinalRoot -Destination $BackupRoot
+        try {
+            Move-Item -LiteralPath $StageRoot -Destination $FinalRoot
+        }
+        catch {
+            if (-not (Test-Path -LiteralPath $FinalRoot) -and
+                (Test-Path -LiteralPath $BackupRoot)) {
+                Move-Item -LiteralPath $BackupRoot -Destination $FinalRoot
+            }
+            throw
+        }
+        Remove-Item -LiteralPath $BackupRoot -Recurse -Force
+        $BackupRoot = $null
+    }
+    else {
+        Move-Item -LiteralPath $StageRoot -Destination $FinalRoot
+    }
 }
 catch {
+    if ($null -ne $BackupRoot -and
+        -not (Test-Path -LiteralPath $FinalRoot) -and
+        (Test-Path -LiteralPath $BackupRoot)) {
+        Move-Item -LiteralPath $BackupRoot -Destination $FinalRoot
+    }
     if (Test-Path -LiteralPath $StageRoot) {
         Remove-Item -LiteralPath $StageRoot -Recurse -Force
     }
