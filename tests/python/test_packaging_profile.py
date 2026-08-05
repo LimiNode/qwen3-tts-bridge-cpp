@@ -218,6 +218,16 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
 
         self.assertIn("setuptools==", requirements)
         self.assertIn("wheel==", requirements)
+        self.assertIn("torch==2.10.0+cu128", requirements)
+        self.assertIn("torchaudio==2.10.0+cu128", requirements)
+        self.assertIn("download.pytorch.org/whl/cu128", requirements)
+
+    def test_portable_worker_copy_uses_robocopy_with_checked_exit_status(self) -> None:
+        script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("& robocopy", script)
+        self.assertIn("if ($LASTEXITCODE -gt 7)", script)
+        self.assertIn("robocopy failed while staging portable worker files", script)
 
     def test_portable_worker_script_rejects_path_leaking_artifacts(self) -> None:
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")

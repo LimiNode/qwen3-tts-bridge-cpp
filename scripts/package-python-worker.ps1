@@ -293,7 +293,21 @@ function Copy-DirectoryContents {
     }
 
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-    Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
+    & robocopy `
+        $Source `
+        $Destination `
+        /E `
+        /COPY:DAT `
+        /DCOPY:DAT `
+        /R:1 `
+        /W:1 `
+        /NFL `
+        /NDL `
+        /NJH `
+        /NJS
+    if ($LASTEXITCODE -gt 7) {
+        throw "robocopy failed while staging portable worker files: $Source -> $Destination (exit $LASTEXITCODE)"
+    }
 }
 
 function Get-ProjectRequirement {
