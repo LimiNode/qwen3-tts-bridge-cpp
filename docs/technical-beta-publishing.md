@@ -22,10 +22,12 @@ directories; Python bytecode files are always rejected. The relocated and
 published-destination reports record pre/post manifest verification.
 
 The script writes generated acceptance JSON supplied through
-`-AcceptanceOutput`. It records clean source provenance, the exact source and
-test commit, an empty-diff SHA-256, sealed package hashes, model identities,
-every gate command and exit code, and machine-readable natural-EOS results for
-both model families. The acceptance report deliberately contains no local
+`-AcceptanceOutput`. Schema 3 computes `acceptance_pass` from named
+`required_gates`; it is never a hard-coded success marker. It records the
+`artifact_source_commit` for the packaged source and the
+`acceptance_tooling_commit` / `report_generation_commit` for the clean source
+tree that produced the evidence. It also records candidate and published root
+digests and requires them to match. The report deliberately contains no local
 absolute paths and does not replace a clean-machine test on a second host.
 
 During validation the worker starts from its package directory with private
@@ -36,8 +38,18 @@ CMP gate.
 
 Replacement keeps the old marked package as a sibling backup until the
 published destination has passed its validation. The lightweight
-`scripts/test-technical-beta-publication.ps1` injects failures before and
-after the swap and verifies rollback without requiring CUDA.
+`scripts/test-technical-beta-publication.ps1` injects failures before the
+backup rename, after the backup rename, after the swap, during published
+validation, and before backup cleanup. It writes an optional machine-readable
+case matrix and verifies rollback without requiring CUDA. The publisher runs
+that matrix before packaging and embeds the passing result in the acceptance
+report.
+
+For a legacy acceptance report that predates schema 3, use
+`scripts/verify-technical-beta-acceptance-evidence.ps1` from a clean worktree.
+It produces a separate augmentation report: it derives gates from the immutable
+historical smoke evidence and combines them with the current fault matrix. It
+does not overwrite or relabel the original package report.
 
 For example, on the pinned validation host:
 

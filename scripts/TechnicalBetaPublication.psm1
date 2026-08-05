@@ -24,7 +24,7 @@ function Move-TechnicalBetaDirectoryAtomically {
         [Parameter(Mandatory = $true)][string]$Final,
         [Parameter(Mandatory = $true)][scriptblock]$ValidatePublished,
         [switch]$AllowReplacement,
-        [ValidateSet("", "after_backup", "after_swap", "before_backup_cleanup")]
+        [ValidateSet("", "before_backup", "after_backup", "after_swap", "before_backup_cleanup")]
         [string]$FailurePoint = ""
     )
 
@@ -45,6 +45,7 @@ function Move-TechnicalBetaDirectoryAtomically {
         if (-not $AllowReplacement) {
             throw "Output already exists; pass -ReplaceExisting to publish a validated replacement: $finalPath"
         }
+        Invoke-TechnicalBetaFailurePoint -FailurePoint $FailurePoint -CurrentPoint "before_backup"
         $backupPath = "$finalPath.backup-$([Guid]::NewGuid().ToString('N'))"
         Move-Item -LiteralPath $finalPath -Destination $backupPath
         try {

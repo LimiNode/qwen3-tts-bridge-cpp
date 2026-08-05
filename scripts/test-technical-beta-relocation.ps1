@@ -54,6 +54,13 @@ function Invoke-Checked {
     }
 }
 
+function Test-CommandPassed {
+    param([string]$Name)
+
+    $match = @($CommandResults | Where-Object { $_.name -eq $Name })
+    return $match.Count -eq 1 -and $match[0].exit_code -eq 0
+}
+
 function Get-ImportedDllNames {
     param([string]$ObjectDump, [string]$Path)
 
@@ -330,11 +337,39 @@ $packageManifest = Get-Content -LiteralPath (Join-Path $relocated "manifests/pac
     ConvertFrom-Json
 $voiceManifest = Get-Content -LiteralPath (Join-Path $relocated "manifests/voice-assets-manifest.json") -Raw |
     ConvertFrom-Json
+$requiredGates = [ordered]@{
+    package_tree_pre_smoke = Test-CommandPassed "verify_package_tree_pre_smoke"
+    voice_assets_pre_smoke = Test-CommandPassed "verify_voice_assets_pre_smoke"
+    native_closure = Test-CommandPassed "verify_native_closure"
+    custom_voice_natural_eos = (
+        $customSmoke.terminal_state -eq "completed" -and
+        $customSmoke.execution_outcome -eq "completed" -and
+        $customSmoke.termination_reason -eq "eos" -and
+        $customSmoke.hit_eos
+    )
+    base_natural_eos = (
+        $baseSmoke.terminal_state -eq "completed" -and
+        $baseSmoke.execution_outcome -eq "completed" -and
+        $baseSmoke.termination_reason -eq "eos" -and
+        $baseSmoke.hit_eos
+    )
+    custom_voice_post_smoke = Test-CommandPassed "doctor_custom_voice_post_smoke"
+    base_post_smoke = Test-CommandPassed "doctor_base_post_smoke"
+    no_bytecode = $bytecode.Count -eq 0
+    package_tree_post_smoke = Test-CommandPassed "verify_package_tree_post_smoke"
+    voice_assets_post_smoke = Test-CommandPassed "verify_voice_assets_post_smoke"
+}
+$acceptancePass = @($requiredGates.Values | Where-Object { -not $_ }).Count -eq 0
+if (-not $acceptancePass) {
+    throw "Technical-beta relocation acceptance has failed required gates."
+}
 $reportValue = [ordered]@{
-    schema_version = 2
-    acceptance_pass = $true
+    schema_version = 3
+    acceptance_pass = $acceptancePass
     validation_kind = if ($InPlace) { "same_host_published_private_runtime" } else { "same_host_relocated_private_runtime" }
     package = [ordered]@{
+        root_digest = $packageManifest.package_tree_manifest_sha256
+        root_digest_algorithm = "sha256(package-tree-manifest)"
         package_tree_manifest_sha256 = $packageManifest.package_tree_manifest_sha256
         voice_assets_manifest_sha256 = $voiceManifest.voice_assets_manifest_sha256
         immutable_tree_policy = [ordered]@{
@@ -345,6 +380,7 @@ $reportValue = [ordered]@{
             post_smoke_manifest = "passed"
         }
     }
+    required_gates = $requiredGates
     isolation = [ordered]@{
         working_directory = "package_worker"
         pythonhome = "package_worker_python"
@@ -374,6 +410,7 @@ $reportValue = [ordered]@{
         package_tree_manifest = "passed"
         voice_assets_manifest = "passed"
         native_closure = "passed"
+        sealed_tree_unchanged = $requiredGates.package_tree_pre_smoke -and $requiredGates.package_tree_post_smoke
     }
 }
 [IO.File]::WriteAllText(

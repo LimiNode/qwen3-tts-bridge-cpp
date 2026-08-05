@@ -7,6 +7,8 @@ _ROOT = Path(__file__).resolve().parents[2]
 _SCRIPT = _ROOT / "scripts" / "test-technical-beta-relocation.ps1"
 _PACKAGER = _ROOT / "scripts" / "package-technical-beta.ps1"
 _PUBLISHER = _ROOT / "scripts" / "publish-technical-beta.ps1"
+_FAULT_TEST = _ROOT / "scripts" / "test-technical-beta-publication.ps1"
+_EVIDENCE_VERIFIER = _ROOT / "scripts" / "verify-technical-beta-acceptance-evidence.ps1"
 
 
 class TechnicalBetaRelocationTests(unittest.TestCase):
@@ -16,7 +18,9 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("RelocationRoot must not already exist", script)
         self.assertIn("ReportPath must not already exist", script)
         self.assertIn("Split-Path -Parent $report", script)
-        self.assertIn("acceptance_pass = $true", script)
+        self.assertIn("$acceptancePass =", script)
+        self.assertIn("required_gates = $requiredGates", script)
+        self.assertIn("root_digest_algorithm", script)
         self.assertIn("scripts/package_tree_manifest.py", script)
         self.assertIn("scripts/voice_assets_manifest.py", script)
         self.assertIn("Assert-NativeClosure", script)
@@ -74,6 +78,37 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
             script,
         )
         self.assertIn("source_diff_sha256", script)
+        self.assertIn("Test-FaultInjectionReport", script)
+        self.assertIn("candidate_root_digest", script)
+        self.assertIn("published_root_digest", script)
+        self.assertIn("required_gates = $requiredGates", script)
+
+    def test_publication_fault_matrix_covers_atomic_replacement_boundaries(
+        self,
+    ) -> None:
+        script = _FAULT_TEST.read_text(encoding="utf-8")
+
+        self.assertIn("before_backup", script)
+        self.assertIn("after_backup", script)
+        self.assertIn("after_swap", script)
+        self.assertIn("post_publish_validation", script)
+        self.assertIn("before_backup_cleanup", script)
+        self.assertIn("acceptance_pass = $acceptancePass", script)
+        self.assertIn("final_marker", script)
+        self.assertIn("Join-Path (Get-Location).Path $Path", script)
+
+    def test_evidence_verifier_derives_r3_gates_without_rewriting_history(
+        self,
+    ) -> None:
+        script = _EVIDENCE_VERIFIER.read_text(encoding="utf-8")
+
+        self.assertIn("Evidence verification requires a clean source worktree", script)
+        self.assertIn("Test-NaturalEos", script)
+        self.assertIn("candidate_published_root_digest_match", script)
+        self.assertIn("publication_fault_injection", script)
+        self.assertIn("original_acceptance_tooling_commit", script)
+        self.assertIn("evidence_augmentation", script)
+        self.assertIn("Join-Path (Get-Location).Path $Output", script)
 
 
 if __name__ == "__main__":
