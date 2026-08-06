@@ -386,17 +386,26 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument(
         "--enable-streaming-optimizations",
         action="store_true",
-        help="Call the Qwen fork's torch.compile/CUDA graph optimization hook.",
+        help=(
+            "Call the upstream Qwen fork's streaming optimization hook. "
+            "FasterQwen uses its own runtime policy instead."
+        ),
     )
     qwen_parser.add_argument(
         "--no-compile",
         action="store_true",
-        help="Disable torch.compile when streaming optimizations are enabled.",
+        help=(
+            "Disable bridge-requested torch.compile for upstream streaming "
+            "optimizations; this does not control FasterQwen internals."
+        ),
     )
     qwen_parser.add_argument(
         "--no-cuda-graphs",
         action="store_true",
-        help="Disable CUDA graph capture when streaming optimizations are enabled.",
+        help=(
+            "Disable bridge-requested CUDA graphs for upstream streaming "
+            "optimizations; FasterQwen may still capture internal CUDA graphs."
+        ),
     )
     qwen_parser.add_argument("--compile-mode", default="reduce-overhead")
     qwen_parser.add_argument(

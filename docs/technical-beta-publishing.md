@@ -44,6 +44,12 @@ voice registry, and offline Hugging Face/Transformers variables. This detects
 accidental development-checkout and cache dependencies before the independent
 CMP gate.
 
+`--no-cuda-graphs` controls only the bridge-requested upstream Qwen streaming
+optimization hook. It does not claim to disable CUDA graphs owned internally
+by FasterQwen. A Faster run reports that boundary explicitly in its warmup
+metric, while compile/allowlist profile activation remains independently
+attested through the selected prefill policy and manifests.
+
 Replacement keeps the old marked package as a sibling backup until the
 published destination has passed its validation. The lightweight
 `scripts/test-technical-beta-publication.ps1` injects failures before the

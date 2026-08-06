@@ -97,9 +97,12 @@ scripts\test-portable-python-qwen-worker.ps1 -UseVenv `
 
 The real-model probe is intentionally manual: it hashes the staged runtime and
 model with the packaged doctor, requires CUDA, then exchanges PCM with the
-staged worker. It uses eager prefill and disables compilation/CUDA graphs so it
-tests packaging rather than an experimental performance policy. A successful
-mock package does not establish those conditions.
+staged worker. It uses eager prefill and does not select a bridge compile or
+allowlist profile, so it tests packaging rather than an experimental
+performance policy. `--no-cuda-graphs` only controls the bridge-requested
+upstream optimization hook; it cannot promise that FasterQwen will not use
+its own internal CUDA graphs. A successful mock package does not establish
+those conditions.
 
 ## Current Acceptance
 

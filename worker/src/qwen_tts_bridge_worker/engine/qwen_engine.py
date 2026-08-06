@@ -175,7 +175,7 @@ class QwenTtsEngine:
 
         if self._model is None:
             self.load()
-        warmup_fields: dict[str, object] = {}
+        warmup_fields = _runtime_execution_policy_fields(self._config)
         if self._config.preload_voice_profiles:
             warmup_fields.update(self._preload_voice_profiles(self._require_model()))
         if self._config.prefill_compile_policy == "exact_allowlist":
@@ -1597,6 +1597,28 @@ def _profile_request_role(request_id: int) -> str | None:
     if request_id > 1:
         return "steady"
     return None
+
+
+def _runtime_execution_policy_fields(config: QwenEngineConfig) -> dict[str, object]:
+    """Describe controls owned by the bridge, not opaque runtime internals."""
+
+    if config.runtime_backend == "faster":
+        return {
+            "runtime_backend": "faster",
+            "bridge_streaming_optimizations_enabled": False,
+            "bridge_compile_control": "not_applicable",
+            "bridge_cuda_graph_control": "not_applicable",
+            "runtime_internal_cuda_graphs_may_be_enabled": True,
+        }
+    return {
+        "runtime_backend": "upstream",
+        "bridge_streaming_optimizations_enabled": (
+            config.enable_streaming_optimizations
+        ),
+        "bridge_compile_control": config.use_compile,
+        "bridge_cuda_graph_control": config.use_cuda_graphs,
+        "runtime_internal_cuda_graphs_may_be_enabled": False,
+    }
 
 
 def _model_call_language(config: QwenEngineConfig, language: str) -> str | None:
