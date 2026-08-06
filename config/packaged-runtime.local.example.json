@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "runtime_backend": "faster",
+  "custom_voice_model_path": "C:/models/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "base_model_path": "C:/models/Qwen3-TTS-12Hz-1.7B-Base",
+  "custom_voice_speaker": "serena",
+  "base_voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+  "language": "auto",
+  "dtype": "bfloat16"
+}

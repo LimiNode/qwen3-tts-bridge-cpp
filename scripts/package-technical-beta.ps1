@@ -204,6 +204,10 @@ try {
         "QwenTTSBridge technical beta. Models remain external and are selected at runtime.`r`n",
         [Text.UTF8Encoding]::new($false)
     )
+    Copy-Item -LiteralPath (Resolve-RepoPath "scripts/start-packaged-qwen-tts.ps1") `
+        -Destination (Join-Path $StageRoot "start-qwen-tts.ps1") -Force
+    Copy-Item -LiteralPath (Resolve-RepoPath "config/packaged-runtime.local.example.json") `
+        -Destination (Join-Path $StageRoot "config/runtime.local.example.json") -Force
 
     $VoiceManifest = Join-Path $StageRoot "manifests/voice-assets-manifest.json"
     Invoke-Checked -FilePath $PackagingPython -Arguments @(

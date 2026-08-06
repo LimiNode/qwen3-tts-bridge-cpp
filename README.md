@@ -59,6 +59,11 @@ inherit an arbitrary development Python environment into the packaged worker.
 The current packaging boundary and the real-model acceptance requirements are
 documented in [Portable Worker Beta](docs/portable-worker-beta.md).
 
+For a complete technical-beta package, use its `start-qwen-tts.ps1` launcher
+instead of assembling `--worker-arg` values manually. It creates one external
+user config under `%LOCALAPPDATA%`, then starts `qwen_tts_play` with the
+package's private Python runtime. See [Portable Worker Beta](docs/portable-worker-beta.md#packaged-playback).
+
 ## Interactive Playback CLI
 
 `qwen_tts_play` is a Windows example and smoke tool. It sends streamed

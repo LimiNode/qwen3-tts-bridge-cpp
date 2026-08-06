@@ -26,6 +26,42 @@ Model weights are deliberately external. Copy a compatible model directory
 next to the distribution or provide its absolute path at launch; do not put
 model weights in Git or in the worker package.
 
+## Packaged Playback
+
+A complete technical-beta package contains `start-qwen-tts.ps1`, the
+canonical human-facing launcher for `bin\qwen_tts_play.exe`. It starts the
+worker through the package's private `python.exe`; do not pass
+`worker\qwen_tts_worker.cmd` to `--worker`, because Windows command scripts
+are not a native executable worker boundary.
+
+Create an external user config once. It intentionally lives under
+`%LOCALAPPDATA%`, outside the sealed package tree:
+
+```powershell
+.\start-qwen-tts.ps1 -InitializeConfig
+notepad $env:LOCALAPPDATA\QwenTTSBridge\runtime.local.json
+```
+
+Set the two external model paths in that file. Subsequent CustomVoice playback
+needs no worker arguments:
+
+```powershell
+.\start-qwen-tts.ps1
+.\start-qwen-tts.ps1 -Text "Hello from the packaged worker."
+```
+
+Base playback selects a registered package voice profile separately:
+
+```powershell
+.\start-qwen-tts.ps1 -ModelKind Base `
+  -VoiceId kraftwerk_robot_ru_bootstrap_fidelity
+```
+
+`-ModelPath`, `-Speaker`, `-Language`, `-Instruction`, and `-VoiceId` are
+one-run overrides. `-DryRun` prints the fully resolved command without loading
+the model. The launcher uses eager prefill and does not select an internal
+GPU-specific compile profile.
+
 ## Build And Verify
 
 Packaging must be built with Python 3.11. The package scripts use this version
@@ -60,13 +96,18 @@ and NVIDIA driver data. It fails before a model load when any requested check
 does not match. It does not make a package cryptographically signed; distribute
 the final archive itself with a separately published checksum.
 
-For an additional bridge check, point a MinGW-built example at the staged
-launcher:
+For an additional low-level bridge check, point a MinGW-built example directly
+at the staged private Python executable:
 
 ```powershell
 .\build-mingw\qwen_tts_save_wav.exe `
-  --worker .\dist\QwenTTSBridge\worker-python\qwen_tts_worker.cmd `
-  --worker-arg --mock `
+  --worker .\dist\QwenTTSBridge\worker-python\python\python.exe `
+  --worker-arg -B `
+  --worker-arg -P `
+  --worker-arg -s `
+  --worker-arg -m `
+  --worker-arg qwen_tts_bridge_worker `
+  --worker-arg mock `
   --output portable-worker-smoke.wav `
   --text "Portable worker smoke."
 ```
