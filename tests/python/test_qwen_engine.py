@@ -122,6 +122,43 @@ class _StreamingInnerModel(_InnerModel):
         yield [0.5], 24000
 
 
+class _StrictUpstreamStreamingInnerModel(_InnerModel):
+    """Model API surface that rejects FasterQwen-only streaming keywords."""
+
+    def __init__(self, model_type: str) -> None:
+        super().__init__(model_type)
+        self.stream_calls: list[dict[str, object]] = []
+
+    def stream_generate_pcm(
+        self,
+        *,
+        input_ids: object,
+        instruct_ids: object,
+        languages: object,
+        non_streaming_mode: object,
+        emit_every_frames: object,
+        decode_window_frames: object,
+        overlap_samples: object,
+        max_frames: object,
+        speakers: object | None = None,
+    ) -> object:
+        self.stream_calls.append(
+            {
+                "input_ids": input_ids,
+                "instruct_ids": instruct_ids,
+                "languages": languages,
+                "non_streaming_mode": non_streaming_mode,
+                "emit_every_frames": emit_every_frames,
+                "decode_window_frames": decode_window_frames,
+                "overlap_samples": overlap_samples,
+                "max_frames": max_frames,
+                "speakers": speakers,
+            }
+        )
+        yield [-0.5], 24000
+        yield [0.5], 24000
+
+
 class _StreamingWrapperModel:
     def __init__(
         self,
@@ -150,6 +187,29 @@ class _StreamingWrapperModel:
 
     def generate_voice_design(self, *args: Any, **kwargs: Any) -> object:
         raise AssertionError("streaming path must not call generate_voice_design")
+
+
+class _StrictUpstreamStreamingWrapper:
+    def __init__(self, supported_speakers: list[str]) -> None:
+        self.model = _StrictUpstreamStreamingInnerModel("custom_voice")
+        self._supported_speakers = supported_speakers
+        self.tokenized_texts: list[str] = []
+
+    def get_supported_speakers(self) -> list[str]:
+        return self._supported_speakers
+
+    def _build_assistant_text(self, text: str) -> str:
+        return f"assistant:{text}"
+
+    def _build_instruct_text(self, text: str) -> str:
+        return f"instruct:{text}"
+
+    def _tokenize_texts(self, texts: list[str]) -> list[str]:
+        self.tokenized_texts.extend(texts)
+        return [f"ids:{text}" for text in texts]
+
+    def generate_custom_voice(self, *args: Any, **kwargs: Any) -> object:
+        raise AssertionError("streaming path must not call generate_custom_voice")
 
 
 class _EmptyStreamingWrapperModel(_StreamingWrapperModel):
@@ -747,6 +807,38 @@ class QwenEngineTests(unittest.TestCase):
             len("ids:assistant:Hello") + len("ids:instruct:Speak warmly."),
             metrics["prefill_sequence_length"],
         )
+
+    def test_upstream_pcm_fallback_omits_faster_only_schedule_keywords(self) -> None:
+        fake_model = _StrictUpstreamStreamingWrapper(supported_speakers=["Alice"])
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                runtime_backend="upstream",
+                emit_every_frames=4,
+                decode_window_frames=96,
+                overlap_samples=32,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+
+        chunks = list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    language="English",
+                    speaker="Alice",
+                    instruction="Speak warmly.",
+                ),
+                threading.Event(),
+            )
+        )
+
+        self.assertEqual([struct.pack("<h", -16383), struct.pack("<h", 16383)], chunks)
+        stream_calls = fake_model.model.stream_calls
+        self.assertEqual(1, len(stream_calls))
+        self.assertEqual(["Alice"], stream_calls[0]["speakers"])
 
     def test_warmup_synthesis_consumes_stream(self) -> None:
         fake_model = _StreamingWrapperModel(

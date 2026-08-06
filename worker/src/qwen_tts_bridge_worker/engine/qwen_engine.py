@@ -2077,13 +2077,20 @@ def _qwen_stream_generate_pcm(
         "languages": languages,
         "non_streaming_mode": False,
         "emit_every_frames": config.emit_every_frames,
-        "emit_chunk_schedule": list(config.emit_chunk_schedule),
-        "compiled_emit_chunk_schedule": list(config.compiled_emit_chunk_schedule),
-        "eager_emit_chunk_schedule": list(config.eager_emit_chunk_schedule),
         "decode_window_frames": config.decode_window_frames,
         "overlap_samples": config.overlap_samples,
         "max_frames": _STREAM_MAX_FRAMES,
     }
+    if config.runtime_backend == "faster":
+        kwargs.update(
+            {
+                "emit_chunk_schedule": list(config.emit_chunk_schedule),
+                "compiled_emit_chunk_schedule": list(
+                    config.compiled_emit_chunk_schedule
+                ),
+                "eager_emit_chunk_schedule": list(config.eager_emit_chunk_schedule),
+            }
+        )
     if speaker is not None:
         kwargs["speakers"] = [speaker]
 
