@@ -74,15 +74,21 @@ For example, on the pinned validation host:
 
 ```powershell
 .\scripts\publish-technical-beta.ps1 `
-  -OutputRoot dist\QwenTTSBridge-technical-beta `
+  -OutputRoot dist\QwenTTSBridge-technical-beta-r4 `
+  -PackageId QwenTTSBridge-technical-beta-r4 `
   -ReplaceExisting `
   -CustomVoiceModelPath C:\models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
   -CustomVoiceModelManifest tmp\customvoice-model-manifest.json `
   -BaseModelPath C:\models\Qwen3-TTS-12Hz-1.7B-Base `
   -BaseModelManifest tmp\base-model-manifest.json `
   -VerifierPython .\.venv-packaging\Scripts\python.exe `
-  -AcceptanceOutput docs\reports\technical-beta-r3-acceptance.json
+  -AcceptanceOutput docs\reports\technical-beta-r4-acceptance.json
 ```
+
+`-PackageId` is mandatory for every new publication and must equal the final
+`-OutputRoot` directory name. It is sealed into the package marker, both
+package manifests, and the acceptance report. This prevents a later package
+from reusing R3's identity accidentally.
 
 The C++ examples are built with the configured MinGW Makefiles tree. Do not
 substitute Ninja on the Windows validation machines.

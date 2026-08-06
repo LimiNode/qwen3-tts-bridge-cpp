@@ -5,12 +5,16 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
+_LEGACY_SCHEMA_VERSION = 2
 _FORBIDDEN_FILE_SUFFIXES = {".pyc", ".pyo"}
 _MUTABLE_EMPTY_DIRECTORY_NAMES = {"__pycache__"}
+_PACKAGE_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+_MARKER_NAME = ".qtb-technical-beta-root"
 
 
 def main() -> int:
@@ -19,6 +23,7 @@ def main() -> int:
     build_parser = subparsers.add_parser("build")
     build_parser.add_argument("--root", type=Path, required=True)
     build_parser.add_argument("--output", type=Path, required=True)
+    build_parser.add_argument("--package-id", required=True)
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--root", type=Path, required=True)
     verify_parser.add_argument("--manifest", type=Path, required=True)
@@ -26,14 +31,14 @@ def main() -> int:
 
     if args.command == "build":
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_bytes(build_manifest(args.root, args.output))
+        args.output.write_bytes(build_manifest(args.root, args.output, args.package_id))
         return 0
 
     verify_manifest(args.root, args.manifest)
     return 0
 
 
-def build_manifest(root: Path, output: Path) -> bytes:
+def build_manifest(root: Path, output: Path, package_id: str) -> bytes:
     """Return a canonical manifest for the sealed package tree except itself."""
 
     root = root.resolve()
@@ -42,8 +47,10 @@ def build_manifest(root: Path, output: Path) -> bytes:
         output.relative_to(root)
     except ValueError as exc:
         raise ValueError("package manifest output must be inside package root") from exc
+    _validate_package_id(package_id)
     payload: dict[str, object] = {
         "package_tree_manifest_schema_version": _SCHEMA_VERSION,
+        "package_id": package_id,
         "manifest_path": output.relative_to(root).as_posix(),
         "mutable_empty_directory_names": sorted(_MUTABLE_EMPTY_DIRECTORY_NAMES),
         "package_directories": [
@@ -69,7 +76,12 @@ def verify_manifest(root: Path, manifest_path: Path) -> None:
     root = root.resolve()
     manifest_path = manifest_path.resolve()
     manifest = _load_json(manifest_path)
-    if manifest.get("package_tree_manifest_schema_version") != _SCHEMA_VERSION:
+    schema_version = manifest.get("package_tree_manifest_schema_version")
+    if (
+        not isinstance(schema_version, int)
+        or isinstance(schema_version, bool)
+        or schema_version not in {_LEGACY_SCHEMA_VERSION, _SCHEMA_VERSION}
+    ):
         raise ValueError("unsupported package tree manifest schema")
     recorded_path = manifest.get("manifest_path")
     if (
@@ -87,9 +99,40 @@ def verify_manifest(root: Path, manifest_path: Path) -> None:
         raise ValueError("package tree manifest SHA is invalid")
     _verify_forbidden_bytecode(root)
     _verify_directories(root, manifest)
-    actual = build_manifest(root, manifest_path)
+    package_id = manifest.get("package_id")
+    if schema_version == _SCHEMA_VERSION:
+        if not isinstance(package_id, str):
+            raise ValueError("package tree manifest package_id is invalid")
+        _validate_package_id(package_id)
+        _verify_package_marker(root, package_id)
+        actual = build_manifest(root, manifest_path, package_id)
+    else:
+        actual = _build_legacy_manifest(root, manifest_path)
     if _canonical_json_bytes(manifest) != actual:
         raise ValueError("package tree does not match manifest")
+
+
+def _build_legacy_manifest(root: Path, output: Path) -> bytes:
+    """Build the schema-2 form so previously published R3 can be verified."""
+
+    payload: dict[str, object] = {
+        "package_tree_manifest_schema_version": _LEGACY_SCHEMA_VERSION,
+        "manifest_path": output.relative_to(root).as_posix(),
+        "mutable_empty_directory_names": sorted(_MUTABLE_EMPTY_DIRECTORY_NAMES),
+        "package_directories": [
+            path.relative_to(root).as_posix() for path in _package_directories(root)
+        ],
+        "package_files": [
+            {
+                "path": path.relative_to(root).as_posix(),
+                "sha256": _sha256_file(path),
+                "size_bytes": path.stat().st_size,
+            }
+            for path in _package_files(root, output)
+        ],
+    }
+    payload["package_tree_manifest_sha256"] = _sha256(_canonical_json_bytes(payload))
+    return _canonical_json_bytes(payload)
 
 
 def _package_files(root: Path, manifest_path: Path) -> list[Path]:
@@ -177,12 +220,41 @@ def _verify_directories(root: Path, manifest: dict[str, Any]) -> None:
 
 def _load_json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        value = json.loads(
+            path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicate_keys
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
         raise ValueError(f"package manifest is not valid UTF-8 JSON: {path}") from exc
     if not isinstance(value, dict):
         raise ValueError("package manifest root is not an object")
     return value
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject duplicate object keys instead of accepting JSON's last-key wins rule."""
+
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _validate_package_id(package_id: str) -> None:
+    if _PACKAGE_ID_PATTERN.fullmatch(package_id) is None:
+        raise ValueError(
+            "package_id must contain only letters, digits, '.', '_' or '-'"
+        )
+
+
+def _verify_package_marker(root: Path, package_id: str) -> None:
+    marker = _load_json(root / _MARKER_NAME)
+    if (
+        marker.get("marker_schema_version") != 1
+        or marker.get("package_id") != package_id
+    ):
+        raise ValueError("package marker does not match package_id")
 
 
 def _canonical_json_bytes(value: object) -> bytes:

@@ -2,6 +2,9 @@
 param(
     [string]$OutputRoot = "dist/QwenTTSBridge-technical-beta",
     [Parameter(Mandatory = $true)]
+    [ValidatePattern("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
+    [string]$PackageId,
+    [Parameter(Mandatory = $true)]
     [string]$CustomVoiceModelPath,
     [Parameter(Mandatory = $true)]
     [string]$CustomVoiceModelManifest,
@@ -158,6 +161,13 @@ function Test-TechnicalBetaEvidenceSchema {
 }
 
 $finalRoot = Resolve-RepoPath $OutputRoot
+$finalLeaf = Split-Path -Leaf $finalRoot.TrimEnd(
+    [IO.Path]::DirectorySeparatorChar,
+    [IO.Path]::AltDirectorySeparatorChar
+)
+if ($finalLeaf -ne $PackageId) {
+    throw "OutputRoot leaf must equal PackageId: $finalLeaf != $PackageId"
+}
 $finalParent = Split-Path -Parent $finalRoot
 $candidateRoot = Join-Path $finalParent ".__qtb-$([Guid]::NewGuid().ToString('N'))"
 $validationRoot = Join-Path (Split-Path -Parent $candidateRoot) `
@@ -192,6 +202,7 @@ try {
 
     & (Join-Path $PSScriptRoot "package-technical-beta.ps1") `
         -OutputRoot $candidateRoot `
+        -PackageId $PackageId `
         -BuildDirectory $BuildDirectory `
         -PackagingVenvPath $PackagingVenvPath `
         -QwenSourcePath $QwenSourcePath `
@@ -237,6 +248,9 @@ try {
 
     $packageTree = Get-Content -LiteralPath (Join-Path $finalRoot "manifests/package-tree-manifest.json") -Raw | ConvertFrom-Json
     $voiceAssets = Get-Content -LiteralPath (Join-Path $finalRoot "manifests/voice-assets-manifest.json") -Raw | ConvertFrom-Json
+    if ($packageTree.package_id -ne $PackageId -or $voiceAssets.package_id -ne $PackageId) {
+        throw "Published package manifests do not match PackageId: $PackageId"
+    }
     $customManifest = Get-Content -LiteralPath $CustomVoiceModelManifest -Raw | ConvertFrom-Json
     $baseManifest = Get-Content -LiteralPath $BaseModelManifest -Raw | ConvertFrom-Json
     $relocation = Get-Content -LiteralPath $relocationReport -Raw | ConvertFrom-Json
@@ -274,7 +288,7 @@ try {
     $acceptance = [ordered]@{
         schema_version = 4
         acceptance_pass = $acceptancePass
-        package_id = "QwenTTSBridge-technical-beta-r3"
+        package_id = $PackageId
         provenance = $sourceProvenance
         source = $sourceProvenance
         package = [ordered]@{

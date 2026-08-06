@@ -1,5 +1,8 @@
 param(
     [string]$OutputRoot = "dist/QwenTTSBridge-technical-beta",
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
+    [string]$PackageId,
     [string]$BuildDirectory = "build-mingw",
     [string]$PackagingVenvPath = ".venv-packaging",
     [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
@@ -144,9 +147,13 @@ if (Test-Path -LiteralPath $FinalRoot) {
 $StageRoot = "$FinalRoot.pending-$([Guid]::NewGuid().ToString('N'))"
 $BackupRoot = $null
 New-Item -ItemType Directory -Force -Path $StageRoot | Out-Null
+$marker = [ordered]@{
+    marker_schema_version = 1
+    package_id = $PackageId
+}
 [IO.File]::WriteAllText(
     (Join-Path $StageRoot $MarkerName),
-    "QwenTTSBridge technical-beta package.`r`n",
+    (($marker | ConvertTo-Json -Compress) + [Environment]::NewLine),
     [Text.UTF8Encoding]::new($false)
 )
 
@@ -215,6 +222,7 @@ try {
         "--root", $StageRoot,
         "--registry", "config/voice-profiles.json",
         "--provenance", "provenance/voice-assets-provenance.json",
+        "--package-id", $PackageId,
         "--output", $VoiceManifest,
         "--temperature", "0.45"
     )
@@ -228,6 +236,7 @@ try {
     Invoke-Checked -FilePath $PackagingPython -Arguments @(
         "scripts/package_tree_manifest.py", "build",
         "--root", $StageRoot,
+        "--package-id", $PackageId,
         "--output", $PackageManifest
     )
     Invoke-Checked -FilePath $PackagingPython -Arguments @(

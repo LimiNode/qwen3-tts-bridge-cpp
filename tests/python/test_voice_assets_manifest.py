@@ -66,9 +66,11 @@ class VoiceAssetsManifestTests(unittest.TestCase):
                 registry=Path("config/voice-profiles.json"),
                 provenance=Path("provenance/voice-assets.json"),
                 temperature=0.45,
+                package_id="test-package",
             )
 
             verify_manifest(package_root, manifest)
+            self.assertEqual("test-package", manifest["package_id"])
             voices = manifest["voices"]
             self.assertIsInstance(voices, list)
             assert isinstance(voices, list)

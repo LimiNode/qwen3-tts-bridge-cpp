@@ -47,6 +47,8 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
             script,
         )
         self.assertIn("$FinalRoot.backup-", script)
+        self.assertIn("[string]$PackageId", script)
+        self.assertIn("--package-id", script)
         self.assertIn(
             "Move-Item -LiteralPath $StageRoot -Destination $FinalRoot",
             script,
@@ -81,6 +83,8 @@ class TechnicalBetaRelocationTests(unittest.TestCase):
         self.assertIn("Test-FaultInjectionReport", script)
         self.assertIn("candidate_verified_manifest_digest", script)
         self.assertIn("published_verified_manifest_digest", script)
+        self.assertIn("OutputRoot leaf must equal PackageId", script)
+        self.assertIn("package_id = $PackageId", script)
         self.assertIn("required_gates = $requiredGates", script)
 
     def test_publication_fault_matrix_covers_atomic_replacement_boundaries(

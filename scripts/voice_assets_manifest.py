@@ -11,7 +11,8 @@ import wave
 from pathlib import Path
 from typing import Any
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
+_LEGACY_SCHEMA_VERSION = 1
 
 
 def main() -> int:
@@ -32,6 +33,7 @@ def main() -> int:
     build_parser.add_argument("--registry", type=Path, required=True)
     build_parser.add_argument("--provenance", type=Path, required=True)
     build_parser.add_argument("--output", type=Path, required=True)
+    build_parser.add_argument("--package-id", required=True)
     build_parser.add_argument("--temperature", type=float, default=0.45)
 
     verify_parser = subparsers.add_parser("verify")
@@ -59,6 +61,7 @@ def main() -> int:
                     registry=args.registry,
                     provenance=args.provenance,
                     temperature=args.temperature,
+                    package_id=args.package_id,
                 )
             )
         )
@@ -135,11 +138,17 @@ def build_manifest(
     registry: Path,
     provenance: Path,
     temperature: float,
+    package_id: str,
+    schema_version: int = _SCHEMA_VERSION,
 ) -> dict[str, object]:
     """Return an exact-content manifest for a staged voice registry."""
 
     if not (0.0 < temperature <= 2.0):
         raise ValueError("temperature must be in the interval (0, 2]")
+    if schema_version not in {_LEGACY_SCHEMA_VERSION, _SCHEMA_VERSION}:
+        raise ValueError("unsupported voice assets manifest schema")
+    if schema_version == _SCHEMA_VERSION and not package_id.strip():
+        raise ValueError("package_id must be non-empty")
     root = root.resolve()
     registry_path = _resolve_under_root(root, registry, "registry")
     provenance_path = _resolve_under_root(root, provenance, "provenance")
@@ -194,13 +203,15 @@ def build_manifest(
         )
 
     payload: dict[str, object] = {
-        "voice_assets_manifest_schema_version": _SCHEMA_VERSION,
+        "voice_assets_manifest_schema_version": schema_version,
         "registry": {
             "path": _relative_path(root, registry_path),
             "sha256": _sha256_file(registry_path),
         },
         "voices": sorted(voices, key=lambda value: str(value["voice_id"])),
     }
+    if schema_version == _SCHEMA_VERSION:
+        payload["package_id"] = package_id
     payload["voice_assets_manifest_sha256"] = _sha256(_json_bytes(payload))
     return payload
 
@@ -208,8 +219,18 @@ def build_manifest(
 def verify_manifest(root: Path, manifest: dict[str, object]) -> None:
     """Raise ``ValueError`` unless the staged voice assets match exactly."""
 
-    if manifest.get("voice_assets_manifest_schema_version") != _SCHEMA_VERSION:
+    schema_version = manifest.get("voice_assets_manifest_schema_version")
+    if (
+        not isinstance(schema_version, int)
+        or isinstance(schema_version, bool)
+        or schema_version not in {_LEGACY_SCHEMA_VERSION, _SCHEMA_VERSION}
+    ):
         raise ValueError("unsupported voice assets manifest schema")
+    package_id = manifest.get("package_id")
+    if schema_version == _SCHEMA_VERSION and (
+        not isinstance(package_id, str) or not package_id.strip()
+    ):
+        raise ValueError("voice assets manifest package_id is invalid")
     expected_hash = manifest.get("voice_assets_manifest_sha256")
     unsigned = dict(manifest)
     unsigned.pop("voice_assets_manifest_sha256", None)
@@ -231,6 +252,8 @@ def verify_manifest(root: Path, manifest: dict[str, object]) -> None:
             registry=Path(registry_path),
             provenance=Path(_require_processing_path(manifest)),
             temperature=_manifest_temperature(manifest),
+            package_id=package_id if isinstance(package_id, str) else "legacy-r3",
+            schema_version=schema_version if isinstance(schema_version, int) else -1,
         )
     except ValueError as exc:
         raise ValueError("voice assets do not match manifest") from exc
@@ -270,14 +293,25 @@ def _unique_voice_ids(values: list[str]) -> list[str]:
 
 def _load_json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise ValueError(f"cannot read JSON file: {path}") from exc
-    except json.JSONDecodeError as exc:
+        value = json.loads(
+            path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicate_keys
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
         raise ValueError(f"invalid JSON file: {path}") from exc
     if not isinstance(value, dict):
         raise ValueError(f"JSON root must be an object: {path}")
     return value
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject duplicate JSON keys in sealed voice metadata."""
+
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
 
 
 def _require_list(value: dict[str, Any], field: str, context: str) -> list[Any]:
