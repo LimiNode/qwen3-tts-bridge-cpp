@@ -34,6 +34,17 @@ removed, and content-changed file paths. A digest mismatch is not silently
 accepted: it must either be explained by this comparison or be treated as a
 different external model snapshot.
 
+`compare` is diagnostic and returns zero even when the manifests differ, so an
+operator can always collect its report. Add `--require-match` when a script
+must fail closed after writing the same comparison report:
+
+```powershell
+python scripts\model_runtime_manifest.py compare `
+  --left-manifest C:\evidence\base-r3.manifest.json `
+  --right-manifest C:\models\Qwen3-TTS-12Hz-1.7B-Base.manifest.json `
+  --require-match
+```
+
 Historical R3 evidence records only the Base directory digest, not the full
 historical file list. The CMP 50HX report therefore correctly records a
 different Base digest at the same pinned revision but cannot prove the cause.

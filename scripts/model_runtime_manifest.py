@@ -5,11 +5,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 
 _SCHEMA_VERSION = 2
 _TRANSIENT_DIRECTORY_NAMES = {".cache"}
 _TRANSIENT_FILE_SUFFIXES = {".incomplete", ".lock", ".partial", ".tmp"}
+_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 
 def main() -> int:
@@ -27,6 +29,11 @@ def main() -> int:
     compare_parser.add_argument("--left-manifest", type=Path, required=True)
     compare_parser.add_argument("--right-manifest", type=Path, required=True)
     compare_parser.add_argument("--output", type=Path)
+    compare_parser.add_argument(
+        "--require-match",
+        action="store_true",
+        help="return a non-zero exit code when the manifests differ",
+    )
     args = parser.parse_args()
 
     if args.command == "build":
@@ -46,7 +53,7 @@ def main() -> int:
         else:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_bytes(output)
-        return 0
+        return 0 if comparison["manifests_equal"] or not args.require_match else 1
 
     verify_manifest(args.model_path, _load_manifest(args.manifest))
     return 0
@@ -82,33 +89,18 @@ def build_manifest(
 def verify_manifest(model_path: Path, manifest: dict[str, object]) -> None:
     """Raise ``ValueError`` unless a model directory matches its manifest."""
 
-    if manifest.get("model_runtime_manifest_schema_version") != _SCHEMA_VERSION:
-        raise ValueError("unsupported model runtime manifest schema")
-    expected_files = manifest.get("runtime_files")
-    if not isinstance(expected_files, list) or not expected_files:
-        raise ValueError("model runtime manifest has no runtime files")
-    unsigned = dict(manifest)
-    expected_directory_sha256 = unsigned.pop("directory_manifest_sha256", None)
-    if not isinstance(expected_directory_sha256, str) or (
-        _sha256(_json_bytes(unsigned)) != expected_directory_sha256
-    ):
-        raise ValueError("model runtime manifest SHA is invalid")
+    expected_entries = _validated_manifest_files(manifest)
 
     actual_paths = {
         path.relative_to(model_path).as_posix(): path
         for path in _runtime_files(model_path)
     }
     expected_paths: set[str] = set()
-    for entry in expected_files:
-        if not isinstance(entry, dict):
-            raise ValueError("model runtime manifest file entry is invalid")
-        relative_path = entry.get("path")
-        expected_sha256 = entry.get("sha256")
-        expected_size = entry.get("size_bytes")
-        if not isinstance(relative_path, str) or not isinstance(expected_sha256, str):
-            raise ValueError("model runtime manifest file entry is invalid")
-        if not isinstance(expected_size, int) or expected_size < 0:
-            raise ValueError("model runtime manifest file size is invalid")
+    for relative_path, entry in expected_entries.items():
+        expected_sha256 = entry["sha256"]
+        expected_size = entry["size_bytes"]
+        assert isinstance(expected_sha256, str)
+        assert isinstance(expected_size, int)
         if relative_path in expected_paths:
             raise ValueError("model runtime manifest has duplicate file paths")
         expected_paths.add(relative_path)
@@ -149,6 +141,7 @@ def compare_manifests(
             left.get("directory_manifest_sha256")
             == right.get("directory_manifest_sha256")
         ),
+        "manifests_equal": left == right,
         "added_paths": sorted(right_paths.difference(left_paths)),
         "removed_paths": sorted(left_paths.difference(right_paths)),
         "changed_files": [
@@ -182,7 +175,13 @@ def _is_transient_model_path(relative_path: Path) -> bool:
 
 
 def _load_manifest(path: Path) -> dict[str, object]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        value = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        raise ValueError(f"invalid model runtime manifest: {path}") from error
     if not isinstance(value, dict):
         raise ValueError("model runtime manifest is not an object")
     return value
@@ -193,6 +192,12 @@ def _validated_manifest_files(
 ) -> dict[str, dict[str, object]]:
     if manifest.get("model_runtime_manifest_schema_version") != _SCHEMA_VERSION:
         raise ValueError("unsupported model runtime manifest schema")
+    repository = manifest.get("repository")
+    revision = manifest.get("revision")
+    if not isinstance(repository, str) or not repository.strip():
+        raise ValueError("model runtime manifest repository is invalid")
+    if not isinstance(revision, str) or not revision.strip():
+        raise ValueError("model runtime manifest revision is invalid")
     unsigned = dict(manifest)
     expected_directory_sha256 = unsigned.pop("directory_manifest_sha256", None)
     if not isinstance(expected_directory_sha256, str) or (
@@ -214,7 +219,7 @@ def _validated_manifest_files(
             or Path(path).is_absolute()
             or ".." in Path(path).parts
             or not isinstance(sha256, str)
-            or len(sha256) != 64
+            or _SHA256_PATTERN.fullmatch(sha256) is None
             or not isinstance(size_bytes, int)
             or size_bytes < 0
             or path in files
@@ -222,6 +227,17 @@ def _validated_manifest_files(
             raise ValueError("model runtime manifest file entry is invalid")
         files[path] = {"sha256": sha256, "size_bytes": size_bytes}
     return files
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Reject JSON objects whose duplicate keys would otherwise be overwritten."""
+
+    value: dict[str, object] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
 
 
 def _manifest_summary(

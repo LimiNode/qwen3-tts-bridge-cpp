@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from scripts.model_runtime_manifest import (
+    _load_manifest,
     build_manifest,
     compare_manifests,
     verify_manifest,
@@ -59,15 +60,41 @@ class ModelRuntimeManifestTests(unittest.TestCase):
             self.assertTrue(comparison["same_repository"])
             self.assertTrue(comparison["same_revision"])
             self.assertFalse(comparison["same_directory_manifest"])
+            self.assertFalse(comparison["manifests_equal"])
             self.assertEqual(["added.json"], comparison["added_paths"])
             self.assertEqual(
                 ["speech_tokenizer/configuration.json"], comparison["removed_paths"]
             )
             self.assertEqual("config.json", comparison["changed_files"][0]["path"])
 
+    def test_rejects_duplicate_json_keys_and_invalid_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_name:
+            manifest_path = Path(temporary_name) / "manifest.json"
+            manifest_path.write_text(
+                '{"repository":"first","repository":"second"}', encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ValueError, "invalid model runtime manifest"):
+                _load_manifest(manifest_path)
+
+            model = Path(temporary_name) / "model"
+            _write_runtime_files(model)
+            manifest = build_manifest(model, "Qwen/example", "revision")
+            manifest["repository"] = ""
+            with self.assertRaisesRegex(ValueError, "repository is invalid"):
+                verify_manifest(model, manifest)
+
+            manifest = build_manifest(model, "Qwen/example", "revision")
+            runtime_files = manifest["runtime_files"]
+            assert isinstance(runtime_files, list)
+            first = runtime_files[0]
+            assert isinstance(first, dict)
+            first["sha256"] = "z" * 64
+            with self.assertRaisesRegex(ValueError, "SHA is invalid"):
+                verify_manifest(model, manifest)
+
 
 def _write_runtime_files(model: Path) -> None:
-    (model / "speech_tokenizer").mkdir()
+    (model / "speech_tokenizer").mkdir(parents=True)
     (model / "config.json").write_text("config", encoding="utf-8")
     (model / "model.safetensors").write_text("weights", encoding="utf-8")
     (model / "speech_tokenizer" / "configuration.json").write_text(
