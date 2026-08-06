@@ -32,6 +32,12 @@ SHA-256 hashes of the sealed package-tree manifest, not an independent
 byte-level Merkle root. The report deliberately contains no local absolute
 paths and does not replace a clean-machine test on a second host.
 
+The report embeds the complete external CustomVoice and Base model manifests,
+their document SHA-256 values, and runtime file counts. This makes a later
+same-revision content-digest mismatch explainable by
+`scripts/model_runtime_manifest.py compare`; it must not be described as
+byte-identical model content until that comparison is clean.
+
 During validation the worker starts from its package directory with private
 `PYTHONHOME` and `PYTHONPATH`, disabled user-site and bytecode writes, package
 voice registry, and offline Hugging Face/Transformers variables. This detects

@@ -6,7 +6,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.model_runtime_manifest import build_manifest, verify_manifest
+from scripts.model_runtime_manifest import (
+    build_manifest,
+    compare_manifests,
+    verify_manifest,
+)
 
 
 class ModelRuntimeManifestTests(unittest.TestCase):
@@ -33,6 +37,33 @@ class ModelRuntimeManifestTests(unittest.TestCase):
             (model / "tokenizer.json").write_text("extra", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "file set"):
                 verify_manifest(model, manifest)
+
+    def test_compare_reports_precise_file_level_manifest_difference(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as left_name,
+            tempfile.TemporaryDirectory() as right_name,
+        ):
+            left = Path(left_name)
+            right = Path(right_name)
+            _write_runtime_files(left)
+            _write_runtime_files(right)
+            (right / "config.json").write_text("changed", encoding="utf-8")
+            (right / "added.json").write_text("added", encoding="utf-8")
+            (right / "speech_tokenizer" / "configuration.json").unlink()
+
+            comparison = compare_manifests(
+                build_manifest(left, "Qwen/example", "pinned"),
+                build_manifest(right, "Qwen/example", "pinned"),
+            )
+
+            self.assertTrue(comparison["same_repository"])
+            self.assertTrue(comparison["same_revision"])
+            self.assertFalse(comparison["same_directory_manifest"])
+            self.assertEqual(["added.json"], comparison["added_paths"])
+            self.assertEqual(
+                ["speech_tokenizer/configuration.json"], comparison["removed_paths"]
+            )
+            self.assertEqual("config.json", comparison["changed_files"][0]["path"])
 
 
 def _write_runtime_files(model: Path) -> None:

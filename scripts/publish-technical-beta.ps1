@@ -293,11 +293,17 @@ try {
                 repository = $customManifest.repository
                 revision = $customManifest.revision
                 directory_manifest_sha256 = $customManifest.directory_manifest_sha256
+                manifest_document_sha256 = Get-FileSha256 $CustomVoiceModelManifest
+                runtime_file_count = @($customManifest.runtime_files).Count
+                manifest = $customManifest
             }
             base = [ordered]@{
                 repository = $baseManifest.repository
                 revision = $baseManifest.revision
                 directory_manifest_sha256 = $baseManifest.directory_manifest_sha256
+                manifest_document_sha256 = Get-FileSha256 $BaseModelManifest
+                runtime_file_count = @($baseManifest.runtime_files).Count
+                manifest = $baseManifest
             }
         }
         acceptance = [ordered]@{
