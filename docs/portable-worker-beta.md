@@ -62,6 +62,14 @@ one-run overrides. `-DryRun` prints the fully resolved command without loading
 the model. The launcher uses eager prefill and does not select an internal
 GPU-specific compile profile.
 
+The config is deliberately rejected when it resolves to the sealed package
+directory or one of its children, including a path written with `..`. Its
+`schema_version` must be the integer `1` and duplicate JSON keys are rejected.
+`startup_timeout_ms` defaults to `180000` and must remain between `10000` and
+`600000`; use `-StartupTimeoutMs` for a one-run override. This keeps cold Base
+model startup configurable without letting a local setting modify the sealed
+artifact.
+
 ## Build And Verify
 
 Packaging must be built with Python 3.11. The package scripts use this version

@@ -10,6 +10,7 @@ param(
     [string]$Instruction = "",
     [string]$Text = "",
     [string]$UserConfigPath = "",
+    [int]$StartupTimeoutMs = 0,
     [switch]$InitializeConfig,
     [switch]$DryRun
 )
@@ -33,6 +34,58 @@ function Get-ConfigValue([object]$Config, [string]$Name) {
         return ""
     }
     return [string]$property.Value
+}
+
+function Test-PathInsideRoot([string]$PathValue, [string]$Root) {
+    $resolvedPath = [IO.Path]::GetFullPath($PathValue).TrimEnd([char[]]@('\', '/'))
+    $resolvedRoot = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]@('\', '/'))
+    return $resolvedPath -eq $resolvedRoot -or $resolvedPath.StartsWith(
+        "$resolvedRoot\", [StringComparison]::OrdinalIgnoreCase
+    )
+}
+
+function Assert-UserConfigPath([string]$PathValue, [string]$PackagePath) {
+    if (Test-PathInsideRoot -PathValue $PathValue -Root $PackagePath) {
+        throw "UserConfigPath must be outside the sealed package root: $PathValue"
+    }
+}
+
+function Read-StrictConfig([string]$PythonPath, [string]$PathValue) {
+    $probe = @'
+import json
+import sys
+
+def reject_duplicates(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f'duplicate JSON key: {key}')
+        result[key] = value
+    return result
+
+try:
+    with open(sys.argv[1], encoding='utf-8') as stream:
+        value = json.load(stream, object_pairs_hook=reject_duplicates)
+    if not isinstance(value, dict):
+        raise ValueError('runtime config root must be an object')
+except (OSError, json.JSONDecodeError, ValueError) as error:
+    print(f'invalid runtime config: {error}', file=sys.stderr)
+    raise SystemExit(1)
+'@
+    & $PythonPath -E -s -c $probe $PathValue
+    if ($LASTEXITCODE -ne 0) {
+        throw "Runtime config is invalid or contains duplicate JSON keys: $PathValue"
+    }
+    return Get-Content -Raw -LiteralPath $PathValue | ConvertFrom-Json
+}
+
+function Get-StartupTimeout([object]$Config, [int]$Override) {
+    $candidate = if ($Override -gt 0) { [string]$Override } else { Get-ConfigValue $Config "startup_timeout_ms" }
+    $parsed = 0
+    if (-not [int]::TryParse($candidate, [ref]$parsed) -or $parsed -lt 10000 -or $parsed -gt 600000) {
+        throw "startup_timeout_ms must be an integer from 10000 through 600000"
+    }
+    return $parsed
 }
 
 function Set-IsolatedWorkerEnvironment([string]$WorkerRoot) {
@@ -72,11 +125,16 @@ $package = Resolve-ExistingPath $PackageRoot "Technical-beta package"
 if (-not (Test-Path -LiteralPath (Join-Path $package $markerName))) {
     throw "PackageRoot is not a marked technical-beta package: $package"
 }
+$workerRoot = Resolve-ExistingPath (Join-Path $package "worker") "Packaged worker"
+$python = Resolve-ExistingPath (Join-Path $workerRoot "python\python.exe") "Packaged Python"
+$cli = Resolve-ExistingPath (Join-Path $package "bin\qwen_tts_play.exe") "Packaged playback CLI"
+$registry = Resolve-ExistingPath (Join-Path $package "config\voice-profiles.json") "Packaged voice registry"
 
 if ([string]::IsNullOrWhiteSpace($UserConfigPath)) {
     $UserConfigPath = Join-Path $env:LOCALAPPDATA "QwenTTSBridge\runtime.local.json"
 }
 $userConfig = [IO.Path]::GetFullPath($UserConfigPath)
+Assert-UserConfigPath -PathValue $userConfig -PackagePath $package
 $template = Join-Path $package "config\runtime.local.example.json"
 if ($InitializeConfig) {
     if (Test-Path -LiteralPath $userConfig) {
@@ -91,7 +149,14 @@ if ($InitializeConfig) {
 if (-not (Test-Path -LiteralPath $userConfig)) {
     throw "User config was not found: $userConfig. Run with -InitializeConfig first."
 }
-$config = Get-Content -Raw -LiteralPath $userConfig | ConvertFrom-Json
+$config = Read-StrictConfig -PythonPath $python -PathValue $userConfig
+$schemaVersion = $config.PSObject.Properties["schema_version"]
+if ($null -eq $schemaVersion -or (
+        $schemaVersion.Value -isnot [int] -and $schemaVersion.Value -isnot [long]
+    ) -or $schemaVersion.Value -ne 1) {
+    throw "runtime config schema_version must be the integer 1"
+}
+$startupTimeout = Get-StartupTimeout -Config $config -Override $StartupTimeoutMs
 
 $selectedModelPath = if ($ModelPath) {
     $ModelPath
@@ -125,10 +190,6 @@ if ($ModelKind -eq "Base" -and [string]::IsNullOrWhiteSpace($selectedVoiceId)) {
     throw "Base needs a registered voice ID. Set base_voice_id or pass -VoiceId."
 }
 
-$workerRoot = Resolve-ExistingPath (Join-Path $package "worker") "Packaged worker"
-$python = Resolve-ExistingPath (Join-Path $workerRoot "python\python.exe") "Packaged Python"
-$cli = Resolve-ExistingPath (Join-Path $package "bin\qwen_tts_play.exe") "Packaged playback CLI"
-$registry = Resolve-ExistingPath (Join-Path $package "config\voice-profiles.json") "Packaged voice registry"
 $workerArguments = @(
     "-B", "-P", "-s", "-m", "qwen_tts_bridge_worker",
     "qwen", "--model-path", $selectedModel,
@@ -145,7 +206,7 @@ if ($ModelKind -eq "Base") {
 $cliArguments = @(
     "--worker", $python,
     "--cwd", $package,
-    "--startup-timeout-ms", "60000",
+    "--startup-timeout-ms", [string]$startupTimeout,
     "--language", $selectedLanguage
 )
 foreach ($workerArgument in $workerArguments) {

@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "runtime_backend": "faster",
+  "startup_timeout_ms": 180000,
   "custom_voice_model_path": "C:/models/Qwen3-TTS-12Hz-0.6B-CustomVoice",
   "base_model_path": "C:/models/Qwen3-TTS-12Hz-1.7B-Base",
   "custom_voice_speaker": "serena",

@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _LAUNCHER = _REPO_ROOT / "scripts" / "start-packaged-qwen-tts.ps1"
 _PACKAGE_SCRIPT = _REPO_ROOT / "scripts" / "package-technical-beta.ps1"
@@ -22,6 +21,9 @@ class PackagedLauncherContractTests(unittest.TestCase):
         self.assertIn("qwen_tts_play.exe", script)
         self.assertIn("PYTHONHOME", script)
         self.assertIn("PYTHONPATH", script)
+        self.assertIn("Assert-UserConfigPath", script)
+        self.assertIn("Read-StrictConfig", script)
+        self.assertIn("startup_timeout_ms", script)
         self.assertIn("--prefill-backend", script)
         self.assertIn('"eager"', script)
         self.assertNotIn("qwen_tts_worker.cmd", script)
@@ -40,6 +42,7 @@ class PackagedLauncherContractTests(unittest.TestCase):
         self.assertIn('"custom_voice_model_path"', template)
         self.assertIn('"base_model_path"', template)
         self.assertIn('"base_voice_id"', template)
+        self.assertIn('"startup_timeout_ms": 180000', template)
 
 
 if __name__ == "__main__":
