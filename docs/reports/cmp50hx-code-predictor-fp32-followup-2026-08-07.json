@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "report_kind": "cmp50hx_code_predictor_precision_followup",
+  "source_provenance": {
+    "broad_predictor_fp32_parent_commit": "1a86a48b5ffe37f3604f66a9a691d2b6e1f674bd",
+    "broad_predictor_fp32_submodule_commit": "d5a4ec4b3cac55cca0087d6a8cd8b9df26bb83c3",
+    "mlp_only_parent_commit": "1a5e0aba5ab7fb247ec6cb0ec7f7467c33d36531",
+    "mlp_only_submodule_commit": "1bf5e315d0837ec033e979c6fb4786318ea4bfcb"
+  },
+  "runtime_policy": {
+    "runtime_backend": "upstream",
+    "main_talker_dtype": "float16",
+    "prefill_backend": "eager",
+    "attention": "sdpa",
+    "bridge_compile_control": false,
+    "bridge_cuda_graph_control": false,
+    "frequency_profile_8_8_12": false,
+    "compiled_allowlist": false,
+    "canary": false,
+    "schedule_options": false
+  },
+  "correctness_matrix": {
+    "customvoice_short": {"seeds": [20260806, 20260807, 20260808], "natural_eos_passes": 3, "failures": 0},
+    "customvoice_medium": {"seeds": [20260806, 20260807, 20260808], "natural_eos_passes": 3, "failures": 0},
+    "customvoice_long": {"seeds_attempted": [20260806], "natural_eos_passes": 0, "external_timeout": {"timeout_ms": 600000, "audio_chunks": 118, "audio_bytes": 3624850, "audio_duration_ms": 75517.708}},
+    "base_medium": {"voice_id": "kraftwerk_robot_ru_bootstrap_fidelity", "seed": 20260806, "terminal_state": "completed", "termination_reason": "eos", "audio_chunks": 24, "audio_bytes": 714214, "codec_frame_count": 186}
+  },
+  "wav_sanity": {
+    "eos_wavs_checked": 7,
+    "clipping_detected": false,
+    "maximum_low_rms_silence_seconds": 1.3,
+    "human_quality_gate": "not established; representative medium WAV was rendered to the current default device"
+  },
+  "precision_ab": {
+    "input": "CustomVoice medium, Russian, ryan, seed 20260806",
+    "A_predictor_fp16": {"outcome": "device-side assert after NaN probability row"},
+    "B_predictor_fp32": {"terminal_state": "completed", "termination_reason": "eos", "ttfa_ms": 9985.73, "synthesis_ms": 184376.297, "codec_frame_count": 280, "audio_duration_ms": 22397.708, "rtf": 8.231927},
+    "C_mlp_only_fp32": {"terminal_state": "completed", "termination_reason": "eos", "ttfa_ms": 10158.1, "synthesis_ms": 222278.929, "codec_frame_count": 309, "audio_duration_ms": 24716.292, "rtf": 8.993215, "finite_trace_rows": 23251, "finite_trace_nonfinite_rows": 0}
+  },
+  "sealed_package": {
+    "modified": false,
+    "package_tree_verify_after": "passed",
+    "voice_assets_verify_after": "passed",
+    "verified_manifest_digest": "c2a5133e843d5660b2fd0ca3c2b633f54154195c6fc1c76e7d0994542211ecfc"
+  },
+  "classification": "diagnostic compatibility evidence only; not a realtime or automatic CMP policy"
+}
