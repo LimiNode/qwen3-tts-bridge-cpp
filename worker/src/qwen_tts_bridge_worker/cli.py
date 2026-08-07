@@ -349,11 +349,12 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--dtype", default="auto")
     qwen_parser.add_argument(
         "--code-predictor-compute-dtype",
-        choices=("model", "float32"),
+        choices=("model", "float32", "mlp_float32"),
         default="model",
         help=(
             "Use an explicit compute dtype for the upstream code predictor. "
-            "float32 is an opt-in numerical-stability mitigation."
+            "float32 is an opt-in numerical-stability mitigation; "
+            "mlp_float32 is a narrower diagnostic candidate."
         ),
     )
     qwen_parser.add_argument("--attn-implementation", default="")

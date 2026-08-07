@@ -149,6 +149,11 @@ def _configure_code_predictor_compute_dtype(
         torch = importlib.import_module("torch")
         predictor = model.model.talker.code_predictor
         embeddings = predictor.model.codec_embedding
+        if config.code_predictor_compute_dtype == "mlp_float32":
+            for layer in predictor.model.layers:
+                layer.mlp.down_proj.float()
+                layer.mlp._bridge_compute_dtype = torch.float32
+            return
         embedding_dtype = next(embeddings[0].parameters()).dtype
         predictor.float()
         for embedding in embeddings:

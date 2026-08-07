@@ -164,6 +164,24 @@ class EngineFactoryTests(unittest.TestCase):
                 code_predictor_compute_dtype="float32",
             )
 
+    def test_qwen_subcommand_builds_upstream_mlp_fp32_code_predictor_config(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--code-predictor-compute-dtype",
+                "mlp_float32",
+            ]
+        )
+
+        config = build_engine_config(args)
+
+        self.assertIsInstance(config, QwenEngineConfig)
+        assert isinstance(config, QwenEngineConfig)
+        self.assertEqual("mlp_float32", config.code_predictor_compute_dtype)
+
     def test_qwen_subcommand_builds_exact_allowlist_config(self) -> None:
         parser = build_parser()
         args = parser.parse_args(
