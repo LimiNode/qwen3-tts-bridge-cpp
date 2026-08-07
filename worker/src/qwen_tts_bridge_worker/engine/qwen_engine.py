@@ -1621,6 +1621,7 @@ def _runtime_execution_policy_fields(config: QwenEngineConfig) -> dict[str, obje
         }
     return {
         "runtime_backend": "upstream",
+        "code_predictor_compute_dtype": config.code_predictor_compute_dtype,
         "bridge_streaming_optimizations_enabled": (
             config.enable_streaming_optimizations
         ),

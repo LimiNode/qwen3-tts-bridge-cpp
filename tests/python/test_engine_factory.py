@@ -123,6 +123,7 @@ class EngineFactoryTests(unittest.TestCase):
         )
         self.assertEqual((16, 21, 24), config.prefill_compile_lengths)
         self.assertFalse(config.prefill_compile_on_miss)
+
         self.assertEqual("error", config.prefill_unknown_shape_policy)
         self.assertEqual("diagnostic_dynamic", config.prefill_compile_policy)
         self.assertEqual("", config.prefill_allowlist_warmup_manifest)
@@ -134,6 +135,34 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("English", config.warmup_language)
         self.assertEqual("ryan", config.warmup_speaker)
         self.assertEqual("Speak neutrally.", config.warmup_instruction)
+
+    def test_qwen_subcommand_builds_upstream_fp32_code_predictor_config(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--runtime-backend",
+                "upstream",
+                "--code-predictor-compute-dtype",
+                "float32",
+            ]
+        )
+
+        config = build_engine_config(args)
+
+        self.assertIsInstance(config, QwenEngineConfig)
+        assert isinstance(config, QwenEngineConfig)
+        self.assertEqual("float32", config.code_predictor_compute_dtype)
+
+    def test_qwen_config_rejects_fp32_code_predictor_for_faster_backend(self) -> None:
+        with self.assertRaises(ValueError):
+            QwenEngineConfig(
+                model_path="models/qwen",
+                runtime_backend="faster",
+                code_predictor_compute_dtype="float32",
+            )
 
     def test_qwen_subcommand_builds_exact_allowlist_config(self) -> None:
         parser = build_parser()

@@ -38,6 +38,7 @@ def load_qwen_model(config: QwenEngineConfig) -> Any:
         model = model_cls.from_pretrained(config.model_path, **kwargs)
     except Exception as exc:
         raise QwenModelLoadError(f"failed to load Qwen model: {exc}") from exc
+    _configure_code_predictor_compute_dtype(model, config)
     _enable_streaming_optimizations(model, config)
     return model
 
@@ -132,6 +133,31 @@ def _enable_streaming_optimizations(
     except Exception as exc:
         raise QwenModelLoadError(
             f"failed to enable Qwen streaming optimizations: {exc}"
+        ) from exc
+
+
+def _configure_code_predictor_compute_dtype(
+    model: Any,
+    config: QwenEngineConfig,
+) -> None:
+    """Apply the explicit upstream code-predictor compute-dtype override."""
+
+    if config.code_predictor_compute_dtype == "model":
+        return
+
+    try:
+        torch = importlib.import_module("torch")
+        predictor = model.model.talker.code_predictor
+        embeddings = predictor.model.codec_embedding
+        embedding_dtype = next(embeddings[0].parameters()).dtype
+        predictor.float()
+        for embedding in embeddings:
+            embedding.to(dtype=embedding_dtype)
+        predictor._bridge_compute_dtype = torch.float32
+    except Exception as exc:
+        raise QwenModelLoadError(
+            "failed to configure upstream code predictor float32 compute: "
+            f"{exc}"
         ) from exc
 
 
