@@ -1,0 +1,665 @@
+{
+    "schema_version":  4,
+    "acceptance_pass":  true,
+    "package_id":  "QwenTTSBridge-technical-beta-r4",
+    "provenance":  {
+                       "artifact_source_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                       "acceptance_tooling_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                       "report_generation_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                       "source_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                       "source_tree":  "d6c46e75451704b75af5157d452f4745ca253707",
+                       "source_tree_clean":  true,
+                       "source_diff_sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                       "test_tree_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                       "package_source_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f"
+                   },
+    "source":  {
+                   "artifact_source_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                   "acceptance_tooling_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                   "report_generation_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                   "source_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                   "source_tree":  "d6c46e75451704b75af5157d452f4745ca253707",
+                   "source_tree_clean":  true,
+                   "source_diff_sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                   "test_tree_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f",
+                   "package_source_commit":  "187d450eb6a9c76e9334b3488468d7949fc34f9f"
+               },
+    "package":  {
+                    "file_count":  34647,
+                    "size_bytes":  5324421796,
+                    "package_tree_manifest_sha256":  "60afb652bbf5f7a577fad206628855e6abe624ef6364890e088e692f642bb820",
+                    "candidate_verified_manifest_digest":  "60afb652bbf5f7a577fad206628855e6abe624ef6364890e088e692f642bb820",
+                    "published_verified_manifest_digest":  "60afb652bbf5f7a577fad206628855e6abe624ef6364890e088e692f642bb820",
+                    "verified_manifest_digest_algorithm":  "sha256(package-tree-manifest)",
+                    "voice_assets_manifest_sha256":  "33fa4ddad454e41e4e3d296f065a6571625cc9d6f00d72e8694579fee7137b9a",
+                    "worker_build_manifest_sha256":  "01df8c4e6c00a907fef39cd664d116d2ce963b6330cd8a105bc917859ee168a6",
+                    "immutable_tree_policy":  {
+                                                  "sealed_files":  "all",
+                                                  "sealed_directories":  "all_except_empty_named_mutable_directories",
+                                                  "mutable_empty_directory_names":  [
+                                                                                        "__pycache__"
+                                                                                    ],
+                                                  "pre_smoke_manifest":  "passed",
+                                                  "post_smoke_manifest":  "passed"
+                                              }
+                },
+    "models":  {
+                   "custom_voice":  {
+                                        "repository":  "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+                                        "revision":  "85e237c12c027371202489a0ec509ded67b5e4b5",
+                                        "directory_manifest_sha256":  "6d2e50c2ca1ee8b9845fda1669c5fff6e9e856537266ac3e9f01a28882db01f0",
+                                        "manifest_document_sha256":  "7e384b002d7ad56f1e3e1bba2255ec73a56dbabee96fb9d083123a71e657c56f",
+                                        "runtime_file_count":  13,
+                                        "manifest":  {
+                                                         "directory_manifest_sha256":  "6d2e50c2ca1ee8b9845fda1669c5fff6e9e856537266ac3e9f01a28882db01f0",
+                                                         "model_runtime_manifest_schema_version":  2,
+                                                         "repository":  "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+                                                         "revision":  "85e237c12c027371202489a0ec509ded67b5e4b5",
+                                                         "runtime_files":  [
+                                                                               {
+                                                                                   "path":  ".gitattributes",
+                                                                                   "sha256":  "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+                                                                                   "size_bytes":  1519
+                                                                               },
+                                                                               {
+                                                                                   "path":  "README.md",
+                                                                                   "sha256":  "1e3adeecc7a72d6756fdb77c2847f8e994195e105b51206a7a5c049b0dfa48a8",
+                                                                                   "size_bytes":  3263
+                                                                               },
+                                                                               {
+                                                                                   "path":  "config.json",
+                                                                                   "sha256":  "81aca2b6fac304944d8acf345272d8a9a727d5fc2e2e66b222ab4729340c7455",
+                                                                                   "size_bytes":  4908
+                                                                               },
+                                                                               {
+                                                                                   "path":  "generation_config.json",
+                                                                                   "sha256":  "f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa",
+                                                                                   "size_bytes":  245
+                                                                               },
+                                                                               {
+                                                                                   "path":  "merges.txt",
+                                                                                   "sha256":  "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+                                                                                   "size_bytes":  1671839
+                                                                               },
+                                                                               {
+                                                                                   "path":  "model.safetensors",
+                                                                                   "sha256":  "bc3c7e785eb961179c25450d1acff03f839e0002f2f3a5aeb67b5735c0fa2adb",
+                                                                                   "size_bytes":  1811626576
+                                                                               },
+                                                                               {
+                                                                                   "path":  "preprocessor_config.json",
+                                                                                   "sha256":  "efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119",
+                                                                                   "size_bytes":  127
+                                                                               },
+                                                                               {
+                                                                                   "path":  "speech_tokenizer/config.json",
+                                                                                   "sha256":  "ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167",
+                                                                                   "size_bytes":  2336
+                                                                               },
+                                                                               {
+                                                                                   "path":  "speech_tokenizer/configuration.json",
+                                                                                   "sha256":  "6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd",
+                                                                                   "size_bytes":  76
+                                                                               },
+                                                                               {
+                                                                                   "path":  "speech_tokenizer/model.safetensors",
+                                                                                   "sha256":  "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258",
+                                                                                   "size_bytes":  682293092
+                                                                               },
+                                                                               {
+                                                                                   "path":  "speech_tokenizer/preprocessor_config.json",
+                                                                                   "sha256":  "fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb",
+                                                                                   "size_bytes":  234
+                                                                               },
+                                                                               {
+                                                                                   "path":  "tokenizer_config.json",
+                                                                                   "sha256":  "dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670",
+                                                                                   "size_bytes":  7344
+                                                                               },
+                                                                               {
+                                                                                   "path":  "vocab.json",
+                                                                                   "sha256":  "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+                                                                                   "size_bytes":  2776833
+                                                                               }
+                                                                           ]
+                                                     }
+                                    },
+                   "base":  {
+                                "repository":  "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+                                "revision":  "fd4b254389122332181a7c3db7f27e918eec64e3",
+                                "directory_manifest_sha256":  "12eadbdf67917321dc3b1edfff444330297652f2be89eb9110a2dade520649ef",
+                                "manifest_document_sha256":  "8b0afc36bd27717837a73978f6423f0b044d5f33c1cb485163a36733174bde6f",
+                                "runtime_file_count":  11,
+                                "manifest":  {
+                                                 "directory_manifest_sha256":  "12eadbdf67917321dc3b1edfff444330297652f2be89eb9110a2dade520649ef",
+                                                 "model_runtime_manifest_schema_version":  2,
+                                                 "repository":  "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+                                                 "revision":  "fd4b254389122332181a7c3db7f27e918eec64e3",
+                                                 "runtime_files":  [
+                                                                       {
+                                                                           "path":  "config.json",
+                                                                           "sha256":  "b4f01752d15a488abde3e1ab44723ae4f4b9e68a4037257b098b3737893cc1f9",
+                                                                           "size_bytes":  4494
+                                                                       },
+                                                                       {
+                                                                           "path":  "generation_config.json",
+                                                                           "sha256":  "f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa",
+                                                                           "size_bytes":  245
+                                                                       },
+                                                                       {
+                                                                           "path":  "merges.txt",
+                                                                           "sha256":  "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+                                                                           "size_bytes":  1671839
+                                                                       },
+                                                                       {
+                                                                           "path":  "model.safetensors",
+                                                                           "sha256":  "38fc7fc51c5e776e840414b6fd443962e9411b9654888fd7913e4da643cb857c",
+                                                                           "size_bytes":  3857413744
+                                                                       },
+                                                                       {
+                                                                           "path":  "preprocessor_config.json",
+                                                                           "sha256":  "efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119",
+                                                                           "size_bytes":  127
+                                                                       },
+                                                                       {
+                                                                           "path":  "speech_tokenizer/config.json",
+                                                                           "sha256":  "ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167",
+                                                                           "size_bytes":  2336
+                                                                       },
+                                                                       {
+                                                                           "path":  "speech_tokenizer/configuration.json",
+                                                                           "sha256":  "6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd",
+                                                                           "size_bytes":  76
+                                                                       },
+                                                                       {
+                                                                           "path":  "speech_tokenizer/model.safetensors",
+                                                                           "sha256":  "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258",
+                                                                           "size_bytes":  682293092
+                                                                       },
+                                                                       {
+                                                                           "path":  "speech_tokenizer/preprocessor_config.json",
+                                                                           "sha256":  "fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb",
+                                                                           "size_bytes":  234
+                                                                       },
+                                                                       {
+                                                                           "path":  "tokenizer_config.json",
+                                                                           "sha256":  "dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670",
+                                                                           "size_bytes":  7344
+                                                                       },
+                                                                       {
+                                                                           "path":  "vocab.json",
+                                                                           "sha256":  "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+                                                                           "size_bytes":  2776833
+                                                                       }
+                                                                   ]
+                                             }
+                            }
+               },
+    "acceptance":  {
+                       "required_gates":  {
+                                              "pre_publish_validation":  true,
+                                              "post_publish_validation":  true,
+                                              "verified_manifest_digest_match":  true,
+                                              "sealed_tree_unchanged":  true,
+                                              "runtime_isolation":  true,
+                                              "fault_injection":  true
+                                          },
+                       "fault_injection":  {
+                                               "schema_version":  2,
+                                               "acceptance_pass":  true,
+                                               "cases":  [
+                                                             {
+                                                                 "name":  "replace_success",
+                                                                 "has_existing_package":  true,
+                                                                 "injected_failure_point":  null,
+                                                                 "validation_failure":  false,
+                                                                 "expected_failure":  false,
+                                                                 "threw":  false,
+                                                                 "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "final_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "old_package_restored":  false,
+                                                                 "final_package_absent":  false,
+                                                                 "new_package_absent":  false,
+                                                                 "candidate_exists_after":  false,
+                                                                 "backup_count_after":  0,
+                                                                 "pass":  true
+                                                             },
+                                                             {
+                                                                 "name":  "replace_before_backup",
+                                                                 "has_existing_package":  true,
+                                                                 "injected_failure_point":  "before_backup",
+                                                                 "validation_failure":  false,
+                                                                 "expected_failure":  true,
+                                                                 "threw":  true,
+                                                                 "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "old_package_restored":  true,
+                                                                 "final_package_absent":  false,
+                                                                 "new_package_absent":  true,
+                                                                 "candidate_exists_after":  true,
+                                                                 "backup_count_after":  0,
+                                                                 "pass":  true
+                                                             },
+                                                             {
+                                                                 "name":  "replace_after_backup",
+                                                                 "has_existing_package":  true,
+                                                                 "injected_failure_point":  "after_backup",
+                                                                 "validation_failure":  false,
+                                                                 "expected_failure":  true,
+                                                                 "threw":  true,
+                                                                 "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "old_package_restored":  true,
+                                                                 "final_package_absent":  false,
+                                                                 "new_package_absent":  true,
+                                                                 "candidate_exists_after":  true,
+                                                                 "backup_count_after":  0,
+                                                                 "pass":  true
+                                                             },
+                                                             {
+                                                                 "name":  "replace_after_swap",
+                                                                 "has_existing_package":  true,
+                                                                 "injected_failure_point":  "after_swap",
+                                                                 "validation_failure":  false,
+                                                                 "expected_failure":  true,
+                                                                 "threw":  true,
+                                                                 "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "old_package_restored":  true,
+                                                                 "final_package_absent":  false,
+                                                                 "new_package_absent":  true,
+                                                                 "candidate_exists_after":  false,
+                                                                 "backup_count_after":  0,
+                                                                 "pass":  true
+                                                             },
+                                                             {
+                                                                 "name":  "replace_published_validation_failure",
+                                                                 "has_existing_package":  true,
+                                                                 "injected_failure_point":  null,
+                                                                 "validation_failure":  true,
+                                                                 "expected_failure":  true,
+                                                                 "threw":  true,
+                                                                 "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "old_package_restored":  true,
+                                                                 "final_package_absent":  false,
+                                                                 "new_package_absent":  true,
+                                                                 "candidate_exists_after":  false,
+                                                                 "backup_count_after":  0,
+                                                                 "pass":  true
+                                                             },
+                                                             {
+                                                                 "name":  "replace_before_backup_cleanup",
+                                                                 "has_existing_package":  true,
+                                                                 "injected_failure_point":  "before_backup_cleanup",
+                                                                 "validation_failure":  false,
+                                                                 "expected_failure":  true,
+                                                                 "threw":  true,
+                                                                 "old_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "final_marker_sha256":  "cba06b5736faf67e54b07b561eae94395e774c517a7d910a54369e1263ccfbd4",
+                                                                 "old_package_restored":  true,
+                                                                 "final_package_absent":  false,
+                                                                 "new_package_absent":  true,
+                                                                 "candidate_exists_after":  false,
+                                                                 "backup_count_after":  0,
+                                                                 "pass":  true
+                                                             },
+                                                             {
+                                                                 "name":  "first_publish_after_swap",
+                                                                 "has_existing_package":  false,
+                                                                 "injected_failure_point":  "after_swap",
+                                                                 "validation_failure":  false,
+                                                                 "expected_failure":  true,
+                                                                 "threw":  true,
+                                                                 "old_marker_sha256":  null,
+                                                                 "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "final_marker_sha256":  null,
+                                                                 "old_package_restored":  false,
+                                                                 "final_package_absent":  true,
+                                                                 "new_package_absent":  true,
+                                                                 "candidate_exists_after":  false,
+                                                                 "backup_count_after":  0,
+                                                                 "pass":  true
+                                                             },
+                                                             {
+                                                                 "name":  "first_publish_validation_failure",
+                                                                 "has_existing_package":  false,
+                                                                 "injected_failure_point":  null,
+                                                                 "validation_failure":  true,
+                                                                 "expected_failure":  true,
+                                                                 "threw":  true,
+                                                                 "old_marker_sha256":  null,
+                                                                 "new_marker_sha256":  "11507a0e2f5e69d5dfa40a62a1bd7b6ee57e6bcd85c67c9b8431b36fff21c437",
+                                                                 "final_marker_sha256":  null,
+                                                                 "old_package_restored":  false,
+                                                                 "final_package_absent":  true,
+                                                                 "new_package_absent":  true,
+                                                                 "candidate_exists_after":  false,
+                                                                 "backup_count_after":  0,
+                                                                 "pass":  true
+                                                             }
+                                                         ]
+                                           },
+                       "relocated_candidate":  {
+                                                   "schema_version":  4,
+                                                   "acceptance_pass":  true,
+                                                   "validation_kind":  "same_host_relocated_private_runtime",
+                                                   "package":  {
+                                                                   "verified_manifest_digest":  "60afb652bbf5f7a577fad206628855e6abe624ef6364890e088e692f642bb820",
+                                                                   "verified_manifest_digest_algorithm":  "sha256(package-tree-manifest)",
+                                                                   "package_tree_manifest_sha256":  "60afb652bbf5f7a577fad206628855e6abe624ef6364890e088e692f642bb820",
+                                                                   "voice_assets_manifest_sha256":  "33fa4ddad454e41e4e3d296f065a6571625cc9d6f00d72e8694579fee7137b9a",
+                                                                   "immutable_tree_policy":  {
+                                                                                                 "sealed_files":  "all",
+                                                                                                 "sealed_directories":  "all_except_empty_named_mutable_directories",
+                                                                                                 "mutable_empty_directory_names":  [
+                                                                                                                                       "__pycache__"
+                                                                                                                                   ],
+                                                                                                 "pre_smoke_manifest":  "passed",
+                                                                                                 "post_smoke_manifest":  "passed"
+                                                                                             }
+                                                               },
+                                                   "required_gates":  {
+                                                                          "package_tree_pre_smoke":  true,
+                                                                          "voice_assets_pre_smoke":  true,
+                                                                          "native_closure":  true,
+                                                                          "custom_voice_doctor_pre_smoke":  true,
+                                                                          "base_doctor_pre_smoke":  true,
+                                                                          "custom_voice_natural_eos":  true,
+                                                                          "base_natural_eos":  true,
+                                                                          "custom_voice_doctor_post_smoke":  true,
+                                                                          "base_doctor_post_smoke":  true,
+                                                                          "no_bytecode":  true,
+                                                                          "package_tree_post_smoke":  true,
+                                                                          "voice_assets_post_smoke":  true
+                                                                      },
+                                                   "isolation":  {
+                                                                     "working_directory":  "package_worker",
+                                                                     "pythonhome":  "package_worker_python",
+                                                                     "pythonpath":  "package_worker_site_packages",
+                                                                     "user_site_disabled":  true,
+                                                                     "bytecode_disabled":  true,
+                                                                     "hf_offline":  true,
+                                                                     "transformers_offline":  true,
+                                                                     "base_voice_registry":  "package_config/voice-profiles.json"
+                                                                 },
+                                                   "commands":  [
+                                                                    {
+                                                                        "name":  "relocate_package",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  0
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_package_tree_pre_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  450868.699
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_voice_assets_pre_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  177.919
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_native_closure",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  0
+                                                                    },
+                                                                    {
+                                                                        "name":  "doctor_custom_voice_pre_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  65002.729
+                                                                    },
+                                                                    {
+                                                                        "name":  "doctor_base_pre_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  68504.621
+                                                                    },
+                                                                    {
+                                                                        "name":  "smoke_.__qtb-4779e1665e404d79a5cba8aa1c59012e-relocated-customvoice-eos",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  35296.673
+                                                                    },
+                                                                    {
+                                                                        "name":  "smoke_.__qtb-4779e1665e404d79a5cba8aa1c59012e-relocated-base-eos",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  39359.216
+                                                                    },
+                                                                    {
+                                                                        "name":  "doctor_custom_voice_post_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  66718.745
+                                                                    },
+                                                                    {
+                                                                        "name":  "doctor_base_post_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  68817.343
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_package_tree_post_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  68331.249
+                                                                    },
+                                                                    {
+                                                                        "name":  "verify_voice_assets_post_smoke",
+                                                                        "exit_code":  0,
+                                                                        "duration_ms":  175.037
+                                                                    }
+                                                                ],
+                                                   "smokes":  {
+                                                                  "custom_voice":  {
+                                                                                       "result":  [
+                                                                                                      "Wrote 183210 PCM bytes in 6 chunks to C:\\_repoz\\qwen3-tts-bridge-cpp-r4-publish\\dist\\.__qtb-4779e1665e404d79a5cba8aa1c59012e-relocated-customvoice-eos.wav",
+                                                                                                      "completion: outcome=completed, termination_reason=eos, hit_eos=true, codec_frames=48",
+                                                                                                      {
+                                                                                                          "schema_version":  1,
+                                                                                                          "request_id":  1,
+                                                                                                          "terminal_state":  "completed",
+                                                                                                          "audio_chunks":  6,
+                                                                                                          "audio_bytes":  183210,
+                                                                                                          "completion_metadata_received":  true,
+                                                                                                          "execution_outcome":  "completed",
+                                                                                                          "termination_reason":  "eos",
+                                                                                                          "hit_eos":  true,
+                                                                                                          "hit_max_seq_len":  false,
+                                                                                                          "hit_max_new_tokens":  false,
+                                                                                                          "codec_frame_count":  48
+                                                                                                      }
+                                                                                                  ],
+                                                                                       "output_sha256":  "5edd4bd88f11306218b9875a81cb2d324ef85ec50f744ddfa9b5707fe16e3662"
+                                                                                   },
+                                                                  "base":  {
+                                                                               "voice_id":  "kraftwerk_robot_ru_bootstrap_fidelity",
+                                                                               "result":  [
+                                                                                              "Wrote 185012 PCM bytes in 7 chunks to C:\\_repoz\\qwen3-tts-bridge-cpp-r4-publish\\dist\\.__qtb-4779e1665e404d79a5cba8aa1c59012e-relocated-base-eos.wav",
+                                                                                              "completion: outcome=completed, termination_reason=eos, hit_eos=true, codec_frames=49",
+                                                                                              {
+                                                                                                  "schema_version":  1,
+                                                                                                  "request_id":  1,
+                                                                                                  "terminal_state":  "completed",
+                                                                                                  "audio_chunks":  7,
+                                                                                                  "audio_bytes":  185012,
+                                                                                                  "completion_metadata_received":  true,
+                                                                                                  "execution_outcome":  "completed",
+                                                                                                  "termination_reason":  "eos",
+                                                                                                  "hit_eos":  true,
+                                                                                                  "hit_max_seq_len":  false,
+                                                                                                  "hit_max_new_tokens":  false,
+                                                                                                  "codec_frame_count":  49
+                                                                                              }
+                                                                                          ],
+                                                                               "output_sha256":  "c51c21fa56cbfb83d5823a407e45c7a9acb4122b34a18d94557bdea9332c1edb"
+                                                                           }
+                                                              },
+                                                   "post_smoke":  {
+                                                                      "doctor_custom_voice":  "passed",
+                                                                      "doctor_base":  "passed",
+                                                                      "bytecode_files":  0,
+                                                                      "package_tree_manifest":  "passed",
+                                                                      "voice_assets_manifest":  "passed",
+                                                                      "native_closure":  "passed",
+                                                                      "sealed_tree_unchanged":  true
+                                                                  }
+                                               },
+                       "published_destination":  {
+                                                     "schema_version":  4,
+                                                     "acceptance_pass":  true,
+                                                     "validation_kind":  "same_host_published_private_runtime",
+                                                     "package":  {
+                                                                     "verified_manifest_digest":  "60afb652bbf5f7a577fad206628855e6abe624ef6364890e088e692f642bb820",
+                                                                     "verified_manifest_digest_algorithm":  "sha256(package-tree-manifest)",
+                                                                     "package_tree_manifest_sha256":  "60afb652bbf5f7a577fad206628855e6abe624ef6364890e088e692f642bb820",
+                                                                     "voice_assets_manifest_sha256":  "33fa4ddad454e41e4e3d296f065a6571625cc9d6f00d72e8694579fee7137b9a",
+                                                                     "immutable_tree_policy":  {
+                                                                                                   "sealed_files":  "all",
+                                                                                                   "sealed_directories":  "all_except_empty_named_mutable_directories",
+                                                                                                   "mutable_empty_directory_names":  [
+                                                                                                                                         "__pycache__"
+                                                                                                                                     ],
+                                                                                                   "pre_smoke_manifest":  "passed",
+                                                                                                   "post_smoke_manifest":  "passed"
+                                                                                               }
+                                                                 },
+                                                     "required_gates":  {
+                                                                            "package_tree_pre_smoke":  true,
+                                                                            "voice_assets_pre_smoke":  true,
+                                                                            "native_closure":  true,
+                                                                            "custom_voice_doctor_pre_smoke":  true,
+                                                                            "base_doctor_pre_smoke":  true,
+                                                                            "custom_voice_natural_eos":  true,
+                                                                            "base_natural_eos":  true,
+                                                                            "custom_voice_doctor_post_smoke":  true,
+                                                                            "base_doctor_post_smoke":  true,
+                                                                            "no_bytecode":  true,
+                                                                            "package_tree_post_smoke":  true,
+                                                                            "voice_assets_post_smoke":  true
+                                                                        },
+                                                     "isolation":  {
+                                                                       "working_directory":  "package_worker",
+                                                                       "pythonhome":  "package_worker_python",
+                                                                       "pythonpath":  "package_worker_site_packages",
+                                                                       "user_site_disabled":  true,
+                                                                       "bytecode_disabled":  true,
+                                                                       "hf_offline":  true,
+                                                                       "transformers_offline":  true,
+                                                                       "base_voice_registry":  "package_config/voice-profiles.json"
+                                                                   },
+                                                     "commands":  [
+                                                                      {
+                                                                          "name":  "verify_package_tree_pre_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  70677.419
+                                                                      },
+                                                                      {
+                                                                          "name":  "verify_voice_assets_pre_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  183.169
+                                                                      },
+                                                                      {
+                                                                          "name":  "verify_native_closure",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  0
+                                                                      },
+                                                                      {
+                                                                          "name":  "doctor_custom_voice_pre_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  64019.353
+                                                                      },
+                                                                      {
+                                                                          "name":  "doctor_base_pre_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  67535.367
+                                                                      },
+                                                                      {
+                                                                          "name":  "smoke_QwenTTSBridge-technical-beta-r4-customvoice-eos",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  32220.561
+                                                                      },
+                                                                      {
+                                                                          "name":  "smoke_QwenTTSBridge-technical-beta-r4-base-eos",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  37264.433
+                                                                      },
+                                                                      {
+                                                                          "name":  "doctor_custom_voice_post_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  62878.226
+                                                                      },
+                                                                      {
+                                                                          "name":  "doctor_base_post_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  68361.882
+                                                                      },
+                                                                      {
+                                                                          "name":  "verify_package_tree_post_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  66825.498
+                                                                      },
+                                                                      {
+                                                                          "name":  "verify_voice_assets_post_smoke",
+                                                                          "exit_code":  0,
+                                                                          "duration_ms":  168.632
+                                                                      }
+                                                                  ],
+                                                     "smokes":  {
+                                                                    "custom_voice":  {
+                                                                                         "result":  [
+                                                                                                        "Wrote 213930 PCM bytes in 7 chunks to C:\\_repoz\\qwen3-tts-bridge-cpp-r4-publish\\dist\\QwenTTSBridge-technical-beta-r4-customvoice-eos.wav",
+                                                                                                        "completion: outcome=completed, termination_reason=eos, hit_eos=true, codec_frames=56",
+                                                                                                        {
+                                                                                                            "schema_version":  1,
+                                                                                                            "request_id":  1,
+                                                                                                            "terminal_state":  "completed",
+                                                                                                            "audio_chunks":  7,
+                                                                                                            "audio_bytes":  213930,
+                                                                                                            "completion_metadata_received":  true,
+                                                                                                            "execution_outcome":  "completed",
+                                                                                                            "termination_reason":  "eos",
+                                                                                                            "hit_eos":  true,
+                                                                                                            "hit_max_seq_len":  false,
+                                                                                                            "hit_max_new_tokens":  false,
+                                                                                                            "codec_frame_count":  56
+                                                                                                        }
+                                                                                                    ],
+                                                                                         "output_sha256":  "5780961e90d82b7c67e6b0cc8b8b59bf682df3d0bd6e9bb2dc6e2b7c85d4324f"
+                                                                                     },
+                                                                    "base":  {
+                                                                                 "voice_id":  "kraftwerk_robot_ru_bootstrap_fidelity",
+                                                                                 "result":  [
+                                                                                                "Wrote 174496 PCM bytes in 6 chunks to C:\\_repoz\\qwen3-tts-bridge-cpp-r4-publish\\dist\\QwenTTSBridge-technical-beta-r4-base-eos.wav",
+                                                                                                "completion: outcome=completed, termination_reason=eos, hit_eos=true, codec_frames=46",
+                                                                                                {
+                                                                                                    "schema_version":  1,
+                                                                                                    "request_id":  1,
+                                                                                                    "terminal_state":  "completed",
+                                                                                                    "audio_chunks":  6,
+                                                                                                    "audio_bytes":  174496,
+                                                                                                    "completion_metadata_received":  true,
+                                                                                                    "execution_outcome":  "completed",
+                                                                                                    "termination_reason":  "eos",
+                                                                                                    "hit_eos":  true,
+                                                                                                    "hit_max_seq_len":  false,
+                                                                                                    "hit_max_new_tokens":  false,
+                                                                                                    "codec_frame_count":  46
+                                                                                                }
+                                                                                            ],
+                                                                                 "output_sha256":  "9bbc0732f5f338a858b4c4673418e215b7934911aa23ab8f61f3cd6f93083137"
+                                                                             }
+                                                                },
+                                                     "post_smoke":  {
+                                                                        "doctor_custom_voice":  "passed",
+                                                                        "doctor_base":  "passed",
+                                                                        "bytecode_files":  0,
+                                                                        "package_tree_manifest":  "passed",
+                                                                        "voice_assets_manifest":  "passed",
+                                                                        "native_closure":  "passed",
+                                                                        "sealed_tree_unchanged":  true
+                                                                    }
+                                                 }
+                   }
+}
