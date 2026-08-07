@@ -408,6 +408,15 @@ class QwenTtsEngine:
         model: Any,
         reset_metadata: dict[str, object] | None = None,
     ) -> None:
+        if self._config.runtime_backend == "upstream":
+            trace = getattr(
+                getattr(model, "model", None), "last_stream_completion", None
+            )
+            if isinstance(trace, dict):
+                self._last_generation_trace = {
+                    str(key): value for key, value in trace.items()
+                }
+            return
         if not self._config.collect_generation_trace:
             return
         trace = getattr(model, "last_generation_trace", None)

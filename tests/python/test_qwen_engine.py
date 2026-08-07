@@ -157,6 +157,19 @@ class _StrictUpstreamStreamingInnerModel(_InnerModel):
         )
         yield [-0.5], 24000
         yield [0.5], 24000
+        self.last_stream_completion = {
+            "trace_kind": "upstream_streaming_completion_v1",
+            "termination_reason": "eos",
+            "terminal_token_id": 2150,
+            "terminal_step_index": 2,
+            "codec_frame_count": 2,
+            "generated_steps": 2,
+            "emitted_steps": 2,
+            "hit_eos": True,
+            "hit_max_new_tokens": False,
+            "hit_max_seq_len": False,
+            "hit_max_frames": False,
+        }
 
 
 class _StreamingWrapperModel:
@@ -839,6 +852,22 @@ class QwenEngineTests(unittest.TestCase):
         stream_calls = fake_model.model.stream_calls
         self.assertEqual(1, len(stream_calls))
         self.assertEqual(["Alice"], stream_calls[0]["speakers"])
+        self.assertEqual(
+            {
+                "trace_kind": "upstream_streaming_completion_v1",
+                "termination_reason": "eos",
+                "terminal_token_id": 2150,
+                "terminal_step_index": 2,
+                "codec_frame_count": 2,
+                "generated_steps": 2,
+                "emitted_steps": 2,
+                "hit_eos": True,
+                "hit_max_new_tokens": False,
+                "hit_max_seq_len": False,
+                "hit_max_frames": False,
+            },
+            engine.pop_last_generation_trace(),
+        )
 
     def test_warmup_synthesis_consumes_stream(self) -> None:
         fake_model = _StreamingWrapperModel(
