@@ -1,6 +1,6 @@
 # CMP 50HX code-predictor precision follow-up
 
-Date: 2026-08-07  
+Date: 2026-08-07
 Scope: source-only diagnostics using the published R3 private Python runtime
 read-only. The sealed R3 package was not rebuilt, patched, or used as a source
 worker.

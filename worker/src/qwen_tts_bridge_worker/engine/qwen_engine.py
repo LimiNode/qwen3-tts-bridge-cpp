@@ -11,6 +11,7 @@ import hashlib
 import importlib
 import json
 import math
+import os
 import random
 import threading
 from collections.abc import Callable, Iterable, Iterator
@@ -324,16 +325,21 @@ class QwenTtsEngine:
             max_audio_bytes = _max_audio_bytes(self._config, request)
             close_stream = getattr(audio_stream, "close", None)
             completed = False
+            stall_telemetry = _create_stall_telemetry()
             try:
                 iterator = iter(audio_stream)
                 while not cancel_event.is_set():
                     next_started_at = monotonic_seconds()
+                    stall_telemetry.begin_chunk()
                     try:
                         wav, sample_rate, chunk_timing = _unpack_audio_chunk(
                             next(iterator)
                         )
                     except StopIteration:
                         break
+                    stream_next_gpu_ms, stream_next_gpu_ready = (
+                        stall_telemetry.end_chunk()
+                    )
                     next_wall_ms = elapsed_milliseconds(next_started_at)
 
                     if cancel_event.is_set():
@@ -369,6 +375,8 @@ class QwenTtsEngine:
                             chunk_timing,
                             next_wall_ms=next_wall_ms,
                             pcm_convert_ms=pcm_convert_ms,
+                            stream_next_gpu_ms=stream_next_gpu_ms,
+                            stream_next_gpu_ready=stream_next_gpu_ready,
                         )
                         emitted_audio_bytes += len(pcm)
                         yield pcm
@@ -2192,6 +2200,8 @@ def _first_chunk_timing_fields(
     *,
     next_wall_ms: float,
     pcm_convert_ms: float,
+    stream_next_gpu_ms: float | None = None,
+    stream_next_gpu_ready: bool | None = None,
 ) -> dict[str, object]:
     fields: dict[str, object] = {
         "next_wall_ms": next_wall_ms,
@@ -2211,6 +2221,13 @@ def _first_chunk_timing_fields(
         fields["chunk_steps"] = int(chunk_steps)
         if decode_ms is not None and chunk_steps > 0:
             fields["ar_ms_per_step"] = decode_ms / chunk_steps
+    if stream_next_gpu_ms is not None:
+        fields["stream_next_gpu_ms"] = stream_next_gpu_ms
+        fields["stream_next_host_residual_ms"] = (
+            next_wall_ms - stream_next_gpu_ms
+        )
+    if stream_next_gpu_ready is not None:
+        fields["stream_next_gpu_ready"] = stream_next_gpu_ready
 
     for key in (
         "text_token_count",
@@ -2290,6 +2307,7 @@ def _first_chunk_timing_fields(
         "generation_state_mask_cache_hit",
         "generation_state_attention_mask_all_valid",
         "is_final",
+        "stream_next_gpu_ready",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
@@ -2369,6 +2387,8 @@ def _first_chunk_timing_fields(
         "ar_sample_multinomial_gpu_ms",
         "ar_sample_argmax_gpu_ms",
         "ar_state_update_gpu_ms",
+        "stream_next_gpu_ms",
+        "stream_next_host_residual_ms",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:
@@ -2408,6 +2428,43 @@ def _number_field(fields: dict[str, object], name: str) -> float | None:
     if isinstance(value, (int, float)):
         return float(value)
     return None
+
+
+class _StallTelemetry:
+    """Optional per-chunk CUDA-event timing with no host synchronization."""
+
+    def __init__(self, torch: Any | None) -> None:
+        self._torch = torch
+        self._start: Any | None = None
+
+    def begin_chunk(self) -> None:
+        if self._torch is None:
+            return
+        self._start = self._torch.cuda.Event(enable_timing=True)
+        self._start.record()
+
+    def end_chunk(self) -> tuple[float | None, bool | None]:
+        if self._torch is None or self._start is None:
+            return None, None
+        end = self._torch.cuda.Event(enable_timing=True)
+        end.record()
+        if not end.query():
+            return None, False
+        return float(self._start.elapsed_time(end)), True
+
+
+def _create_stall_telemetry() -> _StallTelemetry:
+    """Return opt-in diagnostic timing without changing the compute path."""
+
+    if os.environ.get("QTB_FASTER_STALL_TELEMETRY") != "1":
+        return _StallTelemetry(None)
+    try:
+        torch = importlib.import_module("torch")
+        if not torch.cuda.is_available():
+            return _StallTelemetry(None)
+        return _StallTelemetry(torch)
+    except Exception:
+        return _StallTelemetry(None)
 
 
 def _has_qwen_stream_helpers(model: Any) -> bool:
