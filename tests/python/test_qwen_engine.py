@@ -24,6 +24,7 @@ from qwen_tts_bridge_worker.engine import (
     UnsupportedAudioFormatError,
 )
 from qwen_tts_bridge_worker.engine.qwen_engine import (
+    _create_stall_telemetry,
     _load_prefill_allowlist_warmup_manifest,
     _prefill_snapshot_max_abs,
     _preserved_rng_state,
@@ -498,6 +499,13 @@ def _generation_prime_config(manifest: Path) -> QwenEngineConfig:
 
 
 class QwenEngineTests(unittest.TestCase):
+    def test_stall_telemetry_is_disabled_without_explicit_opt_in(self) -> None:
+        with patch.dict("os.environ", {"QTB_FASTER_STALL_TELEMETRY": "0"}):
+            telemetry = _create_stall_telemetry()
+
+        telemetry.begin_chunk()
+        self.assertEqual((None, None), telemetry.end_chunk())
+
     def test_prefill_warmup_manifest_uses_root_speaker(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / "manifest.json"
