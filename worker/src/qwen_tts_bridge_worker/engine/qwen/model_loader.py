@@ -38,6 +38,7 @@ def load_qwen_model(config: QwenEngineConfig) -> Any:
         model = model_cls.from_pretrained(config.model_path, **kwargs)
     except Exception as exc:
         raise QwenModelLoadError(f"failed to load Qwen model: {exc}") from exc
+    _configure_code_predictor_compute_dtype(model, config)
     _enable_streaming_optimizations(model, config)
     return model
 
@@ -132,6 +133,42 @@ def _enable_streaming_optimizations(
     except Exception as exc:
         raise QwenModelLoadError(
             f"failed to enable Qwen streaming optimizations: {exc}"
+        ) from exc
+
+
+def _configure_code_predictor_compute_dtype(
+    model: Any,
+    config: QwenEngineConfig,
+) -> None:
+    """Apply the explicit upstream code-predictor compute-dtype override."""
+
+    if config.code_predictor_compute_dtype == "model":
+        return
+
+    try:
+        torch = importlib.import_module("torch")
+        predictor = model.model.talker.code_predictor
+        embeddings = predictor.model.codec_embedding
+        if config.code_predictor_compute_dtype == "mlp_float32":
+            for layer in predictor.model.layers:
+                layer.mlp.down_proj.float()
+                layer.mlp._bridge_compute_dtype = torch.float32
+            return
+        embedding_dtypes = [
+            next(embedding.parameters()).dtype for embedding in embeddings
+        ]
+        predictor.float()
+        for embedding, embedding_dtype in zip(
+            embeddings,
+            embedding_dtypes,
+            strict=True,
+        ):
+            embedding.to(dtype=embedding_dtype)
+        predictor._bridge_compute_dtype = torch.float32
+    except Exception as exc:
+        raise QwenModelLoadError(
+            "failed to configure upstream code predictor float32 compute: "
+            f"{exc}"
         ) from exc
 
 

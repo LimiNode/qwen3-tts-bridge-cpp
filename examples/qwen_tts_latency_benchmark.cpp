@@ -53,8 +53,10 @@ struct ProgramOptions {
     std::string text = "Latency benchmark request.";
     std::string language = "auto";
     std::string speaker;
+    std::string voice_id;
     std::string instruction;
     std::string request_manifest;
+    std::string result_json_path;
     std::uint32_t sample_rate = 24000;
     std::uint32_t channels = 1;
     int warmups = 5;
@@ -273,8 +275,10 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --text <utf8>                  Text to synthesize.\n"
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
+        << "  --voice-id <id>                Registered Base voice profile identifier.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
         << "  --request-manifest <jsonl>     Cycle measured requests through JSONL cases.\n"
+        << "  --result-json <path>           Write raw diagnostic JSON to a file.\n"
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --warmups <count>              Warmup requests, default: 5.\n"
@@ -374,11 +378,17 @@ ProgramOptions parse_options(int argc, char** argv) {
         else if (arg == "--speaker" || arg.rfind("--speaker=", 0) == 0) {
             options.speaker = require_value(index, argc, argv, "--speaker");
         }
+        else if (arg == "--voice-id" || arg.rfind("--voice-id=", 0) == 0) {
+            options.voice_id = require_value(index, argc, argv, "--voice-id");
+        }
         else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
             options.instruction = require_value(index, argc, argv, "--instruction");
         }
         else if (arg == "--request-manifest" || arg.rfind("--request-manifest=", 0) == 0) {
             options.request_manifest = require_value(index, argc, argv, "--request-manifest");
+        }
+        else if (arg == "--result-json" || arg.rfind("--result-json=", 0) == 0) {
+            options.result_json_path = require_value(index, argc, argv, "--result-json");
         }
         else if (arg == "--sample-rate" || arg.rfind("--sample-rate=", 0) == 0) {
             options.sample_rate =
@@ -690,6 +700,7 @@ TtsRequest make_request(
     request.text = spec != nullptr ? spec->text : options.text;
     request.language = spec != nullptr ? spec->language : options.language;
     request.speaker = spec != nullptr ? spec->speaker : options.speaker;
+    request.voice_id = options.voice_id;
     request.instruction = spec != nullptr ? spec->instruction : options.instruction;
     const std::optional<std::uint64_t> seed = spec != nullptr ? spec->seed : options.seed;
     if (seed.has_value()) {
@@ -1264,7 +1275,19 @@ int main(int argc, char** argv) {
         for (RequestResult& result : measured) {
             validate_request_contract(result);
         }
-        write_results_json(std::cout, options, startup_ms, warmups, measured);
+        if (options.result_json_path.empty()) {
+            write_results_json(std::cout, options, startup_ms, warmups, measured);
+        }
+        else {
+            std::ofstream output(options.result_json_path, std::ios::binary | std::ios::trunc);
+            if (!output) {
+                throw std::runtime_error("failed to open --result-json output");
+            }
+            write_results_json(output, options, startup_ms, warmups, measured);
+            if (!output) {
+                throw std::runtime_error("failed to write --result-json output");
+            }
+        }
         return has_contract_failures(measured) ? 2 : 0;
     }
     catch (const std::exception& exc) {

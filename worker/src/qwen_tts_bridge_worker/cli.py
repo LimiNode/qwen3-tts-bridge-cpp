@@ -126,6 +126,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 runtime_backend=args.runtime_backend,
                 device=args.device,
                 dtype=args.dtype,
+                code_predictor_compute_dtype=args.code_predictor_compute_dtype,
                 attn_implementation=args.attn_implementation,
                 max_seq_len=args.max_seq_len,
                 max_audio_seconds_per_utterance=(args.max_audio_seconds_per_utterance),
@@ -346,6 +347,16 @@ def _add_qwen_subcommand(
     )
     qwen_parser.add_argument("--device", default="cuda")
     qwen_parser.add_argument("--dtype", default="auto")
+    qwen_parser.add_argument(
+        "--code-predictor-compute-dtype",
+        choices=("model", "float32", "mlp_float32"),
+        default="model",
+        help=(
+            "Use an explicit compute dtype for the upstream code predictor. "
+            "float32 is an opt-in numerical-stability mitigation; "
+            "mlp_float32 is a narrower diagnostic candidate."
+        ),
+    )
     qwen_parser.add_argument("--attn-implementation", default="")
     qwen_parser.add_argument("--max-seq-len", type=int, default=2048)
     qwen_parser.add_argument(

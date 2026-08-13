@@ -7,7 +7,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 _ROOT = Path(__file__).resolve().parents[2]
 _VALIDATOR = _ROOT / "scripts" / "validate_technical_beta_acceptance.py"
 _RELOCATION_GATES = [
@@ -42,7 +41,14 @@ class TechnicalBetaAcceptanceValidatorTests(unittest.TestCase):
             report = Path(temporary_directory) / "report.json"
             report.write_text(payload, encoding="utf-8")
             return subprocess.run(
-                [sys.executable, str(_VALIDATOR), "--kind", kind, "--report", str(report)],
+                [
+                    sys.executable,
+                    str(_VALIDATOR),
+                    "--kind",
+                    kind,
+                    "--report",
+                    str(report),
+                ],
                 check=False,
                 capture_output=True,
                 text=True,

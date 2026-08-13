@@ -114,6 +114,9 @@ class QwenEngineConfig:
     runtime_backend: Literal["upstream", "faster"] = "upstream"
     device: str = "cuda"
     dtype: str = "auto"
+    code_predictor_compute_dtype: Literal[
+        "model", "float32", "mlp_float32"
+    ] = "model"
     attn_implementation: str = ""
     max_seq_len: int = 2048
     max_audio_seconds_per_utterance: float | None = None
@@ -198,6 +201,23 @@ class QwenEngineConfig:
             raise ValueError("qwen.device must not be empty")
         if not self.dtype:
             raise ValueError("qwen.dtype must not be empty")
+        if self.code_predictor_compute_dtype not in {
+            "model",
+            "float32",
+            "mlp_float32",
+        }:
+            raise ValueError(
+                "qwen.code_predictor_compute_dtype must be model, float32, or "
+                "mlp_float32"
+            )
+        if (
+            self.code_predictor_compute_dtype != "model"
+            and self.runtime_backend != "upstream"
+        ):
+            raise ValueError(
+                "qwen.code_predictor_compute_dtype requires "
+                "runtime_backend=upstream"
+            )
         if self.voice_prompt_cache_max_entries <= 0:
             raise ValueError(
                 "qwen.voice_prompt_cache_max_entries must be greater than zero"

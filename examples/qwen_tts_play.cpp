@@ -2,6 +2,9 @@
 #include <qwen_tts_bridge/transport.hpp>
 
 #define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <mmsystem.h>
 
@@ -396,8 +399,8 @@ std::uint64_t parse_u64(const std::string& value, const std::string& option) {
 int parse_int(const std::string& value, const std::string& option) {
     std::size_t parsed = 0;
     const long result = std::stol(value, &parsed, 10);
-    if (parsed != value.size() || result < std::numeric_limits<int>::min() ||
-        result > std::numeric_limits<int>::max()) {
+    if (parsed != value.size() || result < (std::numeric_limits<int>::min)() ||
+        result > (std::numeric_limits<int>::max)()) {
         throw std::runtime_error("invalid integer for " + option + ": " + value);
     }
     return static_cast<int>(result);
@@ -527,7 +530,7 @@ void validate_options(const ProgramOptions& options) {
         throw std::runtime_error("--worker is required unless --mock is used");
     }
     if (options.sample_rate == 0 || options.channels == 0 ||
-        options.channels > std::numeric_limits<WORD>::max()) {
+        options.channels > (std::numeric_limits<WORD>::max)()) {
         throw std::runtime_error("invalid requested PCM format");
     }
     if (options.mock_chunks <= 0 || options.mock_chunk_ms <= 0 ||

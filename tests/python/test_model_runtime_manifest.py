@@ -5,6 +5,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 from scripts.model_runtime_manifest import (
     _load_manifest,
@@ -65,7 +66,10 @@ class ModelRuntimeManifestTests(unittest.TestCase):
             self.assertEqual(
                 ["speech_tokenizer/configuration.json"], comparison["removed_paths"]
             )
-            self.assertEqual("config.json", comparison["changed_files"][0]["path"])
+            changed_files = cast(
+                list[dict[str, object]], comparison["changed_files"]
+            )
+            self.assertEqual("config.json", changed_files[0]["path"])
 
     def test_rejects_duplicate_json_keys_and_invalid_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_name:

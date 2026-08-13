@@ -320,7 +320,7 @@ def _gpu_report(
     minimum_driver_version: str | None,
 ) -> dict[str, object]:
     try:
-        import torch
+        import torch  # type: ignore[import-not-found]
     except ModuleNotFoundError as exc:
         if require_cuda:
             raise ValueError(

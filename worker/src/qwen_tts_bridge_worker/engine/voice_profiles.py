@@ -289,7 +289,7 @@ def _prompt_reference_audio(profile: VoiceProfile) -> str | tuple[Any, int]:
     # FasterQwen's direct ICL path appends this pause to prevent the last
     # reference phoneme from being continued into the first generated word.
     try:
-        import numpy as np
+        import numpy as np  # type: ignore[import-not-found]
     except ModuleNotFoundError as exc:
         raise VoiceProfileError(
             "ICL voice profiles require NumPy in the model runtime"

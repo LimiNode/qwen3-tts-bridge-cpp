@@ -93,7 +93,9 @@ class _fake_package:
         worker_python = self.package / "worker" / "python"
         worker_python.mkdir()
         os.link(sys.executable, worker_python / "python.exe")
-        shutil.copyfile(Path(sys.prefix) / "pyvenv.cfg", worker_python / "pyvenv.cfg")
+        (worker_python / "pyvenv.cfg").write_text(
+            f"home = {Path(sys.executable).parent}\n", encoding="utf-8"
+        )
         return self.package
 
     def __exit__(self, *_: object) -> None:
