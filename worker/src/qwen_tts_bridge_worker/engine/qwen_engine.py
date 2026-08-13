@@ -2443,17 +2443,19 @@ class _StallTelemetry:
     def begin_chunk(self) -> None:
         if self._torch is None:
             return
-        self._start = self._torch.cuda.Event(enable_timing=True)
-        self._start.record()
+        start = self._torch.cuda.Event(enable_timing=True)
+        start.record()
+        self._start = start
 
     def end_chunk(self) -> tuple[float | None, bool | None]:
         if self._torch is None or self._start is None:
             return None, None
+        start = self._start
         end = self._torch.cuda.Event(enable_timing=True)
         end.record()
         if not end.query():
             return None, False
-        return float(self._start.elapsed_time(end)), True
+        return float(start.elapsed_time(end)), True
 
 
 def _create_stall_telemetry() -> _StallTelemetry:

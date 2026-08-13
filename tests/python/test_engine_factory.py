@@ -169,7 +169,9 @@ class EngineFactoryTests(unittest.TestCase):
 
         self.assertEqual("model", config.code_predictor_compute_dtype)
 
-    def test_qwen_config_rejects_mlp_fp32_code_predictor_for_faster_backend(self) -> None:
+    def test_qwen_config_rejects_mlp_fp32_code_predictor_for_faster_backend(
+        self,
+    ) -> None:
         with self.assertRaises(ValueError):
             QwenEngineConfig(
                 model_path="models/qwen",
@@ -177,7 +179,9 @@ class EngineFactoryTests(unittest.TestCase):
                 code_predictor_compute_dtype="mlp_float32",
             )
 
-    def test_qwen_subcommand_builds_upstream_mlp_fp32_code_predictor_config(self) -> None:
+    def test_qwen_subcommand_builds_upstream_mlp_fp32_code_predictor_config(
+        self,
+    ) -> None:
         parser = build_parser()
         args = parser.parse_args(
             [
