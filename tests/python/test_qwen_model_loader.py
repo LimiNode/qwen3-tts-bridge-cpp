@@ -1,8 +1,13 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from qwen_tts_bridge_worker.config import QwenEngineConfig
-from qwen_tts_bridge_worker.engine.qwen.model_loader import load_qwen_model
+from qwen_tts_bridge_worker.engine.qwen.model_loader import (
+    QwenModelLoadError,
+    _configure_code_predictor_compute_dtype,
+    load_qwen_model,
+)
 
 
 class _FakeConfig:
@@ -72,6 +77,89 @@ class _FakeWrapperClass:
 
 
 class QwenModelLoaderTests(unittest.TestCase):
+    def test_model_code_predictor_dtype_does_not_require_predictor_layout(self) -> None:
+        _configure_code_predictor_compute_dtype(
+            object(),
+            QwenEngineConfig(model_path="models/qwen"),
+        )
+
+    def test_float32_code_predictor_mutates_predictor_and_restores_embeddings(
+        self,
+    ) -> None:
+        fake_torch = type("Torch", (), {"float32": "float32"})()
+        predictor = _FakePredictor(("float16", "bfloat16"), layer_count=2)
+
+        with patch(
+            "qwen_tts_bridge_worker.engine.qwen.model_loader.importlib.import_module",
+            return_value=fake_torch,
+        ):
+            _configure_code_predictor_compute_dtype(
+                _model_with_predictor(predictor),
+                QwenEngineConfig(
+                    model_path="models/qwen",
+                    code_predictor_compute_dtype="float32",
+                ),
+            )
+
+        self.assertEqual(1, predictor.float_calls)
+        self.assertEqual("float32", predictor.__dict__["_bridge_compute_dtype"])
+        self.assertEqual(
+            [["float16"], ["bfloat16"]],
+            [embedding.to_dtypes for embedding in predictor.model.codec_embedding],
+        )
+        self.assertEqual(
+            [0, 0],
+            [layer.mlp.down_proj.float_calls for layer in predictor.model.layers],
+        )
+
+    def test_mlp_float32_code_predictor_mutates_only_down_projections(self) -> None:
+        fake_torch = type("Torch", (), {"float32": "float32"})()
+        predictor = _FakePredictor(("float16",), layer_count=3)
+
+        with patch(
+            "qwen_tts_bridge_worker.engine.qwen.model_loader.importlib.import_module",
+            return_value=fake_torch,
+        ):
+            _configure_code_predictor_compute_dtype(
+                _model_with_predictor(predictor),
+                QwenEngineConfig(
+                    model_path="models/qwen",
+                    code_predictor_compute_dtype="mlp_float32",
+                ),
+            )
+
+        self.assertEqual(0, predictor.float_calls)
+        self.assertFalse(hasattr(predictor, "_bridge_compute_dtype"))
+        self.assertEqual(
+            [1, 1, 1],
+            [layer.mlp.down_proj.float_calls for layer in predictor.model.layers],
+        )
+        self.assertEqual(
+            ["float32", "float32", "float32"],
+            [
+                layer.mlp.__dict__["_bridge_compute_dtype"]
+                for layer in predictor.model.layers
+            ],
+        )
+
+    def test_float32_code_predictor_rejects_malformed_layout(self) -> None:
+        fake_torch = type("Torch", (), {"float32": "float32"})()
+
+        with (
+            patch(
+                "qwen_tts_bridge_worker.engine.qwen.model_loader.importlib.import_module",
+                return_value=fake_torch,
+            ),
+            self.assertRaises(QwenModelLoadError),
+        ):
+            _configure_code_predictor_compute_dtype(
+                object(),
+                QwenEngineConfig(
+                    model_path="models/qwen",
+                    code_predictor_compute_dtype="float32",
+                ),
+            )
+
     def test_streaming_optimizations_are_optional(self) -> None:
         model = _FakeQwenWrapper()
         auto_model = _FakeAutoModel(model)
@@ -302,6 +390,70 @@ class _FakeTorchModule:
 
     def set_float32_matmul_precision(self, value: str) -> None:
         self.matmul_precision_calls.append(value)
+
+
+class _FakeParameter:
+    def __init__(self, dtype: object) -> None:
+        self.dtype = dtype
+
+
+class _FakeEmbedding:
+    def __init__(self, dtype: object) -> None:
+        self.parameter = _FakeParameter(dtype)
+        self.to_dtypes: list[object] = []
+
+    def parameters(self):
+        yield self.parameter
+
+    def to(self, *, dtype: object) -> "_FakeEmbedding":
+        self.to_dtypes.append(dtype)
+        self.parameter.dtype = dtype
+        return self
+
+
+class _FakeProjection:
+    def __init__(self) -> None:
+        self.float_calls = 0
+
+    def float(self) -> "_FakeProjection":
+        self.float_calls += 1
+        return self
+
+
+class _FakeMlp:
+    def __init__(self) -> None:
+        self.down_proj = _FakeProjection()
+
+
+class _FakeLayer:
+    def __init__(self) -> None:
+        self.mlp = _FakeMlp()
+
+
+class _FakePredictorModel:
+    def __init__(self, embedding_dtypes: tuple[object, ...], layer_count: int) -> None:
+        self.codec_embedding = [
+            _FakeEmbedding(dtype) for dtype in embedding_dtypes
+        ]
+        self.layers = [_FakeLayer() for _ in range(layer_count)]
+
+
+class _FakePredictor:
+    def __init__(self, embedding_dtypes: tuple[object, ...], layer_count: int) -> None:
+        self.float_calls = 0
+        self.model = _FakePredictorModel(embedding_dtypes, layer_count)
+
+    def float(self) -> "_FakePredictor":
+        self.float_calls += 1
+        return self
+
+
+def _model_with_predictor(predictor: object) -> object:
+    return SimpleNamespace(
+        model=SimpleNamespace(
+            talker=SimpleNamespace(code_predictor=predictor),
+        )
+    )
 
 
 if __name__ == "__main__":

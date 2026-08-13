@@ -41,7 +41,7 @@ Raw gate decisions: [JSONL](cmp50hx-cudaonly-stall-gate-auto.jsonl).
 
 Both manifest verifiers were run foreground to a real exit code. The package tree and voice-assets verifiers returned `0` on 2026-08-11. The status artifact records the package marker and manifest digest.
 
-Before the successful run, 49 generated Python `.pyc` cache files were removed from the sealed package tree. They are forbidden by the package-tree manifest and are not packaged source, model, or manifest content. No source, model, or manifest was changed.
+Before the successful run, 49 generated, manifest-untracked Python `.pyc` cache files were removed from the sealed package tree. Manifest-tracked sealed contents, including source, model, and manifest files, remained unchanged. Future diagnostic launches should use `-B` or `PYTHONDONTWRITEBYTECODE=1` to avoid regenerating these caches.
 
 Verifier status: [JSON](cmp50hx-customvoice-ab-post-manifest-status.json).
 
@@ -49,4 +49,4 @@ Verifier status: [JSON](cmp50hx-customvoice-ab-post-manifest-status.json).
 
 `stalled-v2` remains valid evidence of a sustained GPU-timeline degradation (RTF 8.582; 27 of 28 inter-chunk gaps above two seconds). It is not explained by host/IPC residuals, but the current evidence cannot distinguish long work in this CUDA context from WDDM/context scheduling gaps.
 
-The bounded `tmp/run-cmp50hx-cudaonly-stall-gate.ps1` is retained as the diagnostic trigger. During a future real TTS/session run, it will automatically launch a CUDA-only Nsight capture only after the sustained-stall condition is reproduced. If that trace shows GPU gaps, the next diagnostic is a separate short GPUView/ETW capture; do not repeat the failed full CUDA+WDDM Nsight capture.
+The bounded stall-gate launcher used for this experiment is local diagnostic infrastructure and is intentionally not included in this PR. During a future real TTS/session run, it can launch a CUDA-only Nsight capture only after the sustained-stall condition is reproduced. If that trace shows GPU gaps, the next diagnostic is a separate short GPUView/ETW capture; do not repeat the failed full CUDA+WDDM Nsight capture.

@@ -1,6 +1,6 @@
-{"attempt":1,"raw_path":"E:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\reports\\cmp50hx-faster-island-cudaonly-stall-gate-auto-1-fp16-layer2-mlp-fp32-raw.json","rtf":0.975,"max_gap_ms":641.21299999999974,"gaps_over_2s":0,"sustained":false}
-{"attempt":2,"raw_path":"E:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\reports\\cmp50hx-faster-island-cudaonly-stall-gate-auto-2-fp16-layer2-mlp-fp32-raw.json","rtf":0.965,"max_gap_ms":628.146999999999,"gaps_over_2s":0,"sustained":false}
-{"attempt":3,"raw_path":"E:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\reports\\cmp50hx-faster-island-cudaonly-stall-gate-auto-3-fp16-layer2-mlp-fp32-raw.json","rtf":0.967,"max_gap_ms":624.53499999999985,"gaps_over_2s":0,"sustained":false}
-{"attempt":4,"raw_path":"E:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\reports\\cmp50hx-faster-island-cudaonly-stall-gate-auto-4-fp16-layer2-mlp-fp32-raw.json","rtf":0.974,"max_gap_ms":652.17500000000018,"gaps_over_2s":0,"sustained":false}
-{"attempt":5,"raw_path":"E:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\reports\\cmp50hx-faster-island-cudaonly-stall-gate-auto-5-fp16-layer2-mlp-fp32-raw.json","rtf":0.966,"max_gap_ms":621.83300000000054,"gaps_over_2s":0,"sustained":false}
-{"attempt":6,"raw_path":"E:\\_repoz\\qwen3-tts-bridge-cpp\\docs\\reports\\cmp50hx-faster-island-cudaonly-stall-gate-auto-6-fp16-layer2-mlp-fp32-raw.json","rtf":0.967,"max_gap_ms":628.237000000001,"gaps_over_2s":0,"sustained":false}
+{"attempt":1,"artifact_prefix":"cmp50hx-faster-island-cudaonly-stall-gate-auto-1-fp16-layer2-mlp-fp32","rtf":0.975,"max_gap_ms":641.21299999999974,"gaps_over_2s":0,"sustained":false}
+{"attempt":2,"artifact_prefix":"cmp50hx-faster-island-cudaonly-stall-gate-auto-2-fp16-layer2-mlp-fp32","rtf":0.965,"max_gap_ms":628.146999999999,"gaps_over_2s":0,"sustained":false}
+{"attempt":3,"artifact_prefix":"cmp50hx-faster-island-cudaonly-stall-gate-auto-3-fp16-layer2-mlp-fp32","rtf":0.967,"max_gap_ms":624.53499999999985,"gaps_over_2s":0,"sustained":false}
+{"attempt":4,"artifact_prefix":"cmp50hx-faster-island-cudaonly-stall-gate-auto-4-fp16-layer2-mlp-fp32","rtf":0.974,"max_gap_ms":652.17500000000018,"gaps_over_2s":0,"sustained":false}
+{"attempt":5,"artifact_prefix":"cmp50hx-faster-island-cudaonly-stall-gate-auto-5-fp16-layer2-mlp-fp32","rtf":0.966,"max_gap_ms":621.83300000000054,"gaps_over_2s":0,"sustained":false}
+{"attempt":6,"artifact_prefix":"cmp50hx-faster-island-cudaonly-stall-gate-auto-6-fp16-layer2-mlp-fp32","rtf":0.967,"max_gap_ms":628.237000000001,"gaps_over_2s":0,"sustained":false}

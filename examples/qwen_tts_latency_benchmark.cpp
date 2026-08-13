@@ -699,11 +699,9 @@ TtsRequest make_request(
     TtsRequest request;
     request.text = spec != nullptr ? spec->text : options.text;
     request.language = spec != nullptr ? spec->language : options.language;
-    request.speaker = spec != nullptr && !spec->speaker.empty()
-        ? spec->speaker : options.speaker;
+    request.speaker = spec != nullptr ? spec->speaker : options.speaker;
     request.voice_id = options.voice_id;
-    request.instruction = spec != nullptr && !spec->instruction.empty()
-        ? spec->instruction : options.instruction;
+    request.instruction = spec != nullptr ? spec->instruction : options.instruction;
     const std::optional<std::uint64_t> seed = spec != nullptr ? spec->seed : options.seed;
     if (seed.has_value()) {
         request.has_seed = true;

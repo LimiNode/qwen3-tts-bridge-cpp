@@ -154,9 +154,15 @@ def _configure_code_predictor_compute_dtype(
                 layer.mlp.down_proj.float()
                 layer.mlp._bridge_compute_dtype = torch.float32
             return
-        embedding_dtype = next(embeddings[0].parameters()).dtype
+        embedding_dtypes = [
+            next(embedding.parameters()).dtype for embedding in embeddings
+        ]
         predictor.float()
-        for embedding in embeddings:
+        for embedding, embedding_dtype in zip(
+            embeddings,
+            embedding_dtypes,
+            strict=True,
+        ):
             embedding.to(dtype=embedding_dtype)
         predictor._bridge_compute_dtype = torch.float32
     except Exception as exc:
