@@ -2431,7 +2431,10 @@ def _number_field(fields: dict[str, object], name: str) -> float | None:
 
 
 class _StallTelemetry:
-    """Optional per-chunk CUDA-event timing with no host synchronization."""
+    """Optional per-chunk CUDA-event timing with no host synchronization.
+
+    The default path owns no CUDA events and performs no GPU timing work.
+    """
 
     def __init__(self, torch: Any | None) -> None:
         self._torch = torch
@@ -2454,7 +2457,7 @@ class _StallTelemetry:
 
 
 def _create_stall_telemetry() -> _StallTelemetry:
-    """Return opt-in diagnostic timing without changing the compute path."""
+    """Return opt-in timing; default-off has no CUDA-event allocation or GPU timing."""
 
     if os.environ.get("QTB_FASTER_STALL_TELEMETRY") != "1":
         return _StallTelemetry(None)
