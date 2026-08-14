@@ -169,6 +169,7 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--seed', '--worker-arg', '20260806',
         '--worker-arg', '--seed-mode', '--worker-arg', 'fixed',
         '--text', $Text, '--speaker', $Speaker,
+        '--startup-timeout-ms', '240000',
         '--playback-metrics-file', $metrics
     )
 
