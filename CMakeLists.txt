@@ -281,6 +281,18 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                         --text "Я твой робот, я твой работник."
                         --speaker serena
                 )
+                add_test(
+                    NAME qwen_tts_play_mock_playback_metrics
+                    COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_playback_metrics.py"
+                        --player "$<TARGET_FILE:qwen_tts_play>"
+                        --output "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_play_mock_metrics.json"
+                )
+                set_tests_properties(
+                    qwen_tts_play_mock_utf8_example
+                    qwen_tts_play_mock_playback_metrics
+                    PROPERTIES RESOURCE_LOCK default_audio_playback
+                )
             endif()
         endif()
     else()
