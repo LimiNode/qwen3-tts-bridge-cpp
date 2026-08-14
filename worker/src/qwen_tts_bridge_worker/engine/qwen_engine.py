@@ -2459,17 +2459,19 @@ class _StallTelemetry:
 
 
 def _create_stall_telemetry() -> _StallTelemetry:
-    """Return opt-in timing; default-off has no CUDA-event allocation or GPU timing."""
+    """Return opt-in timing; explicit opt-in fails if CUDA timing is unavailable."""
 
     if os.environ.get("QTB_FASTER_STALL_TELEMETRY") != "1":
         return _StallTelemetry(None)
     try:
         torch = importlib.import_module("torch")
-        if not torch.cuda.is_available():
-            return _StallTelemetry(None)
-        return _StallTelemetry(torch)
-    except Exception:
-        return _StallTelemetry(None)
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "QTB_FASTER_STALL_TELEMETRY=1 requires PyTorch with CUDA support"
+        ) from exc
+    if not torch.cuda.is_available():
+        raise RuntimeError("QTB_FASTER_STALL_TELEMETRY=1 requires CUDA")
+    return _StallTelemetry(torch)
 
 
 def _has_qwen_stream_helpers(model: Any) -> bool:

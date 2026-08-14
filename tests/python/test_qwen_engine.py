@@ -500,11 +500,40 @@ def _generation_prime_config(manifest: Path) -> QwenEngineConfig:
 
 class QwenEngineTests(unittest.TestCase):
     def test_stall_telemetry_is_disabled_without_explicit_opt_in(self) -> None:
-        with patch.dict("os.environ", {"QTB_FASTER_STALL_TELEMETRY": "0"}):
+        with (
+            patch.dict("os.environ", {"QTB_FASTER_STALL_TELEMETRY": "0"}),
+            patch(
+                "qwen_tts_bridge_worker.engine.qwen_engine.importlib.import_module"
+            ) as import_module,
+        ):
             telemetry = _create_stall_telemetry()
 
+        import_module.assert_not_called()
         telemetry.begin_chunk()
         self.assertEqual((None, None), telemetry.end_chunk())
+
+    def test_stall_telemetry_explicit_opt_in_rejects_missing_cuda(self) -> None:
+        torch = SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: False))
+        with (
+            patch.dict("os.environ", {"QTB_FASTER_STALL_TELEMETRY": "1"}),
+            patch(
+                "qwen_tts_bridge_worker.engine.qwen_engine.importlib.import_module",
+                return_value=torch,
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "requires CUDA"):
+                _create_stall_telemetry()
+
+    def test_stall_telemetry_explicit_opt_in_rejects_missing_torch(self) -> None:
+        with (
+            patch.dict("os.environ", {"QTB_FASTER_STALL_TELEMETRY": "1"}),
+            patch(
+                "qwen_tts_bridge_worker.engine.qwen_engine.importlib.import_module",
+                side_effect=ModuleNotFoundError("torch"),
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "requires PyTorch"):
+                _create_stall_telemetry()
 
     def test_prefill_warmup_manifest_uses_root_speaker(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
