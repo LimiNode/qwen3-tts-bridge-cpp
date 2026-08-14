@@ -137,7 +137,7 @@ function Assert-ElevatedWprSession {
     $principal = [Security.Principal.WindowsPrincipal]::new(
         [Security.Principal.WindowsIdentity]::GetCurrent())
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        throw 'WPR GPU+Video capture requires an elevated PowerShell session; no ETW recording was started.'
+        throw 'WPR GPU.Light capture requires an elevated PowerShell session; no ETW recording was started.'
     }
 }
 
@@ -152,7 +152,7 @@ function Invoke-PlaybackRun {
     $metrics = Join-Path $runDirectory "$Prefix-playback-metrics.json"
     $stdout = Join-Path $runDirectory "$Prefix.stdout.log"
     $stderr = Join-Path $runDirectory "$Prefix.stderr.log"
-    $etl = Join-Path $runDirectory "$Prefix-gpu-video.etl"
+    $etl = Join-Path $runDirectory "$Prefix-gpu.etl"
     $arguments = @(
         '--worker', $python, '--cwd', $repo,
         '--worker-arg', '-B', '--worker-arg', '-P', '--worker-arg', '-s',
@@ -181,9 +181,9 @@ function Invoke-PlaybackRun {
             if ($status -notmatch 'not (running|recording)') {
                 throw 'WPR already has an active recording; refusing to stop or replace it.'
             }
-            & $wpr.Source -start GPU -start Video -filemode
+            & $wpr.Source -start GPU.Light -filemode
             if ($LASTEXITCODE -ne 0) {
-                throw "WPR could not start GPU+Video recording (exit=$LASTEXITCODE)."
+                throw "WPR could not start GPU.Light recording (exit=$LASTEXITCODE)."
             }
             $wprStarted = $true
         }
@@ -203,9 +203,9 @@ function Invoke-PlaybackRun {
     }
     finally {
         if ($wprStarted) {
-            & $wpr.Source -stop $etl
+            $stopOutput = @(& $wpr.Source -stop $etl 2>&1)
             if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $etl -PathType Leaf)) {
-                throw "WPR could not stop GPU+Video recording into $etl."
+                throw "WPR could not stop GPU.Light recording into $etl. $($stopOutput -join ' ')"
             }
         }
     }
@@ -268,7 +268,7 @@ try {
             etw_on_normal_runs = $false
         }
         playback_measurement = 'WaveOut queue starvation proxy; not a hardware underrun counter'
-        etw_profiles = @('GPU', 'Video')
+        etw_profiles = @('GPU.Light')
         queue_empty_threshold = $QueueEmptyThreshold
         normal_attempts = @($attemptResults)
         outlier_detected = ($null -ne $outlier)
@@ -284,7 +284,7 @@ try {
         Write-Output "No playback outlier in $Attempts bounded frozen-C attempts; WPR was not launched."
     }
     else {
-        Write-Output 'Playback outlier confirmed; WPR GPU+Video follow-up completed.'
+        Write-Output 'Playback outlier confirmed; WPR GPU.Light follow-up completed.'
     }
 }
 finally {
