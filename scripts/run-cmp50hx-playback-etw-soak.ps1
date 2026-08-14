@@ -21,6 +21,8 @@ param(
 
     [string]$OutputRoot = '',
 
+    [string]$WprProfilePath = '',
+
     [string]$CudaVisibleDevices = 'GPU-40361931-6cb5-ac58-a059-5ba3e70986fb'
 )
 
@@ -68,12 +70,16 @@ if (-not $RuntimeCachePath) {
 if (-not $OutputRoot) {
     $OutputRoot = 'tmp\cmp50hx-playback-etw-soak'
 }
+if (-not $WprProfilePath) {
+    $WprProfilePath = 'scripts\profiles\cmp50hx-dxgkrnl-scheduler.wprp'
+}
 
 $player = Resolve-RepoPath $PlayerPath 'Playback client'
 $python = Resolve-RepoPath $PythonPath 'Sealed Python runtime'
 $model = Resolve-RepoPath $ModelPath 'Model path'
 $shadow = Resolve-RepoPath $FasterShadowPath 'Faster shadow source'
 $cache = Resolve-RepoPath $RuntimeCachePath 'Runtime cache'
+$wprProfile = Resolve-RepoPath $WprProfilePath 'WPR profile'
 $outputDirectory = if ([IO.Path]::IsPathRooted($OutputRoot)) {
     $OutputRoot
 }
@@ -137,7 +143,7 @@ function Assert-ElevatedWprSession {
     $principal = [Security.Principal.WindowsPrincipal]::new(
         [Security.Principal.WindowsIdentity]::GetCurrent())
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        throw 'WPR GPU.Light capture requires an elevated PowerShell session; no ETW recording was started.'
+        throw 'WPR DxgKrnl capture requires an elevated PowerShell session; no ETW recording was started.'
     }
 }
 
@@ -182,9 +188,9 @@ function Invoke-PlaybackRun {
             if ($status -notmatch 'not (running|recording)') {
                 throw 'WPR already has an active recording; refusing to stop or replace it.'
             }
-            & $wpr.Source -start GPU.Light -filemode
+            & $wpr.Source -start "$wprProfile!CMP50HX-DxgKrnl-Scheduler" -filemode
             if ($LASTEXITCODE -ne 0) {
-                throw "WPR could not start GPU.Light recording (exit=$LASTEXITCODE)."
+                throw "WPR could not start minimal DxgKrnl recording (exit=$LASTEXITCODE)."
             }
             $wprStarted = $true
         }
@@ -210,7 +216,7 @@ function Invoke-PlaybackRun {
                 (($stopOutput -join [Environment]::NewLine) + [Environment]::NewLine),
                 [Text.UTF8Encoding]::new($false))
             if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $etl -PathType Leaf)) {
-                throw "WPR could not stop GPU.Light recording into $etl. $($stopOutput -join ' ')"
+                throw "WPR could not stop minimal DxgKrnl recording into $etl. $($stopOutput -join ' ')"
             }
         }
     }
@@ -284,7 +290,8 @@ try {
             etw_on_normal_runs = $false
         }
         playback_measurement = 'WaveOut queue starvation proxy; not a hardware underrun counter'
-        etw_profiles = @('GPU.Light')
+        etw_profile = 'CMP50HX-DxgKrnl-Scheduler'
+        etw_profile_path = $wprProfile
         queue_empty_threshold = $QueueEmptyThreshold
         normal_attempts = @($attemptResults)
         outlier_detected = ($null -ne $outlier)
@@ -304,7 +311,7 @@ try {
             Write-Error "WPR dropped $($etwFollowup.wpr_dropped_event_count) events; ETL is not valid evidence."
             exit 5
         }
-        Write-Output 'Playback outlier confirmed; WPR GPU.Light follow-up completed without dropped events.'
+        Write-Output 'Playback outlier confirmed; minimal WPR DxgKrnl follow-up completed without dropped events.'
     }
 }
 finally {
