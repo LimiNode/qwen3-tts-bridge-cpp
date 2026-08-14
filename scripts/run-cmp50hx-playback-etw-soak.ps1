@@ -153,6 +153,7 @@ function Invoke-PlaybackRun {
     $stdout = Join-Path $runDirectory "$Prefix.stdout.log"
     $stderr = Join-Path $runDirectory "$Prefix.stderr.log"
     $etl = Join-Path $runDirectory "$Prefix-gpu.etl"
+    $wprStopReport = Join-Path $runDirectory "$Prefix-wpr-stop.txt"
     $arguments = @(
         '--worker', $python, '--cwd', $repo,
         '--worker-arg', '-B', '--worker-arg', '-P', '--worker-arg', '-s',
@@ -204,6 +205,10 @@ function Invoke-PlaybackRun {
     finally {
         if ($wprStarted) {
             $stopOutput = @(& $wpr.Source -stop $etl 2>&1)
+            [IO.File]::WriteAllText(
+                $wprStopReport,
+                (($stopOutput -join [Environment]::NewLine) + [Environment]::NewLine),
+                [Text.UTF8Encoding]::new($false))
             if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $etl -PathType Leaf)) {
                 throw "WPR could not stop GPU.Light recording into $etl. $($stopOutput -join ' ')"
             }
@@ -216,6 +221,14 @@ function Invoke-PlaybackRun {
     $result = Get-Content -LiteralPath $metrics -Raw | ConvertFrom-Json
     $graphs = (Select-String -LiteralPath $stderr -Pattern 'CUDA graph captured!' -SimpleMatch |
         Measure-Object).Count
+    $droppedEvents = if ($CaptureEtw) {
+        $dropMatch = [regex]::Match(
+            (Get-Content -LiteralPath $wprStopReport -Raw),
+            'dropped\s+(\d+)\s+events',
+            [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        if ($dropMatch.Success) { [int64]$dropMatch.Groups[1].Value } else { 0 }
+    }
+    else { 0 }
     return [ordered]@{
         prefix = $Prefix
         etw_captured = [bool]$CaptureEtw
@@ -223,6 +236,9 @@ function Invoke-PlaybackRun {
         stdout_path = $stdout
         stderr_path = $stderr
         etl_path = if ($CaptureEtw) { $etl } else { $null }
+        wpr_stop_report_path = if ($CaptureEtw) { $wprStopReport } else { $null }
+        wpr_dropped_event_count = $droppedEvents
+        etl_usable_for_analysis = if ($CaptureEtw) { $droppedEvents -eq 0 } else { $null }
         exit_code = $exitCode
         playback_completed = [bool]$result.playback_completed
         audio_chunk_count = [int]$result.audio_chunk_count
@@ -284,7 +300,11 @@ try {
         Write-Output "No playback outlier in $Attempts bounded frozen-C attempts; WPR was not launched."
     }
     else {
-        Write-Output 'Playback outlier confirmed; WPR GPU.Light follow-up completed.'
+        if (-not $etwFollowup.etl_usable_for_analysis) {
+            Write-Error "WPR dropped $($etwFollowup.wpr_dropped_event_count) events; ETL is not valid evidence."
+            exit 5
+        }
+        Write-Output 'Playback outlier confirmed; WPR GPU.Light follow-up completed without dropped events.'
     }
 }
 finally {
