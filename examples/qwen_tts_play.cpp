@@ -15,11 +15,15 @@
 #include <cstdint>
 #include <cstring>
 #include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -78,6 +82,7 @@ struct ProgramOptions {
     int mock_chunk_ms = 100;
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
+    std::string playback_metrics_file;
 };
 
 class ConsoleCodePageGuard final {
@@ -110,9 +115,150 @@ private:
     UINT output_code_page_ = 0;
 };
 
+struct PlaybackChunkMetric {
+    double arrival_ms = 0.0;
+    std::optional<double> inter_arrival_ms;
+    double audio_duration_ms = 0.0;
+    double queued_audio_before_ms = 0.0;
+    double queued_audio_after_ms = 0.0;
+    bool queue_empty_before_later_chunk = false;
+};
+
+class PlaybackMetrics final {
+public:
+    void begin_request() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        started_at_ = std::chrono::steady_clock::now();
+        chunks_.clear();
+        playback_completed_ = false;
+    }
+
+    void record_chunk(
+        double audio_duration_ms,
+        double queued_audio_before_ms,
+        double queued_audio_after_ms,
+        bool queue_empty_before_later_chunk) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!started_at_.has_value()) {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const double arrival_ms = elapsed_ms(started_at_.value(), now);
+        PlaybackChunkMetric metric;
+        metric.arrival_ms = arrival_ms;
+        metric.audio_duration_ms = audio_duration_ms;
+        metric.queued_audio_before_ms = queued_audio_before_ms;
+        metric.queued_audio_after_ms = queued_audio_after_ms;
+        metric.queue_empty_before_later_chunk = queue_empty_before_later_chunk;
+        if (!chunks_.empty()) {
+            metric.inter_arrival_ms = arrival_ms - chunks_.back().arrival_ms;
+        }
+        chunks_.push_back(metric);
+    }
+
+    void mark_playback_completed() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        playback_completed_ = true;
+    }
+
+    void write_json_file(const std::string& file_name) const {
+        std::vector<PlaybackChunkMetric> chunks;
+        bool playback_completed = false;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (!started_at_.has_value()) {
+                throw std::runtime_error("playback metrics were not started");
+            }
+            chunks = chunks_;
+            playback_completed = playback_completed_;
+        }
+
+        std::size_t queue_empty_before_later_chunk_count = 0;
+        double total_audio_duration_ms = 0.0;
+        for (const PlaybackChunkMetric& chunk : chunks) {
+            total_audio_duration_ms += chunk.audio_duration_ms;
+            if (chunk.queue_empty_before_later_chunk) {
+                ++queue_empty_before_later_chunk_count;
+            }
+        }
+
+        std::ostringstream json;
+        json << std::fixed << std::setprecision(3);
+        json << "{\n"
+             << "  \"schema_version\": 1,\n"
+             << "  \"measurement\": \"waveout_queue_starvation_proxy\",\n"
+             << "  \"playback_completed\": " << (playback_completed ? "true" : "false") << ",\n"
+             << "  \"audio_chunk_count\": " << chunks.size() << ",\n"
+             << "  \"total_audio_duration_ms\": " << total_audio_duration_ms << ",\n"
+             << "  \"queue_empty_before_later_chunk_count\": "
+             << queue_empty_before_later_chunk_count << ",\n"
+             << "  \"chunks\": [\n";
+        for (std::size_t index = 0; index < chunks.size(); ++index) {
+            const PlaybackChunkMetric& chunk = chunks[index];
+            json << "    {\"arrival_ms\": " << chunk.arrival_ms << ", \"inter_arrival_ms\": ";
+            if (chunk.inter_arrival_ms.has_value()) {
+                json << chunk.inter_arrival_ms.value();
+            }
+            else {
+                json << "null";
+            }
+            json << ", \"audio_duration_ms\": " << chunk.audio_duration_ms
+                 << ", \"queued_audio_before_ms\": " << chunk.queued_audio_before_ms
+                 << ", \"queued_audio_after_ms\": " << chunk.queued_audio_after_ms
+                 << ", \"queue_empty_before_later_chunk\": "
+                 << (chunk.queue_empty_before_later_chunk ? "true" : "false") << "}";
+            if (index + 1 != chunks.size()) {
+                json << ',';
+            }
+            json << '\n';
+        }
+        json << "  ]\n}\n";
+
+        const std::filesystem::path target = std::filesystem::u8path(file_name);
+        if (std::filesystem::exists(target)) {
+            throw std::runtime_error("refusing to overwrite existing playback metrics file: " + file_name);
+        }
+        const std::filesystem::path temporary =
+            std::filesystem::path(
+                target.native() + L".tmp." + std::to_wstring(GetCurrentProcessId()));
+        try {
+            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+            if (!output) {
+                throw std::runtime_error("failed to open playback metrics file: " + temporary.string());
+            }
+            output << json.str();
+            output.close();
+            if (!output) {
+                throw std::runtime_error("failed to write playback metrics file: " + temporary.string());
+            }
+            std::filesystem::rename(temporary, target);
+        }
+        catch (...) {
+            std::error_code ignored;
+            std::filesystem::remove(temporary, ignored);
+            throw;
+        }
+    }
+
+private:
+    static double elapsed_ms(
+        std::chrono::steady_clock::time_point start,
+        std::chrono::steady_clock::time_point end) {
+        return std::chrono::duration<double, std::milli>(end - start).count();
+    }
+
+    mutable std::mutex mutex_;
+    std::optional<std::chrono::steady_clock::time_point> started_at_;
+    std::vector<PlaybackChunkMetric> chunks_;
+    bool playback_completed_ = false;
+};
+
 class WaveOutPlayer final {
 public:
-    WaveOutPlayer() = default;
+    explicit WaveOutPlayer(PlaybackMetrics* metrics = nullptr)
+        : metrics_(metrics) {
+    }
 
     ~WaveOutPlayer() {
         close_noexcept();
@@ -140,11 +286,15 @@ public:
         }
         reap_finished_locked();
         open_or_validate_locked(chunk.format);
+        const double queued_audio_before_ms = queued_audio_duration_ms_locked();
+        const bool queue_empty_before_later_chunk =
+            has_enqueued_audio_since_reset_ && buffers_.empty();
 
         auto buffer = std::make_unique<Buffer>();
         buffer->bytes = chunk.bytes;
         buffer->header.lpData = reinterpret_cast<LPSTR>(buffer->bytes.data());
         buffer->header.dwBufferLength = static_cast<DWORD>(buffer->bytes.size());
+        buffer->duration_ms = pcm_duration_ms(chunk.format, buffer->bytes.size());
 
         check_mmresult(
             waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
@@ -160,6 +310,14 @@ public:
             throw;
         }
         buffers_.push_back(std::move(buffer));
+        has_enqueued_audio_since_reset_ = true;
+        if (metrics_ != nullptr) {
+            metrics_->record_chunk(
+                pcm_duration_ms(chunk.format, chunk.bytes.size()),
+                queued_audio_before_ms,
+                queued_audio_duration_ms_locked(),
+                queue_empty_before_later_chunk);
+        }
     }
 
     /// Stops queued and currently playing audio, invalidating prior callback epochs.
@@ -171,6 +329,7 @@ public:
             ++playback_epoch_;
         }
         if (m_handle == nullptr) {
+            has_enqueued_audio_since_reset_ = false;
             return playback_epoch_;
         }
 
@@ -188,6 +347,7 @@ public:
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             lock.lock();
         }
+        has_enqueued_audio_since_reset_ = false;
         return playback_epoch_;
     }
 
@@ -213,6 +373,7 @@ private:
         std::vector<std::byte> bytes;
         WAVEHDR header{};
         bool prepared = false;
+        double duration_ms = 0.0;
     };
 
     static bool formats_match(const AudioFormat& left, const AudioFormat& right) {
@@ -228,6 +389,24 @@ private:
         char message[MAXERRORLENGTH]{};
         waveOutGetErrorTextA(result, message, static_cast<UINT>(sizeof(message)));
         throw std::runtime_error(std::string(operation) + " failed: " + message);
+    }
+
+    static double pcm_duration_ms(const AudioFormat& format, std::size_t byte_count) {
+        const std::uint64_t bytes_per_second =
+            static_cast<std::uint64_t>(format.sample_rate) * format.channels * sizeof(std::int16_t);
+        if (bytes_per_second == 0) {
+            throw std::runtime_error("invalid PCM format for duration measurement");
+        }
+        return static_cast<double>(byte_count) * 1000.0 /
+            static_cast<double>(bytes_per_second);
+    }
+
+    double queued_audio_duration_ms_locked() const {
+        double duration_ms = 0.0;
+        for (const std::unique_ptr<Buffer>& buffer : buffers_) {
+            duration_ms += buffer->duration_ms;
+        }
+        return duration_ms;
     }
 
     void open_or_validate_locked(const AudioFormat& format) {
@@ -290,6 +469,8 @@ private:
     AudioFormat m_format;
     std::vector<std::unique_ptr<Buffer>> buffers_;
     std::uint64_t playback_epoch_ = 1;
+    bool has_enqueued_audio_since_reset_ = false;
+    PlaybackMetrics* metrics_ = nullptr;
 };
 
 struct ActiveRequestState {
@@ -353,6 +534,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
+        << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
         << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
         << "  --mock-chunk-delay <seconds>   Mock delay between chunks, default: 0.\n";
@@ -501,6 +683,11 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
                 require_value(index, argc, argv, "--startup-timeout-ms"),
                 "--startup-timeout-ms"));
         }
+        else if (arg == "--playback-metrics-file" ||
+                 arg.rfind("--playback-metrics-file=", 0) == 0) {
+            options.playback_metrics_file = require_value(
+                index, argc, argv, "--playback-metrics-file");
+        }
         else if (arg == "--mock-chunks" || arg.rfind("--mock-chunks=", 0) == 0) {
             options.mock_chunks = parse_int(
                 require_value(index, argc, argv, "--mock-chunks"), "--mock-chunks");
@@ -567,6 +754,9 @@ void validate_options(const ProgramOptions& options) {
          options.x_vector_only)) {
         throw std::runtime_error(
             "--voice-id cannot be combined with direct reference-audio options");
+    }
+    if (!options.playback_metrics_file.empty() && options.text.empty()) {
+        throw std::runtime_error("--playback-metrics-file requires one-shot --text playback");
     }
 }
 
@@ -1072,11 +1262,18 @@ int wmain(int argc, wchar_t** argv) {
                 "the active worker profile does not guarantee deterministic explicit seeds");
         }
 
-        WaveOutPlayer player;
+        std::unique_ptr<PlaybackMetrics> playback_metrics;
+        if (!options.playback_metrics_file.empty()) {
+            playback_metrics = std::make_unique<PlaybackMetrics>();
+        }
+        WaveOutPlayer player(playback_metrics.get());
         ActiveRequestState active_state;
 
         if (!options.text.empty()) {
             OneShotState state;
+            if (playback_metrics != nullptr) {
+                playback_metrics->begin_request();
+            }
             submit_request(client, player, active_state, options, options.text, &state);
             if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
                 cancel_active_request(client, player, active_state);
@@ -1088,6 +1285,10 @@ int wmain(int argc, wchar_t** argv) {
                 throw std::runtime_error(state.message.empty() ? "one-shot synthesis failed" : state.message);
             }
             player.wait_until_idle(std::chrono::minutes(5));
+            if (playback_metrics != nullptr) {
+                playback_metrics->mark_playback_completed();
+                playback_metrics->write_json_file(options.playback_metrics_file);
+            }
             client.stop();
             return 0;
         }
