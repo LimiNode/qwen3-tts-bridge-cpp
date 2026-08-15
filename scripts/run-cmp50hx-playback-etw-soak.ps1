@@ -23,6 +23,8 @@ param(
 
     [string]$WprProfilePath = '',
 
+    [string]$XperfPath = '',
+
     [string]$CudaVisibleDevices = 'GPU-40361931-6cb5-ac58-a059-5ba3e70986fb'
 )
 
@@ -30,6 +32,7 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 
 $repo = Split-Path -Parent $PSScriptRoot
+Import-Module (Join-Path $PSScriptRoot 'Cmp50hxEtwEvidence.psm1') -Force
 
 function Resolve-RepoPath {
     param(
@@ -91,6 +94,16 @@ $wpr = Get-Command wpr.exe -ErrorAction SilentlyContinue
 if ($null -eq $wpr) {
     throw 'wpr.exe was not found. Install the Windows Performance Toolkit before requesting an ETW follow-up.'
 }
+if ($XperfPath) {
+    $xperf = Resolve-RepoPath $XperfPath 'xperf.exe'
+}
+else {
+    $xperfCommand = Get-Command xperf.exe -ErrorAction SilentlyContinue
+    if ($null -eq $xperfCommand) {
+        throw 'xperf.exe was not found. Install the Windows Performance Toolkit before requesting an ETW follow-up.'
+    }
+    $xperf = $xperfCommand.Source
+}
 
 $runId = '{0}-{1}' -f [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ'), $PID
 $runDirectory = Join-Path $outputDirectory $runId
@@ -147,6 +160,65 @@ function Assert-ElevatedWprSession {
     }
 }
 
+function Get-EtlValidation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EtlPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TraceStatsPath
+    )
+
+    if (-not (Test-Path -LiteralPath $EtlPath -PathType Leaf)) {
+        return [ordered]@{
+            etl_transport_valid = $false
+            etl_size_bytes = $null
+            tracestats_path = $null
+            event_loss_status = 'unparseable'
+            lost_buffer_count = $null
+            lost_event_count = $null
+        }
+    }
+
+    $etl = Get-Item -LiteralPath $EtlPath
+    if ($etl.Length -le 0) {
+        return [ordered]@{
+            etl_transport_valid = $false
+            etl_size_bytes = $etl.Length
+            tracestats_path = $null
+            event_loss_status = 'unparseable'
+            lost_buffer_count = $null
+            lost_event_count = $null
+        }
+    }
+
+    $traceStats = @(& $xperf -i $EtlPath -a tracestats 2>&1)
+    [IO.File]::WriteAllText(
+        $TraceStatsPath,
+        (($traceStats -join [Environment]::NewLine) + [Environment]::NewLine),
+        [Text.UTF8Encoding]::new($false))
+    if ($LASTEXITCODE -ne 0) {
+        return [ordered]@{
+            etl_transport_valid = $false
+            etl_size_bytes = $etl.Length
+            tracestats_path = $TraceStatsPath
+            event_loss_status = 'unparseable'
+            lost_buffer_count = $null
+            lost_event_count = $null
+        }
+    }
+
+    $eventLoss = Get-Cmp50hxEventLossStatus -TraceStatsText ($traceStats -join [Environment]::NewLine)
+    return [ordered]@{
+        etl_transport_valid = $true
+        etl_size_bytes = $etl.Length
+        tracestats_path = $TraceStatsPath
+        event_loss_status = $eventLoss.event_loss_status
+        lost_buffer_count = $eventLoss.lost_buffer_count
+        lost_event_count = $eventLoss.lost_event_count
+    }
+}
+
 function Invoke-PlaybackRun {
     param(
         [Parameter(Mandatory = $true)]
@@ -160,6 +232,7 @@ function Invoke-PlaybackRun {
     $stderr = Join-Path $runDirectory "$Prefix.stderr.log"
     $etl = Join-Path $runDirectory "$Prefix-gpu.etl"
     $wprStopReport = Join-Path $runDirectory "$Prefix-wpr-stop.txt"
+    $traceStats = Join-Path $runDirectory "$Prefix-xperf-tracestats.txt"
     $arguments = @(
         '--worker', $python, '--cwd', $repo,
         '--worker-arg', '-B', '--worker-arg', '-P', '--worker-arg', '-s',
@@ -227,14 +300,10 @@ function Invoke-PlaybackRun {
     $result = Get-Content -LiteralPath $metrics -Raw | ConvertFrom-Json
     $graphs = (Select-String -LiteralPath $stderr -Pattern 'CUDA graph captured!' -SimpleMatch |
         Measure-Object).Count
-    $droppedEvents = if ($CaptureEtw) {
-        $dropMatch = [regex]::Match(
-            (Get-Content -LiteralPath $wprStopReport -Raw),
-            'dropped\s+(\d+)\s+events',
-            [Text.RegularExpressions.RegexOptions]::IgnoreCase)
-        if ($dropMatch.Success) { [int64]$dropMatch.Groups[1].Value } else { 0 }
+    $etlValidation = if ($CaptureEtw) {
+        Get-EtlValidation -EtlPath $etl -TraceStatsPath $traceStats
     }
-    else { 0 }
+    else { $null }
     return [ordered]@{
         prefix = $Prefix
         etw_captured = [bool]$CaptureEtw
@@ -243,8 +312,21 @@ function Invoke-PlaybackRun {
         stderr_path = $stderr
         etl_path = if ($CaptureEtw) { $etl } else { $null }
         wpr_stop_report_path = if ($CaptureEtw) { $wprStopReport } else { $null }
-        wpr_dropped_event_count = $droppedEvents
-        etl_usable_for_analysis = if ($CaptureEtw) { $droppedEvents -eq 0 } else { $null }
+        etl_size_bytes = if ($CaptureEtw) { $etlValidation.etl_size_bytes } else { $null }
+        tracestats_path = if ($CaptureEtw) { $etlValidation.tracestats_path } else { $null }
+        etl_transport_valid = if ($CaptureEtw) { $etlValidation.etl_transport_valid } else { $null }
+        event_loss_status = if ($CaptureEtw) { $etlValidation.event_loss_status } else { $null }
+        lost_buffer_count = if ($CaptureEtw) { $etlValidation.lost_buffer_count } else { $null }
+        lost_event_count = if ($CaptureEtw) { $etlValidation.lost_event_count } else { $null }
+        event_loss_verified_zero = if ($CaptureEtw) {
+            $etlValidation.event_loss_status -eq 'verified_zero'
+        }
+        else { $null }
+        etl_usable_for_analysis = if ($CaptureEtw) {
+            $etlValidation.etl_transport_valid -and
+            $etlValidation.event_loss_status -eq 'verified_zero'
+        }
+        else { $null }
         exit_code = $exitCode
         playback_completed = [bool]$result.playback_completed
         audio_chunk_count = [int]$result.audio_chunk_count
@@ -260,9 +342,10 @@ try {
     $outlier = $null
     for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
         $result = Invoke-PlaybackRun -Prefix ("normal-{0:D2}" -f $attempt)
-        $result['outlier'] =
-            $result.playback_completed -and
-            $result.queue_empty_before_later_chunk_count -ge $QueueEmptyThreshold
+        $result['outlier'] = Test-Cmp50hxPlaybackOutlier `
+            -PlaybackCompleted $result.playback_completed `
+            -QueueEmptyBeforeLaterChunkCount $result.queue_empty_before_later_chunk_count `
+            -QueueEmptyThreshold $QueueEmptyThreshold
         $attemptResults += $result
         if ($result.outlier) {
             $outlier = $result
@@ -273,6 +356,10 @@ try {
     $etwFollowup = $null
     if ($null -ne $outlier) {
         $etwFollowup = Invoke-PlaybackRun -Prefix 'outlier-followup-etw' -CaptureEtw
+        $etwFollowup['outlier'] = Test-Cmp50hxPlaybackOutlier `
+            -PlaybackCompleted $etwFollowup.playback_completed `
+            -QueueEmptyBeforeLaterChunkCount $etwFollowup.queue_empty_before_later_chunk_count `
+            -QueueEmptyThreshold $QueueEmptyThreshold
     }
 
     $summary = [ordered]@{
@@ -296,6 +383,10 @@ try {
         normal_attempts = @($attemptResults)
         outlier_detected = ($null -ne $outlier)
         etw_followup = $etwFollowup
+        valid_outlier_etw_evidence = ($null -ne $etwFollowup) -and
+            $etwFollowup.etl_transport_valid -and
+            $etwFollowup.event_loss_verified_zero -and
+            $etwFollowup.outlier
     }
     $summaryPath = Join-Path $runDirectory 'summary.json'
     [IO.File]::WriteAllText(
@@ -308,10 +399,15 @@ try {
     }
     else {
         if (-not $etwFollowup.etl_usable_for_analysis) {
-            Write-Error "WPR dropped $($etwFollowup.wpr_dropped_event_count) events; ETL is not valid evidence."
+            Write-Error "ETL validation failed (transport_valid=$($etwFollowup.etl_transport_valid), event_loss_status=$($etwFollowup.event_loss_status)); ETL is not valid evidence."
             exit 5
         }
-        Write-Output 'Playback outlier confirmed; minimal WPR DxgKrnl follow-up completed without dropped events.'
+        if (-not $etwFollowup.outlier) {
+            Write-Output 'Playback outlier confirmed in a normal run; WPR follow-up is a usable normal/reference ETL, not captured outlier evidence.'
+        }
+        else {
+            Write-Output 'Playback outlier reproduced under WPR; minimal DxgKrnl ETW evidence is valid.'
+        }
     }
 }
 finally {
