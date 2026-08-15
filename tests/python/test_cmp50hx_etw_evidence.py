@@ -54,7 +54,8 @@ class Cmp50hxEtwEvidenceTest(unittest.TestCase):
                     f"Import-Module '{_MODULE}'; "
                     "Test-Cmp50hxPlaybackOutlier "
                     f"-PlaybackCompleted ${str(completed).lower()} "
-                    f"-QueueEmptyBeforeLaterChunkCount {queue_empty} -QueueEmptyThreshold 1"
+                    f"-QueueEmptyBeforeLaterChunkCount {queue_empty} "
+                    "-QueueEmptyThreshold 1"
                 )
                 result = subprocess.run(
                     [_POWERSHELL, "-NoProfile", "-Command", command],
