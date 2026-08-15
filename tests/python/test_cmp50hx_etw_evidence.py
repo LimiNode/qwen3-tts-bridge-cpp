@@ -81,12 +81,17 @@ class Cmp50hxEtwEvidenceTest(unittest.TestCase):
                 self.assertEqual(result.stdout.strip().lower(), str(expected).lower())
 
     def test_semantic_trace_requires_scheduler_records(self) -> None:
-        trace_stats = """
-{802ec45a-1e99-4b83-9920-87c98277ba9d}  12  34  Microsoft-Windows-DxgKrnl
-0x00af 0x0008 0x01 0x01 0x11 0x00 0x1 4 12 Microsoft-Windows-DxgKrnl/DmaPacket/win:Start
-0x00b2 0x0009 0x01 0x01 0x11 0x00 0x1 8 24 Microsoft-Windows-DxgKrnl/QueuePacket/win:Start
-Thread: CSwitch
-""".strip()
+        trace_stats = "\n".join(
+            (
+                "{802ec45a-1e99-4b83-9920-87c98277ba9d}  12  34 "
+                "Microsoft-Windows-DxgKrnl",
+                "0x00af 0x0008 0x01 0x01 0x11 0x00 0x1 4 12 "
+                "Microsoft-Windows-DxgKrnl/DmaPacket/win:Start",
+                "0x00b2 0x0009 0x01 0x01 0x11 0x00 0x1 8 24 "
+                "Microsoft-Windows-DxgKrnl/QueuePacket/win:Start",
+                "Thread: CSwitch",
+            )
+        )
         result = _classify_semantics(trace_stats)
         self.assertTrue(result["dxgkrnl_present"])
         self.assertTrue(result["cswitch_present"])
