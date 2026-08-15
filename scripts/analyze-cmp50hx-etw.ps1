@@ -98,10 +98,7 @@ if ($LASTEXITCODE -ne 0) {
 $workerCswitchPresent = ($cswitchReport -join [Environment]::NewLine) -match "python\.exe\s+\(\s*$workerPid\)"
 
 $dxgLines = New-Object 'System.Collections.Generic.List[string]'
-$lastArrivalMs = [double]$metrics.chunks[$metrics.chunks.Count - 1].arrival_ms
-$dumperRangeEndUs = [int64][Math]::Ceiling(($lastArrivalMs + 5000.0) * 1000.0)
-& $xperf -i $etlFile -a dumper -range 0 $dumperRangeEndUs `
-    -provider '{802EC45A-1E99-4B83-9920-87C98277BA9D}' 2>&1 |
+& $xperf -i $etlFile -a dumper -provider '{802EC45A-1E99-4B83-9920-87C98277BA9D}' 2>&1 |
     ForEach-Object {
         if ($_ -match "^Microsoft-Windows-DxgKrnl/[^/]+/.*python\.exe\s+\(\s*$workerPid\)") {
             $dxgLines.Add($_)
@@ -111,11 +108,18 @@ if ($LASTEXITCODE -ne 0) {
     throw "xperf DxgKrnl dump failed (exit=$LASTEXITCODE)."
 }
 $dxgKrnl = Get-Cmp50hxDxgKrnlEventSummary -DumperLines $dxgLines.ToArray() -WorkerPid $workerPid
+$attribution = Get-Cmp50hxWorkerAttributionStatus `
+    -WorkerCswitchPresent $workerCswitchPresent `
+    -WorkerDxgKrnlEventCount $dxgKrnl.worker_dxgkrnl_event_count
+if (-not $attribution.worker_attribution_valid) {
+    throw "Worker attribution is incomplete: $($attribution.invalid_reasons -join ',')"
+}
 
 $etl = Get-Item -LiteralPath $etlFile
 $report = [ordered]@{
     schema_version = 1
     analysis = 'cmp50hx_etw_worker_attribution'
+    analysis_scope = 'full_bounded_etl'
     source_summary_path = $summaryFile
     etl_path = $etlFile
     etl_size_bytes = $etl.Length
@@ -123,13 +127,13 @@ $report = [ordered]@{
     playback = [ordered]@{
         queue_empty_before_later_chunk_count = [int]$summary.etw_followup.queue_empty_before_later_chunk_count
         total_audio_duration_ms = [double]$summary.etw_followup.total_audio_duration_ms
-        dxgkrnl_dumper_range_end_us = $dumperRangeEndUs
     }
     worker = $worker
     cswitch = [ordered]@{
         worker_process_present = [bool]$workerCswitchPresent
     }
     dxgkrnl = $dxgKrnl
+    attribution = $attribution
     conclusion = 'The report establishes ETW data presence and worker attribution only; it does not determine the stall root cause.'
 }
 Write-JsonAtomically -Path $OutputPath -Value $report

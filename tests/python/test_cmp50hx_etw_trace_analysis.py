@@ -7,7 +7,6 @@ import subprocess
 import unittest
 from pathlib import Path
 
-
 _ROOT = Path(__file__).resolve().parents[2]
 _MODULE = _ROOT / "scripts" / "Cmp50hxEtwTraceAnalysis.psm1"
 _POWERSHELL = "powershell.exe"
@@ -59,7 +58,31 @@ class Cmp50hxEtwTraceAnalysisTest(unittest.TestCase):
         )
         result = _invoke(
             "Get-Cmp50hxDxgKrnlEventSummary",
-            f"-DumperLines @('{lines.splitlines()[0]}', '{lines.splitlines()[1]}', '{lines.splitlines()[2]}') -WorkerPid 98836",
+            "-DumperLines @("
+            f"'{lines.splitlines()[0]}', "
+            f"'{lines.splitlines()[1]}', "
+            f"'{lines.splitlines()[2]}') "
+            "-WorkerPid 98836",
         )
         self.assertEqual(result["worker_dxgkrnl_event_count"], 2)
-        self.assertEqual(result["worker_dxgkrnl_event_types"], {"DmaPacket": 1, "QueuePacket": 1})
+        self.assertEqual(
+            result["worker_dxgkrnl_event_types"],
+            {"DmaPacket": 1, "QueuePacket": 1},
+        )
+
+    def test_requires_cswitch_and_dxgkrnl_events_for_attribution(self) -> None:
+        cases = [
+            (True, 1, True, []),
+            (False, 1, False, ["worker_cswitch_absent"]),
+            (True, 0, False, ["worker_dxgkrnl_events_absent"]),
+        ]
+        for cswitch_present, event_count, expected_valid, expected_reasons in cases:
+            with self.subTest(cswitch_present=cswitch_present, event_count=event_count):
+                result = _invoke(
+                    "Get-Cmp50hxWorkerAttributionStatus",
+                    "-WorkerCswitchPresent "
+                    f"${str(cswitch_present).lower()} "
+                    f"-WorkerDxgKrnlEventCount {event_count}",
+                )
+                self.assertEqual(result["worker_attribution_valid"], expected_valid)
+                self.assertEqual(result["invalid_reasons"], expected_reasons)

@@ -71,4 +71,27 @@ function Get-Cmp50hxDxgKrnlEventSummary {
     }
 }
 
-Export-ModuleMember -Function Get-Cmp50hxWorkerProcess, Get-Cmp50hxDxgKrnlEventSummary
+function Get-Cmp50hxWorkerAttributionStatus {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$WorkerCswitchPresent,
+
+        [Parameter(Mandatory = $true)]
+        [int]$WorkerDxgKrnlEventCount
+    )
+
+    $invalidReasons = New-Object 'System.Collections.Generic.List[string]'
+    if (-not $WorkerCswitchPresent) {
+        $invalidReasons.Add('worker_cswitch_absent')
+    }
+    if ($WorkerDxgKrnlEventCount -le 0) {
+        $invalidReasons.Add('worker_dxgkrnl_events_absent')
+    }
+
+    return [ordered]@{
+        worker_attribution_valid = ($invalidReasons.Count -eq 0)
+        invalid_reasons = @($invalidReasons)
+    }
+}
+
+Export-ModuleMember -Function Get-Cmp50hxWorkerProcess, Get-Cmp50hxDxgKrnlEventSummary, Get-Cmp50hxWorkerAttributionStatus
