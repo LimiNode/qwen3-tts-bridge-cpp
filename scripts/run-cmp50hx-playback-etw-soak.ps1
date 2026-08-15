@@ -301,6 +301,7 @@ function Invoke-PlaybackRun {
     $wprStarted = $false
     try {
         if ($CaptureEtw) {
+            $arguments += '--etw-playback-markers'
             Assert-ElevatedWprSession
             $status = @(& $wpr.Source -status 2>&1) -join [Environment]::NewLine
             if ($status -notmatch 'not (running|recording)') {
@@ -343,6 +344,9 @@ function Invoke-PlaybackRun {
         throw "Playback run completed without metrics: $metrics"
     }
     $result = Get-Content -LiteralPath $metrics -Raw | ConvertFrom-Json
+    if ($CaptureEtw -and -not $result.etw_playback_markers_enabled) {
+        throw 'ETW follow-up completed without requested playback marker instrumentation.'
+    }
     $graphs = (Select-String -LiteralPath $stderr -Pattern 'CUDA graph captured!' -SimpleMatch |
         Measure-Object).Count
     $etlValidation = if ($CaptureEtw) {

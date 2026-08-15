@@ -19,6 +19,7 @@
         <Keyword Value="0x0000000000008001" />
       </Keywords>
     </EventProvider>
+    <EventProvider Id="PlaybackMarkers" Name="{9F07E68D-2B7A-4BC1-A58D-95624F0D6FE6}" Level="5" Strict="true" />
     <Profile Id="CMP50HX-DxgKrnl-Scheduler.Light.File" Name="CMP50HX-DxgKrnl-Scheduler" Description="Minimal GPU scheduling evidence for CMP50HX playback outliers" LoggingMode="File" DetailLevel="Light">
       <Collectors>
         <SystemCollectorId Value="SystemCollector">
@@ -27,6 +28,7 @@
         <EventCollectorId Value="EventCollector">
           <EventProviders>
             <EventProviderId Value="DxgKrnl" />
+            <EventProviderId Value="PlaybackMarkers" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>

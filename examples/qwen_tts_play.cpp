@@ -6,6 +6,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <evntprov.h>
 #include <mmsystem.h>
 
 #include <chrono>
@@ -83,6 +84,7 @@ struct ProgramOptions {
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
     std::string playback_metrics_file;
+    bool etw_playback_markers = false;
 };
 
 class ConsoleCodePageGuard final {
@@ -124,13 +126,68 @@ struct PlaybackChunkMetric {
     bool queue_empty_before_later_chunk = false;
 };
 
+class EtwPlaybackMarkers final {
+public:
+    EtwPlaybackMarkers() {
+        const ULONG result = EventRegister(&provider_id(), nullptr, nullptr, &registration_);
+        if (result != ERROR_SUCCESS) {
+            throw std::runtime_error("failed to register playback ETW marker provider");
+        }
+    }
+
+    ~EtwPlaybackMarkers() {
+        if (registration_ != 0) {
+            EventUnregister(registration_);
+        }
+    }
+
+    EtwPlaybackMarkers(const EtwPlaybackMarkers&) = delete;
+    EtwPlaybackMarkers& operator=(const EtwPlaybackMarkers&) = delete;
+
+    void request_start() const {
+        write(L"qwen_tts_bridge.playback.request_start");
+    }
+
+    void queue_empty_before_later_chunk(std::size_t chunk_index) const {
+        write(
+            L"qwen_tts_bridge.playback.queue_empty_before_later_chunk index=" +
+            std::to_wstring(chunk_index));
+    }
+
+private:
+    static const GUID& provider_id() {
+        static const GUID value{
+            0x9f07e68d,
+            0x2b7a,
+            0x4bc1,
+            {0xa5, 0x8d, 0x95, 0x62, 0x4f, 0x0d, 0x6f, 0xe6}};
+        return value;
+    }
+
+    void write(const std::wstring& marker) const {
+        const ULONG result = EventWriteString(registration_, 0, 0, marker.c_str());
+        if (result != ERROR_SUCCESS) {
+            throw std::runtime_error("failed to write playback ETW marker");
+        }
+    }
+
+    REGHANDLE registration_ = 0;
+};
+
 class PlaybackMetrics final {
 public:
+    explicit PlaybackMetrics(EtwPlaybackMarkers* etw_markers = nullptr)
+        : etw_markers_(etw_markers) {
+    }
+
     void begin_request() {
         std::lock_guard<std::mutex> lock(mutex_);
         started_at_ = std::chrono::steady_clock::now();
         chunks_.clear();
         playback_completed_ = false;
+        if (etw_markers_ != nullptr) {
+            etw_markers_->request_start();
+        }
     }
 
     void record_chunk(
@@ -155,6 +212,9 @@ public:
             metric.inter_arrival_ms = arrival_ms - chunks_.back().arrival_ms;
         }
         chunks_.push_back(metric);
+        if (queue_empty_before_later_chunk && etw_markers_ != nullptr) {
+            etw_markers_->queue_empty_before_later_chunk(chunks_.size() - 1);
+        }
     }
 
     void mark_playback_completed() {
@@ -188,6 +248,8 @@ public:
         json << "{\n"
              << "  \"schema_version\": 1,\n"
              << "  \"measurement\": \"waveout_queue_starvation_proxy\",\n"
+             << "  \"etw_playback_markers_enabled\": "
+             << (etw_markers_ != nullptr ? "true" : "false") << ",\n"
              << "  \"playback_completed\": " << (playback_completed ? "true" : "false") << ",\n"
              << "  \"audio_chunk_count\": " << chunks.size() << ",\n"
              << "  \"total_audio_duration_ms\": " << total_audio_duration_ms << ",\n"
@@ -252,6 +314,7 @@ private:
     std::optional<std::chrono::steady_clock::time_point> started_at_;
     std::vector<PlaybackChunkMetric> chunks_;
     bool playback_completed_ = false;
+    EtwPlaybackMarkers* etw_markers_ = nullptr;
 };
 
 class WaveOutPlayer final {
@@ -508,6 +571,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  /sample <on|off|default> Set sampling mode for future requests.\n"
         << "  /seed <value|default>  Set deterministic seed for future requests.\n"
         << "  /sampling               Show current per-request sampling controls.\n"
+        << "  --etw-playback-markers  Emit ETW request and queue-starvation markers (diagnostic).\n"
         << "  /help                  Show this help.\n"
         << "  /quit                  Stop the worker and exit.\n\n"
         << "Options:\n"
@@ -688,6 +752,9 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
             options.playback_metrics_file = require_value(
                 index, argc, argv, "--playback-metrics-file");
         }
+        else if (arg == "--etw-playback-markers") {
+            options.etw_playback_markers = true;
+        }
         else if (arg == "--mock-chunks" || arg.rfind("--mock-chunks=", 0) == 0) {
             options.mock_chunks = parse_int(
                 require_value(index, argc, argv, "--mock-chunks"), "--mock-chunks");
@@ -723,6 +790,9 @@ void validate_options(const ProgramOptions& options) {
     if (options.mock_chunks <= 0 || options.mock_chunk_ms <= 0 ||
         options.mock_chunk_delay < 0.0) {
         throw std::runtime_error("invalid mock worker options");
+    }
+    if (options.etw_playback_markers && options.playback_metrics_file.empty()) {
+        throw std::runtime_error("--etw-playback-markers requires --playback-metrics-file");
     }
     if (options.temperature.has_value() &&
         (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0)) {
@@ -1262,9 +1332,13 @@ int wmain(int argc, wchar_t** argv) {
                 "the active worker profile does not guarantee deterministic explicit seeds");
         }
 
+        std::unique_ptr<EtwPlaybackMarkers> etw_playback_markers;
+        if (options.etw_playback_markers) {
+            etw_playback_markers = std::make_unique<EtwPlaybackMarkers>();
+        }
         std::unique_ptr<PlaybackMetrics> playback_metrics;
         if (!options.playback_metrics_file.empty()) {
-            playback_metrics = std::make_unique<PlaybackMetrics>();
+            playback_metrics = std::make_unique<PlaybackMetrics>(etw_playback_markers.get());
         }
         WaveOutPlayer player(playback_metrics.get());
         ActiveRequestState active_state;
