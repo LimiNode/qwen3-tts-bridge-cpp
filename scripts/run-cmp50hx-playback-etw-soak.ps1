@@ -177,6 +177,13 @@ function Get-EtlValidation {
             event_loss_status = 'unparseable'
             lost_buffer_count = $null
             lost_event_count = $null
+            dxgkrnl_present = $false
+            dxgkrnl_event_count = $null
+            cswitch_present = $false
+            scheduler_event_presence_verified = $false
+            scheduler_event_types = @()
+            scheduler_event_count = $null
+            semantic_trace_valid = $false
         }
     }
 
@@ -189,10 +196,17 @@ function Get-EtlValidation {
             event_loss_status = 'unparseable'
             lost_buffer_count = $null
             lost_event_count = $null
+            dxgkrnl_present = $false
+            dxgkrnl_event_count = $null
+            cswitch_present = $false
+            scheduler_event_presence_verified = $false
+            scheduler_event_types = @()
+            scheduler_event_count = $null
+            semantic_trace_valid = $false
         }
     }
 
-    $traceStats = @(& $xperf -i $EtlPath -a tracestats 2>&1)
+    $traceStats = @(& $xperf -i $EtlPath -a tracestats -detail 2>&1)
     [IO.File]::WriteAllText(
         $TraceStatsPath,
         (($traceStats -join [Environment]::NewLine) + [Environment]::NewLine),
@@ -205,10 +219,18 @@ function Get-EtlValidation {
             event_loss_status = 'unparseable'
             lost_buffer_count = $null
             lost_event_count = $null
+            dxgkrnl_present = $false
+            dxgkrnl_event_count = $null
+            cswitch_present = $false
+            scheduler_event_presence_verified = $false
+            scheduler_event_types = @()
+            scheduler_event_count = $null
+            semantic_trace_valid = $false
         }
     }
 
     $eventLoss = Get-Cmp50hxEventLossStatus -TraceStatsText ($traceStats -join [Environment]::NewLine)
+    $semantic = Get-Cmp50hxTraceSemanticStatus -TraceStatsText ($traceStats -join [Environment]::NewLine)
     return [ordered]@{
         etl_transport_valid = $true
         etl_size_bytes = $etl.Length
@@ -216,6 +238,13 @@ function Get-EtlValidation {
         event_loss_status = $eventLoss.event_loss_status
         lost_buffer_count = $eventLoss.lost_buffer_count
         lost_event_count = $eventLoss.lost_event_count
+        dxgkrnl_present = $semantic.dxgkrnl_present
+        dxgkrnl_event_count = $semantic.dxgkrnl_event_count
+        cswitch_present = $semantic.cswitch_present
+        scheduler_event_presence_verified = $semantic.scheduler_event_presence_verified
+        scheduler_event_types = $semantic.scheduler_event_types
+        scheduler_event_count = $semantic.scheduler_event_count
+        semantic_trace_valid = $semantic.semantic_trace_valid
     }
 }
 
@@ -318,13 +347,24 @@ function Invoke-PlaybackRun {
         event_loss_status = if ($CaptureEtw) { $etlValidation.event_loss_status } else { $null }
         lost_buffer_count = if ($CaptureEtw) { $etlValidation.lost_buffer_count } else { $null }
         lost_event_count = if ($CaptureEtw) { $etlValidation.lost_event_count } else { $null }
+        dxgkrnl_present = if ($CaptureEtw) { $etlValidation.dxgkrnl_present } else { $null }
+        dxgkrnl_event_count = if ($CaptureEtw) { $etlValidation.dxgkrnl_event_count } else { $null }
+        cswitch_present = if ($CaptureEtw) { $etlValidation.cswitch_present } else { $null }
+        scheduler_event_presence_verified = if ($CaptureEtw) {
+            $etlValidation.scheduler_event_presence_verified
+        }
+        else { $null }
+        scheduler_event_types = if ($CaptureEtw) { $etlValidation.scheduler_event_types } else { $null }
+        scheduler_event_count = if ($CaptureEtw) { $etlValidation.scheduler_event_count } else { $null }
+        semantic_trace_valid = if ($CaptureEtw) { $etlValidation.semantic_trace_valid } else { $null }
         event_loss_verified_zero = if ($CaptureEtw) {
             $etlValidation.event_loss_status -eq 'verified_zero'
         }
         else { $null }
         etl_usable_for_analysis = if ($CaptureEtw) {
             $etlValidation.etl_transport_valid -and
-            $etlValidation.event_loss_status -eq 'verified_zero'
+            $etlValidation.event_loss_status -eq 'verified_zero' -and
+            $etlValidation.semantic_trace_valid
         }
         else { $null }
         exit_code = $exitCode
@@ -386,6 +426,7 @@ try {
         valid_outlier_etw_evidence = ($null -ne $etwFollowup) -and
             $etwFollowup.etl_transport_valid -and
             $etwFollowup.event_loss_verified_zero -and
+            $etwFollowup.semantic_trace_valid -and
             $etwFollowup.outlier
     }
     $summaryPath = Join-Path $runDirectory 'summary.json'
@@ -399,7 +440,7 @@ try {
     }
     else {
         if (-not $etwFollowup.etl_usable_for_analysis) {
-            Write-Error "ETL validation failed (transport_valid=$($etwFollowup.etl_transport_valid), event_loss_status=$($etwFollowup.event_loss_status)); ETL is not valid evidence."
+            Write-Error "ETL validation failed (transport_valid=$($etwFollowup.etl_transport_valid), event_loss_status=$($etwFollowup.event_loss_status), semantic_trace_valid=$($etwFollowup.semantic_trace_valid)); ETL is not valid evidence."
             exit 5
         }
         if (-not $etwFollowup.outlier) {

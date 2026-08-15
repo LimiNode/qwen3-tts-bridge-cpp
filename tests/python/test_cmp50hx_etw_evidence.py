@@ -27,6 +27,21 @@ def _classify(trace_stats: str) -> dict[str, object]:
     return json.loads(completed.stdout)
 
 
+def _classify_semantics(trace_stats: str) -> dict[str, object]:
+    command = (
+        f"Import-Module '{_MODULE}'; "
+        f"$result = Get-Cmp50hxTraceSemanticStatus -TraceStatsText '{trace_stats}'; "
+        "$result | ConvertTo-Json -Depth 4 -Compress"
+    )
+    completed = subprocess.run(
+        [_POWERSHELL, "-NoProfile", "-Command", command],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(completed.stdout)
+
+
 class Cmp50hxEtwEvidenceTest(unittest.TestCase):
     def test_event_loss_status_fails_closed(self) -> None:
         cases = [
@@ -64,3 +79,25 @@ class Cmp50hxEtwEvidenceTest(unittest.TestCase):
                     text=True,
                 )
                 self.assertEqual(result.stdout.strip().lower(), str(expected).lower())
+
+    def test_semantic_trace_requires_scheduler_records(self) -> None:
+        trace_stats = """
+{802ec45a-1e99-4b83-9920-87c98277ba9d}  12  34  Microsoft-Windows-DxgKrnl
+0x00af 0x0008 0x01 0x01 0x11 0x00 0x1 4 12 Microsoft-Windows-DxgKrnl/DmaPacket/win:Start
+0x00b2 0x0009 0x01 0x01 0x11 0x00 0x1 8 24 Microsoft-Windows-DxgKrnl/QueuePacket/win:Start
+Thread: CSwitch
+""".strip()
+        result = _classify_semantics(trace_stats)
+        self.assertTrue(result["dxgkrnl_present"])
+        self.assertTrue(result["cswitch_present"])
+        self.assertTrue(result["scheduler_event_presence_verified"])
+        self.assertTrue(result["semantic_trace_valid"])
+        self.assertEqual(result["scheduler_event_count"], 12)
+
+    def test_semantic_trace_fails_closed_without_scheduler_records(self) -> None:
+        trace_stats = """
+{802ec45a-1e99-4b83-9920-87c98277ba9d}  12  34  Microsoft-Windows-DxgKrnl
+Thread: CSwitch
+""".strip()
+        result = _classify_semantics(trace_stats)
+        self.assertFalse(result["semantic_trace_valid"])
