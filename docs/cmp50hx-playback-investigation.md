@@ -109,10 +109,18 @@ as the measured request.
 | Baseline, `emit_every_frames=8` | 8 / 5096.875 ms | 7 | First request paid graph-capture cost and steady gaps occurred. |
 | Warmup, `emit_every_frames=8` | 8 / 5016.875 ms | 6 | First player audio fell to about 1.24 s, but steady starvation remained. |
 | Warmup, `emit_every_frames=16` | 4 / 5016.875 ms | 3 | Larger chunks improved delivery slack but did not remove the proxy signal. |
+| Warmup, `emit_every_frames=32` | 2 / 5016.875 ms | 1 | Larger chunks further reduced gaps, but sustained rate remained below real-time. |
 
 The observed E=16 inter-arrival intervals were approximately 1864, 2721, and
 1853 ms for audio chunks of about 1.28 s. Thus graph capture is a user-visible
 startup problem, but cannot alone explain the repeated steady-stream gaps.
+
+The E=32 run was intentionally performed under the same normal background
+workload as the other current experiments. Playback started at 3514 ms; its two
+chunks contained about 2537 and 2480 ms of audio and arrived 3012 ms apart.
+The worker reported RTF 1.300847 for the 5016.875 ms response. Therefore E=32
+reduces the bursty delivery symptom, but it still cannot sustain real-time
+output on a long request and it increases first-playback latency substantially.
 
 ### GPU activity in the valid marker windows
 
@@ -186,11 +194,14 @@ worker rate is below audio rate.
    in the failed prebuffer run (RTF 1.619). This establishes a sustained-rate
    problem in addition to bursty delivery gaps, but not yet whether its cause
    is own GPU work, CPU dispatch, or WDDM scheduling.
-6. The valid marker windows show simultaneous TTS and RAG GPU activity. Any
+6. Increasing delivery size to E=32 improved proxy observations from three to
+   one, but RTF remained 1.300847. Delivery granularity alone therefore cannot
+   meet the real-time requirement on this workload.
+7. The valid marker windows show simultaneous TTS and RAG GPU activity. Any
    claim that the RAG materializer is CPU-only is inconsistent with this trace;
    any claim that it alone caused the stalls is also unsupported because TTS
    activity is substantial in the same windows.
-7. The appropriate next optimisation decision depends on timing-aware
+8. The appropriate next optimisation decision depends on timing-aware
    marker-window analysis, not on another unsupported global precision change.
 
 ## Next acceptance gates
