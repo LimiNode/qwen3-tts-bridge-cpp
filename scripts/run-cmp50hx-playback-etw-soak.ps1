@@ -25,6 +25,9 @@ param(
 
     [string]$WprProfilePath = '',
 
+    [ValidateSet('CMP50HX-DxgKrnl-Scheduler', 'CMP50HX-DxgKrnl-Execution')]
+    [string]$WprProfileName = 'CMP50HX-DxgKrnl-Scheduler',
+
     [string]$XperfPath = '',
 
     [switch]$WorkerSynthesisWarmup,
@@ -369,9 +372,9 @@ function Invoke-PlaybackRun {
             if ($status -notmatch 'not (running|recording)') {
                 throw 'WPR already has an active recording; refusing to stop or replace it.'
             }
-            & $wpr.Source -start "$wprProfile!CMP50HX-DxgKrnl-Scheduler" -filemode
+            & $wpr.Source -start "$wprProfile!$WprProfileName" -filemode
             if ($LASTEXITCODE -ne 0) {
-                throw "WPR could not start minimal DxgKrnl recording (exit=$LASTEXITCODE)."
+                throw "WPR could not start $WprProfileName recording (exit=$LASTEXITCODE)."
             }
             $wprStarted = $true
         }
@@ -435,7 +438,7 @@ function Invoke-PlaybackRun {
                 (($stopOutput -join [Environment]::NewLine) + [Environment]::NewLine),
                 [Text.UTF8Encoding]::new($false))
             if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $etl -PathType Leaf)) {
-                throw "WPR could not stop minimal DxgKrnl recording into $etl. $($stopOutput -join ' ')"
+                throw "WPR could not stop $WprProfileName recording into $etl. $($stopOutput -join ' ')"
             }
         }
     }
@@ -574,7 +577,7 @@ try {
             tts_worker_priority_note = 'Worker priority is not verified; this launcher must not support a worker-priority attribution claim.'
         }
         playback_measurement = 'WaveOut queue starvation proxy; not a hardware underrun counter'
-        etw_profile = 'CMP50HX-DxgKrnl-Scheduler'
+        etw_profile = $WprProfileName
         etw_profile_path = $wprProfile
         queue_empty_threshold = $QueueEmptyThreshold
         normal_attempts = @($attemptResults)
@@ -608,7 +611,7 @@ try {
             Write-Output 'Playback outlier confirmed in a normal run; WPR follow-up is a usable normal/reference ETL, not captured outlier evidence.'
         }
         else {
-            Write-Output 'Playback outlier reproduced under WPR; minimal DxgKrnl ETW evidence is valid.'
+            Write-Output "Playback outlier reproduced under WPR profile $WprProfileName; ETW evidence is valid."
         }
     }
 }
