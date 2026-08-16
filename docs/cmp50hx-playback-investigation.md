@@ -125,6 +125,9 @@ The player prebuffer is intentionally opt-in. Before playback begins, pending
 buffers count toward the queue balance but do not produce a later-chunk
 queue-empty observation. End of stream flushes a partial prebuffer so short
 responses still play. Its metrics record the requested prebuffer duration.
+They also record the actual playback-start time relative to the request, so
+synthesis first-chunk arrival and intentional prebuffer delay can be reported
+separately.
 
 This is a possible playback-resilience mechanism, not a throughput fix: it
 trades initial playback delay for delivery slack. No default runtime policy has
