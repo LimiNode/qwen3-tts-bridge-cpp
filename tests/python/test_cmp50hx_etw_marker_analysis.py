@@ -145,6 +145,40 @@ class Cmp50hxEtwMarkerAnalysisTest(unittest.TestCase):
             [{"process": "chrome.exe (77)", "dxgkrnl_event_count": 1}],
         )
 
+    def test_correlates_worker_dma_start_stop_by_context_and_submit_sequence(
+        self,
+    ) -> None:
+        result = _invoke(
+            "$window = [pscustomobject]@{window_id='queue_empty_1'; "
+            "marker_timestamp_us=200; start_timestamp_us=100; "
+            "end_timestamp_us=250}; "
+            "$lines = @("
+            "'Microsoft-Windows-DxgKrnl/DmaPacket/win:Start, 120, "
+            "python.exe (42), 7, 0, , , , , 0xffff0001, 0xffff0002, "
+            "0, 12, 99, 0x1, 0', "
+            "'Microsoft-Windows-DxgKrnl/DmaPacket/win:Stop, 180, "
+            "python.exe (42), 7, 0, , , , , 0xffff0001, 0, 13, 99, true', "
+            "'Microsoft-Windows-DxgKrnl/DmaPacket/win:Stop, 190, "
+            "python.exe (77), 7, 0, , , , , 0xffff0001, 0, 13, 99, false'); "
+            "Get-Cmp50hxMarkerWindowDmaPacketLifecycleSummary "
+            "-DumperLines $lines -Windows @($window) -WorkerPid 42 | "
+            "ConvertTo-Json -Depth 5 -Compress"
+        )
+        self.assertEqual(result["worker_dma_packet_start_count"], 1)
+        self.assertEqual(result["worker_dma_packet_stop_count"], 1)
+        self.assertEqual(result["worker_dma_packet_preempted_stop_count"], 1)
+        self.assertEqual(result["worker_dma_packet_unmatched_start_count"], 0)
+        self.assertEqual(
+            result["worker_dma_packet_lifecycle_us"],
+            {
+                "pair_count": 1,
+                "minimum_us": 60,
+                "average_us": 60,
+                "p95_us": 60,
+                "maximum_us": 60,
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

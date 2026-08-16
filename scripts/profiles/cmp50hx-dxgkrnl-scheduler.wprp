@@ -19,6 +19,11 @@
         <Keyword Value="0x0000000000008001" />
       </Keywords>
     </EventProvider>
+    <EventProvider Id="DxgKrnlExecution" Name="Microsoft-Windows-DxgKrnl" NonPagedMemory="true" Level="5" Strict="true">
+      <Keywords>
+        <Keyword Value="0x0000000004008001" />
+      </Keywords>
+    </EventProvider>
     <Profile Id="CMP50HX-DxgKrnl-Scheduler.Light.File" Name="CMP50HX-DxgKrnl-Scheduler" Description="Minimal GPU scheduling evidence for CMP50HX playback outliers" LoggingMode="File" DetailLevel="Light">
       <Collectors>
         <SystemCollectorId Value="SystemCollector">
@@ -27,6 +32,18 @@
         <EventCollectorId Value="EventCollector">
           <EventProviders>
             <EventProviderId Value="DxgKrnl" />
+          </EventProviders>
+        </EventCollectorId>
+      </Collectors>
+    </Profile>
+    <Profile Id="CMP50HX-DxgKrnl-Execution.Light.File" Name="CMP50HX-DxgKrnl-Execution" Description="Opt-in GPU scheduler lifecycle evidence for CMP50HX playback outliers" LoggingMode="File" DetailLevel="Light">
+      <Collectors>
+        <SystemCollectorId Value="SystemCollector">
+          <SystemProviderId Value="SystemProvider" />
+        </SystemCollectorId>
+        <EventCollectorId Value="EventCollector">
+          <EventProviders>
+            <EventProviderId Value="DxgKrnlExecution" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>

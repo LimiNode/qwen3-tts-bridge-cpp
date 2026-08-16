@@ -10,7 +10,9 @@ param(
     [int64]$WindowBeforeUs = 1000000,
 
     [ValidateRange(0, 60000000)]
-    [int64]$WindowAfterUs = 100000
+    [int64]$WindowAfterUs = 100000,
+
+    [switch]$RequireDmaPacketLifecycle
 )
 
 $ErrorActionPreference = 'Stop'
@@ -159,31 +161,49 @@ $windows = @(New-Cmp50hxPlaybackMarkerWindows `
 $combinedStart = [int64](($windows | Measure-Object -Property start_timestamp_us -Minimum).Minimum)
 $combinedEnd = [int64](($windows | Measure-Object -Property end_timestamp_us -Maximum).Maximum)
 
-$dxgOutput = Join-Path ([IO.Path]::GetTempPath()) "cmp50hx-xperf-$PID-$([guid]::NewGuid().ToString('N')).out"
-$dxgError = Join-Path ([IO.Path]::GetTempPath()) "cmp50hx-xperf-$PID-$([guid]::NewGuid().ToString('N')).err"
-try {
-    & $xperf -i $etlFile -a dumper -range $combinedStart $combinedEnd `
-        -provider '{802ec45a-1e99-4b83-9920-87c98277ba9d}' 1> $dxgOutput 2> $dxgError
-    if ($LASTEXITCODE -ne 0) {
-        $errorText = (Get-Content -LiteralPath $dxgError -Raw -ErrorAction SilentlyContinue).Trim()
-        throw "xperf bounded DxgKrnl dump failed (exit=$LASTEXITCODE). $errorText"
+$windowSummaries = New-Object 'System.Collections.Generic.List[object]'
+$dmaPacketLifecycles = New-Object 'System.Collections.Generic.List[object]'
+foreach ($window in $windows) {
+    $dxgOutput = Join-Path ([IO.Path]::GetTempPath()) "cmp50hx-xperf-$PID-$([guid]::NewGuid().ToString('N')).out"
+    $dxgError = Join-Path ([IO.Path]::GetTempPath()) "cmp50hx-xperf-$PID-$([guid]::NewGuid().ToString('N')).err"
+    try {
+        # Extract independently per marker. A combined 28-second DxgKrnl dump
+        # is unnecessarily expensive on a busy WDDM desktop and can time out.
+        & $xperf -i $etlFile -a dumper -range $window.start_timestamp_us $window.end_timestamp_us `
+            -provider '{802ec45a-1e99-4b83-9920-87c98277ba9d}' 1> $dxgOutput 2> $dxgError
+        if ($LASTEXITCODE -ne 0) {
+            $errorText = (Get-Content -LiteralPath $dxgError -Raw -ErrorAction SilentlyContinue).Trim()
+            throw "xperf DxgKrnl dump for marker window $($window.window_id) failed (exit=$LASTEXITCODE). $errorText"
+        }
+        $windowSummary = @(Get-Cmp50hxMarkerWindowDxgKrnlSummary `
+                -DumperLines ([IO.File]::ReadLines($dxgOutput)) `
+                -Windows @($window) `
+                -WorkerPid $workerPid)
+        $dmaPacketLifecycle = @(Get-Cmp50hxMarkerWindowDmaPacketLifecycleSummary `
+                -DumperLines ([IO.File]::ReadLines($dxgOutput)) `
+                -Windows @($window) `
+                -WorkerPid $workerPid)
+        $windowSummaries.Add($windowSummary[0])
+        $dmaPacketLifecycles.Add($dmaPacketLifecycle[0])
     }
-    # Do not materialize the complete xperf output: this bounded interval can
-    # still contain hundreds of thousands of unrelated GPU records.
-    $windowSummaries = @(Get-Cmp50hxMarkerWindowDxgKrnlSummary `
-            -DumperLines ([IO.File]::ReadLines($dxgOutput)) `
-            -Windows $windows `
-            -WorkerPid $workerPid)
+    finally {
+        Remove-Item -LiteralPath $dxgOutput, $dxgError -Force -ErrorAction SilentlyContinue
+    }
 }
-finally {
-    Remove-Item -LiteralPath $dxgOutput, $dxgError -Force -ErrorAction SilentlyContinue
-}
+$windowSummaries = @($windowSummaries.ToArray())
+$dmaPacketLifecycles = @($dmaPacketLifecycles.ToArray())
 $workerDxgKrnlEventCount = [int](($windowSummaries | Measure-Object -Property worker_dxgkrnl_event_count -Sum).Sum)
 $attribution = Get-Cmp50hxWorkerAttributionStatus `
     -WorkerCswitchPresent $workerCswitchPresent `
     -WorkerDxgKrnlEventCount $workerDxgKrnlEventCount
 if (-not $attribution.worker_attribution_valid) {
     throw "Worker attribution is incomplete in marker windows: $($attribution.invalid_reasons -join ',')"
+}
+$dmaPacketLifecyclePairCount = [int](($dmaPacketLifecycles |
+        ForEach-Object { $_.worker_dma_packet_lifecycle_us.pair_count } |
+        Measure-Object -Sum).Sum)
+if ($RequireDmaPacketLifecycle -and $dmaPacketLifecyclePairCount -le 0) {
+    throw 'The ETL has no worker DmaPacket Start/Stop lifecycle pairs in marker windows; it is not execution-lifecycle evidence.'
 }
 
 $etl = Get-Item -LiteralPath $etlFile
@@ -202,6 +222,7 @@ $report = [ordered]@{
     }
     marker_validation = $markerValidation
     bounded_dump = [ordered]@{
+        extraction_strategy = 'per_marker_window'
         start_timestamp_us = $combinedStart
         end_timestamp_us = $combinedEnd
         window_before_us = $WindowBeforeUs
@@ -213,8 +234,18 @@ $report = [ordered]@{
         worker_process_present = [bool]$workerCswitchPresent
     }
     marker_windows = $windowSummaries
+    worker_dma_packet_lifecycle = [ordered]@{
+        required = [bool]$RequireDmaPacketLifecycle
+        pair_count = $dmaPacketLifecyclePairCount
+        marker_windows = $dmaPacketLifecycles
+    }
     attribution = $attribution
-    conclusion = 'The report establishes marker-aligned DxgKrnl event presence and worker attribution only. It does not determine a GPU stall, preemption, scheduling gap, or root cause.'
+    conclusion = if ($RequireDmaPacketLifecycle) {
+        'The report establishes marker-aligned worker DmaPacket Start/Stop lifecycles. These timestamps are GPU scheduler packet lifetimes, not kernel execution durations; they do not alone determine a stall, preemption cause, or root cause.'
+    }
+    else {
+        'The report establishes marker-aligned DxgKrnl event presence and worker attribution only. It does not determine a GPU stall, preemption, scheduling gap, or root cause.'
+    }
 }
 Write-JsonAtomically -Path $OutputPath -Value $report
 Write-Output "analysis_json=$OutputPath"

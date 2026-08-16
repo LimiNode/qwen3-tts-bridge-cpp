@@ -257,6 +257,34 @@ realtime fix or use this result to narrow the remaining investigation. The
 launcher records this limitation explicitly; a future priority experiment must
 set and verify the worker's priority before it can support a causal claim.
 
+### GPU lifecycle evidence gap
+
+The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
+against the raw DxgKrnl dumper output. The minimal scheduler profile contained
+worker `QueuePacket` starts and `DmaPacket` informational records, but zero
+worker `DmaPacket Start/Stop` pairs across all eight marker windows. The
+informational records are emitted a few microseconds after queue submission and
+are therefore not a measurement of GPU execution time.
+
+This closes a methodological gap: the existing event counts establish activity
+and attribution only. They must not be converted into kernel duration,
+preemption time, or GPU utilisation. The marker analyzer now reports the
+observed lifecycle-pair count and, with `-RequireDmaPacketLifecycle`, rejects an
+ETL with no worker start/stop pairs as execution-lifecycle evidence.
+
+The opt-in WPR profile `CMP50HX-DxgKrnl-Execution` expands the minimal
+`Base + GPUScheduler` mask with `HardwareSchedulingLog`. It is not selected by
+default, does not change the TTS worker or player, and retains the existing
+elevation, bounded file-mode, semantic-trace, and zero-event-loss gates. Its
+first purpose is narrow: establish whether this Windows/WDDM configuration can
+emit pairable worker GPU scheduler lifecycles at all. If it cannot, the result
+is inconclusive rather than evidence for a GPU execution-duration claim.
+
+The analyzer extracts DxgKrnl independently for each marker window. On the
+754 MB reference ETL this replay took about six minutes with the installed
+legacy xperf, but it avoids one much larger combined dump and leaves the source
+ETL unchanged.
+
 ## Next acceptance gates
 
 1. Finish the marker-aware analyzer review and use it only on zero-loss,
@@ -294,6 +322,24 @@ Bounded CPU-priority attribution probe:
 The historical command is retained only to reproduce the inconclusive probe;
 it does not establish worker priority. A future attribution A/B must use a
 launcher that sets and verifies worker priority before the worker begins work.
+
+Execution-lifecycle ETW follow-up, only after an ordinary run reproduces a
+proxy outlier and only from an elevated PowerShell:
+
+```powershell
+.\scripts\run-cmp50hx-playback-etw-soak.ps1 `
+  -Attempts 1 `
+  -WprProfileName CMP50HX-DxgKrnl-Execution
+```
+
+Then require the lifecycle evidence explicitly. Replace the summary path with
+the new run's generated `summary.json`.
+
+```powershell
+.\scripts\analyze-cmp50hx-etw-markers.ps1 `
+  -SummaryPath .\tmp\cmp50hx-playback-etw-soak\<run-id>\summary.json `
+  -RequireDmaPacketLifecycle
+```
 
 Warmup and larger delivery-chunk experiment without an ETW follow-up:
 
