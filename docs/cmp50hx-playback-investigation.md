@@ -238,6 +238,13 @@ observation. The result therefore justifies a finite/EOS smoke and a repeated
 active-versus-idle comparison; it does not yet justify enabling TF32 in the
 normal runtime policy.
 
+The corresponding graph-compatible finite smoke completed its warmup and
+measured request with no terminal failure. The aggregate checker reported
+`all_finite=true` and valid boundaries for both terminal generations, with no
+host synchronization during predictor replay. Its RTF is intentionally not a
+performance result because the checker is enabled. This closes the basic
+numerical safety gate for `high`; it does not replace a repeated playback A/B.
+
 ## Next acceptance gates
 
 1. Finish the marker-aware analyzer review and use it only on zero-loss,
