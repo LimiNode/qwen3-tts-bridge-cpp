@@ -51,6 +51,7 @@ def main() -> int:
     else:
         assert result["audio_chunk_count"] == 3
         assert len(result["chunks"]) == 3
+        assert result["playback_started_ms"] is not None
         assert result["queue_empty_before_later_chunk_count"] >= 1
         assert result["chunks"][0]["inter_arrival_ms"] is None
         assert any(
@@ -85,6 +86,12 @@ def main() -> int:
     else:
         assert buffered_result["audio_chunk_count"] == 3
         assert len(buffered_result["chunks"]) == 3
+        assert buffered_result["playback_started_ms"] is not None
+        assert (
+            buffered_result["chunks"][0]["arrival_ms"]
+            <= buffered_result["playback_started_ms"]
+            <= buffered_result["chunks"][1]["arrival_ms"]
+        )
         assert buffered_result["queue_empty_before_later_chunk_count"] == 0
         assert all(
             not chunk["queue_empty_before_later_chunk"]

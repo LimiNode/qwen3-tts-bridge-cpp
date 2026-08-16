@@ -203,11 +203,19 @@ public:
     void begin_request() {
         std::lock_guard<std::mutex> lock(mutex_);
         started_at_ = std::chrono::steady_clock::now();
+        playback_started_ms_.reset();
         chunks_.clear();
         playback_completed_ = false;
         if (etw_markers_ != nullptr) {
             etw_markers_->request_start();
             ++etw_playback_marker_count_;
+        }
+    }
+
+    void mark_playback_started() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (started_at_.has_value() && !playback_started_ms_.has_value()) {
+            playback_started_ms_ = elapsed_ms(started_at_.value(), std::chrono::steady_clock::now());
         }
     }
 
@@ -247,6 +255,7 @@ public:
     void write_json_file(const std::string& file_name) const {
         std::vector<PlaybackChunkMetric> chunks;
         bool playback_completed = false;
+        std::optional<double> playback_started_ms;
         std::size_t etw_playback_marker_count = 0;
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -255,6 +264,7 @@ public:
             }
             chunks = chunks_;
             playback_completed = playback_completed_;
+            playback_started_ms = playback_started_ms_;
             etw_playback_marker_count = etw_playback_marker_count_;
         }
 
@@ -273,6 +283,14 @@ public:
              << "  \"schema_version\": 1,\n"
              << "  \"measurement\": \"waveout_queue_starvation_proxy\",\n"
              << "  \"playback_prebuffer_ms\": " << playback_prebuffer_.count() << ",\n"
+             << "  \"playback_started_ms\": ";
+        if (playback_started_ms.has_value()) {
+            json << playback_started_ms.value();
+        }
+        else {
+            json << "null";
+        }
+        json << ",\n"
              << "  \"etw_playback_markers_enabled\": "
              << (etw_markers_ != nullptr ? "true" : "false") << ",\n"
              << "  \"etw_playback_marker_count\": " << etw_playback_marker_count << ",\n"
@@ -338,6 +356,7 @@ private:
 
     mutable std::mutex mutex_;
     std::optional<std::chrono::steady_clock::time_point> started_at_;
+    std::optional<double> playback_started_ms_;
     std::vector<PlaybackChunkMetric> chunks_;
     bool playback_completed_ = false;
     std::chrono::milliseconds playback_prebuffer_;
@@ -548,6 +567,9 @@ private:
         }
         pending_buffers_.clear();
         playback_started_ = true;
+        if (metrics_ != nullptr) {
+            metrics_->mark_playback_started();
+        }
     }
 
     void open_or_validate_locked(const AudioFormat& format) {
