@@ -40,6 +40,9 @@ param(
     [ValidateRange(1, 64)]
     [int]$EmitEveryFrames = 8,
 
+    [ValidatePattern('^(|highest|high|medium)$')]
+    [string]$MatmulPrecision = '',
+
     [string]$CudaVisibleDevices = 'GPU-40361931-6cb5-ac58-a059-5ba3e70986fb'
 )
 
@@ -336,6 +339,11 @@ function Invoke-PlaybackRun {
         '--startup-timeout-ms', '240000',
         '--playback-metrics-file', $metrics
     )
+    if ($MatmulPrecision) {
+        $arguments += @(
+            '--worker-arg', '--matmul-precision', '--worker-arg', $MatmulPrecision
+        )
+    }
     if ($WorkerSynthesisWarmup) {
         $arguments += @(
             '--worker-arg', '--warmup-synthesis',
@@ -510,6 +518,7 @@ try {
             worker_warmup_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupPasses } else { $null }
             worker_warmup_max_output_chunks = if ($WorkerSynthesisWarmup) { $WorkerWarmupMaxOutputChunks } else { $null }
             emit_every_frames = $EmitEveryFrames
+            matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
         }
         playback_measurement = 'WaveOut queue starvation proxy; not a hardware underrun counter'
         etw_profile = 'CMP50HX-DxgKrnl-Scheduler'
