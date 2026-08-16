@@ -40,9 +40,6 @@ param(
     [ValidateRange(1, 64)]
     [int]$EmitEveryFrames = 8,
 
-    [ValidateRange(0, 30000)]
-    [int]$PlaybackPrebufferMs = 0,
-
     [string]$CudaVisibleDevices = 'GPU-40361931-6cb5-ac58-a059-5ba3e70986fb'
 )
 
@@ -337,7 +334,6 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--seed-mode', '--worker-arg', 'fixed',
         '--text', $Text, '--speaker', $Speaker,
         '--startup-timeout-ms', '240000',
-        '--playback-prebuffer-ms', $PlaybackPrebufferMs,
         '--playback-metrics-file', $metrics
     )
     if ($WorkerSynthesisWarmup) {
@@ -514,7 +510,6 @@ try {
             worker_warmup_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupPasses } else { $null }
             worker_warmup_max_output_chunks = if ($WorkerSynthesisWarmup) { $WorkerWarmupMaxOutputChunks } else { $null }
             emit_every_frames = $EmitEveryFrames
-            playback_prebuffer_ms = $PlaybackPrebufferMs
         }
         playback_measurement = 'WaveOut queue starvation proxy; not a hardware underrun counter'
         etw_profile = 'CMP50HX-DxgKrnl-Scheduler'

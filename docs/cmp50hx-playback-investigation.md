@@ -116,26 +116,30 @@ to the prior behaviour:
 
 - `-WorkerSynthesisWarmup` creates relevant graphs before the measured request.
 - `-EmitEveryFrames` changes delivery granularity for an experiment.
-- `-PlaybackPrebufferMs` queues an initial amount of PCM before calling
-  WaveOut. A value of zero retains immediate playback.
 - `-SkipEtwFollowup` is for bounded non-ETW experiments only; its summaries are
   never valid ETW evidence.
 
-The player prebuffer is intentionally opt-in. Before playback begins, pending
-buffers count toward the queue balance but do not produce a later-chunk
-queue-empty observation. End of stream flushes a partial prebuffer so short
-responses still play. Its metrics record the requested prebuffer duration.
-They also record the actual playback-start time relative to the request, so
-synthesis first-chunk arrival and intentional prebuffer delay can be reported
-separately.
-
-This is a possible playback-resilience mechanism, not a throughput fix: it
-trades initial playback delay for delivery slack. No default runtime policy has
-been changed.
+Playback metrics record the actual playback-start time relative to the request,
+so first-chunk arrival and sink start can be reported separately. No default
+runtime policy has been changed.
 
 One `emit_every_frames=16`, warmup, 3000 ms prebuffer attempt was stopped
 without result while unrelated local CPU/GPU work made a fresh worker load
 unusually slow. It is recorded as aborted and must not be cited as evidence.
+
+A later 3000 ms attempt reached a stronger negative result: warmup succeeded,
+the worker generated four chunks (5016.875 ms of audio) in about 8.1 s, and
+then the experimental player timed out waiting for WaveOut completion. This is
+not a GPU-stall result and not evidence that prebuffer fixes playback. The
+prebuffer implementation was therefore removed rather than retained as an
+opt-in candidate. A mock regression test reproduced the non-zero-prebuffer
+timeout, while the restored direct WaveOut submission path completed normally.
+
+The same failed run provides a separate throughput observation: its worker
+reported a 1.619 real-time factor (8123.835 ms synthesis for 5016.875 ms
+audio). Consequently, even a correct finite prebuffer would only hide a short
+burst; it cannot make arbitrarily long output real-time when the sustained
+worker rate is below audio rate.
 
 ## Current conclusions
 
@@ -149,7 +153,11 @@ unusually slow. It is recorded as aborted and must not be cited as evidence.
    DxgKrnl and scheduler evidence. It does not yet distinguish long own GPU
    work, scheduling gaps, competing contexts, preemption, paging, or transfer/
    synchronization effects.
-5. The appropriate next optimisation decision depends on marker-window analysis
+5. Under representative CPU load, the warm E=16 worker was slower than audio
+   in the failed prebuffer run (RTF 1.619). This establishes a sustained-rate
+   problem in addition to bursty delivery gaps, but not yet whether its cause
+   is own GPU work, CPU dispatch, or WDDM scheduling.
+6. The appropriate next optimisation decision depends on marker-window analysis
    of valid captures, not on another unsupported global precision change.
 
 ## Next acceptance gates
@@ -157,13 +165,9 @@ unusually slow. It is recorded as aborted and must not be cited as evidence.
 1. Finish the marker-aware analyzer review and use it only on zero-loss,
    marker-complete ETLs.
 2. On a comparatively idle machine, repeat fresh-worker runs for warmup plus
-   `emit_every_frames=16` and a bounded prebuffer sweep (for example 2000,
-   2500, and 3000 ms). Record TTFA, prebuffer delay, completion, chunk cadence,
-   and proxy observations separately.
-3. Do not promote a prebuffer to the default merely because one short run has
-   no proxy observation. It must have an explicit latency trade-off and repeat
-   successfully across bounded runs.
-4. If a valid marker-aligned window shows long worker-owned GPU work, profile
+   `emit_every_frames=16`. Record TTFA, sink start, completion, per-chunk
+   cadence, worker RTF, and proxy observations separately.
+3. If a valid marker-aligned window shows long worker-owned GPU work, profile
    that work; if it shows GPU gaps or competing context activity, investigate
    WDDM scheduling and other consumers instead. Only then choose a targeted
    runtime change.
@@ -184,16 +188,5 @@ Warmup and larger delivery-chunk experiment without an ETW follow-up:
   -Attempts 1 `
   -WorkerSynthesisWarmup `
   -EmitEveryFrames 16 `
-  -SkipEtwFollowup
-```
-
-Candidate prebuffer experiment (not an accepted default):
-
-```powershell
-.\scripts\run-cmp50hx-playback-etw-soak.ps1 `
-  -Attempts 1 `
-  -WorkerSynthesisWarmup `
-  -EmitEveryFrames 16 `
-  -PlaybackPrebufferMs 3000 `
   -SkipEtwFollowup
 ```

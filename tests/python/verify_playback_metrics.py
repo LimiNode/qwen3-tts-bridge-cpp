@@ -17,13 +17,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    unbuffered_output = args.output
-    buffered_output = args.output.with_name(f"{args.output.stem}-prebuffered.json")
-    for output in (unbuffered_output, buffered_output):
-        if output.exists():
-            output.unlink()
+    if args.output.exists():
+        args.output.unlink()
 
-    unbuffered_command = [
+    command = [
         str(args.player),
         "--mock",
         "--text",
@@ -35,14 +32,14 @@ def main() -> int:
         "--mock-chunk-delay",
         "0.15",
         "--playback-metrics-file",
-        str(unbuffered_output),
+        str(args.output),
     ]
-    subprocess.run(unbuffered_command, check=True, timeout=30)
+    subprocess.run(command, check=True, timeout=30)
 
-    result = json.loads(unbuffered_output.read_text(encoding="utf-8"))
+    result = json.loads(args.output.read_text(encoding="utf-8"))
     assert result["schema_version"] == 1
     assert result["measurement"] == "waveout_queue_starvation_proxy"
-    assert result["playback_prebuffer_ms"] == 0
+    assert result["playback_started_ms"] is None or result["playback_started_ms"] >= 0
     assert result["etw_playback_markers_enabled"] is False
     assert result["etw_playback_marker_count"] == 0
     assert result["playback_completed"] is True
@@ -56,46 +53,6 @@ def main() -> int:
         assert result["chunks"][0]["inter_arrival_ms"] is None
         assert any(
             chunk["queue_empty_before_later_chunk"] for chunk in result["chunks"][1:]
-        )
-
-    buffered_command = [
-        str(args.player),
-        "--mock",
-        "--text",
-        "Playback prebuffer smoke.",
-        "--mock-chunks",
-        "3",
-        "--mock-chunk-ms",
-        "250",
-        "--mock-chunk-delay",
-        "0.15",
-        "--playback-prebuffer-ms",
-        "400",
-        "--playback-metrics-file",
-        str(buffered_output),
-    ]
-    subprocess.run(buffered_command, check=True, timeout=30)
-
-    buffered_result = json.loads(buffered_output.read_text(encoding="utf-8"))
-    assert buffered_result["schema_version"] == 1
-    assert buffered_result["measurement"] == "waveout_queue_starvation_proxy"
-    assert buffered_result["playback_prebuffer_ms"] == 400
-    assert buffered_result["playback_completed"] is True
-    if buffered_result["audio_chunk_count"] == 0:
-        print("WaveOut device unavailable; playback prebuffer assertions skipped.")
-    else:
-        assert buffered_result["audio_chunk_count"] == 3
-        assert len(buffered_result["chunks"]) == 3
-        assert buffered_result["playback_started_ms"] is not None
-        assert (
-            buffered_result["chunks"][0]["arrival_ms"]
-            <= buffered_result["playback_started_ms"]
-            <= buffered_result["chunks"][1]["arrival_ms"]
-        )
-        assert buffered_result["queue_empty_before_later_chunk_count"] == 0
-        assert all(
-            not chunk["queue_empty_before_later_chunk"]
-            for chunk in buffered_result["chunks"]
         )
 
     missing_metrics = subprocess.run(
