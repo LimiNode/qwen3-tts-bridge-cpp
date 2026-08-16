@@ -263,6 +263,26 @@ function Get-EtlValidation {
     }
 }
 
+function Get-WprPlaybackMarkerStatus {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TraceStatsDetail,
+
+        [Parameter(Mandatory = $true)]
+        [int]$ExpectedMarkerCount
+    )
+
+    $match = [regex]::Match(
+        $TraceStatsDetail,
+        '(?m)^\s*0x22\s+0x00\s+0x0000\s+(\d+)\s+\d+\s+Mark\s*$')
+    $observedMarkerCount = if ($match.Success) { [int]$match.Groups[1].Value } else { 0 }
+    return [ordered]@{
+        expected_marker_count = $ExpectedMarkerCount
+        observed_perfinfo_mark_count = $observedMarkerCount
+        playback_markers_present = $observedMarkerCount -ge $ExpectedMarkerCount
+    }
+}
+
 function Invoke-PlaybackRun {
     param(
         [Parameter(Mandatory = $true)]
@@ -344,8 +364,15 @@ function Invoke-PlaybackRun {
         throw "Playback run completed without metrics: $metrics"
     }
     $result = Get-Content -LiteralPath $metrics -Raw | ConvertFrom-Json
+    $expectedPlaybackMarkerCount = $null
     if ($CaptureEtw -and -not $result.etw_playback_markers_enabled) {
         throw 'ETW follow-up completed without requested playback marker instrumentation.'
+    }
+    if ($CaptureEtw) {
+        $expectedPlaybackMarkerCount = 1 + [int]$result.queue_empty_before_later_chunk_count
+        if ([int]$result.etw_playback_marker_count -ne $expectedPlaybackMarkerCount) {
+            throw 'ETW follow-up did not confirm every requested playback marker write.'
+        }
     }
     $graphs = (Select-String -LiteralPath $stderr -Pattern 'CUDA graph captured!' -SimpleMatch |
         Measure-Object).Count
@@ -354,6 +381,15 @@ function Invoke-PlaybackRun {
             -TraceStatsDetailPath $traceStatsDetail
     }
     else { $null }
+    $markerStatus = if ($CaptureEtw) {
+        Get-WprPlaybackMarkerStatus -TraceStatsDetail (
+            Get-Content -LiteralPath $traceStatsDetail -Raw) `
+            -ExpectedMarkerCount $expectedPlaybackMarkerCount
+    }
+    else { $null }
+    if ($CaptureEtw -and -not $markerStatus.playback_markers_present) {
+        throw 'ETW follow-up is missing the expected WPR playback marker records.'
+    }
     return [ordered]@{
         prefix = $Prefix
         etw_captured = [bool]$CaptureEtw
@@ -379,6 +415,9 @@ function Invoke-PlaybackRun {
         scheduler_event_types = if ($CaptureEtw) { $etlValidation.scheduler_event_types } else { $null }
         scheduler_event_count = if ($CaptureEtw) { $etlValidation.scheduler_event_count } else { $null }
         semantic_trace_valid = if ($CaptureEtw) { $etlValidation.semantic_trace_valid } else { $null }
+        expected_playback_marker_count = if ($CaptureEtw) { $markerStatus.expected_marker_count } else { $null }
+        observed_perfinfo_mark_count = if ($CaptureEtw) { $markerStatus.observed_perfinfo_mark_count } else { $null }
+        playback_markers_present = if ($CaptureEtw) { $markerStatus.playback_markers_present } else { $null }
         event_loss_verified_zero = if ($CaptureEtw) {
             $etlValidation.event_loss_status -eq 'verified_zero'
         }
@@ -386,7 +425,8 @@ function Invoke-PlaybackRun {
         etl_usable_for_analysis = if ($CaptureEtw) {
             $etlValidation.etl_transport_valid -and
             $etlValidation.event_loss_status -eq 'verified_zero' -and
-            $etlValidation.semantic_trace_valid
+            $etlValidation.semantic_trace_valid -and
+            $markerStatus.playback_markers_present
         }
         else { $null }
         exit_code = $exitCode

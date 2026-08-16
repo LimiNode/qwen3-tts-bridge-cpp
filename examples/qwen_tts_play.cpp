@@ -6,7 +6,6 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#include <evntprov.h>
 #include <mmsystem.h>
 
 #include <chrono>
@@ -126,23 +125,12 @@ struct PlaybackChunkMetric {
     bool queue_empty_before_later_chunk = false;
 };
 
-class EtwPlaybackMarkers final {
+class WprPlaybackMarkers final {
 public:
-    EtwPlaybackMarkers() {
-        const ULONG result = EventRegister(&provider_id(), nullptr, nullptr, &registration_);
-        if (result != ERROR_SUCCESS) {
-            throw std::runtime_error("failed to register playback ETW marker provider");
-        }
-    }
+    WprPlaybackMarkers() = default;
 
-    ~EtwPlaybackMarkers() {
-        if (registration_ != 0) {
-            EventUnregister(registration_);
-        }
-    }
-
-    EtwPlaybackMarkers(const EtwPlaybackMarkers&) = delete;
-    EtwPlaybackMarkers& operator=(const EtwPlaybackMarkers&) = delete;
+    WprPlaybackMarkers(const WprPlaybackMarkers&) = delete;
+    WprPlaybackMarkers& operator=(const WprPlaybackMarkers&) = delete;
 
     void request_start() const {
         write(L"qwen_tts_bridge.playback.request_start");
@@ -155,28 +143,56 @@ public:
     }
 
 private:
-    static const GUID& provider_id() {
-        static const GUID value{
-            0x9f07e68d,
-            0x2b7a,
-            0x4bc1,
-            {0xa5, 0x8d, 0x95, 0x62, 0x4f, 0x0d, 0x6f, 0xe6}};
-        return value;
+    static std::wstring quote_argument(const std::wstring& value) {
+        return L"\"" + value + L"\"";
     }
 
     void write(const std::wstring& marker) const {
-        const ULONG result = EventWriteString(registration_, 0, 0, marker.c_str());
-        if (result != ERROR_SUCCESS) {
-            throw std::runtime_error("failed to write playback ETW marker");
+        std::array<wchar_t, MAX_PATH> system_directory{};
+        const UINT length = GetSystemDirectoryW(
+            system_directory.data(), static_cast<UINT>(system_directory.size()));
+        if (length == 0 || length >= system_directory.size()) {
+            throw std::runtime_error("failed to resolve the system WPR executable path");
+        }
+
+        const std::wstring executable =
+            std::wstring(system_directory.data(), length) + L"\\wpr.exe";
+        std::wstring command_line = quote_argument(executable) + L" -marker " +
+            quote_argument(marker);
+        STARTUPINFOW startup_info{};
+        startup_info.cb = sizeof(startup_info);
+        PROCESS_INFORMATION process_info{};
+        if (!CreateProcessW(
+                executable.c_str(),
+                command_line.data(),
+                nullptr,
+                nullptr,
+                false,
+                CREATE_NO_WINDOW,
+                nullptr,
+                nullptr,
+                &startup_info,
+                &process_info)) {
+            throw std::runtime_error("failed to start wpr.exe for playback marker");
+        }
+        CloseHandle(process_info.hThread);
+        const DWORD wait_result = WaitForSingleObject(process_info.hProcess, 30000);
+        if (wait_result != WAIT_OBJECT_0) {
+            CloseHandle(process_info.hProcess);
+            throw std::runtime_error("timed out while writing playback WPR marker");
+        }
+        DWORD exit_code = 0;
+        const bool completed = GetExitCodeProcess(process_info.hProcess, &exit_code) != FALSE;
+        CloseHandle(process_info.hProcess);
+        if (!completed || exit_code != 0) {
+            throw std::runtime_error("wpr.exe failed to write playback marker");
         }
     }
-
-    REGHANDLE registration_ = 0;
 };
 
 class PlaybackMetrics final {
 public:
-    explicit PlaybackMetrics(EtwPlaybackMarkers* etw_markers = nullptr)
+    explicit PlaybackMetrics(WprPlaybackMarkers* etw_markers = nullptr)
         : etw_markers_(etw_markers) {
     }
 
@@ -187,6 +203,7 @@ public:
         playback_completed_ = false;
         if (etw_markers_ != nullptr) {
             etw_markers_->request_start();
+            ++etw_playback_marker_count_;
         }
     }
 
@@ -214,6 +231,7 @@ public:
         chunks_.push_back(metric);
         if (queue_empty_before_later_chunk && etw_markers_ != nullptr) {
             etw_markers_->queue_empty_before_later_chunk(chunks_.size() - 1);
+            ++etw_playback_marker_count_;
         }
     }
 
@@ -225,6 +243,7 @@ public:
     void write_json_file(const std::string& file_name) const {
         std::vector<PlaybackChunkMetric> chunks;
         bool playback_completed = false;
+        std::size_t etw_playback_marker_count = 0;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (!started_at_.has_value()) {
@@ -232,6 +251,7 @@ public:
             }
             chunks = chunks_;
             playback_completed = playback_completed_;
+            etw_playback_marker_count = etw_playback_marker_count_;
         }
 
         std::size_t queue_empty_before_later_chunk_count = 0;
@@ -250,6 +270,7 @@ public:
              << "  \"measurement\": \"waveout_queue_starvation_proxy\",\n"
              << "  \"etw_playback_markers_enabled\": "
              << (etw_markers_ != nullptr ? "true" : "false") << ",\n"
+             << "  \"etw_playback_marker_count\": " << etw_playback_marker_count << ",\n"
              << "  \"playback_completed\": " << (playback_completed ? "true" : "false") << ",\n"
              << "  \"audio_chunk_count\": " << chunks.size() << ",\n"
              << "  \"total_audio_duration_ms\": " << total_audio_duration_ms << ",\n"
@@ -314,7 +335,8 @@ private:
     std::optional<std::chrono::steady_clock::time_point> started_at_;
     std::vector<PlaybackChunkMetric> chunks_;
     bool playback_completed_ = false;
-    EtwPlaybackMarkers* etw_markers_ = nullptr;
+    WprPlaybackMarkers* etw_markers_ = nullptr;
+    std::size_t etw_playback_marker_count_ = 0;
 };
 
 class WaveOutPlayer final {
@@ -1332,9 +1354,9 @@ int wmain(int argc, wchar_t** argv) {
                 "the active worker profile does not guarantee deterministic explicit seeds");
         }
 
-        std::unique_ptr<EtwPlaybackMarkers> etw_playback_markers;
+        std::unique_ptr<WprPlaybackMarkers> etw_playback_markers;
         if (options.etw_playback_markers) {
-            etw_playback_markers = std::make_unique<EtwPlaybackMarkers>();
+            etw_playback_markers = std::make_unique<WprPlaybackMarkers>();
         }
         std::unique_ptr<PlaybackMetrics> playback_metrics;
         if (!options.playback_metrics_file.empty()) {

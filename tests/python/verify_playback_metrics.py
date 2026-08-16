@@ -17,12 +17,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    marker_output = args.output.with_name(
-        f"{args.output.stem}-etw-markers{args.output.suffix}"
-    )
-    for output in (args.output, marker_output):
-        if output.exists():
-            output.unlink()
+    if args.output.exists():
+        args.output.unlink()
 
     command = [
         str(args.player),
@@ -44,6 +40,7 @@ def main() -> int:
     assert result["schema_version"] == 1
     assert result["measurement"] == "waveout_queue_starvation_proxy"
     assert result["etw_playback_markers_enabled"] is False
+    assert result["etw_playback_marker_count"] == 0
     assert result["playback_completed"] is True
     if result["audio_chunk_count"] == 0:
         print("WaveOut device unavailable; playback queue assertions skipped.")
@@ -56,13 +53,6 @@ def main() -> int:
             chunk["queue_empty_before_later_chunk"]
             for chunk in result["chunks"][1:]
         )
-
-    subprocess.run(
-        [*command[:-1], str(marker_output), "--etw-playback-markers"],
-        check=True,
-    )
-    marker_result = json.loads(marker_output.read_text(encoding="utf-8"))
-    assert marker_result["etw_playback_markers_enabled"] is True
 
     missing_metrics = subprocess.run(
         [str(args.player), "--mock", "--etw-playback-markers"],

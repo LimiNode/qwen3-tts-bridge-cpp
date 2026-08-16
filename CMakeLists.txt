@@ -106,7 +106,6 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         target_link_libraries(qwen_tts_play
             PRIVATE
                 QwenTTSBridge::qwen_tts_bridge
-                advapi32
                 winmm
         )
         if(MINGW)
