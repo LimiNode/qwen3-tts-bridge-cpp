@@ -6,6 +6,7 @@ import json
 import subprocess
 import unittest
 from pathlib import Path
+from typing import Any, cast
 
 _ROOT = Path(__file__).resolve().parents[2]
 _MODULE = _ROOT / "scripts" / "Cmp50hxEtwMarkerAnalysis.psm1"
@@ -14,7 +15,7 @@ _REQUEST_START = "qwen_tts_bridge.playback.request_start"
 _QUEUE_EMPTY_PREFIX = "qwen_tts_bridge.playback.queue_empty_before_later_chunk"
 
 
-def _invoke(command: str) -> object:
+def _invoke(command: str) -> dict[str, Any]:
     completed = subprocess.run(
         [
             _POWERSHELL,
@@ -26,7 +27,7 @@ def _invoke(command: str) -> object:
         capture_output=True,
         text=True,
     )
-    return json.loads(completed.stdout)
+    return cast(dict[str, Any], json.loads(completed.stdout))
 
 
 class Cmp50hxEtwMarkerAnalysisTest(unittest.TestCase):
