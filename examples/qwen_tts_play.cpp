@@ -82,6 +82,7 @@ struct ProgramOptions {
     int mock_chunk_ms = 100;
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
+    std::chrono::milliseconds playback_prebuffer{0};
     std::string playback_metrics_file;
     bool etw_playback_markers = false;
 };
@@ -192,8 +193,11 @@ private:
 
 class PlaybackMetrics final {
 public:
-    explicit PlaybackMetrics(WprPlaybackMarkers* etw_markers = nullptr)
-        : etw_markers_(etw_markers) {
+    explicit PlaybackMetrics(
+        std::chrono::milliseconds playback_prebuffer,
+        WprPlaybackMarkers* etw_markers = nullptr)
+        : playback_prebuffer_(playback_prebuffer),
+          etw_markers_(etw_markers) {
     }
 
     void begin_request() {
@@ -268,6 +272,7 @@ public:
         json << "{\n"
              << "  \"schema_version\": 1,\n"
              << "  \"measurement\": \"waveout_queue_starvation_proxy\",\n"
+             << "  \"playback_prebuffer_ms\": " << playback_prebuffer_.count() << ",\n"
              << "  \"etw_playback_markers_enabled\": "
              << (etw_markers_ != nullptr ? "true" : "false") << ",\n"
              << "  \"etw_playback_marker_count\": " << etw_playback_marker_count << ",\n"
@@ -335,14 +340,18 @@ private:
     std::optional<std::chrono::steady_clock::time_point> started_at_;
     std::vector<PlaybackChunkMetric> chunks_;
     bool playback_completed_ = false;
+    std::chrono::milliseconds playback_prebuffer_;
     WprPlaybackMarkers* etw_markers_ = nullptr;
     std::size_t etw_playback_marker_count_ = 0;
 };
 
 class WaveOutPlayer final {
 public:
-    explicit WaveOutPlayer(PlaybackMetrics* metrics = nullptr)
-        : metrics_(metrics) {
+    explicit WaveOutPlayer(
+        std::chrono::milliseconds playback_prebuffer,
+        PlaybackMetrics* metrics = nullptr)
+        : playback_prebuffer_(playback_prebuffer),
+          metrics_(metrics) {
     }
 
     ~WaveOutPlayer() {
@@ -371,9 +380,9 @@ public:
         }
         reap_finished_locked();
         open_or_validate_locked(chunk.format);
-        const double queued_audio_before_ms = queued_audio_duration_ms_locked();
+        const double queued_audio_before_ms = buffered_audio_duration_ms_locked();
         const bool queue_empty_before_later_chunk =
-            has_enqueued_audio_since_reset_ && buffers_.empty();
+            playback_started_ && has_enqueued_audio_since_reset_ && buffers_.empty();
 
         auto buffer = std::make_unique<Buffer>();
         buffer->bytes = chunk.bytes;
@@ -381,27 +390,25 @@ public:
         buffer->header.dwBufferLength = static_cast<DWORD>(buffer->bytes.size());
         buffer->duration_ms = pcm_duration_ms(chunk.format, buffer->bytes.size());
 
-        check_mmresult(
-            waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
-            "waveOutPrepareHeader");
-        buffer->prepared = true;
-        try {
-            check_mmresult(
-                waveOutWrite(m_handle, &buffer->header, sizeof(WAVEHDR)),
-                "waveOutWrite");
-        }
-        catch (...) {
-            waveOutUnprepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR));
-            throw;
-        }
-        buffers_.push_back(std::move(buffer));
+        pending_buffers_.push_back(std::move(buffer));
         has_enqueued_audio_since_reset_ = true;
+        if (!playback_started_ &&
+            buffered_audio_duration_ms_locked() >= playback_prebuffer_.count()) {
+            start_playback_locked();
+        }
         if (metrics_ != nullptr) {
             metrics_->record_chunk(
                 pcm_duration_ms(chunk.format, chunk.bytes.size()),
                 queued_audio_before_ms,
-                queued_audio_duration_ms_locked(),
+                buffered_audio_duration_ms_locked(),
                 queue_empty_before_later_chunk);
+        }
+    }
+
+    void finish_input(std::uint64_t playback_epoch) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (playback_epoch == playback_epoch_) {
+            start_playback_locked();
         }
     }
 
@@ -415,6 +422,8 @@ public:
         }
         if (m_handle == nullptr) {
             has_enqueued_audio_since_reset_ = false;
+            pending_buffers_.clear();
+            playback_started_ = false;
             return playback_epoch_;
         }
 
@@ -432,16 +441,18 @@ public:
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             lock.lock();
         }
+        pending_buffers_.clear();
         has_enqueued_audio_since_reset_ = false;
+        playback_started_ = false;
         return playback_epoch_;
     }
 
     void wait_until_idle(std::chrono::milliseconds timeout) {
         std::unique_lock<std::mutex> lock(mutex_);
         const auto deadline = std::chrono::steady_clock::now() + timeout;
-        while (!buffers_.empty()) {
+        while (!buffers_.empty() || !pending_buffers_.empty()) {
             reap_finished_locked();
-            if (buffers_.empty()) {
+            if (buffers_.empty() && pending_buffers_.empty()) {
                 return;
             }
             if (std::chrono::steady_clock::now() >= deadline) {
@@ -486,12 +497,57 @@ private:
             static_cast<double>(bytes_per_second);
     }
 
-    double queued_audio_duration_ms_locked() const {
+    double buffered_audio_duration_ms_locked() const {
         double duration_ms = 0.0;
         for (const std::unique_ptr<Buffer>& buffer : buffers_) {
             duration_ms += buffer->duration_ms;
         }
+        for (const std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+            duration_ms += buffer->duration_ms;
+        }
         return duration_ms;
+    }
+
+    void start_playback_locked() {
+        if (playback_started_ || pending_buffers_.empty()) {
+            return;
+        }
+        try {
+            for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+                check_mmresult(
+                    waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
+                    "waveOutPrepareHeader");
+                buffer->prepared = true;
+                try {
+                    check_mmresult(
+                        waveOutWrite(m_handle, &buffer->header, sizeof(WAVEHDR)),
+                        "waveOutWrite");
+                }
+                catch (...) {
+                    waveOutUnprepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR));
+                    buffer->prepared = false;
+                    throw;
+                }
+                buffers_.push_back(std::move(buffer));
+            }
+        }
+        catch (...) {
+            check_mmresult(waveOutReset(m_handle), "waveOutReset after failed playback start");
+            for (std::unique_ptr<Buffer>& buffer : buffers_) {
+                if (buffer->prepared) {
+                    check_mmresult(
+                        waveOutUnprepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
+                        "waveOutUnprepareHeader after failed playback start");
+                }
+            }
+            buffers_.clear();
+            pending_buffers_.clear();
+            has_enqueued_audio_since_reset_ = false;
+            playback_started_ = false;
+            throw;
+        }
+        pending_buffers_.clear();
+        playback_started_ = true;
     }
 
     void open_or_validate_locked(const AudioFormat& format) {
@@ -553,8 +609,11 @@ private:
     HWAVEOUT m_handle = nullptr;
     AudioFormat m_format;
     std::vector<std::unique_ptr<Buffer>> buffers_;
+    std::vector<std::unique_ptr<Buffer>> pending_buffers_;
     std::uint64_t playback_epoch_ = 1;
     bool has_enqueued_audio_since_reset_ = false;
+    bool playback_started_ = false;
+    std::chrono::milliseconds playback_prebuffer_;
     PlaybackMetrics* metrics_ = nullptr;
 };
 
@@ -620,6 +679,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
+        << "  --playback-prebuffer-ms <ms>   Audio to queue before playback, default: 0.\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
         << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
@@ -768,6 +828,12 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
             options.startup_timeout = std::chrono::milliseconds(parse_u32(
                 require_value(index, argc, argv, "--startup-timeout-ms"),
                 "--startup-timeout-ms"));
+        }
+        else if (arg == "--playback-prebuffer-ms" ||
+                 arg.rfind("--playback-prebuffer-ms=", 0) == 0) {
+            options.playback_prebuffer = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--playback-prebuffer-ms"),
+                "--playback-prebuffer-ms"));
         }
         else if (arg == "--playback-metrics-file" ||
                  arg.rfind("--playback-metrics-file=", 0) == 0) {
@@ -975,7 +1041,8 @@ RequestId submit_request(
             std::cerr << "playback error: " << exc.what() << '\n';
         }
     };
-    callbacks.on_completed = [&active_state, one_shot_state, request_id] {
+    callbacks.on_completed = [&player, &active_state, one_shot_state, playback_epoch, request_id] {
+        player.finish_input(playback_epoch);
         clear_active_request(active_state, request_id);
         if (one_shot_state != nullptr) {
             std::lock_guard<std::mutex> lock(one_shot_state->mutex);
@@ -1360,9 +1427,11 @@ int wmain(int argc, wchar_t** argv) {
         }
         std::unique_ptr<PlaybackMetrics> playback_metrics;
         if (!options.playback_metrics_file.empty()) {
-            playback_metrics = std::make_unique<PlaybackMetrics>(etw_playback_markers.get());
+            playback_metrics = std::make_unique<PlaybackMetrics>(
+                options.playback_prebuffer,
+                etw_playback_markers.get());
         }
-        WaveOutPlayer player(playback_metrics.get());
+        WaveOutPlayer player(options.playback_prebuffer, playback_metrics.get());
         ActiveRequestState active_state;
 
         if (!options.text.empty()) {
