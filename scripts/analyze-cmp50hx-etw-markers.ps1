@@ -159,25 +159,33 @@ $windows = @(New-Cmp50hxPlaybackMarkerWindows `
 $combinedStart = [int64](($windows | Measure-Object -Property start_timestamp_us -Minimum).Minimum)
 $combinedEnd = [int64](($windows | Measure-Object -Property end_timestamp_us -Maximum).Maximum)
 
-$dxgOutput = Join-Path ([IO.Path]::GetTempPath()) "cmp50hx-xperf-$PID-$([guid]::NewGuid().ToString('N')).out"
-$dxgError = Join-Path ([IO.Path]::GetTempPath()) "cmp50hx-xperf-$PID-$([guid]::NewGuid().ToString('N')).err"
-try {
-    & $xperf -i $etlFile -a dumper -range $combinedStart $combinedEnd `
-        -provider '{802ec45a-1e99-4b83-9920-87c98277ba9d}' 1> $dxgOutput 2> $dxgError
-    if ($LASTEXITCODE -ne 0) {
-        $errorText = (Get-Content -LiteralPath $dxgError -Raw -ErrorAction SilentlyContinue).Trim()
-        throw "xperf bounded DxgKrnl dump failed (exit=$LASTEXITCODE). $errorText"
+$windowSummaryList = New-Object 'System.Collections.Generic.List[object]'
+foreach ($window in $windows) {
+    $dxgOutput = Join-Path ([IO.Path]::GetTempPath()) "cmp50hx-xperf-$PID-$($window.window_id)-$([guid]::NewGuid().ToString('N')).out"
+    $dxgError = Join-Path ([IO.Path]::GetTempPath()) "cmp50hx-xperf-$PID-$($window.window_id)-$([guid]::NewGuid().ToString('N')).err"
+    try {
+        & $xperf -i $etlFile -a dumper -range $window.start_timestamp_us $window.end_timestamp_us `
+            -provider '{802ec45a-1e99-4b83-9920-87c98277ba9d}' 1> $dxgOutput 2> $dxgError
+        if ($LASTEXITCODE -ne 0) {
+            $errorText = (Get-Content -LiteralPath $dxgError -Raw -ErrorAction SilentlyContinue).Trim()
+            throw "xperf DxgKrnl dump for marker window $($window.window_id) failed (exit=$LASTEXITCODE). $errorText"
+        }
+        # The union of marker windows can still contain hundreds of thousands
+        # of unrelated GPU records. Process one bounded window at a time so
+        # the temporary dump and managed input remain bounded.
+        $windowSummary = @(Get-Cmp50hxMarkerWindowDxgKrnlSummary `
+                -DumperLines ([IO.File]::ReadLines($dxgOutput)) `
+                -Windows @($window) `
+                -WorkerPid $workerPid)
+        foreach ($windowSummaryItem in $windowSummary) {
+            $windowSummaryList.Add($windowSummaryItem)
+        }
     }
-    # Do not materialize the complete xperf output: this bounded interval can
-    # still contain hundreds of thousands of unrelated GPU records.
-    $windowSummaries = @(Get-Cmp50hxMarkerWindowDxgKrnlSummary `
-            -DumperLines ([IO.File]::ReadLines($dxgOutput)) `
-            -Windows $windows `
-            -WorkerPid $workerPid)
+    finally {
+        Remove-Item -LiteralPath $dxgOutput, $dxgError -Force -ErrorAction SilentlyContinue
+    }
 }
-finally {
-    Remove-Item -LiteralPath $dxgOutput, $dxgError -Force -ErrorAction SilentlyContinue
-}
+$windowSummaries = @($windowSummaryList.ToArray())
 $workerDxgKrnlEventCount = [int](($windowSummaries | Measure-Object -Property worker_dxgkrnl_event_count -Sum).Sum)
 $attribution = Get-Cmp50hxWorkerAttributionStatus `
     -WorkerCswitchPresent $workerCswitchPresent `
@@ -202,6 +210,7 @@ $report = [ordered]@{
     }
     marker_validation = $markerValidation
     bounded_dump = [ordered]@{
+        extraction_strategy = 'per_marker_window'
         start_timestamp_us = $combinedStart
         end_timestamp_us = $combinedEnd
         window_before_us = $WindowBeforeUs
