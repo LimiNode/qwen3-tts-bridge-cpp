@@ -223,6 +223,21 @@ trajectory, it is a diagnostic A/B only: each side needs the same warmup,
 fresh-worker EOS/finite smoke, and a representative-load RTF/playback run.
 No result is a runtime-policy change until that comparison completes.
 
+The first chronological default/high pair was recorded with synthesis warmup,
+`emit_every_frames=16`, and the same active representative background workload.
+It is a useful directional result, not a repeated or randomized estimate:
+
+| Policy | Worker synthesis | Worker RTF | First worker PCM | Playback start | Queue-empty proxy |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Torch default | 7500.108 ms | 1.494976 | 1511.206 ms | 1684.371 ms | 3 |
+| `high` | 7152.027 ms | 1.425594 | 1362.078 ms | 1591.154 ms | 3 |
+
+`high` reduced synthesis wall time by 4.64% in this pair, consistent with the
+FP32-GEMM hypothesis. It did not reach RTF <= 1 or remove any starvation-proxy
+observation. The result therefore justifies a finite/EOS smoke and a repeated
+active-versus-idle comparison; it does not yet justify enabling TF32 in the
+normal runtime policy.
+
 ## Next acceptance gates
 
 1. Finish the marker-aware analyzer review and use it only on zero-loss,
