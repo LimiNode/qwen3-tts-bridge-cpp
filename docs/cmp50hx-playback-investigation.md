@@ -204,6 +204,25 @@ worker rate is below audio rate.
 8. The appropriate next optimisation decision depends on timing-aware
    marker-window analysis, not on another unsupported global precision change.
 
+### Bounded throughput probe pending
+
+The historical near-real-time C results were produced with the same frozen
+numerical boundary under more favourable scheduling conditions: fixed-seed C
+medium runs observed RTF 0.981--0.987, while a graph-compatible long smoke
+observed RTF 1.001. They establish that the model path can approach audio rate,
+but do not make the current representative-load RTF 1.300847 a regression that
+can be assumed away.
+
+One explicitly opt-in experiment is now available through
+`-MatmulPrecision high`. It asks PyTorch to use its `high` float32-matmul
+policy, which can select TF32 tensor-core kernels for the frozen C FP32
+`down_proj` GEMM on supported hardware. It does **not** change the configured
+FP32 carrier, RMSNorm, product/down data types, or default playback path.
+Because it can alter floating-point GEMM results and hence the sampled token
+trajectory, it is a diagnostic A/B only: each side needs the same warmup,
+fresh-worker EOS/finite smoke, and a representative-load RTF/playback run.
+No result is a runtime-policy change until that comparison completes.
+
 ## Next acceptance gates
 
 1. Finish the marker-aware analyzer review and use it only on zero-loss,
@@ -223,6 +242,13 @@ proxy outlier):
 
 ```powershell
 .\scripts\run-cmp50hx-playback-etw-soak.ps1 -Attempts 1
+```
+
+Bounded TF32-policy probe, with no ETW follow-up (use only after the normal
+correctness smoke has completed):
+
+```powershell
+.\scripts\run-cmp50hx-playback-etw-soak.ps1 -Attempts 1 -WorkerSynthesisWarmup -EmitEveryFrames 16 -MatmulPrecision high -SkipEtwFollowup
 ```
 
 Warmup and larger delivery-chunk experiment without an ETW follow-up:
