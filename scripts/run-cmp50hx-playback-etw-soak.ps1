@@ -5,6 +5,8 @@ param(
     [ValidateRange(1, 100)]
     [int]$QueueEmptyThreshold = 1,
 
+    [switch]$SkipEtwFollowup,
+
     [string]$Text = 'This is a physical playback soak for the frozen Faster C configuration.',
 
     [string]$Speaker = 'ryan',
@@ -24,6 +26,22 @@ param(
     [string]$WprProfilePath = '',
 
     [string]$XperfPath = '',
+
+    [switch]$WorkerSynthesisWarmup,
+
+    [ValidateRange(1, 20)]
+    [int]$WorkerWarmupPasses = 1,
+
+    [ValidateRange(1, 100)]
+    [int]$WorkerWarmupMaxOutputChunks = 2,
+
+    [string]$WorkerWarmupText = 'Warmup.',
+
+    [ValidateRange(1, 64)]
+    [int]$EmitEveryFrames = 8,
+
+    [ValidateRange(0, 30000)]
+    [int]$PlaybackPrebufferMs = 0,
 
     [string]$CudaVisibleDevices = 'GPU-40361931-6cb5-ac58-a059-5ba3e70986fb'
 )
@@ -90,19 +108,23 @@ else {
     Join-Path $repo $OutputRoot
 }
 
-$wpr = Get-Command wpr.exe -ErrorAction SilentlyContinue
-if ($null -eq $wpr) {
-    throw 'wpr.exe was not found. Install the Windows Performance Toolkit before requesting an ETW follow-up.'
-}
-if ($XperfPath) {
-    $xperf = Resolve-RepoPath $XperfPath 'xperf.exe'
-}
-else {
-    $xperfCommand = Get-Command xperf.exe -ErrorAction SilentlyContinue
-    if ($null -eq $xperfCommand) {
-        throw 'xperf.exe was not found. Install the Windows Performance Toolkit before requesting an ETW follow-up.'
+$wpr = $null
+$xperf = $null
+if (-not $SkipEtwFollowup) {
+    $wpr = Get-Command wpr.exe -ErrorAction SilentlyContinue
+    if ($null -eq $wpr) {
+        throw 'wpr.exe was not found. Install the Windows Performance Toolkit before requesting an ETW follow-up.'
     }
-    $xperf = $xperfCommand.Source
+    if ($XperfPath) {
+        $xperf = Resolve-RepoPath $XperfPath 'xperf.exe'
+    }
+    else {
+        $xperfCommand = Get-Command xperf.exe -ErrorAction SilentlyContinue
+        if ($null -eq $xperfCommand) {
+            throw 'xperf.exe was not found. Install the Windows Performance Toolkit before requesting an ETW follow-up.'
+        }
+        $xperf = $xperfCommand.Source
+    }
 }
 
 $runId = '{0}-{1}' -f [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ'), $PID
@@ -308,15 +330,26 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--dtype', '--worker-arg', 'float16',
         '--worker-arg', '--attn-implementation', '--worker-arg', 'sdpa',
         '--worker-arg', '--prefill-backend', '--worker-arg', 'eager',
-        '--worker-arg', '--emit-every-frames', '--worker-arg', '8',
+        '--worker-arg', '--emit-every-frames', '--worker-arg', $EmitEveryFrames,
         '--worker-arg', '--decode-window-frames', '--worker-arg', '80',
         '--worker-arg', '--no-compile', '--worker-arg', '--no-cuda-graphs',
         '--worker-arg', '--seed', '--worker-arg', '20260806',
         '--worker-arg', '--seed-mode', '--worker-arg', 'fixed',
         '--text', $Text, '--speaker', $Speaker,
         '--startup-timeout-ms', '240000',
+        '--playback-prebuffer-ms', $PlaybackPrebufferMs,
         '--playback-metrics-file', $metrics
     )
+    if ($WorkerSynthesisWarmup) {
+        $arguments += @(
+            '--worker-arg', '--warmup-synthesis',
+            '--worker-arg', '--warmup-synthesis-passes', '--worker-arg', $WorkerWarmupPasses,
+            '--worker-arg', '--warmup-max-output-chunks', '--worker-arg', $WorkerWarmupMaxOutputChunks,
+            '--worker-arg', '--warmup-text', '--worker-arg', $WorkerWarmupText,
+            '--worker-arg', '--warmup-language', '--worker-arg', 'auto',
+            '--worker-arg', '--warmup-speaker', '--worker-arg', $Speaker
+        )
+    }
 
     $wprStarted = $false
     try {
@@ -456,7 +489,7 @@ try {
     }
 
     $etwFollowup = $null
-    if ($null -ne $outlier) {
+    if ($null -ne $outlier -and -not $SkipEtwFollowup) {
         $etwFollowup = Invoke-PlaybackRun -Prefix 'outlier-followup-etw' -CaptureEtw
         $etwFollowup['outlier'] = Test-Cmp50hxPlaybackOutlier `
             -PlaybackCompleted $etwFollowup.playback_completed `
@@ -477,6 +510,11 @@ try {
             graph_finite_checker = $false
             stall_telemetry = $false
             etw_on_normal_runs = $false
+            worker_synthesis_warmup = [bool]$WorkerSynthesisWarmup
+            worker_warmup_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupPasses } else { $null }
+            worker_warmup_max_output_chunks = if ($WorkerSynthesisWarmup) { $WorkerWarmupMaxOutputChunks } else { $null }
+            emit_every_frames = $EmitEveryFrames
+            playback_prebuffer_ms = $PlaybackPrebufferMs
         }
         playback_measurement = 'WaveOut queue starvation proxy; not a hardware underrun counter'
         etw_profile = 'CMP50HX-DxgKrnl-Scheduler'
@@ -501,6 +539,10 @@ try {
         Write-Output "No playback outlier in $Attempts bounded frozen-C attempts; WPR was not launched."
     }
     else {
+        if ($SkipEtwFollowup) {
+            Write-Output 'Playback outlier observed; ETW follow-up was explicitly skipped for this experiment.'
+            exit 0
+        }
         if (-not $etwFollowup.etl_usable_for_analysis) {
             Write-Error "ETL validation failed (transport_valid=$($etwFollowup.etl_transport_valid), event_loss_status=$($etwFollowup.event_loss_status), semantic_trace_valid=$($etwFollowup.semantic_trace_valid)); ETL is not valid evidence."
             exit 5
