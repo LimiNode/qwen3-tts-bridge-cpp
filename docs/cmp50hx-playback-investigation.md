@@ -74,6 +74,11 @@ a GPU root cause from that presence. Full DxgKrnl decoding with the installed
 legacy `xperf` is expensive for the bounded roughly 754 MB ETL, so no partially
 decoded trace is presented as a root-cause conclusion.
 
+The original combined marker range (about 28 seconds) did not finish within
+five minutes. In contrast, extracting each 1.1-second marker window separately
+completed in tens of seconds per window. This preserves the same ETW-relative
+windows while bounding temporary output and enables a compact per-window report.
+
 ## Reproductions and observations
 
 The marker-aligned ETW capture `20260816T004412Z-98540` is valid evidence:
@@ -108,6 +113,30 @@ as the measured request.
 The observed E=16 inter-arrival intervals were approximately 1864, 2721, and
 1853 ms for audio chunks of about 1.28 s. Thus graph capture is a user-visible
 startup problem, but cannot alone explain the repeated steady-stream gaps.
+
+### GPU activity in the valid marker windows
+
+The zero-loss ETL identifies the TTS worker as `python.exe (100964)`. The
+separately running RAG materialization process was `python.exe (38616)`. Both
+processes had DxgKrnl activity in every 1.1-second window around a playback
+queue-empty marker:
+
+| Queue-empty marker | TTS DxgKrnl events | RAG DxgKrnl events | TTS DMA / queue packets | RAG DMA / queue packets |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 12,204 | 13,764 | 2,358 / 7,548 | 6,236 / 4,237 |
+| 2 | 13,160 | 13,074 | 2,810 / 7,649 | 5,978 / 4,218 |
+| 3 | 12,722 | 10,799 | 2,461 / 7,929 | 4,956 / 3,172 |
+| 4 | 13,941 | 7,183 | 3,221 / 7,867 | 3,227 / 2,219 |
+| 5 | 25,995 | 13,551 | 5,382 / 15,603 | 6,548 / 4,133 |
+| 6 | 23,946 | 19,436 | 4,344 / 15,255 | 9,413 / 5,874 |
+| 7 | 12,914 | 17,748 | 2,379 / 8,140 | 7,965 / 5,796 |
+
+These counts establish that the materializer was not CPU-only with respect to
+GPU scheduling in this capture, and that it was not the only active workload:
+TTS itself also had substantial GPU queue activity. Event counts are not GPU
+execution duration, so this table rules out neither TTS-owned long work nor
+WDDM scheduling/preemption. It does establish that the next causal A/B must
+explicitly account for the materializer as a competing GPU context.
 
 ## Changes under evaluation
 
@@ -157,8 +186,12 @@ worker rate is below audio rate.
    in the failed prebuffer run (RTF 1.619). This establishes a sustained-rate
    problem in addition to bursty delivery gaps, but not yet whether its cause
    is own GPU work, CPU dispatch, or WDDM scheduling.
-6. The appropriate next optimisation decision depends on marker-window analysis
-   of valid captures, not on another unsupported global precision change.
+6. The valid marker windows show simultaneous TTS and RAG GPU activity. Any
+   claim that the RAG materializer is CPU-only is inconsistent with this trace;
+   any claim that it alone caused the stalls is also unsupported because TTS
+   activity is substantial in the same windows.
+7. The appropriate next optimisation decision depends on timing-aware
+   marker-window analysis, not on another unsupported global precision change.
 
 ## Next acceptance gates
 
