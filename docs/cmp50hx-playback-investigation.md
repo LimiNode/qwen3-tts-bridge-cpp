@@ -245,6 +245,22 @@ host synchronization during predictor replay. Its RTF is intentionally not a
 performance result because the checker is enabled. This closes the basic
 numerical safety gate for `high`; it does not replace a repeated playback A/B.
 
+The next attribution probe applies `AboveNormal` CPU priority only to the
+short-lived playback client and its inherited worker priority. It neither
+changes nor suspends the materializer/RAG process. A positive result would
+identify host dispatch as a meaningful contributor; it would not prove or
+change WDDM GPU scheduling policy. The default launcher keeps `Normal` priority
+and its original execution path. A separate opt-in managed-launcher control is
+required for this experiment, so the `Normal` and `AboveNormal` sides use the
+same child-process and raw-log path.
+
+That matched pair produced no material CPU-priority effect: `Normal` measured
+RTF 1.386605 and `AboveNormal` measured RTF 1.386561, with three queue-empty
+proxy observations on each side. This is a bounded negative result, not a
+tail-study: do not promote CPU priority as a realtime fix. It narrows the
+remaining investigation away from Windows host-process priority and toward
+worker-owned GPU work or GPU-context scheduling.
+
 ## Next acceptance gates
 
 1. Finish the marker-aware analyzer review and use it only on zero-loss,
@@ -272,6 +288,14 @@ correctness smoke has completed):
 ```powershell
 .\scripts\run-cmp50hx-playback-etw-soak.ps1 -Attempts 1 -WorkerSynthesisWarmup -EmitEveryFrames 16 -MatmulPrecision high -SkipEtwFollowup
 ```
+
+Bounded CPU-priority attribution probe:
+
+```powershell
+.\scripts\run-cmp50hx-playback-etw-soak.ps1 -Attempts 1 -WorkerSynthesisWarmup -EmitEveryFrames 16 -MatmulPrecision high -TtsCpuPriority AboveNormal -SkipEtwFollowup
+```
+
+Use `-UseManagedProcessLauncher` on both sides of that attribution A/B.
 
 Warmup and larger delivery-chunk experiment without an ETW follow-up:
 

@@ -43,6 +43,11 @@ param(
     [ValidatePattern('^(|highest|high|medium)$')]
     [string]$MatmulPrecision = '',
 
+    [ValidateSet('Normal', 'AboveNormal')]
+    [string]$TtsCpuPriority = 'Normal',
+
+    [switch]$UseManagedProcessLauncher,
+
     [string]$CudaVisibleDevices = 'GPU-40361931-6cb5-ac58-a059-5ba3e70986fb'
 )
 
@@ -371,14 +376,52 @@ function Invoke-PlaybackRun {
             $wprStarted = $true
         }
 
-        $previousErrorActionPreference = $ErrorActionPreference
-        try {
-            $ErrorActionPreference = 'Continue'
-            & $player @arguments 1> $stdout 2> $stderr
-            $exitCode = $LASTEXITCODE
+        if ($TtsCpuPriority -eq 'Normal' -and -not $UseManagedProcessLauncher) {
+            $previousErrorActionPreference = $ErrorActionPreference
+            try {
+                $ErrorActionPreference = 'Continue'
+                & $player @arguments 1> $stdout 2> $stderr
+                $exitCode = $LASTEXITCODE
+            }
+            finally {
+                $ErrorActionPreference = $previousErrorActionPreference
+            }
         }
-        finally {
-            $ErrorActionPreference = $previousErrorActionPreference
+        else {
+            $startInfo = [Diagnostics.ProcessStartInfo]::new()
+            $startInfo.FileName = $player
+            $startInfo.WorkingDirectory = $repo
+            $startInfo.UseShellExecute = $false
+            $startInfo.RedirectStandardOutput = $true
+            $startInfo.RedirectStandardError = $true
+            $startInfo.Arguments = (($arguments | ForEach-Object {
+                '"' + ($_ -replace '"', '\\"') + '"'
+            }) -join ' ')
+
+            $process = [Diagnostics.Process]::new()
+            $process.StartInfo = $startInfo
+            if (-not $process.Start()) {
+                throw "Failed to start playback client with $TtsCpuPriority CPU priority."
+            }
+            try {
+                $process.PriorityClass = [Diagnostics.ProcessPriorityClass]::$TtsCpuPriority
+            }
+            catch {
+                if (-not $process.HasExited) {
+                    $process.Kill()
+                    $process.WaitForExit()
+                }
+                throw "Failed to apply $TtsCpuPriority CPU priority to the playback client: $($_.Exception.Message)"
+            }
+
+            $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+            $stderrTask = $process.StandardError.ReadToEndAsync()
+            $process.WaitForExit()
+            $stdoutTask.Wait()
+            $stderrTask.Wait()
+            [IO.File]::WriteAllText($stdout, $stdoutTask.Result, [Text.UTF8Encoding]::new($false))
+            [IO.File]::WriteAllText($stderr, $stderrTask.Result, [Text.UTF8Encoding]::new($false))
+            $exitCode = $process.ExitCode
         }
         if ($exitCode -ne 0) {
             throw "Frozen-C physical playback run failed with exit code $exitCode."
@@ -519,6 +562,8 @@ try {
             worker_warmup_max_output_chunks = if ($WorkerSynthesisWarmup) { $WorkerWarmupMaxOutputChunks } else { $null }
             emit_every_frames = $EmitEveryFrames
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
+            tts_cpu_priority = $TtsCpuPriority
+            managed_process_launcher = [bool]$UseManagedProcessLauncher
         }
         playback_measurement = 'WaveOut queue starvation proxy; not a hardware underrun counter'
         etw_profile = 'CMP50HX-DxgKrnl-Scheduler'
