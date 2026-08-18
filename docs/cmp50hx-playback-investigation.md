@@ -285,6 +285,24 @@ The analyzer extracts DxgKrnl independently for each marker window. On the
 legacy xperf, but it avoids one much larger combined dump and leaves the source
 ETL unchanged.
 
+The first execution-profile capture, run `20260818T014947Z-98540`, reproduced
+the playback proxy outlier and passed the normal transport, zero-event-loss,
+marker, and semantic gates. It produced a 352 MB ETL with 923,154 scheduler
+events. The expanded provider recorded global `DmaPacket Start/Stop` and
+`SchedulingLog` events, so the profile is active; the strict marker analyzer
+correctly rejected it as worker execution-lifecycle evidence because there
+were zero worker `DmaPacket Start/Stop` pairs in its marker windows.
+
+Inspection of a representative window shows why that result must remain
+inconclusive: Python's queue events use its own `hContext`, while the hardware
+`DmaPacket Start/Stop` records are attributed to `System`/`Idle` and use a
+different context. The available `SchedulingLog` payload is opaque in xperf's
+text dumper and supplies no documented correlation to the worker context. Do
+not infer GPU execution duration, TTS preemption, or competing-context blame
+from these records. Further automatic keyword expansion is not justified until
+an interactive GPUView/WPA review finds a documented join, or a controlled
+consumer-isolation A/B gives a causal result.
+
 ## Next acceptance gates
 
 1. Finish the marker-aware analyzer review and use it only on zero-loss,
