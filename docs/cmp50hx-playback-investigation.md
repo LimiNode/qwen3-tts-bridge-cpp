@@ -182,27 +182,32 @@ worker rate is below audio rate.
 
 1. The frozen C numerical boundary fixes the known FP16 residual overflow and
    remains separate from the timing investigation.
-2. Synthesis warmup substantially improves first-audio latency by moving graph
-   capture out of the user request.
-3. The tested stream still lacks enough delivery slack after warmup, although
-   larger delivery chunks reduce the number of queue-starvation proxy events.
-4. A valid ETW capture establishes that the condition reproduces with zero-loss
+2. A two-chunk synthesis warmup substantially improves first-audio latency by
+   moving initial graph work out of the user request, but does not warm all
+   codec-decoder paths.
+3. On the idle CMP 50HX, the short physical-playback request still reproduced
+   three queue-starvation proxy observations with that bounded warmup. This
+   also proves that the RAG materializer is not a necessary condition for the
+   symptom.
+4. A valid ETW capture establishes that the bounded-warmup condition reproduces with zero-loss
    DxgKrnl and scheduler evidence. It does not yet distinguish long own GPU
    work, scheduling gaps, competing contexts, preemption, paging, or transfer/
    synchronization effects.
-5. Under representative CPU load, the warm E=16 worker was slower than audio
+5. Under representative CPU load, the bounded-warm E=16 worker was slower than audio
    in the failed prebuffer run (RTF 1.619). This establishes a sustained-rate
    problem in addition to bursty delivery gaps, but not yet whether its cause
    is own GPU work, CPU dispatch, or WDDM scheduling.
 6. Increasing delivery size to E=32 improved proxy observations from three to
    one, but RTF remained 1.300847. Delivery granularity alone therefore cannot
    meet the real-time requirement on this workload.
-7. The valid marker windows show simultaneous TTS and RAG GPU activity. Any
+7. The earlier valid marker windows show simultaneous TTS and RAG GPU activity. Any
    claim that the RAG materializer is CPU-only is inconsistent with this trace;
-   any claim that it alone caused the stalls is also unsupported because TTS
-   activity is substantial in the same windows.
-8. The appropriate next optimisation decision depends on timing-aware
-   marker-window analysis, not on another unsupported global precision change.
+   the idle reproduction now also rules out a claim that RAG alone caused the
+   stalls.
+8. A targeted phase profile identifies the dominant cold path as GPU
+   `speech_tokenizer.decode`, not predictor decoding, D2H, or PCM conversion.
+   A full-EOS startup synthesis warmup removes the observed proxy symptom in
+   the current controlled playback case without changing numerical kernels.
 
 ### Bounded throughput probe pending
 
@@ -257,6 +262,46 @@ realtime fix or use this result to narrow the remaining investigation. The
 launcher records this limitation explicitly; a future priority experiment must
 set and verify the worker's priority before it can support a causal claim.
 
+### Codec decoder warmup finding
+
+The idle playback A/B used the frozen C path, fixed seed, `emit_every_frames=16`,
+and Torch's default float32-matmul policy. The only changed factor was startup
+warmup coverage.
+
+| Startup warmup | Worker RTF | Queue-starvation proxy | Result |
+| --- | ---: | ---: | --- |
+| Bounded after 2 chunks | 1.164323 | 3 | Reproduced on an idle CMP 50HX. |
+| Bounded after 4 chunks | 1.006005--1.026629 | 0--1 | Strong improvement, but terminal flush remained intermittently cold. |
+| One generic unbounded pass to natural EOS | 1.007151--1.017273 (mean 1.013495) | 0 / 3 attempts | Current controlled acceptance result. |
+
+The historical medium benchmark was also replayed with its exact frozen-C
+configuration and again achieved RTF 0.974. Therefore the numerical/runtime
+stack had not generally regressed; the short playback symptom was a cold-path
+coverage problem.
+
+An opt-in `-ProfilePrefill` diagnostic run decomposed the short-request chunk
+time. Predictor work remained about 57 ms per codec step. The excess time was
+almost entirely GPU `speech_tokenizer.decode` work: 118, 483, 838, and 524 ms
+across the four chunks. D2H, NumPy conversion, PCM conversion, and wrapper
+CPU work were negligible. A bounded warmup never reaches the distinct terminal
+flush-decode path; one unbounded warmup pass reaches natural EOS before the
+worker reports ready.
+
+The current CMP playback recommendation is consequently startup-only and
+explicit:
+
+```text
+--warmup-synthesis
+--warmup-unbounded-passes 1
+--warmup-text <finite generic sentence>
+```
+
+`--warmup-max-output-chunks` may remain set as a bound for any later passes;
+the first unbounded pass deliberately ignores it. This is not a hardware
+underrun claim and not yet a guarantee under arbitrary competing GPU load. It
+is a reproducible mitigation for the controlled physical-playback proxy, with
+the frozen C numerical boundary unchanged.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
@@ -305,15 +350,14 @@ consumer-isolation A/B gives a causal result.
 
 ## Next acceptance gates
 
-1. Finish the marker-aware analyzer review and use it only on zero-loss,
-   marker-complete ETLs.
-2. On a comparatively idle machine, repeat fresh-worker runs for warmup plus
-   `emit_every_frames=16`. Record TTFA, sink start, completion, per-chunk
-   cadence, worker RTF, and proxy observations separately.
-3. If a valid marker-aligned window shows long worker-owned GPU work, profile
-   that work; if it shows GPU gaps or competing context activity, investigate
-   WDDM scheduling and other consumers instead. Only then choose a targeted
-   runtime change.
+1. Keep marker-aware ETW analysis limited to zero-loss, marker-complete ETLs;
+   it remains an attribution tool, not a GPU-duration measurement on this WDDM
+   stack.
+2. Validate the full-EOS warmup policy in a longer physical playback soak and
+   with the representative RAG workload active. Record TTFA, sink start,
+   completion, per-chunk cadence, worker RTF, and proxy observations separately.
+3. Only if that policy still reproduces a proxy outlier, capture a new
+   marker-aligned ETL and investigate competing contexts or WDDM scheduling.
 
 ## Reproduction examples
 
@@ -368,3 +412,18 @@ Warmup and larger delivery-chunk experiment without an ETW follow-up:
   -EmitEveryFrames 16 `
   -SkipEtwFollowup
 ```
+
+Full-EOS codec-decoder warmup acceptance run without ETW follow-up:
+
+```powershell
+.\scripts\run-cmp50hx-playback-etw-soak.ps1 `
+  -Attempts 3 `
+  -WorkerSynthesisWarmup `
+  -WorkerWarmupUnboundedPasses 1 `
+  -WorkerWarmupText 'This warmup synthesis prepares several streaming codec decode windows before the first user request begins.' `
+  -EmitEveryFrames 16 `
+  -SkipEtwFollowup
+```
+
+For phase diagnosis only, add `-ProfilePrefill`. It adds timing events and
+must not be used as a normal-performance measurement.
