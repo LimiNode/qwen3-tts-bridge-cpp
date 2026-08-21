@@ -315,6 +315,21 @@ remains unchanged. The next controlled mitigation is opt-in sink prebuffering:
 measure whether a deliberate initial audio reserve prevents the known terminal
 burst without silently claiming that inference itself became faster.
 
+### Sink prebuffer probe
+
+The player now has an opt-in `--playback-prebuffer-chunks <n>` control. The
+default is one, which preserves immediate WaveOut submission. A value of two
+holds the first PCM chunk locally and starts the physical sink only after the
+second chunk arrives. That reserve is intentionally a playback-latency trade-
+off, not an inference optimisation: worker RTF and producer chunk arrival times
+must be reported unchanged alongside sink-start latency and proxy observations.
+
+The mock CTest covers both sides: with 100 ms chunks arriving 150 ms apart,
+immediate submission reports the expected queue-empty proxy; a two-chunk
+prebuffer starts after the second arrival and reports no later queue-empty
+observation. The real CMP 50HX result remains pending and must be measured
+separately before this setting is promoted.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
@@ -440,3 +455,18 @@ Full-EOS codec-decoder warmup acceptance run without ETW follow-up:
 
 For phase diagnosis only, add `-ProfilePrefill`. It adds timing events and
 must not be used as a normal-performance measurement.
+
+Two-chunk sink-prebuffer A/B, without ETW follow-up:
+
+```powershell
+.\scripts\run-cmp50hx-playback-etw-soak.ps1 `
+  -Attempts 3 `
+  -PlaybackPrebufferChunks 2 `
+  -WorkerSynthesisWarmup `
+  -EmitEveryFrames 16 `
+  -SkipEtwFollowup
+```
+
+Compare this with the same command using `-PlaybackPrebufferChunks 1`. Report
+the physical sink start separately from first PCM arrival and do not treat the
+added prebuffer delay as a TTFA improvement.
