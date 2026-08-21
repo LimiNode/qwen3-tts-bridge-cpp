@@ -1,0 +1,48 @@
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 1ace7cfa..00000000 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -29,5 +29,34 @@ from .utils import suppress_flash_attn_warning
+ logger = logging.getLogger(__name__)
+
+
++def _use_codec_right_padded_cuda_graph() -> bool:
++    """Return whether the opt-in manual codec CUDA graph experiment is active."""
++
++    return os.environ.get("QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH") == "1"
++
++
++def _capture_right_padded_decoder_cuda_graph(base_model: Any) -> None:
++    """Capture the fixed right-padded codec window without touching Faster graphs."""
++
++    if not _use_codec_right_padded_cuda_graph():
++        return
++    if not _use_codec_right_padded_decode():
++        raise RuntimeError(
++            "QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH=1 requires "
++            "QTB_FASTER_CODEC_RIGHT_PADDED_DECODE=1"
++        )
++    speech_tokenizer = getattr(getattr(base_model, "model", None), "speech_tokenizer", None)
++    decoder = getattr(getattr(speech_tokenizer, "model", None), "decoder", None)
++    capture_cuda_graph = getattr(decoder, "capture_cuda_graph", None)
++    if not callable(capture_cuda_graph):
++        raise RuntimeError(
++            "QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH=1 requires a compatible "
++            "12 Hz decoder with capture_cuda_graph"
++        )
++    window_size = _codec_right_padded_decode_window_frames()
++    logger.info("Capturing fixed-shape right-padded codec CUDA graph (window=%s)", window_size)
++    capture_cuda_graph(window_size=window_size)
++
++
+ def _use_codec_right_padded_decode() -> bool:
+     """Return whether the opt-in right-padded codec experiment is active."""
+@@ -497,5 +528,7 @@ class FasterQwen3TTS:
+             attn_implementation=attn_implementation,
+         )
+
++        _capture_right_padded_decoder_cuda_graph(base_model)
++
+         talker = base_model.model.talker
+         if normalized_prefill_compile_compat_mode is not None:
+             configure_prefill_compile_compat(

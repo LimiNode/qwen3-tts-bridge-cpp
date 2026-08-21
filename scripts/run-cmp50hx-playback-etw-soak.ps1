@@ -60,6 +60,8 @@ param(
 
     [switch]$CodecRightPaddedDecode,
 
+    [switch]$CodecRightPaddedCudaGraph,
+
     [ValidateSet('Normal', 'AboveNormal')]
     [string]$TtsCpuPriority = 'Normal',
 
@@ -82,6 +84,9 @@ if ($PcmCaptureFile -and -not $SkipEtwFollowup) {
 }
 if ($CodecStreamingDecode -and $CodecRightPaddedDecode) {
     throw 'Select only one codec decode experiment.'
+}
+if ($CodecRightPaddedCudaGraph -and -not $CodecRightPaddedDecode) {
+    throw '-CodecRightPaddedCudaGraph requires -CodecRightPaddedDecode.'
 }
 
 function Resolve-RepoPath {
@@ -140,6 +145,16 @@ if ($CodecRightPaddedDecode) {
         throw (
             '-CodecRightPaddedDecode requires a shadow prepared by ' +
             'prepare-cmp50hx-faster-codec-right-padded-shadow.ps1'
+        )
+    }
+}
+if ($CodecRightPaddedCudaGraph) {
+    $codecRightPaddedCudaGraphMarker = Join-Path $shadow 'faster_qwen3_tts\model.py'
+    if (-not (Select-String -LiteralPath $codecRightPaddedCudaGraphMarker -SimpleMatch `
+            'def _capture_right_padded_decoder_cuda_graph(' -Quiet)) {
+        throw (
+            '-CodecRightPaddedCudaGraph requires a shadow prepared by ' +
+            'prepare-cmp50hx-faster-codec-right-padded-cuda-graph-shadow.ps1'
         )
     }
 }
@@ -229,6 +244,7 @@ function Set-FrozenCEnvironment {
     $env:QTB_NSYS_CUDA_PROFILER_PAIR = '0'
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE = if ($CodecRightPaddedDecode) { '1' } else { '0' }
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES = '80'
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = if ($CodecRightPaddedCudaGraph) { '1' } else { '0' }
 }
 
 function Assert-ElevatedWprSession {
@@ -649,6 +665,7 @@ try {
             diagnostic_profile_prefill = [bool]$ProfilePrefill
             diagnostic_generation_trace = [bool]$CollectGenerationTrace
             codec_right_padded_decode = [bool]$CodecRightPaddedDecode
+            codec_right_padded_cuda_graph = [bool]$CodecRightPaddedCudaGraph
             pcm_capture_enabled = ($null -ne $pcmCapture)
             tts_cpu_priority = $TtsCpuPriority
             managed_process_launcher = [bool]$UseManagedProcessLauncher
