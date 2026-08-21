@@ -38,15 +38,15 @@ index 1ace7cfa..00000000 100644
 +        )
 +    speech_tokenizer = getattr(getattr(base_model, "model", None), "speech_tokenizer", None)
 +    decoder = getattr(getattr(speech_tokenizer, "model", None), "decoder", None)
-+    enable_compile = getattr(decoder, "enable_compile", None)
-+    if not callable(enable_compile):
++    compile_for_streaming = getattr(decoder, "compile_for_streaming", None)
++    if not callable(compile_for_streaming):
 +        raise RuntimeError(
 +            "QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE=1 requires a compatible "
-+            "12 Hz decoder with enable_compile"
++            "12 Hz decoder with compile_for_streaming"
 +        )
 +    mode = _codec_right_padded_compile_mode()
 +    logger.info("Compiling fixed-shape right-padded codec decoder with mode=%s", mode)
-+    enable_compile(mode=mode)
++    compile_for_streaming(mode=mode)
 +
 +
  def _use_codec_right_padded_decode() -> bool:
