@@ -1,0 +1,62 @@
+diff --git a/faster_qwen3_tts/model.py b/faster_qwen3_tts/model.py
+index 1ace7cfa..00000000 100644
+--- a/faster_qwen3_tts/model.py
++++ b/faster_qwen3_tts/model.py
+@@ -29,5 +29,48 @@ from .utils import suppress_flash_attn_warning
+ logger = logging.getLogger(__name__)
+ 
+ 
++def _use_codec_right_padded_compile() -> bool:
++    """Return whether the opt-in compiled right-padded codec path is active."""
++
++    return os.environ.get("QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE") == "1"
++
++
++def _codec_right_padded_compile_mode() -> str:
++    """Return the supported torch.compile mode for the decoder experiment."""
++
++    mode = os.environ.get(
++        "QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE", "reduce-overhead"
++    )
++    if mode not in {"default", "reduce-overhead", "max-autotune"}:
++        raise RuntimeError(
++            "QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE must be default, "
++            "reduce-overhead, or max-autotune"
++        )
++    return mode
++
++
++def _enable_right_padded_decoder_compile(base_model: Any) -> None:
++    """Compile only the fixed-shape codec decoder for the opt-in experiment."""
++
++    if not _use_codec_right_padded_compile():
++        return
++    if not _use_codec_right_padded_decode():
++        raise RuntimeError(
++            "QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE=1 requires "
++            "QTB_FASTER_CODEC_RIGHT_PADDED_DECODE=1"
++        )
++    speech_tokenizer = getattr(getattr(base_model, "model", None), "speech_tokenizer", None)
++    decoder = getattr(getattr(speech_tokenizer, "model", None), "decoder", None)
++    enable_compile = getattr(decoder, "enable_compile", None)
++    if not callable(enable_compile):
++        raise RuntimeError(
++            "QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE=1 requires a compatible "
++            "12 Hz decoder with enable_compile"
++        )
++    mode = _codec_right_padded_compile_mode()
++    logger.info("Compiling fixed-shape right-padded codec decoder with mode=%s", mode)
++    enable_compile(mode=mode)
++
++
+ def _use_codec_right_padded_decode() -> bool:
+     """Return whether the opt-in right-padded codec experiment is active."""
+@@ -497,5 +534,7 @@ class FasterQwen3TTS:
+             attn_implementation=attn_implementation,
+         )
+ 
++        _enable_right_padded_decoder_compile(base_model)
++
+         talker = base_model.model.talker
+         if normalized_prefill_compile_compat_mode is not None:
+             configure_prefill_compile_compat(
