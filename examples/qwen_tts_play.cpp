@@ -83,6 +83,7 @@ struct ProgramOptions {
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
     std::string playback_metrics_file;
+    std::size_t playback_prebuffer_chunks = 1;
     bool etw_playback_markers = false;
 };
 
@@ -361,8 +362,14 @@ private:
 
 class WaveOutPlayer final {
 public:
-    explicit WaveOutPlayer(PlaybackMetrics* metrics = nullptr)
-        : metrics_(metrics) {
+    explicit WaveOutPlayer(
+        PlaybackMetrics* metrics = nullptr,
+        std::size_t prebuffer_chunks = 1)
+        : prebuffer_chunks_(prebuffer_chunks),
+          metrics_(metrics) {
+        if (prebuffer_chunks_ == 0) {
+            throw std::runtime_error("playback prebuffer must contain at least one chunk");
+        }
     }
 
     ~WaveOutPlayer() {
@@ -390,10 +397,10 @@ public:
             return;
         }
         reap_finished_locked();
-        open_or_validate_locked(chunk.format);
+        validate_pending_format_locked(chunk.format);
         const double queued_audio_before_ms = queued_audio_duration_ms_locked();
         const bool queue_empty_before_later_chunk =
-            has_enqueued_audio_since_reset_ && buffers_.empty();
+            playback_started_ && buffers_.empty();
 
         auto buffer = std::make_unique<Buffer>();
         buffer->bytes = chunk.bytes;
@@ -401,30 +408,16 @@ public:
         buffer->header.dwBufferLength = static_cast<DWORD>(buffer->bytes.size());
         buffer->duration_ms = pcm_duration_ms(chunk.format, buffer->bytes.size());
 
-        check_mmresult(
-            waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
-            "waveOutPrepareHeader");
-        buffer->prepared = true;
-        try {
-            check_mmresult(
-                waveOutWrite(m_handle, &buffer->header, sizeof(WAVEHDR)),
-                "waveOutWrite");
-        }
-        catch (...) {
-            waveOutUnprepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR));
-            throw;
-        }
-        buffers_.push_back(std::move(buffer));
-        has_enqueued_audio_since_reset_ = true;
-        if (metrics_ != nullptr) {
-            metrics_->mark_first_waveout_submission();
-        }
+        pending_buffers_.push_back(std::move(buffer));
         if (metrics_ != nullptr) {
             metrics_->record_chunk(
                 pcm_duration_ms(chunk.format, chunk.bytes.size()),
                 queued_audio_before_ms,
                 queued_audio_duration_ms_locked(),
                 queue_empty_before_later_chunk);
+        }
+        if (pending_buffers_.size() >= prebuffer_chunks_) {
+            flush_pending_locked();
         }
     }
 
@@ -437,7 +430,8 @@ public:
             ++playback_epoch_;
         }
         if (m_handle == nullptr) {
-            has_enqueued_audio_since_reset_ = false;
+            clear_pending_locked();
+            playback_started_ = false;
             return playback_epoch_;
         }
 
@@ -455,12 +449,14 @@ public:
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             lock.lock();
         }
-        has_enqueued_audio_since_reset_ = false;
+        clear_pending_locked();
+        playback_started_ = false;
         return playback_epoch_;
     }
 
     void wait_until_idle(std::chrono::milliseconds timeout) {
         std::unique_lock<std::mutex> lock(mutex_);
+        flush_pending_locked();
         const auto deadline = std::chrono::steady_clock::now() + timeout;
         while (!buffers_.empty()) {
             reap_finished_locked();
@@ -514,7 +510,65 @@ private:
         for (const std::unique_ptr<Buffer>& buffer : buffers_) {
             duration_ms += buffer->duration_ms;
         }
+        for (const std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+            duration_ms += buffer->duration_ms;
+        }
         return duration_ms;
+    }
+
+    void validate_pending_format_locked(const AudioFormat& format) {
+        if (m_handle != nullptr) {
+            if (!formats_match(m_format, format)) {
+                throw std::runtime_error(
+                    "default-device playback cannot change PCM format while audio is queued");
+            }
+            return;
+        }
+        if (pending_format_.has_value() && !formats_match(pending_format_.value(), format)) {
+            throw std::runtime_error(
+                "default-device playback cannot change PCM format while audio is buffered");
+        }
+        pending_format_ = format;
+    }
+
+    void flush_pending_locked() {
+        if (pending_buffers_.empty()) {
+            return;
+        }
+        if (m_handle == nullptr && !pending_format_.has_value()) {
+            throw std::runtime_error("missing PCM format for buffered playback");
+        }
+
+        open_or_validate_locked(
+            m_handle != nullptr ? m_format : pending_format_.value());
+        buffers_.reserve(buffers_.size() + pending_buffers_.size());
+        for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+            check_mmresult(
+                waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
+                "waveOutPrepareHeader");
+            buffer->prepared = true;
+            try {
+                check_mmresult(
+                    waveOutWrite(m_handle, &buffer->header, sizeof(WAVEHDR)),
+                    "waveOutWrite");
+            }
+            catch (...) {
+                waveOutUnprepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR));
+                buffer->prepared = false;
+                throw;
+            }
+            buffers_.push_back(std::move(buffer));
+        }
+        clear_pending_locked();
+        playback_started_ = true;
+        if (metrics_ != nullptr) {
+            metrics_->mark_playback_started();
+        }
+    }
+
+    void clear_pending_locked() {
+        pending_buffers_.clear();
+        pending_format_.reset();
     }
 
     void open_or_validate_locked(const AudioFormat& format) {
@@ -576,8 +630,11 @@ private:
     HWAVEOUT m_handle = nullptr;
     AudioFormat m_format;
     std::vector<std::unique_ptr<Buffer>> buffers_;
+    std::vector<std::unique_ptr<Buffer>> pending_buffers_;
+    std::optional<AudioFormat> pending_format_;
     std::uint64_t playback_epoch_ = 1;
-    bool has_enqueued_audio_since_reset_ = false;
+    std::size_t prebuffer_chunks_ = 1;
+    bool playback_started_ = false;
     PlaybackMetrics* metrics_ = nullptr;
 };
 
@@ -644,6 +701,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
+        << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
         << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
         << "  --mock-chunk-delay <seconds>   Mock delay between chunks, default: 0.\n";
@@ -797,6 +855,12 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
             options.playback_metrics_file = require_value(
                 index, argc, argv, "--playback-metrics-file");
         }
+        else if (arg == "--playback-prebuffer-chunks" ||
+                 arg.rfind("--playback-prebuffer-chunks=", 0) == 0) {
+            options.playback_prebuffer_chunks = parse_u32(
+                require_value(index, argc, argv, "--playback-prebuffer-chunks"),
+                "--playback-prebuffer-chunks");
+        }
         else if (arg == "--etw-playback-markers") {
             options.etw_playback_markers = true;
         }
@@ -838,6 +902,9 @@ void validate_options(const ProgramOptions& options) {
     }
     if (options.etw_playback_markers && options.playback_metrics_file.empty()) {
         throw std::runtime_error("--etw-playback-markers requires --playback-metrics-file");
+    }
+    if (options.playback_prebuffer_chunks == 0) {
+        throw std::runtime_error("--playback-prebuffer-chunks must be greater than zero");
     }
     if (options.temperature.has_value() &&
         (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0)) {
@@ -1385,7 +1452,9 @@ int wmain(int argc, wchar_t** argv) {
         if (!options.playback_metrics_file.empty()) {
             playback_metrics = std::make_unique<PlaybackMetrics>(etw_playback_markers.get());
         }
-        WaveOutPlayer player(playback_metrics.get());
+        WaveOutPlayer player(
+            playback_metrics.get(),
+            options.playback_prebuffer_chunks);
         ActiveRequestState active_state;
 
         if (!options.text.empty()) {

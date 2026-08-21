@@ -5,6 +5,9 @@ param(
     [ValidateRange(1, 100)]
     [int]$QueueEmptyThreshold = 1,
 
+    [ValidateRange(1, 16)]
+    [int]$PlaybackPrebufferChunks = 1,
+
     [switch]$SkipEtwFollowup,
 
     [string]$Text = 'This is a physical playback soak for the frozen Faster C configuration.',
@@ -349,6 +352,7 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--seed', '--worker-arg', '20260806',
         '--worker-arg', '--seed-mode', '--worker-arg', 'fixed',
         '--text', $Text, '--speaker', $Speaker,
+        '--playback-prebuffer-chunks', $PlaybackPrebufferChunks,
         '--startup-timeout-ms', '240000',
         '--playback-metrics-file', $metrics
     )
@@ -573,6 +577,7 @@ try {
             worker_warmup_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupPasses } else { $null }
             worker_warmup_max_output_chunks = if ($WorkerSynthesisWarmup) { $WorkerWarmupMaxOutputChunks } else { $null }
             worker_warmup_unbounded_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupUnboundedPasses } else { $null }
+            playback_prebuffer_chunks = $PlaybackPrebufferChunks
             emit_every_frames = $EmitEveryFrames
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
             diagnostic_profile_prefill = [bool]$ProfilePrefill
