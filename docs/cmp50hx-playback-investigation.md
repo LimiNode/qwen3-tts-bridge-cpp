@@ -324,11 +324,26 @@ second chunk arrives. That reserve is intentionally a playback-latency trade-
 off, not an inference optimisation: worker RTF and producer chunk arrival times
 must be reported unchanged alongside sink-start latency and proxy observations.
 
-The mock CTest covers both sides: with 100 ms chunks arriving 150 ms apart,
+The mock CTest covers both sides: with 150 ms chunks arriving 200 ms apart,
 immediate submission reports the expected queue-empty proxy; a two-chunk
 prebuffer starts after the second arrival and reports no later queue-empty
-observation. The real CMP 50HX result remains pending and must be measured
-separately before this setting is promoted.
+observation. The initial implementation was corrected so this reserve applies
+only before sink start; every later chunk is submitted immediately.
+
+The corrected idle CMP 50HX acceptance run used the frozen C path,
+`emit_every_frames=16`, default Torch matmul precision, one full-EOS startup
+warmup pass, and `playback_prebuffer_chunks=2`:
+
+| Run | Attempts | Sink start | Queue-starvation proxy |
+| --- | ---: | ---: | ---: |
+| `20260821T134339Z-98540` | 1 | 2719 ms | 0 |
+| `20260821T135959Z-98540` | 3 | 2718--2737 ms | 0 / 3 |
+
+This is a controlled playback mitigation for the observed terminal decode
+burst. It deliberately delays physical audio start by about one additional
+PCM chunk; it does not improve producer RTF or constitute a hardware-underrun
+counter. Longer idle and representative-load validation remain separate
+acceptance work.
 
 ### GPU lifecycle evidence gap
 
