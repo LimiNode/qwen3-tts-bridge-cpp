@@ -393,6 +393,83 @@ This first mode keeps decoder compilation/capture disabled and is not a
 performance claim. It exists to establish PCM/EOS completion and finite long
 generation before a separately controlled decoder-optimization A/B.
 
+### PCM parity gate for the fixed-shape candidate
+
+Completion alone is insufficient to accept a decoder-path change: the frozen
+and fixed-window modes must produce comparable PCM for the same deterministic
+request. The native player therefore exposes an explicitly diagnostic-only
+capture option:
+
+```text
+--pcm-capture-file <path>
+```
+
+It accepts one-shot `--text` playback only, refuses to overwrite either the raw
+target or its `<path>.json` metadata sidecar, and is off by default. It captures
+the active request's PCM before WaveOut submission, requires one stable audio
+format, and writes raw `s16le` bytes plus chunk count, byte count, format, and
+successful-completion metadata. Capture writes are diagnostic instrumentation;
+never use a capture run as a performance measurement.
+
+For a frozen-versus-candidate comparison, use the same seed, speaker, text,
+`emit_every_frames`, prebuffer, and warmup on both sides. Require natural EOS
+and then compare the metadata and raw SHA-256:
+
+```powershell
+Get-FileHash .\tmp\frozen.pcm -Algorithm SHA256
+Get-FileHash .\tmp\streaming.pcm -Algorithm SHA256
+```
+
+The repository also provides a dependency-free analyzer for fixed, explicit
+tolerance gates:
+
+```powershell
+python .\scripts\compare-cmp50hx-pcm-parity.py `
+  --expected .\tmp\frozen.pcm `
+  --candidate .\tmp\candidate.pcm `
+  --output .\tmp\pcm-parity.json `
+  --max-rms-delta 3 --min-snr-db 55 --max-abs-delta 64
+```
+
+An exact hash match is the strongest result. If the deterministic sampling path
+does not produce exact bytes, record the distinct hashes together with equal
+format, length, EOS, and an explicit audio-quality comparison; do not describe
+that as byte-identical parity.
+
+If byte length differs, repeat the pair with the launcher's diagnostic
+`-CollectGenerationTrace` switch. Compare the emitted codec-frame count and
+codec SHA-256 first: a mismatch there is a sampling/reproducibility result, not
+evidence that the PCM decoder changed the predictor. Do not include generation
+trace or PCM capture in a timing result.
+
+The first left-padded upstream API probe did **not** pass this gate: it reached
+the same 63 codec frames with an identical codec digest, but changed all PCM
+chunks and increased the first chunk by 444 samples. This is decoder-output
+semantics, not sampling drift. It remains a rejected diagnostic candidate.
+
+A separate, default-off right-padding experiment is available for the next
+causal test. The 12 Hz decoder is causal, so it fixes the input shape by adding
+future zero frames and preserves the valid prefix before selecting the normal
+decoder output length. It is intentionally a separate shadow and must pass the
+same PCM gate before any timing measurement:
+
+```powershell
+.\scripts\prepare-cmp50hx-faster-codec-right-padded-shadow.ps1
+```
+
+The first controlled short pair recorded identical codec traces (63 frames and
+the same codec SHA-256), equal PCM format/length (240,810 bytes), and natural
+EOS. It was not byte-identical: `rms_pcm_delta=2.845`, `snr_db=55.458`, and
+`max_abs_pcm_delta=52` after s16le conversion. The explicit tolerance gate
+`RMS <= 3`, `SNR >= 55 dB`, `max <= 64` passed. This is sufficient only for a
+candidate-quality gate, not a claim of exact equivalence or a runtime change.
+
+A separate longer right-padding smoke reached natural EOS at 316 predictor
+steps / codec frames and wrote 20 PCM chunks (25,256.875 ms, 1,212,330 bytes)
+without a playback proxy observation. It validates the candidate's bounded
+longer correctness path; its PCM capture and generation trace remain diagnostic
+artefacts, not performance evidence.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed

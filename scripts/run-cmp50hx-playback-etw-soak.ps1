@@ -26,6 +26,8 @@ param(
 
     [string]$OutputRoot = '',
 
+    [string]$PcmCaptureFile = '',
+
     [string]$WprProfilePath = '',
 
     [ValidateSet('CMP50HX-DxgKrnl-Scheduler', 'CMP50HX-DxgKrnl-Execution')]
@@ -54,7 +56,11 @@ param(
 
     [switch]$ProfilePrefill,
 
+    [switch]$CollectGenerationTrace,
+
     [switch]$CodecStreamingDecode,
+
+    [switch]$CodecRightPaddedDecode,
 
     [ValidateSet('Normal', 'AboveNormal')]
     [string]$TtsCpuPriority = 'Normal',
@@ -69,6 +75,16 @@ $PSNativeCommandUseErrorActionPreference = $false
 
 $repo = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $PSScriptRoot 'Cmp50hxEtwEvidence.psm1') -Force
+
+if ($PcmCaptureFile -and $Attempts -ne 1) {
+    throw '-PcmCaptureFile requires -Attempts 1 so one capture maps to one request.'
+}
+if ($PcmCaptureFile -and -not $SkipEtwFollowup) {
+    throw '-PcmCaptureFile requires -SkipEtwFollowup; capture runs are not ETW or performance evidence.'
+}
+if ($CodecStreamingDecode -and $CodecRightPaddedDecode) {
+    throw 'Select only one codec decode experiment.'
+}
 
 function Resolve-RepoPath {
     param(
@@ -129,6 +145,16 @@ if ($CodecStreamingDecode) {
         )
     }
 }
+if ($CodecRightPaddedDecode) {
+    $codecRightPaddedMarker = Join-Path $shadow 'faster_qwen3_tts\model.py'
+    if (-not (Select-String -LiteralPath $codecRightPaddedMarker -SimpleMatch `
+            'def _decode_right_padded_window(' -Quiet)) {
+        throw (
+            '-CodecRightPaddedDecode requires a shadow prepared by ' +
+            'prepare-cmp50hx-faster-codec-right-padded-shadow.ps1'
+        )
+    }
+}
 $outputDirectory = if ([IO.Path]::IsPathRooted($OutputRoot)) {
     $OutputRoot
 }
@@ -158,6 +184,17 @@ if (-not $SkipEtwFollowup) {
 $runId = '{0}-{1}' -f [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ'), $PID
 $runDirectory = Join-Path $outputDirectory $runId
 New-Item -ItemType Directory -Path $runDirectory -ErrorAction Stop | Out-Null
+$pcmCapture = if ($PcmCaptureFile) {
+    if ([IO.Path]::IsPathRooted($PcmCaptureFile)) {
+        $PcmCaptureFile
+    }
+    else {
+        Join-Path $repo $PcmCaptureFile
+    }
+}
+else {
+    $null
+}
 
 $environmentNames = @(
     'CUDA_VISIBLE_DEVICES', 'PYTHONHOME', 'PYTHONPATH', 'PYTHONNOUSERSITE',
@@ -170,7 +207,9 @@ $environmentNames = @(
     'QTB_FASTER_STALL_TELEMETRY', 'QTB_FASTER_DIAGNOSTIC_TRACE_PATH',
     'QTB_FASTER_DIAGNOSTIC_START_REQUEST', 'QTB_NSYS_CUDA_PROFILER_PAIR',
     'QTB_FASTER_CODEC_STREAMING_DECODE',
-    'QTB_FASTER_CODEC_STREAMING_DECODE_WINDOW_FRAMES'
+    'QTB_FASTER_CODEC_STREAMING_DECODE_WINDOW_FRAMES',
+    'QTB_FASTER_CODEC_RIGHT_PADDED_DECODE',
+    'QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -204,6 +243,8 @@ function Set-FrozenCEnvironment {
     $env:QTB_NSYS_CUDA_PROFILER_PAIR = '0'
     $env:QTB_FASTER_CODEC_STREAMING_DECODE = if ($CodecStreamingDecode) { '1' } else { '0' }
     $env:QTB_FASTER_CODEC_STREAMING_DECODE_WINDOW_FRAMES = '80'
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE = if ($CodecRightPaddedDecode) { '1' } else { '0' }
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES = '80'
 }
 
 function Assert-ElevatedWprSession {
@@ -372,6 +413,9 @@ function Invoke-PlaybackRun {
         '--startup-timeout-ms', '240000',
         '--playback-metrics-file', $metrics
     )
+    if ($null -ne $pcmCapture) {
+        $arguments += @('--pcm-capture-file', $pcmCapture)
+    }
     if ($MatmulPrecision) {
         $arguments += @(
             '--worker-arg', '--matmul-precision', '--worker-arg', $MatmulPrecision
@@ -379,6 +423,9 @@ function Invoke-PlaybackRun {
     }
     if ($ProfilePrefill) {
         $arguments += @('--worker-arg', '--profile-prefill')
+    }
+    if ($CollectGenerationTrace) {
+        $arguments += @('--worker-arg', '--collect-generation-trace')
     }
     if ($WorkerSynthesisWarmup) {
         $arguments += @(
@@ -476,6 +523,20 @@ function Invoke-PlaybackRun {
         throw "Playback run completed without metrics: $metrics"
     }
     $result = Get-Content -LiteralPath $metrics -Raw | ConvertFrom-Json
+    $pcmCaptureMetadata = $null
+    if ($null -ne $pcmCapture) {
+        $metadataPath = "$pcmCapture.json"
+        if (-not (Test-Path -LiteralPath $pcmCapture -PathType Leaf) -or
+            -not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) {
+            throw 'Playback run completed without the requested PCM capture and metadata.'
+        }
+        $pcmCaptureMetadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
+        if (-not $pcmCaptureMetadata.completed -or
+            $pcmCaptureMetadata.measurement -ne 'raw_s16le_pcm_capture' -or
+            $pcmCaptureMetadata.byte_count -ne (Get-Item -LiteralPath $pcmCapture).Length) {
+            throw 'PCM capture metadata failed completion or byte-count validation.'
+        }
+    }
     $expectedPlaybackMarkerCount = $null
     if ($CaptureEtw -and -not $result.etw_playback_markers_enabled) {
         throw 'ETW follow-up completed without requested playback marker instrumentation.'
@@ -547,6 +608,11 @@ function Invoke-PlaybackRun {
         total_audio_duration_ms = [double]$result.total_audio_duration_ms
         queue_empty_before_later_chunk_count = [int]$result.queue_empty_before_later_chunk_count
         faster_graph_capture_count = $graphs
+        pcm_capture_path = $pcmCapture
+        pcm_capture_metadata_path = if ($null -ne $pcmCapture) { "$pcmCapture.json" } else { $null }
+        pcm_capture_valid = if ($null -ne $pcmCapture) { $true } else { $null }
+        pcm_capture_byte_count = if ($null -ne $pcmCapture) { [int64]$pcmCaptureMetadata.byte_count } else { $null }
+        pcm_capture_chunk_count = if ($null -ne $pcmCapture) { [int]$pcmCaptureMetadata.audio_chunk_count } else { $null }
     }
 }
 
@@ -597,7 +663,10 @@ try {
             emit_every_frames = $EmitEveryFrames
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
             diagnostic_profile_prefill = [bool]$ProfilePrefill
+            diagnostic_generation_trace = [bool]$CollectGenerationTrace
             codec_streaming_decode = [bool]$CodecStreamingDecode
+            codec_right_padded_decode = [bool]$CodecRightPaddedDecode
+            pcm_capture_enabled = ($null -ne $pcmCapture)
             tts_cpu_priority = $TtsCpuPriority
             managed_process_launcher = [bool]$UseManagedProcessLauncher
             tts_client_priority_application = if ($UseManagedProcessLauncher -or $TtsCpuPriority -ne 'Normal') {
