@@ -85,6 +85,7 @@ struct ProgramOptions {
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
     std::string playback_metrics_file;
+    std::string pcm_capture_file;
     std::size_t playback_prebuffer_chunks = 1;
     bool etw_playback_markers = false;
 };
@@ -374,6 +375,143 @@ enum class PlaybackSinkMode {
     WaveOut,
     Disabled,
     Mock,
+};
+
+class PcmCapture final {
+public:
+    explicit PcmCapture(const std::string& file_name)
+        : target_(std::filesystem::u8path(file_name)),
+          metadata_target_(metadata_path(target_)),
+          temporary_(temporary_path(target_)),
+          metadata_temporary_(temporary_path(metadata_target_)) {
+        if (std::filesystem::exists(target_)) {
+            throw std::runtime_error("refusing to overwrite existing PCM capture file: " + file_name);
+        }
+        if (std::filesystem::exists(metadata_target_)) {
+            throw std::runtime_error(
+                "refusing to overwrite existing PCM capture metadata file: " +
+                metadata_target_.string());
+        }
+        if (std::filesystem::exists(temporary_) || std::filesystem::exists(metadata_temporary_)) {
+            throw std::runtime_error("PCM capture temporary path already exists; remove it before retrying");
+        }
+        output_.open(temporary_, std::ios::binary | std::ios::trunc);
+        if (!output_) {
+            throw std::runtime_error("failed to open PCM capture file: " + temporary_.string());
+        }
+    }
+
+    ~PcmCapture() {
+        output_.close();
+        if (!finalized_) {
+            std::error_code ignored;
+            std::filesystem::remove(temporary_, ignored);
+            std::filesystem::remove(metadata_temporary_, ignored);
+        }
+    }
+
+    PcmCapture(const PcmCapture&) = delete;
+    PcmCapture& operator=(const PcmCapture&) = delete;
+
+    void append(const PcmChunk& chunk) {
+        if (chunk.bytes.empty()) {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (finalized_) {
+            throw std::runtime_error("cannot append PCM after capture finalization");
+        }
+        if (!format_.has_value()) {
+            format_ = chunk.format;
+        }
+        else if (!formats_match(format_.value(), chunk.format)) {
+            throw std::runtime_error("PCM capture cannot combine chunks with different audio formats");
+        }
+        output_.write(
+            reinterpret_cast<const char*>(chunk.bytes.data()),
+            static_cast<std::streamsize>(chunk.bytes.size()));
+        if (!output_) {
+            throw std::runtime_error("failed to write PCM capture file: " + temporary_.string());
+        }
+        byte_count_ += chunk.bytes.size();
+        ++chunk_count_;
+    }
+
+    void finalize() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (finalized_) {
+            return;
+        }
+        if (!format_.has_value() || byte_count_ == 0) {
+            throw std::runtime_error("cannot finalize PCM capture without audio");
+        }
+        output_.close();
+        if (!output_) {
+            throw std::runtime_error("failed to close PCM capture file: " + temporary_.string());
+        }
+
+        std::ostringstream metadata;
+        metadata << "{\n"
+                 << "  \"schema_version\": 1,\n"
+                 << "  \"measurement\": \"raw_s16le_pcm_capture\",\n"
+                 << "  \"completed\": true,\n"
+                 << "  \"audio_chunk_count\": " << chunk_count_ << ",\n"
+                 << "  \"byte_count\": " << byte_count_ << ",\n"
+                 << "  \"audio_format\": {\"sample_format\": \""
+                 << format_.value().sample_format << "\", \"sample_rate\": "
+                 << format_.value().sample_rate << ", \"channels\": "
+                 << format_.value().channels << "}\n"
+                 << "}\n";
+        try {
+            std::ofstream metadata_output(metadata_temporary_, std::ios::binary | std::ios::trunc);
+            if (!metadata_output) {
+                throw std::runtime_error(
+                    "failed to open PCM capture metadata file: " + metadata_temporary_.string());
+            }
+            metadata_output << metadata.str();
+            metadata_output.close();
+            if (!metadata_output) {
+                throw std::runtime_error(
+                    "failed to write PCM capture metadata file: " + metadata_temporary_.string());
+            }
+            std::filesystem::rename(temporary_, target_);
+            std::filesystem::rename(metadata_temporary_, metadata_target_);
+            finalized_ = true;
+        }
+        catch (...) {
+            std::error_code ignored;
+            std::filesystem::remove(metadata_temporary_, ignored);
+            throw;
+        }
+    }
+
+private:
+    static bool formats_match(const AudioFormat& left, const AudioFormat& right) {
+        return left.sample_format == right.sample_format &&
+            left.sample_rate == right.sample_rate &&
+            left.channels == right.channels;
+    }
+
+    static std::filesystem::path metadata_path(const std::filesystem::path& target) {
+        return std::filesystem::path(target.native() + L".json");
+    }
+
+    static std::filesystem::path temporary_path(const std::filesystem::path& target) {
+        return std::filesystem::path(
+            target.native() + L".tmp." + std::to_wstring(GetCurrentProcessId()));
+    }
+
+    std::mutex mutex_;
+    std::filesystem::path target_;
+    std::filesystem::path metadata_target_;
+    std::filesystem::path temporary_;
+    std::filesystem::path metadata_temporary_;
+    std::ofstream output_;
+    std::optional<AudioFormat> format_;
+    std::size_t chunk_count_ = 0;
+    std::size_t byte_count_ = 0;
+    bool finalized_ = false;
 };
 
 class WaveOutPlayer final {
@@ -784,6 +922,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
         << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
+        << "  --pcm-capture-file <path>      Write opt-in one-shot raw s16le PCM plus JSON metadata.\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
         << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
@@ -944,6 +1083,10 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
             options.playback_metrics_file = require_value(
                 index, argc, argv, "--playback-metrics-file");
         }
+        else if (arg == "--pcm-capture-file" ||
+                 arg.rfind("--pcm-capture-file=", 0) == 0) {
+            options.pcm_capture_file = require_value(index, argc, argv, "--pcm-capture-file");
+        }
         else if (arg == "--playback-prebuffer-chunks" ||
                  arg.rfind("--playback-prebuffer-chunks=", 0) == 0) {
             options.playback_prebuffer_chunks = parse_u32(
@@ -1035,6 +1178,9 @@ void validate_options(const ProgramOptions& options) {
     if (!options.playback_metrics_file.empty() && options.text.empty()) {
         throw std::runtime_error("--playback-metrics-file requires one-shot --text playback");
     }
+    if (!options.pcm_capture_file.empty() && options.text.empty()) {
+        throw std::runtime_error("--pcm-capture-file requires one-shot --text playback");
+    }
 }
 
 StdIoTransportOptions make_transport_options(const ProgramOptions& options) {
@@ -1115,7 +1261,8 @@ RequestId submit_request(
     ActiveRequestState& active_state,
     const ProgramOptions& options,
     const std::string& text,
-    OneShotState* one_shot_state = nullptr) {
+    OneShotState* one_shot_state = nullptr,
+    PcmCapture* pcm_capture = nullptr) {
     const std::uint64_t playback_epoch =
         cancel_active_request(client, player, active_state);
 
@@ -1149,11 +1296,14 @@ RequestId submit_request(
 
     const RequestId request_id = request.id;
     TtsCallbacks callbacks;
-    callbacks.on_audio = [&player, &active_state, playback_epoch, request_id](const PcmChunk& chunk) {
+    callbacks.on_audio = [&player, &active_state, playback_epoch, request_id, pcm_capture](const PcmChunk& chunk) {
         if (!is_active_request(active_state, request_id)) {
             return;
         }
         try {
+            if (pcm_capture != nullptr) {
+                pcm_capture->append(chunk);
+            }
             player.enqueue(playback_epoch, chunk);
         }
         catch (const std::exception& exc) {
@@ -1552,6 +1702,10 @@ int wmain(int argc, wchar_t** argv) {
             : (options.use_mock_playback_sink
                     ? PlaybackSinkMode::Mock
                     : PlaybackSinkMode::WaveOut);
+        std::unique_ptr<PcmCapture> pcm_capture;
+        if (!options.pcm_capture_file.empty()) {
+            pcm_capture = std::make_unique<PcmCapture>(options.pcm_capture_file);
+        }
         WaveOutPlayer player(
             playback_sink_mode,
             playback_metrics.get(),
@@ -1563,7 +1717,14 @@ int wmain(int argc, wchar_t** argv) {
             if (playback_metrics != nullptr) {
                 playback_metrics->begin_request();
             }
-            submit_request(client, player, active_state, options, options.text, &state);
+            submit_request(
+                client,
+                player,
+                active_state,
+                options,
+                options.text,
+                &state,
+                pcm_capture.get());
             if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
                 cancel_active_request(client, player, active_state);
                 client.stop();
@@ -1574,6 +1735,9 @@ int wmain(int argc, wchar_t** argv) {
                 throw std::runtime_error(state.message.empty() ? "one-shot synthesis failed" : state.message);
             }
             player.wait_until_idle(std::chrono::minutes(5));
+            if (pcm_capture != nullptr) {
+                pcm_capture->finalize();
+            }
             if (playback_metrics != nullptr) {
                 playback_metrics->mark_playback_completed();
                 playback_metrics->write_json_file(options.playback_metrics_file);
