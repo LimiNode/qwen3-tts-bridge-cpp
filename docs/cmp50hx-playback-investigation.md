@@ -481,6 +481,16 @@ latency was about 132 ms later, so this is a throughput result with a visible
 TTFA trade-off, not an unconditional runtime recommendation. It needs the
 separate longer playback soak before any policy decision.
 
+That acceptance soak is now complete for run `20260821T203649Z-98540`: ten
+fresh-worker attempts used the same full-EOS warmup, `emit_every_frames=16`,
+two-chunk sink prebuffer, normal Faster graphs, and the right-padded decoder
+shadow. Every attempt exited successfully, produced four PCM chunks / 5,016.875
+ms of audio, and recorded zero later-chunk queue-empty observations. No WPR
+session was launched because no outlier was detected. This validates the
+candidate for this bounded idle playback workload; it still does not establish
+hardware-underrun absence, production policy, or behaviour under a competing
+GPU workload.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
