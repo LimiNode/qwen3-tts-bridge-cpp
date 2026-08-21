@@ -19,6 +19,9 @@ def main() -> int:
     args = parse_args()
     if args.output.exists():
         args.output.unlink()
+    prebuffer_output = args.output.with_stem(f"{args.output.stem}-prebuffer")
+    if prebuffer_output.exists():
+        prebuffer_output.unlink()
 
     command = [
         str(args.player),
@@ -28,7 +31,7 @@ def main() -> int:
         "--mock-chunks",
         "3",
         "--mock-chunk-ms",
-        "40",
+        "100",
         "--mock-chunk-delay",
         "0.15",
         "--playback-metrics-file",
@@ -58,6 +61,24 @@ def main() -> int:
             chunk["queue_empty_before_later_chunk"] for chunk in result["chunks"][1:]
         )
 
+        prebuffer_command = [
+            *command,
+            "--playback-prebuffer-chunks",
+            "2",
+        ]
+        output_index = prebuffer_command.index(str(args.output))
+        prebuffer_command[output_index] = str(prebuffer_output)
+        subprocess.run(prebuffer_command, check=True, timeout=30)
+
+        prebuffer_result = json.loads(prebuffer_output.read_text(encoding="utf-8"))
+        assert prebuffer_result["audio_chunk_count"] == 3
+        assert prebuffer_result["queue_empty_before_later_chunk_count"] == 0
+        assert prebuffer_result["playback_started_ms"] is not None
+        assert (
+            prebuffer_result["playback_started_ms"]
+            > prebuffer_result["chunks"][0]["arrival_ms"]
+        )
+
     missing_metrics = subprocess.run(
         [str(args.player), "--mock", "--etw-playback-markers"],
         capture_output=True,
@@ -65,6 +86,14 @@ def main() -> int:
     )
     assert missing_metrics.returncode != 0
     assert "requires --playback-metrics-file" in missing_metrics.stderr
+
+    invalid_prebuffer = subprocess.run(
+        [str(args.player), "--mock", "--playback-prebuffer-chunks", "0"],
+        capture_output=True,
+        text=True,
+    )
+    assert invalid_prebuffer.returncode != 0
+    assert "must be greater than zero" in invalid_prebuffer.stderr
     return 0
 
 
