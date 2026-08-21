@@ -38,6 +38,9 @@ param(
     [ValidateRange(1, 100)]
     [int]$WorkerWarmupMaxOutputChunks = 2,
 
+    [ValidateRange(0, 20)]
+    [int]$WorkerWarmupUnboundedPasses = 0,
+
     [string]$WorkerWarmupText = 'Warmup.',
 
     [ValidateRange(1, 64)]
@@ -45,6 +48,8 @@ param(
 
     [ValidatePattern('^(|highest|high|medium)$')]
     [string]$MatmulPrecision = '',
+
+    [switch]$ProfilePrefill,
 
     [ValidateSet('Normal', 'AboveNormal')]
     [string]$TtsCpuPriority = 'Normal',
@@ -352,11 +357,15 @@ function Invoke-PlaybackRun {
             '--worker-arg', '--matmul-precision', '--worker-arg', $MatmulPrecision
         )
     }
+    if ($ProfilePrefill) {
+        $arguments += @('--worker-arg', '--profile-prefill')
+    }
     if ($WorkerSynthesisWarmup) {
         $arguments += @(
             '--worker-arg', '--warmup-synthesis',
             '--worker-arg', '--warmup-synthesis-passes', '--worker-arg', $WorkerWarmupPasses,
             '--worker-arg', '--warmup-max-output-chunks', '--worker-arg', $WorkerWarmupMaxOutputChunks,
+            '--worker-arg', '--warmup-unbounded-passes', '--worker-arg', $WorkerWarmupUnboundedPasses,
             '--worker-arg', '--warmup-text', '--worker-arg', $WorkerWarmupText,
             '--worker-arg', '--warmup-language', '--worker-arg', 'auto',
             '--worker-arg', '--warmup-speaker', '--worker-arg', $Speaker
@@ -563,8 +572,10 @@ try {
             worker_synthesis_warmup = [bool]$WorkerSynthesisWarmup
             worker_warmup_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupPasses } else { $null }
             worker_warmup_max_output_chunks = if ($WorkerSynthesisWarmup) { $WorkerWarmupMaxOutputChunks } else { $null }
+            worker_warmup_unbounded_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupUnboundedPasses } else { $null }
             emit_every_frames = $EmitEveryFrames
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
+            diagnostic_profile_prefill = [bool]$ProfilePrefill
             tts_cpu_priority = $TtsCpuPriority
             managed_process_launcher = [bool]$UseManagedProcessLauncher
             tts_client_priority_application = if ($UseManagedProcessLauncher -or $TtsCpuPriority -ne 'Normal') {

@@ -978,6 +978,32 @@ class QwenEngineTests(unittest.TestCase):
         self.assertTrue(warmup_passes[0]["bounded"])
         self.assertEqual(1, warmup_passes[0]["max_output_chunks"])
 
+    def test_first_unbounded_warmup_pass_reaches_natural_eos(self) -> None:
+        fake_model = _StreamingWrapperModel(
+            "custom_voice",
+            supported_speakers=["Alice"],
+        )
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-custom",
+                warmup_synthesis_enabled=True,
+                warmup_max_output_chunks=1,
+                warmup_unbounded_passes=1,
+                warmup_text="Prime.",
+                warmup_speaker="Alice",
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+
+        warmup_fields = engine.warmup()
+
+        self.assertIsNotNone(warmup_fields)
+        assert warmup_fields is not None
+        self.assertEqual(2, warmup_fields["warmup_audio_chunks"])
+        warmup_passes = cast(list[dict[str, object]], warmup_fields["warmup_passes"])
+        self.assertFalse(warmup_passes[0]["bounded"])
+        self.assertIsNone(warmup_passes[0]["max_output_chunks"])
+
     def test_generation_prime_requires_natural_eos_and_keeps_metrics_internal(
         self,
     ) -> None:
