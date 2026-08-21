@@ -416,7 +416,7 @@ public:
                 queued_audio_duration_ms_locked(),
                 queue_empty_before_later_chunk);
         }
-        if (pending_buffers_.size() >= prebuffer_chunks_) {
+        if (playback_started_ || pending_buffers_.size() >= prebuffer_chunks_) {
             flush_pending_locked();
         }
     }

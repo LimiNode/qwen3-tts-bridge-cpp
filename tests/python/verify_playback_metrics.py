@@ -29,11 +29,11 @@ def main() -> int:
         "--text",
         "Playback metrics smoke.",
         "--mock-chunks",
-        "3",
+        "4",
         "--mock-chunk-ms",
-        "100",
+        "150",
         "--mock-chunk-delay",
-        "0.15",
+        "0.2",
         "--playback-metrics-file",
         str(args.output),
     ]
@@ -52,8 +52,8 @@ def main() -> int:
     if result["audio_chunk_count"] == 0:
         print("WaveOut device unavailable; playback queue assertions skipped.")
     else:
-        assert result["audio_chunk_count"] == 3
-        assert len(result["chunks"]) == 3
+        assert result["audio_chunk_count"] == 4
+        assert len(result["chunks"]) == 4
         assert result["first_waveout_submission_ms"] is not None
         assert result["queue_empty_before_later_chunk_count"] >= 1
         assert result["chunks"][0]["inter_arrival_ms"] is None
@@ -71,11 +71,11 @@ def main() -> int:
         subprocess.run(prebuffer_command, check=True, timeout=30)
 
         prebuffer_result = json.loads(prebuffer_output.read_text(encoding="utf-8"))
-        assert prebuffer_result["audio_chunk_count"] == 3
+        assert prebuffer_result["audio_chunk_count"] == 4
         assert prebuffer_result["queue_empty_before_later_chunk_count"] == 0
-        assert prebuffer_result["playback_started_ms"] is not None
+        assert prebuffer_result["first_waveout_submission_ms"] is not None
         assert (
-            prebuffer_result["playback_started_ms"]
+            prebuffer_result["first_waveout_submission_ms"]
             > prebuffer_result["chunks"][0]["arrival_ms"]
         )
 
