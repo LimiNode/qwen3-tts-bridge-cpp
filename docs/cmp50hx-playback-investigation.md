@@ -272,7 +272,8 @@ warmup coverage.
 | --- | ---: | ---: | --- |
 | Bounded after 2 chunks | 1.164323 | 3 | Reproduced on an idle CMP 50HX. |
 | Bounded after 4 chunks | 1.006005--1.026629 | 0--1 | Strong improvement, but terminal flush remained intermittently cold. |
-| One generic unbounded pass to natural EOS | 1.007151--1.017273 (mean 1.013495) | 0 / 3 attempts | Current controlled acceptance result. |
+| One generic unbounded pass to natural EOS | 1.007151--1.017273 (mean 1.013495) in the initial sample | 0 / 3 initial attempts; then 1 / 2 in the extended run | Reduces cold-start risk, but is not an acceptance result. |
+| Prompt-matched unbounded pass to natural EOS | 1.032--1.033 before the terminal chunk | 1 / 1 attempt | Did not cover the dynamic terminal decoder path. |
 
 The historical medium benchmark was also replayed with its exact frozen-C
 configuration and again achieved RTF 0.974. Therefore the numerical/runtime
@@ -285,10 +286,19 @@ almost entirely GPU `speech_tokenizer.decode` work: 118, 483, 838, and 524 ms
 across the four chunks. D2H, NumPy conversion, PCM conversion, and wrapper
 CPU work were negligible. A bounded warmup never reaches the distinct terminal
 flush-decode path; one unbounded warmup pass reaches natural EOS before the
-worker reports ready.
+worker reports ready, but it does not establish a reusable graph or decoder
+shape for every later terminal chunk.
 
-The current CMP playback recommendation is consequently startup-only and
-explicit:
+The extended validation falsified the initial full-EOS warmup acceptance
+hypothesis. In run `20260821T105806Z-98540`, the second request reported one
+queue-empty proxy observation before its fourth, terminal PCM chunk. Its
+`codec_wrapper_residual_ms` rose from 158--196 ms on the preceding chunks to
+874 ms. Prompt-matched warmup in `20260821T110549Z-98540` failed the same way:
+the first request's terminal residual was 879 ms after three 131--192 ms
+non-terminal residuals. The seed and text do not guarantee the same terminal
+codec shape because warmup is itself a generative pass.
+
+Full-EOS warmup remains an explicit, startup-only experiment:
 
 ```text
 --warmup-synthesis
@@ -297,10 +307,11 @@ explicit:
 ```
 
 `--warmup-max-output-chunks` may remain set as a bound for any later passes;
-the first unbounded pass deliberately ignores it. This is not a hardware
-underrun claim and not yet a guarantee under arbitrary competing GPU load. It
-is a reproducible mitigation for the controlled physical-playback proxy, with
-the frozen C numerical boundary unchanged.
+the first unbounded pass deliberately ignores it. It is neither a hardware
+underrun fix nor a sufficient real-time policy. The frozen C numerical boundary
+remains unchanged. The next controlled mitigation is opt-in sink prebuffering:
+measure whether a deliberate initial audio reserve prevents the known terminal
+burst without silently claiming that inference itself became faster.
 
 ### GPU lifecycle evidence gap
 
@@ -353,11 +364,11 @@ consumer-isolation A/B gives a causal result.
 1. Keep marker-aware ETW analysis limited to zero-loss, marker-complete ETLs;
    it remains an attribution tool, not a GPU-duration measurement on this WDDM
    stack.
-2. Validate the full-EOS warmup policy in a longer physical playback soak and
-   with the representative RAG workload active. Record TTFA, sink start,
-   completion, per-chunk cadence, worker RTF, and proxy observations separately.
-3. Only if that policy still reproduces a proxy outlier, capture a new
-   marker-aligned ETL and investigate competing contexts or WDDM scheduling.
+2. Run a controlled opt-in sink-prebuffer A/B on the idle machine. Record TTFA,
+   sink start, completion, per-chunk cadence, worker RTF, and proxy observations
+   separately; do not describe delayed sink start as improved synthesis speed.
+3. If a bounded playback reserve still reproduces a proxy outlier, capture a
+   new marker-aligned ETL and investigate competing contexts or WDDM scheduling.
 
 ## Reproduction examples
 
