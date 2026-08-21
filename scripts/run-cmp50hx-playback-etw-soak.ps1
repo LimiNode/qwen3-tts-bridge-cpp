@@ -54,6 +54,8 @@ param(
 
     [switch]$ProfilePrefill,
 
+    [switch]$CodecStreamingDecode,
+
     [ValidateSet('Normal', 'AboveNormal')]
     [string]$TtsCpuPriority = 'Normal',
 
@@ -117,6 +119,16 @@ $model = Resolve-RepoPath $ModelPath 'Model path'
 $shadow = Resolve-RepoPath $FasterShadowPath 'Faster shadow source'
 $cache = Resolve-RepoPath $RuntimeCachePath 'Runtime cache'
 $wprProfile = Resolve-RepoPath $WprProfilePath 'WPR profile'
+if ($CodecStreamingDecode) {
+    $codecStreamingMarker = Join-Path $shadow 'faster_qwen3_tts\model.py'
+    if (-not (Select-String -LiteralPath $codecStreamingMarker -SimpleMatch `
+            'def _decode_streaming_window(' -Quiet)) {
+        throw (
+            '-CodecStreamingDecode requires a shadow prepared by ' +
+            'prepare-cmp50hx-faster-codec-streaming-shadow.ps1'
+        )
+    }
+}
 $outputDirectory = if ([IO.Path]::IsPathRooted($OutputRoot)) {
     $OutputRoot
 }
@@ -156,7 +168,9 @@ $environmentNames = @(
     'QTB_FASTER_MLP_NARROW_GATE_UP_FP16', 'QTB_FASTER_GRAPH_CARRIER_PROOF_PATH',
     'QTB_FASTER_GRAPH_FINITE_CHECKER', 'QTB_FASTER_GRAPH_FINITE_PROOF_PATH',
     'QTB_FASTER_STALL_TELEMETRY', 'QTB_FASTER_DIAGNOSTIC_TRACE_PATH',
-    'QTB_FASTER_DIAGNOSTIC_START_REQUEST', 'QTB_NSYS_CUDA_PROFILER_PAIR'
+    'QTB_FASTER_DIAGNOSTIC_START_REQUEST', 'QTB_NSYS_CUDA_PROFILER_PAIR',
+    'QTB_FASTER_CODEC_STREAMING_DECODE',
+    'QTB_FASTER_CODEC_STREAMING_DECODE_WINDOW_FRAMES'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -188,6 +202,8 @@ function Set-FrozenCEnvironment {
     $env:QTB_FASTER_DIAGNOSTIC_TRACE_PATH = ''
     $env:QTB_FASTER_DIAGNOSTIC_START_REQUEST = ''
     $env:QTB_NSYS_CUDA_PROFILER_PAIR = '0'
+    $env:QTB_FASTER_CODEC_STREAMING_DECODE = if ($CodecStreamingDecode) { '1' } else { '0' }
+    $env:QTB_FASTER_CODEC_STREAMING_DECODE_WINDOW_FRAMES = '80'
 }
 
 function Assert-ElevatedWprSession {
@@ -581,6 +597,7 @@ try {
             emit_every_frames = $EmitEveryFrames
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
             diagnostic_profile_prefill = [bool]$ProfilePrefill
+            codec_streaming_decode = [bool]$CodecStreamingDecode
             tts_cpu_priority = $TtsCpuPriority
             managed_process_launcher = [bool]$UseManagedProcessLauncher
             tts_client_priority_application = if ($UseManagedProcessLauncher -or $TtsCpuPriority -ne 'Normal') {

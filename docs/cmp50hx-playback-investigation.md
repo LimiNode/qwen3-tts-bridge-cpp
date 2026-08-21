@@ -345,6 +345,48 @@ PCM chunk; it does not improve producer RTF or constitute a hardware-underrun
 counter. Longer idle and representative-load validation remain separate
 acceptance work.
 
+### Fixed-shape codec-decode candidate
+
+The next performance investigation is deliberately separate from the playback
+reserve. The Faster custom-voice stream currently decodes dynamically sized
+codec windows. The vendored streaming implementation provides
+`speech_tokenizer.decode_streaming()` with left-padding to a fixed number of
+frames and removal of the corresponding leading PCM samples afterwards. This
+preserves the emitted tail rather than returning PCM produced for right-side
+padding.
+
+The opt-in candidate applies that API only to ordinary streaming windows.
+Terminal EOS flush remains on the established `decode()` path for now, because
+its audio-tail contract and the observed terminal latency burst need a separate
+experiment. The candidate is default-off, checks that the selected shadow
+contains its patch marker, and fails closed when the tokenizer lacks
+`decode_streaming` or a window exceeds the configured fixed 80-frame size.
+
+Create an isolated candidate shadow from the exact frozen source:
+
+```powershell
+.\scripts\prepare-cmp50hx-faster-codec-streaming-shadow.ps1
+```
+
+Then run only the streaming-API correctness smoke:
+
+```powershell
+.\scripts\run-cmp50hx-playback-etw-soak.ps1 `
+  -Attempts 1 `
+  -FasterShadowPath tmp\cmp50hx-faster-codec-streaming-shadow `
+  -CodecStreamingDecode `
+  -PlaybackPrebufferChunks 2 `
+  -WorkerSynthesisWarmup `
+  -WorkerWarmupUnboundedPasses 1 `
+  -EmitEveryFrames 16 `
+  -ProfilePrefill `
+  -SkipEtwFollowup
+```
+
+This first mode keeps decoder compilation/capture disabled and is not a
+performance claim. It exists to establish PCM/EOS completion and finite long
+generation before a separately controlled decoder-optimization A/B.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
