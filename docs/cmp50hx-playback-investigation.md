@@ -470,6 +470,17 @@ without a playback proxy observation. It validates the candidate's bounded
 longer correctness path; its PCM capture and generation trace remain diagnostic
 artefacts, not performance evidence.
 
+The first fresh-worker timing A/B deliberately omitted PCM capture and
+generation tracing. Both sides used the same seed, request, full-EOS warmup,
+`emit_every_frames=16`, and two-chunk sink prebuffer. The frozen decoder
+measured RTF `1.156173` and `1.152039`; the right-padded candidate measured
+`0.966334` and `0.962041`. This is an approximately 16.5% synthesis reduction
+and brings this short workload below real-time in both candidate runs. All four
+runs completed playback with zero proxy observations. Candidate first-audio
+latency was about 132 ms later, so this is a throughput result with a visible
+TTFA trade-off, not an unconditional runtime recommendation. It needs the
+separate longer playback soak before any policy decision.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
