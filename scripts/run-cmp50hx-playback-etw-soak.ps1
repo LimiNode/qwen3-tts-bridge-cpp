@@ -245,6 +245,9 @@ function Set-FrozenCEnvironment {
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE = if ($CodecRightPaddedDecode) { '1' } else { '0' }
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES = '80'
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = if ($CodecRightPaddedCudaGraph) { '1' } else { '0' }
+    # A prior compile experiment in the same shell must not affect this graph-only run.
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE = '0'
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE = ''
 }
 
 function Assert-ElevatedWprSession {
