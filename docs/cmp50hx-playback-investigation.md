@@ -491,6 +491,15 @@ candidate for this bounded idle playback workload; it still does not establish
 hardware-underrun absence, production policy, or behaviour under a competing
 GPU workload.
 
+The separate manual codec CUDA-graph smoke (run `20260822T000100Z-98540`) also
+completed successfully. Its provenance confirms the right-padded fixed
+80-frame path and the opt-in codec graph flag; worker stderr confirms the
+decoder graph was warmed and captured before the normal Faster predictor and
+talker graphs. The request exited cleanly with four PCM chunks / 5,016.875 ms
+of audio and zero later-chunk queue-empty observations. This is a graph-path
+correctness smoke only. It still needs a PCM-quality pair against the accepted
+right-padded candidate before timing or playback conclusions.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
