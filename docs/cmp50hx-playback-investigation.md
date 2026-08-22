@@ -500,6 +500,14 @@ of audio and zero later-chunk queue-empty observations. This is a graph-path
 correctness smoke only. It still needs a PCM-quality pair against the accepted
 right-padded candidate before timing or playback conclusions.
 
+That PCM pair is now complete. The accepted right-padded baseline and manual
+codec-graph candidate both produced 240,810 bytes / 120,405 s16le samples with
+the identical SHA-256 `747bfd9afd3a004cf545c92beb25e06dd55cbda1dd6b6a13f347a52689a19c1a`.
+All samples matched exactly (`RMS=0`, `max delta=0`). The parity analyzer now
+represents this mathematically infinite SNR as `snr_db=null` plus an explicit
+`snr_db_is_infinite=true`, so the strict JSON report remains valid while the
+threshold gate still accepts exact equality.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
