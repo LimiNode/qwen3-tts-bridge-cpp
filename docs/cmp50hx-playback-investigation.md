@@ -491,6 +491,31 @@ candidate for this bounded idle playback workload; it still does not establish
 hardware-underrun absence, production policy, or behaviour under a competing
 GPU workload.
 
+### Rejected compiled codec decoder
+
+The right-padded decoder also received a separate, opt-in
+`torch.compile(mode="reduce-overhead", backend="inductor")` experiment. The
+sealed worker's Triton installation was verified first, and compile smoke run
+`20260822T025117Z-98540` confirmed that the decoder compilation completed. The
+request reached natural EOS with four PCM chunks / 5,016.875 ms of audio and no
+queue-starvation proxy observation. This smoke is not a performance or audio
+acceptance result.
+
+The candidate then failed the PCM quality gate. Baseline run
+`20260822T040926Z-98540` and compiled run `20260822T064319Z-98540` both
+completed with the same s16le format, four chunks, and 240,810 bytes, but their
+SHA-256 values differed. The strict comparison measured RMS delta `14.105`, SNR
+`41.551 dB`, and maximum absolute delta `330`; the accepted right-padding gate
+is RMS `<= 3`, SNR `>= 55 dB`, and maximum delta `<= 64`.
+
+This is not sampling drift: generation-trace baseline run
+`20260822T071848Z-98540` and compiled run `20260822T102844Z-98540` each
+produced 63 codec frames with the identical codec SHA-256
+`bab57d3e9d4dd49b7fdac6ffd106a8af56b382f1c9648041e473eaa1e5e3d3b8`.
+The observed PCM difference therefore comes from the compiled decoder's
+numerical implementation. The compile candidate is rejected without a
+performance A/B or longer playback soak, and it remains default-off.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
