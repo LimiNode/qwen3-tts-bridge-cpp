@@ -60,6 +60,9 @@ param(
 
     [switch]$CodecRightPaddedDecode,
 
+    [ValidateRange(1, 80)]
+    [int]$CodecRightPaddedWindowFrames = 80,
+
     [switch]$CodecRightPaddedCudaGraph,
 
     [ValidateSet('Normal', 'AboveNormal')]
@@ -87,6 +90,12 @@ if ($CodecStreamingDecode -and $CodecRightPaddedDecode) {
 }
 if ($CodecRightPaddedCudaGraph -and -not $CodecRightPaddedDecode) {
     throw '-CodecRightPaddedCudaGraph requires -CodecRightPaddedDecode.'
+}
+if ($CodecRightPaddedDecode -and $CodecRightPaddedWindowFrames -lt (25 + $EmitEveryFrames)) {
+    throw (
+        '-CodecRightPaddedWindowFrames must be at least 25 context frames plus ' +
+        "-EmitEveryFrames ($EmitEveryFrames)."
+    )
 }
 
 function Resolve-RepoPath {
@@ -246,7 +255,7 @@ function Set-FrozenCEnvironment {
     $env:QTB_FASTER_DIAGNOSTIC_START_REQUEST = ''
     $env:QTB_NSYS_CUDA_PROFILER_PAIR = '0'
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE = if ($CodecRightPaddedDecode) { '1' } else { '0' }
-    $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES = '80'
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES = "$CodecRightPaddedWindowFrames"
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = if ($CodecRightPaddedCudaGraph) { '1' } else { '0' }
     # A prior compile experiment in the same shell must not affect this graph-only run.
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE = '0'
@@ -671,6 +680,12 @@ try {
             diagnostic_profile_prefill = [bool]$ProfilePrefill
             diagnostic_generation_trace = [bool]$CollectGenerationTrace
             codec_right_padded_decode = [bool]$CodecRightPaddedDecode
+            codec_right_padded_decode_window_frames = if ($CodecRightPaddedDecode) {
+                $CodecRightPaddedWindowFrames
+            }
+            else {
+                $null
+            }
             codec_right_padded_cuda_graph = [bool]$CodecRightPaddedCudaGraph
             pcm_capture_enabled = ($null -ne $pcmCapture)
             tts_cpu_priority = $TtsCpuPriority
