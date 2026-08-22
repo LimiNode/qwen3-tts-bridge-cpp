@@ -519,6 +519,17 @@ completed playback with zero proxy observations. This is repeatable
 throughput and TTFA improvement for the bounded workload, pending the separate
 ten-attempt playback soak before a runtime-policy decision.
 
+That final graph soak is now complete for run `20260822T005501Z-98540`. Ten
+fresh-worker attempts used the right-padded 80-frame decoder, its opt-in manual
+CUDA graph, full-EOS warmup, `emit_every_frames=16`, and a two-chunk sink
+prebuffer. All ten exited successfully, each emitted four PCM chunks / 5,016.875
+ms of audio, and none recorded a later-chunk queue-empty proxy observation. No
+WPR session was launched because no outlier was observed. This completes the
+bounded idle playback gate for the manual graph candidate; it remains a
+default-off experimental path until a separate runtime-policy decision and does
+not prove absence of physical hardware underruns or behavior under competing GPU
+workloads.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
