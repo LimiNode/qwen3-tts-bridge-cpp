@@ -508,6 +508,17 @@ represents this mathematically infinite SNR as `snr_db=null` plus an explicit
 `snr_db_is_infinite=true`, so the strict JSON report remains valid while the
 threshold gate still accepts exact equality.
 
+Two fresh-worker performance pairs then compared that accepted right-padded
+baseline with the manual codec graph, without PCM capture or ETW. Both sides
+used the same seed, full-EOS warmup, `emit_every_frames=16`, and two-chunk sink
+prebuffer. Pair one reduced synthesis `4890.594 -> 4690.625 ms` (4.09%), RTF
+`0.974829 -> 0.934969`, and first audio `1390.423 -> 1344.855 ms`. Pair two
+reduced synthesis `4933.925 -> 4685.452 ms` (5.04%), RTF `0.983466 ->
+0.933938`, and first audio `1387.862 -> 1334.196 ms`. All four requests
+completed playback with zero proxy observations. This is repeatable
+throughput and TTFA improvement for the bounded workload, pending the separate
+ten-attempt playback soak before a runtime-policy decision.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
