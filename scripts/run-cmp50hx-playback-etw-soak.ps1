@@ -564,6 +564,14 @@ try {
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
             tts_cpu_priority = $TtsCpuPriority
             managed_process_launcher = [bool]$UseManagedProcessLauncher
+            tts_client_priority_application = if ($UseManagedProcessLauncher -or $TtsCpuPriority -ne 'Normal') {
+                'post_start'
+            }
+            else {
+                'inherited_shell'
+            }
+            tts_worker_priority_verified = $false
+            tts_worker_priority_note = 'Worker priority is not verified; this launcher must not support a worker-priority attribution claim.'
         }
         playback_measurement = 'WaveOut queue starvation proxy; not a hardware underrun counter'
         etw_profile = 'CMP50HX-DxgKrnl-Scheduler'
