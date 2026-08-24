@@ -39,7 +39,10 @@ def main() -> int:
     result = json.loads(args.output.read_text(encoding="utf-8"))
     assert result["schema_version"] == 1
     assert result["measurement"] == "waveout_queue_starvation_proxy"
-    assert result["playback_started_ms"] is None or result["playback_started_ms"] >= 0
+    assert (
+        result["first_waveout_submission_ms"] is None
+        or result["first_waveout_submission_ms"] >= 0
+    )
     assert result["etw_playback_markers_enabled"] is False
     assert result["etw_playback_marker_count"] == 0
     assert result["playback_completed"] is True
@@ -48,7 +51,7 @@ def main() -> int:
     else:
         assert result["audio_chunk_count"] == 3
         assert len(result["chunks"]) == 3
-        assert result["playback_started_ms"] is not None
+        assert result["first_waveout_submission_ms"] is not None
         assert result["queue_empty_before_later_chunk_count"] >= 1
         assert result["chunks"][0]["inter_arrival_ms"] is None
         assert any(

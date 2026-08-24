@@ -200,7 +200,7 @@ public:
     void begin_request() {
         std::lock_guard<std::mutex> lock(mutex_);
         started_at_ = std::chrono::steady_clock::now();
-        playback_started_ms_.reset();
+        first_waveout_submission_ms_.reset();
         chunks_.clear();
         playback_completed_ = false;
         if (etw_markers_ != nullptr) {
@@ -209,10 +209,10 @@ public:
         }
     }
 
-    void mark_playback_started() {
+    void mark_first_waveout_submission() {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (started_at_.has_value() && !playback_started_ms_.has_value()) {
-            playback_started_ms_ = elapsed_ms(started_at_.value(), std::chrono::steady_clock::now());
+        if (started_at_.has_value() && !first_waveout_submission_ms_.has_value()) {
+            first_waveout_submission_ms_ = elapsed_ms(started_at_.value(), std::chrono::steady_clock::now());
         }
     }
 
@@ -252,7 +252,7 @@ public:
     void write_json_file(const std::string& file_name) const {
         std::vector<PlaybackChunkMetric> chunks;
         bool playback_completed = false;
-        std::optional<double> playback_started_ms;
+        std::optional<double> first_waveout_submission_ms;
         std::size_t etw_playback_marker_count = 0;
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -261,7 +261,7 @@ public:
             }
             chunks = chunks_;
             playback_completed = playback_completed_;
-            playback_started_ms = playback_started_ms_;
+            first_waveout_submission_ms = first_waveout_submission_ms_;
             etw_playback_marker_count = etw_playback_marker_count_;
         }
 
@@ -279,9 +279,9 @@ public:
         json << "{\n"
              << "  \"schema_version\": 1,\n"
              << "  \"measurement\": \"waveout_queue_starvation_proxy\",\n"
-             << "  \"playback_started_ms\": ";
-        if (playback_started_ms.has_value()) {
-            json << playback_started_ms.value();
+             << "  \"first_waveout_submission_ms\": ";
+        if (first_waveout_submission_ms.has_value()) {
+            json << first_waveout_submission_ms.value();
         }
         else {
             json << "null";
@@ -352,7 +352,7 @@ private:
 
     mutable std::mutex mutex_;
     std::optional<std::chrono::steady_clock::time_point> started_at_;
-    std::optional<double> playback_started_ms_;
+    std::optional<double> first_waveout_submission_ms_;
     std::vector<PlaybackChunkMetric> chunks_;
     bool playback_completed_ = false;
     WprPlaybackMarkers* etw_markers_ = nullptr;
@@ -417,7 +417,7 @@ public:
         buffers_.push_back(std::move(buffer));
         has_enqueued_audio_since_reset_ = true;
         if (metrics_ != nullptr) {
-            metrics_->mark_playback_started();
+            metrics_->mark_first_waveout_submission();
         }
         if (metrics_ != nullptr) {
             metrics_->record_chunk(

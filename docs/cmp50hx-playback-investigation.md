@@ -116,7 +116,7 @@ The observed E=16 inter-arrival intervals were approximately 1864, 2721, and
 startup problem, but cannot alone explain the repeated steady-stream gaps.
 
 The E=32 run was intentionally performed under the same normal background
-workload as the other current experiments. Playback started at 3514 ms; its two
+workload as the other current experiments. The first WaveOut submission was at 3514 ms; its two
 chunks contained about 2537 and 2480 ms of audio and arrived 3012 ms apart.
 The worker reported RTF 1.300847 for the 5016.875 ms response. Therefore E=32
 reduces the bursty delivery symptom, but it still cannot sustain real-time
@@ -156,7 +156,7 @@ to the prior behaviour:
 - `-SkipEtwFollowup` is for bounded non-ETW experiments only; its summaries are
   never valid ETW evidence.
 
-Playback metrics record the actual playback-start time relative to the request,
+Playback metrics record the first successful WaveOut submission relative to the request,
 so first-chunk arrival and sink start can be reported separately. No default
 runtime policy has been changed.
 
