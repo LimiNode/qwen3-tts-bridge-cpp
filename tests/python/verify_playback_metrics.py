@@ -26,6 +26,7 @@ def main() -> int:
     command = [
         str(args.player),
         "--mock",
+        "--no-playback",
         "--text",
         "Playback metrics smoke.",
         "--mock-chunks",

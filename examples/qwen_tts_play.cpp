@@ -54,6 +54,7 @@ using qwen_tts_bridge::TtsRequest;
 struct ProgramOptions {
     bool help = false;
     bool use_mock_worker = false;
+    bool playback_enabled = true;
     std::string worker_executable;
     std::vector<std::string> worker_arguments;
     std::string working_directory;
@@ -371,9 +372,11 @@ private:
 class WaveOutPlayer final {
 public:
     explicit WaveOutPlayer(
+        bool enabled,
         PlaybackMetrics* metrics = nullptr,
         std::size_t prebuffer_chunks = 1)
-        : prebuffer_chunks_(prebuffer_chunks),
+        : enabled_(enabled),
+          prebuffer_chunks_(prebuffer_chunks),
           metrics_(metrics) {
         if (prebuffer_chunks_ == 0) {
             throw std::runtime_error("playback prebuffer must contain at least one chunk");
@@ -388,6 +391,9 @@ public:
     WaveOutPlayer& operator=(const WaveOutPlayer&) = delete;
 
     void enqueue(std::uint64_t playback_epoch, const PcmChunk& chunk) {
+        if (!enabled_) {
+            return;
+        }
         if (chunk.format.sample_format != "s16le") {
             throw std::runtime_error("default-device playback requires s16le PCM");
         }
@@ -441,6 +447,9 @@ public:
         if (playback_epoch_ == 0) {
             ++playback_epoch_;
         }
+        if (!enabled_) {
+            return playback_epoch_;
+        }
         if (m_handle == nullptr) {
             clear_pending_locked();
             playback_started_ = false;
@@ -467,6 +476,9 @@ public:
     }
 
     void wait_until_idle(std::chrono::milliseconds timeout) {
+        if (!enabled_) {
+            return;
+        }
         std::unique_lock<std::mutex> lock(mutex_);
         flush_pending_locked();
         const auto deadline = std::chrono::steady_clock::now() + timeout;
@@ -645,6 +657,7 @@ private:
     std::vector<std::unique_ptr<Buffer>> pending_buffers_;
     std::optional<AudioFormat> pending_format_;
     std::uint64_t playback_epoch_ = 1;
+    bool enabled_ = true;
     std::size_t prebuffer_chunks_ = 1;
     bool playback_started_ = false;
     PlaybackMetrics* metrics_ = nullptr;
@@ -712,6 +725,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
+        << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
@@ -785,6 +799,9 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         }
         else if (arg == "--mock") {
             options.use_mock_worker = true;
+        }
+        else if (arg == "--no-playback") {
+            options.playback_enabled = false;
         }
         else if (arg == "--worker" || arg.rfind("--worker=", 0) == 0) {
             options.worker_executable = require_value(index, argc, argv, "--worker");
@@ -1465,6 +1482,7 @@ int wmain(int argc, wchar_t** argv) {
             playback_metrics = std::make_unique<PlaybackMetrics>(etw_playback_markers.get());
         }
         WaveOutPlayer player(
+            options.playback_enabled,
             playback_metrics.get(),
             options.playback_prebuffer_chunks);
         ActiveRequestState active_state;
