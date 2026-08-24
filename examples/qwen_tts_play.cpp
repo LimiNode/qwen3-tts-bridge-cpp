@@ -217,14 +217,14 @@ public:
         }
     }
 
-    void record_chunk(
+    [[nodiscard]] std::optional<std::size_t> record_chunk(
         double audio_duration_ms,
         double queued_audio_before_ms,
         double queued_audio_after_ms,
         bool queue_empty_before_later_chunk) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!started_at_.has_value()) {
-            return;
+            return std::nullopt;
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -239,8 +239,16 @@ public:
             metric.inter_arrival_ms = arrival_ms - chunks_.back().arrival_ms;
         }
         chunks_.push_back(metric);
-        if (queue_empty_before_later_chunk && etw_markers_ != nullptr) {
-            etw_markers_->queue_empty_before_later_chunk(chunks_.size() - 1);
+        if (queue_empty_before_later_chunk) {
+            return chunks_.size() - 1;
+        }
+        return std::nullopt;
+    }
+
+    void mark_queue_empty_after_submit(std::size_t chunk_index) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (etw_markers_ != nullptr) {
+            etw_markers_->queue_empty_before_later_chunk(chunk_index);
             ++etw_playback_marker_count_;
         }
     }
@@ -409,8 +417,9 @@ public:
         buffer->duration_ms = pcm_duration_ms(chunk.format, buffer->bytes.size());
 
         pending_buffers_.push_back(std::move(buffer));
+        std::optional<std::size_t> queue_empty_marker_index;
         if (metrics_ != nullptr) {
-            metrics_->record_chunk(
+            queue_empty_marker_index = metrics_->record_chunk(
                 pcm_duration_ms(chunk.format, chunk.bytes.size()),
                 queued_audio_before_ms,
                 queued_audio_duration_ms_locked(),
@@ -418,6 +427,9 @@ public:
         }
         if (playback_started_ || pending_buffers_.size() >= prebuffer_chunks_) {
             flush_pending_locked();
+        }
+        if (queue_empty_marker_index.has_value()) {
+            metrics_->mark_queue_empty_after_submit(queue_empty_marker_index.value());
         }
     }
 
