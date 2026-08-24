@@ -345,7 +345,7 @@ PCM chunk; it does not improve producer RTF or constitute a hardware-underrun
 counter. Longer idle and representative-load validation remain separate
 acceptance work.
 
-### Fixed-shape codec-decode candidate
+### Rejected left-padded fixed-shape codec-decode experiment
 
 The next performance investigation is deliberately separate from the playback
 reserve. The Faster custom-voice stream currently decodes dynamically sized
@@ -361,6 +361,12 @@ its audio-tail contract and the observed terminal latency burst need a separate
 experiment. The candidate is default-off, checks that the selected shadow
 contains its patch marker, and fails closed when the tokenizer lacks
 `decode_streaming` or a window exceeds the configured fixed 80-frame size.
+
+The subsequent raw-PCM gate in PR #54 showed that this left-padded path does
+not preserve PCM parity despite matching codec tokens. It is therefore rejected
+as a correctness candidate: it must remain default-off and must not be used as
+a performance control or runtime policy. The commands below are retained only
+as historical reproduction instructions for that rejected experiment.
 
 Create an isolated candidate shadow from the exact frozen source:
 
