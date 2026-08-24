@@ -75,6 +75,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
+$CodecRightPaddedHistoryFrames = 25
 
 $repo = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $PSScriptRoot 'Cmp50hxEtwEvidence.psm1') -Force
@@ -91,9 +92,9 @@ if ($CodecStreamingDecode -and $CodecRightPaddedDecode) {
 if ($CodecRightPaddedCudaGraph -and -not $CodecRightPaddedDecode) {
     throw '-CodecRightPaddedCudaGraph requires -CodecRightPaddedDecode.'
 }
-if ($CodecRightPaddedDecode -and $CodecRightPaddedWindowFrames -lt (25 + $EmitEveryFrames)) {
+if ($CodecRightPaddedDecode -and $CodecRightPaddedWindowFrames -lt ($CodecRightPaddedHistoryFrames + $EmitEveryFrames)) {
     throw (
-        '-CodecRightPaddedWindowFrames must be at least 25 context frames plus ' +
+        "-CodecRightPaddedWindowFrames must be at least $CodecRightPaddedHistoryFrames context frames plus " +
         "-EmitEveryFrames ($EmitEveryFrames)."
     )
 }
@@ -220,6 +221,7 @@ $environmentNames = @(
     'QTB_FASTER_DIAGNOSTIC_START_REQUEST', 'QTB_NSYS_CUDA_PROFILER_PAIR',
     'QTB_FASTER_CODEC_RIGHT_PADDED_DECODE',
     'QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES',
+    'QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES',
     'QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH',
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE',
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE'
@@ -256,6 +258,8 @@ function Set-FrozenCEnvironment {
     $env:QTB_NSYS_CUDA_PROFILER_PAIR = '0'
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE = if ($CodecRightPaddedDecode) { '1' } else { '0' }
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES = "$CodecRightPaddedWindowFrames"
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES = "$(
+        $CodecRightPaddedHistoryFrames + $EmitEveryFrames)"
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = if ($CodecRightPaddedCudaGraph) { '1' } else { '0' }
     # A prior compile experiment in the same shell must not affect this graph-only run.
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE = '0'

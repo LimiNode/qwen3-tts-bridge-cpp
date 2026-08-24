@@ -28,6 +28,28 @@ index 5527278f..1ace7cfa 100644
 +    return value
 +
 +
++def _codec_right_padded_max_decode_input_frames() -> int:
++    """Return the verified maximum context-plus-emission decode input length."""
++
++    raw_value = os.environ.get("QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES")
++    if raw_value is None:
++        raise RuntimeError(
++            "QTB_FASTER_CODEC_RIGHT_PADDED_DECODE=1 requires "
++            "QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES"
++        )
++    try:
++        value = int(raw_value)
++    except ValueError as exc:
++        raise RuntimeError(
++            "QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES must be an integer"
++        ) from exc
++    if value <= 0:
++        raise RuntimeError(
++            "QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES must be positive"
++        )
++    return value
++
++
 +def _decode_right_padded_window(
 +    speech_tokenizer: Any,
 +    audio_codes: torch.Tensor,
@@ -55,6 +77,12 @@ index 5527278f..1ace7cfa 100644
 +        raise RuntimeError(
 +            "fixed right-padded codec decode window does not contain its input: "
 +            f"{original_frames} > {decode_window_frames}"
++        )
++    max_decode_input_frames = _codec_right_padded_max_decode_input_frames()
++    if original_frames > max_decode_input_frames:
++        raise RuntimeError(
++            "right-padded codec decode input exceeds the verified context-plus-emission contract: "
++            f"{original_frames} > {max_decode_input_frames}"
 +        )
 +    codes = audio_codes.unsqueeze(0).transpose(1, 2)
 +    if original_frames < decode_window_frames:
