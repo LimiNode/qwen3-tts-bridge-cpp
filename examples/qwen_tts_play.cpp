@@ -463,6 +463,7 @@ public:
                  << format_.value().sample_rate << ", \"channels\": "
                  << format_.value().channels << "}\n"
                  << "}\n";
+        bool pcm_promoted = false;
         try {
             std::ofstream metadata_output(metadata_temporary_, std::ios::binary | std::ios::trunc);
             if (!metadata_output) {
@@ -476,10 +477,20 @@ public:
                     "failed to write PCM capture metadata file: " + metadata_temporary_.string());
             }
             std::filesystem::rename(temporary_, target_);
+            pcm_promoted = true;
             std::filesystem::rename(metadata_temporary_, metadata_target_);
             finalized_ = true;
         }
         catch (...) {
+            if (pcm_promoted) {
+                std::error_code rollback_error;
+                std::filesystem::rename(target_, temporary_, rollback_error);
+                if (rollback_error) {
+                    throw std::runtime_error(
+                        "failed to roll back incomplete PCM capture finalization: " +
+                        rollback_error.message());
+                }
+            }
             std::error_code ignored;
             std::filesystem::remove(metadata_temporary_, ignored);
             throw;

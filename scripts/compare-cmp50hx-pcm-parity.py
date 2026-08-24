@@ -74,7 +74,7 @@ def compute_metrics(expected: array.array[int], candidate: array.array[int]) -> 
     sample_count = len(expected)
     rms_delta = math.sqrt(sum_squared_delta / sample_count)
     signal_rms = math.sqrt(sum_squared_signal / sample_count)
-    snr_db = math.inf if rms_delta == 0 else 20.0 * math.log10(signal_rms / rms_delta)
+    snr_db = None if rms_delta == 0 else 20.0 * math.log10(signal_rms / rms_delta)
     return {
         "sample_count": sample_count,
         "exact_sample_match_count": exact_count,
@@ -84,6 +84,7 @@ def compute_metrics(expected: array.array[int], candidate: array.array[int]) -> 
         "rms_pcm_delta": rms_delta,
         "signal_rms_pcm": signal_rms,
         "snr_db": snr_db,
+        "snr_db_is_infinite": rms_delta == 0,
     }
 
 
@@ -105,7 +106,11 @@ def main() -> int:
     }
     threshold_pass = (
         (args.max_rms_delta is None or metrics["rms_pcm_delta"] <= args.max_rms_delta)
-        and (args.min_snr_db is None or metrics["snr_db"] >= args.min_snr_db)
+        and (
+            args.min_snr_db is None
+            or metrics["snr_db_is_infinite"]
+            or metrics["snr_db"] >= args.min_snr_db
+        )
         and (args.max_abs_delta is None or metrics["max_abs_pcm_delta"] <= args.max_abs_delta)
     )
     result = {

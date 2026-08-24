@@ -29,7 +29,9 @@ class CompareCmp50hxPcmParityTests(unittest.TestCase):
         )
         self.assertEqual(exact["exact_sample_match_count"], 3)
         self.assertEqual(exact["rms_pcm_delta"], 0.0)
-        self.assertEqual(exact["snr_db"], float("inf"))
+        self.assertIsNone(exact["snr_db"])
+        self.assertTrue(exact["snr_db_is_infinite"])
+        json.dumps(exact, allow_nan=False)
 
         delta = PCM_PARITY.compute_metrics(
             PCM_PARITY.array.array("h", [100, -100]),
@@ -38,6 +40,7 @@ class CompareCmp50hxPcmParityTests(unittest.TestCase):
         self.assertEqual(delta["exact_sample_match_count"], 0)
         self.assertEqual(delta["max_abs_pcm_delta"], 2)
         self.assertGreater(delta["snr_db"], 30.0)
+        self.assertFalse(delta["snr_db_is_infinite"])
 
     def test_read_metadata_rejects_byte_count_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
