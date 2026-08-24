@@ -206,8 +206,10 @@ worker rate is below audio rate.
    stalls.
 8. A targeted phase profile identifies the dominant cold path as GPU
    `speech_tokenizer.decode`, not predictor decoding, D2H, or PCM conversion.
-   A full-EOS startup synthesis warmup removes the observed proxy symptom in
-   the current controlled playback case without changing numerical kernels.
+   Full-EOS startup warmup reduced the proxy symptom in an initial controlled
+   playback case without changing numerical kernels, but extended and
+   prompt-matched runs still observed the terminal gap; it reduces cold-start
+   risk rather than eliminating that path.
 
 ### Bounded throughput probe pending
 
