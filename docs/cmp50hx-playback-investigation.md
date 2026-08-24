@@ -530,6 +530,40 @@ default-off experimental path until a separate runtime-policy decision and does
 not prove absence of physical hardware underruns or behavior under competing GPU
 workloads.
 
+### Smaller codec graph window
+
+For `emit_every_frames=16`, this streaming loop supplies at most 25 left-context
+frames plus 16 new frames to one codec decode. A new opt-in launcher control
+therefore permits a smaller fixed graph window while rejecting any selected
+window below `25 + emit_every_frames`; the established 80-frame default remains
+unchanged. The first aligned candidate was 48 frames.
+
+The W48 PCM/EOS gate passed against the accepted W80 manual-graph baseline.
+W80 run `20260823T130145Z-98540` and W48 run
+`20260823T130501Z-98540` both reached natural EOS with four s16le PCM chunks /
+240,810 bytes. They were not byte-identical, but the comparison passed the same
+explicit candidate-quality gate: RMS delta `2.763 <= 3`, SNR `55.710 dB >= 55`,
+and maximum absolute delta `56 <= 64`.
+
+Two fresh-worker performance pairs omitted PCM capture and tracing. Both used
+the fixed seed, full-EOS warmup, `emit_every_frames=16`, two-chunk sink
+prebuffer, and manual CUDA Graphs:
+
+| Pair | W80 synthesis / RTF / first audio | W48 synthesis / RTF / first audio | Synthesis reduction |
+| --- | --- | --- | ---: |
+| 1 | 4885.240 ms / 0.973762 / 1298.716 ms | 4282.994 ms / 0.853718 / 1211.771 ms | 12.33% |
+| 2 | 4783.881 ms / 0.953558 / 1369.944 ms | 4268.415 ms / 0.850812 / 1200.721 ms | 10.78% |
+
+The W48 ten-attempt bounded idle soak, run `20260824T174430Z-98540`, then
+completed 10/10 fresh-worker attempts with zero later-chunk queue-empty proxy
+observations. Its synthesis time ranged from 4294.863 to 4363.953 ms (mean
+4319.139 ms); RTF ranged from 0.856083 to 0.869855 (mean 0.860922); and first
+audio ranged from 1211.652 to 1270.779 ms (mean 1232.245 ms). No WPR session
+was launched because no outlier occurred. W48 consequently supersedes W80 as
+the best bounded idle experimental codec-graph candidate, but remains opt-in
+and does not establish a hardware-underrun guarantee or behavior under a
+competing GPU workload.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
