@@ -56,22 +56,23 @@ function Assert-Cmp50hxPlaybackMarkerSequence {
     if ($ExpectedMarkerCount -lt 1) {
         throw 'Expected playback marker count must include one request_start marker.'
     }
-    if ($Markers.Count -ne $ExpectedMarkerCount) {
+    $orderedMarkers = @($Markers | Sort-Object timestamp_us)
+    if ($orderedMarkers.Count -ne $ExpectedMarkerCount) {
         throw "Expected $ExpectedMarkerCount playback markers but found $($Markers.Count)."
     }
 
-    $requestMarkers = @($Markers | Where-Object { $_.kind -eq 'request_start' })
+    $requestMarkers = @($orderedMarkers | Where-Object { $_.kind -eq 'request_start' })
     if ($requestMarkers.Count -ne 1) {
         throw "Expected exactly one request_start marker but found $($requestMarkers.Count)."
     }
 
-    $queueMarkers = @($Markers | Where-Object { $_.kind -eq 'queue_empty_before_later_chunk' })
+    $queueMarkers = @($orderedMarkers | Where-Object { $_.kind -eq 'queue_empty_before_later_chunk' })
     $expectedQueueCount = $ExpectedMarkerCount - 1
     if ($queueMarkers.Count -ne $expectedQueueCount) {
         throw "Expected $expectedQueueCount queue-empty markers but found $($queueMarkers.Count)."
     }
-    for ($index = 0; $index -lt $Markers.Count; $index++) {
-        if ($index -gt 0 -and [int64]$Markers[$index].timestamp_us -le [int64]$Markers[$index - 1].timestamp_us) {
+    for ($index = 0; $index -lt $orderedMarkers.Count; $index++) {
+        if ($index -gt 0 -and [int64]$orderedMarkers[$index].timestamp_us -le [int64]$orderedMarkers[$index - 1].timestamp_us) {
             throw 'Playback marker timestamps must be strictly increasing.'
         }
     }
@@ -84,13 +85,19 @@ function Assert-Cmp50hxPlaybackMarkerSequence {
             throw "Queue-empty marker index=$index does not occur after request_start."
         }
     }
+    for ($index = 0; $index -lt $queueMarkers.Count; $index++) {
+        $expectedQueueIndex = $index + 1
+        if ([int]$queueMarkers[$index].queue_index -ne $expectedQueueIndex) {
+            throw "Queue-empty markers must be timestamp-ordered with sequential indices; expected index=$expectedQueueIndex but found index=$($queueMarkers[$index].queue_index)."
+        }
+    }
 
     return [ordered]@{
         expected_marker_count = $ExpectedMarkerCount
         observed_playback_marker_count = $Markers.Count
         request_start_timestamp_us = [int64]$requestMarkers[0].timestamp_us
         queue_empty_marker_count = $queueMarkers.Count
-        markers = @($Markers)
+        markers = @($orderedMarkers)
     }
 }
 

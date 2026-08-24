@@ -69,6 +69,26 @@ class Cmp50hxEtwMarkerAnalysisTest(unittest.TestCase):
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("index=1", completed.stderr)
 
+    def test_marker_validation_rejects_reversed_queue_indices(self) -> None:
+        queue_marker_1 = f"{_QUEUE_EMPTY_PREFIX} index=1"
+        queue_marker_2 = f"{_QUEUE_EMPTY_PREFIX} index=2"
+        command = (
+            f"Import-Module '{_MODULE}'; "
+            f"$lines = @('Mark, 100, {_REQUEST_START}', "
+            f"'Mark, 200, {queue_marker_2}', "
+            f"'Mark, 300, {queue_marker_1}'); "
+            "$markers = @(Get-Cmp50hxPlaybackMarkers -DumperLines $lines); "
+            "Assert-Cmp50hxPlaybackMarkerSequence "
+            "-Markers $markers -ExpectedMarkerCount 3"
+        )
+        completed = subprocess.run(
+            [_POWERSHELL, "-NoProfile", "-Command", command],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("timestamp-ordered", completed.stderr)
+
     def test_aggregates_worker_and_competing_dxgkrnl_events_by_marker_window(
         self,
     ) -> None:
