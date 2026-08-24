@@ -574,7 +574,7 @@ private:
         clear_pending_locked();
         playback_started_ = true;
         if (metrics_ != nullptr) {
-            metrics_->mark_playback_started();
+            metrics_->mark_first_waveout_submission();
         }
     }
 
