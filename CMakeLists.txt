@@ -278,6 +278,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                     NAME qwen_tts_play_mock_utf8_example
                     COMMAND qwen_tts_play
                         --mock
+                        --no-playback
                         --text "Я твой робот, я твой работник."
                         --speaker serena
                 )
