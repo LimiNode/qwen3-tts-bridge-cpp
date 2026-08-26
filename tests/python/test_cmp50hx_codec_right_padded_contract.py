@@ -46,7 +46,7 @@ class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
         revision = re.search(
             r"\$FasterCmp50hxSubmoduleCommit = '([0-9a-f]{40})'", launcher
         )
-        self.assertIsNotNone(revision)
+        assert revision is not None
         gitlink = subprocess.check_output(
             [
                 "git",
