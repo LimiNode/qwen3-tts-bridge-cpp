@@ -20,7 +20,8 @@ param(
 
     [string]$ModelPath = '',
 
-    [string]$FasterShadowPath = '',
+    [Alias('FasterShadowPath')]
+    [string]$FasterSourcePath = '',
 
     [string]$RuntimeCachePath = '',
 
@@ -76,6 +77,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $CodecRightPaddedHistoryFrames = 25
+$FasterCmp50hxSubmoduleCommit = 'fb098012fee40511480d6c2d693f857764aae31e'
 
 $repo = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $PSScriptRoot 'Cmp50hxEtwEvidence.psm1') -Force
@@ -85,9 +87,6 @@ if ($PcmCaptureFile -and $Attempts -ne 1) {
 }
 if ($PcmCaptureFile -and -not $SkipEtwFollowup) {
     throw '-PcmCaptureFile requires -SkipEtwFollowup; capture runs are not ETW or performance evidence.'
-}
-if ($CodecStreamingDecode -and $CodecRightPaddedDecode) {
-    throw 'Select only one codec decode experiment.'
 }
 if ($CodecRightPaddedCudaGraph -and -not $CodecRightPaddedDecode) {
     throw '-CodecRightPaddedCudaGraph requires -CodecRightPaddedDecode.'
@@ -129,8 +128,12 @@ if (-not $PythonPath) {
 if (-not $ModelPath) {
     $ModelPath = 'tmp\cmp50hx-r3-external-models\Qwen3-TTS-12Hz-0.6B-CustomVoice'
 }
-if (-not $FasterShadowPath) {
-    $FasterShadowPath = 'tmp\cmp50hx-faster-eager-shadow'
+if (-not $FasterSourcePath) {
+    $FasterSourcePath = 'external\python\faster-qwen3-tts'
+    $usingVersionedFasterSubmodule = $true
+}
+else {
+    $usingVersionedFasterSubmodule = $false
 }
 if (-not $RuntimeCachePath) {
     $RuntimeCachePath = 'tmp\cmp50hx-r3-runtime-cache'
@@ -145,26 +148,28 @@ if (-not $WprProfilePath) {
 $player = Resolve-RepoPath $PlayerPath 'Playback client'
 $python = Resolve-RepoPath $PythonPath 'Sealed Python runtime'
 $model = Resolve-RepoPath $ModelPath 'Model path'
-$shadow = Resolve-RepoPath $FasterShadowPath 'Faster shadow source'
+$fasterSource = Resolve-RepoPath $FasterSourcePath 'Faster source'
 $cache = Resolve-RepoPath $RuntimeCachePath 'Runtime cache'
 $wprProfile = Resolve-RepoPath $WprProfilePath 'WPR profile'
+$cmp50hxDiagnosticModule = Join-Path $fasterSource 'faster_qwen3_tts\cmp50hx_diagnostic.py'
+if (-not (Test-Path -LiteralPath $cmp50hxDiagnosticModule -PathType Leaf)) {
+    throw 'Faster source does not contain the versioned CMP 50HX numerical profile.'
+}
 if ($CodecRightPaddedDecode) {
-    $codecRightPaddedMarker = Join-Path $shadow 'faster_qwen3_tts\model.py'
+    $codecRightPaddedMarker = Join-Path $fasterSource 'faster_qwen3_tts\model.py'
     if (-not (Select-String -LiteralPath $codecRightPaddedMarker -SimpleMatch `
             'def _decode_right_padded_window(' -Quiet)) {
         throw (
-            '-CodecRightPaddedDecode requires a shadow prepared by ' +
-            'prepare-cmp50hx-faster-codec-right-padded-shadow.ps1'
+            '-CodecRightPaddedDecode requires a compatible versioned Faster source.'
         )
     }
 }
 if ($CodecRightPaddedCudaGraph) {
-    $codecRightPaddedCudaGraphMarker = Join-Path $shadow 'faster_qwen3_tts\model.py'
+    $codecRightPaddedCudaGraphMarker = Join-Path $fasterSource 'faster_qwen3_tts\model.py'
     if (-not (Select-String -LiteralPath $codecRightPaddedCudaGraphMarker -SimpleMatch `
             'def _capture_right_padded_decoder_cuda_graph(' -Quiet)) {
         throw (
-            '-CodecRightPaddedCudaGraph requires a shadow prepared by ' +
-            'prepare-cmp50hx-faster-codec-right-padded-cuda-graph-shadow.ps1'
+            '-CodecRightPaddedCudaGraph requires a compatible versioned Faster source.'
         )
     }
 }
@@ -234,7 +239,7 @@ foreach ($name in $environmentNames) {
 function Set-FrozenCEnvironment {
     $env:CUDA_VISIBLE_DEVICES = $CudaVisibleDevices
     $env:PYTHONHOME = Split-Path -Parent $python
-    $env:PYTHONPATH = "$shadow;$repo\worker\src"
+    $env:PYTHONPATH = "$fasterSource;$repo\worker\src"
     $env:PYTHONNOUSERSITE = '1'
     $env:PYTHONDONTWRITEBYTECODE = '1'
     $env:HF_HOME = Join-Path $cache 'huggingface'
@@ -665,6 +670,18 @@ try {
         schema_version = 1
         run_id = $runId
         frozen_c_boundary = [ordered]@{
+            faster_source = if ($usingVersionedFasterSubmodule) {
+                'external/python/faster-qwen3-tts'
+            }
+            else {
+                'explicit_override'
+            }
+            faster_source_commit = if ($usingVersionedFasterSubmodule) {
+                $FasterCmp50hxSubmoduleCommit
+            }
+            else {
+                $null
+            }
             layer2_gate_up_dtype = 'float16'
             layer2_product_down_dtype = 'float32'
             residual_and_rmsnorm_dtype = 'float32'
