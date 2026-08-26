@@ -5,10 +5,14 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 _ROOT = Path(__file__).resolve().parents[2]
 _LAUNCHER = _ROOT / "scripts" / "run-cmp50hx-playback-etw-soak.ps1"
-_PATCH = _ROOT / "scripts" / "patches" / "cmp50hx-faster-codec-right-padded-decode.patch"
+_PATCH = (
+    _ROOT
+    / "scripts"
+    / "patches"
+    / "cmp50hx-faster-codec-right-padded-decode.patch"
+)
 
 
 class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
