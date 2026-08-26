@@ -26,7 +26,7 @@ def main() -> int:
     command = [
         str(args.player),
         "--mock",
-        "--no-playback",
+        "--mock-playback-sink",
         "--text",
         "Playback metrics smoke.",
         "--mock-chunks",
@@ -50,35 +50,32 @@ def main() -> int:
     assert result["etw_playback_markers_enabled"] is False
     assert result["etw_playback_marker_count"] == 0
     assert result["playback_completed"] is True
-    if result["audio_chunk_count"] == 0:
-        print("WaveOut device unavailable; playback queue assertions skipped.")
-    else:
-        assert result["audio_chunk_count"] == 4
-        assert len(result["chunks"]) == 4
-        assert result["first_waveout_submission_ms"] is not None
-        assert result["queue_empty_before_later_chunk_count"] >= 1
-        assert result["chunks"][0]["inter_arrival_ms"] is None
-        assert any(
-            chunk["queue_empty_before_later_chunk"] for chunk in result["chunks"][1:]
-        )
+    assert result["audio_chunk_count"] == 4
+    assert len(result["chunks"]) == 4
+    assert result["first_waveout_submission_ms"] is not None
+    assert result["queue_empty_before_later_chunk_count"] >= 1
+    assert result["chunks"][0]["inter_arrival_ms"] is None
+    assert any(
+        chunk["queue_empty_before_later_chunk"] for chunk in result["chunks"][1:]
+    )
 
-        prebuffer_command = [
-            *command,
-            "--playback-prebuffer-chunks",
-            "2",
-        ]
-        output_index = prebuffer_command.index(str(args.output))
-        prebuffer_command[output_index] = str(prebuffer_output)
-        subprocess.run(prebuffer_command, check=True, timeout=30)
+    prebuffer_command = [
+        *command,
+        "--playback-prebuffer-chunks",
+        "2",
+    ]
+    output_index = prebuffer_command.index(str(args.output))
+    prebuffer_command[output_index] = str(prebuffer_output)
+    subprocess.run(prebuffer_command, check=True, timeout=30)
 
-        prebuffer_result = json.loads(prebuffer_output.read_text(encoding="utf-8"))
-        assert prebuffer_result["audio_chunk_count"] == 4
-        assert prebuffer_result["queue_empty_before_later_chunk_count"] == 0
-        assert prebuffer_result["first_waveout_submission_ms"] is not None
-        assert (
-            prebuffer_result["first_waveout_submission_ms"]
-            > prebuffer_result["chunks"][0]["arrival_ms"]
-        )
+    prebuffer_result = json.loads(prebuffer_output.read_text(encoding="utf-8"))
+    assert prebuffer_result["audio_chunk_count"] == 4
+    assert prebuffer_result["queue_empty_before_later_chunk_count"] == 0
+    assert prebuffer_result["first_waveout_submission_ms"] is not None
+    assert (
+        prebuffer_result["first_waveout_submission_ms"]
+        > prebuffer_result["chunks"][0]["arrival_ms"]
+    )
 
     missing_metrics = subprocess.run(
         [str(args.player), "--mock", "--etw-playback-markers"],

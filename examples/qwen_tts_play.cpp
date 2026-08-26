@@ -55,6 +55,7 @@ struct ProgramOptions {
     bool help = false;
     bool use_mock_worker = false;
     bool playback_enabled = true;
+    bool use_mock_playback_sink = false;
     std::string worker_executable;
     std::vector<std::string> worker_arguments;
     std::string working_directory;
@@ -369,13 +370,19 @@ private:
     std::size_t etw_playback_marker_count_ = 0;
 };
 
+enum class PlaybackSinkMode {
+    WaveOut,
+    Disabled,
+    Mock,
+};
+
 class WaveOutPlayer final {
 public:
     explicit WaveOutPlayer(
-        bool enabled,
+        PlaybackSinkMode sink_mode,
         PlaybackMetrics* metrics = nullptr,
         std::size_t prebuffer_chunks = 1)
-        : enabled_(enabled),
+        : sink_mode_(sink_mode),
           prebuffer_chunks_(prebuffer_chunks),
           metrics_(metrics) {
         if (prebuffer_chunks_ == 0) {
@@ -391,7 +398,7 @@ public:
     WaveOutPlayer& operator=(const WaveOutPlayer&) = delete;
 
     void enqueue(std::uint64_t playback_epoch, const PcmChunk& chunk) {
-        if (!enabled_) {
+        if (sink_mode_ == PlaybackSinkMode::Disabled) {
             return;
         }
         if (chunk.format.sample_format != "s16le") {
@@ -447,7 +454,13 @@ public:
         if (playback_epoch_ == 0) {
             ++playback_epoch_;
         }
-        if (!enabled_) {
+        if (sink_mode_ == PlaybackSinkMode::Disabled) {
+            return playback_epoch_;
+        }
+        if (sink_mode_ == PlaybackSinkMode::Mock) {
+            buffers_.clear();
+            clear_pending_locked();
+            playback_started_ = false;
             return playback_epoch_;
         }
         if (m_handle == nullptr) {
@@ -476,7 +489,7 @@ public:
     }
 
     void wait_until_idle(std::chrono::milliseconds timeout) {
-        if (!enabled_) {
+        if (sink_mode_ == PlaybackSinkMode::Disabled) {
             return;
         }
         std::unique_lock<std::mutex> lock(mutex_);
@@ -502,6 +515,7 @@ private:
         WAVEHDR header{};
         bool prepared = false;
         double duration_ms = 0.0;
+        std::optional<std::chrono::steady_clock::time_point> mock_completion;
     };
 
     static bool formats_match(const AudioFormat& left, const AudioFormat& right) {
@@ -541,6 +555,14 @@ private:
     }
 
     void validate_pending_format_locked(const AudioFormat& format) {
+        if (sink_mode_ == PlaybackSinkMode::Mock && playback_started_) {
+            if (!formats_match(m_format, format)) {
+                throw std::runtime_error(
+                    "mock playback sink cannot change PCM format while audio is queued");
+            }
+            pending_format_ = format;
+            return;
+        }
         if (m_handle != nullptr) {
             if (!formats_match(m_format, format)) {
                 throw std::runtime_error(
@@ -561,6 +583,28 @@ private:
         }
         if (m_handle == nullptr && !pending_format_.has_value()) {
             throw std::runtime_error("missing PCM format for buffered playback");
+        }
+
+        if (sink_mode_ == PlaybackSinkMode::Mock) {
+            auto completion = std::chrono::steady_clock::now();
+            if (!buffers_.empty() && buffers_.back()->mock_completion.has_value() &&
+                buffers_.back()->mock_completion.value() > completion) {
+                completion = buffers_.back()->mock_completion.value();
+            }
+            m_format = pending_format_.value();
+            buffers_.reserve(buffers_.size() + pending_buffers_.size());
+            for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+                completion += std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                    std::chrono::duration<double, std::milli>(buffer->duration_ms));
+                buffer->mock_completion = completion;
+                buffers_.push_back(std::move(buffer));
+            }
+            clear_pending_locked();
+            playback_started_ = true;
+            if (metrics_ != nullptr) {
+                metrics_->mark_first_waveout_submission();
+            }
+            return;
         }
 
         open_or_validate_locked(
@@ -620,6 +664,18 @@ private:
     }
 
     void reap_finished_locked() {
+        if (sink_mode_ == PlaybackSinkMode::Mock) {
+            const auto now = std::chrono::steady_clock::now();
+            for (auto it = buffers_.begin(); it != buffers_.end();) {
+                if (!(*it)->mock_completion.has_value() ||
+                    (*it)->mock_completion.value() > now) {
+                    ++it;
+                    continue;
+                }
+                it = buffers_.erase(it);
+            }
+            return;
+        }
         for (auto it = buffers_.begin(); it != buffers_.end();) {
             Buffer& buffer = **it;
             if ((buffer.header.dwFlags & WHDR_DONE) == 0) {
@@ -657,7 +713,7 @@ private:
     std::vector<std::unique_ptr<Buffer>> pending_buffers_;
     std::optional<AudioFormat> pending_format_;
     std::uint64_t playback_epoch_ = 1;
-    bool enabled_ = true;
+    PlaybackSinkMode sink_mode_ = PlaybackSinkMode::WaveOut;
     std::size_t prebuffer_chunks_ = 1;
     bool playback_started_ = false;
     PlaybackMetrics* metrics_ = nullptr;
@@ -726,6 +782,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
+        << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
@@ -802,6 +859,9 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         }
         else if (arg == "--no-playback") {
             options.playback_enabled = false;
+        }
+        else if (arg == "--mock-playback-sink") {
+            options.use_mock_playback_sink = true;
         }
         else if (arg == "--worker" || arg.rfind("--worker=", 0) == 0) {
             options.worker_executable = require_value(index, argc, argv, "--worker");
@@ -934,6 +994,12 @@ void validate_options(const ProgramOptions& options) {
     }
     if (options.playback_prebuffer_chunks == 0) {
         throw std::runtime_error("--playback-prebuffer-chunks must be greater than zero");
+    }
+    if (options.use_mock_playback_sink && !options.use_mock_worker) {
+        throw std::runtime_error("--mock-playback-sink requires --mock");
+    }
+    if (options.use_mock_playback_sink && !options.playback_enabled) {
+        throw std::runtime_error("--mock-playback-sink cannot be combined with --no-playback");
     }
     if (options.temperature.has_value() &&
         (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0)) {
@@ -1481,8 +1547,13 @@ int wmain(int argc, wchar_t** argv) {
         if (!options.playback_metrics_file.empty()) {
             playback_metrics = std::make_unique<PlaybackMetrics>(etw_playback_markers.get());
         }
+        const PlaybackSinkMode playback_sink_mode = !options.playback_enabled
+            ? PlaybackSinkMode::Disabled
+            : (options.use_mock_playback_sink
+                    ? PlaybackSinkMode::Mock
+                    : PlaybackSinkMode::WaveOut);
         WaveOutPlayer player(
-            options.playback_enabled,
+            playback_sink_mode,
             playback_metrics.get(),
             options.playback_prebuffer_chunks);
         ActiveRequestState active_state;
