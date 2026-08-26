@@ -34,6 +34,11 @@ class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
         self.assertIn(
             "$CodecRightPaddedHistoryFrames + $EmitEveryFrames", launcher
         )
+        self.assertIn("$pcmCaptureDirectory = Split-Path -Parent $pcmCapture", launcher)
+        self.assertIn(
+            "New-Item -ItemType Directory -Path $pcmCaptureDirectory -Force",
+            launcher,
+        )
         self.assertIn(
             "_codec_right_padded_max_decode_input_frames", faster_model
         )

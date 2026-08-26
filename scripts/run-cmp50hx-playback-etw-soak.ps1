@@ -213,6 +213,14 @@ $pcmCapture = if ($PcmCaptureFile) {
 else {
     $null
 }
+if ($null -ne $pcmCapture) {
+    $pcmCaptureDirectory = Split-Path -Parent $pcmCapture
+    if ([string]::IsNullOrWhiteSpace($pcmCaptureDirectory)) {
+        throw "PCM capture path has no parent directory: $pcmCapture"
+    }
+    New-Item -ItemType Directory -Path $pcmCaptureDirectory -Force -ErrorAction Stop |
+        Out-Null
+}
 
 $environmentNames = @(
     'CUDA_VISIBLE_DEVICES', 'PYTHONHOME', 'PYTHONPATH', 'PYTHONNOUSERSITE',
