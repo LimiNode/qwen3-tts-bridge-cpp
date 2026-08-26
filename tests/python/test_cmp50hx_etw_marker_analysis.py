@@ -67,7 +67,37 @@ class Cmp50hxEtwMarkerAnalysisTest(unittest.TestCase):
             text=True,
         )
         self.assertNotEqual(completed.returncode, 0)
-        self.assertIn("index=1", completed.stderr)
+        self.assertIn("strictly increasing absolute chunk indices", completed.stderr)
+
+    def test_marker_validation_accepts_absolute_index_starting_at_two(self) -> None:
+        queue_marker = f"{_QUEUE_EMPTY_PREFIX} index=2"
+        result = _invoke(
+            "$lines = @("
+            f"'Mark, 100, {_REQUEST_START}', "
+            f"'Mark, 200, {queue_marker}'); "
+            "$markers = @(Get-Cmp50hxPlaybackMarkers -DumperLines $lines); "
+            "Assert-Cmp50hxPlaybackMarkerSequence "
+            "-Markers $markers -ExpectedMarkerCount 2 | "
+            "ConvertTo-Json -Depth 5 -Compress"
+        )
+        self.assertEqual(result["markers"][1]["queue_index"], 2)
+
+    def test_marker_validation_accepts_gaps_between_absolute_indices(self) -> None:
+        queue_marker_1 = f"{_QUEUE_EMPTY_PREFIX} index=1"
+        queue_marker_3 = f"{_QUEUE_EMPTY_PREFIX} index=3"
+        result = _invoke(
+            "$lines = @("
+            f"'Mark, 100, {_REQUEST_START}', "
+            f"'Mark, 200, {queue_marker_1}', "
+            f"'Mark, 300, {queue_marker_3}'); "
+            "$markers = @(Get-Cmp50hxPlaybackMarkers -DumperLines $lines); "
+            "Assert-Cmp50hxPlaybackMarkerSequence "
+            "-Markers $markers -ExpectedMarkerCount 3 | "
+            "ConvertTo-Json -Depth 5 -Compress"
+        )
+        self.assertEqual(
+            [marker["queue_index"] for marker in result["markers"][1:]], [1, 3]
+        )
 
     def test_marker_validation_rejects_reversed_queue_indices(self) -> None:
         queue_marker_1 = f"{_QUEUE_EMPTY_PREFIX} index=1"
@@ -87,7 +117,7 @@ class Cmp50hxEtwMarkerAnalysisTest(unittest.TestCase):
             text=True,
         )
         self.assertNotEqual(completed.returncode, 0)
-        self.assertIn("timestamp-ordered", completed.stderr)
+        self.assertIn("strictly increasing absolute chunk indices", completed.stderr)
 
     def test_aggregates_worker_and_competing_dxgkrnl_events_by_marker_window(
         self,

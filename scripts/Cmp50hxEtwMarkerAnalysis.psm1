@@ -76,19 +76,16 @@ function Assert-Cmp50hxPlaybackMarkerSequence {
             throw 'Playback marker timestamps must be strictly increasing.'
         }
     }
-    for ($index = 1; $index -le $expectedQueueCount; $index++) {
-        $matchingMarkers = @($queueMarkers | Where-Object { $_.queue_index -eq $index })
-        if ($matchingMarkers.Count -ne 1) {
-            throw "Expected exactly one queue-empty marker with index=$index but found $($matchingMarkers.Count)."
-        }
-        if ([int64]$matchingMarkers[0].timestamp_us -le [int64]$requestMarkers[0].timestamp_us) {
-            throw "Queue-empty marker index=$index does not occur after request_start."
-        }
-    }
     for ($index = 0; $index -lt $queueMarkers.Count; $index++) {
-        $expectedQueueIndex = $index + 1
-        if ([int]$queueMarkers[$index].queue_index -ne $expectedQueueIndex) {
-            throw "Queue-empty markers must be timestamp-ordered with sequential indices; expected index=$expectedQueueIndex but found index=$($queueMarkers[$index].queue_index)."
+        $queueIndex = [int]$queueMarkers[$index].queue_index
+        if ([int64]$queueMarkers[$index].timestamp_us -le [int64]$requestMarkers[0].timestamp_us) {
+            throw "Queue-empty marker index=$queueIndex does not occur after request_start."
+        }
+        if ($index -gt 0) {
+            $previousQueueIndex = [int]$queueMarkers[$index - 1].queue_index
+            if ($queueIndex -le $previousQueueIndex) {
+                throw "Queue-empty markers must have strictly increasing absolute chunk indices; found index=$queueIndex after index=$previousQueueIndex."
+            }
         }
     }
 
