@@ -244,6 +244,15 @@ class QwenTtsEngine:
                 "unsupported_feature",
                 "per-request sampling controls require runtime_backend=faster",
             )
+        if (
+            self._config.runtime_backend == "ggml"
+            and request.language.strip().lower() == "auto"
+        ):
+            raise EngineRequestValidationError(
+                "unsupported_feature",
+                "the GGML CustomVoice backend requires an explicit language; "
+                "auto is not supported",
+            )
         sampling = _resolve_faster_sampling(self._config, request)
 
         model = self._require_model()

@@ -45,14 +45,21 @@ class GgmlCustomVoiceModel:
         top_p: float | None = None,
         repetition_penalty: float | None = None,
     ) -> Iterable[tuple[Any, int]]:
-        """Return native callback chunks without interpreting Faster controls."""
+        """Return native callback chunks through the constrained GGML contract."""
 
+        # The shared adapter calls all CustomVoice models with this shape. The
+        # GGML config rejects non-default values before a request reaches here.
         del emit_every_frames, decode_window_frames, overlap_samples
         if instruct:
             raise RuntimeError("qwentts.cpp CustomVoice instructions are not validated")
+        if language is None:
+            raise RuntimeError(
+                "qwentts.cpp CustomVoice requires an explicit language; auto is "
+                "not supported"
+            )
         return self._tts.stream(
             text=text,
-            lang=language or "english",
+            lang=language,
             speaker=speaker,
             seed=-1 if seed is None else seed,
             do_sample=self._config.do_sample if do_sample is None else do_sample,

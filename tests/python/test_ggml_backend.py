@@ -80,8 +80,20 @@ class GgmlBackendTests(unittest.TestCase):
             )
 
     def test_ggml_rejects_faster_only_trace_control(self) -> None:
-        with self.assertRaisesRegex(ValueError, "Faster-only profiling"):
+        with self.assertRaisesRegex(ValueError, "collect_generation_trace"):
             _ggml_config(collect_generation_trace=True)
+
+    def test_ggml_rejects_nondefault_ignored_bridge_controls(self) -> None:
+        for name, value in (
+            ("emit_every_frames", 16),
+            ("decode_window_frames", 48),
+            ("overlap_samples", 8),
+            ("use_cuda_graphs", False),
+            ("prefill_backend", "compile_reduce_overhead"),
+        ):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, name):
+                    _ggml_config(**{name: value})
 
     def test_ggml_loader_uses_local_gguf_and_defers_native_import(self) -> None:
         _FakeGgmlQwenTts.calls.clear()
@@ -140,6 +152,40 @@ class GgmlBackendTests(unittest.TestCase):
         self.assertEqual(42, model.calls[0]["seed"])
         self.assertEqual("ryan", model.calls[0]["speaker"])
 
+    def test_ggml_rejects_auto_language(self) -> None:
+        model = _FakeGgmlModel()
+        engine = QwenTtsEngine(_ggml_config(), model_loader=lambda _config: model)
+        engine.load()
+
+        with self.assertRaisesRegex(ValueError, "explicit language"):
+            engine.validate_request(
+                SynthesisRequest(
+                    request_id=1,
+                    text="native smoke",
+                    language="auto",
+                    speaker="ryan",
+                )
+            )
+
+    def test_ggml_forwards_explicit_non_english_language(self) -> None:
+        model = _FakeGgmlModel()
+        engine = QwenTtsEngine(_ggml_config(), model_loader=lambda _config: model)
+        engine.load()
+
+        list(
+            engine.synthesize_stream(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Привет",
+                    language="russian",
+                    speaker="ryan",
+                ),
+                threading.Event(),
+            )
+        )
+
+        self.assertEqual("russian", model.calls[0]["language"])
+
     def test_ggml_rejects_unvalidated_custom_voice_instruction(self) -> None:
         model = _FakeGgmlModel()
         engine = QwenTtsEngine(_ggml_config(), model_loader=lambda _config: model)
@@ -149,6 +195,7 @@ class GgmlBackendTests(unittest.TestCase):
                 SynthesisRequest(
                     request_id=1,
                     text="native smoke",
+                    language="english",
                     speaker="ryan",
                     instruction="whisper",
                 )
