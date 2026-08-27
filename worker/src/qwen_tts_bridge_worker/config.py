@@ -111,7 +111,13 @@ class QwenEngineConfig:
     """Configuration for the Qwen3-TTS engine adapter."""
 
     model_path: str
-    runtime_backend: Literal["upstream", "faster"] = "upstream"
+    runtime_backend: Literal["upstream", "faster", "ggml"] = "upstream"
+    ggml_quant: Literal["BF16", "Q8_0", "Q4_K_M"] = "BF16"
+    ggml_cache_dir: str = ""
+    ggml_python_path: str = ""
+    ggml_library_path: str = ""
+    ggml_cuda_dll_dir: str = ""
+    ggml_codec_chunk_seconds: float = 1.0
     device: str = "cuda"
     dtype: str = "auto"
     code_predictor_compute_dtype: Literal[
@@ -191,8 +197,9 @@ class QwenEngineConfig:
 
         if not self.model_path:
             raise ValueError("qwen.model_path must not be empty")
-        if self.runtime_backend not in {"upstream", "faster"}:
-            raise ValueError("qwen.runtime_backend must be upstream or faster")
+        if self.runtime_backend not in {"upstream", "faster", "ggml"}:
+            raise ValueError("qwen.runtime_backend must be upstream, faster, or ggml")
+        self._validate_ggml_contract()
         if self.collect_generation_trace and self.runtime_backend != "faster":
             raise ValueError(
                 "qwen.collect_generation_trace requires runtime_backend=faster"
@@ -438,6 +445,108 @@ class QwenEngineConfig:
                 "qwen.prefill_compile_compat_mode=strict_bf16_sdpa_v1 "
                 "requires warmup_synthesis_enabled=true or "
                 "prefill_compile_policy=exact_allowlist"
+            )
+
+    def _validate_ggml_contract(self) -> None:
+        """Reject bridge controls that the isolated GGML experiment cannot own."""
+
+        if self.runtime_backend != "ggml":
+            return
+        if self.model_path != "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice":
+            raise ValueError(
+                "qwen.runtime_backend=ggml currently supports only "
+                "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
+            )
+        if not self.ggml_cache_dir:
+            raise ValueError("qwen.ggml_cache_dir is required for runtime_backend=ggml")
+        if not self.ggml_python_path:
+            raise ValueError(
+                "qwen.ggml_python_path is required for runtime_backend=ggml"
+            )
+        if not self.ggml_cuda_dll_dir:
+            raise ValueError(
+                "qwen.ggml_cuda_dll_dir is required for runtime_backend=ggml"
+            )
+        if self.ggml_quant not in {"BF16", "Q8_0", "Q4_K_M"}:
+            raise ValueError("qwen.ggml_quant must be BF16, Q8_0, or Q4_K_M")
+        if (
+            not math.isfinite(self.ggml_codec_chunk_seconds)
+            or self.ggml_codec_chunk_seconds <= 0.0
+        ):
+            raise ValueError(
+                "qwen.ggml_codec_chunk_seconds must be finite and positive"
+            )
+        unsupported_controls = {
+            "device": self.device != "cuda",
+            "dtype": self.dtype != "auto",
+            "attn_implementation": bool(self.attn_implementation),
+            "max_seq_len": self.max_seq_len != 2048,
+            "emit_every_frames": self.emit_every_frames != 8,
+            "emit_chunk_schedule": bool(self.emit_chunk_schedule),
+            "compiled_emit_chunk_schedule": bool(self.compiled_emit_chunk_schedule),
+            "eager_emit_chunk_schedule": bool(self.eager_emit_chunk_schedule),
+            "decode_window_frames": self.decode_window_frames != 80,
+            "overlap_samples": self.overlap_samples != 0,
+            "enable_streaming_optimizations": self.enable_streaming_optimizations,
+            "use_compile": not self.use_compile,
+            "use_cuda_graphs": not self.use_cuda_graphs,
+            "compile_mode": self.compile_mode != "reduce-overhead",
+            "use_fast_codebook": self.use_fast_codebook,
+            "compile_codebook_predictor": not self.compile_codebook_predictor,
+            "compile_talker": not self.compile_talker,
+            "matmul_precision": bool(self.matmul_precision),
+            "profile_prefill": self.profile_prefill,
+            "profile_nvtx": self.profile_nvtx,
+            "collect_generation_trace": self.collect_generation_trace,
+            "prefill_backend": self.prefill_backend != "eager",
+            "prefill_compile_compat_mode": self.prefill_compile_compat_mode != "none",
+            "prefill_compile_lengths": bool(self.prefill_compile_lengths),
+            "prefill_compile_on_miss": not self.prefill_compile_on_miss,
+            "prefill_unknown_shape_policy": (
+                self.prefill_unknown_shape_policy != "eager"
+            ),
+            "prefill_compile_policy": (
+                self.prefill_compile_policy != "diagnostic_dynamic"
+            ),
+            "prefill_allowlist_warmup_manifest": bool(
+                self.prefill_allowlist_warmup_manifest
+            ),
+            "prefill_allowlist_warmup_repeats": (
+                self.prefill_allowlist_warmup_repeats != 3
+            ),
+            "prefill_allowlist_max_entries": self.prefill_allowlist_max_entries != 6,
+            "prefill_allowlist_max_abs_threshold": (
+                self.prefill_allowlist_max_abs_threshold != 0.0
+            ),
+            "prefill_require_precompiled": self.prefill_require_precompiled,
+            "prefill_first_chunk_warmup_enabled": (
+                self.prefill_first_chunk_warmup_enabled
+            ),
+            "prefill_first_chunk_warmup_length": (
+                self.prefill_first_chunk_warmup_length is not None
+            ),
+            "prefill_generation_prime_enabled": self.prefill_generation_prime_enabled,
+            "allow_request_sampling_overrides": self.allow_request_sampling_overrides,
+            "voice_registry_path": bool(self.voice_registry_path),
+            "voice_prompt_cache_max_entries": self.voice_prompt_cache_max_entries != 8,
+            "voice_profile_prompt_policy": self.voice_profile_prompt_policy != "shared",
+            "preload_voice_profiles": self.preload_voice_profiles,
+        }
+        rejected = sorted(
+            name for name, enabled in unsupported_controls.items() if enabled
+        )
+        if rejected:
+            raise ValueError(
+                "qwen GGML backend does not support Faster/upstream controls: "
+                + ", ".join(rejected)
+            )
+        if (
+            self.warmup_synthesis_enabled
+            and self.warmup_language.strip().lower() == "auto"
+        ):
+            raise ValueError(
+                "qwen GGML warmup requires an explicit warmup_language; auto is "
+                "not supported"
             )
 
     def _validate_exact_allowlist_contract(self) -> None:
