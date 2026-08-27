@@ -606,6 +606,14 @@ accepted native backend could move from this adapter to a direct C++ engine and
 remove the Python runtime dependency; that is explicitly out of scope for this
 first A/B.
 
+GGML uses a deliberately narrow experimental contract. It requires an explicit
+request language because native auto-language behavior has not been validated;
+`auto` is rejected rather than silently treated as English. It also rejects
+non-default Faster/upstream controls that the native runtime does not own, such
+as emit cadence, codec window, overlap, compilation, CUDA Graph, prefill,
+profiling, and voice-profile options. Native delivery chunking is controlled
+only by `--ggml-codec-chunk-seconds`.
+
 ### Local build prerequisites (CMP 50HX)
 
 The tested local toolchain is CUDA Toolkit 13.3, Visual Studio 2022 Build Tools
