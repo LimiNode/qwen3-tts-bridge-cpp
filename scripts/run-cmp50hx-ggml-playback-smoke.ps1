@@ -59,7 +59,13 @@ $ggmlCache = Resolve-LocalPath $GgmlCachePath 'GGUF cache directory'
 $cudaDll = Resolve-LocalPath $CudaDllPath 'CUDA runtime DLL directory'
 $ggmlLibrary = if ($GgmlLibraryPath) { Resolve-LocalPath $GgmlLibraryPath 'qwen.dll' } else { '' }
 
-$runDirectory = Join-Path (Join-Path $repo $OutputRoot) (Get-Date -Format 'yyyyMMddTHHmmssZ')
+$outputBase = if ([IO.Path]::IsPathRooted($OutputRoot)) {
+    $OutputRoot
+}
+else {
+    Join-Path $repo $OutputRoot
+}
+$runDirectory = Join-Path $outputBase (Get-Date -Format 'yyyyMMddTHHmmssZ')
 New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
 $metrics = Join-Path $runDirectory 'playback-metrics.json'
 $stdout = Join-Path $runDirectory 'stdout.log'
