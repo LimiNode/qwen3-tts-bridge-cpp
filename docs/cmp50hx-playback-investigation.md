@@ -654,6 +654,16 @@ wrapper's optional ABI-v2 speaker-enumeration symbols. The experiment must use
 the known CustomVoice speaker name explicitly and must not treat the absence of
 that optional enumeration API as evidence that CustomVoice streaming failed.
 
+The first end-to-end bridge playback smoke also completed through the separate
+`run-cmp50hx-ggml-playback-smoke.ps1` launcher: 8.96 seconds of 24 kHz PCM in
+9 chunks, first PCM at about 1.33 seconds, synthesis completion at about 8.23
+seconds, worker RTF `0.918687`, and zero WaveOut queue-starvation-proxy
+observations with a two-chunk prebuffer. The record is a single native GGML
+smoke, not a distributional performance conclusion, a Faster PCM-parity
+comparison, or physical hardware-underrun evidence. The next acceptance gates
+are listening/quality review, repeated idle and loaded runs, and an explicitly
+separate quality comparison between engines.
+
 ## Reproduction examples
 
 Normal playback evidence (ETW follow-up is started only after an observed
@@ -662,6 +672,24 @@ proxy outlier):
 ```powershell
 .\scripts\run-cmp50hx-playback-etw-soak.ps1 -Attempts 1
 ```
+
+The native GGML experiment is a separate, default-off CustomVoice smoke. On a
+worktree without generated build outputs, give it the already-built player and
+sealed worker explicitly. Keep the local adapter source, GGUF cache, and CUDA
+DLL directory outside Git:
+
+```powershell
+.\scripts\run-cmp50hx-ggml-playback-smoke.ps1 `
+  -PlayerPath 'E:\_repoz\qwen3-tts-bridge-cpp\build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe' `
+  -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\QwenTTSBridge-technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe' `
+  -GgmlPythonPath 'E:\_repoz\_tmp-qwentts-cpp-python-cmp50hx\src' `
+  -GgmlCachePath '.\tmp\cmp50hx-qwentts-gguf' `
+  -CudaDllPath 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.3\bin\x64' `
+  -Speaker ryan
+```
+
+This records a native-engine smoke only. It is intentionally not an ETW
+capture, Faster parity test, or hardware-underrun measurement.
 
 Bounded TF32-policy probe, with no ETW follow-up (use only after the normal
 correctness smoke has completed):
