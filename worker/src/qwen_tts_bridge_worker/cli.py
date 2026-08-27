@@ -124,6 +124,12 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
             return QwenEngineConfig(
                 model_path=args.model_path,
                 runtime_backend=args.runtime_backend,
+                ggml_quant=args.ggml_quant,
+                ggml_cache_dir=args.ggml_cache_dir,
+                ggml_python_path=args.ggml_python_path,
+                ggml_library_path=args.ggml_library_path,
+                ggml_cuda_dll_dir=args.ggml_cuda_dll_dir,
+                ggml_codec_chunk_seconds=args.ggml_codec_chunk_seconds,
                 device=args.device,
                 dtype=args.dtype,
                 code_predictor_compute_dtype=args.code_predictor_compute_dtype,
@@ -341,9 +347,44 @@ def _add_qwen_subcommand(
     qwen_parser.add_argument("--model-path", required=True)
     qwen_parser.add_argument(
         "--runtime-backend",
-        choices=("upstream", "faster"),
+        choices=("upstream", "faster", "ggml"),
         default="upstream",
-        help="Select the Qwen inference implementation.",
+        help=(
+            "Select the Qwen inference implementation; ggml is an opt-in "
+            "native experiment."
+        ),
+    )
+    qwen_parser.add_argument(
+        "--ggml-quant",
+        choices=("BF16", "Q8_0", "Q4_K_M"),
+        default="BF16",
+        help="GGML-only GGUF quantization; BF16 is the initial fair-comparison mode.",
+    )
+    qwen_parser.add_argument(
+        "--ggml-cache-dir",
+        default="",
+        help="GGML-only Hugging Face cache containing the separate GGUF weights.",
+    )
+    qwen_parser.add_argument(
+        "--ggml-python-path",
+        default="",
+        help="GGML-only qwentts_cpp source or installed-package directory.",
+    )
+    qwen_parser.add_argument(
+        "--ggml-library-path",
+        default="",
+        help="Optional GGML-only explicit path to qwen.dll.",
+    )
+    qwen_parser.add_argument(
+        "--ggml-cuda-dll-dir",
+        default="",
+        help=r"GGML-only CUDA runtime DLL directory, e.g. CUDA_PATH\\bin\\x64.",
+    )
+    qwen_parser.add_argument(
+        "--ggml-codec-chunk-seconds",
+        type=float,
+        default=1.0,
+        help="GGML-only native codec callback duration in seconds.",
     )
     qwen_parser.add_argument("--device", default="cuda")
     qwen_parser.add_argument("--dtype", default="auto")

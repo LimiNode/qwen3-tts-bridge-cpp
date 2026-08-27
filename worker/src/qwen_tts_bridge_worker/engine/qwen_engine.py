@@ -157,10 +157,11 @@ class QwenTtsEngine:
 
         if self._model is not None:
             return
-        _seed_runtime(
-            self._config.seed,
-            require_cuda=self._config.device.lower().startswith("cuda"),
-        )
+        if self._config.runtime_backend != "ggml":
+            _seed_runtime(
+                self._config.seed,
+                require_cuda=self._config.device.lower().startswith("cuda"),
+            )
         self._model = self._model_loader(self._config)
         model = self._require_model()
         _validate_loaded_prefill_compile_compat(model, self._config)
@@ -257,7 +258,7 @@ class QwenTtsEngine:
             ):
                 raise EngineRequestValidationError(
                     "unsupported_feature",
-                    "the loaded FasterQwen CustomVoice runtime does not support "
+                    "the loaded CustomVoice runtime does not support "
                     "style instructions for this model; use a runtime that "
                     "advertises supports_custom_voice_instructions",
                 )
@@ -287,11 +288,12 @@ class QwenTtsEngine:
         self.validate_request(request)
         sampling = _resolve_faster_sampling(self._config, request)
         effective_seed = _request_seed(self._config, request)
-        _seed_runtime(
-            effective_seed,
-            strict=request.seed is not None,
-            require_cuda=self._config.device.lower().startswith("cuda"),
-        )
+        if self._config.runtime_backend != "ggml":
+            _seed_runtime(
+                effective_seed,
+                strict=request.seed is not None,
+                require_cuda=self._config.device.lower().startswith("cuda"),
+            )
         return {
             "effective_seed": effective_seed,
             "effective_seed_explicit": request.seed is not None,
@@ -315,11 +317,12 @@ class QwenTtsEngine:
         self._maybe_open_profile_pair_range(request.request_id)
         with self._synthesis_lock:
             self._last_generation_trace = None
-            _seed_runtime(
-                _request_seed(self._config, request),
-                strict=request.seed is not None,
-                require_cuda=self._config.device.lower().startswith("cuda"),
-            )
+            if self._config.runtime_backend != "ggml":
+                _seed_runtime(
+                    _request_seed(self._config, request),
+                    strict=request.seed is not None,
+                    require_cuda=self._config.device.lower().startswith("cuda"),
+                )
             audio_stream = self._generate_audio_stream(model, request, cancel_event)
             emitted_audio_bytes = 0
             max_audio_bytes = _max_audio_bytes(self._config, request)
@@ -1627,6 +1630,16 @@ def _runtime_execution_policy_fields(config: QwenEngineConfig) -> dict[str, obje
             "bridge_cuda_graph_control": "not_applicable",
             "runtime_internal_cuda_graphs_may_be_enabled": True,
         }
+    if config.runtime_backend == "ggml":
+        return {
+            "runtime_backend": "ggml",
+            "ggml_quant": config.ggml_quant,
+            "ggml_codec_chunk_seconds": config.ggml_codec_chunk_seconds,
+            "bridge_streaming_optimizations_enabled": False,
+            "bridge_compile_control": "not_applicable",
+            "bridge_cuda_graph_control": "not_applicable",
+            "runtime_internal_cuda_graphs_may_be_enabled": False,
+        }
     return {
         "runtime_backend": "upstream",
         "code_predictor_compute_dtype": config.code_predictor_compute_dtype,
@@ -1755,6 +1768,8 @@ def _supports_custom_voice_instructions(
     model: Any,
     config: QwenEngineConfig,
 ) -> bool:
+    if config.runtime_backend == "ggml":
+        return False
     if config.runtime_backend != "faster":
         return True
     return bool(getattr(model, "supports_custom_voice_instructions", False))
@@ -1819,6 +1834,20 @@ def _qwen_stream_generate_audio(
 
         public_stream = getattr(model, "stream_generate_custom_voice", None)
         if callable(public_stream):
+            if config.runtime_backend == "ggml":
+                return cast(
+                    Iterable[tuple[Any, int]],
+                    public_stream(
+                        text=request.text,
+                        language=language,
+                        speaker=request.speaker,
+                        instruct=request.instruction or None,
+                        emit_every_frames=config.emit_every_frames,
+                        decode_window_frames=config.decode_window_frames,
+                        overlap_samples=config.overlap_samples,
+                        seed=_request_seed(config, request),
+                    ),
+                )
             return cast(
                 Iterable[tuple[Any, int]],
                 public_stream(

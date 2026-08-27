@@ -111,7 +111,13 @@ class QwenEngineConfig:
     """Configuration for the Qwen3-TTS engine adapter."""
 
     model_path: str
-    runtime_backend: Literal["upstream", "faster"] = "upstream"
+    runtime_backend: Literal["upstream", "faster", "ggml"] = "upstream"
+    ggml_quant: Literal["BF16", "Q8_0", "Q4_K_M"] = "BF16"
+    ggml_cache_dir: str = ""
+    ggml_python_path: str = ""
+    ggml_library_path: str = ""
+    ggml_cuda_dll_dir: str = ""
+    ggml_codec_chunk_seconds: float = 1.0
     device: str = "cuda"
     dtype: str = "auto"
     code_predictor_compute_dtype: Literal[
@@ -191,8 +197,9 @@ class QwenEngineConfig:
 
         if not self.model_path:
             raise ValueError("qwen.model_path must not be empty")
-        if self.runtime_backend not in {"upstream", "faster"}:
-            raise ValueError("qwen.runtime_backend must be upstream or faster")
+        if self.runtime_backend not in {"upstream", "faster", "ggml"}:
+            raise ValueError("qwen.runtime_backend must be upstream, faster, or ggml")
+        self._validate_ggml_contract()
         if self.collect_generation_trace and self.runtime_backend != "faster":
             raise ValueError(
                 "qwen.collect_generation_trace requires runtime_backend=faster"
@@ -438,6 +445,50 @@ class QwenEngineConfig:
                 "qwen.prefill_compile_compat_mode=strict_bf16_sdpa_v1 "
                 "requires warmup_synthesis_enabled=true or "
                 "prefill_compile_policy=exact_allowlist"
+            )
+
+    def _validate_ggml_contract(self) -> None:
+        """Reject bridge controls that the isolated GGML experiment cannot own."""
+
+        if self.runtime_backend != "ggml":
+            return
+        if self.model_path != "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice":
+            raise ValueError(
+                "qwen.runtime_backend=ggml currently supports only "
+                "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"
+            )
+        if not self.ggml_cache_dir:
+            raise ValueError("qwen.ggml_cache_dir is required for runtime_backend=ggml")
+        if not self.ggml_python_path:
+            raise ValueError(
+                "qwen.ggml_python_path is required for runtime_backend=ggml"
+            )
+        if not self.ggml_cuda_dll_dir:
+            raise ValueError(
+                "qwen.ggml_cuda_dll_dir is required for runtime_backend=ggml"
+            )
+        if self.ggml_quant not in {"BF16", "Q8_0", "Q4_K_M"}:
+            raise ValueError("qwen.ggml_quant must be BF16, Q8_0, or Q4_K_M")
+        if (
+            not math.isfinite(self.ggml_codec_chunk_seconds)
+            or self.ggml_codec_chunk_seconds <= 0.0
+        ):
+            raise ValueError(
+                "qwen.ggml_codec_chunk_seconds must be finite and positive"
+            )
+        if self.collect_generation_trace or self.profile_prefill or self.profile_nvtx:
+            raise ValueError(
+                "qwen GGML backend does not support Faster-only profiling controls"
+            )
+        if self.enable_streaming_optimizations or any(
+            (
+                self.emit_chunk_schedule,
+                self.compiled_emit_chunk_schedule,
+                self.eager_emit_chunk_schedule,
+            )
+        ):
+            raise ValueError(
+                "qwen GGML backend does not support bridge streaming schedules"
             )
 
     def _validate_exact_allowlist_contract(self) -> None:

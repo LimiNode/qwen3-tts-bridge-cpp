@@ -17,6 +17,10 @@ class QwenModelLoadError(RuntimeError):
 def load_qwen_model(config: QwenEngineConfig) -> Any:
     """Load the Qwen model wrapper from the vendored or installed runtime."""
 
+    if config.runtime_backend == "ggml":
+        from .ggml_backend import load_ggml_custom_voice_model
+
+        return load_ggml_custom_voice_model(config)
     if config.runtime_backend == "faster":
         return load_faster_qwen_model(config)
 
