@@ -586,6 +586,74 @@ consumer-isolation A/B gives a causal result.
 3. If a bounded playback reserve still reproduces a proxy outlier, capture a
    new marker-aligned ETL and investigate competing contexts or WDDM scheduling.
 
+## Deferred native GGML/qwentts.cpp backend
+
+The accepted Faster candidate remains the opt-in W48 right-padded codec decode
+with a manual CUDA Graph. Its numerical and playback evidence must not change
+while a native-engine experiment is evaluated.
+
+The next A/B is intentionally a separate engine: the Python worker remains the
+IPC host, but an explicit `ggml` backend may call the native qwentts.cpp DLL
+through its Python adapter. This is not PCM-equivalent to Faster by design.
+Initial acceptance therefore requires a CustomVoice streaming smoke, audible
+quality review, format/duration checks, and independent timing/playback-proxy
+evidence. It must not reuse Faster's byte-level PCM parity thresholds or make
+claims about hardware underruns.
+
+The experiment is default-off. Normal Faster playback must neither import the
+adapter nor load a GGML DLL, weights, WPR, or additional diagnostics. A later
+accepted native backend could move from this adapter to a direct C++ engine and
+remove the Python runtime dependency; that is explicitly out of scope for this
+first A/B.
+
+### Local build prerequisites (CMP 50HX)
+
+The tested local toolchain is CUDA Toolkit 13.3, Visual Studio 2022 Build Tools
+with the Desktop development with C++ workload (MSVC v143 and a Windows SDK),
+CMake 4.2.3, Git, and sufficient temporary disk for a native build plus GGUF
+weights. Build from an x64 Visual Studio developer environment, not an ordinary
+PowerShell, because `cl.exe` is injected by `VsDevCmd.bat`.
+
+The CMP 50HX is compute capability 7.5, so the CUDA build must target `sm_75`:
+
+```powershell
+cmd /c 'call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64 && cl'
+nvcc --version
+nvidia-smi --query-gpu=index,name,compute_cap,driver_version --format=csv,noheader
+```
+
+The temporary source pins used for the local experiment are
+`andimarafioti/qwentts-cpp-python` at
+`b0b2da11293fb5a3f84fafc0a4c64524d7635b88` and `andimarafioti/qwentts.cpp` at
+`b7d601ff66f71ef07b17305e18757c8c8f19f40a`. The native CMake configuration
+must include `GGML_CUDA=ON` and `CMAKE_CUDA_ARCHITECTURES=75-real`. The DLL
+bundle and GGUF weights remain local `tmp/` artifacts and must not be committed.
+For CUDA 13.3 on Windows, the cuBLAS runtime is under
+`%CUDA_PATH%\bin\x64`; the experimental host must add that directory with
+`os.add_dll_directory()` before it loads `qwen.dll`.
+
+The adapter has no ready Windows CPython 3.11 wheel, so build it from those
+pinned sources. The GGUF CustomVoice model is separate from the Faster
+safetensors model and must be downloaded into a local cache only after the DLL
+smoke succeeds.
+
+### Local native smoke result
+
+The pinned source pair was built successfully with Ninja for `sm_75` on CUDA
+13.3 and loaded by the sealed CPython 3.11 runtime. `QwenLibrary().version()`
+reported `b7d601f (2026-05-20)`. With `CUDA_VISIBLE_DEVICES=0`, the native
+runtime selected the CMP 50HX and completed a deterministic BF16 CustomVoice
+streaming smoke using `speaker="ryan"`: 3 chunks, 24 kHz, 2.56 seconds of PCM,
+first callback at about 1.48 seconds, and native synthesis completion at about
+2.80 seconds. This validates the DLL, model format, CUDA path, CustomVoice
+route, and streaming callback only; it is not a long-form timing or quality
+acceptance result.
+
+The selected upstream engine exposes the CustomVoice route but not the
+wrapper's optional ABI-v2 speaker-enumeration symbols. The experiment must use
+the known CustomVoice speaker name explicitly and must not treat the absence of
+that optional enumeration API as evidence that CustomVoice streaming failed.
+
 ## Reproduction examples
 
 Normal playback evidence (ETW follow-up is started only after an observed
