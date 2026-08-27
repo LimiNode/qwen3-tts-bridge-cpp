@@ -529,6 +529,59 @@ the best bounded idle experimental codec-graph candidate, but remains opt-in
 and does not establish a hardware-underrun guarantee or behavior under a
 competing GPU workload.
 
+### Rejected W41 codec graph window
+
+With `emit_every_frames=16`, the theoretical smallest fixed codec input is 41
+frames: 25 frames of decoder history plus 16 newly emitted frames. W41 was
+therefore evaluated as a separate opt-in candidate against W48, rather than
+changing the accepted path.
+
+The PCM pair completed in W48 run `20260826T113853Z-98540` and W41 run
+`20260826T114150Z-98540`. Both reached natural EOS with four chunks,
+240,810 bytes, and 120,405 s16le samples; neither recorded a later-chunk
+queue-empty proxy observation. The audio was not byte-identical: 42.8595% of
+samples were exactly equal, RMS delta was `2.5570`, SNR was `56.3839 dB`, and
+the maximum absolute delta was `38`. It fits the explicit non-bit-exact
+candidate-quality envelope used for W48, but is not a transparent,
+bit-identical technical substitution.
+
+Fresh-worker ABBA timing used the same fixed seed, full-EOS warmup, two-chunk
+prebuffer, manual codec CUDA Graph, and `emit_every_frames=16`:
+
+| Case | TTFA | Synthesis | RTF | AR ms/step | Codec residual |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| W48-A | 1228.237 ms | 4339.932 ms | 0.865067 | 57.252 ms | 140.262 ms |
+| W41-A | 1224.114 ms | 4318.488 ms | 0.860792 | 56.758 ms | 142.780 ms |
+| W48-B | 1230.650 ms | 4332.095 ms | 0.863505 | 56.905 ms | 142.418 ms |
+| W41-B | 1240.233 ms | 4334.955 ms | 0.864075 | 56.622 ms | 144.894 ms |
+
+Mean synthesis was `4336.014 ms` for W48 and `4326.722 ms` for W41: an
+apparent `9.292 ms` / `0.21%` difference, well within run-to-run noise. W41
+also had slightly worse mean TTFA and codec residual. It is rejected because
+there is no material performance benefit to justify a second quality profile;
+W48 remains the accepted bounded-idle experimental candidate.
+
+### Rejected E20 delivery cadence
+
+The W48 window can technically accommodate `emit_every_frames=20` because its
+25-frame history plus 20 newly emitted frames fit the fixed 48-frame graph
+input. The expected benefit was one fewer codec decode on this five-second
+workload. This is a delivery-cadence experiment, not an autoregressive-model
+optimization.
+
+The E16 reference run `20260826T222124Z-98540` and E20 run
+`20260826T222159Z-98540` both completed naturally with four chunks / 240,810
+bytes / 120,405 samples and zero later-chunk queue-empty proxy observations.
+Their PCM comparison failed the candidate-quality gate decisively: RMS delta
+was `76.6663` (limit `3`), SNR was `26.8465 dB` (minimum `55 dB`), and maximum
+absolute delta was `1839` (limit `64`). E20 is rejected without a timing ABBA;
+its possible decode-count saving cannot justify this audio divergence.
+
+The parity tool writes its report before returning status: a failed threshold
+returns exit code `2`. In PowerShell, check `$LASTEXITCODE` after an invocation
+when the exit status is not otherwise consumed; the report's
+`threshold_pass=false` is the authoritative diagnostic record.
+
 ### GPU lifecycle evidence gap
 
 The zero-loss marker-aligned ETL from run `20260816T004412Z-98540` was replayed
@@ -575,15 +628,44 @@ from these records. Further automatic keyword expansion is not justified until
 an interactive GPUView/WPA review finds a documented join, or a controlled
 consumer-isolation A/B gives a causal result.
 
+## Deferred multi-voice scheduling
+
+Two independent fresh workers were launched simultaneously with the W48
+right-padded manual codec graph, two-chunk prebuffer, full-EOS warmup, and
+`emit_every_frames=16`: `ryan` run `20260826T100349Z-43736` and `serena` run
+`20260826T100349Z-23228`. Both completed without CUDA out-of-memory failure,
+but each recorded two later-chunk queue-empty proxy observations. They produced
+the same 5.016875 s audio duration in 11.059799 s (RTF `2.204520`) and
+11.606281 s (RTF `2.313448`) respectively.
+
+This establishes only that two external GPU workers are technically viable on
+this machine. It is not a supported real-time multi-voice mode. The WaveOut
+measurement is a queue-starvation proxy, not a hardware-underrun counter.
+Application concurrency should therefore remain queued through one worker;
+multiple GPU workers are useful only for diagnostic or aggregate-throughput
+experiments.
+
+A future single-worker batch/interleaving design must preserve independent
+generation, codec, EOS, cancellation, and seed state. It must additionally
+demonstrate batch-2 fixed-seed PCM parity against equivalent single requests,
+define the CUDA-Graph batch-size contract with a safe fallback, show no
+single-voice latency regression, and publish separate two-voice throughput and
+playback-proxy gates before it is considered a runtime feature.
+
 ## Next acceptance gates
 
-1. Keep marker-aware ETW analysis limited to zero-loss, marker-complete ETLs;
+1. Do not pursue further codec-window or delivery-cadence variants without a
+   causal measurement. W41 brought no material throughput improvement and E20
+   failed the PCM-quality gate; the remaining dominant work is the graph-captured
+   autoregressive talker/predictor path. Any future AR speedup requires a
+   separately validated engine-level approach rather than a silent runtime tweak.
+2. Keep marker-aware ETW analysis limited to zero-loss, marker-complete ETLs;
    it remains an attribution tool, not a GPU-duration measurement on this WDDM
    stack.
-2. Run a controlled opt-in sink-prebuffer A/B on the idle machine. Record TTFA,
+3. Run a controlled opt-in sink-prebuffer A/B on the idle machine. Record TTFA,
    sink start, completion, per-chunk cadence, worker RTF, and proxy observations
    separately; do not describe delayed sink start as improved synthesis speed.
-3. If a bounded playback reserve still reproduces a proxy outlier, capture a
+4. If a bounded playback reserve still reproduces a proxy outlier, capture a
    new marker-aligned ETL and investigate competing contexts or WDDM scheduling.
 
 ## Deferred native GGML/qwentts.cpp backend
@@ -606,12 +688,14 @@ accepted native backend could move from this adapter to a direct C++ engine and
 remove the Python runtime dependency; that is explicitly out of scope for this
 first A/B.
 
-GGML uses a deliberately narrow experimental contract. It requires an explicit
-request language because native auto-language behavior has not been validated;
-`auto` is rejected rather than silently treated as English. It also rejects
-non-default Faster/upstream controls that the native runtime does not own, such
-as emit cadence, codec window, overlap, compilation, CUDA Graph, prefill,
-profiling, and voice-profile options. Native delivery chunking is controlled
+The experimental GGML contract is deliberately narrower than the shared Qwen
+configuration. It accepts only its native quantization, local source/cache/DLL
+paths, codec chunk seconds, fixed sampling controls, and explicit language.
+`language=auto` is rejected: qwentts.cpp auto-language behavior is not yet
+validated, so silently substituting English would be incorrect. Likewise,
+non-default Faster/upstream controls such as emit cadence, codec window,
+overlap, compilation, CUDA Graph, prefill, profiling, and voice-profile options
+are rejected rather than silently ignored. Native codec chunking is controlled
 only by `--ggml-codec-chunk-seconds`.
 
 ### Local build prerequisites (CMP 50HX)
@@ -672,6 +756,14 @@ comparison, or physical hardware-underrun evidence. The next acceptance gates
 are listening/quality review, repeated idle and loaded runs, and an explicitly
 separate quality comparison between engines.
 
+A two-attempt idle pilot with the repeated-measurement harness used the same
+BF16 model, speaker, one-second native codec chunks, and a two-chunk playback
+prebuffer. Both attempts completed with zero queue-starvation-proxy
+observations. The median first-audio time was 1.424 seconds and median RTF was
+0.949 (p95 values 1.437 seconds and 0.953 respectively). This is a harness
+validation and a promising baseline only: two attempts are insufficient for an
+acceptance distribution or a Faster-versus-GGML comparison.
+
 ## Reproduction examples
 
 Normal playback evidence (ETW follow-up is started only after an observed
@@ -693,11 +785,92 @@ DLL directory outside Git:
   -GgmlPythonPath 'E:\_repoz\_tmp-qwentts-cpp-python-cmp50hx\src' `
   -GgmlCachePath '.\tmp\cmp50hx-qwentts-gguf' `
   -CudaDllPath 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.3\bin\x64' `
+  -Seed 20260806 `
+  -WorkloadLabel 'uncontrolled_no_deliberate_gpu_workload' `
+  -Language english `
   -Speaker ryan
 ```
 
 This records a native-engine smoke only. It is intentionally not an ETW
 capture, Faster parity test, or hardware-underrun measurement.
+
+For repeated native-GGML baseline measurements, use the separate harness. It
+extracts the worker's `request_finished` metric and the WaveOut proxy into one
+summary; it does not capture PCM or decide quality equivalence. Use at least
+five idle attempts before interpreting the median or p95, and repeat later
+under a documented competing GPU workload:
+
+```powershell
+.\scripts\measure-cmp50hx-ggml-playback.ps1 `
+  -Attempts 5 `
+  -PlayerPath 'E:\_repoz\qwen3-tts-bridge-cpp\build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe' `
+  -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\QwenTTSBridge-technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe' `
+  -GgmlPythonPath 'E:\_repoz\_tmp-qwentts-cpp-python-cmp50hx\src' `
+  -GgmlCachePath '.\tmp\cmp50hx-qwentts-gguf' `
+  -CudaDllPath 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.3\bin\x64' `
+  -Speaker ryan
+```
+
+The resulting `summary.json` reports per-attempt and aggregate synthesis time,
+first audio, RTF, playback completion, and queue-starvation-proxy counts. It
+is a native-GGML baseline, not a Faster-versus-GGML winner declaration.
+
+Create the matching frozen-Faster W48 timing record with the normal playback
+launcher, with ETW explicitly disabled, then normalize its worker telemetry.
+Use the same text, speaker, prebuffer, attempt count, and declared workload
+state as the native measurement. Do not use a historical Faster record with a
+different text as an A/B result:
+
+```powershell
+.\scripts\run-cmp50hx-playback-etw-soak.ps1 `
+  -Attempts 5 `
+  -CodecRightPaddedDecode `
+  -CodecRightPaddedCudaGraph `
+  -CodecRightPaddedWindowFrames 48 `
+  -PlaybackPrebufferChunks 2 `
+  -WorkerSynthesisWarmup `
+  -WorkerWarmupUnboundedPasses 1 `
+  -WorkerWarmupMaxOutputChunks 2 `
+  -EmitEveryFrames 16 `
+  -Seed 20260806 `
+  -WorkloadLabel 'uncontrolled_no_deliberate_gpu_workload' `
+  -Language english `
+  -SkipEtwFollowup
+
+.\scripts\summarize-cmp50hx-faster-playback.ps1 `
+  -SummaryPath .\tmp\cmp50hx-playback-etw-soak\<run-id>\summary.json
+```
+
+The normalizer refuses failed attempts, missing `request_finished` telemetry,
+or a missing comparison-contract fingerprint. The two summary schemas expose
+the same timing and playback-proxy fields, but they still do not establish
+output quality equivalence. Listen to retained samples and assess quality
+independently before selecting either backend.
+
+Create a machine-readable timing-only comparison. The comparator fail-closes
+unless both records have identical text hash, language, speaker, fixed seed,
+requested and completed attempt counts, prebuffer, workload label, and disabled
+ETW/PCM capture:
+
+```powershell
+.\scripts\compare-cmp50hx-backend-timing.ps1 `
+  -GgmlSummaryPath .\tmp\cmp50hx-ggml-idle-comparison\<ggml-run-id>\summary.json `
+  -FasterSummaryPath .\tmp\cmp50hx-faster-w48-idle-comparison\<faster-run-id>\faster-timing-summary.json
+```
+
+On the current CMP 50HX host, a pre-fingerprint five-attempt timing pilot used
+the same text and `ryan` speaker, a two-chunk prebuffer, no deliberate
+competing GPU workload, and no ETW/PCM capture. Both backends completed all
+five attempts with zero WaveOut queue-starvation-proxy observations. Faster W48
+had median RTF `0.870649` versus native GGML BF16 `0.955963` (GGML was 9.80%
+higher, where lower is faster), and median first audio `1246.527 ms` versus
+`1448.649 ms` (GGML was 16.21% higher). This observational pilot does not meet
+the later enforced fingerprint contract and must be rerun before it is cited as
+a formal A/B. The comparator treats RTF, first audio, completion, and proxy as
+primary metrics; raw synthesis time and output duration remain diagnostic only.
+The result rejects making GGML the CMP 50HX default on current timing evidence;
+it does not reject the opt-in native backend, assess voice quality, or predict
+behavior under a real competing workload.
 
 Bounded TF32-policy probe, with no ETW follow-up (use only after the normal
 correctness smoke has completed):
@@ -758,6 +931,29 @@ Full-EOS codec-decoder warmup acceptance run without ETW follow-up:
 
 For phase diagnosis only, add `-ProfilePrefill`. It adds timing events and
 must not be used as a normal-performance measurement.
+
+E20 versus E16 PCM-quality pair for the W48 manual-graph candidate (capture
+each side with the same seed and compare before timing it):
+
+```powershell
+$e16 = $common.Clone()
+$e16.EmitEveryFrames = 16
+& $runner @e16 -CodecRightPaddedWindowFrames 48 -PcmCaptureFile 'tmp\cmp50hx-e20-parity\e16.pcm'
+
+$e20 = $common.Clone()
+$e20.EmitEveryFrames = 20
+& $runner @e20 -CodecRightPaddedWindowFrames 48 -PcmCaptureFile 'tmp\cmp50hx-e20-parity\e20.pcm'
+
+& $common.PythonPath .\scripts\compare-cmp50hx-pcm-parity.py `
+  --expected tmp\cmp50hx-e20-parity\e16.pcm `
+  --candidate tmp\cmp50hx-e20-parity\e20.pcm `
+  --output tmp\cmp50hx-e20-parity\report.json `
+  --max-rms-delta 3 --min-snr-db 55 --max-abs-delta 64
+```
+
+Only if that quality gate passes, run fresh-worker E16/E20/E16/E20 timing
+without PCM capture or ETW. A small difference is not a candidate: record
+TTFA, synthesis time, RTF, proxy observations, and codec residual separately.
 
 Two-chunk sink-prebuffer A/B, without ETW follow-up:
 
