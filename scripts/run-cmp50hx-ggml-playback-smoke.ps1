@@ -12,7 +12,13 @@ param(
     [ValidateRange(1, 16)]
     [int]$PlaybackPrebufferChunks = 2,
     [string]$Text = 'This is a native GGML CustomVoice playback smoke test.',
+    [ValidateNotNullOrEmpty()]
+    [string]$Language = 'english',
     [string]$Speaker = 'ryan',
+    [ValidateRange(0, 2147483647)]
+    [int]$Seed = 20260806,
+    [ValidateNotNullOrEmpty()]
+    [string]$WorkloadLabel = 'uncontrolled_no_deliberate_gpu_workload',
     [string]$OutputRoot = 'tmp\cmp50hx-ggml-playback-smoke'
 )
 
@@ -25,6 +31,19 @@ function Resolve-LocalPath {
     $candidate = if ([IO.Path]::IsPathRooted($Path)) { $Path } else { Join-Path $repo $Path }
     if (-not (Test-Path -LiteralPath $candidate)) { throw "$Description was not found: $candidate" }
     (Resolve-Path -LiteralPath $candidate).Path
+}
+
+function Get-TextSha256 {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes($Value)
+        ([BitConverter]::ToString($hasher.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $hasher.Dispose()
+    }
 }
 
 if (-not $PlayerPath) { $PlayerPath = 'build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe' }
@@ -58,10 +77,10 @@ $arguments = @(
     '--worker-arg', '--ggml-python-path', '--worker-arg', $ggmlPython,
     '--worker-arg', '--ggml-cuda-dll-dir', '--worker-arg', $cudaDll,
     '--worker-arg', '--ggml-codec-chunk-seconds', '--worker-arg', $CodecChunkSeconds,
-    '--worker-arg', '--device', '--worker-arg', 'cuda:0',
-    '--worker-arg', '--seed', '--worker-arg', '20260806',
+    '--worker-arg', '--device', '--worker-arg', 'cuda',
+    '--worker-arg', '--seed', '--worker-arg', $Seed,
     '--worker-arg', '--seed-mode', '--worker-arg', 'fixed',
-    '--text', $Text, '--speaker', $Speaker,
+    '--text', $Text, '--language', $Language, '--speaker', $Speaker,
     '--playback-prebuffer-chunks', $PlaybackPrebufferChunks,
     '--startup-timeout-ms', '240000',
     '--playback-metrics-file', $metrics
@@ -95,6 +114,20 @@ if (-not (Test-Path -LiteralPath $metrics -PathType Leaf)) { throw 'GGML playbac
 $summary = [ordered]@{
     runtime_backend = 'ggml'
     measurement = 'native_ggml_playback_smoke_not_faster_pcm_parity'
+    comparison_contract = [ordered]@{
+        schema_version = 1
+        text_sha256 = Get-TextSha256 $Text
+        language = $Language
+        speaker = $Speaker
+        seed = $Seed
+        seed_mode = 'fixed'
+        attempts_requested = 1
+        attempts_completed = 1
+        playback_prebuffer_chunks = $PlaybackPrebufferChunks
+        workload_label = $WorkloadLabel
+        etw_capture_enabled = $false
+        pcm_capture_enabled = $false
+    }
     playback_metrics = $metrics
     stdout = $stdout
     stderr = $stderr
