@@ -355,43 +355,11 @@ frames and removal of the corresponding leading PCM samples afterwards. This
 preserves the emitted tail rather than returning PCM produced for right-side
 padding.
 
-The opt-in candidate applies that API only to ordinary streaming windows.
-Terminal EOS flush remains on the established `decode()` path for now, because
-its audio-tail contract and the observed terminal latency burst need a separate
-experiment. The candidate is default-off, checks that the selected shadow
-contains its patch marker, and fails closed when the tokenizer lacks
-`decode_streaming` or a window exceeds the configured fixed 80-frame size.
-
 The subsequent raw-PCM gate in PR #54 showed that this left-padded path does
 not preserve PCM parity despite matching codec tokens. It is therefore rejected
-as a correctness candidate: it must remain default-off and must not be used as
-a performance control or runtime policy. The commands below are retained only
-as historical reproduction instructions for that rejected experiment.
-
-Create an isolated candidate shadow from the exact frozen source:
-
-```powershell
-.\scripts\prepare-cmp50hx-faster-codec-streaming-shadow.ps1
-```
-
-Then run only the streaming-API correctness smoke:
-
-```powershell
-.\scripts\run-cmp50hx-playback-etw-soak.ps1 `
-  -Attempts 1 `
-  -FasterShadowPath tmp\cmp50hx-faster-codec-streaming-shadow `
-  -CodecStreamingDecode `
-  -PlaybackPrebufferChunks 2 `
-  -WorkerSynthesisWarmup `
-  -WorkerWarmupUnboundedPasses 1 `
-  -EmitEveryFrames 16 `
-  -ProfilePrefill `
-  -SkipEtwFollowup
-```
-
-This first mode keeps decoder compilation/capture disabled and is not a
-performance claim. It exists to establish PCM/EOS completion and finite long
-generation before a separately controlled decoder-optimization A/B.
+as a correctness candidate and is no longer shipped as a runnable patch. It
+must not be used as a performance control or runtime policy; the measurements
+below are retained only as historical evidence.
 
 ### PCM parity gate for the fixed-shape candidate
 
@@ -447,15 +415,12 @@ the same 63 codec frames with an identical codec digest, but changed all PCM
 chunks and increased the first chunk by 444 samples. This is decoder-output
 semantics, not sampling drift. It remains a rejected diagnostic candidate.
 
-A separate, default-off right-padding experiment is available for the next
-causal test. The 12 Hz decoder is causal, so it fixes the input shape by adding
-future zero frames and preserves the valid prefix before selecting the normal
-decoder output length. It is intentionally a separate shadow and must pass the
-same PCM gate before any timing measurement:
-
-```powershell
-.\scripts\prepare-cmp50hx-faster-codec-right-padded-shadow.ps1
-```
+A separate, default-off right-padding experiment supplies the accepted causal
+test. The 12 Hz decoder is causal, so it fixes the input shape by adding future
+zero frames and preserves the valid prefix before selecting the normal decoder
+output length. Its implementation is now versioned in the pinned
+`external/python/faster-qwen3-tts` submodule at `fb09801`; the bridge no longer
+constructs it from local patch/shadow directories.
 
 The first controlled short pair recorded identical codec traces (63 frames and
 the same codec SHA-256), equal PCM format/length (240,810 bytes), and natural
@@ -484,7 +449,7 @@ separate longer playback soak before any policy decision.
 That acceptance soak is now complete for run `20260821T203649Z-98540`: ten
 fresh-worker attempts used the same full-EOS warmup, `emit_every_frames=16`,
 two-chunk sink prebuffer, normal Faster graphs, and the right-padded decoder
-shadow. Every attempt exited successfully, produced four PCM chunks / 5,016.875
+candidate. Every attempt exited successfully, produced four PCM chunks / 5,016.875
 ms of audio, and recorded zero later-chunk queue-empty observations. No WPR
 session was launched because no outlier was detected. This validates the
 candidate for this bounded idle playback workload; it still does not establish
