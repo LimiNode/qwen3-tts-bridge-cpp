@@ -102,6 +102,10 @@ scripts\start-qwen-tts-play.ps1 -Text "Hello" -Speaker serena -Language English
 [руководстве](docs/using-qwen-customvoice-and-cli-ru.md)
 ([English version](docs/using-qwen-customvoice-and-cli.md)).
 
+Перед выпуском для Windows запустите матрицу реальной модели: CLI, preset-голоса
+и (при наличии) Base voice profiles —
+[Real-Model Release Acceptance](docs/real-model-release-acceptance.md).
+
 ## Публичный C++ API
 
 Подключайте только нужную доменную поверхность:

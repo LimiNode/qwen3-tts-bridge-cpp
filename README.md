@@ -108,6 +108,10 @@ commands, and current model limitations, see
 [Using CustomVoice and the Playback CLI](docs/using-qwen-customvoice-and-cli.md)
 ([Russian version](docs/using-qwen-customvoice-and-cli-ru.md)).
 
+Before a Windows release, run the real-model CLI, preset-speaker, and optional
+Base voice-profile matrix in
+[Real-Model Release Acceptance](docs/real-model-release-acceptance.md).
+
 ## Public C++ Surface
 
 Include only the domain surface an application uses:

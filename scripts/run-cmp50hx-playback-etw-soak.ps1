@@ -14,6 +14,8 @@ param(
 
     [string]$Speaker = 'ryan',
 
+    [string]$Language = 'English',
+
     [string]$PlayerPath = '',
 
     [string]$PythonPath = '',
@@ -440,7 +442,7 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--no-compile', '--worker-arg', '--no-cuda-graphs',
         '--worker-arg', '--seed', '--worker-arg', '20260806',
         '--worker-arg', '--seed-mode', '--worker-arg', 'fixed',
-        '--text', $Text, '--speaker', $Speaker,
+        '--text', $Text, '--speaker', $Speaker, '--language', $Language,
         '--playback-prebuffer-chunks', $PlaybackPrebufferChunks,
         '--startup-timeout-ms', '240000',
         '--playback-metrics-file', $metrics

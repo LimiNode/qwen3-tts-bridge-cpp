@@ -51,6 +51,10 @@ def main() -> int:
                     language=str(shape["language"]),
                     speaker=str(shape["speaker"]),
                     instruction=str(shape["instruction"]),
+                    voice_id=str(shape["voice_id"]),
+                    reference_audio_path=str(shape["reference_audio_path"]),
+                    reference_text=str(shape["reference_text"]),
+                    x_vector_only=bool(shape["x_vector_only"]),
                 )
             )
         results = []
@@ -64,6 +68,10 @@ def main() -> int:
                 language=str(shape["language"]),
                 speaker=str(shape["speaker"]),
                 instruction=str(shape["instruction"]),
+                voice_id=str(shape["voice_id"]),
+                reference_audio_path=str(shape["reference_audio_path"]),
+                reference_text=str(shape["reference_text"]),
+                x_vector_only=bool(shape["x_vector_only"]),
             )
             result["shape_label"] = shape["label"]
             result["talker_prefill_length"] = shape.get("talker_prefill_length")
@@ -212,11 +220,19 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--language", default="auto")
     parser.add_argument("--speaker", default="")
     parser.add_argument("--instruction", default="")
+    parser.add_argument("--voice-id", default="")
+    parser.add_argument("--reference-audio-path", default="")
+    parser.add_argument("--reference-text", default="")
+    parser.add_argument("--x-vector-only", action="store_true")
+    parser.add_argument("--voice-registry-path", default="")
     parser.add_argument(
         "--request-shapes-jsonl",
         type=Path,
         default=None,
-        help="Optional JSONL schedule with label/text/language/speaker/instruction.",
+        help=(
+            "Optional JSONL schedule with label/text/language/speaker/instruction "
+            "and Base voice-clone fields."
+        ),
     )
     return parser
 
@@ -249,16 +265,20 @@ def _load_request_shapes(path: Path | None) -> list[dict[str, object]]:
             raise ValueError(
                 f"request shape JSONL line {line_number} has invalid label"
             )
-        shapes.append(
-            {
-                "label": label,
-                "text": text,
-                "language": item.get("language", "auto"),
-                "speaker": item.get("speaker", ""),
-                "instruction": item.get("instruction", ""),
-                "talker_prefill_length": item.get("talker_prefill_length"),
-            }
-        )
+        shape = {
+            "label": label,
+            "text": text,
+            "language": item.get("language", "auto"),
+            "speaker": item.get("speaker", ""),
+            "instruction": item.get("instruction", ""),
+            "voice_id": item.get("voice_id", ""),
+            "reference_audio_path": item.get("reference_audio_path", ""),
+            "reference_text": item.get("reference_text", ""),
+            "x_vector_only": item.get("x_vector_only", False),
+            "talker_prefill_length": item.get("talker_prefill_length"),
+        }
+        _validate_request_shape(shape, line_number)
+        shapes.append(shape)
     return shapes
 
 
@@ -275,8 +295,42 @@ def _request_shape_for_index(
         "language": args.language,
         "speaker": args.speaker,
         "instruction": args.instruction,
+        "voice_id": args.voice_id,
+        "reference_audio_path": args.reference_audio_path,
+        "reference_text": args.reference_text,
+        "x_vector_only": args.x_vector_only,
         "talker_prefill_length": None,
     }
+
+
+def _validate_request_shape(shape: dict[str, object], line_number: int) -> None:
+    """Reject malformed clone fields before a real worker is started."""
+
+    for field in (
+        "language",
+        "speaker",
+        "instruction",
+        "voice_id",
+        "reference_audio_path",
+        "reference_text",
+    ):
+        if not isinstance(shape[field], str):
+            raise ValueError(
+                f"request shape JSONL line {line_number} has invalid {field}"
+            )
+    if not isinstance(shape["x_vector_only"], bool):
+        raise ValueError(
+            f"request shape JSONL line {line_number} has invalid x_vector_only"
+        )
+    if shape["voice_id"] and (
+        shape["reference_audio_path"]
+        or shape["reference_text"]
+        or shape["x_vector_only"]
+    ):
+        raise ValueError(
+            "request shape JSONL line "
+            f"{line_number} mixes voice_id with direct reference-audio fields"
+        )
 
 
 def _parse_prefill_compile_lengths(value: str) -> tuple[int, ...]:
@@ -328,6 +382,10 @@ def _run_request(
     language: str,
     speaker: str,
     instruction: str,
+    voice_id: str,
+    reference_audio_path: str,
+    reference_text: str,
+    x_vector_only: bool,
     seed: int | None = None,
 ) -> dict[str, object]:
     start = time.perf_counter()
@@ -338,6 +396,10 @@ def _run_request(
             language=language,
             speaker=speaker,
             instruction=instruction,
+            voice_id=voice_id,
+            reference_audio_path=reference_audio_path,
+            reference_text=reference_text,
+            x_vector_only=x_vector_only,
             seed=seed,
         ),
     )
@@ -493,6 +555,10 @@ def _synthesize_payload(
     language: str,
     speaker: str,
     instruction: str,
+    voice_id: str = "",
+    reference_audio_path: str = "",
+    reference_text: str = "",
+    x_vector_only: bool = False,
     seed: int | None = None,
 ) -> dict[str, object]:
     payload: dict[str, object] = {
@@ -509,6 +575,14 @@ def _synthesize_payload(
         payload["speaker"] = speaker
     if instruction:
         payload["instruction"] = instruction
+    if voice_id:
+        payload["voice_id"] = voice_id
+    if reference_audio_path:
+        payload["reference_audio_path"] = reference_audio_path
+    if reference_text:
+        payload["reference_text"] = reference_text
+    if x_vector_only:
+        payload["x_vector_only"] = True
     if seed is not None:
         payload["seed"] = seed
     return payload

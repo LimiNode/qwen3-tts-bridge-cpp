@@ -516,6 +516,9 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.extend(["--warmup-speaker", str(args.warmup_speaker)])
     if args.warmup_instruction:
         worker_args.extend(["--warmup-instruction", str(args.warmup_instruction)])
+    voice_registry_path = str(getattr(args, "voice_registry_path", ""))
+    if voice_registry_path:
+        worker_args.extend(["--voice-registry-path", voice_registry_path])
     worker_args.extend(
         ["--engine-startup-mode", str(getattr(args, "engine_startup_mode", "auto"))]
     )
