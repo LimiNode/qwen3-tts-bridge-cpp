@@ -57,7 +57,13 @@ advertises profiles, require all three additional arguments:
 The runner then verifies two sequential requests on one worker and repeats the
 same check after a worker restart. It fails if a request has no PCM, lacks a
 first-audio/completion timing record, or the worker cannot load the selected
-profile.
+profile. For a registered Base profile it warms the bounded cache using that
+same `voice_id`; a generic
+CustomVoice-style warmup does not prepare the Base profile's first generation.
+
+Use the separate [CMP 50HX Base-profile startup A/B](cmp50hx-base-profile-startup.md)
+before making any claim about first-audio latency. Continuous delivery after
+the two-chunk prebuffer and low startup latency are separate gates.
 
 If these arguments are absent, `summary.json` marks Base profiles `not_run`.
 Do not advertise clone profiles as release-validated from that run.

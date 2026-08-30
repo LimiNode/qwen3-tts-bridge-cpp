@@ -577,6 +577,11 @@ consumer-isolation A/B gives a causal result.
 
 ## Next acceptance gates
 
+Registered Base profiles have a separate first-audio investigation and must
+not inherit the RTX 4090 CustomVoice latency claim. See
+[CMP 50HX Base Profile Startup Investigation](cmp50hx-base-profile-startup.md)
+for the measured baseline and profile-matched startup A/B.
+
 1. Keep marker-aware ETW analysis limited to zero-loss, marker-complete ETLs;
    it remains an attribution tool, not a GPU-duration measurement on this WDDM
    stack.
