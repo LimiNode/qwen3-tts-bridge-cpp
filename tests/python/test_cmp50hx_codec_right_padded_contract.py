@@ -31,9 +31,10 @@ class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
         self.assertIn(
             "QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES", launcher
         )
-        self.assertIn(
-            "$CodecRightPaddedHistoryFrames + $EmitEveryFrames", launcher
-        )
+        self.assertIn("$largestEmitChunk = $EmitEveryFrames", launcher)
+        self.assertIn("[int[]]$EmitChunkSchedule = @()", launcher)
+        self.assertIn("'--emit-chunk-schedule'", launcher)
+        self.assertIn("the largest configured emit chunk", launcher)
         self.assertIn("$pcmCaptureDirectory = Split-Path -Parent $pcmCapture", launcher)
         self.assertIn(
             "New-Item -ItemType Directory -Path $pcmCaptureDirectory -Force",
@@ -45,6 +46,18 @@ class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
         self.assertIn("original_frames > max_decode_input_frames", faster_model)
         self.assertNotIn("prepare-cmp50hx-faster", launcher)
         self.assertNotIn("$CodecStreamingDecode", launcher)
+
+    def test_launcher_keeps_base_voice_profile_requests_separate_from_speakers(
+        self,
+    ) -> None:
+        launcher = _LAUNCHER.read_text(encoding="utf-8")
+
+        self.assertIn("[string]$VoiceRegistryPath = ''", launcher)
+        self.assertIn("[string]$VoiceId = ''", launcher)
+        self.assertIn("-VoiceRegistryPath and -VoiceId must be supplied together.", launcher)
+        self.assertIn("'--voice-id', $VoiceId", launcher)
+        self.assertIn("else {\n        $arguments += @('--speaker', $Speaker)\n    }", launcher)
+        self.assertIn("'--warmup-voice-id', '--worker-arg', $warmupVoiceId", launcher)
 
     def test_launcher_revision_matches_faster_submodule_gitlink(self) -> None:
         launcher = _LAUNCHER.read_text(encoding="utf-8")

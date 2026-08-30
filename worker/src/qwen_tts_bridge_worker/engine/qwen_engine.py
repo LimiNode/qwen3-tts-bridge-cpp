@@ -1920,6 +1920,7 @@ def _qwen_stream_generate_audio(
                     ),
                     "voice_clone_prompt": clone_inputs.prompt,
                     "chunk_size": config.emit_every_frames,
+                    "chunk_schedule": config.emit_chunk_schedule or None,
                     **sampling,
                 }
                 return _faster_voice_clone_stream(

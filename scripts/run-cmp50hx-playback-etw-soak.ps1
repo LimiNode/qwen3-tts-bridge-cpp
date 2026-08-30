@@ -16,6 +16,10 @@ param(
 
     [string]$Language = 'English',
 
+    [string]$VoiceRegistryPath = '',
+
+    [string]$VoiceId = '',
+
     [string]$PlayerPath = '',
 
     [string]$PythonPath = '',
@@ -51,8 +55,15 @@ param(
 
     [string]$WorkerWarmupText = 'Warmup.',
 
+    [string]$WorkerWarmupVoiceId = '',
+
+    [switch]$PreloadVoiceProfiles,
+
     [ValidateRange(1, 64)]
     [int]$EmitEveryFrames = 8,
+
+    [ValidateRange(1, 64)]
+    [int[]]$EmitChunkSchedule = @(),
 
     [ValidatePattern('^(|highest|high|medium)$')]
     [string]$MatmulPrecision = '',
@@ -79,10 +90,20 @@ param(
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $CodecRightPaddedHistoryFrames = 25
-$FasterCmp50hxSubmoduleCommit = 'fb098012fee40511480d6c2d693f857764aae31e'
+$FasterCmp50hxSubmoduleCommit = '19747d4aeba6bbc4ea7d44d5f7ff517fdfba1173'
 
 $repo = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $PSScriptRoot 'Cmp50hxEtwEvidence.psm1') -Force
+
+if ([bool]$VoiceRegistryPath -ne [bool]$VoiceId) {
+    throw '-VoiceRegistryPath and -VoiceId must be supplied together.'
+}
+if ($WorkerWarmupVoiceId -and -not $WorkerSynthesisWarmup) {
+    throw '-WorkerWarmupVoiceId requires -WorkerSynthesisWarmup.'
+}
+if ($PreloadVoiceProfiles -and -not $VoiceRegistryPath) {
+    throw '-PreloadVoiceProfiles requires -VoiceRegistryPath.'
+}
 
 if ($PcmCaptureFile -and $Attempts -ne 1) {
     throw '-PcmCaptureFile requires -Attempts 1 so one capture maps to one request.'
@@ -93,10 +114,14 @@ if ($PcmCaptureFile -and -not $SkipEtwFollowup) {
 if ($CodecRightPaddedCudaGraph -and -not $CodecRightPaddedDecode) {
     throw '-CodecRightPaddedCudaGraph requires -CodecRightPaddedDecode.'
 }
-if ($CodecRightPaddedDecode -and $CodecRightPaddedWindowFrames -lt ($CodecRightPaddedHistoryFrames + $EmitEveryFrames)) {
+$largestEmitChunk = $EmitEveryFrames
+if ($EmitChunkSchedule.Count -gt 0) {
+    $largestEmitChunk = [Math]::Max($largestEmitChunk, ($EmitChunkSchedule | Measure-Object -Maximum).Maximum)
+}
+if ($CodecRightPaddedDecode -and $CodecRightPaddedWindowFrames -lt ($CodecRightPaddedHistoryFrames + $largestEmitChunk)) {
     throw (
         "-CodecRightPaddedWindowFrames must be at least $CodecRightPaddedHistoryFrames context frames plus " +
-        "-EmitEveryFrames ($EmitEveryFrames)."
+        "the largest configured emit chunk ($largestEmitChunk)."
     )
 }
 
@@ -442,17 +467,35 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--no-compile', '--worker-arg', '--no-cuda-graphs',
         '--worker-arg', '--seed', '--worker-arg', '20260806',
         '--worker-arg', '--seed-mode', '--worker-arg', 'fixed',
-        '--text', $Text, '--speaker', $Speaker, '--language', $Language,
+        '--text', $Text, '--language', $Language,
         '--playback-prebuffer-chunks', $PlaybackPrebufferChunks,
         '--startup-timeout-ms', '240000',
         '--playback-metrics-file', $metrics
     )
+    if ($VoiceRegistryPath) {
+        $voiceRegistry = Resolve-RepoPath -Path $VoiceRegistryPath -Description 'Voice registry'
+        $arguments += @(
+            '--worker-arg', '--voice-registry-path', '--worker-arg', $voiceRegistry,
+            '--voice-id', $VoiceId
+        )
+        if ($PreloadVoiceProfiles) {
+            $arguments += @('--worker-arg', '--preload-voice-profiles')
+        }
+    }
+    else {
+        $arguments += @('--speaker', $Speaker)
+    }
     if ($null -ne $pcmCapture) {
         $arguments += @('--pcm-capture-file', $pcmCapture)
     }
     if ($MatmulPrecision) {
         $arguments += @(
             '--worker-arg', '--matmul-precision', '--worker-arg', $MatmulPrecision
+        )
+    }
+    if ($EmitChunkSchedule.Count -gt 0) {
+        $arguments += @(
+            '--worker-arg', '--emit-chunk-schedule', '--worker-arg', ($EmitChunkSchedule -join ',')
         )
     }
     if ($ProfilePrefill) {
@@ -462,15 +505,21 @@ function Invoke-PlaybackRun {
         $arguments += @('--worker-arg', '--collect-generation-trace')
     }
     if ($WorkerSynthesisWarmup) {
+        $warmupVoiceId = if ($WorkerWarmupVoiceId) { $WorkerWarmupVoiceId } else { $VoiceId }
         $arguments += @(
             '--worker-arg', '--warmup-synthesis',
             '--worker-arg', '--warmup-synthesis-passes', '--worker-arg', $WorkerWarmupPasses,
             '--worker-arg', '--warmup-max-output-chunks', '--worker-arg', $WorkerWarmupMaxOutputChunks,
             '--worker-arg', '--warmup-unbounded-passes', '--worker-arg', $WorkerWarmupUnboundedPasses,
             '--worker-arg', '--warmup-text', '--worker-arg', $WorkerWarmupText,
-            '--worker-arg', '--warmup-language', '--worker-arg', 'auto',
-            '--worker-arg', '--warmup-speaker', '--worker-arg', $Speaker
+            '--worker-arg', '--warmup-language', '--worker-arg', $Language
         )
+        if ($warmupVoiceId) {
+            $arguments += @('--worker-arg', '--warmup-voice-id', '--worker-arg', $warmupVoiceId)
+        }
+        else {
+            $arguments += @('--worker-arg', '--warmup-speaker', '--worker-arg', $Speaker)
+        }
     }
 
     $wprStarted = $false
@@ -705,8 +754,13 @@ try {
             worker_warmup_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupPasses } else { $null }
             worker_warmup_max_output_chunks = if ($WorkerSynthesisWarmup) { $WorkerWarmupMaxOutputChunks } else { $null }
             worker_warmup_unbounded_passes = if ($WorkerSynthesisWarmup) { $WorkerWarmupUnboundedPasses } else { $null }
+            worker_warmup_voice_id = if ($WorkerSynthesisWarmup -and $VoiceId) { if ($WorkerWarmupVoiceId) { $WorkerWarmupVoiceId } else { $VoiceId } } else { $null }
+            voice_id = if ($VoiceId) { $VoiceId } else { $null }
+            voice_registry_path = if ($VoiceRegistryPath) { $VoiceRegistryPath } else { $null }
+            preload_voice_profiles = [bool]$PreloadVoiceProfiles
             playback_prebuffer_chunks = $PlaybackPrebufferChunks
             emit_every_frames = $EmitEveryFrames
+            emit_chunk_schedule = if ($EmitChunkSchedule.Count -gt 0) { @($EmitChunkSchedule) } else { @() }
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
             diagnostic_profile_prefill = [bool]$ProfilePrefill
             diagnostic_generation_trace = [bool]$CollectGenerationTrace

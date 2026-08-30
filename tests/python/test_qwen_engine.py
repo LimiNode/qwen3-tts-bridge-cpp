@@ -2081,6 +2081,7 @@ class QwenEngineTests(unittest.TestCase):
                     runtime_backend="faster",
                     device="cpu",
                     voice_registry_path=str(registry),
+                    emit_chunk_schedule=(8, 8, 16),
                     preload_voice_profiles=True,
                     warmup_synthesis_enabled=True,
                     warmup_voice_id="robot",
@@ -2112,6 +2113,10 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(["robot"], warmup["voice_profile_ids_preloaded"])
         self.assertEqual(1, fake_model.model.create_prompt_calls)
         self.assertEqual(2, len(fake_model.voice_clone_stream_calls))
+        self.assertEqual(
+            (8, 8, 16),
+            fake_model.voice_clone_stream_calls[-1]["chunk_schedule"],
+        )
         self.assertEqual(2, fake_model.reset_calls)
 
     def test_faster_base_profile_prompt_policies_are_explicit(self) -> None:
