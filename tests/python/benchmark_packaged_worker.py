@@ -103,6 +103,8 @@ def main() -> int:
                     "warmup_synthesis_passes": args.warmup_synthesis_passes,
                     "warmup_unbounded_passes": args.warmup_unbounded_passes,
                     "warmup_max_output_chunks": args.warmup_max_output_chunks,
+                    "warmup_voice_id": args.warmup_voice_id,
+                    "preload_voice_profiles": args.preload_voice_profiles,
                     "engine_startup_mode": args.engine_startup_mode,
                     "prefill_compile_lengths": args.prefill_compile_lengths,
                     "prefill_compile_on_miss": args.prefill_compile_on_miss,
@@ -206,6 +208,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--warmup-text", default="Warmup.")
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-speaker", default="")
+    parser.add_argument("--warmup-voice-id", default="")
     parser.add_argument("--warmup-instruction", default="")
     parser.add_argument(
         "--engine-startup-mode",
@@ -225,6 +228,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--reference-text", default="")
     parser.add_argument("--x-vector-only", action="store_true")
     parser.add_argument("--voice-registry-path", default="")
+    parser.add_argument("--preload-voice-profiles", action="store_true")
     parser.add_argument(
         "--request-shapes-jsonl",
         type=Path,

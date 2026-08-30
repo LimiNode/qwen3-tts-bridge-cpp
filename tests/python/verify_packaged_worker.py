@@ -318,7 +318,9 @@ def main() -> int:
     parser.add_argument("--warmup-text", default="Warmup.")
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-speaker", default="")
+    parser.add_argument("--warmup-voice-id", default="")
     parser.add_argument("--warmup-instruction", default="")
+    parser.add_argument("--preload-voice-profiles", action="store_true")
     parser.add_argument(
         "--engine-startup-mode",
         choices=("auto", "main", "engine_warmup", "engine_load_warmup"),
@@ -514,11 +516,16 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
     worker_args.extend(["--warmup-language", str(args.warmup_language)])
     if args.warmup_speaker:
         worker_args.extend(["--warmup-speaker", str(args.warmup_speaker)])
+    warmup_voice_id = str(getattr(args, "warmup_voice_id", ""))
+    if warmup_voice_id:
+        worker_args.extend(["--warmup-voice-id", warmup_voice_id])
     if args.warmup_instruction:
         worker_args.extend(["--warmup-instruction", str(args.warmup_instruction)])
     voice_registry_path = str(getattr(args, "voice_registry_path", ""))
     if voice_registry_path:
         worker_args.extend(["--voice-registry-path", voice_registry_path])
+    if getattr(args, "preload_voice_profiles", False):
+        worker_args.append("--preload-voice-profiles")
     worker_args.extend(
         ["--engine-startup-mode", str(getattr(args, "engine_startup_mode", "auto"))]
     )

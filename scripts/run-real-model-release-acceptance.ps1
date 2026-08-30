@@ -80,6 +80,8 @@ function Invoke-WorkerBenchmark {
 
         [string]$Registry = '',
 
+        [string]$WarmupVoiceId = '',
+
         [string]$Label
     )
 
@@ -101,6 +103,9 @@ function Invoke-WorkerBenchmark {
     )
     if ($Registry) {
         $arguments += @('--voice-registry-path', $Registry)
+    }
+    if ($WarmupVoiceId) {
+        $arguments += @('--warmup-voice-id', $WarmupVoiceId)
     }
 
     $previousErrorActionPreference = $ErrorActionPreference
@@ -312,14 +317,15 @@ try {
             [ordered]@{ label = 'base-profile-second'; text = 'The same persistent worker reuses the registered Base voice profile.'; language = 'English'; voice_id = $VoiceId }
         ) | ForEach-Object { $_ | ConvertTo-Json -Compress } | Set-Content -LiteralPath $baseShapesPath -Encoding utf8
         $firstProcess = Invoke-WorkerBenchmark -Model $baseModel -RequestShapesPath $baseShapesPath `
-            -Registry $voiceRegistry -Label 'Base profile first process'
+            -Registry $voiceRegistry -WarmupVoiceId $VoiceId -Label 'Base profile first process'
         Assert-CompletedAudioRequests -Report $firstProcess -Label 'Base profile first process'
         $restartedProcess = Invoke-WorkerBenchmark -Model $baseModel -RequestShapesPath $baseShapesPath `
-            -Registry $voiceRegistry -Label 'Base profile restarted process'
+            -Registry $voiceRegistry -WarmupVoiceId $VoiceId -Label 'Base profile restarted process'
         Assert-CompletedAudioRequests -Report $restartedProcess -Label 'Base profile restarted process'
         $baseProfile = [ordered]@{
             status = 'passed'
             voice_id = $VoiceId
+            startup_warmup = 'profile_matched'
             first_process = 'base-profile-first-process.json'
             restarted_process = 'base-profile-restarted-process.json'
         }
