@@ -10,6 +10,22 @@ param(
     [string]$Device = "cuda",
     [string]$Dtype = "auto",
     [string]$AttnImplementation = "",
+    [int]$EmitEveryFrames = 8,
+    [int]$DecodeWindowFrames = 80,
+    [int]$OverlapSamples = 0,
+    [switch]$EnableStreamingOptimizations,
+    [switch]$NoCompile,
+    [switch]$NoCudaGraphs,
+    [string]$CompileMode = "reduce-overhead",
+    [switch]$UseFastCodebook,
+    [switch]$NoCompileCodebookPredictor,
+    [switch]$NoCompileTalker,
+    [string]$MatmulPrecision = "",
+    [switch]$WarmupSynthesis,
+    [string]$WarmupText = "Warmup.",
+    [string]$WarmupLanguage = "auto",
+    [string]$WarmupSpeaker = "",
+    [string]$WarmupInstruction = "",
     [string]$Text = "Packaged Qwen worker smoke test.",
     [string]$Language = "auto",
     [string]$Speaker = "",
@@ -118,6 +134,53 @@ $Arguments = @(
 
 if (-not [string]::IsNullOrWhiteSpace($AttnImplementation)) {
     $Arguments += @("--attn-implementation", $AttnImplementation)
+}
+$Arguments += @(
+    "--emit-every-frames",
+    "$EmitEveryFrames",
+    "--decode-window-frames",
+    "$DecodeWindowFrames",
+    "--overlap-samples",
+    "$OverlapSamples"
+)
+if ($EnableStreamingOptimizations) {
+    $Arguments += @("--enable-streaming-optimizations")
+}
+if ($NoCompile) {
+    $Arguments += @("--no-compile")
+}
+if ($NoCudaGraphs) {
+    $Arguments += @("--no-cuda-graphs")
+}
+if (-not [string]::IsNullOrWhiteSpace($CompileMode)) {
+    $Arguments += @("--compile-mode", $CompileMode)
+}
+if ($UseFastCodebook) {
+    $Arguments += @("--use-fast-codebook")
+}
+if ($NoCompileCodebookPredictor) {
+    $Arguments += @("--no-compile-codebook-predictor")
+}
+if ($NoCompileTalker) {
+    $Arguments += @("--no-compile-talker")
+}
+if (-not [string]::IsNullOrWhiteSpace($MatmulPrecision)) {
+    $Arguments += @("--matmul-precision", $MatmulPrecision)
+}
+if ($WarmupSynthesis) {
+    $Arguments += @("--warmup-synthesis")
+}
+if (-not [string]::IsNullOrWhiteSpace($WarmupText)) {
+    $Arguments += @("--warmup-text", $WarmupText)
+}
+if (-not [string]::IsNullOrWhiteSpace($WarmupLanguage)) {
+    $Arguments += @("--warmup-language", $WarmupLanguage)
+}
+if (-not [string]::IsNullOrWhiteSpace($WarmupSpeaker)) {
+    $Arguments += @("--warmup-speaker", $WarmupSpeaker)
+}
+if (-not [string]::IsNullOrWhiteSpace($WarmupInstruction)) {
+    $Arguments += @("--warmup-instruction", $WarmupInstruction)
 }
 if (-not [string]::IsNullOrWhiteSpace($Speaker)) {
     $Arguments += @("--speaker", $Speaker)
