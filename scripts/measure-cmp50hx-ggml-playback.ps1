@@ -120,6 +120,9 @@ for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
         throw "GGML attempt $attempt did not retain the requested comparison contract."
     }
     $playback = Get-Content -LiteralPath $smokeSummary.playback_metrics -Raw | ConvertFrom-Json
+    if (-not [bool]$playback.playback_completed) {
+        throw "GGML attempt $attempt did not complete physical playback."
+    }
     $stderrPath = [string]$smokeSummary.stderr
     $finished = @(Get-JsonMetricEvents $stderrPath | Where-Object { $_.event -eq 'request_finished' } | Select-Object -Last 1)
     if ($finished.Count -ne 1) {
