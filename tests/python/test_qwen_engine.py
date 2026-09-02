@@ -385,6 +385,7 @@ class _FasterStreamingModel:
                                 "ar_talker_graph_replay_gpu_ms": 31.0,
                             }
                         ],
+                        "talker_input_position_sha256": ["abc", "def"],
                     },
                 )
 
@@ -1262,6 +1263,7 @@ class QwenEngineTests(unittest.TestCase):
             31.0,
             metrics["ar_frame_timings"][0]["ar_talker_graph_replay_gpu_ms"],
         )
+        self.assertEqual(["abc", "def"], metrics["talker_input_position_sha256"])
 
     def test_faster_custom_voice_request_sampling_overrides_profile(self) -> None:
         fake_model = _FasterStreamingModel(
