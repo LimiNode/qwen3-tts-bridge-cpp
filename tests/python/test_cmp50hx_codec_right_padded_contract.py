@@ -54,9 +54,14 @@ class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
 
         self.assertIn("[string]$VoiceRegistryPath = ''", launcher)
         self.assertIn("[string]$VoiceId = ''", launcher)
-        self.assertIn("-VoiceRegistryPath and -VoiceId must be supplied together.", launcher)
+        self.assertIn(
+            "-VoiceRegistryPath and -VoiceId must be supplied together.", launcher
+        )
         self.assertIn("'--voice-id', $VoiceId", launcher)
-        self.assertIn("else {\n        $arguments += @('--speaker', $Speaker)\n    }", launcher)
+        self.assertIn(
+            "else {\n        $arguments += @('--speaker', $Speaker)\n    }",
+            launcher,
+        )
         self.assertIn("'--warmup-voice-id', '--worker-arg', $warmupVoiceId", launcher)
 
     def test_launcher_revision_matches_faster_submodule_gitlink(self) -> None:

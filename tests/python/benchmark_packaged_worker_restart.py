@@ -154,6 +154,10 @@ def main() -> int:
                         language=str(run_shape["language"]),
                         speaker=str(run_shape["speaker"]),
                         instruction=str(run_shape["instruction"]),
+                        voice_id="",
+                        reference_audio_path="",
+                        reference_text="",
+                        x_vector_only=False,
                     )
                 finally:
                     request_gpu_poll = gpu_poller.stop()

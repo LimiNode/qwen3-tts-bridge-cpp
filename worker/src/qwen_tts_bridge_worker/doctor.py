@@ -330,10 +330,11 @@ def _gpu_report(
     cuda_available = bool(torch.cuda.is_available())
     if require_cuda and not cuda_available:
         raise ValueError("CUDA is required but unavailable")
+    torch_version = getattr(torch, "version", None)
     report: dict[str, object] = {
         "cuda_available": cuda_available,
         "torch": str(torch.__version__),
-        "cuda_runtime": str(torch.version.cuda),
+        "cuda_runtime": str(getattr(torch_version, "cuda", None)),
     }
     if not cuda_available:
         return report

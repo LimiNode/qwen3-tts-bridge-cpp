@@ -216,9 +216,10 @@ def _torch_info() -> dict[str, object]:
     try:
         import torch  # type: ignore[import-not-found]
 
+        torch_version = getattr(torch, "version", None)
         return {
             "version": torch.__version__,
-            "cuda_runtime": torch.version.cuda,
+            "cuda_runtime": getattr(torch_version, "cuda", None),
             "cuda_available": torch.cuda.is_available(),
         }
     except Exception as exc:
