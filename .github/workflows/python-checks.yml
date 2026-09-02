@@ -18,6 +18,7 @@ on:
       - "scripts/test-packaged-worker.ps1"
       - "scripts/test-portable-python-worker-cpp.ps1"
       - "scripts/test-portable-python-worker.ps1"
+      - "scripts/**"
       - "tests/python/**"
       - "worker/**"
   push:
@@ -39,6 +40,7 @@ on:
       - "scripts/test-packaged-worker.ps1"
       - "scripts/test-portable-python-worker-cpp.ps1"
       - "scripts/test-portable-python-worker.ps1"
+      - "scripts/**"
       - "tests/python/**"
       - "worker/**"
 

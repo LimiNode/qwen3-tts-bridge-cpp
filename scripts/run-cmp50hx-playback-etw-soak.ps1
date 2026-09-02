@@ -12,7 +12,16 @@ param(
 
     [string]$Text = 'This is a physical playback soak for the frozen Faster C configuration.',
 
+    [ValidateNotNullOrEmpty()]
+    [string]$Language = 'auto',
+
     [string]$Speaker = 'ryan',
+
+    [ValidateRange(0, 2147483647)]
+    [int]$Seed = 20260806,
+
+    [ValidateNotNullOrEmpty()]
+    [string]$WorkloadLabel = 'uncontrolled_no_deliberate_gpu_workload',
 
     [string]$PlayerPath = '',
 
@@ -438,9 +447,9 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--emit-every-frames', '--worker-arg', $EmitEveryFrames,
         '--worker-arg', '--decode-window-frames', '--worker-arg', '80',
         '--worker-arg', '--no-compile', '--worker-arg', '--no-cuda-graphs',
-        '--worker-arg', '--seed', '--worker-arg', '20260806',
+        '--worker-arg', '--seed', '--worker-arg', $Seed,
         '--worker-arg', '--seed-mode', '--worker-arg', 'fixed',
-        '--text', $Text, '--speaker', $Speaker,
+        '--text', $Text, '--language', $Language, '--speaker', $Speaker,
         '--playback-prebuffer-chunks', $PlaybackPrebufferChunks,
         '--startup-timeout-ms', '240000',
         '--playback-metrics-file', $metrics
@@ -648,6 +657,19 @@ function Invoke-PlaybackRun {
     }
 }
 
+function Get-TextSha256 {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes($Value)
+        ([BitConverter]::ToString($hasher.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $hasher.Dispose()
+    }
+}
+
 try {
     Set-FrozenCEnvironment
     $attemptResults = @()
@@ -677,6 +699,20 @@ try {
     $summary = [ordered]@{
         schema_version = 1
         run_id = $runId
+        comparison_contract = [ordered]@{
+            schema_version = 1
+            text_sha256 = Get-TextSha256 $Text
+            language = $Language
+            speaker = $Speaker
+            seed = $Seed
+            seed_mode = 'fixed'
+            attempts_requested = $Attempts
+            attempts_completed = $attemptResults.Count
+            playback_prebuffer_chunks = $PlaybackPrebufferChunks
+            workload_label = $WorkloadLabel
+            etw_capture_enabled = (-not $SkipEtwFollowup)
+            pcm_capture_enabled = [bool]$PcmCaptureFile
+        }
         frozen_c_boundary = [ordered]@{
             faster_source = if ($usingVersionedFasterSubmodule) {
                 'external/python/faster-qwen3-tts'
