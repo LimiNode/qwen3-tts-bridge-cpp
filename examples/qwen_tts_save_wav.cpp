@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <exception>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -29,6 +30,7 @@ using qwen_tts_bridge::QwenTtsClientOptions;
 using qwen_tts_bridge::RequestId;
 using qwen_tts_bridge::StdIoTransportOptions;
 using qwen_tts_bridge::TtsRequest;
+using qwen_tts_bridge::TtsCompletion;
 using qwen_tts_bridge::audio::SaveWavState;
 using qwen_tts_bridge::audio::WavWriter;
 using qwen_tts_bridge::audio::make_save_wav_callbacks;
@@ -41,9 +43,11 @@ struct ProgramOptions {
     std::vector<std::string> worker_arguments;
     std::string working_directory;
     std::string output_path;
+    std::string result_json_path;
     std::string text;
     std::string language = "auto";
     std::string speaker;
+    std::string voice_id;
     std::string instruction;
     std::uint32_t sample_rate = 24000;
     std::uint32_t channels = 1;
@@ -52,6 +56,7 @@ struct ProgramOptions {
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
     std::chrono::milliseconds request_timeout{60000};
+    bool require_natural_eos = false;
 };
 
 void print_usage(std::ostream& out, const char* executable_name) {
@@ -65,13 +70,17 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --output <path>                Output WAV path.\n"
+        << "  --result-json <path>           Write machine-readable terminal evidence.\n"
         << "  --text <utf8>                  Text to synthesize.\n"
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
+        << "  --voice-id <id>                Registered Base voice profile identifier.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
+        << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --request-timeout-ms <ms>      Request timeout, 0 disables it.\n"
+        << "  --require-natural-eos          Fail unless worker reports natural EOS.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
         << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
         << "  --mock-chunk-delay <seconds>   Mock delay between chunks, default: 0.\n";
@@ -124,6 +133,67 @@ double parse_double(const std::string& value, const std::string& option) {
     return result;
 }
 
+std::string escape_json_string(const std::string& value) {
+    std::string escaped;
+    escaped.reserve(value.size());
+    for (const char character : value) {
+        switch (character) {
+        case '\\': escaped += "\\\\"; break;
+        case '"': escaped += "\\\""; break;
+        case '\n': escaped += "\\n"; break;
+        case '\r': escaped += "\\r"; break;
+        case '\t': escaped += "\\t"; break;
+        default:
+            if (static_cast<unsigned char>(character) < 0x20U) {
+                escaped += "?";
+            }
+            else {
+                escaped += character;
+            }
+            break;
+        }
+    }
+    return escaped;
+}
+
+void write_result_json(
+    const ProgramOptions& options,
+    RequestId request_id,
+    const SaveWavState& state,
+    const TtsCompletion& completion,
+    bool completion_metadata_received) {
+    if (options.result_json_path.empty()) {
+        return;
+    }
+
+    std::ofstream output(options.result_json_path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("failed to open --result-json output");
+    }
+    output << "{\n"
+           << "  \"schema_version\": 1,\n"
+           << "  \"request_id\": " << request_id << ",\n"
+           << "  \"terminal_state\": \"completed\",\n"
+           << "  \"audio_chunks\": " << state.audio_chunks << ",\n"
+           << "  \"audio_bytes\": " << state.audio_bytes << ",\n"
+           << "  \"completion_metadata_received\": "
+           << (completion_metadata_received ? "true" : "false") << ",\n"
+           << "  \"execution_outcome\": \""
+           << escape_json_string(completion.execution_outcome) << "\",\n"
+           << "  \"termination_reason\": \""
+           << escape_json_string(completion.termination_reason) << "\",\n"
+           << "  \"hit_eos\": " << (completion.hit_eos ? "true" : "false") << ",\n"
+           << "  \"hit_max_seq_len\": "
+           << (completion.hit_max_seq_len ? "true" : "false") << ",\n"
+           << "  \"hit_max_new_tokens\": "
+           << (completion.hit_max_new_tokens ? "true" : "false") << ",\n"
+           << "  \"codec_frame_count\": " << completion.codec_frame_count << "\n"
+           << "}\n";
+    if (!output) {
+        throw std::runtime_error("failed to write --result-json output");
+    }
+}
+
 ProgramOptions parse_options(int argc, char** argv) {
     ProgramOptions options;
     for (int index = 1; index < argc; ++index) {
@@ -148,6 +218,9 @@ ProgramOptions parse_options(int argc, char** argv) {
         else if (arg == "--output" || arg.rfind("--output=", 0) == 0) {
             options.output_path = require_value(index, argc, argv, "--output");
         }
+        else if (arg == "--result-json" || arg.rfind("--result-json=", 0) == 0) {
+            options.result_json_path = require_value(index, argc, argv, "--result-json");
+        }
         else if (arg == "--text" || arg.rfind("--text=", 0) == 0) {
             options.text = require_value(index, argc, argv, "--text");
         }
@@ -156,6 +229,9 @@ ProgramOptions parse_options(int argc, char** argv) {
         }
         else if (arg == "--speaker" || arg.rfind("--speaker=", 0) == 0) {
             options.speaker = require_value(index, argc, argv, "--speaker");
+        }
+        else if (arg == "--voice-id" || arg.rfind("--voice-id=", 0) == 0) {
+            options.voice_id = require_value(index, argc, argv, "--voice-id");
         }
         else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
             options.instruction = require_value(index, argc, argv, "--instruction");
@@ -173,6 +249,15 @@ ProgramOptions parse_options(int argc, char** argv) {
             options.request_timeout = std::chrono::milliseconds(parse_u32(
                 require_value(index, argc, argv, "--request-timeout-ms"),
                 "--request-timeout-ms"));
+        }
+        else if (arg == "--require-natural-eos") {
+            options.require_natural_eos = true;
+        }
+        else if (arg == "--startup-timeout-ms" ||
+                 arg.rfind("--startup-timeout-ms=", 0) == 0) {
+            options.startup_timeout = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--startup-timeout-ms"),
+                "--startup-timeout-ms"));
         }
         else if (arg == "--mock-chunks" || arg.rfind("--mock-chunks=", 0) == 0) {
             options.mock_chunks =
@@ -307,12 +392,21 @@ int main(int argc, char** argv) {
         request.text = options.text;
         request.language = options.language;
         request.speaker = options.speaker;
+        request.voice_id = options.voice_id;
         request.instruction = options.instruction;
         request.output = audio_format;
 
+        TtsCompletion completion;
+        bool completion_metadata_received = false;
+        auto callbacks = make_save_wav_callbacks(state, writer, audio_format);
+        callbacks.on_completion_metadata = [&](const TtsCompletion& value) {
+            completion = value;
+            completion_metadata_received = true;
+        };
+
         const RequestId request_id = client.synthesize_async(
             std::move(request),
-            make_save_wav_callbacks(state, writer, audio_format));
+            std::move(callbacks));
         if (request_id == 0) {
             client.stop();
             throw std::runtime_error("failed to enqueue synthesis request");
@@ -329,10 +423,32 @@ int main(int argc, char** argv) {
         if (!state.success) {
             throw std::runtime_error(state.message);
         }
+        if (options.require_natural_eos &&
+            (!completion_metadata_received ||
+             !completion.has_generation_trace ||
+             completion.termination_reason != "eos" ||
+             !completion.hit_eos ||
+             completion.hit_max_seq_len ||
+             completion.hit_max_new_tokens)) {
+            throw std::runtime_error("synthesis did not report natural EOS");
+        }
+
+        write_result_json(
+            options,
+            request_id,
+            state,
+            completion,
+            completion_metadata_received);
 
         std::cout << "Wrote " << state.audio_bytes
                   << " PCM bytes in " << state.audio_chunks
                   << " chunks to " << options.output_path << '\n';
+        if (completion_metadata_received) {
+            std::cout << "completion: outcome=" << completion.execution_outcome
+                      << ", termination_reason=" << completion.termination_reason
+                      << ", hit_eos=" << (completion.hit_eos ? "true" : "false")
+                      << ", codec_frames=" << completion.codec_frame_count << '\n';
+        }
         return 0;
     }
     catch (const std::exception& exc) {

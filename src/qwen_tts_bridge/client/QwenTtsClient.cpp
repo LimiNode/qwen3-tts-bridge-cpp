@@ -32,6 +32,17 @@ SynthesizeMessage to_control_message(const TtsRequest& request) {
     message.language = request.language;
     message.speaker = request.speaker;
     message.instruction = request.instruction;
+    message.voice_id = request.voice_id;
+    message.reference_audio_path = request.reference_audio_path;
+    message.reference_text = request.reference_text;
+    message.x_vector_only = request.x_vector_only;
+    message.has_seed = request.has_seed;
+    message.seed = request.seed;
+    message.sampling.temperature = request.sampling.temperature;
+    message.sampling.top_k = request.sampling.top_k;
+    message.sampling.top_p = request.sampling.top_p;
+    message.sampling.repetition_penalty = request.sampling.repetition_penalty;
+    message.sampling.do_sample = request.sampling.do_sample;
     message.output = request.output;
     return message;
 }
@@ -201,6 +212,11 @@ bool QwenTtsClient::is_running() const {
     return running_ && !stopping_ && session_ != nullptr;
 }
 
+bool QwenTtsClient::ready_message(ReadyMessage& ready) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return running_ && !stopping_ && session_ != nullptr && session_->ready_message(ready);
+}
+
 void QwenTtsClient::stop() {
     WorkerSession* session = nullptr;
     {
@@ -304,7 +320,11 @@ std::size_t QwenTtsClient::outbound_command_size(
                     message.language.size() +
                     message.speaker.size() +
                     message.instruction.size() +
-                    message.output.sample_format.size();
+                    message.voice_id.size() +
+                    message.reference_audio_path.size() +
+                    message.reference_text.size() +
+                    message.output.sample_format.size() +
+                    (message.has_seed ? 32u : 0u);
             }
             else if constexpr (std::is_same_v<Message, ShutdownMessage>) {
                 return outbound_command_fixed_overhead + message.mode.size();
@@ -432,7 +452,7 @@ void QwenTtsClient::handle_control_event(const WorkerSessionEvent& event) {
         break;
     }
     case ControlMessageType::Completed:
-        complete_request(event.request_id);
+        complete_request(event.request_id, std::get<CompletedMessage>(event.control));
         break;
     case ControlMessageType::Cancelled:
         cancel_request_locally(event.request_id);
@@ -522,7 +542,9 @@ void QwenTtsClient::handle_local_error(
         message));
 }
 
-void QwenTtsClient::complete_request(RequestId request_id) {
+void QwenTtsClient::complete_request(
+    RequestId request_id,
+    const CompletedMessage& completed) {
     TtsCallbacks callbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -532,6 +554,23 @@ void QwenTtsClient::complete_request(RequestId request_id) {
         }
         callbacks = std::move(it->second.callbacks);
         active_requests_.erase(it);
+    }
+
+    if (callbacks.on_completion_metadata) {
+        TtsCompletion completion;
+        completion.execution_outcome = completed.execution_outcome;
+        completion.has_generation_trace = completed.has_generation_trace;
+        completion.termination_reason = completed.generation_trace.termination_reason;
+        completion.hit_eos = completed.generation_trace.hit_eos;
+        completion.hit_max_seq_len = completed.generation_trace.hit_max_seq_len;
+        completion.hit_max_new_tokens = completed.generation_trace.hit_max_new_tokens;
+        completion.codec_frame_count = completed.generation_trace.codec_frame_count;
+        completion.generated_steps = completed.generation_trace.generated_steps;
+        completion.emitted_steps = completed.generation_trace.emitted_steps;
+        completion.terminal_step_index = completed.generation_trace.terminal_step_index;
+        invoke_user_callback([&callbacks, &completion]() {
+            callbacks.on_completion_metadata(completion);
+        });
     }
 
     if (callbacks.on_completed) {

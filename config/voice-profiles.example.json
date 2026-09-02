@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "voices": [
+    {
+      "voice_id": "kraftwerk_robot_ru",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "Я твой слуга, я твой работник",
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_xvector",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "",
+      "x_vector_only": true
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_icl_period",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "Я твой слуга, я твой работник.",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_icl_period_space",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "Я твой слуга, я твой работник. ",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_icl_period_four_spaces",
+      "reference_audio_path": "../examples/assets/kraftwerk_robot_3_ru.wav",
+      "reference_text": "Я твой слуга, я твой работник.    ",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+      "reference_audio_path": "../examples/assets/voice-profiles/kraftwerk_robot_ru_fidelity.wav",
+      "reference_text": "Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду.",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_bootstrap_warm",
+      "reference_audio_path": "../examples/assets/voice-profiles/kraftwerk_robot_ru_warm.wav",
+      "reference_text": "Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду.",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_source_like",
+      "reference_audio_path": "../examples/assets/voice-profiles/kraftwerk_robot_ru_source_like.wav",
+      "reference_text": "Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду.",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    },
+    {
+      "voice_id": "kraftwerk_robot_ru_warm_metal",
+      "reference_audio_path": "../examples/assets/voice-profiles/kraftwerk_robot_ru_warm_metal.wav",
+      "reference_text": "Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду.",
+      "preserve_reference_text_whitespace": true,
+      "x_vector_only": false
+    }
+  ]
+}

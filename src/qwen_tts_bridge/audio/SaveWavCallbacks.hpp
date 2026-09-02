@@ -17,14 +17,14 @@ class WavWriter;
 /// \struct SaveWavState
 /// \brief Shared completion state for asynchronous WAV output.
 struct SaveWavState {
-    std::mutex mutex;
-    std::mutex writer_mutex;
-    std::condition_variable condition;
-    bool terminal = false;
-    bool success = false;
-    std::string message;
-    std::size_t audio_chunks = 0;
-    std::uint64_t audio_bytes = 0;
+    std::mutex mutex; ///< Protects terminal state and counters.
+    std::mutex writer_mutex; ///< Serializes WAV writer access from callbacks.
+    std::condition_variable condition; ///< Notifies terminal state changes.
+    bool terminal = false; ///< Whether a terminal callback was received.
+    bool success = false; ///< Whether the terminal state was completion.
+    std::string message; ///< Terminal diagnostic when unsuccessful.
+    std::size_t audio_chunks = 0; ///< Number of PCM chunks written.
+    std::uint64_t audio_bytes = 0; ///< Number of PCM bytes written.
 };
 
 /// \brief Marks the WAV output operation as terminal and wakes waiters.

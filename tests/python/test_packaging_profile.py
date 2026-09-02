@@ -14,6 +14,9 @@ _TEST_PORTABLE_PYTHON_WORKER_SCRIPT = (
 _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT = (
     _REPO_ROOT / "scripts" / "test-portable-python-worker-cpp.ps1"
 )
+_TEST_PORTABLE_PYTHON_QWEN_WORKER_SCRIPT = (
+    _REPO_ROOT / "scripts" / "test-portable-python-qwen-worker.ps1"
+)
 _README = _REPO_ROOT / "README.md"
 _PYTHON_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "python-checks.yml"
 _CPP_CHECKS_WORKFLOW = _REPO_ROOT / ".github" / "workflows" / "cpp-checks.yml"
@@ -166,10 +169,34 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("external/python/Qwen3-TTS-streaming", script)
         self.assertIn('$IncludeQwenFork', script)
         self.assertIn('"qwen_tts"', script)
+        self.assertIn("external/python/faster-qwen3-tts", script)
+        self.assertIn('$IncludeFasterQwen', script)
+        self.assertIn('"faster_qwen3_tts"', script)
         self.assertIn("Remove-EditableInstallArtifacts", script)
         self.assertIn('__editable__*', script)
         self.assertIn("Remove-StagedPackageArtifacts", script)
         self.assertIn("Install-ProjectWheelToTarget", script)
+        self.assertIn("Write-BuildManifest", script)
+        self.assertIn("build_manifest_schema_version = 1", script)
+        self.assertIn("build-manifest.json", script)
+        self.assertIn("portable-python-tree-manifest.json", script)
+        self.assertIn("scripts/runtime_tree_manifest.py", script)
+        self.assertIn("portable_runtime_tree_manifest", script)
+        self.assertIn("wheel_sha256", script)
+        self.assertIn("wheel_artifact", script)
+        self.assertIn('$WheelArtifactRoot = Join-Path $WorkerOutput "wheels"', script)
+        self.assertIn("git_commit", script)
+        self.assertIn("git_dirty", script)
+        self.assertIn("Assert-CleanSources", script)
+        self.assertIn("$AllowDirtySources", script)
+        self.assertIn("$AllowUnversionedSources", script)
+        self.assertIn("Refusing to package dirty source trees", script)
+        self.assertIn("Refusing to package unversioned source trees", script)
+        self.assertIn("Get-PythonToolVersions", script)
+        self.assertIn("Get-PipFreeze", script)
+        self.assertIn("torch_cuda", script)
+        self.assertIn("pip_freeze", script)
+        self.assertNotIn("executable = [string]$PythonEnvironment.executable", script)
         self.assertIn("--no-build-isolation", script)
         self.assertIn("--find-links", script)
         self.assertIn("Remove-PythonBytecode", script)
@@ -178,13 +205,30 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("PYTHONDONTWRITEBYTECODE", script)
         self.assertIn("QTB_PROBE_QWEN_IMPORT", script)
         self.assertIn("qwen_tts.inference.qwen3_tts_model", script)
+        self.assertIn("QTB_PROBE_FASTER_QWEN_IMPORT", script)
+        self.assertIn("import faster_qwen3_tts", script)
         self.assertIn("-ProbeQwenImport:($null -ne $QwenPackageSource)", script)
+        self.assertIn(
+            "-ProbeFasterQwenImport:($null -ne $FasterQwenPackageSource)",
+            script,
+        )
 
     def test_packaging_requirements_include_wheel_build_tools(self) -> None:
         requirements = _PACKAGING_REQUIREMENTS.read_text(encoding="utf-8")
 
         self.assertIn("setuptools==", requirements)
         self.assertIn("wheel==", requirements)
+        self.assertIn("torch==2.10.0+cu128", requirements)
+        self.assertIn("torchaudio==2.10.0+cu128", requirements)
+        self.assertIn("download.pytorch.org/whl/cu128", requirements)
+
+    def test_portable_worker_copy_uses_robocopy_with_checked_exit_status(self) -> None:
+        script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("& robocopy", script)
+        self.assertIn("/NJS | Out-Null", script)
+        self.assertIn("if ($LASTEXITCODE -gt 7)", script)
+        self.assertIn("robocopy failed while staging portable worker files", script)
 
     def test_portable_worker_script_rejects_path_leaking_artifacts(self) -> None:
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
@@ -196,24 +240,56 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("QTB_FORBIDDEN_SYS_PATH_ROOTS", script)
         self.assertIn("portable worker sys.path leaks source paths", script)
 
+    def test_portable_worker_tree_is_sealed_after_isolation_probe(self) -> None:
+        script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
+
+        probe_index = script.rindex("Invoke-StagedPythonIsolationProbe `")
+        cleanup_index = script.rindex("Remove-PythonBytecode -Root $PythonOutput")
+        tree_build_index = script.rindex("scripts/runtime_tree_manifest.py")
+        manifest_index = script.rindex("Write-BuildManifest `")
+        self.assertLess(probe_index, cleanup_index)
+        self.assertLess(cleanup_index, tree_build_index)
+        self.assertLess(tree_build_index, manifest_index)
+
     def test_portable_worker_script_writes_cmd_launcher(self) -> None:
         script = _PACKAGE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("qwen_tts_worker.cmd", script)
+        self.assertIn("qwen_tts_doctor.cmd", script)
         self.assertIn("PYTHONHOME", script)
         self.assertIn("PYTHONPATH", script)
         self.assertIn("PYTHONNOUSERSITE", script)
         self.assertIn("PYTHONDONTWRITEBYTECODE", script)
         self.assertIn("-B -P -s -m qwen_tts_bridge_worker", script)
         self.assertIn("-m qwen_tts_bridge_worker", script)
+        self.assertIn("-m qwen_tts_bridge_worker.doctor", script)
+        self.assertIn('--portable-root "%WORKER_ROOT%."', script)
 
     def test_portable_worker_smoke_wrapper_uses_protocol_verifier(self) -> None:
         script = _TEST_PORTABLE_PYTHON_WORKER_SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("verify_packaged_worker.py", script)
+        self.assertIn("qwen_tts_doctor.cmd", script)
         self.assertIn("worker-python/qwen_tts_worker.cmd", script)
         self.assertIn("$PreviousPythonPath", script)
         self.assertIn("finally", script)
+
+    def test_portable_qwen_smoke_requires_doctor_and_model_manifest(self) -> None:
+        script = _TEST_PORTABLE_PYTHON_QWEN_WORKER_SCRIPT.read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("[string]$ModelPath", script)
+        self.assertIn("[string]$ModelManifest", script)
+        self.assertIn("qwen_tts_doctor.cmd", script)
+        self.assertIn("--model-manifest $ResolvedModelManifest", script)
+        self.assertIn("--require-cuda", script)
+        self.assertIn("verify_packaged_worker.py", script)
+        self.assertIn("--engine qwen", script)
+        self.assertIn("--prefill-backend eager", script)
+        self.assertIn("--no-compile", script)
+        self.assertIn("--no-cuda-graphs", script)
+        self.assertIn("--require-natural-eos", script)
 
     def test_portable_worker_cpp_smoke_uses_direct_python_executable(self) -> None:
         script = _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT.read_text(encoding="utf-8")

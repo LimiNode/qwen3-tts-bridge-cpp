@@ -84,6 +84,17 @@ Assert-PackagingPythonVersion
 $PreviousPythonPath = $env:PYTHONPATH
 
 try {
+    $ResolvedWorkerCommand = Resolve-RepoPath $WorkerCommand
+    $WorkerRoot = Split-Path -Parent $ResolvedWorkerCommand
+    $DoctorCommand = Join-Path $WorkerRoot "qwen_tts_doctor.cmd"
+    if (-not (Test-Path -LiteralPath $DoctorCommand)) {
+        throw "Portable worker doctor was not found: $DoctorCommand"
+    }
+    & $DoctorCommand
+    if ($LASTEXITCODE -ne 0) {
+        throw "Portable worker doctor failed."
+    }
+
     $WorkerSrc = Resolve-RepoPath "worker/src"
     if ([string]::IsNullOrWhiteSpace($env:PYTHONPATH)) {
         $env:PYTHONPATH = $WorkerSrc
@@ -94,7 +105,7 @@ try {
 
     Invoke-ProjectPython @(
         "tests/python/verify_packaged_worker.py",
-        (Resolve-RepoPath $WorkerCommand),
+        $ResolvedWorkerCommand,
         "--timeout-seconds",
         "$TimeoutSeconds",
         "--mock-chunks",

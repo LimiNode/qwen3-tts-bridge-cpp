@@ -209,6 +209,7 @@ class FrameCollector {
 public:
     void on_bytes(ITransport::Bytes bytes) {
         std::lock_guard<std::mutex> lock(mutex_);
+        received_bytes_ += bytes.size();
         parser_.append(bytes);
 
         while (true) {
@@ -239,28 +240,46 @@ public:
         condition_.notify_all();
     }
 
-    Frame wait_for_frame(const std::string& expected_text) {
+    void on_stderr(std::string message) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        stderr_.append(std::move(message));
+        condition_.notify_all();
+    }
+
+    Frame wait_for_frame(
+        const std::string& expected_text,
+        std::chrono::milliseconds timeout = std::chrono::seconds(5),
+        const char* phase = "frame") {
         std::unique_lock<std::mutex> lock(mutex_);
-        const bool ready = condition_.wait_for(lock, std::chrono::seconds(5), [&]() {
+        const auto started_at = std::chrono::steady_clock::now();
+        condition_.wait_for(lock, timeout, [&]() {
             for (const auto& frame : frames_) {
                 if (contains(frame, expected_text)) {
                     return true;
                 }
             }
-            return false;
+            return exited_ || !errors_.empty();
         });
-        CHECK(ready);
 
+        auto frame_it = frames_.end();
         for (auto it = frames_.begin(); it != frames_.end(); ++it) {
             if (contains(*it, expected_text)) {
-                Frame frame = std::move(*it);
-                frames_.erase(it);
-                return frame;
+                frame_it = it;
+                break;
             }
         }
+        if (frame_it == frames_.end()) {
+            const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - started_at);
+            std::cerr << "Failed waiting for " << phase << " after "
+                      << elapsed.count() << " ms; expected=" << expected_text << '\n';
+            print_diagnostics_locked();
+            CHECK(false);
+        }
 
-        CHECK(false);
-        return Frame();
+        Frame frame = std::move(*frame_it);
+        frames_.erase(frame_it);
+        return frame;
     }
 
     int wait_for_exit() {
@@ -278,10 +297,27 @@ public:
     }
 
 private:
+    void print_diagnostics_locked() const {
+        std::cerr << "stdio diagnostics: received_bytes=" << received_bytes_
+                  << ", queued_frames=" << frames_.size()
+                  << ", errors=" << errors_.size()
+                  << ", exited=" << (exited_ ? "true" : "false")
+                  << ", exit_status=" << exit_status_ << '\n';
+
+        for (const auto& error : errors_) {
+            std::cerr << "stdio transport error: " << error << '\n';
+        }
+        if (!stderr_.empty()) {
+            std::cerr << "worker stderr:\n" << stderr_ << '\n';
+        }
+    }
+
     mutable std::mutex mutex_;
     std::condition_variable condition_;
     FrameParser parser_;
     std::deque<Frame> frames_;
+    std::size_t received_bytes_ = 0;
+    std::string stderr_;
     std::vector<std::string> errors_;
     bool exited_ = false;
     int exit_status_ = -1;
@@ -301,6 +337,8 @@ void send_control(
 }
 
 void test_mock_worker_handshake_over_stdio_transport() {
+    constexpr auto kWorkerStartupTimeout = std::chrono::seconds(15);
+
     StdIoTransportOptions options;
     options.arguments = {
         QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE,
@@ -314,6 +352,9 @@ void test_mock_worker_handshake_over_stdio_transport() {
     options.shutdown_timeout = std::chrono::seconds(5);
 
     FrameCollector collector;
+    options.stderr_handler = [&](std::string message) {
+        collector.on_stderr(std::move(message));
+    };
     StdIoTransport transport(options);
 
     const bool started = transport.start(
@@ -334,7 +375,10 @@ void test_mock_worker_handshake_over_stdio_transport() {
         transport,
         0,
         "{\"message_type\":\"hello\",\"client_name\":\"stdio-transport-test\",\"client_version\":\"0.2.0\"}");
-    const Frame ready = collector.wait_for_frame("\"message_type\":\"ready\"");
+    const Frame ready = collector.wait_for_frame(
+        "\"message_type\":\"ready\"",
+        kWorkerStartupTimeout,
+        "worker ready");
     CHECK(ready.header.frame_type == FrameType::ControlJson);
     CHECK(ready.header.request_id == 0);
 

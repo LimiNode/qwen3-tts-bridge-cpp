@@ -67,23 +67,71 @@ target_link_libraries(qwen_tts_bridge
 if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     set(QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE "")
     if(Python3_Interpreter_FOUND)
-        set(QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
+        file(TO_CMAKE_PATH
+            "${Python3_EXECUTABLE}"
+            QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE
+        )
     endif()
+    file(TO_CMAKE_PATH
+        "${QWEN_TTS_BRIDGE_WORKER_DIR}"
+        QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR
+    )
 
     add_executable(qwen_tts_save_wav
         examples/qwen_tts_save_wav.cpp
     )
+
+    add_executable(qwen_tts_latency_benchmark
+        examples/qwen_tts_latency_benchmark.cpp
+    )
+
+    if(WIN32)
+        add_executable(qwen_tts_play
+            examples/qwen_tts_play.cpp
+        )
+    endif()
 
     target_link_libraries(qwen_tts_save_wav
         PRIVATE
             QwenTTSBridge::qwen_tts_bridge
     )
 
+    target_link_libraries(qwen_tts_latency_benchmark
+        PRIVATE
+            QwenTTSBridge::qwen_tts_bridge
+            nlohmann_json::nlohmann_json
+    )
+
+    if(WIN32)
+        target_link_libraries(qwen_tts_play
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge
+                winmm
+        )
+        if(MINGW)
+            target_link_options(qwen_tts_play PRIVATE -municode)
+        endif()
+    endif()
+
     target_compile_definitions(qwen_tts_save_wav
         PRIVATE
             QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
-            QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+            QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR}"
     )
+
+    target_compile_definitions(qwen_tts_latency_benchmark
+        PRIVATE
+            QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
+            QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR}"
+    )
+
+    if(WIN32)
+        target_compile_definitions(qwen_tts_play
+            PRIVATE
+                QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
+                QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR}"
+        )
+    endif()
 endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_TESTS)
@@ -131,6 +179,14 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     )
 
     if(Python3_Interpreter_FOUND)
+        file(TO_CMAKE_PATH
+            "${Python3_EXECUTABLE}"
+            QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE
+        )
+        file(TO_CMAKE_PATH
+            "${QWEN_TTS_BRIDGE_WORKER_DIR}"
+            QWEN_TTS_BRIDGE_TEST_WORKER_DIR
+        )
         add_executable(stdio_transport_test
             tests/stdio_transport_test.cpp
         )
@@ -142,11 +198,12 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         target_compile_definitions(stdio_transport_test
             PRIVATE
-                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${Python3_EXECUTABLE}"
-                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE}"
+                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
         )
 
         add_test(NAME stdio_transport_test COMMAND stdio_transport_test)
+        set_tests_properties(stdio_transport_test PROPERTIES TIMEOUT 60)
 
         add_executable(worker_session_test
             tests/worker_session_test.cpp
@@ -159,8 +216,8 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         target_compile_definitions(worker_session_test
             PRIVATE
-                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${Python3_EXECUTABLE}"
-                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE}"
+                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
         )
 
         add_test(NAME worker_session_test COMMAND worker_session_test)
@@ -176,8 +233,8 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         target_compile_definitions(qwen_tts_client_test
             PRIVATE
-                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${Python3_EXECUTABLE}"
-                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_WORKER_DIR}"
+                QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE}"
+                QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
         )
 
         add_test(NAME qwen_tts_client_test COMMAND qwen_tts_client_test)
@@ -206,6 +263,46 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 PROPERTIES
                     DEPENDS qwen_tts_save_wav_mock_example
             )
+            add_test(
+                NAME qwen_tts_latency_benchmark_mock_example
+                COMMAND qwen_tts_latency_benchmark
+                    --mock
+                    --text "Benchmark synthesis request"
+                    --mock-chunks 2
+                    --warmups 1
+                    --requests 2
+                    --request-timeout-ms 10000
+            )
+            if(WIN32)
+                add_test(
+                    NAME qwen_tts_play_mock_utf8_example
+                    COMMAND qwen_tts_play
+                        --mock
+                        --no-playback
+                        --text "Я твой робот, я твой работник."
+                        --speaker serena
+                )
+                add_test(
+                    NAME qwen_tts_play_mock_playback_metrics
+                    COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_playback_metrics.py"
+                        --player "$<TARGET_FILE:qwen_tts_play>"
+                        --output "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_play_mock_metrics.json"
+                )
+                add_test(
+                    NAME qwen_tts_play_mock_pcm_capture
+                    COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_pcm_capture.py"
+                        --player "$<TARGET_FILE:qwen_tts_play>"
+                        --output "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_play_mock_capture.pcm"
+                )
+                set_tests_properties(
+                    qwen_tts_play_mock_utf8_example
+                    qwen_tts_play_mock_playback_metrics
+                    qwen_tts_play_mock_pcm_capture
+                    PROPERTIES RESOURCE_LOCK default_audio_playback
+                )
+            endif()
         endif()
     else()
         message(WARNING "Python3 interpreter not found; stdio/worker session tests will not be built")

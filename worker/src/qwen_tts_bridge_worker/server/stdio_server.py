@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
+import importlib
+import os
 import queue
 import threading
 import traceback
 import uuid
 from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, BinaryIO, Deque, Optional, TextIO, cast
 
+from qwen_tts_bridge_worker.config import CanaryRuntimeProvenance
 from qwen_tts_bridge_worker.engine import (
     AudioFormat,
     EngineCapabilities,
     EngineRequestValidationError,
+    GenerationSafetyLimitError,
+    SamplingOptions,
     SynthesisRequest,
     TtsEngine,
 )
@@ -25,11 +31,103 @@ from qwen_tts_bridge_worker.protocol.control import (
 )
 from qwen_tts_bridge_worker.protocol.data import Frame, FrameType, ParseStatus
 from qwen_tts_bridge_worker.protocol.framing import FrameParser, encode_frame
-from qwen_tts_bridge_worker.server.metrics import (
-    MetricsWriter,
-    elapsed_milliseconds,
-    monotonic_seconds,
+from qwen_tts_bridge_worker.server.metrics import MetricsWriter
+from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
+
+_SAMPLING_FIELDS = frozenset(
+    {
+        "temperature",
+        "top_k",
+        "top_p",
+        "repetition_penalty",
+        "do_sample",
+    }
 )
+
+
+def _parse_sampling_options(
+    request_id: int,
+    payload: object,
+    send_error: Any,
+) -> SamplingOptions | None:
+    """Validate optional request-level sampling controls."""
+
+    if payload is None:
+        return SamplingOptions()
+    if not isinstance(payload, dict):
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling must be an object when provided",
+        )
+        return None
+
+    unknown_fields = sorted(set(payload).difference(_SAMPLING_FIELDS))
+    if unknown_fields:
+        send_error(
+            request_id,
+            "request_error",
+            "unknown_field",
+            "sampling contains unknown field(s): " + ", ".join(unknown_fields),
+        )
+        return None
+
+    temperature = payload.get("temperature")
+    top_k = payload.get("top_k")
+    top_p = payload.get("top_p")
+    repetition_penalty = payload.get("repetition_penalty")
+    do_sample = payload.get("do_sample")
+    numeric_values = (temperature, top_p, repetition_penalty)
+    if any(
+        value is not None
+        and (isinstance(value, bool) or not isinstance(value, (int, float)))
+        for value in numeric_values
+    ):
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling temperature, top_p, and repetition_penalty must be numbers",
+        )
+        return None
+    if top_k is not None and (
+        isinstance(top_k, bool) or not isinstance(top_k, int) or top_k <= 0
+    ):
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling.top_k must be a positive integer",
+        )
+        return None
+    if do_sample is not None and not isinstance(do_sample, bool):
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling.do_sample must be a boolean",
+        )
+        return None
+
+    try:
+        return SamplingOptions(
+            temperature=None if temperature is None else float(temperature),
+            top_k=top_k,
+            top_p=None if top_p is None else float(top_p),
+            repetition_penalty=(
+                None if repetition_penalty is None else float(repetition_penalty)
+            ),
+            do_sample=do_sample,
+        )
+    except ValueError:
+        send_error(
+            request_id,
+            "request_error",
+            "invalid_field_type",
+            "sampling values are invalid",
+        )
+        return None
 
 
 @dataclass
@@ -42,21 +140,51 @@ class _RequestSlot:
     first_audio_at: float | None = None
     audio_chunks: int = 0
     audio_bytes: int = 0
+    terminal_notified: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class _OutputFrame:
+    payload: bytes
+    enqueued_at: float
+    request_id: int | None = None
+    first_audio_frame: bool = False
 
 
 class _OutputWriter:
     """Single writer thread that serializes all worker stdout frames."""
 
-    def __init__(self, output: BinaryIO, max_queue_size: int) -> None:
+    def __init__(
+        self,
+        output: BinaryIO,
+        max_queue_size: int,
+        metrics: MetricsWriter,
+    ) -> None:
         self._output = output
-        self._queue: queue.Queue[Optional[bytes]] = queue.Queue(maxsize=max_queue_size)
+        self._metrics = metrics
+        self._queue: queue.Queue[Optional[_OutputFrame]] = queue.Queue(
+            maxsize=max_queue_size
+        )
         self._thread = threading.Thread(target=self._run, name="qtb-stdout-writer")
 
     def start(self) -> None:
         self._thread.start()
 
-    def send(self, frame: bytes) -> None:
-        self._queue.put(frame)
+    def send(
+        self,
+        frame: bytes,
+        *,
+        request_id: int | None = None,
+        first_audio_frame: bool = False,
+    ) -> None:
+        self._queue.put(
+            _OutputFrame(
+                payload=frame,
+                enqueued_at=monotonic_seconds(),
+                request_id=request_id,
+                first_audio_frame=first_audio_frame,
+            )
+        )
 
     def stop_when_drained(self) -> None:
         self._queue.put(None)
@@ -64,11 +192,36 @@ class _OutputWriter:
 
     def _run(self) -> None:
         while True:
-            frame = self._queue.get()
-            if frame is None:
+            output_frame = self._queue.get()
+            if output_frame is None:
                 return
-            self._output.write(frame)
+            write_started_at = monotonic_seconds()
+            if output_frame.first_audio_frame and output_frame.request_id is not None:
+                self._metrics.emit(
+                    "request_first_frame_write_started",
+                    request_id=output_frame.request_id,
+                    output_queue_ms=elapsed_milliseconds(
+                        output_frame.enqueued_at,
+                        write_started_at,
+                    ),
+                )
+            self._output.write(output_frame.payload)
             self._output.flush()
+            flushed_at = monotonic_seconds()
+            if output_frame.first_audio_frame and output_frame.request_id is not None:
+                self._metrics.emit(
+                    "request_first_frame_flushed",
+                    request_id=output_frame.request_id,
+                    output_queue_ms=elapsed_milliseconds(
+                        output_frame.enqueued_at,
+                        write_started_at,
+                    ),
+                    flush_ms=elapsed_milliseconds(write_started_at, flushed_at),
+                    output_writer_ms=elapsed_milliseconds(
+                        output_frame.enqueued_at,
+                        flushed_at,
+                    ),
+                )
 
 
 class StdioWorkerServer:
@@ -83,15 +236,19 @@ class StdioWorkerServer:
         worker_version: str = "0.2.0",
         output_queue_size: int = 128,
         read_chunk_size: int = 4096,
+        engine_startup_mode: str = "main",
+        canary_runtime_provenance: CanaryRuntimeProvenance | None = None,
     ) -> None:
         self._input = input_stream
         self._error = error_stream
         self._engine = engine
         self._worker_version = worker_version
         self._read_chunk_size = read_chunk_size
+        self._engine_startup_mode = engine_startup_mode
+        self._canary_runtime_provenance = canary_runtime_provenance
         self._metrics = MetricsWriter(error_stream)
 
-        self._writer = _OutputWriter(output_stream, output_queue_size)
+        self._writer = _OutputWriter(output_stream, output_queue_size, self._metrics)
         self._parser = FrameParser()
         self._session_id = uuid.uuid4().hex
 
@@ -107,6 +264,9 @@ class StdioWorkerServer:
         self._shutdown_ack_needed = False
         self._shutdown_terminal_events_enqueued = False
         self._fatal_error = False
+        self._engine_startup_completed = False
+        self._engine_startup_success = False
+        self._server_started_at = 0.0
 
         self._engine_thread = threading.Thread(
             target=self._run_engine_loop,
@@ -119,29 +279,22 @@ class StdioWorkerServer:
         self._writer.start()
         engine_thread_started = False
         started_at = monotonic_seconds()
+        self._server_started_at = started_at
         try:
-            load_started_at = monotonic_seconds()
-            self._engine.load()
-            self._metrics.emit(
-                "engine_loaded",
-                duration_ms=elapsed_milliseconds(load_started_at),
-            )
-
-            warmup_started_at = monotonic_seconds()
-            self._engine.warmup()
-            self._warmed_up = True
-            self._metrics.emit(
-                "engine_warmed_up",
-                duration_ms=elapsed_milliseconds(warmup_started_at),
-            )
-
-            self._engine_thread.start()
-            engine_thread_started = True
-            self._metrics.emit(
-                "worker_runtime_started",
-                startup_ms=elapsed_milliseconds(started_at),
-                warmed_up=self._warmed_up,
-            )
+            if self._engine_startup_mode == "main":
+                self._load_engine()
+                self._warmup_engine()
+                self._engine_thread.start()
+                engine_thread_started = True
+                self._emit_runtime_started(started_at)
+            else:
+                if self._engine_startup_mode == "engine_warmup":
+                    self._load_engine()
+                self._engine_thread.start()
+                engine_thread_started = True
+                if not self._wait_for_engine_startup():
+                    self._fatal_error = True
+                    return 1
             self._read_loop()
         except Exception:
             self._fatal_error = True
@@ -249,6 +402,7 @@ class StdioWorkerServer:
         self._hello_seen = True
         self._ready_sent = True
         capabilities = self._engine.capabilities
+        voice_ids = tuple(getattr(self._engine, "voice_ids", ()))
         self._metrics.emit(
             "worker_ready_sent",
             warmed_up=self._warmed_up,
@@ -256,6 +410,10 @@ class StdioWorkerServer:
             cancellation=capabilities.cancellation,
             instructions=capabilities.instructions,
             voice_clone=capabilities.voice_clone,
+            voice_clone_streaming=capabilities.voice_clone_streaming,
+            voice_profiles=capabilities.voice_profiles,
+            sampling_overrides=capabilities.sampling_overrides,
+            deterministic_seed=capabilities.deterministic_seed,
         )
         self._writer.send(
             control_frame(
@@ -268,6 +426,7 @@ class StdioWorkerServer:
                     "capabilities": _capabilities_payload(
                         capabilities,
                     ),
+                    "voice_ids": list(voice_ids),
                 },
             )
         )
@@ -288,6 +447,8 @@ class StdioWorkerServer:
         self._writer.send(control_frame(0, response))
 
     def _handle_synthesize(self, request_id: int, message: dict[str, Any]) -> None:
+        received_at = monotonic_seconds()
+        self._metrics.emit("request_received", request_id=request_id)
         if self._shutdown_requested:
             self._send_error(
                 request_id,
@@ -308,6 +469,7 @@ class StdioWorkerServer:
 
         request = self._parse_synthesis_request(request_id, message)
         if request is None:
+            self._emit_rejected_request_finished(request_id, received_at)
             return
 
         with self._condition:
@@ -318,6 +480,7 @@ class StdioWorkerServer:
                 self._active[request_id] = _RequestSlot(
                     request=request,
                     cancel_event=threading.Event(),
+                    queued_at=received_at,
                 )
                 self._pending.append(request_id)
                 position = len(self._pending)
@@ -367,6 +530,12 @@ class StdioWorkerServer:
         language = message.get("language", "auto")
         speaker = message.get("speaker", "")
         instruction = message.get("instruction", "")
+        reference_audio_path = message.get("reference_audio_path", "")
+        reference_text = message.get("reference_text", "")
+        voice_id = message.get("voice_id", "")
+        x_vector_only = message.get("x_vector_only", False)
+        seed = message.get("seed")
+        sampling_payload = message.get("sampling")
         output_payload = message.get("output")
 
         if not isinstance(language, str) or not isinstance(speaker, str):
@@ -385,6 +554,39 @@ class StdioWorkerServer:
                 "invalid_field_type",
                 "instruction must be a string",
             )
+            return None
+
+        if isinstance(seed, bool) or (
+            seed is not None and (not isinstance(seed, int) or seed < 0)
+        ):
+            self._send_error(
+                request_id,
+                "request_error",
+                "invalid_field_type",
+                "seed must be a non-negative integer when provided",
+            )
+            return None
+
+        if (
+            not isinstance(reference_audio_path, str)
+            or not isinstance(reference_text, str)
+            or not isinstance(voice_id, str)
+            or not isinstance(x_vector_only, bool)
+        ):
+            self._send_error(
+                request_id,
+                "request_error",
+                "invalid_field_type",
+                "voice-clone reference fields must be strings and boolean",
+            )
+            return None
+
+        sampling = _parse_sampling_options(
+            request_id,
+            sampling_payload,
+            self._send_error,
+        )
+        if sampling is None:
             return None
 
         if output_payload is not None and not isinstance(output_payload, dict):
@@ -413,6 +615,12 @@ class StdioWorkerServer:
             language=language,
             speaker=speaker,
             instruction=instruction,
+            voice_id=voice_id,
+            reference_audio_path=reference_audio_path,
+            reference_text=reference_text,
+            x_vector_only=x_vector_only,
+            seed=seed,
+            sampling=sampling,
             output=output,
         )
         try:
@@ -429,6 +637,7 @@ class StdioWorkerServer:
         return request
 
     def _handle_cancel(self, request_id: int) -> None:
+        self._metrics.emit("request_cancel_received", request_id=request_id)
         if request_id == 0:
             self._send_error(
                 0,
@@ -458,6 +667,11 @@ class StdioWorkerServer:
                     cancelled_slot = slot
             elif slot.state == "running":
                 slot.cancel_event.set()
+                self._terminalize_locked(request_id)
+                if not slot.terminal_notified:
+                    slot.terminal_notified = True
+                    send_cancelled = True
+                    cancelled_slot = slot
 
             self._condition.notify_all()
 
@@ -532,6 +746,24 @@ class StdioWorkerServer:
             self._condition.notify_all()
 
     def _run_engine_loop(self) -> None:
+        if self._engine_startup_mode != "main":
+            try:
+                if self._engine_startup_mode == "engine_load_warmup":
+                    self._load_engine()
+                self._warmup_engine()
+                self._emit_runtime_started(self._server_started_at)
+                startup_success = True
+            except Exception:
+                self._fatal_error = True
+                traceback.print_exc(file=self._error)
+                startup_success = False
+            with self._condition:
+                self._engine_startup_completed = True
+                self._engine_startup_success = startup_success
+                self._condition.notify_all()
+            if not startup_success:
+                return
+
         while True:
             slot = self._take_next_request()
             if slot is None:
@@ -555,6 +787,71 @@ class StdioWorkerServer:
             slot.state = "running"
             return slot
 
+    def _load_engine(self) -> None:
+        load_started_at = monotonic_seconds()
+        self._engine.load()
+        self._metrics.emit(
+            "engine_loaded",
+            duration_ms=elapsed_milliseconds(load_started_at),
+            startup_mode=self._engine_startup_mode,
+            **_thread_context_fields(),
+        )
+
+    def _warmup_engine(self) -> None:
+        warmup_started_at = monotonic_seconds()
+        warmup_fields = self._engine.warmup()
+        self._warmed_up = warmup_fields is not None
+        metric_fields: dict[str, object] = {
+            "duration_ms": elapsed_milliseconds(warmup_started_at),
+            "warmed_up": self._warmed_up,
+            "startup_mode": self._engine_startup_mode,
+            **_thread_context_fields(),
+        }
+        if warmup_fields is not None:
+            metric_fields.update(warmup_fields)
+        self._metrics.emit(
+            "engine_warmed_up",
+            **metric_fields,
+        )
+        if warmup_fields is not None:
+            warmup_passes = cast(
+                list[dict[str, object]],
+                warmup_fields.get("warmup_passes", []),
+            )
+            for warmup_pass in warmup_passes:
+                self._metrics.emit(
+                    "engine_warmup_pass",
+                    startup_mode=self._engine_startup_mode,
+                    **_thread_context_fields(),
+                    **warmup_pass,
+                )
+
+    def _emit_runtime_started(self, started_at: float) -> None:
+        self._metrics.emit(
+            "worker_runtime_started",
+            startup_ms=elapsed_milliseconds(started_at),
+            warmed_up=self._warmed_up,
+            startup_mode=self._engine_startup_mode,
+            **_thread_context_fields(),
+            **_runtime_memory_fields(),
+        )
+        if self._canary_runtime_provenance is not None:
+            self._metrics.emit(
+                "canary_runtime_provenance",
+                runtime_profile_id=self._canary_runtime_provenance.runtime_profile_id,
+                bridge_commit=self._canary_runtime_provenance.bridge_commit,
+                faster_wheel_sha256=self._canary_runtime_provenance.faster_wheel_sha256,
+                compiled_allowlist_manifest_sha256=(
+                    self._canary_runtime_provenance.compiled_allowlist_manifest_sha256
+                ),
+            )
+
+    def _wait_for_engine_startup(self) -> bool:
+        with self._condition:
+            while not self._engine_startup_completed:
+                self._condition.wait()
+            return self._engine_startup_success
+
     def _run_one_request(self, slot: _RequestSlot) -> None:
         request_id = slot.request.request_id
 
@@ -562,11 +859,43 @@ class StdioWorkerServer:
             self._finish_cancelled(slot)
             return
 
+        try:
+            describe_request = getattr(self._engine, "describe_request", None)
+            raw_effective_settings = (
+                describe_request(slot.request) if callable(describe_request) else {}
+            )
+            if not isinstance(raw_effective_settings, Mapping) or not all(
+                isinstance(key, str) for key in raw_effective_settings
+            ):
+                raise EngineRequestValidationError(
+                    "invalid_engine_settings",
+                    "engine returned invalid effective generation settings",
+                )
+            effective_settings = dict(raw_effective_settings)
+        except EngineRequestValidationError as exc:
+            with self._condition:
+                self._terminalize_locked(request_id)
+            self._emit_request_finished(slot, "failed")
+            self._send_error(request_id, "request_error", exc.code, str(exc))
+            return
+
         slot.started_at = monotonic_seconds()
         self._metrics.emit(
             "request_started",
             request_id=request_id,
             queue_ms=elapsed_milliseconds(slot.queued_at, slot.started_at),
+        )
+        self._metrics.emit(
+            "request_engine_started",
+            request_id=request_id,
+            queue_ms=elapsed_milliseconds(slot.queued_at, slot.started_at),
+            startup_mode=self._engine_startup_mode,
+            **_thread_context_fields(),
+        )
+        self._metrics.emit(
+            "request_effective_generation_settings",
+            request_id=request_id,
+            **effective_settings,
         )
 
         self._writer.send(
@@ -588,6 +917,8 @@ class StdioWorkerServer:
                     break
                 if not pcm_chunk:
                     continue
+                if slot.cancel_event.is_set():
+                    break
                 chunk_time = monotonic_seconds()
                 if slot.first_audio_at is None:
                     slot.first_audio_at = chunk_time
@@ -602,12 +933,86 @@ class StdioWorkerServer:
                             chunk_time,
                         ),
                     )
+                    self._metrics.emit(
+                        "request_first_pcm_ready",
+                        request_id=request_id,
+                        first_pcm_ready_ms=elapsed_milliseconds(
+                            started_at,
+                            chunk_time,
+                        ),
+                    )
+                first_audio_frame = slot.audio_chunks == 0
+                chunk_metrics = _pop_engine_chunk_metrics(self._engine)
+                if first_audio_frame:
+                    started_at = slot.started_at
+                    if started_at is not None:
+                        self._metrics.emit(
+                            "request_first_frame_enqueued",
+                            request_id=request_id,
+                            first_frame_enqueue_ms=elapsed_milliseconds(
+                                started_at,
+                                monotonic_seconds(),
+                            ),
+                        )
+                    if chunk_metrics:
+                        self._metrics.emit(
+                            "request_first_chunk_engine_phases",
+                            request_id=request_id,
+                            **chunk_metrics,
+                        )
+                started_at = slot.started_at
+                if started_at is not None:
+                    self._metrics.emit(
+                        "request_pcm_chunk",
+                        request_id=request_id,
+                        chunk_index=slot.audio_chunks,
+                        pcm_ready_ms=elapsed_milliseconds(started_at, chunk_time),
+                        pcm_bytes=len(pcm_chunk),
+                        pcm_duration_ms=_pcm_duration_ms(
+                            slot.request.output,
+                            len(pcm_chunk),
+                        ),
+                        **(chunk_metrics or {}),
+                    )
                 slot.audio_chunks += 1
                 slot.audio_bytes += len(pcm_chunk)
                 self._writer.send(
-                    encode_frame(FrameType.AUDIO_PCM, request_id, pcm_chunk)
+                    encode_frame(FrameType.AUDIO_PCM, request_id, pcm_chunk),
+                    request_id=request_id,
+                    first_audio_frame=first_audio_frame,
                 )
+        except EngineRequestValidationError as exc:
+            with self._condition:
+                self._terminalize_locked(request_id)
+            self._emit_request_finished(slot, "failed")
+            self._send_error(request_id, "request_error", exc.code, str(exc))
+            return
+        except GenerationSafetyLimitError as exc:
+            with self._condition:
+                self._terminalize_locked(request_id)
+            self._emit_request_finished(
+                slot,
+                "failed",
+                generation_outcome="safety_duration_limit",
+            )
+            self._metrics.emit(
+                "request_generation_outcome",
+                request_id=request_id,
+                generation_outcome="safety_duration_limit",
+                max_audio_seconds_per_utterance=exc.limit_seconds,
+                emitted_audio_seconds=exc.emitted_seconds,
+            )
+            self._send_error(
+                request_id,
+                "resource_error",
+                "safety_duration_limit",
+                str(exc),
+            )
+            return
         except Exception as exc:
+            if slot.cancel_event.is_set():
+                self._finish_cancelled(slot)
+                return
             with self._condition:
                 self._terminalize_locked(request_id)
             self._emit_request_finished(slot, "failed")
@@ -624,12 +1029,28 @@ class StdioWorkerServer:
         else:
             with self._condition:
                 self._terminalize_locked(request_id)
+            generation_trace = _pop_engine_generation_trace(self._engine)
+            if generation_trace:
+                self._metrics.emit(
+                    "request_generation_trace",
+                    request_id=request_id,
+                    **generation_trace,
+                )
             self._emit_request_finished(slot, "completed")
-            self._writer.send(control_frame(request_id, {"message_type": "completed"}))
+            completed_message: dict[str, object] = {
+                "message_type": "completed",
+                "execution_outcome": "completed",
+            }
+            if generation_trace:
+                completed_message["generation_trace"] = generation_trace
+            self._writer.send(control_frame(request_id, completed_message))
 
     def _finish_cancelled(self, slot: _RequestSlot) -> None:
         request_id = slot.request.request_id
         with self._condition:
+            if slot.terminal_notified:
+                return
+            slot.terminal_notified = True
             self._terminalize_locked(request_id)
         self._emit_request_finished(slot, "cancelled")
         self._writer.send(control_frame(request_id, {"message_type": "cancelled"}))
@@ -638,6 +1059,8 @@ class StdioWorkerServer:
         self,
         slot: _RequestSlot,
         terminal_state: str,
+        *,
+        generation_outcome: str | None = None,
     ) -> None:
         ended_at = monotonic_seconds()
         fields: dict[str, object] = {
@@ -647,6 +1070,12 @@ class StdioWorkerServer:
             "audio_chunks": slot.audio_chunks,
             "audio_bytes": slot.audio_bytes,
         }
+        if generation_outcome is not None:
+            fields["generation_outcome"] = generation_outcome
+        if terminal_state == "completed" and slot.audio_chunks > 0:
+            # A full chunk can be yielded before deferred EOS is observable.
+            # Completion therefore authoritatively marks the final delivered PCM.
+            fields["final_pcm_chunk_index"] = slot.audio_chunks - 1
 
         if slot.started_at is not None:
             fields["queue_ms"] = elapsed_milliseconds(
@@ -674,6 +1103,26 @@ class StdioWorkerServer:
                 )
 
         self._metrics.emit("request_finished", **fields)
+        self._metrics.emit(
+            "worker_runtime_memory",
+            request_id=slot.request.request_id,
+            terminal_state=terminal_state,
+            **_runtime_memory_fields(),
+        )
+
+    def _emit_rejected_request_finished(
+        self,
+        request_id: int,
+        received_at: float,
+    ) -> None:
+        self._metrics.emit(
+            "request_finished",
+            request_id=request_id,
+            terminal_state="failed",
+            total_ms=elapsed_milliseconds(received_at),
+            audio_chunks=0,
+            audio_bytes=0,
+        )
 
     def _terminalize_locked(self, request_id: int) -> None:
         self._active.pop(request_id, None)
@@ -695,6 +1144,10 @@ def _capabilities_payload(capabilities: EngineCapabilities) -> dict[str, bool]:
         "cancellation": capabilities.cancellation,
         "instructions": capabilities.instructions,
         "voice_clone": capabilities.voice_clone,
+        "voice_clone_streaming": capabilities.voice_clone_streaming,
+        "voice_profiles": capabilities.voice_profiles,
+        "sampling_overrides": capabilities.sampling_overrides,
+        "deterministic_seed": capabilities.deterministic_seed,
     }
 
 
@@ -712,3 +1165,89 @@ def _bytes_per_sample(sample_format: str) -> int | None:
     if sample_format == "s16le":
         return 2
     return None
+
+
+def _pop_engine_chunk_metrics(engine: TtsEngine) -> dict[str, object] | None:
+    pop_metrics = getattr(engine, "pop_last_chunk_metrics", None)
+    if not callable(pop_metrics):
+        return None
+    metrics = pop_metrics()
+    if not isinstance(metrics, dict):
+        return None
+    return {str(key): value for key, value in metrics.items()}
+
+
+def _pop_engine_generation_trace(engine: TtsEngine) -> dict[str, object] | None:
+    pop_trace = getattr(engine, "pop_last_generation_trace", None)
+    if not callable(pop_trace):
+        return None
+    trace = pop_trace()
+    if not isinstance(trace, dict):
+        return None
+    return {str(key): value for key, value in trace.items()}
+
+
+def _thread_context_fields() -> dict[str, object]:
+    fields: dict[str, object] = {
+        "python_thread_name": threading.current_thread().name,
+        "native_thread_id": threading.get_native_id(),
+    }
+    try:
+        torch = importlib.import_module("torch")
+        cuda = getattr(torch, "cuda", None)
+        is_available = getattr(cuda, "is_available", None)
+        if callable(is_available) and is_available():
+            current_device = getattr(cuda, "current_device", None)
+            current_stream = getattr(cuda, "current_stream", None)
+            if callable(current_device):
+                device = current_device()
+                if isinstance(device, (int, float)):
+                    fields["cuda_device"] = int(device)
+            if callable(current_stream):
+                stream = current_stream()
+                stream_id = getattr(stream, "cuda_stream", 0)
+                if isinstance(stream_id, (int, float)):
+                    fields["cuda_current_stream"] = int(stream_id)
+    except Exception:
+        pass
+    return fields
+
+
+def _runtime_memory_fields() -> dict[str, object]:
+    """Return process-local CPU and CUDA allocator metrics when available."""
+
+    fields: dict[str, object] = {"worker_pid": os.getpid()}
+    try:
+        torch = importlib.import_module("torch")
+        cuda = getattr(torch, "cuda", None)
+        is_available = getattr(cuda, "is_available", None)
+        if not callable(is_available) or not is_available():
+            return fields
+        memory_allocated = getattr(cuda, "memory_allocated", None)
+        memory_reserved = getattr(cuda, "memory_reserved", None)
+        max_memory_reserved = getattr(cuda, "max_memory_reserved", None)
+        if not callable(memory_allocated):
+            return fields
+        if not callable(memory_reserved):
+            return fields
+        if not callable(max_memory_reserved):
+            return fields
+        allocated = memory_allocated()
+        reserved = memory_reserved()
+        max_reserved = max_memory_reserved()
+        if not isinstance(allocated, (int, float)):
+            return fields
+        if not isinstance(reserved, (int, float)):
+            return fields
+        if not isinstance(max_reserved, (int, float)):
+            return fields
+        fields.update(
+            {
+                "cuda_memory_allocated_bytes": int(allocated),
+                "cuda_memory_reserved_bytes": int(reserved),
+                "cuda_memory_max_reserved_bytes": int(max_reserved),
+            }
+        )
+    except Exception:
+        return fields
+    return fields

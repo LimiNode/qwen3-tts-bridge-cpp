@@ -198,8 +198,13 @@ The worker replies with `ready`:
     "streaming": true,
     "cancellation": true,
     "instructions": true,
-    "voice_clone": false
-  }
+    "voice_clone": false,
+    "sampling_overrides": true,
+    "deterministic_seed": true,
+    "voice_clone_streaming": false,
+    "voice_profiles": false
+  },
+  "voice_ids": []
 }
 ```
 
@@ -219,6 +224,15 @@ actually performed successfully. If warmup is disabled by configuration, `ready`
 may use `warmed_up = false`; the worker is still able to accept `synthesize`,
 but the first request may be slower.
 
+`sampling_overrides`, `deterministic_seed`, `voice_clone_streaming`, and
+`voice_profiles` are optional capability fields. Clients must treat an absent
+field as `false` so that a newer client can safely connect to an older v1
+worker. The first indicates whether request-level sampling controls are
+accepted; the second indicates whether an explicit request `seed` is applied
+fail-closed across the engine RNGs. `voice_clone_streaming` means a Base model
+can stream clone PCM before completion. `voice_profiles` means `voice_ids`
+contains selectable local Base profiles; an absent `voice_ids` is an empty list.
+
 The C++ supervisor must apply a configurable startup timeout while waiting for
 `ready`. On timeout, it may terminate the worker and report a local startup
 timeout error. This is not a wire-level `error_json`.
@@ -234,6 +248,17 @@ The `synthesize` payload keeps spoken text separate from style instructions:
   "language": "English",
   "speaker": "Alice",
   "instruction": "Speak with relief, but keep a little resentment.",
+  "reference_audio_path": "C:/voices/reference.wav",
+  "reference_text": "Reference-audio transcript.",
+  "x_vector_only": false,
+  "seed": 4242,
+  "sampling": {
+    "temperature": 0.4,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "do_sample": true
+  },
   "output": {
     "sample_format": "s16le",
     "sample_rate": 24000,
@@ -248,6 +273,36 @@ engine-specific default or reject the request with `request_error` when the
 selected model requires a concrete speaker name. Clients should not use
 `"default"` as a universal magic value unless the model actually advertises a
 speaker with that exact name.
+
+`reference_audio_path` is an optional local file path for a Base voice-clone
+request. `reference_text` is its transcript and is required by ICL cloning.
+Set `x_vector_only = true` to clone only the speaker embedding without a
+transcript. These fields are model-specific: CustomVoice and VoiceDesign
+workers must reject them rather than silently changing request semantics.
+
+`voice_id` is an optional registered Base voice profile identifier. A profile
+contains local reference metadata held by the worker; its model-ready prompt
+may be retained only in that worker's memory. `voice_id` is mutually exclusive
+with `reference_audio_path`, `reference_text`, and `x_vector_only`. A worker
+without a configured voice registry, or one that does not recognize the ID,
+must return `request_error` rather than silently selecting another voice.
+
+`seed` is an optional non-negative integer for reproducible, diagnostic
+requests. It must not be used as a production quality guarantee: support and
+determinism remain engine- and runtime-dependent. A worker that cannot honour
+the control must return `request_error` instead of silently accepting a
+different seed.
+
+`sampling` is an optional object of per-request decoding overrides. Omitted
+fields retain the worker runtime profile's defaults. `temperature` must be in
+`(0, 2]`, `top_k` must be a positive integer, `top_p` must be in `(0, 1]`, and
+`repetition_penalty` must be in `[1, 2]`. `do_sample = false` requests greedy
+decoding. Only `temperature`, `top_k`, `top_p`, `repetition_penalty`, and
+`do_sample` are valid members; an unknown member must return
+`request_error / unknown_field`. A worker that cannot honour request-level
+sampling controls must return `request_error` instead of silently ignoring
+them. A loaded engine may additionally reject `top_k` above its actual codec
+vocabulary size.
 
 `output` is the client's requested output format. If the worker cannot satisfy
 it, the worker must return:

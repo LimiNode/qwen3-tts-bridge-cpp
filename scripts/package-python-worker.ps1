@@ -8,7 +8,11 @@ param(
     [switch]$Clean,
     [switch]$DryRun,
     [switch]$IncludeQwenFork,
-    [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming"
+    [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
+    [switch]$IncludeFasterQwen,
+    [string]$FasterQwenSourcePath = "external/python/faster-qwen3-tts",
+    [switch]$AllowDirtySources,
+    [switch]$AllowUnversionedSources
 )
 
 $ErrorActionPreference = "Stop"
@@ -219,9 +223,63 @@ function Assert-PackagingPythonVersion {
 function Get-PythonEnvironmentInfo {
     $EnvironmentJson = Invoke-PythonText @(
         "-c",
-        "import json, sys, sysconfig; print(json.dumps({'base_prefix': sys.base_prefix, 'executable': sys.executable, 'purelib': sysconfig.get_paths()['purelib'], 'platlib': sysconfig.get_paths()['platlib']}))"
+        "import json, platform, sys, sysconfig; print(json.dumps({'base_prefix': sys.base_prefix, 'executable': sys.executable, 'implementation': platform.python_implementation(), 'version': sys.version, 'version_info': list(sys.version_info[:3]), 'purelib': sysconfig.get_paths()['purelib'], 'platlib': sysconfig.get_paths()['platlib']}))"
     )
     return $EnvironmentJson | ConvertFrom-Json
+}
+
+function Get-PythonPackageVersion {
+    param(
+        [string]$PackageName
+    )
+
+    $Code = "import importlib.metadata as m; " +
+        "name = '$PackageName'; " +
+        "print(m.version(name) if name in {dist.metadata['Name'] for dist in m.distributions()} else '')"
+    return Invoke-PythonText @("-c", $Code)
+}
+
+function Get-PythonToolVersions {
+    return [ordered]@{
+        pip = Get-PythonPackageVersion "pip"
+        setuptools = Get-PythonPackageVersion "setuptools"
+        wheel = Get-PythonPackageVersion "wheel"
+        torch = Get-PythonPackageVersion "torch"
+        transformers = Get-PythonPackageVersion "transformers"
+        torch_cuda = Get-TorchCudaVersion
+        torch_cuda_available = Get-TorchCudaAvailable
+    }
+}
+
+function Get-TorchCudaVersion {
+    $Code = "try:`n import torch; print(torch.version.cuda or '')`nexcept Exception:`n print('')"
+    return Invoke-PythonText @("-c", $Code)
+}
+
+function Get-TorchCudaAvailable {
+    $Code = "try:`n import torch; print('true' if torch.cuda.is_available() else 'false')`nexcept Exception:`n print('')"
+    return Invoke-PythonText @("-c", $Code)
+}
+
+function Get-PipFreeze {
+    param(
+        [string]$Path
+    )
+
+    $Arguments = @(
+        "-m",
+        "pip",
+        "--disable-pip-version-check",
+        "freeze"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($Path)) {
+        $Arguments += @("--path", $Path)
+    }
+    $Output = & $Python @PythonArgs @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip freeze failed."
+    }
+    return @($Output)
 }
 
 function Copy-DirectoryContents {
@@ -235,7 +293,21 @@ function Copy-DirectoryContents {
     }
 
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-    Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
+    & robocopy `
+        $Source `
+        $Destination `
+        /E `
+        /COPY:DAT `
+        /DCOPY:DAT `
+        /R:1 `
+        /W:1 `
+        /NFL `
+        /NDL `
+        /NJH `
+        /NJS | Out-Null
+    if ($LASTEXITCODE -gt 7) {
+        throw "robocopy failed while staging portable worker files: $Source -> $Destination (exit $LASTEXITCODE)"
+    }
 }
 
 function Get-ProjectRequirement {
@@ -307,6 +379,7 @@ function Install-ProjectWheelToTarget {
         [string]$ProjectPath,
         [string]$SitePackages,
         [string]$WheelWorkRoot,
+        [string]$WheelArtifactRoot,
         [string]$Label
     )
 
@@ -338,12 +411,16 @@ function Install-ProjectWheelToTarget {
         "--wheel-dir",
         $WheelDir,
         $SourceCopy
-    )
+    ) | Out-Host
 
     $Wheels = @(Get-ChildItem -LiteralPath $WheelDir -Filter "*.whl" -File)
     if ($Wheels.Count -ne 1) {
         throw "Expected one wheel for $Label under $WheelDir; found $($Wheels.Count)."
     }
+    $Wheel = $Wheels[0]
+    New-Item -ItemType Directory -Force -Path $WheelArtifactRoot | Out-Null
+    $ArtifactPath = Join-Path $WheelArtifactRoot $Wheel.Name
+    Copy-Item -LiteralPath $Wheel.FullName -Destination $ArtifactPath -Force
 
     Remove-StagedScriptDirectory -SitePackages $SitePackages
     Invoke-ProjectPython @(
@@ -359,8 +436,153 @@ function Install-ProjectWheelToTarget {
         "--target",
         $SitePackages,
         $Requirement
-    )
+    ) | Out-Host
     Remove-StagedScriptDirectory -SitePackages $SitePackages
+
+    return [pscustomobject]@{
+        label = $Label
+        requirement = $Requirement
+        wheel = $Wheel.Name
+        wheel_sha256 = Get-FileSha256 $Wheel.FullName
+        wheel_artifact = "wheels/$($Wheel.Name)"
+        source = Get-SourceManifest $ProjectPath
+    }
+}
+
+function Get-FileSha256 {
+    param(
+        [string]$Path
+    )
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Get-SourceManifest {
+    param(
+        [string]$ProjectPath
+    )
+
+    $ResolvedProjectPath = [IO.Path]::GetFullPath($ProjectPath)
+    $PortablePath = Get-PortableSourcePath $ResolvedProjectPath
+    $Commit = $null
+    $Dirty = $null
+    $TrackedChanges = $null
+
+    $InsideWorkTree = & git -C $ResolvedProjectPath rev-parse --is-inside-work-tree 2>$null
+    if ($LASTEXITCODE -eq 0 -and (($InsideWorkTree | Select-Object -First 1) -eq "true")) {
+        $CommitOutput = & git -C $ResolvedProjectPath rev-parse HEAD 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $Commit = ($CommitOutput | Select-Object -First 1).Trim()
+        }
+
+        $StatusOutput = & git -C $ResolvedProjectPath status --porcelain 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $TrackedChanges = @($StatusOutput)
+            $Dirty = $TrackedChanges.Count -gt 0
+        }
+    }
+
+    return [pscustomobject]@{
+        path = $PortablePath.path
+        path_kind = $PortablePath.kind
+        git_commit = $Commit
+        git_dirty = $Dirty
+        git_status = $TrackedChanges
+    }
+}
+
+function Get-PortableSourcePath {
+    param(
+        [string]$Path
+    )
+
+    $ResolvedRepoRoot = [IO.Path]::GetFullPath($RepoRoot).TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $ResolvedPath = [IO.Path]::GetFullPath($Path)
+    $RepoPrefix = $ResolvedRepoRoot + [IO.Path]::DirectorySeparatorChar
+    if ($ResolvedPath.StartsWith($RepoPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        $Relative = $ResolvedPath.Substring($RepoPrefix.Length).Replace("\", "/")
+        return [pscustomobject]@{
+            kind = "repo_relative"
+            path = $Relative
+        }
+    }
+
+    return [pscustomobject]@{
+        kind = "external_name"
+        path = Split-Path -Leaf $ResolvedPath
+    }
+}
+
+function Assert-CleanSources {
+    param(
+        [object[]]$Wheels
+    )
+
+    if ($AllowDirtySources) {
+        return
+    }
+
+    $DirtyLabels = @(
+        $Wheels |
+            Where-Object { $null -ne $_.source.git_dirty -and $_.source.git_dirty } |
+            ForEach-Object { $_.label }
+    )
+    if ($DirtyLabels.Count -gt 0) {
+        throw "Refusing to package dirty source trees: $($DirtyLabels -join ', '). Pass -AllowDirtySources for a local diagnostic build."
+    }
+
+    if ($AllowUnversionedSources) {
+        return
+    }
+
+    $UnversionedLabels = @(
+        $Wheels |
+            Where-Object { $null -eq $_.source.git_commit } |
+            ForEach-Object { $_.label }
+    )
+    if ($UnversionedLabels.Count -gt 0) {
+        throw "Refusing to package unversioned source trees: $($UnversionedLabels -join ', '). Pass -AllowUnversionedSources for a local diagnostic build."
+    }
+}
+
+function Write-BuildManifest {
+    param(
+        [string]$Path,
+        [object[]]$Wheels,
+        [object]$PythonEnvironment,
+        [object]$ToolVersions,
+        [string[]]$PipFreeze,
+        [string]$PortableRuntimeTreeManifest
+    )
+
+    $Manifest = [ordered]@{
+        build_manifest_schema_version = 1
+        generated_at_utc = [DateTime]::UtcNow.ToString("o")
+        python = [ordered]@{
+            base_prefix = Get-PortableSourcePath ([string]$PythonEnvironment.base_prefix)
+            implementation = [string]$PythonEnvironment.implementation
+            version = [string]$PythonEnvironment.version
+            version_info = $PythonEnvironment.version_info
+            purelib = Get-PortableSourcePath ([string]$PythonEnvironment.purelib)
+            platlib = Get-PortableSourcePath ([string]$PythonEnvironment.platlib)
+        }
+        python_tools = $ToolVersions
+        pip_freeze = $PipFreeze
+        wheels = $Wheels
+        portable_runtime_tree_manifest = [ordered]@{
+            path = Split-Path -Leaf $PortableRuntimeTreeManifest
+            sha256 = Get-FileSha256 $PortableRuntimeTreeManifest
+        }
+    }
+    $Json = $Manifest | ConvertTo-Json -Depth 8
+    [IO.File]::WriteAllText(
+        $Path,
+        $Json,
+        [System.Text.UTF8Encoding]::new($false)
+    )
 }
 
 function Remove-EditableInstallArtifacts {
@@ -415,7 +637,8 @@ function Invoke-StagedPythonIsolationProbe {
         [string]$PythonRoot,
         [string]$SitePackages,
         [string[]]$ForbiddenRoots,
-        [switch]$ProbeQwenImport
+        [switch]$ProbeQwenImport,
+        [switch]$ProbeFasterQwenImport
     )
 
     $StagedPython = Join-Path $PythonRoot "python.exe"
@@ -429,6 +652,7 @@ function Invoke-StagedPythonIsolationProbe {
     $PreviousPythonDontWriteBytecode = $env:PYTHONDONTWRITEBYTECODE
     $PreviousForbiddenRoots = $env:QTB_FORBIDDEN_SYS_PATH_ROOTS
     $PreviousProbeQwenImport = $env:QTB_PROBE_QWEN_IMPORT
+    $PreviousProbeFasterQwenImport = $env:QTB_PROBE_FASTER_QWEN_IMPORT
     $ProbePath = Join-Path $PythonRoot "qtb_portable_isolation_probe.py"
 
     try {
@@ -447,6 +671,12 @@ function Invoke-StagedPythonIsolationProbe {
         }
         else {
             $env:QTB_PROBE_QWEN_IMPORT = ""
+        }
+        if ($ProbeFasterQwenImport) {
+            $env:QTB_PROBE_FASTER_QWEN_IMPORT = "1"
+        }
+        else {
+            $env:QTB_PROBE_FASTER_QWEN_IMPORT = ""
         }
 
         $ProbeCode = @'
@@ -479,6 +709,9 @@ import qwen_tts_bridge_worker  # noqa: F401
 
 if os.environ.get("QTB_PROBE_QWEN_IMPORT") == "1":
     import qwen_tts.inference.qwen3_tts_model  # noqa: F401
+
+if os.environ.get("QTB_PROBE_FASTER_QWEN_IMPORT") == "1":
+    import faster_qwen3_tts  # noqa: F401
 '@
         [IO.File]::WriteAllText(
             $ProbePath,
@@ -501,6 +734,7 @@ if os.environ.get("QTB_PROBE_QWEN_IMPORT") == "1":
         $env:PYTHONDONTWRITEBYTECODE = $PreviousPythonDontWriteBytecode
         $env:QTB_FORBIDDEN_SYS_PATH_ROOTS = $PreviousForbiddenRoots
         $env:QTB_PROBE_QWEN_IMPORT = $PreviousProbeQwenImport
+        $env:QTB_PROBE_FASTER_QWEN_IMPORT = $PreviousProbeFasterQwenImport
     }
 }
 
@@ -540,6 +774,7 @@ if ($UseVenv) {
 
 Assert-PackagingPythonVersion
 $PythonEnvironment = Get-PythonEnvironmentInfo
+$PythonToolVersions = Get-PythonToolVersions
 
 Assert-RelativeDirectoryName $WorkerDirectoryName
 
@@ -548,9 +783,12 @@ $WorkerOutput = Join-Path $PackageRoot $WorkerDirectoryName
 $PythonOutput = Join-Path $WorkerOutput "python"
 $SitePackagesOutput = Join-Path $PythonOutput "Lib/site-packages"
 $WheelWorkRoot = Join-Path $WorkerOutput ".wheel-build"
+$WheelArtifactRoot = Join-Path $WorkerOutput "wheels"
+$PortableRuntimeTreeManifestPath = Join-Path $WorkerOutput "portable-python-tree-manifest.json"
 $WorkerPackageSource = Resolve-RepoPath "worker/src/qwen_tts_bridge_worker"
 $WorkerProjectSource = Resolve-RepoPath "worker"
 $LauncherPath = Join-Path $WorkerOutput "qwen_tts_worker.cmd"
+$DoctorLauncherPath = Join-Path $WorkerOutput "qwen_tts_doctor.cmd"
 
 Assert-UnderRepo $PackageRoot
 Assert-UnderRepo $WorkerOutput
@@ -584,12 +822,25 @@ if ($IncludeQwenFork) {
     Assert-NotUnderPath -Parent $ResolvedQwenSourcePath -Path $WorkerOutput -Description "WorkerOutput"
 }
 
+$FasterQwenPackageSource = $null
+if ($IncludeFasterQwen) {
+    $ResolvedFasterQwenSourcePath = Resolve-RepoPath $FasterQwenSourcePath
+    $FasterQwenPackageSource = Join-Path $ResolvedFasterQwenSourcePath "faster_qwen3_tts"
+    if (-not (Test-Path -LiteralPath $FasterQwenPackageSource)) {
+        throw "faster-qwen3-tts package source was not found: $FasterQwenPackageSource"
+    }
+    Assert-NotUnderPath -Parent $ResolvedFasterQwenSourcePath -Path $WorkerOutput -Description "WorkerOutput"
+}
+
 Write-Host "Portable Python worker source runtime: $BasePrefix"
 Write-Host "Portable Python worker source site-packages: $PureLib"
 Write-Host "Portable Python worker output: $WorkerOutput"
 Write-Host "Portable Python worker launcher: $LauncherPath"
 if ($IncludeQwenFork) {
     Write-Host "Portable Python worker includes Qwen fork: $QwenPackageSource"
+}
+if ($IncludeFasterQwen) {
+    Write-Host "Portable Python worker includes faster-qwen3-tts: $FasterQwenPackageSource"
 }
 
 if ($DryRun) {
@@ -629,28 +880,67 @@ Remove-StagedPackageArtifacts `
         "qwen_tts_bridge_worker",
         "qwen-tts-bridge-worker",
         "qwen_tts",
-        "qwen-tts"
+        "qwen-tts",
+        "faster_qwen3_tts",
+        "faster-qwen3-tts"
     )
 
-Install-ProjectWheelToTarget `
+$WheelReports = @()
+
+$WheelReports += Install-ProjectWheelToTarget `
     -ProjectPath $WorkerProjectSource `
     -SitePackages $SitePackagesOutput `
     -WheelWorkRoot $WheelWorkRoot `
+    -WheelArtifactRoot $WheelArtifactRoot `
     -Label "worker"
 
 if ($null -ne $QwenPackageSource) {
-    Install-ProjectWheelToTarget `
+    $WheelReports += Install-ProjectWheelToTarget `
         -ProjectPath $ResolvedQwenSourcePath `
         -SitePackages $SitePackagesOutput `
         -WheelWorkRoot $WheelWorkRoot `
+        -WheelArtifactRoot $WheelArtifactRoot `
         -Label "qwen"
 }
+
+if ($null -ne $FasterQwenPackageSource) {
+    $WheelReports += Install-ProjectWheelToTarget `
+        -ProjectPath $ResolvedFasterQwenSourcePath `
+        -SitePackages $SitePackagesOutput `
+        -WheelWorkRoot $WheelWorkRoot `
+        -WheelArtifactRoot $WheelArtifactRoot `
+        -Label "faster-qwen"
+}
+
+Assert-CleanSources -Wheels $WheelReports
+$PythonPipFreeze = Get-PipFreeze -Path $SitePackagesOutput
 
 if (Test-Path -LiteralPath $WheelWorkRoot) {
     Remove-Item -LiteralPath $WheelWorkRoot -Recurse -Force
 }
 
-Remove-PythonBytecode -Root $PythonOutput
+function Write-DoctorLauncher {
+    param(
+        [string]$LauncherPath
+    )
+
+    $LauncherContent = @'
+@echo off
+setlocal
+set "WORKER_ROOT=%~dp0"
+set "PYTHONHOME=%WORKER_ROOT%python"
+set "PYTHONPATH=%WORKER_ROOT%python\Lib\site-packages"
+set "PYTHONNOUSERSITE=1"
+set "PYTHONDONTWRITEBYTECODE=1"
+"%WORKER_ROOT%python\python.exe" -B -P -s -m qwen_tts_bridge_worker.doctor --portable-root "%WORKER_ROOT%." %*
+'@
+    [IO.File]::WriteAllText(
+        $LauncherPath,
+        $LauncherContent.Replace("`n", "`r`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
 Assert-PortableSitePaths -SitePackages $SitePackagesOutput
 Invoke-StagedPythonIsolationProbe `
     -PythonRoot $PythonOutput `
@@ -659,17 +949,51 @@ Invoke-StagedPythonIsolationProbe `
         $WorkerPackageSource,
         $PureLib,
         $PlatLib,
-        $QwenPackageSource
+        $QwenPackageSource,
+        $FasterQwenPackageSource
     ) `
-    -ProbeQwenImport:($null -ne $QwenPackageSource)
+    -ProbeQwenImport:($null -ne $QwenPackageSource) `
+    -ProbeFasterQwenImport:($null -ne $FasterQwenPackageSource)
+
+# The probe imports the staged runtime. Seal the final tree only after removing
+# every transient file it could have created.
 Remove-PythonBytecode -Root $PythonOutput
+Invoke-ProjectPython @(
+    "scripts/runtime_tree_manifest.py",
+    "build",
+    "--root",
+    $PythonOutput,
+    "--output",
+    $PortableRuntimeTreeManifestPath
+)
+Invoke-ProjectPython @(
+    "scripts/runtime_tree_manifest.py",
+    "verify",
+    "--root",
+    $PythonOutput,
+    "--manifest",
+    $PortableRuntimeTreeManifestPath
+)
+
+Write-BuildManifest `
+    -Path (Join-Path $WorkerOutput "build-manifest.json") `
+    -Wheels $WheelReports `
+    -PythonEnvironment $PythonEnvironment `
+    -ToolVersions $PythonToolVersions `
+    -PipFreeze $PythonPipFreeze `
+    -PortableRuntimeTreeManifest $PortableRuntimeTreeManifestPath
 
 Write-WorkerLauncher -LauncherPath $LauncherPath
+Write-DoctorLauncher -LauncherPath $DoctorLauncherPath
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "models") | Out-Null
 
-if (-not (Test-Path -LiteralPath $LauncherPath)) {
-    throw "Portable Python worker launcher was not found: $LauncherPath"
+if (
+    -not (Test-Path -LiteralPath $LauncherPath) -or
+    -not (Test-Path -LiteralPath $DoctorLauncherPath)
+) {
+    throw "Portable Python worker launchers were not found under: $WorkerOutput"
 }
 
 Write-Host "Portable Python worker launcher: $LauncherPath"
+Write-Host "Portable Python worker doctor: $DoctorLauncherPath"

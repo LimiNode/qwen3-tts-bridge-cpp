@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,12 @@ JsonPayloadEncodeResult encode_error(
     std::string diagnostic);
 
 bool has_forbidden_header_field(const Json& object);
+bool reject_unknown_fields(
+    const Json& object,
+    std::initializer_list<const char*> allowed,
+    const char* object_name,
+    std::string& diagnostic,
+    ControlCodecError& error);
 const Json* find_field(const Json& object, const char* name);
 
 bool read_required_string(
@@ -94,6 +101,29 @@ bool read_required_audio_format(
     AudioFormat& out,
     std::string& diagnostic,
     ControlCodecError& error);
+bool read_required_u64(
+    const Json& object,
+    const char* name,
+    std::uint64_t& out,
+    std::string& diagnostic,
+    ControlCodecError& error);
+bool read_optional_string_array(
+    const Json& object,
+    const char* name,
+    std::vector<std::string>& out,
+    std::string& diagnostic,
+    ControlCodecError& error);
+bool read_optional_synthesis_sampling(
+    const Json& object,
+    const char* name,
+    SynthesisSamplingOptions& out,
+    std::string& diagnostic,
+    ControlCodecError& error);
+bool read_completed_message(
+    const Json& object,
+    CompletedMessage& out,
+    std::string& diagnostic,
+    ControlCodecError& error);
 bool read_capabilities(
     const Json& object,
     WorkerCapabilities& out,
@@ -101,6 +131,7 @@ bool read_capabilities(
     ControlCodecError& error);
 
 Json audio_format_to_json(const AudioFormat& format);
+Json synthesis_sampling_to_json(const SynthesisSamplingOptions& options);
 Json capabilities_to_json(const WorkerCapabilities& capabilities);
 JsonPayloadEncodeResult encode_json_payload(const Json& value);
 

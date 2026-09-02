@@ -15,6 +15,8 @@
 # Python local environments and caches
 /.venv/
 /.venv-packaging/
+/.venv-qwen-flash/
+/.venv-faster-qwen/
 /venv/
 /env/
 __pycache__/
@@ -38,7 +40,13 @@ CMakeUserPresets.json
 *.user
 *.suo
 *.vcxproj.user
+/config/playback-runtime.local.json
+/config/voice-profiles.local.json
 
 # Logs and temporary local files
 *.log
 /tmp/
+
+# Local benchmark captures; compact anonymized summaries are versioned instead.
+/docs/benchmark-artifacts/**/*-result.json
+/docs/benchmark-artifacts/**/*-check.jsonl
