@@ -1,0 +1,47 @@
+# CMP 50HX registered-voice prefix reuse probe
+
+Date: 2026-09-03  
+Profile: registered 1.7B Base voice `kraftwerk_robot_ru_bootstrap_fidelity`,
+eager prefill, E8, W48 right-padded codec decode, reference-context bootstrap.
+
+This probe hashes each position of `talker_input_embeds` in profile-only mode.
+It does not reuse KV state and does not change inference.
+
+## Result
+
+Five different texts were sent through fresh workers with the same registered
+voice profile. Every request produced `talker_prefill_length=237` and exactly
+237 position hashes. The longest identical prefix across all five requests was
+86 positions; position 86 was the first text-dependent position.
+
+| Text shape | Text tokens | Prefill length | First PCM |
+| --- | ---: | ---: | ---: |
+| short Russian | 14 | 237 | 1022.0 ms |
+| medium Russian | 26 | 237 | 1020.4 ms |
+| long mixed/punctuated Russian | 55 | 237 | 1029.5 ms |
+| mixed Russian/English | 25 | 237 | 1027.9 ms |
+| punctuation-heavy Russian | 37 | 237 | 1029.7 ms |
+
+The common prefix is therefore about 36% of the current talker prefill
+sequence. This is large enough to justify a per-voice KV-cache prototype, but
+embedding equality alone is not a correctness proof: suffix attention masks,
+RoPE positions, cache layout, `past_hidden`, and generation state must all be
+validated against a full eager prefill.
+
+## Recommended next step
+
+Implement a diagnostic-only split-forward check for one voice:
+
+1. run the current full prefill and retain logits/hidden state/KV;
+2. run positions `0:86` once, then positions `86:237` with the prefix
+   `past_key_values`;
+3. compare suffix hidden states, first codec logits, KV contents, and the full
+   generated codec-token hash;
+4. only after exact parity passes, measure whether retaining the first 86
+   positions across requests reduces first PCM.
+
+Do not expose the cache through the release configuration until the split path
+passes natural EOS, cancellation/reset, PCM parity, and persistent-worker
+reuse gates. The current production profile remains unchanged.
+
+Raw hash-bearing runs are under `tmp/` and are intentionally unversioned.

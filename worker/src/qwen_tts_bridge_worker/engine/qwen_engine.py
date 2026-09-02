@@ -2341,6 +2341,7 @@ def _first_chunk_timing_fields(
     for key in (
         "selected_chunk_schedule",
         "ar_frame_timings",
+        "talker_input_position_sha256",
         "prefill_shape_talker_input_embeds",
         "prefill_shape_attention_mask",
         "prefill_shape_trailing_text_hiddens",
