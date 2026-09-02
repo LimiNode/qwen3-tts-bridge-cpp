@@ -70,6 +70,12 @@ param(
 
     [switch]$ProfilePrefill,
 
+    [ValidateSet('eager', 'compile_inductor_default', 'compile_reduce_overhead')]
+    [string]$PrefillBackend = 'eager',
+
+    [ValidateSet('none', 'strict_bf16_sdpa_v1')]
+    [string]$PrefillCompileCompatMode = 'none',
+
     [switch]$CollectGenerationTrace,
 
     [switch]$CodecRightPaddedDecode,
@@ -470,7 +476,7 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--device', '--worker-arg', 'cuda:0',
         '--worker-arg', '--dtype', '--worker-arg', 'float16',
         '--worker-arg', '--attn-implementation', '--worker-arg', 'sdpa',
-        '--worker-arg', '--prefill-backend', '--worker-arg', 'eager',
+        '--worker-arg', '--prefill-backend', '--worker-arg', $PrefillBackend,
         '--worker-arg', '--emit-every-frames', '--worker-arg', $EmitEveryFrames,
         '--worker-arg', '--decode-window-frames', '--worker-arg', '80',
         '--worker-arg', '--no-compile', '--worker-arg', '--no-cuda-graphs',
@@ -509,6 +515,12 @@ function Invoke-PlaybackRun {
     }
     if ($ProfilePrefill) {
         $arguments += @('--worker-arg', '--profile-prefill')
+    }
+    if ($PrefillCompileCompatMode -ne 'none') {
+        $arguments += @(
+            '--worker-arg', '--prefill-compile-compat-mode',
+            '--worker-arg', $PrefillCompileCompatMode
+        )
     }
     if ($CollectGenerationTrace) {
         $arguments += @('--worker-arg', '--collect-generation-trace')

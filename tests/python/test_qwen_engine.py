@@ -351,6 +351,8 @@ class _FasterStreamingModel:
                         "chunk_steps": 8,
                         "chunk_target_steps": 8,
                         "chunk_schedule_index": 1,
+                        "talker_prefill_length": 21,
+                        "prefill_batch_size": 1,
                         "profile_schema_version": 3,
                         "profile_path": "fast",
                         "profile_request_role": "first_user",
@@ -1924,6 +1926,44 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(0.4, fake_model.voice_clone_stream_calls[0]["temperature"])
         self.assertEqual(25, fake_model.voice_clone_stream_calls[0]["top_k"])
         self.assertEqual(1, fake_model.reset_calls)
+
+    def test_faster_base_voice_clone_forwards_prefill_profile_controls(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-base",
+                runtime_backend="faster",
+                device="cpu",
+                profile_prefill=True,
+                profile_nvtx=True,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference = Path(temporary_directory) / "reference.wav"
+            _write_reference_wav(reference)
+            request = SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                language="English",
+                reference_audio_path=str(reference),
+                reference_text="Reference text.",
+            )
+            engine.load()
+            list(engine.synthesize_stream(request, threading.Event()))
+
+        call = fake_model.voice_clone_stream_calls[0]
+        self.assertTrue(call["profile_prefill"])
+        self.assertTrue(call["profile_nvtx"])
+        self.assertEqual("first_user", call["profile_request_role"])
+        self.assertEqual("eager", call["prefill_backend"])
+        self.assertEqual("none", call["prefill_compile_compat_mode"])
+        self.assertFalse(cast(Callable[[], bool], call["cancel_check"])())
+        metrics = engine.pop_last_chunk_metrics()
+        self.assertIsNotNone(metrics)
+        assert metrics is not None
+        self.assertEqual(12.0, metrics["prefill_ms"])
+        self.assertEqual(21, metrics["talker_prefill_length"])
 
     def test_base_voice_profile_reuses_prepared_prompt(self) -> None:
         fake_model = _StreamingBaseModel()

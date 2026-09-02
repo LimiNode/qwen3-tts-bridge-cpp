@@ -1921,8 +1921,21 @@ def _qwen_stream_generate_audio(
                     "voice_clone_prompt": clone_inputs.prompt,
                     "chunk_size": config.emit_every_frames,
                     "chunk_schedule": config.emit_chunk_schedule or None,
+                    "prefill_backend": config.prefill_backend,
+                    "prefill_compile_compat_mode": (
+                        config.prefill_compile_compat_mode
+                    ),
                     **sampling,
                 }
+                if config.profile_prefill:
+                    stream_kwargs["profile_prefill"] = True
+                if config.profile_nvtx:
+                    stream_kwargs["profile_nvtx"] = True
+                if config.profile_prefill or config.profile_nvtx:
+                    profile_request_role = _profile_request_role(request.request_id)
+                    if profile_request_role is not None:
+                        stream_kwargs["profile_request_role"] = profile_request_role
+                stream_kwargs["cancel_check"] = cancel_event.is_set
                 return _faster_voice_clone_stream(
                     cast(
                         Iterable[tuple[Any, int, dict[str, Any]]],
@@ -1967,7 +1980,7 @@ def _qwen_stream_generate_audio(
 def _faster_voice_clone_stream(
     stream: Iterable[tuple[Any, int, dict[str, Any]]],
     cancel_event: threading.Event,
-) -> Iterator[tuple[Any, int]]:
+) -> Iterator[tuple[Any, int, dict[str, Any]]]:
     """Adapt FasterQwen Base's timing-bearing stream to bridge PCM tuples."""
 
     close = getattr(stream, "close", None)
@@ -1979,12 +1992,12 @@ def _faster_voice_clone_stream(
                 raise QwenEngineError(
                     "FasterQwen Base streaming yielded an invalid chunk"
                 )
-            audio, sample_rate, _timing = item
+            audio, sample_rate, timing = item
             if not isinstance(sample_rate, int) or sample_rate <= 0:
                 raise QwenEngineError(
                     "FasterQwen Base streaming yielded an invalid sample rate"
                 )
-            yield audio, sample_rate
+            yield audio, sample_rate, dict(timing)
     finally:
         if callable(close):
             close()
@@ -2233,6 +2246,7 @@ def _first_chunk_timing_fields(
     for key in (
         "text_token_count",
         "instruction_token_count",
+        "prefill_batch_size",
         "prefill_sequence_length",
         "talker_prefill_length",
         "profile_schema_version",
@@ -2280,11 +2294,15 @@ def _first_chunk_timing_fields(
         "profile_request_role",
         "prefill_backend_requested",
         "prefill_backend_used",
+        "voice_clone_prompt_mode",
+        "voice_clone_prompt_source",
         "prefill_compile_error",
         "prefill_compile_compat_mode",
         "prefill_compile_cache_kind",
         "prefill_shape_policy",
         "chunk_schedule_decision",
+        "prefill_mask_decision_source",
+        "prefill_attn_implementation",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -2307,6 +2325,8 @@ def _first_chunk_timing_fields(
         "prefill_dynamo_counter_available",
         "generation_state_mask_cache_hit",
         "generation_state_attention_mask_all_valid",
+        "prefill_attention_mask_all_valid",
+        "prefill_has_sliding_window",
         "is_final",
         "stream_next_gpu_ready",
     ):
@@ -2329,6 +2349,7 @@ def _first_chunk_timing_fields(
     for key in (
         "tokenize_wall_ms",
         "build_talker_inputs_wall_ms",
+        "voice_clone_prompt_resolution_wall_ms",
         "prefill_total_gpu_ms",
         "talker_forward_launch_wall_ms",
         "talker_forward_gpu_ms",
