@@ -80,6 +80,8 @@ param(
 
     [switch]$PredictorStaticOutput,
 
+    [switch]$CompileDecodeGraphs,
+
     [switch]$CodecRightPaddedDecode,
 
     [ValidateRange(1, 80)]
@@ -281,7 +283,7 @@ $environmentNames = @(
     'QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP',
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE',
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE',
-    'QTB_FASTER_PREDICTOR_STATIC_OUTPUT'
+    'QTB_FASTER_PREDICTOR_STATIC_OUTPUT', 'QTB_FASTER_COMPILE_DECODE_GRAPHS'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -320,6 +322,7 @@ function Set-FrozenCEnvironment {
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = if ($CodecRightPaddedCudaGraph) { '1' } else { '0' }
     $env:QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP = if ($BaseReferenceContextBootstrap) { '1' } else { '0' }
     $env:QTB_FASTER_PREDICTOR_STATIC_OUTPUT = if ($PredictorStaticOutput) { '1' } else { '0' }
+    $env:QTB_FASTER_COMPILE_DECODE_GRAPHS = if ($CompileDecodeGraphs) { '1' } else { '0' }
     # A prior compile experiment in the same shell must not affect this graph-only run.
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE = '0'
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE = ''
@@ -790,6 +793,7 @@ try {
             diagnostic_profile_prefill = [bool]$ProfilePrefill
             diagnostic_generation_trace = [bool]$CollectGenerationTrace
             predictor_static_output = [bool]$PredictorStaticOutput
+            compile_decode_graphs = [bool]$CompileDecodeGraphs
             codec_right_padded_decode = [bool]$CodecRightPaddedDecode
             codec_right_padded_decode_window_frames = if ($CodecRightPaddedDecode) {
                 $CodecRightPaddedWindowFrames

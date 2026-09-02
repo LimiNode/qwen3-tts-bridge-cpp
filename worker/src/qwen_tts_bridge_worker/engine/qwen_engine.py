@@ -2330,6 +2330,7 @@ def _first_chunk_timing_fields(
         "prefill_has_sliding_window",
         "is_final",
         "stream_next_gpu_ready",
+        "decode_backbone_compile_enabled",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):

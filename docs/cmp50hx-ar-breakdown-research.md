@@ -81,3 +81,19 @@ The current evidence therefore favors optimizing the existing TalkerGraph and
 its input preparation, or compiling only the tiny decode backbones before graph
 capture. Both should remain opt-in experiments with the same codec-token,
 natural-EOS, PCM-parity, and starvation gates.
+
+## Tiny decode compile A/B (rejected)
+
+An opt-in `-CompileDecodeGraphs` path compiled the Predictor and Talker decode
+backbones with Inductor before the existing CUDA Graph capture. Inductor's own
+CUDAGraph Trees had to be disabled because nested replay is forbidden during
+our capture.
+
+The path did reduce idle CMP latency: in a control/compiled pair, AR fell from
+`519.6 ms` to `398.7 ms` and first PCM from `1028.7 ms` to `913.3 ms`. However,
+the fixed-seed parity gate failed: eager generated `46` codec frames with hash
+`772b4e1c...`, while compiled generated `39` frames with hash `2c3d7d2f...`.
+Both runs reported natural EOS and starvation proxy `0`, but different codec
+tokens are not acceptable for this release path. The switch remains diagnostic
+only and must not be enabled in a production profile until numerical parity is
+solved and independently revalidated.
