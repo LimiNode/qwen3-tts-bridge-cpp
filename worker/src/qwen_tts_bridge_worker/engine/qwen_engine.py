@@ -2303,6 +2303,7 @@ def _first_chunk_timing_fields(
         "chunk_schedule_decision",
         "prefill_mask_decision_source",
         "prefill_attn_implementation",
+        "predictor_output_mode",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -2338,6 +2339,7 @@ def _first_chunk_timing_fields(
         fields["prefill_compile_compat_patched_modules"] = dict(value)
     for key in (
         "selected_chunk_schedule",
+        "ar_frame_timings",
         "prefill_shape_talker_input_embeds",
         "prefill_shape_attention_mask",
         "prefill_shape_trailing_text_hiddens",

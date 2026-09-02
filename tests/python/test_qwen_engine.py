@@ -376,6 +376,15 @@ class _FasterStreamingModel:
                         "prefill_shape_policy": "compiled_allowlist",
                         "prefill_shape_allowlist_hit": True,
                         "prefill_compile_on_miss": False,
+                        "ar_frame_timings": [
+                            {
+                                "frame_index": 0,
+                                "host_wall_ms": 71.0,
+                                "gpu_total_ms": 63.0,
+                                "ar_predictor_graph_gpu_ms": 27.0,
+                                "ar_talker_graph_replay_gpu_ms": 31.0,
+                            }
+                        ],
                     },
                 )
 
@@ -1249,6 +1258,10 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(1, metrics["chunk_schedule_index"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])
         self.assertIn("codec_wrapper_residual_ms", metrics)
+        self.assertEqual(
+            31.0,
+            metrics["ar_frame_timings"][0]["ar_talker_graph_replay_gpu_ms"],
+        )
 
     def test_faster_custom_voice_request_sampling_overrides_profile(self) -> None:
         fake_model = _FasterStreamingModel(
