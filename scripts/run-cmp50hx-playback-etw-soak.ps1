@@ -79,6 +79,8 @@ param(
 
     [switch]$CodecRightPaddedCudaGraph,
 
+    [switch]$BaseReferenceContextBootstrap,
+
     [ValidateSet('Normal', 'AboveNormal')]
     [string]$TtsCpuPriority = 'Normal',
 
@@ -113,6 +115,9 @@ if ($PcmCaptureFile -and -not $SkipEtwFollowup) {
 }
 if ($CodecRightPaddedCudaGraph -and -not $CodecRightPaddedDecode) {
     throw '-CodecRightPaddedCudaGraph requires -CodecRightPaddedDecode.'
+}
+if ($BaseReferenceContextBootstrap -and -not $CodecRightPaddedDecode) {
+    throw '-BaseReferenceContextBootstrap requires -CodecRightPaddedDecode.'
 }
 $largestEmitChunk = $EmitEveryFrames
 if ($EmitChunkSchedule.Count -gt 0) {
@@ -263,6 +268,7 @@ $environmentNames = @(
     'QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES',
     'QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES',
     'QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH',
+    'QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP',
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE',
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE'
 )
@@ -301,6 +307,7 @@ function Set-FrozenCEnvironment {
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES = "$(
         $CodecRightPaddedHistoryFrames + $EmitEveryFrames)"
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = if ($CodecRightPaddedCudaGraph) { '1' } else { '0' }
+    $env:QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP = if ($BaseReferenceContextBootstrap) { '1' } else { '0' }
     # A prior compile experiment in the same shell must not affect this graph-only run.
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE = '0'
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE = ''
@@ -772,6 +779,7 @@ try {
                 $null
             }
             codec_right_padded_cuda_graph = [bool]$CodecRightPaddedCudaGraph
+            base_reference_context_bootstrap = [bool]$BaseReferenceContextBootstrap
             pcm_capture_enabled = ($null -ne $pcmCapture)
             tts_cpu_priority = $TtsCpuPriority
             managed_process_launcher = [bool]$UseManagedProcessLauncher
