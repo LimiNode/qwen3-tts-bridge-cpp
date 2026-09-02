@@ -35,6 +35,14 @@ class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
         self.assertIn("[int[]]$EmitChunkSchedule = @()", launcher)
         self.assertIn("'--emit-chunk-schedule'", launcher)
         self.assertIn("the largest configured emit chunk", launcher)
+        self.assertRegex(
+            launcher,
+            re.compile(
+                r"\$env:QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES "
+                r'= "\$\(\s*\$CodecRightPaddedHistoryFrames '
+                r"\+ \$largestEmitChunk\)\""
+            ),
+        )
         self.assertIn("$pcmCaptureDirectory = Split-Path -Parent $pcmCapture", launcher)
         self.assertIn(
             "New-Item -ItemType Directory -Path $pcmCaptureDirectory -Force",
