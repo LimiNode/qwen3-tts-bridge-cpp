@@ -58,3 +58,26 @@ The measurements support the following order:
 
 W33, compiled prefill, and production cadence were not changed by this branch.
 Raw run directories remain under `tmp/` and are intentionally unversioned.
+
+## FirstE8Graph capability probe
+
+Before attempting a `BaseFirstChunkGraph237E8` implementation, a minimal CUDA
+probe tested whether PyTorch permits replaying an already-captured graph while
+an outer `torch.cuda.graph(...)` capture is active. On the packaged runtime
+(PyTorch `2.10.0+cu128`, NVIDIA CMP 50HX), the probe failed with:
+
+```text
+RuntimeError: Cannot prepare for replay during capturing stage.
+```
+
+This rules out composing the existing `PredictorGraph` and `TalkerGraph` by
+simply wrapping their `replay()` calls in a new outer graph. A true FirstE8
+prototype would have to duplicate/unroll both graph bodies, sampling, cache
+updates, EOS handling, and cancellation inside one capture. That is a separate
+high-risk implementation, not a scheduling-only change, and was deliberately
+not attempted in this research pass.
+
+The current evidence therefore favors optimizing the existing TalkerGraph and
+its input preparation, or compiling only the tiny decode backbones before graph
+capture. Both should remain opt-in experiments with the same codec-token,
+natural-EOS, PCM-parity, and starvation gates.
