@@ -7,3 +7,6 @@
 [submodule "external/cpp/nlohmann-json"]
 	path = external/cpp/nlohmann-json
 	url = https://github.com/nlohmann/json.git
+[submodule "external/python/faster-qwen3-tts"]
+	path = external/python/faster-qwen3-tts
+	url = https://github.com/LimiNode/faster-qwen3-tts.git

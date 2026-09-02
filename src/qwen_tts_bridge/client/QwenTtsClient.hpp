@@ -20,18 +20,18 @@ namespace qwen_tts_bridge {
 /// \brief Runtime options for the public async client facade.
 struct QwenTtsClientOptions {
     /// \brief Options passed to the underlying worker session.
-    WorkerSessionOptions session;
+    WorkerSessionOptions session; ///< Options passed to the underlying worker session.
 
     /// \brief Maximum outbound control commands waiting for the writer thread.
-    std::size_t max_outbound_commands = 4096u;
+    std::size_t max_outbound_commands = 4096u; ///< Bound for queued outbound commands.
 
     /// \brief Maximum dynamic payload bytes waiting in the outbound queue.
-    std::size_t max_outbound_command_bytes = 16u * 1024u * 1024u;
+    std::size_t max_outbound_command_bytes = 16u * 1024u * 1024u; ///< Bound for queued outbound payload bytes.
 
     /// \brief Optional diagnostic hook for exceptions thrown by user callbacks.
     ///
     /// Exceptions thrown by this handler are ignored.
-    std::function<void(std::exception_ptr)> on_callback_exception;
+    std::function<void(std::exception_ptr)> on_callback_exception; ///< Optional callback-exception diagnostic hook.
 };
 
 /// \class QwenTtsClient
@@ -99,6 +99,11 @@ public:
     /// \brief Returns whether the client is running and ready for requests.
     bool is_running() const;
 
+    /// \brief Returns the worker readiness payload after a successful start.
+    /// \param ready Output readiness data, including advertised capabilities.
+    /// \return True when the worker is running and has sent ready.
+    bool ready_message(ReadyMessage& ready) const;
+
     /// \brief Stops the client, worker session, and internal threads.
     ///
     /// This method is idempotent. It may block while the worker stops and
@@ -134,7 +139,7 @@ private:
         const WorkerSessionEvent& event,
         const std::string& category,
         const std::string& code);
-    void complete_request(RequestId request_id);
+    void complete_request(RequestId request_id, const CompletedMessage& completed);
     void cancel_request_locally(RequestId request_id);
     void fail_request(RequestId request_id, TtsError error);
     void fail_all_requests(TtsError error);

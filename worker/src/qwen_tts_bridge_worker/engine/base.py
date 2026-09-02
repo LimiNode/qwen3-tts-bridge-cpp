@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Protocol
 
 from qwen_tts_bridge_worker.engine.types import (
@@ -24,7 +24,7 @@ class TtsEngine(Protocol):
         """Load model resources needed before the worker can become ready."""
         ...
 
-    def warmup(self) -> None:
+    def warmup(self) -> Mapping[str, object] | None:
         """Run optional warmup before the worker sends ready."""
         ...
 

@@ -2,6 +2,7 @@ import contextlib
 import io
 import math
 import unittest
+from typing import Any
 
 from qwen_tts_bridge_worker.cli import (
     build_engine_config,
@@ -41,12 +42,53 @@ class EngineFactoryTests(unittest.TestCase):
                 "qwen",
                 "--model-path",
                 "models/qwen",
+                "--runtime-backend",
+                "faster",
                 "--device",
                 "cuda:0",
                 "--dtype",
                 "bfloat16",
                 "--attn-implementation",
-                "flash_attention_2",
+                "sdpa",
+                "--max-seq-len",
+                "1024",
+                "--emit-every-frames",
+                "4",
+                "--emit-chunk-schedule",
+                "6,8,12",
+                "--decode-window-frames",
+                "96",
+                "--overlap-samples",
+                "32",
+                "--enable-streaming-optimizations",
+                "--no-cuda-graphs",
+                "--compile-mode",
+                "default",
+                "--use-fast-codebook",
+                "--no-compile-talker",
+                "--matmul-precision",
+                "high",
+                "--profile-prefill",
+                "--profile-nvtx",
+                "--prefill-backend",
+                "compile_reduce_overhead",
+                "--prefill-compile-compat-mode",
+                "strict_bf16_sdpa_v1",
+                "--prefill-compile-lengths",
+                "16,21,24",
+                "--no-prefill-compile-on-miss",
+                "--prefill-unknown-shape-policy",
+                "error",
+                "--no-sample",
+                "--warmup-synthesis",
+                "--warmup-text",
+                "Prime the engine.",
+                "--warmup-language",
+                "English",
+                "--warmup-speaker",
+                "ryan",
+                "--warmup-instruction",
+                "Speak neutrally.",
             ]
         )
 
@@ -55,9 +97,156 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertIsInstance(config, QwenEngineConfig)
         assert isinstance(config, QwenEngineConfig)
         self.assertEqual("models/qwen", config.model_path)
+        self.assertEqual("faster", config.runtime_backend)
         self.assertEqual("cuda:0", config.device)
         self.assertEqual("bfloat16", config.dtype)
-        self.assertEqual("flash_attention_2", config.attn_implementation)
+        self.assertEqual("sdpa", config.attn_implementation)
+        self.assertEqual(1024, config.max_seq_len)
+        self.assertEqual(4, config.emit_every_frames)
+        self.assertEqual((6, 8, 12), config.emit_chunk_schedule)
+        self.assertEqual(96, config.decode_window_frames)
+        self.assertEqual(32, config.overlap_samples)
+        self.assertTrue(config.enable_streaming_optimizations)
+        self.assertTrue(config.use_compile)
+        self.assertFalse(config.use_cuda_graphs)
+        self.assertEqual("default", config.compile_mode)
+        self.assertTrue(config.use_fast_codebook)
+        self.assertTrue(config.compile_codebook_predictor)
+        self.assertFalse(config.compile_talker)
+        self.assertEqual("high", config.matmul_precision)
+        self.assertTrue(config.profile_prefill)
+        self.assertTrue(config.profile_nvtx)
+        self.assertEqual("compile_reduce_overhead", config.prefill_backend)
+        self.assertEqual(
+            "strict_bf16_sdpa_v1",
+            config.prefill_compile_compat_mode,
+        )
+        self.assertEqual((16, 21, 24), config.prefill_compile_lengths)
+        self.assertFalse(config.prefill_compile_on_miss)
+
+        self.assertEqual("error", config.prefill_unknown_shape_policy)
+        self.assertEqual("diagnostic_dynamic", config.prefill_compile_policy)
+        self.assertEqual("", config.prefill_allowlist_warmup_manifest)
+        self.assertEqual(3, config.prefill_allowlist_warmup_repeats)
+        self.assertFalse(config.prefill_require_precompiled)
+        self.assertFalse(config.do_sample)
+        self.assertTrue(config.warmup_synthesis_enabled)
+        self.assertEqual("Prime the engine.", config.warmup_text)
+        self.assertEqual("English", config.warmup_language)
+        self.assertEqual("ryan", config.warmup_speaker)
+        self.assertEqual("Speak neutrally.", config.warmup_instruction)
+
+    def test_qwen_subcommand_builds_upstream_fp32_code_predictor_config(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--runtime-backend",
+                "upstream",
+                "--code-predictor-compute-dtype",
+                "float32",
+            ]
+        )
+
+        config = build_engine_config(args)
+
+        self.assertIsInstance(config, QwenEngineConfig)
+        assert isinstance(config, QwenEngineConfig)
+        self.assertEqual("float32", config.code_predictor_compute_dtype)
+
+    def test_qwen_config_rejects_fp32_code_predictor_for_faster_backend(self) -> None:
+        with self.assertRaises(ValueError):
+            QwenEngineConfig(
+                model_path="models/qwen",
+                runtime_backend="faster",
+                code_predictor_compute_dtype="float32",
+            )
+
+    def test_qwen_config_defaults_to_model_code_predictor_dtype(self) -> None:
+        config = QwenEngineConfig(model_path="models/qwen")
+
+        self.assertEqual("model", config.code_predictor_compute_dtype)
+
+    def test_qwen_config_rejects_mlp_fp32_code_predictor_for_faster_backend(
+        self,
+    ) -> None:
+        with self.assertRaises(ValueError):
+            QwenEngineConfig(
+                model_path="models/qwen",
+                runtime_backend="faster",
+                code_predictor_compute_dtype="mlp_float32",
+            )
+
+    def test_qwen_subcommand_builds_upstream_mlp_fp32_code_predictor_config(
+        self,
+    ) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--code-predictor-compute-dtype",
+                "mlp_float32",
+            ]
+        )
+
+        config = build_engine_config(args)
+
+        self.assertIsInstance(config, QwenEngineConfig)
+        assert isinstance(config, QwenEngineConfig)
+        self.assertEqual("mlp_float32", config.code_predictor_compute_dtype)
+
+    def test_qwen_subcommand_builds_exact_allowlist_config(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--runtime-backend",
+                "faster",
+                "--dtype",
+                "bfloat16",
+                "--attn-implementation",
+                "sdpa",
+                "--prefill-backend",
+                "compile_reduce_overhead",
+                "--prefill-compile-compat-mode",
+                "strict_bf16_sdpa_v1",
+                "--prefill-compile-lengths",
+                "16,21",
+                "--no-prefill-compile-on-miss",
+                "--prefill-compile-policy",
+                "exact_allowlist",
+                "--prefill-allowlist-warmup-manifest",
+                "manifest.json",
+                "--prefill-allowlist-warmup-repeats",
+                "4",
+                "--prefill-require-precompiled",
+                "--prefill-first-chunk-warmup",
+                "--prefill-first-chunk-warmup-length",
+                "16",
+                "--prefill-generation-prime",
+                "--collect-generation-trace",
+                "--max-audio-seconds-per-utterance",
+                "60",
+            ]
+        )
+
+        config = build_engine_config(args)
+
+        self.assertIsInstance(config, QwenEngineConfig)
+        assert isinstance(config, QwenEngineConfig)
+        self.assertEqual("exact_allowlist", config.prefill_compile_policy)
+        self.assertEqual("manifest.json", config.prefill_allowlist_warmup_manifest)
+        self.assertEqual(4, config.prefill_allowlist_warmup_repeats)
+        self.assertTrue(config.prefill_require_precompiled)
+        self.assertTrue(config.prefill_first_chunk_warmup_enabled)
+        self.assertEqual(16, config.prefill_first_chunk_warmup_length)
+        self.assertTrue(config.prefill_generation_prime_enabled)
 
     def test_qwen_subcommand_requires_model_path(self) -> None:
         parser = build_parser()
@@ -122,6 +311,38 @@ class EngineFactoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "output-queue-size"):
             build_worker_config(args)
 
+    def test_auto_startup_mode_uses_main_for_mock(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["mock"])
+
+        config = build_worker_config(args)
+
+        self.assertEqual("main", config.engine_startup_mode)
+
+    def test_auto_startup_mode_uses_engine_warmup_for_qwen(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(["qwen", "--model-path", "models/qwen"])
+
+        config = build_worker_config(args)
+
+        self.assertEqual("engine_warmup", config.engine_startup_mode)
+
+    def test_explicit_qwen_startup_mode_is_kept_as_rollback(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--engine-startup-mode",
+                "main",
+            ]
+        )
+
+        config = build_worker_config(args)
+
+        self.assertEqual("main", config.engine_startup_mode)
+
     def test_create_mock_engine_from_config(self) -> None:
         config = MockEngineConfig(
             chunk_count=2,
@@ -172,14 +393,241 @@ class EngineFactoryTests(unittest.TestCase):
             WorkerConfig(engine=object())  # type: ignore[arg-type]
 
     def test_qwen_config_rejects_empty_device_and_dtype(self) -> None:
-        for qwen_config in (
+        qwen_configs: tuple[dict[str, Any], ...] = (
             {"model_path": ""},
+            {"model_path": "models/qwen", "runtime_backend": "bad"},
             {"model_path": "models/qwen", "device": ""},
             {"model_path": "models/qwen", "dtype": ""},
-        ):
+            {"model_path": "models/qwen", "emit_every_frames": 0},
+            {"model_path": "models/qwen", "emit_chunk_schedule": (0,)},
+            {"model_path": "models/qwen", "emit_chunk_schedule": (65,)},
+            {
+                "model_path": "models/qwen",
+                "emit_chunk_schedule": (6, 8, 12),
+            },
+            {"model_path": "models/qwen", "decode_window_frames": 0},
+            {"model_path": "models/qwen", "max_seq_len": 0},
+            {"model_path": "models/qwen", "overlap_samples": -1},
+            {"model_path": "models/qwen", "compile_mode": ""},
+            {"model_path": "models/qwen", "matmul_precision": "fastest"},
+            {
+                "model_path": "models/qwen",
+                "prefill_compile_lengths": (16, 16),
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_compile_lengths": (0,),
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_unknown_shape_policy": "continue",
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_compile_policy": "anything",
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_allowlist_warmup_repeats": 2,
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_allowlist_max_entries": 0,
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_allowlist_max_abs_threshold": -1.0,
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_first_chunk_warmup_enabled": True,
+            },
+            {
+                "model_path": "models/qwen",
+                "prefill_first_chunk_warmup_length": 16,
+            },
+            {
+                "model_path": "models/qwen",
+                "warmup_synthesis_enabled": True,
+                "warmup_text": "",
+            },
+            {"model_path": "models/qwen", "warmup_language": ""},
+        )
+        for qwen_config in qwen_configs:
             with self.subTest(qwen_config=qwen_config):
                 with self.assertRaises(ValueError):
                     QwenEngineConfig(**qwen_config)
+
+    def test_qwen_config_rejects_invalid_strict_prefill_compat_contract(self) -> None:
+        valid: dict[str, Any] = {
+            "model_path": "models/qwen",
+            "runtime_backend": "faster",
+            "dtype": "bfloat16",
+            "attn_implementation": "sdpa",
+            "prefill_backend": "compile_reduce_overhead",
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "warmup_synthesis_enabled": True,
+        }
+        invalid_updates: tuple[dict[str, Any], ...] = (
+            {"runtime_backend": "upstream"},
+            {"dtype": "float16"},
+            {"attn_implementation": "flash_attention_2"},
+            {"prefill_backend": "eager"},
+            {"prefill_backend": "compile_backend_eager"},
+            {"warmup_synthesis_enabled": False},
+        )
+
+        for update in invalid_updates:
+            qwen_config = dict(valid)
+            qwen_config.update(update)
+            with self.subTest(update=update):
+                with self.assertRaises(ValueError):
+                    QwenEngineConfig(**qwen_config)
+
+        QwenEngineConfig(**valid)
+
+    def test_qwen_config_allows_first_chunk_warmup_for_exact_allowlist(self) -> None:
+        QwenEngineConfig(
+            model_path="models/qwen",
+            runtime_backend="faster",
+            dtype="bfloat16",
+            attn_implementation="sdpa",
+            prefill_backend="compile_reduce_overhead",
+            prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+            prefill_compile_lengths=(16,),
+            prefill_compile_on_miss=False,
+            prefill_unknown_shape_policy="eager",
+            prefill_compile_policy="exact_allowlist",
+            prefill_allowlist_warmup_manifest="manifest.json",
+            prefill_require_precompiled=True,
+            prefill_first_chunk_warmup_enabled=True,
+            prefill_first_chunk_warmup_length=16,
+        )
+
+    def test_qwen_config_rejects_generation_prime_without_trace_or_safety_limit(
+        self,
+    ) -> None:
+        valid: dict[str, Any] = {
+            "model_path": "models/qwen",
+            "runtime_backend": "faster",
+            "dtype": "bfloat16",
+            "attn_implementation": "sdpa",
+            "max_audio_seconds_per_utterance": 60.0,
+            "prefill_backend": "compile_reduce_overhead",
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_lengths": (16,),
+            "prefill_compile_on_miss": False,
+            "prefill_unknown_shape_policy": "eager",
+            "prefill_compile_policy": "exact_allowlist",
+            "prefill_allowlist_warmup_manifest": "manifest.json",
+            "prefill_require_precompiled": True,
+            "prefill_first_chunk_warmup_enabled": True,
+            "prefill_first_chunk_warmup_length": 16,
+            "prefill_generation_prime_enabled": True,
+            "collect_generation_trace": True,
+        }
+        QwenEngineConfig(**valid)
+
+        for update in (
+            {"collect_generation_trace": False},
+            {"max_audio_seconds_per_utterance": None},
+        ):
+            with self.subTest(update=update):
+                invalid = dict(valid)
+                invalid.update(update)
+                with self.assertRaises(ValueError):
+                    QwenEngineConfig(**invalid)
+
+    def test_qwen_config_rejects_first_chunk_and_full_synthesis_warmup(self) -> None:
+        with self.assertRaises(ValueError):
+            QwenEngineConfig(
+                model_path="models/qwen",
+                runtime_backend="faster",
+                dtype="bfloat16",
+                attn_implementation="sdpa",
+                prefill_backend="compile_reduce_overhead",
+                prefill_compile_compat_mode="strict_bf16_sdpa_v1",
+                prefill_compile_lengths=(16,),
+                prefill_compile_on_miss=False,
+                prefill_unknown_shape_policy="eager",
+                prefill_compile_policy="exact_allowlist",
+                prefill_allowlist_warmup_manifest="manifest.json",
+                prefill_require_precompiled=True,
+                prefill_first_chunk_warmup_enabled=True,
+                prefill_first_chunk_warmup_length=16,
+                warmup_synthesis_enabled=True,
+            )
+
+    def test_qwen_config_rejects_invalid_exact_allowlist_contract(self) -> None:
+        valid: dict[str, Any] = {
+            "model_path": "models/qwen",
+            "runtime_backend": "faster",
+            "dtype": "bfloat16",
+            "attn_implementation": "sdpa",
+            "prefill_backend": "compile_reduce_overhead",
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_lengths": (16, 21),
+            "prefill_compile_on_miss": False,
+            "prefill_unknown_shape_policy": "eager",
+            "prefill_compile_policy": "exact_allowlist",
+            "prefill_allowlist_warmup_manifest": "manifest.json",
+            "prefill_require_precompiled": True,
+        }
+        invalid_updates: tuple[dict[str, Any], ...] = (
+            {"runtime_backend": "upstream"},
+            {"prefill_compile_compat_mode": "none"},
+            {"prefill_backend": "eager"},
+            {"prefill_compile_lengths": ()},
+            {"prefill_compile_lengths": (1, 2, 3, 4, 5, 6, 7)},
+            {"prefill_compile_on_miss": True},
+            {"prefill_unknown_shape_policy": "error"},
+            {"prefill_allowlist_warmup_manifest": ""},
+            {"prefill_require_precompiled": False},
+            {"prefill_allowlist_max_abs_threshold": 1.0e-2},
+        )
+
+        for update in invalid_updates:
+            qwen_config = dict(valid)
+            qwen_config.update(update)
+            with self.subTest(update=update):
+                with self.assertRaises(ValueError):
+                    QwenEngineConfig(**qwen_config)
+
+        QwenEngineConfig(**valid)
+
+    def test_qwen_config_rejects_invalid_route_aware_schedule_contract(self) -> None:
+        valid: dict[str, Any] = {
+            "model_path": "models/qwen",
+            "runtime_backend": "faster",
+            "dtype": "bfloat16",
+            "attn_implementation": "sdpa",
+            "prefill_backend": "compile_reduce_overhead",
+            "prefill_compile_compat_mode": "strict_bf16_sdpa_v1",
+            "prefill_compile_lengths": (32,),
+            "prefill_compile_on_miss": False,
+            "prefill_unknown_shape_policy": "eager",
+            "prefill_compile_policy": "exact_allowlist",
+            "prefill_allowlist_warmup_manifest": "manifest.json",
+            "prefill_require_precompiled": True,
+            "compiled_emit_chunk_schedule": (8, 8, 12),
+            "eager_emit_chunk_schedule": (8,),
+        }
+        invalid_updates: tuple[dict[str, Any], ...] = (
+            {"emit_chunk_schedule": (8,)},
+            {"prefill_compile_policy": "diagnostic_dynamic"},
+            {"prefill_unknown_shape_policy": "error"},
+            {"prefill_compile_on_miss": True},
+            {"prefill_require_precompiled": False},
+        )
+
+        for update in invalid_updates:
+            qwen_config = dict(valid)
+            qwen_config.update(update)
+            with self.subTest(update=update):
+                with self.assertRaises(ValueError):
+                    QwenEngineConfig(**qwen_config)
+
+        QwenEngineConfig(**valid)
 
     def test_reject_invalid_mock_delay(self) -> None:
         for value in (-1.0, math.inf, math.nan):

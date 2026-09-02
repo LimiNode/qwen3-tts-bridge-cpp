@@ -28,6 +28,25 @@ Json control_message_to_json(const ControlMessage& message) {
                 if (!value.speaker.empty()) {
                     out["speaker"] = value.speaker;
                 }
+                if (!value.voice_id.empty()) {
+                    out["voice_id"] = value.voice_id;
+                }
+                if (!value.reference_audio_path.empty()) {
+                    out["reference_audio_path"] = value.reference_audio_path;
+                }
+                if (!value.reference_text.empty()) {
+                    out["reference_text"] = value.reference_text;
+                }
+                if (value.x_vector_only) {
+                    out["x_vector_only"] = true;
+                }
+                if (value.has_seed) {
+                    out["seed"] = value.seed;
+                }
+                const Json sampling = synthesis_sampling_to_json(value.sampling);
+                if (!sampling.empty()) {
+                    out["sampling"] = sampling;
+                }
                 return out;
             }
             else if constexpr (std::is_same_v<Message, CancelMessage>) {
@@ -56,6 +75,9 @@ Json control_message_to_json(const ControlMessage& message) {
                 if (value.has_warmed_up) {
                     out["warmed_up"] = value.warmed_up;
                 }
+                if (!value.voice_ids.empty()) {
+                    out["voice_ids"] = value.voice_ids;
+                }
                 return out;
             }
             else if constexpr (std::is_same_v<Message, QueuedMessage>) {
@@ -72,7 +94,23 @@ Json control_message_to_json(const ControlMessage& message) {
                 };
             }
             else if constexpr (std::is_same_v<Message, CompletedMessage>) {
-                return Json{{kMessageType, "completed"}};
+                Json out = {{kMessageType, "completed"}};
+                if (value.has_execution_outcome) {
+                    out["execution_outcome"] = value.execution_outcome;
+                }
+                if (value.has_generation_trace) {
+                    out["generation_trace"] = {
+                        {"termination_reason", value.generation_trace.termination_reason},
+                        {"hit_eos", value.generation_trace.hit_eos},
+                        {"hit_max_seq_len", value.generation_trace.hit_max_seq_len},
+                        {"hit_max_new_tokens", value.generation_trace.hit_max_new_tokens},
+                        {"codec_frame_count", value.generation_trace.codec_frame_count},
+                        {"generated_steps", value.generation_trace.generated_steps},
+                        {"emitted_steps", value.generation_trace.emitted_steps},
+                        {"terminal_step_index", value.generation_trace.terminal_step_index}
+                    };
+                }
+                return out;
             }
             else if constexpr (std::is_same_v<Message, CancelledMessage>) {
                 return Json{{kMessageType, "cancelled"}};

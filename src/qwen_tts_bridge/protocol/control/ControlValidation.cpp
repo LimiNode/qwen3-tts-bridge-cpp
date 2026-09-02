@@ -1,5 +1,6 @@
 #include "ControlCodecInternal.hpp"
 
+#include <cmath>
 #include <type_traits>
 #include <utility>
 
@@ -42,6 +43,37 @@ ControlCodecError validate_audio_format(
     return ControlCodecError::None;
 }
 
+ControlCodecError validate_synthesis_sampling(
+    const SynthesisSamplingOptions& options,
+    std::string& diagnostic) {
+    if (options.temperature.has_value() &&
+        (!std::isfinite(options.temperature.value()) ||
+         options.temperature.value() <= 0.0 ||
+         options.temperature.value() > 2.0)) {
+        diagnostic = "sampling.temperature must be finite and in the interval (0, 2]";
+        return ControlCodecError::InvalidFieldType;
+    }
+    if (options.top_k.has_value() && options.top_k.value() == 0) {
+        diagnostic = "sampling.top_k must be greater than zero";
+        return ControlCodecError::InvalidFieldType;
+    }
+    if (options.top_p.has_value() &&
+        (!std::isfinite(options.top_p.value()) ||
+         options.top_p.value() <= 0.0 ||
+         options.top_p.value() > 1.0)) {
+        diagnostic = "sampling.top_p must be finite and in the interval (0, 1]";
+        return ControlCodecError::InvalidFieldType;
+    }
+    if (options.repetition_penalty.has_value() &&
+        (!std::isfinite(options.repetition_penalty.value()) ||
+         options.repetition_penalty.value() < 1.0 ||
+         options.repetition_penalty.value() > 2.0)) {
+        diagnostic = "sampling.repetition_penalty must be finite and in the interval [1, 2]";
+        return ControlCodecError::InvalidFieldType;
+    }
+    return ControlCodecError::None;
+}
+
 template <typename Message>
 ControlCodecError validate_control_payload(
     const Message& value,
@@ -61,6 +93,21 @@ ControlCodecError validate_control_payload(
     }
     else if constexpr (std::is_same_v<Message, SynthesizeMessage>) {
         if (const auto error = validate_non_empty_string(value.text, "text", diagnostic);
+            error != ControlCodecError::None) {
+            return error;
+        }
+        if (value.reference_audio_path.empty() &&
+            (!value.reference_text.empty() || value.x_vector_only)) {
+            diagnostic = "reference_text and x_vector_only require reference_audio_path";
+            return ControlCodecError::InvalidFieldType;
+        }
+        if (!value.voice_id.empty() &&
+            (!value.reference_audio_path.empty() || !value.reference_text.empty() ||
+             value.x_vector_only)) {
+            diagnostic = "voice_id cannot be combined with direct reference-audio fields";
+            return ControlCodecError::InvalidFieldType;
+        }
+        if (const auto error = validate_synthesis_sampling(value.sampling, diagnostic);
             error != ControlCodecError::None) {
             return error;
         }

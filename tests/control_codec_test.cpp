@@ -99,6 +99,129 @@ void test_decode_synthesize_without_speaker() {
     CHECK(message.speaker.empty());
 }
 
+void test_synthesize_seed_round_trip() {
+    SynthesizeMessage message;
+    message.text = "Seeded synthesis.";
+    message.has_seed = true;
+    message.seed = 4242;
+
+    const auto encoded = encode_control_message(ControlMessage{message});
+    CHECK(encoded);
+    CHECK(string_from_bytes(encoded.payload).find("\"seed\":4242") != std::string::npos);
+
+    const auto decoded = decode_control_message(
+        encoded.payload,
+        ControlMessageDirection::ClientToWorker);
+    CHECK(decoded);
+    const auto& seeded = std::get<SynthesizeMessage>(decoded.message);
+    CHECK(seeded.has_seed);
+    CHECK(seeded.seed == 4242);
+}
+
+void test_synthesize_sampling_round_trip() {
+    SynthesizeMessage message;
+    message.text = "Controlled synthesis.";
+    message.sampling.temperature = 0.4;
+    message.sampling.top_k = 40;
+    message.sampling.top_p = 0.92;
+    message.sampling.repetition_penalty = 1.1;
+    message.sampling.do_sample = true;
+
+    const auto encoded = encode_control_message(ControlMessage{message});
+    CHECK(encoded);
+    const std::string payload = string_from_bytes(encoded.payload);
+    CHECK(payload.find("\"sampling\"") != std::string::npos);
+    CHECK(payload.find("\"temperature\":0.4") != std::string::npos);
+
+    const auto decoded = decode_control_message(
+        encoded.payload,
+        ControlMessageDirection::ClientToWorker);
+    CHECK(decoded);
+    const auto& sampling = std::get<SynthesizeMessage>(decoded.message).sampling;
+    CHECK(sampling.temperature.has_value());
+    CHECK(sampling.temperature.value() == 0.4);
+    CHECK(sampling.top_k == 40);
+    CHECK(sampling.top_p == 0.92);
+    CHECK(sampling.repetition_penalty == 1.1);
+    CHECK(sampling.do_sample == true);
+}
+
+void test_synthesize_voice_clone_round_trip() {
+    SynthesizeMessage message;
+    message.text = "Clone this voice.";
+    message.reference_audio_path = "C:/tmp/reference.wav";
+    message.reference_text = "Reference transcript.";
+    message.x_vector_only = true;
+
+    const auto encoded = encode_control_message(ControlMessage{message});
+    CHECK(encoded);
+    const auto decoded = decode_control_message(
+        encoded.payload,
+        ControlMessageDirection::ClientToWorker);
+    CHECK(decoded);
+    const auto& clone = std::get<SynthesizeMessage>(decoded.message);
+    CHECK(clone.reference_audio_path == "C:/tmp/reference.wav");
+    CHECK(clone.reference_text == "Reference transcript.");
+    CHECK(clone.x_vector_only);
+}
+
+void test_synthesize_voice_profile_round_trip() {
+    SynthesizeMessage message;
+    message.text = "Use a registered voice.";
+    message.voice_id = "kraftwerk_robot_ru";
+
+    const auto encoded = encode_control_message(ControlMessage{message});
+    CHECK(encoded);
+    const auto decoded = decode_control_message(
+        encoded.payload,
+        ControlMessageDirection::ClientToWorker);
+    CHECK(decoded);
+    const auto& profile = std::get<SynthesizeMessage>(decoded.message);
+    CHECK(profile.voice_id == "kraftwerk_robot_ru");
+}
+
+void test_synthesize_rejects_mixed_voice_profile_and_reference() {
+    const auto result = decode_client(
+        "{\"message_type\":\"synthesize\","
+        "\"text\":\"Invalid mixed voice.\","
+        "\"voice_id\":\"robot\","
+        "\"reference_audio_path\":\"reference.wav\"}");
+
+    CHECK(!result);
+    CHECK(result.error == ControlCodecError::InvalidFieldType);
+}
+
+void test_synthesize_rejects_orphaned_voice_clone_fields() {
+    const auto result = decode_client(
+        "{\"message_type\":\"synthesize\","
+        "\"text\":\"Missing reference.\","
+        "\"reference_text\":\"Transcript.\"}");
+
+    CHECK(!result);
+    CHECK(result.error == ControlCodecError::InvalidFieldType);
+}
+
+void test_synthesize_rejects_invalid_sampling() {
+    const auto result = decode_client(
+        "{\"message_type\":\"synthesize\","
+        "\"text\":\"Invalid sampling.\","
+        "\"sampling\":{\"temperature\":0}}");
+
+    CHECK(!result);
+    CHECK(result.error == ControlCodecError::InvalidFieldType);
+}
+
+void test_synthesize_rejects_unknown_sampling_field() {
+    const auto result = decode_client(
+        "{\"message_type\":\"synthesize\","
+        "\"text\":\"Unknown sampling.\","
+        "\"sampling\":{\"temprature\":0.4}}");
+
+    CHECK(!result);
+    CHECK(result.error == ControlCodecError::UnknownField);
+    CHECK(std::string(control_codec_error_code(result.error)) == "unknown_field");
+}
+
 void test_encode_synthesize_omits_unspecified_speaker() {
     SynthesizeMessage message;
     message.text = "No explicit speaker.";
@@ -133,8 +256,13 @@ void test_decode_ready() {
         "\"streaming\":true,"
         "\"cancellation\":true,"
         "\"instructions\":true,"
-        "\"voice_clone\":false"
-        "}}");
+        "\"voice_clone\":false,"
+        "\"voice_clone_streaming\":false,"
+        "\"voice_profiles\":true,"
+        "\"sampling_overrides\":true,"
+        "\"deterministic_seed\":true"
+        "},"
+        "\"voice_ids\":[\"kraftwerk_robot_ru\"]}");
 
     CHECK(result);
     CHECK(control_message_type(result.message) == ControlMessageType::Ready);
@@ -147,6 +275,60 @@ void test_decode_ready() {
     CHECK(ready.capabilities.cancellation);
     CHECK(ready.capabilities.instructions);
     CHECK(!ready.capabilities.voice_clone);
+    CHECK(!ready.capabilities.voice_clone_streaming);
+    CHECK(ready.capabilities.voice_profiles);
+    CHECK(ready.capabilities.sampling_overrides);
+    CHECK(ready.capabilities.deterministic_seed);
+    CHECK(ready.voice_ids.size() == 1);
+    CHECK(ready.voice_ids.front() == "kraftwerk_robot_ru");
+}
+
+void test_decode_completed_generation_trace() {
+    const auto result = decode_worker(
+        "{\"message_type\":\"completed\","
+        "\"execution_outcome\":\"completed\","
+        "\"generation_trace\":{"
+        "\"termination_reason\":\"eos\","
+        "\"hit_eos\":true,"
+        "\"hit_max_seq_len\":false,"
+        "\"hit_max_new_tokens\":false,"
+        "\"codec_frame_count\":8,"
+        "\"generated_steps\":8,"
+        "\"emitted_steps\":8,"
+        "\"terminal_step_index\":8}}"
+    );
+
+    CHECK(result);
+    const auto& completed = std::get<CompletedMessage>(result.message);
+    CHECK(completed.has_execution_outcome);
+    CHECK(completed.execution_outcome == "completed");
+    CHECK(completed.has_generation_trace);
+    CHECK(completed.generation_trace.termination_reason == "eos");
+    CHECK(completed.generation_trace.hit_eos);
+    CHECK(!completed.generation_trace.hit_max_seq_len);
+    CHECK(!completed.generation_trace.hit_max_new_tokens);
+    CHECK(completed.generation_trace.codec_frame_count == 8);
+    CHECK(completed.generation_trace.generated_steps == 8);
+    CHECK(completed.generation_trace.emitted_steps == 8);
+    CHECK(completed.generation_trace.terminal_step_index == 8);
+}
+
+void test_decode_ready_without_optional_sampling_capabilities() {
+    const auto result = decode_worker(
+        "{\"message_type\":\"ready\","
+        "\"worker_version\":\"0.2.0\","
+        "\"session_id\":\"session-legacy\","
+        "\"capabilities\":{"
+        "\"streaming\":true,"
+        "\"cancellation\":true,"
+        "\"instructions\":true,"
+        "\"voice_clone\":false"
+        "}}");
+
+    CHECK(result);
+    const auto& ready = std::get<ReadyMessage>(result.message);
+    CHECK(!ready.capabilities.sampling_overrides);
+    CHECK(!ready.capabilities.deterministic_seed);
 }
 
 void test_encode_ping_round_trip() {
@@ -415,9 +597,19 @@ int main() {
     test_decode_hello();
     test_decode_synthesize_with_instruction_and_output();
     test_decode_synthesize_without_speaker();
+    test_synthesize_seed_round_trip();
+    test_synthesize_sampling_round_trip();
+    test_synthesize_voice_clone_round_trip();
+    test_synthesize_voice_profile_round_trip();
+    test_synthesize_rejects_mixed_voice_profile_and_reference();
+    test_synthesize_rejects_orphaned_voice_clone_fields();
+    test_synthesize_rejects_invalid_sampling();
+    test_synthesize_rejects_unknown_sampling_field();
     test_encode_synthesize_omits_unspecified_speaker();
     test_encode_synthesize_with_explicit_speaker();
     test_decode_ready();
+    test_decode_completed_generation_trace();
+    test_decode_ready_without_optional_sampling_capabilities();
     test_encode_ping_round_trip();
     test_decode_started_audio_format();
     test_decode_error_json();

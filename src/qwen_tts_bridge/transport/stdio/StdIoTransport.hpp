@@ -17,22 +17,22 @@ namespace qwen_tts_bridge {
 /// \brief Process launch options for StdIoTransport.
 struct StdIoTransportOptions {
     /// \brief Process arguments. The first item must be the executable path.
-    std::vector<std::string> arguments;
+    std::vector<std::string> arguments; ///< Executable followed by process arguments.
 
     /// \brief Worker process working directory. Empty means inherit current.
-    std::string working_directory;
+    std::string working_directory; ///< Empty means inherit the current directory.
 
     /// \brief Optional complete process environment.
     ///
     /// Leave empty to inherit the current process environment. When this map
     /// is not empty, it replaces the inherited environment entirely.
-    std::unordered_map<std::string, std::string> environment;
+    std::unordered_map<std::string, std::string> environment; ///< Optional complete process environment.
 
     /// \brief Maximum time to wait for graceful exit before killing process.
-    std::chrono::milliseconds shutdown_timeout{3000};
+    std::chrono::milliseconds shutdown_timeout{3000}; ///< Graceful-exit timeout.
 
     /// \brief Tiny-process stdout/stderr read buffer size.
-    std::size_t read_buffer_size = 64u * 1024u;
+    std::size_t read_buffer_size = 64u * 1024u; ///< stdout/stderr read buffer size.
 
     /// \brief Maximum regular events waiting for transport callback dispatch.
     ///
@@ -40,7 +40,7 @@ struct StdIoTransportOptions {
     /// reports a local resource error and stops the worker process. The
     /// internally generated overflow diagnostic and one final process Exit
     /// event are exempt so failure and termination remain observable.
-    std::size_t max_callback_queue_events = 4096u;
+    std::size_t max_callback_queue_events = 4096u; ///< Bound for queued callbacks.
 
     /// \brief Maximum regular event payload bytes waiting for callback dispatch.
     ///
@@ -48,17 +48,17 @@ struct StdIoTransportOptions {
     /// transport-level safety limit, not the main PCM backpressure mechanism.
     /// The small internally generated overflow diagnostic and final process
     /// Exit event are not counted against this limit.
-    std::size_t max_callback_queue_bytes = 16u * 1024u * 1024u;
+    std::size_t max_callback_queue_bytes = 16u * 1024u * 1024u; ///< Bound for queued callback bytes.
 
     /// \brief Optional diagnostic handler for worker stderr bytes.
-    std::function<void(std::string)> stderr_handler;
+    std::function<void(std::string)> stderr_handler; ///< Optional worker stderr sink.
 
     /// \brief Optional environment values layered over the current process.
     ///
     /// Prefer this for ordinary worker launches that need to set a few
     /// variables while preserving PATH, SystemRoot, TEMP, and similar parent
     /// process values. Ignored when environment is not empty.
-    std::unordered_map<std::string, std::string> environment_overrides;
+    std::unordered_map<std::string, std::string> environment_overrides; ///< Values layered over the parent environment.
 };
 
 /// \class StdIoTransport

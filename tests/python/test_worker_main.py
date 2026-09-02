@@ -30,10 +30,14 @@ class _CapturingServer:
         engine: object,
         worker_version: str,
         output_queue_size: int,
+        engine_startup_mode: str,
+        canary_runtime_provenance: object | None,
     ) -> None:
         self.input_stream = input_stream
         self.output_stream = output_stream
         self.error_stream = error_stream
+        self.engine_startup_mode = engine_startup_mode
+        self.canary_runtime_provenance = canary_runtime_provenance
         self.stdout_during_run: object | None = None
         _CapturingServer.instances.append(self)
 

@@ -515,7 +515,11 @@ std::size_t WorkerSession::control_payload_size(const ControlMessage& message) c
                     value.language.size() +
                     value.speaker.size() +
                     value.instruction.size() +
-                    value.output.sample_format.size();
+                    value.voice_id.size() +
+                    value.reference_audio_path.size() +
+                    value.reference_text.size() +
+                    value.output.sample_format.size() +
+                    (value.has_seed ? 32u : 0u);
             }
             else if constexpr (std::is_same_v<Message, ShutdownMessage>) {
                 return value.mode.size();
