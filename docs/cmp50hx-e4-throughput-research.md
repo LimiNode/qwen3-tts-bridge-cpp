@@ -27,7 +27,6 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | Fused gate/up FP16 GEMM with FP32 tail (opt-in) | ~61.6 ms/frame; 354–357 ms | codec hash matched control (`c2e1c66d…`), natural EOS | rejected: no speed gain |
 
 | Triton FP32 SiLU-times-up elementwise kernel (opt-in) | ~60.2 ms/frame; median ~380 ms for accepted Base/W48 decode | natural EOS, but codec hash changed (`73ebf63c...` vs control); starvation remained (8 later empty-queue observations) | rejected: parity failure and less than 1% gain |
-
 | Async codec-stream prefetch (opt-in) | ~380 ms inter-arrival; no measurable overlap on sealed runtime | codec stream remained valid, but 10 later empty-queue observations | rejected: stream scheduling did not overlap decoder with AR |
 
 The precision-hook A/B was also captured as raw PCM on the same fixed-seed
