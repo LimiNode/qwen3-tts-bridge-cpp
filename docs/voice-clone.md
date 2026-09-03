@@ -50,6 +50,8 @@ registered profiles so preparation stays outside request latency.
 ## CMP 50HX profile
 
 The accepted idle CMP fast-start profile uses the opt-in Base reference-context
-bootstrap, right-padded W48 codec decode, fixed E8 emission, and one playback
-prebuffer chunk. See [CMP Base Startup](cmp50hx-base-profile-startup.md) for the
-measured scope, parity evidence, listening result, and exact launcher command.
+bootstrap, right-padded W33 codec decode, fixed E8 emission, and one playback
+prebuffer chunk. It produced first PCM in about 988 ms with a zero starvation
+proxy in the bounded acceptance run. See [CMP Base Startup](cmp50hx-base-profile-startup.md)
+for the measured scope, parity evidence, listening result, and exact launcher
+command.

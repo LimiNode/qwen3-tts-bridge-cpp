@@ -6,9 +6,14 @@ The supported product path for cloned voices is a registered Base `voice_id`.
 Sending a reference WAV with every request is diagnostic-only and is not part of
 this investigation.
 
-The tested steady-delivery configuration is FasterQwen with right-padded codec
-decode at window `48`, its manual codec CUDA Graph, `emit_every_frames=16`, and
-a two-chunk WaveOut prebuffer.
+The current CMP 50HX low-latency configuration is FasterQwen with the
+reference-context bootstrap, right-padded codec decode at window `33`, its
+manual codec CUDA Graph, `emit_every_frames=8`, and a one-chunk WaveOut
+prebuffer. The fixed `E8 + W33 + prebuffer=1` profile is the accepted baseline:
+first PCM is about `988 ms` and the bounded starvation proxy is `0`.
+
+The older W48/E16 and `8,23` measurements below are retained as historical
+comparators. They are not the selected low-latency profile.
 
 The consolidated production bridge pins FasterQwen commit
 `c2c271340d65cd3e9e6d36d9d75af4b57de510f9`, which is reachable from the

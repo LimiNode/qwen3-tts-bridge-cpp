@@ -1,12 +1,15 @@
 # CMP 50HX Base first-PCM research
 
 Date: 2026-09-02  
-Scope: registered 1.7B Base voice, persistent worker, E8 emission, W48
+Scope: registered 1.7B Base voice, persistent worker, E8 emission, W33
 right-padded decoder with manual CUDA Graph, prebuffer 1, and reference-context
 bootstrap.
 
-This is a diagnostic study. It does not change the accepted release profile
-(W48 remains the production baseline).
+The accepted CMP 50HX low-latency profile is now **E8 + W33 + prebuffer 1**.
+Across the bounded soak documented below it produced first PCM in about
+988 ms with a zero queue-starvation proxy. W48 remains the compatibility and
+audio-reference profile; this decision does not silently change global runtime
+defaults for other hardware.
 
 ## Baseline decomposition
 
@@ -66,9 +69,9 @@ are still required before making W33 an accepted release setting.
 3. The only tested change that materially reduces first PCM is shrinking the
    right-padded codec window to W33 (about 25 ms in these runs), while retaining
    E8 cadence and starvation proxy 0.
-4. Keep W48 as the release default until W33 passes audio review and a longer
-   workload gate. If accepted, expose W33 as an explicit CMP low-latency
-   profile, not as a silent global default.
+4. Keep W48 available as the compatibility/audio-reference profile. Use W33
+   explicitly for the CMP 50HX low-latency profile; do not make it a silent
+   global default for other hardware.
 
 Raw run directories and parity reports are under `tmp/` and intentionally are
 not versioned.
