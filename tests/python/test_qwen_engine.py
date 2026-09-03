@@ -25,6 +25,7 @@ from qwen_tts_bridge_worker.engine import (
 )
 from qwen_tts_bridge_worker.engine.qwen_engine import (
     _create_stall_telemetry,
+    _first_chunk_timing_fields,
     _load_prefill_allowlist_warmup_manifest,
     _prefill_snapshot_max_abs,
     _preserved_rng_state,
@@ -35,6 +36,30 @@ from qwen_tts_bridge_worker.engine.qwen_engine import (
 from qwen_tts_bridge_worker.engine.voice_profiles import VoicePromptPolicy
 
 
+class FirstChunkTimingFieldsTests(unittest.TestCase):
+    def test_forwards_prefix_split_probe_telemetry(self) -> None:
+        fields = _first_chunk_timing_fields(
+            {
+                "prefix_split_probe_enabled": True,
+                "prefix_split_probe_attempted": True,
+                "prefix_split_probe_supported": True,
+                "prefix_split_probe_prefix_length": 86,
+                "prefix_split_probe_error": None,
+                "prefix_split_probe_hidden_max_abs_delta": 0.001,
+                "prefix_split_probe_hidden_mean_abs_delta": 0.0001,
+                "prefix_split_probe_logits_max_abs_delta": 0.01,
+                "prefix_split_probe_logits_allclose": True,
+                "prefix_split_probe_kv_max_abs_delta": 0.002,
+                "prefix_split_probe_kv_allclose": True,
+                "prefix_split_probe_first_token_match": True,
+            },
+            next_wall_ms=1.0,
+            pcm_convert_ms=0.0,
+        )
+        self.assertTrue(fields["prefix_split_probe_enabled"])
+        self.assertEqual(86, fields["prefix_split_probe_prefix_length"])
+        self.assertAlmostEqual(0.001, fields["prefix_split_probe_hidden_max_abs_delta"])
+        self.assertTrue(fields["prefix_split_probe_logits_allclose"])
 class _InnerModel:
     def __init__(self, model_type: str) -> None:
         self.tts_model_type = model_type

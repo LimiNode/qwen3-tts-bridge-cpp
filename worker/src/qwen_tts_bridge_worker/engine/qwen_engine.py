@@ -2276,6 +2276,7 @@ def _first_chunk_timing_fields(
         "prefill_dynamo_unique_graphs_delta",
         "prefill_shape_call_ordinal",
         "prefill_shape_length",
+        "prefix_split_probe_prefix_length",
         "chunk_target_steps",
         "chunk_schedule_index",
         "prefill_cuda_memory_before_allocated_bytes",
@@ -2304,6 +2305,7 @@ def _first_chunk_timing_fields(
         "prefill_mask_decision_source",
         "prefill_attn_implementation",
         "predictor_output_mode",
+        "prefix_split_probe_error",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -2331,6 +2333,12 @@ def _first_chunk_timing_fields(
         "is_final",
         "stream_next_gpu_ready",
         "decode_backbone_compile_enabled",
+        "prefix_split_probe_enabled",
+        "prefix_split_probe_attempted",
+        "prefix_split_probe_supported",
+        "prefix_split_probe_logits_allclose",
+        "prefix_split_probe_kv_allclose",
+        "prefix_split_probe_first_token_match",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
@@ -2415,6 +2423,10 @@ def _first_chunk_timing_fields(
         "ar_state_update_gpu_ms",
         "stream_next_gpu_ms",
         "stream_next_host_residual_ms",
+        "prefix_split_probe_hidden_max_abs_delta",
+        "prefix_split_probe_hidden_mean_abs_delta",
+        "prefix_split_probe_logits_max_abs_delta",
+        "prefix_split_probe_kv_max_abs_delta",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:

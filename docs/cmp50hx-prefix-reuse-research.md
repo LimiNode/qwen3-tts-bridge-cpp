@@ -44,4 +44,25 @@ Do not expose the cache through the release configuration until the split path
 passes natural EOS, cancellation/reset, PCM parity, and persistent-worker
 reuse gates. The current production profile remains unchanged.
 
+## Diagnostic implementation
+
+The split-forward check is now available behind the environment variable
+`QTB_FASTER_PREFIX_SPLIT_PROBE=1` (optional
+`QTB_FASTER_PREFIX_SPLIT_PROBE_LENGTH`, default `86`). It runs after the normal
+full prefill on a fresh dynamic cache, forwards the prefix and suffix through
+`talker.model`, and compares suffix hidden states, codec logits, and every
+available key/value tensor with the untouched full-prefill result. The split
+result is never used for generation.
+
+The first-chunk timing object reports whether the probe was attempted and
+supported, its prefix length, max/mean hidden-state delta, max logits and KV
+deltas, all-close flags, first-token argmax agreement, and any exception text.
+Unsafe profiles (padding, sliding-window attention, unsupported cache layout)
+are reported as skipped or failed rather than changing synthesis behavior.
+
+This remains an experiment. A successful numerical probe is only a prerequisite
+for a real cache-reuse prototype; generated codec-token hash, PCM, EOS,
+cancellation/reset, and persistent-worker tests are still required before any
+production enablement.
+
 Raw hash-bearing runs are under `tmp/` and are intentionally unversioned.
