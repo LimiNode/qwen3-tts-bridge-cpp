@@ -36,6 +36,10 @@ The research FasterQwen branch contains two opt-in controls:
 - `QTB_FASTER_DROP_PREFILL_HIDDEN_STATES=1` (runner:
   `-DropPrefillHiddenStates`) omits retained per-layer prefill hidden states.
 
+The implementation is split across FasterQwen commits `040e999` and
+`fbd751b`; these are research-branch commits and are not a production
+submodule promotion.
+
 Neither control is enabled by a release profile. The default E8 + W33 path
 continues to use the numerically accepted eager/SDPA decode graphs.
 
