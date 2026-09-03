@@ -84,6 +84,11 @@ param(
 
     [switch]$ProfileInputHashes,
 
+    [switch]$PrefixSplitProbe,
+
+    [ValidateRange(1, 2048)]
+    [int]$PrefixSplitProbeLength = 86,
+
     [switch]$CodecRightPaddedDecode,
 
     [ValidateRange(1, 80)]
@@ -286,7 +291,8 @@ $environmentNames = @(
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE',
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE',
     'QTB_FASTER_PREDICTOR_STATIC_OUTPUT', 'QTB_FASTER_COMPILE_DECODE_GRAPHS',
-    'QTB_FASTER_PROFILE_INPUT_HASHES'
+    'QTB_FASTER_PROFILE_INPUT_HASHES', 'QTB_FASTER_PREFIX_SPLIT_PROBE',
+    'QTB_FASTER_PREFIX_SPLIT_PROBE_LENGTH'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -327,6 +333,8 @@ function Set-FrozenCEnvironment {
     $env:QTB_FASTER_PREDICTOR_STATIC_OUTPUT = if ($PredictorStaticOutput) { '1' } else { '0' }
     $env:QTB_FASTER_COMPILE_DECODE_GRAPHS = if ($CompileDecodeGraphs) { '1' } else { '0' }
     $env:QTB_FASTER_PROFILE_INPUT_HASHES = if ($ProfileInputHashes) { '1' } else { '0' }
+    $env:QTB_FASTER_PREFIX_SPLIT_PROBE = if ($PrefixSplitProbe) { '1' } else { '0' }
+    $env:QTB_FASTER_PREFIX_SPLIT_PROBE_LENGTH = "$PrefixSplitProbeLength"
     # A prior compile experiment in the same shell must not affect this graph-only run.
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE = '0'
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE = ''
@@ -799,6 +807,8 @@ try {
             predictor_static_output = [bool]$PredictorStaticOutput
             compile_decode_graphs = [bool]$CompileDecodeGraphs
             profile_input_hashes = [bool]$ProfileInputHashes
+            prefix_split_probe = [bool]$PrefixSplitProbe
+            prefix_split_probe_length = if ($PrefixSplitProbe) { $PrefixSplitProbeLength } else { $null }
             codec_right_padded_decode = [bool]$CodecRightPaddedDecode
             codec_right_padded_decode_window_frames = if ($CodecRightPaddedDecode) {
                 $CodecRightPaddedWindowFrames
