@@ -20,6 +20,7 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | Keep TalkerGraph output as a static view (safe path) | no repeatable improvement isolated | same generation semantics; no 13% gain | retained as a small allocation optimization |
 | `torch.compile` TalkerGraph only (opt-in) | 58.45 ms/frame; 345–348 ms | natural EOS, but codec stream differed (64 steps vs control's 66) | rejected |
 | CMP matmul precision `high` (one run) | ~62.0 ms/frame; 362–365 ms | no throughput or parity advantage | rejected |
+| Hybrid `E4 → E8` (one run) | first PCM ~727 ms; transition ~612 ms | one starvation event at the 320→640 ms chunk boundary | rejected as a prebuffer=1 fix |
 
 The Talker-only compile probe reduced AR time by about 5.8%, but the resulting
 codec-token stream was not parity-equivalent and the producer was still about
@@ -48,4 +49,6 @@ continues to use the numerically accepted eager/SDPA decode graphs.
 The remaining credible path to the 13% target is a numerically controlled
 kernel-level optimization of the Talker and Predictor decode graphs (or a new
 single-capture graph), followed by the full parity and playback gate. Changes
-to sampling, cadence, or prebuffer are not throughput fixes.
+to sampling, cadence, or prebuffer are not throughput fixes. The hybrid cadence
+confirms the boundary: an E4 first chunk can be heard sooner, but the following
+E8 chunk arrives after that 320 ms reserve is exhausted.
