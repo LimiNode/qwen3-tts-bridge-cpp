@@ -26,6 +26,8 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | Disable CMP precision-diagnostic hooks (opt-in) | ~59.7 ms/frame; 351–354 ms | codec hash changed (`3938b445…` vs control); parity failed | rejected |
 | Fused gate/up FP16 GEMM with FP32 tail (opt-in) | ~61.6 ms/frame; 354–357 ms | codec hash matched control (`c2e1c66d…`), natural EOS | rejected: no speed gain |
 
+| Triton FP32 SiLU-times-up elementwise kernel (opt-in) | ~60.2 ms/frame; median ~380 ms for accepted Base/W48 decode | natural EOS, but codec hash changed (`73ebf63c...` vs control); starvation remained (8 later empty-queue observations) | rejected: parity failure and less than 1% gain |
+
 The precision-hook A/B was also captured as raw PCM on the same fixed-seed
 request. The control produced `4160 ms` of audio and the hook-disabled arm
 produced `4000 ms`; their common-prefix SNR was only about `4.0 dB` (maximum
@@ -49,6 +51,13 @@ The research FasterQwen branch contains two opt-in controls:
 - `QTB_FASTER_FORCE_SDPA_EFFICIENT=1` (runner:
   `-ForceSdpaEfficient`) forces PyTorch's efficient SDPA backend during graph
   capture when the sealed runtime provides a compatible kernel.
+- `QTB_FASTER_MLP_TRITON_SILU_MUL=1` (runner: `-TritonMlpSiluMul`) compiles an
+  optional Triton kernel before CUDA-graph capture. It removes the two
+  FP16-to-FP32 staging copies and fuses the FP32
+  `sigmoid(gate) * gate * up` elementwise sequence for predictor layer 2. The
+  isolated CMP microbenchmark improved from roughly `0.265` to `0.060 ms`, but
+  Triton sigmoid rounding changed the autoregressive codec trajectory and did
+  not approach the 13% end-to-end target. Keep this switch diagnostic-only.
 
 The implementation is split across FasterQwen commits `040e999` and
 `fbd751b`, with the later sampling optimization in the follow-up branch;
