@@ -167,9 +167,10 @@ the old RTX-style profile is not a viable continuous-playback mode on CMP
 50HX, and restoring the old FasterQwen commit does not help. It also sharpens
 the latency statement: roughly four and a half seconds is not a hardware
 minimum for *audible onset*--fixed `E8` can start near `1.64 s`--but the tested
-fast start starves systematically. Keep the low-latency profile diagnostic and
-default-off; retain `8,23` plus prebuffer 2 as the continuous candidate until a
-producer-throughput improvement passes the same long-request gate.
+the historical W48 fast-start arm starves systematically. That result does not
+apply to the current W33 profile: the bounded E8/W33 run below has a zero
+starvation proxy. The `8,23` plus prebuffer 2 arm remains a historical
+continuous-playback comparator, not the selected low-latency profile.
 
 ## Reference-context bootstrap experiment
 
@@ -241,15 +242,15 @@ one controlled run it worsened RTF to `1.042` and produced four later-chunk
 proxy observations, while leaving the generated codec hash unchanged.
 
 The experiment is exposed through
-`-BaseReferenceContextBootstrap` on the CMP playback launcher. It remains
-default-off and requires `-CodecRightPaddedDecode`; unsupported or too-short
+`-BaseReferenceContextBootstrap` on the CMP playback launcher. The switch is
+kept default-off globally and requires `-CodecRightPaddedDecode`; unsupported or too-short
 reference-code histories fail closed. The current idle-CMP acceptance scope is
 now passed: varied text, persistent-worker state reuse, short through extended
 playback, natural EOS, PCM parity, and listening have all been covered. A
 representative LLM/avatar load gate is explicitly deferred until that workload
 exists; it is not a prerequisite for using the explicit idle CMP 50HX profile.
-Keep the experimental switch default-off until that profile is deliberately
-integrated into the release configuration.
+Keep the experimental switch default-off for non-CMP/default configurations;
+the explicit CMP low-latency profile enables it.
 
 ```powershell
 .\scripts\run-cmp50hx-playback-etw-soak.ps1 `
