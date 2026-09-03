@@ -22,6 +22,7 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | CMP matmul precision `high` (one run) | ~62.0 ms/frame; 362–365 ms | no throughput or parity advantage | rejected |
 | Hybrid `E4 → E8` (one run) | first PCM ~727 ms; transition ~612 ms | one starvation event at the 320→640 ms chunk boundary | rejected as a prebuffer=1 fix |
 | Forced efficient SDPA kernel (opt-in) | ~62.4 ms/frame; 361–367 ms | no measurable gain; starvation remained | rejected |
+| GPU-only repetition-penalty mask | ~60.8 ms/frame; 354–356 ms in one E4 run | codec hash matched control; still slower than 320 ms real-time | retained, but insufficient alone |
 
 The Talker-only compile probe reduced AR time by about 5.8%, but the resulting
 codec-token stream was not parity-equivalent and the producer was still about
@@ -42,7 +43,8 @@ The research FasterQwen branch contains two opt-in controls:
   capture when the sealed runtime provides a compatible kernel.
 
 The implementation is split across FasterQwen commits `040e999` and
-`fbd751b`; these are research-branch commits and are not a production
+`fbd751b`, with the later sampling optimization in the follow-up branch;
+these are research-branch commits and are not a production
 submodule promotion.
 
 Neither control is enabled by a release profile. The default E8 + W33 path
