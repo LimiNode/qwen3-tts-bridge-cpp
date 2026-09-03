@@ -28,6 +28,8 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 
 | Triton FP32 SiLU-times-up elementwise kernel (opt-in) | ~60.2 ms/frame; median ~380 ms for accepted Base/W48 decode | natural EOS, but codec hash changed (`73ebf63c...` vs control); starvation remained (8 later empty-queue observations) | rejected: parity failure and less than 1% gain |
 
+| Async codec-stream prefetch (opt-in) | ~380 ms inter-arrival; no measurable overlap on sealed runtime | codec stream remained valid, but 10 later empty-queue observations | rejected: stream scheduling did not overlap decoder with AR |
+
 The precision-hook A/B was also captured as raw PCM on the same fixed-seed
 request. The control produced `4160 ms` of audio and the hook-disabled arm
 produced `4000 ms`; their common-prefix SNR was only about `4.0 dB` (maximum
@@ -58,6 +60,11 @@ The research FasterQwen branch contains two opt-in controls:
   isolated CMP microbenchmark improved from roughly `0.265` to `0.060 ms`, but
   Triton sigmoid rounding changed the autoregressive codec trajectory and did
   not approach the 13% end-to-end target. Keep this switch diagnostic-only.
+- `QTB_FASTER_ASYNC_CODEC_DECODE=1` (runner: `-AsyncCodecDecode`) runs the AR
+  iterator in a bounded producer thread and submits right-padded codec work on
+  a separate CUDA stream. On CMP 50HX the measured E4 inter-arrival stayed at
+  about `380 ms`, so the sealed decoder/runtime serialized the streams rather
+  than hiding its ~138 ms residual. Keep this switch diagnostic-only.
 
 The implementation is split across FasterQwen commits `040e999` and
 `fbd751b`, with the later sampling optimization in the follow-up branch;
