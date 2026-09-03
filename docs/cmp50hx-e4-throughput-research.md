@@ -19,6 +19,7 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | Drop prefill hidden-state history (opt-in) | unchanged at ~62.3 ms/frame; 364–366 ms | no sustained-rate gain observed | rejected |
 | Keep TalkerGraph output as a static view (safe path) | no repeatable improvement isolated | same generation semantics; no 13% gain | retained as a small allocation optimization |
 | `torch.compile` TalkerGraph only (opt-in) | 58.45 ms/frame; 345–348 ms | natural EOS, but codec stream differed (64 steps vs control's 66) | rejected |
+| CMP matmul precision `high` (one run) | ~62.0 ms/frame; 362–365 ms | no throughput or parity advantage | rejected |
 
 The Talker-only compile probe reduced AR time by about 5.8%, but the resulting
 codec-token stream was not parity-equivalent and the producer was still about
