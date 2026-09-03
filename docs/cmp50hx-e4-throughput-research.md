@@ -25,6 +25,12 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | GPU-only repetition-penalty mask | ~60.8 ms/frame; 354–356 ms in one E4 run | codec hash matched control; still slower than 320 ms real-time | retained, but insufficient alone |
 | Disable CMP precision-diagnostic hooks (opt-in) | ~59.7 ms/frame; 351–354 ms | codec hash changed (`3938b445…` vs control); parity failed | rejected |
 
+The precision-hook A/B was also captured as raw PCM on the same fixed-seed
+request. The control produced `4160 ms` of audio and the hook-disabled arm
+produced `4000 ms`; their common-prefix SNR was only about `4.0 dB` (maximum
+sample delta `11186`). This is an audible trajectory change, not harmless
+round-off, and confirms why the hash gate is strict.
+
 The Talker-only compile probe reduced AR time by about 5.8%, but the resulting
 codec-token stream was not parity-equivalent and the producer was still about
 8% slower than real time. It is therefore diagnostic-only. Compiling both
