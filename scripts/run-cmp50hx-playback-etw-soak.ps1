@@ -86,6 +86,8 @@ param(
 
     [switch]$DropPrefillHiddenStates,
 
+    [switch]$ForceSdpaEfficient,
+
     [switch]$ProfileInputHashes,
 
     [switch]$PrefixSplitProbe,
@@ -297,6 +299,7 @@ $environmentNames = @(
     'QTB_FASTER_PREDICTOR_STATIC_OUTPUT', 'QTB_FASTER_COMPILE_DECODE_GRAPHS',
     'QTB_FASTER_COMPILE_TALKER_ONLY',
     'QTB_FASTER_DROP_PREFILL_HIDDEN_STATES',
+    'QTB_FASTER_FORCE_SDPA_EFFICIENT',
     'QTB_FASTER_PROFILE_INPUT_HASHES', 'QTB_FASTER_PREFIX_SPLIT_PROBE',
     'QTB_FASTER_PREFIX_SPLIT_PROBE_LENGTH'
 )
@@ -340,6 +343,7 @@ function Set-FrozenCEnvironment {
     $env:QTB_FASTER_COMPILE_DECODE_GRAPHS = if ($CompileDecodeGraphs) { '1' } else { '0' }
     $env:QTB_FASTER_COMPILE_TALKER_ONLY = if ($CompileTalkerOnly) { '1' } else { '0' }
     $env:QTB_FASTER_DROP_PREFILL_HIDDEN_STATES = if ($DropPrefillHiddenStates) { '1' } else { '0' }
+    $env:QTB_FASTER_FORCE_SDPA_EFFICIENT = if ($ForceSdpaEfficient) { '1' } else { '0' }
     $env:QTB_FASTER_PROFILE_INPUT_HASHES = if ($ProfileInputHashes) { '1' } else { '0' }
     $env:QTB_FASTER_PREFIX_SPLIT_PROBE = if ($PrefixSplitProbe) { '1' } else { '0' }
     $env:QTB_FASTER_PREFIX_SPLIT_PROBE_LENGTH = "$PrefixSplitProbeLength"
@@ -816,6 +820,7 @@ try {
             compile_decode_graphs = [bool]$CompileDecodeGraphs
             compile_talker_only = [bool]$CompileTalkerOnly
             drop_prefill_hidden_states = [bool]$DropPrefillHiddenStates
+            force_sdpa_efficient = [bool]$ForceSdpaEfficient
             profile_input_hashes = [bool]$ProfileInputHashes
             prefix_split_probe = [bool]$PrefixSplitProbe
             prefix_split_probe_length = if ($PrefixSplitProbe) { $PrefixSplitProbeLength } else { $null }

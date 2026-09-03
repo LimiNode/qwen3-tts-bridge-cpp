@@ -21,6 +21,7 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | `torch.compile` TalkerGraph only (opt-in) | 58.45 ms/frame; 345–348 ms | natural EOS, but codec stream differed (64 steps vs control's 66) | rejected |
 | CMP matmul precision `high` (one run) | ~62.0 ms/frame; 362–365 ms | no throughput or parity advantage | rejected |
 | Hybrid `E4 → E8` (one run) | first PCM ~727 ms; transition ~612 ms | one starvation event at the 320→640 ms chunk boundary | rejected as a prebuffer=1 fix |
+| Forced efficient SDPA kernel (opt-in) | ~62.4 ms/frame; 361–367 ms | no measurable gain; starvation remained | rejected |
 
 The Talker-only compile probe reduced AR time by about 5.8%, but the resulting
 codec-token stream was not parity-equivalent and the producer was still about
@@ -36,6 +37,9 @@ The research FasterQwen branch contains two opt-in controls:
   `-CompileTalkerOnly`) isolates Talker compilation from Predictor changes;
 - `QTB_FASTER_DROP_PREFILL_HIDDEN_STATES=1` (runner:
   `-DropPrefillHiddenStates`) omits retained per-layer prefill hidden states.
+- `QTB_FASTER_FORCE_SDPA_EFFICIENT=1` (runner:
+  `-ForceSdpaEfficient`) forces PyTorch's efficient SDPA backend during graph
+  capture when the sealed runtime provides a compatible kernel.
 
 The implementation is split across FasterQwen commits `040e999` and
 `fbd751b`; these are research-branch commits and are not a production
