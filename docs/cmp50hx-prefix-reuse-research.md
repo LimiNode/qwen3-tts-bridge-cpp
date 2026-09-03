@@ -65,4 +65,29 @@ for a real cache-reuse prototype; generated codec-token hash, PCM, EOS,
 cancellation/reset, and persistent-worker tests are still required before any
 production enablement.
 
+## CMP 50HX result (2026-09-03)
+
+The probe was run against the sealed CUDA runtime (`torch 2.10.0+cu128`) with
+the cached 1.7B Base model and the registered
+`kraftwerk_robot_ru_bootstrap_fidelity` profile. The request used the accepted
+E8/W48/reference-context configuration. The split path completed without
+affecting synthesis, but it did not pass the cache-equivalence gate:
+
+| Measurement | Result |
+| --- | ---: |
+| probe attempted / supported | yes / yes |
+| prefix length | 86 / 237 positions |
+| hidden max / mean absolute delta | 0.078125 / 0.003541 |
+| codec-logit max absolute delta | 0.0625 |
+| codec logits all-close (diagnostic tolerance) | yes |
+| first-token argmax agreement | yes |
+| KV max absolute delta | 0.640625 |
+| KV tensors all-close | **no** |
+
+The first PCM callback in this run was 9.64 s because graph capture was done in
+the request; that number is not a steady-state latency measurement. The
+important result is that matching input embeddings and even close suffix logits
+do not imply reusable KV tensors. The current split implementation therefore
+remains diagnostic-only and no per-voice KV reuse should be enabled.
+
 Raw hash-bearing runs are under `tmp/` and are intentionally unversioned.
