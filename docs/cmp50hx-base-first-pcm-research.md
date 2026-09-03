@@ -72,3 +72,27 @@ are still required before making W33 an accepted release setting.
 
 Raw run directories and parity reports are under `tmp/` and intentionally are
 not versioned.
+
+## E8/E6/E4 matrix with W33
+
+To quantify the remaining low-latency trade-off, one idle CMP 50HX run was
+performed for each emission cadence with `W33`, `prebuffer=1`, the same fixed
+seed, registered 1.7B Base voice, and the accepted reference-context path.
+CUDA graphs were warmed before the measured request.
+
+| Cadence | First PCM | Playback start | Queue-starvation proxy | Codec result |
+| ---: | ---: | ---: | ---: | --- |
+| E8 | 988.3 ms | 1070.5 ms | 0 | 39 frames, hash `181e535f...`, natural EOS |
+| E6 | 859.2 ms | 926.6 ms | **1** | 39 frames, same hash, natural EOS |
+| E4 | 729.0 ms | 795.2 ms | **7** | 39 frames, same hash, natural EOS |
+
+The cadence reduction saves approximately 129 ms (E6) or 259 ms (E4) before
+the first PCM callback, but the smaller PCM chunks arrive too slowly for the
+single-chunk playback buffer. E6 already has one queue-empty event on an idle
+run; E4 has seven. These profiles are therefore rejected for `prebuffer=1`
+production playback despite codec-token and EOS parity. E8/W33 remains the
+fastest profile that passed the starvation gate in this matrix.
+
+The matrix is one bounded idle run per cadence, not a workload soak. Any future
+E6 profile should use a larger prebuffer or a different scheduling strategy and
+must be measured separately because that changes audible startup latency.
