@@ -96,3 +96,11 @@ fastest profile that passed the starvation gate in this matrix.
 The matrix is one bounded idle run per cadence, not a workload soak. Any future
 E6 profile should use a larger prebuffer or a different scheduling strategy and
 must be measured separately because that changes audible startup latency.
+
+As a short-utterance masking test, E4/W33 was repeated with `prebuffer=2`.
+Playback did not start until `1170.3 ms` (versus `795.2 ms` with prebuffer 1),
+and the run still recorded two queue-empty events. The producer remained slower
+than real time (`~366 ms` to produce each `320 ms` chunk), so a larger prebuffer
+only postpones starvation; it does not fix E4 throughput. Making E4 sustainable
+would require roughly a 13% end-to-end generation speedup, or a playback policy
+that emits larger/coalesced chunks and gives up the E4 startup advantage.
