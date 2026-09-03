@@ -24,6 +24,7 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | Forced efficient SDPA kernel (opt-in) | ~62.4 ms/frame; 361–367 ms | no measurable gain; starvation remained | rejected |
 | GPU-only repetition-penalty mask | ~60.8 ms/frame; 354–356 ms in one E4 run | codec hash matched control; still slower than 320 ms real-time | retained, but insufficient alone |
 | Disable CMP precision-diagnostic hooks (opt-in) | ~59.7 ms/frame; 351–354 ms | codec hash changed (`3938b445…` vs control); parity failed | rejected |
+| Fused gate/up FP16 GEMM with FP32 tail (opt-in) | ~61.6 ms/frame; 354–357 ms | codec hash matched control (`c2e1c66d…`), natural EOS | rejected: no speed gain |
 
 The precision-hook A/B was also captured as raw PCM on the same fixed-seed
 request. The control produced `4160 ms` of audio and the hook-disabled arm

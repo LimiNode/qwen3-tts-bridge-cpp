@@ -92,6 +92,8 @@ param(
 
     [switch]$DisableCmpPrecisionDiagnostics,
 
+    [switch]$FusedMlpGateUp,
+
     [switch]$ProfileInputHashes,
 
     [switch]$PrefixSplitProbe,
@@ -304,6 +306,7 @@ $environmentNames = @(
     'QTB_FASTER_COMPILE_TALKER_ONLY',
     'QTB_FASTER_DROP_PREFILL_HIDDEN_STATES',
     'QTB_FASTER_FORCE_SDPA_EFFICIENT',
+    'QTB_FASTER_MLP_FUSED_GATE_UP',
     'QTB_FASTER_TORCH_PROFILE_FIRST_CHUNK',
     'QTB_FASTER_PROFILE_INPUT_HASHES', 'QTB_FASTER_PREFIX_SPLIT_PROBE',
     'QTB_FASTER_PREFIX_SPLIT_PROBE_LENGTH'
@@ -349,6 +352,7 @@ function Set-FrozenCEnvironment {
     $env:QTB_FASTER_COMPILE_TALKER_ONLY = if ($CompileTalkerOnly) { '1' } else { '0' }
     $env:QTB_FASTER_DROP_PREFILL_HIDDEN_STATES = if ($DropPrefillHiddenStates) { '1' } else { '0' }
     $env:QTB_FASTER_FORCE_SDPA_EFFICIENT = if ($ForceSdpaEfficient) { '1' } else { '0' }
+    $env:QTB_FASTER_MLP_FUSED_GATE_UP = if ($FusedMlpGateUp) { '1' } else { '0' }
     $env:QTB_FASTER_TORCH_PROFILE_FIRST_CHUNK = if ($TorchProfileFirstChunk) {
         Join-Path $runDirectory 'first-chunk-torch-trace.json'
     } else { '' }
@@ -831,6 +835,7 @@ try {
             force_sdpa_efficient = [bool]$ForceSdpaEfficient
             torch_profile_first_chunk = [bool]$TorchProfileFirstChunk
             disable_cmp_precision_diagnostics = [bool]$DisableCmpPrecisionDiagnostics
+            fused_mlp_gate_up = [bool]$FusedMlpGateUp
             profile_input_hashes = [bool]$ProfileInputHashes
             prefix_split_probe = [bool]$PrefixSplitProbe
             prefix_split_probe_length = if ($PrefixSplitProbe) { $PrefixSplitProbeLength } else { $null }
