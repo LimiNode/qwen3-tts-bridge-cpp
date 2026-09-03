@@ -23,6 +23,7 @@ PCM quality, cancellation/reset, and persistent-worker reuse.
 | Hybrid `E4 → E8` (one run) | first PCM ~727 ms; transition ~612 ms | one starvation event at the 320→640 ms chunk boundary | rejected as a prebuffer=1 fix |
 | Forced efficient SDPA kernel (opt-in) | ~62.4 ms/frame; 361–367 ms | no measurable gain; starvation remained | rejected |
 | GPU-only repetition-penalty mask | ~60.8 ms/frame; 354–356 ms in one E4 run | codec hash matched control; still slower than 320 ms real-time | retained, but insufficient alone |
+| Disable CMP precision-diagnostic hooks (opt-in) | ~59.7 ms/frame; 351–354 ms | codec hash changed (`3938b445…` vs control); parity failed | rejected |
 
 The Talker-only compile probe reduced AR time by about 5.8%, but the resulting
 codec-token stream was not parity-equivalent and the producer was still about

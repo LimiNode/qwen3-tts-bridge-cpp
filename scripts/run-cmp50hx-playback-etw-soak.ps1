@@ -90,6 +90,8 @@ param(
 
     [switch]$TorchProfileFirstChunk,
 
+    [switch]$DisableCmpPrecisionDiagnostics,
+
     [switch]$ProfileInputHashes,
 
     [switch]$PrefixSplitProbe,
@@ -325,10 +327,10 @@ function Set-FrozenCEnvironment {
     $env:HF_HUB_OFFLINE = '1'
     $env:TRANSFORMERS_OFFLINE = '1'
     $env:QTB_FASTER_EAGER_DIAGNOSTIC = '0'
-    $env:QTB_FASTER_MLP_FP32_ISLAND = '1'
+    $env:QTB_FASTER_MLP_FP32_ISLAND = if ($DisableCmpPrecisionDiagnostics) { '0' } else { '1' }
     $env:QTB_FASTER_RESIDUAL_CARRIER_FP32 = '0'
-    $env:QTB_FASTER_GRAPH_RESIDUAL_CARRIER_FP32 = '1'
-    $env:QTB_FASTER_MLP_NARROW_GATE_UP_FP16 = '1'
+    $env:QTB_FASTER_GRAPH_RESIDUAL_CARRIER_FP32 = if ($DisableCmpPrecisionDiagnostics) { '0' } else { '1' }
+    $env:QTB_FASTER_MLP_NARROW_GATE_UP_FP16 = if ($DisableCmpPrecisionDiagnostics) { '0' } else { '1' }
     $env:QTB_FASTER_GRAPH_CARRIER_PROOF_PATH = ''
     $env:QTB_FASTER_GRAPH_FINITE_CHECKER = '0'
     $env:QTB_FASTER_GRAPH_FINITE_PROOF_PATH = ''
@@ -828,6 +830,7 @@ try {
             drop_prefill_hidden_states = [bool]$DropPrefillHiddenStates
             force_sdpa_efficient = [bool]$ForceSdpaEfficient
             torch_profile_first_chunk = [bool]$TorchProfileFirstChunk
+            disable_cmp_precision_diagnostics = [bool]$DisableCmpPrecisionDiagnostics
             profile_input_hashes = [bool]$ProfileInputHashes
             prefix_split_probe = [bool]$PrefixSplitProbe
             prefix_split_probe_length = if ($PrefixSplitProbe) { $PrefixSplitProbeLength } else { $null }
