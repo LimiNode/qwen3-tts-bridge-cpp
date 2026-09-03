@@ -183,7 +183,7 @@ codec frames, so the fixed graph was captured but could not be used by that
 path. RTX 4090 had enough decoder throughput to hide more of this repeated
 work; the CMP 50HX crossed the playback deadline.
 
-A default-off FasterQwen experiment now bootstraps Base decoding from the last
+The earlier W48-reference experiment bootstrapped Base decoding from the last
 25 precomputed reference codec frames. Each fixed-`E8` iteration decodes
 exactly `25 + 8 = 33` causal frames in the right-padded 48-frame CUDA Graph and
 returns the final eight frames' `640 ms` PCM interval. It does not alter talker
