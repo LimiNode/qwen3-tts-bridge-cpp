@@ -53,7 +53,8 @@ tmp/research-20260904/capacity-en-w448-e3-e4-w29/
 
 ## Fastest experimental W448 result
 
-The prefix-KV implementation was then exercised on the same idle CMP 50HX with
+The prefix-KV implementation (FasterQwen commit `90b596d`) was then exercised
+on the same idle CMP 50HX with
 the registered Kraftwerk fidelity voice. Three fresh workers, each warmed with
 the same `English` language used by the request, produced first PCM at
 `521.225`, `523.395`, and `523.254 ms`. A one-worker WaveOut run submitted the
