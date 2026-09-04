@@ -53,6 +53,7 @@ The launcher exposes explicit CMP profiles through `-RuntimeProfile`:
 
 | Profile | Talker capacity | Emission / decoder | Prebuffer | Intended use |
 | --- | ---: | --- | ---: | --- |
+| `cmp50hx-ultra-low-latency` | 448 | first E3, then E4 / W29 | 1 | shortest bounded assistant/avatar utterances |
 | `cmp50hx-low-latency` | 768 | E4 / W33 | 1 | bounded short assistant/avatar utterances |
 | `cmp50hx-safe` | 2048 | E8 / W33 | 1 | long or unknown-length text |
 
@@ -75,6 +76,10 @@ scripts/start-qwen-tts-clone-play.ps1 `
   -Text "Привет, это проверка голоса Kraftwerk."
 ```
 
+Use `cmp50hx-ultra-low-latency` in the same command to select the accepted
+W448/E3-to-E4/W29 profile. Its measured first PCM is about 0.61 seconds on the
+target CMP 50HX, before player/output-device overhead.
+
 The low-latency profile is bounded by `max_seq_len=768`; callers should split
 long text or route it to `cmp50hx-safe`. A request that cannot fit the selected
 graph must be treated as failed (never as a successful, silently truncated
@@ -85,3 +90,5 @@ are in [CMP E4 throughput research](cmp50hx-e4-throughput-research.md) and
 [CMP Base Startup](cmp50hx-base-profile-startup.md). Before release, run the
 [profile acceptance matrix](cmp50hx-profile-acceptance.md), including the
 Kraftwerk listening check and target-machine VRAM measurement.
+The final bounded-graph comparison and rejected optimization results are in
+[CMP latency batch research](cmp50hx-latency-batch-research.md).

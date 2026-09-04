@@ -91,3 +91,31 @@ do not imply reusable KV tensors. The current split implementation therefore
 remains diagnostic-only and no per-voice KV reuse should be enabled.
 
 Raw hash-bearing runs are under `tmp/` and are intentionally unversioned.
+
+## Corrected isolation and reuse result (2026-09-04)
+
+The initial split probe was extended to separate three effects: prefix-only
+prefill versus the matching positions in full prefill, suffix execution using
+the prefix-only KV, and suffix execution seeded with exact KV copied from full
+prefill. This supersedes the earlier interpretation that the mismatch could be
+explained only by attention-mask construction.
+
+| Measurement | Result |
+| --- | ---: |
+| prefix hidden max absolute delta | 0.20703125 |
+| prefix KV max absolute delta / all-close | 0.765625 / no |
+| exact-KV-seeded suffix hidden max delta | 0.09375 |
+| exact-KV-seeded suffix logits max delta / all-close | 0.0390625 / yes |
+| exact-KV-seeded first token | match |
+| exact-KV-seeded final KV max delta / all-close | 0.25 / no |
+
+A temporary production-shaped reuse prototype showed that the opportunity is
+large: first PCM improved from `614.279` to `527.394 ms`, while prefill GPU time
+fell from `357.890` to `276.107 ms`. It nevertheless failed the required audio
+parity gate. Control and reuse output lengths were respectively `7280` and
+`7200 ms`; the first PCM difference appeared at `400 ms`, common-prefix SNR was
+`-2.365 dB`, and maximum sample delta was `14966`.
+
+The reuse path was therefore removed. The expanded diagnostic probe remains so
+future kernel/runtime changes can retest the numerical boundary, but registered
+voice prefix KV reuse is rejected for production in the current FP16 runtime.

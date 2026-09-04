@@ -1,11 +1,13 @@
 # CMP 50HX profile acceptance
 
-This is the release gate for the two explicit 1.7B Base profiles. It must be
+This is the release gate for the three explicit 1.7B Base profiles. It must be
 run on the target CMP 50HX with the same FasterQwen revision and model/voice
 registry used by the deployment.
 
 ## Profiles
 
+* `cmp50hx-ultra-low-latency`: first E3 then E4, W29, one playback prebuffer,
+  `max_seq_len=448`. Use only for the shortest bounded utterances.
 * `cmp50hx-low-latency`: E4, W33, one playback prebuffer, `max_seq_len=768`.
   Use only for bounded utterances.
 * `cmp50hx-safe`: E8, W33, one playback prebuffer, `max_seq_len=2048`.
@@ -133,3 +135,17 @@ both warmed static graphs and CUDA contexts.
 
 Raw reports and PCM captures are under
 `tmp/cmp50hx-profile-acceptance/` and are intentionally unversioned.
+
+## Ultra profile addendum
+
+The follow-up latency batch accepted `cmp50hx-ultra-low-latency` on the same
+CMP 50HX. Three fresh workers measured `606.0-608.3 ms` first PCM, about
+`282.9-285.1 ms` median cadence, and zero starvation. A 30-request persistent
+RU/EN soak completed 30/30 with `610.901 ms` median, `614.177 ms` p95, and
+`617.460 ms` maximum first PCM. Cancellation/reset and a 12.88-second natural
+EOS request passed. See [CMP latency batch research](cmp50hx-latency-batch-research.md)
+for the full matrix, W384 capacity rejection, async-codec result, and failed
+prefix-KV parity experiment.
+
+Automated PCM-boundary analysis found no W29 splice signature, but human
+listening to the W29 output remains the final subjective release gate.
