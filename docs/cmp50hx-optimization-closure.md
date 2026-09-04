@@ -24,6 +24,30 @@ voice.
 | Precision-hook removal | changed codec/PCM trajectory | rejected |
 | Static output and dropped prefill state | within run-to-run noise | diagnostic-only |
 
+## Fresh fused-MLP confirmation
+
+On 2026-09-05 the fused gate/up path was repeated on the CMP 50HX using the
+packaged CUDA runtime (`torch 2.10.0+cu128`), FP16, registered Base voice,
+`max_seq_len=448`, E3→E4 schedule, W29, and the same short Russian request.
+The control and fused runs both completed with natural EOS and no worker error.
+
+| Run | First PCM | Total synthesis | Audio duration | Local RTF |
+| --- | ---: | ---: | ---: | ---: |
+| control | 1230.447 ms | 12817.424 ms | 3493.125 ms | 3.669 |
+| fused gate/up | 1234.415 ms | 12931.724 ms | 3573.125 ms | 3.619 |
+
+The generated output lengths differed by one late sampling outcome (expected
+for the non-fixed-seed CLI request), so the small total-time delta is not a
+throughput signal. First PCM was 4 ms slower with fusion. The experiment also
+confirmed that the extra fused projection does not remove the dominant
+Predictor/Talker and codec costs. No production change is justified.
+
+The packaged runtime has Triton available, but neither `torchao` nor
+`bitsandbytes`; therefore an off-the-shelf int8/int4 quantization A/B cannot be
+run in the sealed environment without adding a new dependency. Such a test is
+tracked as a separate backend experiment rather than silently changing the
+release runtime.
+
 ## Remaining theoretical work
 
 The following are not configuration-level optimizations and were not promoted:
