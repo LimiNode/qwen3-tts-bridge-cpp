@@ -11,7 +11,7 @@ param(
     [string]$VoiceId = "",
     [ValidateSet("faster", "upstream")]
     [string]$RuntimeBackend = "faster",
-    [ValidateSet("default", "cmp50hx-fastest-experimental", "cmp50hx-ultra-low-latency", "cmp50hx-low-latency", "cmp50hx-safe")]
+    [ValidateSet("default", "cmp50hx-fastest", "cmp50hx-fastest-experimental", "cmp50hx-ultra-low-latency", "cmp50hx-low-latency", "cmp50hx-safe")]
     [string]$RuntimeProfile = "default",
     [ValidateRange(0.05, 2.0)]
     [double]$Temperature = 0.45,
@@ -52,9 +52,9 @@ elseif ([string]::IsNullOrWhiteSpace($ReferenceAudioPath)) {
 elseif (-not $XVectorOnly -and [string]::IsNullOrWhiteSpace($ReferenceText)) {
     throw "ReferenceText is required unless -XVectorOnly is used"
 }
-if ($RuntimeProfile -eq "cmp50hx-fastest-experimental" -and
+if ($RuntimeProfile -in @("cmp50hx-fastest", "cmp50hx-fastest-experimental") -and
     [string]::IsNullOrWhiteSpace($VoiceId)) {
-    throw "cmp50hx-fastest-experimental requires a registered VoiceId"
+    throw "$RuntimeProfile requires a registered VoiceId"
 }
 
 $referenceAudio = ""
@@ -127,8 +127,8 @@ $decodeWindowFrames = 80
 $maxSeqLen = 2048
 $dtype = "bfloat16"
 switch ($RuntimeProfile) {
-    "cmp50hx-fastest-experimental" {
-        # Fastest opt-in profile. Prefix KV reuse can change pronunciation.
+    { $_ -in @("cmp50hx-fastest", "cmp50hx-fastest-experimental") } {
+        # Fastest supported opt-in profile. Prefix KV reuse can change pronunciation.
         $emitEveryFrames = 4
         $emitChunkSchedule = @(3, 4)
         $decodeWindowFrames = 29

@@ -152,8 +152,8 @@ appeared at `400 ms`, common-prefix SNR was `-2.365 dB`, and maximum sample
 delta was `14966`. Human comparison subsequently found only a small
 pronunciation difference, with identity and phrase content retained; the
 control was judged slightly more nasal. Based on that explicit user-accepted
-tradeoff, reuse is now being validated as a separate
-`cmp50hx-fastest-experimental` profile. It must remain per-registered-voice,
+tradeoff, reuse is now exposed as the supported opt-in
+`cmp50hx-fastest` profile for short sounds. It must remain per-registered-voice,
 fail closed for direct references or unsafe masks, and must never replace the
 parity-preserving profiles silently.
 
@@ -162,6 +162,7 @@ parity-preserving profiles silently.
 Keep W448/E3-to-E4/W29 as the accepted ultra profile, W768/E4/W33 as the
 established low-latency profile, and W2048/E8/W33 as the safe profile. Keep
 async codec diagnostic-only. Expose voice-prefix KV reuse only through the
-clearly labelled fastest experimental profile after its separate hardware and
-listening matrix passes. Route or split text before submission; never retry an
+clearly labelled fastest opt-in profile after its separate hardware and
+listening matrix passes; the legacy `cmp50hx-fastest-experimental` name remains
+an alias. Route or split text before submission; never retry an
 already partially played capacity failure as though no audio had been emitted.

@@ -6,9 +6,10 @@ registry used by the deployment.
 
 ## Profiles
 
-* `cmp50hx-fastest-experimental`: the ultra graph plus per-registered-voice
-  prefix-KV reuse. This is an opt-in perceptual-risk profile and is not required
-  to preserve codec/PCM byte parity.
+* `cmp50hx-fastest`: the ultra graph plus per-registered-voice prefix-KV reuse.
+  This is a supported opt-in perceptual-risk profile for short sounds and is
+  not required to preserve codec/PCM byte parity. The legacy
+  `cmp50hx-fastest-experimental` name remains an alias.
 * `cmp50hx-ultra-low-latency`: first E3 then E4, W29, one playback prebuffer,
   `max_seq_len=448`. Use only for the shortest bounded utterances.
 * `cmp50hx-low-latency`: E4, W33, one playback prebuffer, `max_seq_len=768`.
@@ -74,7 +75,7 @@ Listen for clicks at chunk boundaries, pauses, clipping, changed word endings,
 and a clipped EOS. Record the generated WAV/metrics path and the profile name.
 Objective promotion gates are zero later-chunk starvation observations, natural
 EOS, and cancellation/reset success. The ultra, low, and safe profiles also
-retain their existing fixed-seed codec/PCM comparison. The fastest experimental
+retain their existing fixed-seed codec/PCM comparison. The fastest opt-in
 profile intentionally changes the autoregressive trajectory, so its gate is the
 correct phrase, retained voice identity, and no audible regression such as
 clicks, pauses, clipping, corrupted endings, or materially worse pronunciation.
@@ -93,6 +94,10 @@ profiles, FasterQwen commit `9a3ee431c0c077e8a67fa2d0a6fe01f198b0cdbf`.
 | low, Russian long | 677.7 ms | 14.08 s / 44 chunks | median 311.4 ms, max 316.6 ms | 0 | natural EOS |
 | safe, English long | 970.8 ms | 14.24 s / 23 chunks | median 605.3 ms, max 613.5 ms | 0 | natural EOS |
 | safe, Russian warm voice | 973.1 ms | 8.56 s / 14 chunks | median 599.5 ms, max 605.4 ms | 0 | natural EOS |
+
+The fastest profile's phrase and identity listening gate was subsequently
+passed by the user. Its remaining quality distinction is documented as an
+explicit perceptual trade-off, not a playback defect.
 
 Two persistent-worker multilingual soaks then completed 30/30 requests each.
 The low profile covered RU/EN short and medium cases with first PCM median

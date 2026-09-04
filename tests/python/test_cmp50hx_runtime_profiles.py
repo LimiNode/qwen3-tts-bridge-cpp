@@ -17,7 +17,8 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
 
     def test_profiles_are_explicit_and_default_is_preserved(self) -> None:
         self.assertIn(
-            '[ValidateSet("default", "cmp50hx-fastest-experimental", '
+            '[ValidateSet("default", "cmp50hx-fastest", '
+            '"cmp50hx-fastest-experimental", '
             '"cmp50hx-ultra-low-latency", '
             '"cmp50hx-low-latency", "cmp50hx-safe")]',
             self.launcher,
@@ -96,6 +97,7 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
     def test_documentation_describes_request_boundary_switching(self) -> None:
         self.assertIn("cmp50hx-low-latency", self.documentation)
         self.assertIn("cmp50hx-fastest-experimental", self.documentation)
+        self.assertIn("cmp50hx-fastest", self.documentation)
         self.assertIn("cmp50hx-ultra-low-latency", self.documentation)
         self.assertIn("cmp50hx-safe", self.documentation)
         self.assertIn("request boundary", self.documentation)

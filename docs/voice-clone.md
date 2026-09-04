@@ -53,7 +53,7 @@ The launcher exposes explicit CMP profiles through `-RuntimeProfile`:
 
 | Profile | Hardware | Talker capacity | Emission / decoder | Expected first PCM | Quality policy | Intended use |
 | --- | --- | ---: | --- | ---: | --- | --- |
-| `cmp50hx-fastest-experimental` | CMP 50HX 20 GiB | 448 | first E3, then E4 / W29 | target about 0.53 s | prefix-KV reuse changes the autoregressive trajectory; pronunciation or quality may differ | opt-in when minimum response latency matters more than deterministic parity |
+| `cmp50hx-fastest` | CMP 50HX 20 GiB | 448 | first E3, then E4 / W29 | target about 0.53 s | prefix-KV reuse changes the autoregressive trajectory; pronunciation or quality may differ | supported opt-in for short sounds when minimum response latency matters more than deterministic parity |
 | `cmp50hx-ultra-low-latency` | CMP 50HX 20 GiB | 448 | first E3, then E4 / W29 | about 0.61 s | no prefix reuse; accepted perceptual profile | shortest bounded assistant/avatar utterances |
 | `cmp50hx-low-latency` | CMP 50HX 20 GiB | 768 | E4 / W33 | about 0.68 s | established low-latency profile | bounded short assistant/avatar utterances |
 | `cmp50hx-safe` | CMP 50HX 20 GiB | 2048 | E8 / W33 | about 0.97 s | widest tested capacity | long or unknown-length text |
@@ -81,15 +81,17 @@ Use `cmp50hx-ultra-low-latency` in the same command to select the accepted
 W448/E3-to-E4/W29 profile. Its measured first PCM is about 0.61 seconds on the
 target CMP 50HX, before player/output-device overhead.
 
-Use `cmp50hx-fastest-experimental` only with a registered `VoiceId`. It adds a
-per-voice 86-position prefix-KV cache to the ultra profile. A preliminary W384
-probe reduced first PCM from `614.279 ms` to `527.394 ms`; the W448 release
-matrix must be recorded separately. The optimization deliberately does not
+Use `cmp50hx-fastest` only with a registered `VoiceId`. It adds a per-voice
+86-position prefix-KV cache to the ultra profile and is a supported opt-in
+product profile for short sounds. The validated W448 matrix measured roughly
+`521–543 ms` first PCM on cache hits. The optimization deliberately does not
 preserve codec-token or PCM byte parity: it may produce slightly different
 pronunciation and can occasionally be worse. Cache entries are isolated by
 voice ID and language and verified against the actual prefix, so A->B->A voice
-switching cannot silently reuse B's prefix for A. Users who do not accept this
-quality risk should select `cmp50hx-ultra-low-latency` or a slower profile.
+switching cannot silently reuse B's prefix for A. The legacy name
+`cmp50hx-fastest-experimental` remains accepted as an alias. Users who do not
+accept this quality trade-off should select `cmp50hx-ultra-low-latency` or a
+slower profile.
 
 Applications may expose these profiles as a latency/quality preference and
 combine that preference with an utterance-length estimate. Because graph

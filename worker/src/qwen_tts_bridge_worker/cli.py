@@ -242,7 +242,7 @@ def _apply_runtime_profile(args: argparse.Namespace) -> None:
     profile = getattr(args, "runtime_profile", "default")
     if profile != "default" and args.runtime_backend != "faster":
         raise ValueError("CMP 50HX runtime profiles require runtime_backend=faster")
-    if profile == "cmp50hx-fastest-experimental":
+    if profile in {"cmp50hx-fastest", "cmp50hx-fastest-experimental"}:
         args.max_seq_len = 448
         args.emit_every_frames = 4
         args.emit_chunk_schedule = (3, 4)
@@ -395,6 +395,7 @@ def _add_qwen_subcommand(
         "--runtime-profile",
         choices=(
             "default",
+            "cmp50hx-fastest",
             "cmp50hx-fastest-experimental",
             "cmp50hx-ultra-low-latency",
             "cmp50hx-low-latency",
