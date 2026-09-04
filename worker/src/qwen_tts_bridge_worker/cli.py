@@ -234,14 +234,18 @@ def _apply_runtime_profile(args: argparse.Namespace) -> None:
     """
 
     profile = getattr(args, "runtime_profile", "default")
+    if profile != "default" and args.runtime_backend != "faster":
+        raise ValueError("CMP 50HX runtime profiles require runtime_backend=faster")
     if profile == "cmp50hx-low-latency":
         args.max_seq_len = 768
         args.emit_every_frames = 4
         args.decode_window_frames = 33
+        args.collect_generation_trace = True
     elif profile == "cmp50hx-safe":
         args.max_seq_len = 2048
         args.emit_every_frames = 8
         args.decode_window_frames = 33
+        args.collect_generation_trace = True
     elif profile != "default":
         raise ValueError(f"unsupported runtime profile: {profile}")
 

@@ -24,6 +24,7 @@ from qwen_tts_bridge_worker.engine import (
     UnsupportedAudioFormatError,
 )
 from qwen_tts_bridge_worker.engine.qwen_engine import (
+    GenerationSequenceCapacityError,
     _create_stall_telemetry,
     _first_chunk_timing_fields,
     _load_prefill_allowlist_warmup_manifest,
@@ -1539,6 +1540,37 @@ class QwenEngineTests(unittest.TestCase):
         assert trace is not None
         self.assertEqual(3, trace["codec_frame_count"])
         self.assertIsNone(engine.pop_last_generation_trace())
+
+    def test_faster_max_sequence_trace_fails_closed(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-base",
+                runtime_backend="faster",
+                max_seq_len=768,
+                collect_generation_trace=True,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+        fake_model.last_generation_trace = {
+            "generated_codec_frame_count": 531,
+            "termination_reason": "max_seq_len",
+            "hit_eos": False,
+            "hit_max_new_tokens": False,
+            "hit_max_seq_len": True,
+        }
+
+        with self.assertRaisesRegex(
+            GenerationSequenceCapacityError,
+            "retry with a wider runtime profile",
+        ):
+            engine._capture_generation_trace(fake_model)
+
+        trace = engine.pop_last_generation_trace()
+        self.assertIsNotNone(trace)
+        assert trace is not None
+        self.assertEqual(531, trace["codec_frame_count"])
 
     def test_faster_stream_preserves_timing_input_metadata(self) -> None:
         fake_model = _FasterStreamingModel(

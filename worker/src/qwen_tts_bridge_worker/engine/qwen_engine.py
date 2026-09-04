@@ -68,6 +68,24 @@ class GenerationSafetyLimitError(QwenEngineError):
         )
 
 
+class GenerationSequenceCapacityError(QwenEngineError):
+    """Raised when generation exhausts the selected static Talker graph."""
+
+    def __init__(self, max_seq_len: int, generated_frames: int | None) -> None:
+        self.max_seq_len = max_seq_len
+        self.generated_frames = generated_frames
+        frame_text = (
+            f", generated_frames={generated_frames}"
+            if generated_frames is not None
+            else ""
+        )
+        super().__init__(
+            "generation exhausted the selected Talker graph capacity "
+            f"(max_seq_len={max_seq_len}{frame_text}); retry with a wider "
+            "runtime profile"
+        )
+
+
 class QwenTtsEngine:
     """Adapter around the vendored Qwen3-TTS streaming package."""
 
@@ -442,6 +460,15 @@ class QwenTtsEngine:
         if reset_metadata is not None:
             captured_trace["bridge_reset_after_generation"] = reset_metadata
         self._last_generation_trace = captured_trace
+        if (
+            captured_trace.get("hit_max_seq_len") is True
+            or captured_trace.get("termination_reason") == "max_seq_len"
+        ):
+            frame_count = captured_trace.get("codec_frame_count")
+            raise GenerationSequenceCapacityError(
+                self._config.max_seq_len,
+                frame_count if isinstance(frame_count, int) else None,
+            )
 
     def close(self) -> None:
         """Release the loaded model reference."""

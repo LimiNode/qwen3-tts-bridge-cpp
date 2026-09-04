@@ -144,6 +144,8 @@ class EngineFactoryTests(unittest.TestCase):
                 "qwen",
                 "--model-path",
                 "models/qwen",
+                "--runtime-backend",
+                "faster",
                 "--runtime-profile",
                 "cmp50hx-low-latency",
             ]
@@ -154,12 +156,15 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual(768, low.max_seq_len)
         self.assertEqual(4, low.emit_every_frames)
         self.assertEqual(33, low.decode_window_frames)
+        self.assertTrue(low.collect_generation_trace)
 
         safe_args = parser.parse_args(
             [
                 "qwen",
                 "--model-path",
                 "models/qwen",
+                "--runtime-backend",
+                "faster",
                 "--runtime-profile",
                 "cmp50hx-safe",
             ]
@@ -170,6 +175,7 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual(2048, safe.max_seq_len)
         self.assertEqual(8, safe.emit_every_frames)
         self.assertEqual(33, safe.decode_window_frames)
+        self.assertTrue(safe.collect_generation_trace)
 
     def test_qwen_subcommand_builds_upstream_fp32_code_predictor_config(self) -> None:
         parser = build_parser()
