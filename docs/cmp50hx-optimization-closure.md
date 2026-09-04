@@ -48,6 +48,23 @@ run in the sealed environment without adding a new dependency. Such a test is
 tracked as a separate backend experiment rather than silently changing the
 release runtime.
 
+## Predictor-MLP Inductor prototype
+
+As a final kernel-level attempt, an opt-in prototype compiled all five small
+Predictor MLP modules with Inductor `max-autotune` before the existing graph
+capture. Model loading and compilation completed, but the first PredictorGraph
+capture failed with:
+
+```text
+RuntimeError: Cannot prepare for replay during capturing stage.
+```
+
+Inductor enabled its own CUDA Graph Trees for the compiled MLP callables, which
+cannot be replayed while FasterQwen is capturing the enclosing graph. Disabling
+the nested trees would require a separate compiler configuration and a new
+capture-safe kernel path. No latency or quality measurement was possible, so
+this prototype is rejected for the current runtime.
+
 ## Remaining theoretical work
 
 The following are not configuration-level optimizations and were not promoted:
