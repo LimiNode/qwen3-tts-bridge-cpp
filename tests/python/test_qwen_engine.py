@@ -70,18 +70,25 @@ class FirstChunkTimingFieldsTests(unittest.TestCase):
         )
         self.assertTrue(fields["prefix_split_probe_enabled"])
         self.assertEqual(86, fields["prefix_split_probe_prefix_length"])
-        self.assertAlmostEqual(0.001, fields["prefix_split_probe_hidden_max_abs_delta"])
+        self.assertAlmostEqual(
+            0.001,
+            cast(float, fields["prefix_split_probe_hidden_max_abs_delta"]),
+        )
         self.assertTrue(fields["prefix_split_probe_logits_allclose"])
         self.assertAlmostEqual(
-            0.0005, fields["prefix_split_probe_prefix_hidden_max_abs_delta"]
+            0.0005,
+            cast(float, fields["prefix_split_probe_prefix_hidden_max_abs_delta"]),
         )
         self.assertTrue(fields["prefix_split_probe_prefix_kv_allclose"])
         self.assertAlmostEqual(
-            0.0007, fields["prefix_split_probe_seeded_hidden_max_abs_delta"]
+            0.0007,
+            cast(float, fields["prefix_split_probe_seeded_hidden_max_abs_delta"]),
         )
         self.assertTrue(fields["prefix_split_probe_seeded_logits_allclose"])
         self.assertTrue(fields["prefix_split_probe_seeded_first_token_match"])
         self.assertTrue(fields["prefix_split_probe_seeded_kv_allclose"])
+
+
 class _InnerModel:
     def __init__(self, model_type: str) -> None:
         self.tts_model_type = model_type
@@ -1306,9 +1313,10 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(1, metrics["chunk_schedule_index"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])
         self.assertIn("codec_wrapper_residual_ms", metrics)
+        frame_timings = cast(list[dict[str, object]], metrics["ar_frame_timings"])
         self.assertEqual(
             31.0,
-            metrics["ar_frame_timings"][0]["ar_talker_graph_replay_gpu_ms"],
+            frame_timings[0]["ar_talker_graph_replay_gpu_ms"],
         )
         self.assertEqual(["abc", "def"], metrics["talker_input_position_sha256"])
 

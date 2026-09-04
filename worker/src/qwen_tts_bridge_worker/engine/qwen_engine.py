@@ -905,7 +905,9 @@ class QwenTtsEngine:
         model: Any,
         request: SynthesisRequest,
         cancel_event: threading.Event,
-    ) -> Iterable[tuple[Any, int]]:
+    ) -> Iterable[
+        tuple[Any, int] | tuple[Any, int, dict[str, Any]]
+    ]:
         clone_inputs = self._voice_clone_inputs_for(model, request)
         stream = _qwen_stream_generate_audio(
             model,
@@ -1800,7 +1802,7 @@ def _qwen_stream_generate_audio(
     request: SynthesisRequest,
     cancel_event: threading.Event,
     voice_clone_inputs: _VoiceCloneInputs | None = None,
-) -> Iterable[tuple[Any, int]] | None:
+) -> Iterable[tuple[Any, int] | tuple[Any, int, dict[str, Any]]] | None:
     model_type = _qwen_model_type(model)
     language = _qwen_language(request.language)
     sampling = _resolve_faster_sampling(config, request)
