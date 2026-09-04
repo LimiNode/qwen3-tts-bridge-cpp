@@ -62,6 +62,9 @@ param(
     [ValidateRange(1, 64)]
     [int]$EmitEveryFrames = 8,
 
+    [ValidateRange(256, 4096)]
+    [int]$MaxSeqLen = 2048,
+
     [ValidateRange(1, 64)]
     [int[]]$EmitChunkSchedule = @(),
 
@@ -528,6 +531,7 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--dtype', '--worker-arg', 'float16',
         '--worker-arg', '--attn-implementation', '--worker-arg', 'sdpa',
         '--worker-arg', '--prefill-backend', '--worker-arg', $PrefillBackend,
+        '--worker-arg', '--max-seq-len', '--worker-arg', $MaxSeqLen,
         '--worker-arg', '--emit-every-frames', '--worker-arg', $EmitEveryFrames,
         '--worker-arg', '--decode-window-frames', '--worker-arg', '80',
         '--worker-arg', '--no-compile', '--worker-arg', '--no-cuda-graphs',
@@ -832,6 +836,7 @@ try {
             preload_voice_profiles = [bool]$PreloadVoiceProfiles
             playback_prebuffer_chunks = $PlaybackPrebufferChunks
             emit_every_frames = $EmitEveryFrames
+            max_seq_len = $MaxSeqLen
             emit_chunk_schedule = if ($EmitChunkSchedule.Count -gt 0) { @($EmitChunkSchedule) } else { @() }
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
             diagnostic_profile_prefill = [bool]$ProfilePrefill
