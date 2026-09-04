@@ -88,6 +88,8 @@ struct ProgramOptions {
     std::string pcm_capture_file;
     std::size_t playback_prebuffer_chunks = 1;
     bool etw_playback_markers = false;
+    bool auto_profile = false;
+    std::size_t auto_fast_max_chars = 240;
 };
 
 class ConsoleCodePageGuard final {
@@ -872,6 +874,7 @@ struct ActiveRequestState {
     std::mutex mutex;
     RequestId active_request_id = 0;
     RequestId next_request_id = 1;
+    QwenTtsClient* active_client = nullptr;
 };
 
 struct OneShotState {
@@ -911,6 +914,8 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --mock                         Run the bundled Python mock worker.\n"
         << "  --worker <path>                Worker executable path.\n"
         << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
+        << "  --auto-profile                 Keep fast and safe workers warm and route by text length.\n"
+        << "  --auto-fast-max-chars <n>      Use the fast worker up to n non-space UTF-8 bytes, default: 240.\n"
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --text <utf8>                  One-shot playback instead of interactive mode.\n"
         << "  --language <name>              Request language, default: auto.\n"
@@ -1019,6 +1024,15 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         else if (arg == "--worker-arg" || arg.rfind("--worker-arg=", 0) == 0) {
             options.worker_arguments.push_back(
                 require_value(index, argc, argv, "--worker-arg"));
+        }
+        else if (arg == "--auto-profile") {
+            options.auto_profile = true;
+        }
+        else if (arg == "--auto-fast-max-chars" ||
+                 arg.rfind("--auto-fast-max-chars=", 0) == 0) {
+            options.auto_fast_max_chars = parse_u32(
+                require_value(index, argc, argv, "--auto-fast-max-chars"),
+                "--auto-fast-max-chars");
         }
         else if (arg == "--cwd" || arg.rfind("--cwd=", 0) == 0) {
             options.working_directory = require_value(index, argc, argv, "--cwd");
@@ -1135,6 +1149,12 @@ void validate_options(const ProgramOptions& options) {
     if (!options.use_mock_worker && options.worker_executable.empty()) {
         throw std::runtime_error("--worker is required unless --mock is used");
     }
+    if (options.auto_profile && options.use_mock_worker) {
+        throw std::runtime_error("--auto-profile requires a real Qwen worker");
+    }
+    if (options.auto_profile && options.auto_fast_max_chars == 0) {
+        throw std::runtime_error("--auto-fast-max-chars must be greater than zero");
+    }
     if (options.sample_rate == 0 || options.channels == 0 ||
         options.channels > (std::numeric_limits<WORD>::max)()) {
         throw std::runtime_error("invalid requested PCM format");
@@ -1194,7 +1214,30 @@ void validate_options(const ProgramOptions& options) {
     }
 }
 
-StdIoTransportOptions make_transport_options(const ProgramOptions& options) {
+void replace_worker_option(
+    std::vector<std::string>& arguments,
+    const std::string& option,
+    const std::string& value) {
+    for (std::size_t index = 0; index < arguments.size(); ++index) {
+        if (arguments[index] == option) {
+            if (index + 1 >= arguments.size()) {
+                throw std::runtime_error("worker option is missing a value: " + option);
+            }
+            arguments[index + 1] = value;
+            return;
+        }
+        const std::string prefix = option + '=';
+        if (arguments[index].rfind(prefix, 0) == 0) {
+            arguments[index] = prefix + value;
+            return;
+        }
+    }
+    throw std::runtime_error("--auto-profile requires worker argument " + option);
+}
+
+StdIoTransportOptions make_transport_options(
+    const ProgramOptions& options,
+    bool safe_profile = false) {
     StdIoTransportOptions transport_options;
     transport_options.stderr_handler = [](std::string text) {
         std::cerr << text;
@@ -1226,6 +1269,27 @@ StdIoTransportOptions make_transport_options(const ProgramOptions& options) {
         transport_options.arguments.end(),
         options.worker_arguments.begin(),
         options.worker_arguments.end());
+    if (safe_profile) {
+        replace_worker_option(transport_options.arguments, "--runtime-profile", "cmp50hx-safe");
+        replace_worker_option(transport_options.arguments, "--max-seq-len", "2048");
+        replace_worker_option(transport_options.arguments, "--emit-every-frames", "8");
+        replace_worker_option(transport_options.arguments, "--decode-window-frames", "33");
+        for (std::size_t index = 0; index < transport_options.arguments.size(); ++index) {
+            if (transport_options.arguments[index] == "--emit-chunk-schedule" &&
+                index + 1 < transport_options.arguments.size()) {
+                transport_options.arguments[index + 1] = "8";
+            }
+            else if (transport_options.arguments[index].rfind("--emit-chunk-schedule=", 0) == 0) {
+                transport_options.arguments[index] = "--emit-chunk-schedule=8";
+            }
+        }
+        // The launcher normally exports the fast profile's codec window in the
+        // parent environment. Override those values for the second worker.
+        transport_options.environment_overrides[
+            "QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES"] = "33";
+        transport_options.environment_overrides[
+            "QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES"] = "33";
+    }
     transport_options.working_directory = options.working_directory;
     return transport_options;
 }
@@ -1247,6 +1311,7 @@ void clear_active_request(ActiveRequestState& state, RequestId request_id) {
     std::lock_guard<std::mutex> lock(state.mutex);
     if (state.active_request_id == request_id) {
         state.active_request_id = 0;
+        state.active_client = nullptr;
     }
 }
 
@@ -1255,13 +1320,16 @@ std::uint64_t cancel_active_request(
     WaveOutPlayer& player,
     ActiveRequestState& state) {
     RequestId request_id = 0;
+    QwenTtsClient* active_client = nullptr;
     {
         std::lock_guard<std::mutex> lock(state.mutex);
         request_id = state.active_request_id;
+        active_client = state.active_client;
         state.active_request_id = 0;
+        state.active_client = nullptr;
     }
     if (request_id != 0) {
-        client.cancel(request_id);
+        (active_client != nullptr ? *active_client : client).cancel(request_id);
     }
     return player.reset();
 }
@@ -1303,6 +1371,7 @@ RequestId submit_request(
             request.id = active_state.next_request_id++;
         }
         active_state.active_request_id = request.id;
+        active_state.active_client = &client;
     }
 
     const RequestId request_id = request.id;
@@ -1369,12 +1438,44 @@ RequestId submit_request(
     return request_id;
 }
 
+std::size_t estimated_text_bytes(const std::string& text) {
+    std::size_t count = 0;
+    for (const unsigned char value : text) {
+        if (value > 0x20u) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+QwenTtsClient& client_for_text(
+    const ProgramOptions& options,
+    const std::string& text,
+    QwenTtsClient& fast_client,
+    QwenTtsClient* safe_client) {
+    if (!options.auto_profile) {
+        return fast_client;
+    }
+    if (safe_client == nullptr) {
+        throw std::runtime_error("automatic profile routing has no safe worker");
+    }
+    const std::size_t estimated_bytes = estimated_text_bytes(text);
+    const bool use_fast = estimated_bytes <= options.auto_fast_max_chars;
+    std::cout << "auto profile: " << (use_fast ? "cmp50hx-fastest-experimental" : "cmp50hx-safe")
+              << " (non-space UTF-8 bytes=" << estimated_bytes << ")\n";
+    return use_fast ? fast_client : *safe_client;
+}
+
 bool wait_for_one_shot(OneShotState& state, std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lock(state.mutex);
     return state.condition.wait_for(lock, timeout, [&state] { return state.terminal; });
 }
 
 void print_interactive_status(const ProgramOptions& options) {
+    if (options.auto_profile) {
+        std::cout << "profile=auto (fast <= " << options.auto_fast_max_chars
+                  << " non-space UTF-8 bytes, safe above)\n";
+    }
     std::cout << "speaker=" << (options.speaker.empty() ? "<worker default>" : options.speaker)
               << ", voice_id=" << (options.voice_id.empty() ? "<none>" : options.voice_id)
               << ", language=" << options.language
@@ -1666,10 +1767,35 @@ int wmain(int argc, wchar_t** argv) {
         if (!client.start(make_transport_options(options), client_options)) {
             throw std::runtime_error("failed to start Qwen TTS worker");
         }
+        std::unique_ptr<QwenTtsClient> safe_client;
+        if (options.auto_profile) {
+            safe_client = std::make_unique<QwenTtsClient>();
+            if (!safe_client->start(make_transport_options(options, true), client_options)) {
+                client.stop();
+                throw std::runtime_error("failed to start automatic safe Qwen TTS worker");
+            }
+        }
         ReadyMessage ready;
         if (!client.ready_message(ready)) {
+            if (safe_client != nullptr) {
+                safe_client->stop();
+            }
             client.stop();
             throw std::runtime_error("worker did not expose a ready payload");
+        }
+        if (safe_client != nullptr) {
+            ReadyMessage safe_ready;
+            if (!safe_client->ready_message(safe_ready)) {
+                client.stop();
+                safe_client->stop();
+                throw std::runtime_error("safe worker did not expose a ready payload");
+            }
+            if (safe_ready.capabilities.voice_clone != ready.capabilities.voice_clone ||
+                safe_ready.capabilities.voice_profiles != ready.capabilities.voice_profiles) {
+                client.stop();
+                safe_client->stop();
+                throw std::runtime_error("automatic profile workers expose incompatible capabilities");
+            }
         }
         options.sampling_overrides_supported = ready.capabilities.sampling_overrides;
         options.deterministic_seed_supported = ready.capabilities.deterministic_seed;
@@ -1729,7 +1855,7 @@ int wmain(int argc, wchar_t** argv) {
                 playback_metrics->begin_request();
             }
             submit_request(
-                client,
+                client_for_text(options, options.text, client, safe_client.get()),
                 player,
                 active_state,
                 options,
@@ -1738,10 +1864,16 @@ int wmain(int argc, wchar_t** argv) {
                 pcm_capture.get());
             if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
                 cancel_active_request(client, player, active_state);
+                if (safe_client != nullptr) {
+                    safe_client->stop();
+                }
                 client.stop();
                 throw std::runtime_error("one-shot synthesis timed out");
             }
             if (!state.success) {
+                if (safe_client != nullptr) {
+                    safe_client->stop();
+                }
                 client.stop();
                 throw std::runtime_error(state.message.empty() ? "one-shot synthesis failed" : state.message);
             }
@@ -1754,6 +1886,9 @@ int wmain(int argc, wchar_t** argv) {
                 playback_metrics->write_json_file(options.playback_metrics_file);
             }
             client.stop();
+            if (safe_client != nullptr) {
+                safe_client->stop();
+            }
             return 0;
         }
 
@@ -1786,11 +1921,19 @@ int wmain(int argc, wchar_t** argv) {
                 }
                 continue;
             }
-            submit_request(client, player, active_state, options, line);
+            submit_request(
+                client_for_text(options, line, client, safe_client.get()),
+                player,
+                active_state,
+                options,
+                line);
         }
 
         cancel_active_request(client, player, active_state);
         client.stop();
+        if (safe_client != nullptr) {
+            safe_client->stop();
+        }
         return 0;
     }
     catch (const std::exception& exc) {
