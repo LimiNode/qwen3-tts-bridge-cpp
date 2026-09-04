@@ -29,8 +29,11 @@ Example:
 qwen_tts_play.exe --worker python.exe --auto-profile \
   --worker-arg -m --worker-arg qwen_tts_bridge_worker \
   --worker-arg qwen --worker-arg --runtime-profile \
-  --worker-arg cmp50hx-fastest-experimental ...
+  --worker-arg cmp50hx-fastest ...
 ```
+
+`cmp50hx-fastest-experimental` remains accepted as a compatibility alias for
+the fastest opt-in profile.
 
 The option is intended for the persistent interactive CLI as well as one-shot
 requests. `/cancel` cancels whichever worker owns the active request.

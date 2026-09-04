@@ -1461,7 +1461,7 @@ QwenTtsClient& client_for_text(
     }
     const std::size_t estimated_bytes = estimated_text_bytes(text);
     const bool use_fast = estimated_bytes <= options.auto_fast_max_chars;
-    std::cout << "auto profile: " << (use_fast ? "cmp50hx-fastest-experimental" : "cmp50hx-safe")
+    std::cout << "auto profile: " << (use_fast ? "cmp50hx-fastest" : "cmp50hx-safe")
               << " (non-space UTF-8 bytes=" << estimated_bytes << ")\n";
     return use_fast ? fast_client : *safe_client;
 }
