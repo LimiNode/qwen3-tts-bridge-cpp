@@ -69,16 +69,67 @@ Objective promotion gates are zero later-chunk starvation observations, natural
 EOS, cancellation/reset success, and codec-token/PCM parity against the fixed
 seed control. Human listening is a complementary playback sanity check.
 
-## Current evidence and remaining hardware check
+## Measured acceptance result
 
-The bounded E4/W33/768 candidate has already passed the controlled parity pair:
-first PCM `677.6 ms`, median cadence `311.4 ms`, starvation `0`, natural EOS,
-and byte-identical PCM to the 2048 control. Three additional W768 attempts had
-maximum inter-arrival `313.3 ms`; persistent reuse and cancellation/reset also
-passed. The safe E8/W33/2048 path remains the fallback.
+Target run: 2026-09-04, idle CMP 50HX 20 GiB, registered 1.7B Base Kraftwerk
+profiles, FasterQwen commit `9a3ee431c0c077e8a67fa2d0a6fe01f198b0cdbf`.
 
-VRAM usage must still be recorded on the deployment machine for one warm worker
-and two simultaneously warm workers. Do not infer this from model parameter
-count: static Talker caches and CUDA allocator reserve are included. Capture
-`torch.cuda.max_memory_reserved()` and `nvidia-smi` process usage for both
-profiles before enabling dual-worker routing.
+| Profile / case | First PCM | Audio | Cadence | Starvation | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| low, English long | 675.8 ms | 18.24 s / 57 chunks | median 309.6 ms, max 313.8 ms | 0 | natural EOS |
+| low, Russian long | 677.7 ms | 14.08 s / 44 chunks | median 311.4 ms, max 316.6 ms | 0 | natural EOS |
+| safe, English long | 970.8 ms | 14.24 s / 23 chunks | median 605.3 ms, max 613.5 ms | 0 | natural EOS |
+| safe, Russian warm voice | 973.1 ms | 8.56 s / 14 chunks | median 599.5 ms, max 605.4 ms | 0 | natural EOS |
+
+Two persistent-worker multilingual soaks then completed 30/30 requests each.
+The low profile covered RU/EN short and medium cases with first PCM median
+`677.8 ms`, p95 `700.5 ms`, and max `717.3 ms`. The safe profile covered the
+same matrix with median `971.5 ms`, p95 `980.2 ms`, and max `984.9 ms`. Every
+request produced PCM; neither worker restarted.
+
+The lifecycle sequence `complete -> cancel after first PCM -> complete` passed
+on one low worker. Cancellation reached its terminal event in `1.54 ms`, and
+the post-cancellation request completed. A preliminary human listening check
+reported fast subjective startup and clearly retained Kraftwerk identity,
+including interactive switching to the warm voice. Chunk-boundary click and
+tail ratings remain a human release-note item rather than an automated claim.
+
+Raw-PCM boundary analysis found no systematic splice discontinuity. The
+largest boundary delta was `2624` for low/English, `2431` for low/Russian, and
+`1580` for safe/English, while the largest ordinary adjacent-sample deltas in
+the same captures were respectively `6892`, `4900`, and `8034`. One boundary
+in each low capture exceeded that capture's global p99.9 adjacent delta; none
+did in safe/English. These isolated values are below ordinary in-signal maxima
+and do not by themselves indicate a repeated chunk-join click.
+
+### Capacity behavior
+
+A 216-word Russian boundary request demonstrated why the profiles must remain
+explicit. On W768 it produced 531 codec frames / 42.48 seconds of PCM and hit
+`max_seq_len`; on W2048 the identical request reached natural EOS after 1612
+frames / 128.96 seconds. The worker now fails the W768 terminal state with
+`resource_error / sequence_capacity_exceeded` instead of reporting a silently
+truncated completion. Named CMP profiles enable generation tracing so this gate
+is active in normal launcher use.
+
+This error is necessarily detected at the generation boundary, after already
+streamed PCM. A product router should therefore choose the safe worker or split
+known-long text before submission; it should not play 42 seconds and then retry
+the whole request. The launcher's independent 30-second safety limit still
+applies, so very long assistant responses should be split even on the safe
+profile.
+
+### VRAM
+
+One warmed low worker used `5944 MiB` at the GPU level. Keeping warmed low and
+safe workers alive simultaneously used `11881 MiB` total on the CMP 50HX. The
+driver did not expose per-process memory under Windows (`[N/A]`), but both PIDs
+were present and process-local low-worker telemetry reported approximately
+`5.10 GiB` allocated, `5.52 GiB` reserved, and `6.50 GiB` peak reserved.
+
+Dual-worker request-boundary routing therefore fits the 20 GiB card with about
+8.4 GiB remaining, but it does not fit a 10 GiB budget. These figures include
+both warmed static graphs and CUDA contexts.
+
+Raw reports and PCM captures are under
+`tmp/cmp50hx-profile-acceptance/` and are intentionally unversioned.
