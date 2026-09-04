@@ -11,11 +11,14 @@ param(
     [string]$VoiceId = "",
     [ValidateSet("faster", "upstream")]
     [string]$RuntimeBackend = "faster",
+    [ValidateSet("default", "cmp50hx-low-latency", "cmp50hx-safe")]
+    [string]$RuntimeProfile = "default",
     [ValidateRange(0.05, 2.0)]
     [double]$Temperature = 0.45,
     [switch]$StyleExperiment,
     [string]$Python = "",
     [string]$ModelPath = "",
+    [string]$FasterSourcePath = "",
     [string]$BuildDirectory = "build"
 )
 
@@ -99,10 +102,13 @@ if ([string]::IsNullOrWhiteSpace($ModelPath)) {
 $model = Resolve-ExistingPath $ModelPath "Base model"
 
 if ($RuntimeBackend -eq "faster") {
-    if ($null -eq $runtimeConfig -or [string]::IsNullOrWhiteSpace($runtimeConfig.faster_qwen_source_path)) {
-        throw "faster_qwen_source_path must be set in $localConfigPath for RuntimeBackend=faster"
+    if ([string]::IsNullOrWhiteSpace($FasterSourcePath)) {
+        if ($null -eq $runtimeConfig -or [string]::IsNullOrWhiteSpace($runtimeConfig.faster_qwen_source_path)) {
+            throw "FasterSourcePath was not provided and faster_qwen_source_path is not set in $localConfigPath"
+        }
+        $FasterSourcePath = $runtimeConfig.faster_qwen_source_path
     }
-    $runtimeSource = Resolve-ExistingPath $runtimeConfig.faster_qwen_source_path "FasterQwen source"
+    $runtimeSource = Resolve-ExistingPath $FasterSourcePath "FasterQwen source"
 }
 else {
     $runtimeSource = Join-Path $repoRoot "external\python\Qwen3-TTS-streaming"
@@ -111,19 +117,53 @@ else {
     }
 }
 $env:PYTHONPATH = "$runtimeSource;$repoRoot\worker\src"
+$emitEveryFrames = 8
+$decodeWindowFrames = 80
+$maxSeqLen = 2048
+$dtype = "bfloat16"
+switch ($RuntimeProfile) {
+    "cmp50hx-low-latency" {
+        # Bounded CMP 50HX profile: E4 + W33 + one-chunk playback prebuffer.
+        $emitEveryFrames = 4
+        $decodeWindowFrames = 33
+        $maxSeqLen = 768
+        $dtype = "float16"
+    }
+    "cmp50hx-safe" {
+        # Sustained-rate CMP 50HX fallback: E8 + W33 + one-chunk prebuffer.
+        $emitEveryFrames = 8
+        $decodeWindowFrames = 33
+        $maxSeqLen = 2048
+        $dtype = "float16"
+    }
+}
+if ($RuntimeProfile -ne "default") {
+    $env:QTB_FASTER_MLP_FP32_ISLAND = "1"
+    $env:QTB_FASTER_GRAPH_RESIDUAL_CARRIER_FP32 = "1"
+    $env:QTB_FASTER_MLP_NARROW_GATE_UP_FP16 = "1"
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE = "1"
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES = "$decodeWindowFrames"
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES = "$(25 + $emitEveryFrames)"
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = "1"
+    $env:QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP = "1"
+}
 $workerArguments = @(
     "-m", "qwen_tts_bridge_worker",
     "qwen",
     "--model-path", $model,
     "--runtime-backend", $RuntimeBackend,
     "--device", "cuda",
-    "--dtype", "bfloat16",
+    "--dtype", $dtype,
     "--attn-implementation", "sdpa",
-    "--emit-every-frames", "8",
-    "--decode-window-frames", "80",
+    "--max-seq-len", $maxSeqLen,
+    "--emit-every-frames", $emitEveryFrames,
+    "--decode-window-frames", $decodeWindowFrames,
     "--max-audio-seconds-per-utterance", "30",
     "--temperature", $Temperature
 )
+if ($RuntimeProfile -ne "default") {
+    $workerArguments += @("--runtime-profile", $RuntimeProfile)
+}
 if ($voiceRegistry) {
     $workerArguments += @("--voice-registry-path", $voiceRegistry)
 }
@@ -164,6 +204,11 @@ if ($ReferenceText -and -not $VoiceId) {
 if ($XVectorOnly) {
     $arguments += "--x-vector-only"
 }
+
+# Keep startup latency policy explicit and reproducible for the acceptance
+# profiles. The player still owns physical playback and may be replaced by a
+# different sink in applications.
+$arguments += @("--playback-prebuffer-chunks", "1")
 
 & $cliPath @arguments
 exit $LASTEXITCODE

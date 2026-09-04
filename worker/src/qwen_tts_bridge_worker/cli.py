@@ -121,6 +121,7 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 chunk_delay_seconds=args.mock_chunk_delay,
             )
         if engine_command == "qwen":
+            _apply_runtime_profile(args)
             return QwenEngineConfig(
                 model_path=args.model_path,
                 runtime_backend=args.runtime_backend,
@@ -221,6 +222,28 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
             ),
         )
     raise ValueError(f"unsupported engine: {engine_name}")
+
+
+def _apply_runtime_profile(args: argparse.Namespace) -> None:
+    """Apply a named hardware profile at worker startup.
+
+    FasterQwen owns one static Talker graph per worker, so these values are
+    intentionally resolved before model construction and are not mutable while
+    a request is running. Explicit profile names are useful for process
+    supervisors that do not use the PowerShell launcher.
+    """
+
+    profile = getattr(args, "runtime_profile", "default")
+    if profile == "cmp50hx-low-latency":
+        args.max_seq_len = 768
+        args.emit_every_frames = 4
+        args.decode_window_frames = 33
+    elif profile == "cmp50hx-safe":
+        args.max_seq_len = 2048
+        args.emit_every_frames = 8
+        args.decode_window_frames = 33
+    elif profile != "default":
+        raise ValueError(f"unsupported runtime profile: {profile}")
 
 
 def _add_root_server_options(parser: argparse.ArgumentParser) -> None:
@@ -344,6 +367,15 @@ def _add_qwen_subcommand(
         choices=("upstream", "faster"),
         default="upstream",
         help="Select the Qwen inference implementation.",
+    )
+    qwen_parser.add_argument(
+        "--runtime-profile",
+        choices=("default", "cmp50hx-low-latency", "cmp50hx-safe"),
+        default="default",
+        help=(
+            "Apply a startup hardware profile. Profiles are fixed for the "
+            "worker lifetime and cannot be changed during a request."
+        ),
     )
     qwen_parser.add_argument("--device", default="cuda")
     qwen_parser.add_argument("--dtype", default="auto")

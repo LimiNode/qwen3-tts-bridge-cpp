@@ -136,6 +136,41 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("ryan", config.warmup_speaker)
         self.assertEqual("Speak neutrally.", config.warmup_instruction)
 
+    def test_cmp50hx_profiles_override_graph_capacity_and_cadence(self) -> None:
+        parser = build_parser()
+
+        low_args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--runtime-profile",
+                "cmp50hx-low-latency",
+            ]
+        )
+        low = build_engine_config(low_args)
+        self.assertIsInstance(low, QwenEngineConfig)
+        assert isinstance(low, QwenEngineConfig)
+        self.assertEqual(768, low.max_seq_len)
+        self.assertEqual(4, low.emit_every_frames)
+        self.assertEqual(33, low.decode_window_frames)
+
+        safe_args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--runtime-profile",
+                "cmp50hx-safe",
+            ]
+        )
+        safe = build_engine_config(safe_args)
+        self.assertIsInstance(safe, QwenEngineConfig)
+        assert isinstance(safe, QwenEngineConfig)
+        self.assertEqual(2048, safe.max_seq_len)
+        self.assertEqual(8, safe.emit_every_frames)
+        self.assertEqual(33, safe.decode_window_frames)
+
     def test_qwen_subcommand_builds_upstream_fp32_code_predictor_config(self) -> None:
         parser = build_parser()
         args = parser.parse_args(
