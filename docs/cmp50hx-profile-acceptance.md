@@ -1,11 +1,14 @@
 # CMP 50HX profile acceptance
 
-This is the release gate for the three explicit 1.7B Base profiles. It must be
+This is the release gate for the four explicit 1.7B Base profiles. It must be
 run on the target CMP 50HX with the same FasterQwen revision and model/voice
 registry used by the deployment.
 
 ## Profiles
 
+* `cmp50hx-fastest-experimental`: the ultra graph plus per-registered-voice
+  prefix-KV reuse. This is an opt-in perceptual-risk profile and is not required
+  to preserve codec/PCM byte parity.
 * `cmp50hx-ultra-low-latency`: first E3 then E4, W29, one playback prebuffer,
   `max_seq_len=448`. Use only for the shortest bounded utterances.
 * `cmp50hx-low-latency`: E4, W33, one playback prebuffer, `max_seq_len=768`.
@@ -31,6 +34,8 @@ containing all of the following cases:
 | over capacity | explicit request/model error, never silent success |
 | repeated requests (30–100) | no starvation, graph reset and stable EOS |
 | cancel after first PCM, then next request | one cancellation terminal event; next request completes |
+| registered voice A -> B -> A | A's final request reports A's cache hit; no identity leakage from B |
+| registered voice prompt changed under the same ID | prefix mismatch is reported and the cache entry is rebuilt |
 
 The existing playback soak runner supplies the objective timing and starvation
 proxy. A low-profile run is:
@@ -68,8 +73,13 @@ test:
 Listen for clicks at chunk boundaries, pauses, clipping, changed word endings,
 and a clipped EOS. Record the generated WAV/metrics path and the profile name.
 Objective promotion gates are zero later-chunk starvation observations, natural
-EOS, cancellation/reset success, and codec-token/PCM parity against the fixed
-seed control. Human listening is a complementary playback sanity check.
+EOS, and cancellation/reset success. The ultra, low, and safe profiles also
+retain their existing fixed-seed codec/PCM comparison. The fastest experimental
+profile intentionally changes the autoregressive trajectory, so its gate is the
+correct phrase, retained voice identity, and no audible regression such as
+clicks, pauses, clipping, corrupted endings, or materially worse pronunciation.
+Listening is therefore a required gate for that profile, not just a complement
+to byte parity.
 
 ## Measured acceptance result
 
@@ -78,6 +88,7 @@ profiles, FasterQwen commit `9a3ee431c0c077e8a67fa2d0a6fe01f198b0cdbf`.
 
 | Profile / case | First PCM | Audio | Cadence | Starvation | Result |
 | --- | ---: | ---: | ---: | ---: | --- |
+| fastest experimental, fresh warmed workers | 521.2–523.4 ms | 7.36 s / 24 chunks | median 280.8 ms, max 282.9 ms | 0 | phrase/identity gate pending listening |
 | low, English long | 675.8 ms | 18.24 s / 57 chunks | median 309.6 ms, max 313.8 ms | 0 | natural EOS |
 | low, Russian long | 677.7 ms | 14.08 s / 44 chunks | median 311.4 ms, max 316.6 ms | 0 | natural EOS |
 | safe, English long | 970.8 ms | 14.24 s / 23 chunks | median 605.3 ms, max 613.5 ms | 0 | natural EOS |

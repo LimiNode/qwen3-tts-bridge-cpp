@@ -51,13 +51,14 @@ registered profiles so preparation stays outside request latency.
 
 The launcher exposes explicit CMP profiles through `-RuntimeProfile`:
 
-| Profile | Talker capacity | Emission / decoder | Prebuffer | Intended use |
-| --- | ---: | --- | ---: | --- |
-| `cmp50hx-ultra-low-latency` | 448 | first E3, then E4 / W29 | 1 | shortest bounded assistant/avatar utterances |
-| `cmp50hx-low-latency` | 768 | E4 / W33 | 1 | bounded short assistant/avatar utterances |
-| `cmp50hx-safe` | 2048 | E8 / W33 | 1 | long or unknown-length text |
+| Profile | Hardware | Talker capacity | Emission / decoder | Expected first PCM | Quality policy | Intended use |
+| --- | --- | ---: | --- | ---: | --- | --- |
+| `cmp50hx-fastest-experimental` | CMP 50HX 20 GiB | 448 | first E3, then E4 / W29 | target about 0.53 s | prefix-KV reuse changes the autoregressive trajectory; pronunciation or quality may differ | opt-in when minimum response latency matters more than deterministic parity |
+| `cmp50hx-ultra-low-latency` | CMP 50HX 20 GiB | 448 | first E3, then E4 / W29 | about 0.61 s | no prefix reuse; accepted perceptual profile | shortest bounded assistant/avatar utterances |
+| `cmp50hx-low-latency` | CMP 50HX 20 GiB | 768 | E4 / W33 | about 0.68 s | established low-latency profile | bounded short assistant/avatar utterances |
+| `cmp50hx-safe` | CMP 50HX 20 GiB | 2048 | E8 / W33 | about 0.97 s | widest tested capacity | long or unknown-length text |
 
-Both profiles use the same persistent worker and registered Base voice. Profile
+All named profiles use a persistent worker and registered Base voice. Profile
 selection happens when the worker starts; a running FasterQwen model owns one
 static Talker graph and cannot safely change `max_seq_len` or its CUDA graph in
 the middle of a request. Applications that need to switch profiles while
@@ -79,6 +80,23 @@ scripts/start-qwen-tts-clone-play.ps1 `
 Use `cmp50hx-ultra-low-latency` in the same command to select the accepted
 W448/E3-to-E4/W29 profile. Its measured first PCM is about 0.61 seconds on the
 target CMP 50HX, before player/output-device overhead.
+
+Use `cmp50hx-fastest-experimental` only with a registered `VoiceId`. It adds a
+per-voice 86-position prefix-KV cache to the ultra profile. A preliminary W384
+probe reduced first PCM from `614.279 ms` to `527.394 ms`; the W448 release
+matrix must be recorded separately. The optimization deliberately does not
+preserve codec-token or PCM byte parity: it may produce slightly different
+pronunciation and can occasionally be worse. Cache entries are isolated by
+voice ID and language and verified against the actual prefix, so A->B->A voice
+switching cannot silently reuse B's prefix for A. Users who do not accept this
+quality risk should select `cmp50hx-ultra-low-latency` or a slower profile.
+
+Applications may expose these profiles as a latency/quality preference and
+combine that preference with an utterance-length estimate. Because graph
+capacity is fixed per worker, automatic routing means keeping the selected
+workers warm and choosing one before submission; it does not mean mutating a
+running graph. Split long text at sentence boundaries or route it to the next
+larger profile before audio starts.
 
 The low-latency profile is bounded by `max_seq_len=768`; callers should split
 long text or route it to `cmp50hx-safe`. A request that cannot fit the selected

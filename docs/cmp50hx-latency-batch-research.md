@@ -51,6 +51,39 @@ tmp/research-20260904/ultra-w448-persistent-30.json
 tmp/research-20260904/capacity-en-w448-e3-e4-w29/
 ```
 
+## Fastest experimental W448 result
+
+The prefix-KV implementation was then exercised on the same idle CMP 50HX with
+the registered Kraftwerk fidelity voice. Three fresh workers, each warmed with
+the same `English` language used by the request, produced first PCM at
+`521.225`, `523.395`, and `523.254 ms`. A one-worker WaveOut run submitted the
+first chunk at `601.477 ms`, delivered `24` chunks / `7.36 s` of PCM, and
+reported zero queue-starvation observations; later chunk inter-arrivals were
+`279.9-282.9 ms`.
+
+The persistent multilingual/voice-isolation matrix ran `30/30` requests on one
+worker. It produced non-empty PCM for every request, with `27` expected cache
+hits and `3` cold misses (new voice/language combinations), and no prefix
+mismatch. Hit-only first PCM was `524.173-543.920 ms` (median `530.814 ms`);
+the full set median was `531.045 ms`. The three cold misses were slower because
+they included construction of a new registered voice prefix (`705-1305 ms`),
+so production should warm the voices/languages it plans to route to fastest.
+
+The cancellation sequence also passed: one PCM chunk was delivered before
+cancel, zero chunks after cancel, the terminal event was `cancelled` at
+`528.357 ms`, and the next request completed on the same worker with a prefix
+cache hit. Raw PCM boundary analysis found no universal splice signature, but
+the reuse capture had an isolated `4193` sample boundary delta, so the W448 WAV
+still requires human listening before promotion.
+
+Generated comparison files are intentionally outside version control:
+
+```text
+C:\tmp\qwen-prefix-reuse-20260904\hardware\fastest-w448-listen\fastest-reuse-w448.wav
+C:\tmp\qwen-prefix-reuse-20260904\hardware\ultra-w448-control\ultra-control-w448.wav
+C:\tmp\qwen-prefix-reuse-20260904\hardware\fastest-w448-persistent-30.json
+```
+
 ## Candidate comparison
 
 ### Static Talker capacity
@@ -111,16 +144,23 @@ copied from full prefill left a `0.09375` hidden delta and `0.25` final KV delta
 although logits were all-close and the first token matched.
 
 A diagnostic reuse prototype reduced first PCM from `614.279` to `527.394 ms`
-and prefill GPU time from `357.890` to `276.107 ms`, but failed the audio gate:
+and prefill GPU time from `357.890` to `276.107 ms`, but failed the original
+byte-parity audio gate:
 the control produced `7280 ms` and reuse `7200 ms` PCM, the first difference
 appeared at `400 ms`, common-prefix SNR was `-2.365 dB`, and maximum sample
-delta was `14966`. The production reuse path was removed. Only the parity
-diagnostic remains.
+delta was `14966`. Human comparison subsequently found only a small
+pronunciation difference, with identity and phrase content retained; the
+control was judged slightly more nasal. Based on that explicit user-accepted
+tradeoff, reuse is now being validated as a separate
+`cmp50hx-fastest-experimental` profile. It must remain per-registered-voice,
+fail closed for direct references or unsafe masks, and must never replace the
+parity-preserving profiles silently.
 
 ## Decision
 
-Promote W448/E3-to-E4/W29 as the opt-in ultra profile. Keep W768/E4/W33 as the
-established low-latency profile and W2048/E8/W33 as the safe profile. Do not
-enable async codec or voice-prefix KV reuse in production. Route or split text
-before submission; never retry an already partially played capacity failure as
-though no audio had been emitted.
+Keep W448/E3-to-E4/W29 as the accepted ultra profile, W768/E4/W33 as the
+established low-latency profile, and W2048/E8/W33 as the safe profile. Keep
+async codec diagnostic-only. Expose voice-prefix KV reuse only through the
+clearly labelled fastest experimental profile after its separate hardware and
+listening matrix passes. Route or split text before submission; never retry an
+already partially played capacity failure as though no audio had been emitted.
