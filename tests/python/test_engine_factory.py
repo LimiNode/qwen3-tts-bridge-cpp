@@ -139,6 +139,26 @@ class EngineFactoryTests(unittest.TestCase):
     def test_cmp50hx_profiles_override_graph_capacity_and_cadence(self) -> None:
         parser = build_parser()
 
+        ultra_args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--runtime-backend",
+                "faster",
+                "--runtime-profile",
+                "cmp50hx-ultra-low-latency",
+            ]
+        )
+        ultra = build_engine_config(ultra_args)
+        self.assertIsInstance(ultra, QwenEngineConfig)
+        assert isinstance(ultra, QwenEngineConfig)
+        self.assertEqual(448, ultra.max_seq_len)
+        self.assertEqual(4, ultra.emit_every_frames)
+        self.assertEqual((3, 4), ultra.emit_chunk_schedule)
+        self.assertEqual(29, ultra.decode_window_frames)
+        self.assertTrue(ultra.collect_generation_trace)
+
         low_args = parser.parse_args(
             [
                 "qwen",

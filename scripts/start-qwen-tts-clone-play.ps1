@@ -11,7 +11,7 @@ param(
     [string]$VoiceId = "",
     [ValidateSet("faster", "upstream")]
     [string]$RuntimeBackend = "faster",
-    [ValidateSet("default", "cmp50hx-low-latency", "cmp50hx-safe")]
+    [ValidateSet("default", "cmp50hx-ultra-low-latency", "cmp50hx-low-latency", "cmp50hx-safe")]
     [string]$RuntimeProfile = "default",
     [ValidateRange(0.05, 2.0)]
     [double]$Temperature = 0.45,
@@ -118,10 +118,19 @@ else {
 }
 $env:PYTHONPATH = "$runtimeSource;$repoRoot\worker\src"
 $emitEveryFrames = 8
+$emitChunkSchedule = @()
 $decodeWindowFrames = 80
 $maxSeqLen = 2048
 $dtype = "bfloat16"
 switch ($RuntimeProfile) {
+    "cmp50hx-ultra-low-latency" {
+        # Fastest accepted CMP 50HX profile: first E3 chunk, then steady E4.
+        $emitEveryFrames = 4
+        $emitChunkSchedule = @(3, 4)
+        $decodeWindowFrames = 29
+        $maxSeqLen = 448
+        $dtype = "float16"
+    }
     "cmp50hx-low-latency" {
         # Bounded CMP 50HX profile: E4 + W33 + one-chunk playback prebuffer.
         $emitEveryFrames = 4
@@ -137,13 +146,14 @@ switch ($RuntimeProfile) {
         $dtype = "float16"
     }
 }
+$maxDecodeInputFrames = 25 + $emitEveryFrames
 if ($RuntimeProfile -ne "default") {
     $env:QTB_FASTER_MLP_FP32_ISLAND = "1"
     $env:QTB_FASTER_GRAPH_RESIDUAL_CARRIER_FP32 = "1"
     $env:QTB_FASTER_MLP_NARROW_GATE_UP_FP16 = "1"
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE = "1"
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_DECODE_WINDOW_FRAMES = "$decodeWindowFrames"
-    $env:QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES = "$(25 + $emitEveryFrames)"
+    $env:QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES = "$maxDecodeInputFrames"
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = "1"
     $env:QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP = "1"
 }
@@ -163,6 +173,9 @@ $workerArguments = @(
 )
 if ($RuntimeProfile -ne "default") {
     $workerArguments += @("--runtime-profile", $RuntimeProfile)
+}
+if ($emitChunkSchedule.Count -gt 0) {
+    $workerArguments += @("--emit-chunk-schedule", ($emitChunkSchedule -join ','))
 }
 if ($voiceRegistry) {
     $workerArguments += @("--voice-registry-path", $voiceRegistry)

@@ -236,7 +236,13 @@ def _apply_runtime_profile(args: argparse.Namespace) -> None:
     profile = getattr(args, "runtime_profile", "default")
     if profile != "default" and args.runtime_backend != "faster":
         raise ValueError("CMP 50HX runtime profiles require runtime_backend=faster")
-    if profile == "cmp50hx-low-latency":
+    if profile == "cmp50hx-ultra-low-latency":
+        args.max_seq_len = 448
+        args.emit_every_frames = 4
+        args.emit_chunk_schedule = (3, 4)
+        args.decode_window_frames = 29
+        args.collect_generation_trace = True
+    elif profile == "cmp50hx-low-latency":
         args.max_seq_len = 768
         args.emit_every_frames = 4
         args.decode_window_frames = 33
@@ -374,7 +380,12 @@ def _add_qwen_subcommand(
     )
     qwen_parser.add_argument(
         "--runtime-profile",
-        choices=("default", "cmp50hx-low-latency", "cmp50hx-safe"),
+        choices=(
+            "default",
+            "cmp50hx-ultra-low-latency",
+            "cmp50hx-low-latency",
+            "cmp50hx-safe",
+        ),
         default="default",
         help=(
             "Apply a startup hardware profile. Profiles are fixed for the "

@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 _ROOT = Path(__file__).resolve().parents[2]
 _LAUNCHER = _ROOT / "scripts" / "start-qwen-tts-clone-play.ps1"
 _DOC = _ROOT / "docs" / "voice-clone.md"
@@ -18,7 +17,8 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
 
     def test_profiles_are_explicit_and_default_is_preserved(self) -> None:
         self.assertIn(
-            '[ValidateSet("default", "cmp50hx-low-latency", "cmp50hx-safe")]',
+            '[ValidateSet("default", "cmp50hx-ultra-low-latency", '
+            '"cmp50hx-low-latency", "cmp50hx-safe")]',
             self.launcher,
         )
         self.assertIn('[string]$RuntimeProfile = "default"', self.launcher)
@@ -44,9 +44,23 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
         self.assertIn('$maxSeqLen = 2048', block)
         self.assertIn('$dtype = "float16"', block)
 
+    def test_ultra_low_latency_profile_maps_to_e3_e4_w29_graph(self) -> None:
+        block = self.launcher.split('switch ($RuntimeProfile)', 1)[1].split(
+            '"cmp50hx-low-latency"', 1
+        )[0]
+        block = block.split('"cmp50hx-ultra-low-latency"', 1)[1]
+        self.assertIn('$emitEveryFrames = 4', block)
+        self.assertIn('$emitChunkSchedule = @(3, 4)', block)
+        self.assertIn('$decodeWindowFrames = 29', block)
+        self.assertIn('$maxSeqLen = 448', block)
+        self.assertIn('$dtype = "float16"', block)
+
     def test_launcher_passes_selected_values_and_one_chunk_prebuffer(self) -> None:
         self.assertIn('"--max-seq-len", $maxSeqLen', self.launcher)
         self.assertIn('"--emit-every-frames", $emitEveryFrames', self.launcher)
+        self.assertIn(
+            '"--emit-chunk-schedule", ($emitChunkSchedule -join', self.launcher
+        )
         self.assertIn('"--decode-window-frames", $decodeWindowFrames', self.launcher)
         self.assertIn(
             '$workerArguments += @("--runtime-profile", $RuntimeProfile)',
@@ -68,6 +82,7 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
 
     def test_documentation_describes_request_boundary_switching(self) -> None:
         self.assertIn("cmp50hx-low-latency", self.documentation)
+        self.assertIn("cmp50hx-ultra-low-latency", self.documentation)
         self.assertIn("cmp50hx-safe", self.documentation)
         self.assertIn("request boundary", self.documentation)
         self.assertIn("max_seq_len=768", self.documentation)

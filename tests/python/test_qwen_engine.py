@@ -48,10 +48,21 @@ class FirstChunkTimingFieldsTests(unittest.TestCase):
                 "prefix_split_probe_error": None,
                 "prefix_split_probe_hidden_max_abs_delta": 0.001,
                 "prefix_split_probe_hidden_mean_abs_delta": 0.0001,
+                "prefix_split_probe_prefix_hidden_max_abs_delta": 0.0005,
+                "prefix_split_probe_prefix_hidden_mean_abs_delta": 0.00005,
                 "prefix_split_probe_logits_max_abs_delta": 0.01,
                 "prefix_split_probe_logits_allclose": True,
                 "prefix_split_probe_kv_max_abs_delta": 0.002,
                 "prefix_split_probe_kv_allclose": True,
+                "prefix_split_probe_prefix_kv_max_abs_delta": 0.001,
+                "prefix_split_probe_prefix_kv_allclose": True,
+                "prefix_split_probe_seeded_hidden_max_abs_delta": 0.0007,
+                "prefix_split_probe_seeded_hidden_mean_abs_delta": 0.00007,
+                "prefix_split_probe_seeded_logits_max_abs_delta": 0.007,
+                "prefix_split_probe_seeded_logits_allclose": True,
+                "prefix_split_probe_seeded_first_token_match": True,
+                "prefix_split_probe_seeded_kv_max_abs_delta": 0.0015,
+                "prefix_split_probe_seeded_kv_allclose": True,
                 "prefix_split_probe_first_token_match": True,
             },
             next_wall_ms=1.0,
@@ -61,6 +72,16 @@ class FirstChunkTimingFieldsTests(unittest.TestCase):
         self.assertEqual(86, fields["prefix_split_probe_prefix_length"])
         self.assertAlmostEqual(0.001, fields["prefix_split_probe_hidden_max_abs_delta"])
         self.assertTrue(fields["prefix_split_probe_logits_allclose"])
+        self.assertAlmostEqual(
+            0.0005, fields["prefix_split_probe_prefix_hidden_max_abs_delta"]
+        )
+        self.assertTrue(fields["prefix_split_probe_prefix_kv_allclose"])
+        self.assertAlmostEqual(
+            0.0007, fields["prefix_split_probe_seeded_hidden_max_abs_delta"]
+        )
+        self.assertTrue(fields["prefix_split_probe_seeded_logits_allclose"])
+        self.assertTrue(fields["prefix_split_probe_seeded_first_token_match"])
+        self.assertTrue(fields["prefix_split_probe_seeded_kv_allclose"])
 class _InnerModel:
     def __init__(self, model_type: str) -> None:
         self.tts_model_type = model_type

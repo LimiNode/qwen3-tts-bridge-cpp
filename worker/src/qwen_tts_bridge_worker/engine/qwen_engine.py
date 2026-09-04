@@ -2366,6 +2366,10 @@ def _first_chunk_timing_fields(
         "prefix_split_probe_logits_allclose",
         "prefix_split_probe_kv_allclose",
         "prefix_split_probe_first_token_match",
+        "prefix_split_probe_prefix_kv_allclose",
+        "prefix_split_probe_seeded_logits_allclose",
+        "prefix_split_probe_seeded_first_token_match",
+        "prefix_split_probe_seeded_kv_allclose",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
@@ -2452,8 +2456,15 @@ def _first_chunk_timing_fields(
         "stream_next_host_residual_ms",
         "prefix_split_probe_hidden_max_abs_delta",
         "prefix_split_probe_hidden_mean_abs_delta",
+        "prefix_split_probe_prefix_hidden_max_abs_delta",
+        "prefix_split_probe_prefix_hidden_mean_abs_delta",
         "prefix_split_probe_logits_max_abs_delta",
         "prefix_split_probe_kv_max_abs_delta",
+        "prefix_split_probe_prefix_kv_max_abs_delta",
+        "prefix_split_probe_seeded_hidden_max_abs_delta",
+        "prefix_split_probe_seeded_hidden_mean_abs_delta",
+        "prefix_split_probe_seeded_logits_max_abs_delta",
+        "prefix_split_probe_seeded_kv_max_abs_delta",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:

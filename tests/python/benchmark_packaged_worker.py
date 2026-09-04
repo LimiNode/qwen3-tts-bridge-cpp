@@ -86,50 +86,53 @@ def main() -> int:
     warmups = [_with_request_metrics(row, worker_metrics) for row in warmups]
     results = [_with_request_metrics(row, worker_metrics) for row in results]
 
-    print(
-        json.dumps(
-            {
-                "config": {
-                    "warmups": args.warmups,
-                    "requests": args.requests,
-                    "text": args.text,
-                    "language": args.language,
-                    "speaker": args.speaker,
-                    "instruction": args.instruction,
-                    "seed": args.seed,
-                    "seed_mode": args.seed_mode,
-                    "warmup_seed": args.warmup_seed,
-                    "warmup_synthesis": args.warmup_synthesis,
-                    "warmup_synthesis_passes": args.warmup_synthesis_passes,
-                    "warmup_unbounded_passes": args.warmup_unbounded_passes,
-                    "warmup_max_output_chunks": args.warmup_max_output_chunks,
-                    "warmup_voice_id": args.warmup_voice_id,
-                    "preload_voice_profiles": args.preload_voice_profiles,
-                    "engine_startup_mode": args.engine_startup_mode,
-                    "prefill_compile_lengths": args.prefill_compile_lengths,
-                    "prefill_compile_on_miss": args.prefill_compile_on_miss,
-                    "prefill_unknown_shape_policy": args.prefill_unknown_shape_policy,
-                    "request_shapes_jsonl": str(args.request_shapes_jsonl)
-                    if args.request_shapes_jsonl
-                    else None,
-                },
-                "runtime": runtime_fingerprint(
-                    worker_executable=worker_executable,
-                    worker_prefix_args=args.worker_prefix_arg,
-                    args=args,
-                ),
-                "summary": {
-                    "first_audio_ms": _summary(results, "first_audio_ms"),
-                    "completed_ms": _summary(results, "completed_ms"),
-                    "real_time_factor": _summary(results, "real_time_factor"),
-                    "inverse_rtf": _summary(results, "inverse_rtf"),
-                },
-                "warmups": warmups,
-                "requests": results,
-            },
-            sort_keys=True,
-        )
-    )
+    report = {
+        "config": {
+            "warmups": args.warmups,
+            "requests": args.requests,
+            "text": args.text,
+            "language": args.language,
+            "speaker": args.speaker,
+            "instruction": args.instruction,
+            "seed": args.seed,
+            "seed_mode": args.seed_mode,
+            "warmup_seed": args.warmup_seed,
+            "warmup_synthesis": args.warmup_synthesis,
+            "warmup_synthesis_passes": args.warmup_synthesis_passes,
+            "warmup_unbounded_passes": args.warmup_unbounded_passes,
+            "warmup_max_output_chunks": args.warmup_max_output_chunks,
+            "warmup_voice_id": args.warmup_voice_id,
+            "preload_voice_profiles": args.preload_voice_profiles,
+            "engine_startup_mode": args.engine_startup_mode,
+            "prefill_compile_lengths": args.prefill_compile_lengths,
+            "prefill_compile_on_miss": args.prefill_compile_on_miss,
+            "prefill_unknown_shape_policy": args.prefill_unknown_shape_policy,
+            "request_shapes_jsonl": str(args.request_shapes_jsonl)
+            if args.request_shapes_jsonl
+            else None,
+            "emit_chunk_schedule": args.emit_chunk_schedule,
+        },
+        "runtime": runtime_fingerprint(
+            worker_executable=worker_executable,
+            worker_prefix_args=args.worker_prefix_arg,
+            args=args,
+        ),
+        "summary": {
+            "first_audio_ms": _summary(results, "first_audio_ms"),
+            "completed_ms": _summary(results, "completed_ms"),
+            "real_time_factor": _summary(results, "real_time_factor"),
+            "inverse_rtf": _summary(results, "inverse_rtf"),
+        },
+        "warmups": warmups,
+        "requests": results,
+    }
+    serialized = json.dumps(report, sort_keys=True)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(serialized + "\n", encoding="utf-8")
+        print(f"report_json={args.output.resolve()}")
+    else:
+        print(serialized)
     return 0
 
 
@@ -149,6 +152,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--attn-implementation", default="")
     parser.add_argument("--max-seq-len", type=int, default=2048)
     parser.add_argument("--emit-every-frames", type=int, default=8)
+    parser.add_argument("--emit-chunk-schedule", default="")
     parser.add_argument("--decode-window-frames", type=int, default=80)
     parser.add_argument("--overlap-samples", type=int, default=0)
     parser.add_argument("--enable-streaming-optimizations", action="store_true")
@@ -161,6 +165,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--matmul-precision", default="")
     parser.add_argument("--profile-prefill", action="store_true")
     parser.add_argument("--profile-nvtx", action="store_true")
+    parser.add_argument("--collect-generation-trace", action="store_true")
     parser.add_argument(
         "--prefill-backend",
         choices=(
@@ -238,6 +243,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "and Base voice-clone fields."
         ),
     )
+    parser.add_argument("--output", type=Path, default=None)
     return parser
 
 

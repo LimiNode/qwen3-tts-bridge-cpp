@@ -406,6 +406,9 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.extend(["--attn-implementation", attn_implementation])
     if args.enable_streaming_optimizations:
         worker_args.append("--enable-streaming-optimizations")
+    emit_chunk_schedule = str(getattr(args, "emit_chunk_schedule", ""))
+    if emit_chunk_schedule:
+        worker_args.extend(["--emit-chunk-schedule", emit_chunk_schedule])
     if args.no_compile:
         worker_args.append("--no-compile")
     if args.no_cuda_graphs:
