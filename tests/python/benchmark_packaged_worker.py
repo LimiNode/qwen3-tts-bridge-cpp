@@ -111,6 +111,10 @@ def main() -> int:
             if args.request_shapes_jsonl
             else None,
             "emit_chunk_schedule": args.emit_chunk_schedule,
+            "voice_prefix_kv_reuse": args.voice_prefix_kv_reuse,
+            "voice_prefix_kv_reuse_prefix_length": (
+                args.voice_prefix_kv_reuse_prefix_length
+            ),
         },
         "runtime": runtime_fingerprint(
             worker_executable=worker_executable,
@@ -166,6 +170,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile-prefill", action="store_true")
     parser.add_argument("--profile-nvtx", action="store_true")
     parser.add_argument("--collect-generation-trace", action="store_true")
+    parser.add_argument("--voice-prefix-kv-reuse", action="store_true")
+    parser.add_argument(
+        "--voice-prefix-kv-reuse-prefix-length",
+        type=int,
+        default=86,
+    )
     parser.add_argument(
         "--prefill-backend",
         choices=(
@@ -480,6 +490,8 @@ def _with_request_metrics(
         "prefill_shape_length",
         "prefill_shape_call_ordinal",
         "prefill_compiled_call_3plus_host_ms",
+        "voice_prefix_kv_reuse_prefix_length",
+        "voice_prefix_kv_reuse_cache_entries",
     ):
         value = phases.get(key)
         if isinstance(value, (int, float)):
@@ -496,6 +508,9 @@ def _with_request_metrics(
         "prefill_compile_fallback",
         "prefill_shape_allowlist_hit",
         "prefill_compile_on_miss",
+        "voice_prefix_kv_reuse_enabled",
+        "voice_prefix_kv_reuse_hit",
+        "voice_prefix_kv_reuse_prefix_mismatch",
     ):
         value = phases.get(key)
         if isinstance(value, bool):

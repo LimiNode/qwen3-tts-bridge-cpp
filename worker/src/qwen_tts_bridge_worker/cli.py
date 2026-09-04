@@ -148,6 +148,12 @@ def build_engine_config(args: argparse.Namespace) -> EngineConfig:
                 profile_prefill=args.profile_prefill,
                 profile_nvtx=args.profile_nvtx,
                 collect_generation_trace=args.collect_generation_trace,
+                voice_prefix_kv_reuse_enabled=(
+                    args.voice_prefix_kv_reuse_enabled
+                ),
+                voice_prefix_kv_reuse_prefix_length=(
+                    args.voice_prefix_kv_reuse_prefix_length
+                ),
                 prefill_backend=args.prefill_backend,
                 prefill_compile_compat_mode=args.prefill_compile_compat_mode,
                 prefill_compile_lengths=args.prefill_compile_lengths,
@@ -236,7 +242,14 @@ def _apply_runtime_profile(args: argparse.Namespace) -> None:
     profile = getattr(args, "runtime_profile", "default")
     if profile != "default" and args.runtime_backend != "faster":
         raise ValueError("CMP 50HX runtime profiles require runtime_backend=faster")
-    if profile == "cmp50hx-ultra-low-latency":
+    if profile == "cmp50hx-fastest-experimental":
+        args.max_seq_len = 448
+        args.emit_every_frames = 4
+        args.emit_chunk_schedule = (3, 4)
+        args.decode_window_frames = 29
+        args.collect_generation_trace = True
+        args.voice_prefix_kv_reuse_enabled = True
+    elif profile == "cmp50hx-ultra-low-latency":
         args.max_seq_len = 448
         args.emit_every_frames = 4
         args.emit_chunk_schedule = (3, 4)
@@ -382,6 +395,7 @@ def _add_qwen_subcommand(
         "--runtime-profile",
         choices=(
             "default",
+            "cmp50hx-fastest-experimental",
             "cmp50hx-ultra-low-latency",
             "cmp50hx-low-latency",
             "cmp50hx-safe",
@@ -501,6 +515,21 @@ def _add_qwen_subcommand(
         "--collect-generation-trace",
         action="store_true",
         help="Emit complete faster-backend generation trace in worker metrics.",
+    )
+    qwen_parser.add_argument(
+        "--voice-prefix-kv-reuse",
+        action="store_true",
+        dest="voice_prefix_kv_reuse_enabled",
+        help=(
+            "Reuse a registered Base voice prefix KV cache. This opt-in "
+            "perceptual-risk path can change pronunciation."
+        ),
+    )
+    qwen_parser.add_argument(
+        "--voice-prefix-kv-reuse-prefix-length",
+        type=int,
+        default=86,
+        help="Stable registered-voice prefix length cached by FasterQwen.",
     )
     qwen_parser.add_argument(
         "--prefill-backend",

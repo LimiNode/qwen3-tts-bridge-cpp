@@ -1655,6 +1655,12 @@ def _runtime_execution_policy_fields(config: QwenEngineConfig) -> dict[str, obje
             "bridge_compile_control": "not_applicable",
             "bridge_cuda_graph_control": "not_applicable",
             "runtime_internal_cuda_graphs_may_be_enabled": True,
+            "voice_prefix_kv_reuse_enabled": (
+                config.voice_prefix_kv_reuse_enabled
+            ),
+            "voice_prefix_kv_reuse_prefix_length": (
+                config.voice_prefix_kv_reuse_prefix_length
+            ),
         }
     return {
         "runtime_backend": "upstream",
@@ -1956,6 +1962,27 @@ def _qwen_stream_generate_audio(
                     ),
                     **sampling,
                 }
+                if config.voice_prefix_kv_reuse_enabled:
+                    if not request.voice_id:
+                        raise QwenEngineError(
+                            "voice prefix KV reuse requires a registered voice_id"
+                        )
+                    stream_kwargs.update(
+                        {
+                            "voice_prefix_kv_reuse_enabled": True,
+                            "voice_prefix_kv_cache_key": json.dumps(
+                                [
+                                    request.voice_id,
+                                    _qwen_runtime_language(request.language),
+                                ],
+                                ensure_ascii=False,
+                                separators=(",", ":"),
+                            ),
+                            "voice_prefix_kv_reuse_prefix_length": (
+                                config.voice_prefix_kv_reuse_prefix_length
+                            ),
+                        }
+                    )
                 if config.profile_prefill:
                     stream_kwargs["profile_prefill"] = True
                 if config.profile_nvtx:
@@ -2306,6 +2333,8 @@ def _first_chunk_timing_fields(
         "prefill_shape_call_ordinal",
         "prefill_shape_length",
         "prefix_split_probe_prefix_length",
+        "voice_prefix_kv_reuse_prefix_length",
+        "voice_prefix_kv_reuse_cache_entries",
         "chunk_target_steps",
         "chunk_schedule_index",
         "prefill_cuda_memory_before_allocated_bytes",
@@ -2372,6 +2401,9 @@ def _first_chunk_timing_fields(
         "prefix_split_probe_seeded_logits_allclose",
         "prefix_split_probe_seeded_first_token_match",
         "prefix_split_probe_seeded_kv_allclose",
+        "voice_prefix_kv_reuse_enabled",
+        "voice_prefix_kv_reuse_hit",
+        "voice_prefix_kv_reuse_prefix_mismatch",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):

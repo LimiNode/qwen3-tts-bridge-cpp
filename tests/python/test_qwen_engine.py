@@ -88,6 +88,25 @@ class FirstChunkTimingFieldsTests(unittest.TestCase):
         self.assertTrue(fields["prefix_split_probe_seeded_first_token_match"])
         self.assertTrue(fields["prefix_split_probe_seeded_kv_allclose"])
 
+    def test_forwards_voice_prefix_reuse_telemetry(self) -> None:
+        fields = _first_chunk_timing_fields(
+            {
+                "voice_prefix_kv_reuse_enabled": True,
+                "voice_prefix_kv_reuse_hit": True,
+                "voice_prefix_kv_reuse_prefix_length": 86,
+                "voice_prefix_kv_reuse_cache_entries": 2,
+                "voice_prefix_kv_reuse_prefix_mismatch": False,
+            },
+            next_wall_ms=1.0,
+            pcm_convert_ms=0.0,
+        )
+
+        self.assertTrue(fields["voice_prefix_kv_reuse_enabled"])
+        self.assertTrue(fields["voice_prefix_kv_reuse_hit"])
+        self.assertEqual(86, fields["voice_prefix_kv_reuse_prefix_length"])
+        self.assertEqual(2, fields["voice_prefix_kv_reuse_cache_entries"])
+        self.assertFalse(fields["voice_prefix_kv_reuse_prefix_mismatch"])
+
 
 class _InnerModel:
     def __init__(self, model_type: str) -> None:
@@ -2193,6 +2212,96 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(60_000, len(prepared_audio))
         self.assertEqual("Reference text.", prepared_fields["ref_text"])
         self.assertFalse(cast(bool, prepared_fields["x_vector_only_mode"]))
+
+    def test_faster_base_registered_voice_forwards_prefix_kv_reuse(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            registry = directory / "voices.json"
+            _write_reference_wav(reference)
+            registry.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voices": [
+                            {
+                                "voice_id": "robot",
+                                "reference_audio_path": "reference.wav",
+                                "reference_text": "Reference text.",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            engine = QwenTtsEngine(
+                QwenEngineConfig(
+                    model_path="models/qwen-base",
+                    runtime_backend="faster",
+                    device="cpu",
+                    voice_registry_path=str(registry),
+                    voice_prefix_kv_reuse_enabled=True,
+                    voice_prefix_kv_reuse_prefix_length=86,
+                ),
+                model_loader=lambda _config: fake_model,
+            )
+            engine.load()
+            with patch(
+                "qwen_tts_bridge_worker.engine.voice_profiles._prompt_reference_audio",
+                return_value=([0.0] * 60_000, 24_000),
+            ):
+                list(
+                    engine.synthesize_stream(
+                        SynthesisRequest(
+                            request_id=1,
+                            text="Hello",
+                            language="English",
+                            voice_id="robot",
+                        ),
+                        threading.Event(),
+                    )
+                )
+
+        call = fake_model.voice_clone_stream_calls[0]
+        self.assertTrue(call["voice_prefix_kv_reuse_enabled"])
+        self.assertEqual('["robot","English"]', call["voice_prefix_kv_cache_key"])
+        self.assertEqual(86, call["voice_prefix_kv_reuse_prefix_length"])
+
+    def test_prefix_kv_reuse_rejects_direct_reference_request(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            registry = directory / "voices.json"
+            _write_reference_wav(reference)
+            registry.write_text(
+                json.dumps({"schema_version": 1, "voices": []}),
+                encoding="utf-8",
+            )
+            engine = QwenTtsEngine(
+                QwenEngineConfig(
+                    model_path="models/qwen-base",
+                    runtime_backend="faster",
+                    device="cpu",
+                    voice_registry_path=str(registry),
+                    voice_prefix_kv_reuse_enabled=True,
+                ),
+                model_loader=lambda _config: fake_model,
+            )
+            engine.load()
+            request = SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                language="English",
+                reference_audio_path=str(reference),
+                reference_text="Reference text.",
+            )
+            with self.assertRaisesRegex(
+                QwenEngineError,
+                "requires a registered voice_id",
+            ):
+                list(engine.synthesize_stream(request, threading.Event()))
 
     def test_faster_base_profile_preload_keeps_prompt_off_request_path(self) -> None:
         fake_model = _FasterBaseWithNestedPrompt()

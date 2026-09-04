@@ -432,6 +432,14 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         args, "require_natural_eos", False
     ):
         worker_args.append("--collect-generation-trace")
+    if getattr(args, "voice_prefix_kv_reuse", False):
+        worker_args.append("--voice-prefix-kv-reuse")
+        worker_args.extend(
+            [
+                "--voice-prefix-kv-reuse-prefix-length",
+                str(getattr(args, "voice_prefix_kv_reuse_prefix_length", 86)),
+            ]
+        )
     prefill_backend = str(getattr(args, "prefill_backend", "eager"))
     if prefill_backend:
         worker_args.extend(["--prefill-backend", prefill_backend])

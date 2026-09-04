@@ -139,6 +139,30 @@ class EngineFactoryTests(unittest.TestCase):
     def test_cmp50hx_profiles_override_graph_capacity_and_cadence(self) -> None:
         parser = build_parser()
 
+        fastest_args = parser.parse_args(
+            [
+                "qwen",
+                "--model-path",
+                "models/qwen",
+                "--runtime-backend",
+                "faster",
+                "--runtime-profile",
+                "cmp50hx-fastest-experimental",
+                "--voice-registry-path",
+                "voices.json",
+            ]
+        )
+        fastest = build_engine_config(fastest_args)
+        self.assertIsInstance(fastest, QwenEngineConfig)
+        assert isinstance(fastest, QwenEngineConfig)
+        self.assertEqual(448, fastest.max_seq_len)
+        self.assertEqual(4, fastest.emit_every_frames)
+        self.assertEqual((3, 4), fastest.emit_chunk_schedule)
+        self.assertEqual(29, fastest.decode_window_frames)
+        self.assertTrue(fastest.collect_generation_trace)
+        self.assertTrue(fastest.voice_prefix_kv_reuse_enabled)
+        self.assertEqual(86, fastest.voice_prefix_kv_reuse_prefix_length)
+
         ultra_args = parser.parse_args(
             [
                 "qwen",
@@ -513,6 +537,26 @@ class EngineFactoryTests(unittest.TestCase):
                 "warmup_text": "",
             },
             {"model_path": "models/qwen", "warmup_language": ""},
+            {
+                "model_path": "models/qwen",
+                "voice_prefix_kv_reuse_enabled": True,
+            },
+            {
+                "model_path": "models/qwen",
+                "runtime_backend": "faster",
+                "voice_prefix_kv_reuse_enabled": True,
+            },
+            {
+                "model_path": "models/qwen",
+                "runtime_backend": "faster",
+                "voice_registry_path": "voices.json",
+                "prefill_backend": "compile_default",
+                "voice_prefix_kv_reuse_enabled": True,
+            },
+            {
+                "model_path": "models/qwen",
+                "voice_prefix_kv_reuse_prefix_length": 0,
+            },
         )
         for qwen_config in qwen_configs:
             with self.subTest(qwen_config=qwen_config):

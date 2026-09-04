@@ -17,7 +17,8 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
 
     def test_profiles_are_explicit_and_default_is_preserved(self) -> None:
         self.assertIn(
-            '[ValidateSet("default", "cmp50hx-ultra-low-latency", '
+            '[ValidateSet("default", "cmp50hx-fastest-experimental", '
+            '"cmp50hx-ultra-low-latency", '
             '"cmp50hx-low-latency", "cmp50hx-safe")]',
             self.launcher,
         )
@@ -55,6 +56,18 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
         self.assertIn('$maxSeqLen = 448', block)
         self.assertIn('$dtype = "float16"', block)
 
+    def test_fastest_profile_adds_prefix_reuse_to_the_ultra_graph(self) -> None:
+        block = self.launcher.split('switch ($RuntimeProfile)', 1)[1].split(
+            '"cmp50hx-ultra-low-latency"', 1
+        )[0]
+        block = block.split('"cmp50hx-fastest-experimental"', 1)[1]
+        self.assertIn('$emitEveryFrames = 4', block)
+        self.assertIn('$emitChunkSchedule = @(3, 4)', block)
+        self.assertIn('$decodeWindowFrames = 29', block)
+        self.assertIn('$maxSeqLen = 448', block)
+        self.assertIn('$dtype = "float16"', block)
+        self.assertIn("Prefix KV reuse can change pronunciation", block)
+
     def test_launcher_passes_selected_values_and_one_chunk_prebuffer(self) -> None:
         self.assertIn('"--max-seq-len", $maxSeqLen', self.launcher)
         self.assertIn('"--emit-every-frames", $emitEveryFrames', self.launcher)
@@ -82,6 +95,7 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
 
     def test_documentation_describes_request_boundary_switching(self) -> None:
         self.assertIn("cmp50hx-low-latency", self.documentation)
+        self.assertIn("cmp50hx-fastest-experimental", self.documentation)
         self.assertIn("cmp50hx-ultra-low-latency", self.documentation)
         self.assertIn("cmp50hx-safe", self.documentation)
         self.assertIn("request boundary", self.documentation)
