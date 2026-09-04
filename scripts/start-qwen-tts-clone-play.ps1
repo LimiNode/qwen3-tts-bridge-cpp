@@ -13,6 +13,7 @@ param(
     [string]$RuntimeBackend = "faster",
     [ValidateSet("default", "cmp50hx-fastest", "cmp50hx-fastest-experimental", "cmp50hx-ultra-low-latency", "cmp50hx-low-latency", "cmp50hx-safe")]
     [string]$RuntimeProfile = "default",
+    [switch]$AutoProfile,
     [ValidateRange(0.05, 2.0)]
     [double]$Temperature = 0.45,
     [switch]$StyleExperiment,
@@ -55,6 +56,9 @@ elseif (-not $XVectorOnly -and [string]::IsNullOrWhiteSpace($ReferenceText)) {
 if ($RuntimeProfile -in @("cmp50hx-fastest", "cmp50hx-fastest-experimental") -and
     [string]::IsNullOrWhiteSpace($VoiceId)) {
     throw "$RuntimeProfile requires a registered VoiceId"
+}
+if ($AutoProfile -and $RuntimeProfile -eq "default") {
+    throw "AutoProfile requires an explicit FasterQwen RuntimeProfile"
 }
 
 $referenceAudio = ""
@@ -235,6 +239,9 @@ if ($XVectorOnly) {
 # profiles. The player still owns physical playback and may be replaced by a
 # different sink in applications.
 $arguments += @("--playback-prebuffer-chunks", "1")
+if ($AutoProfile) {
+    $arguments += "--auto-profile"
+}
 
 & $cliPath @arguments
 exit $LASTEXITCODE
