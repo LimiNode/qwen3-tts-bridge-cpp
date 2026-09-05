@@ -741,6 +741,8 @@ model.
 
 CMP 50HX Base-profile latency and cadence evidence is maintained separately:
 
+- [CMP 50HX research archive and experiment registry](docs/cmp50hx-research/README.md)
+- [Native engine and transport boundary ADR](docs/architecture/adr-native-engine-boundaries.md)
 - [CMP Base first-PCM profile](docs/cmp50hx-base-first-pcm-research.md)
 - [E4 throughput optimization matrix](docs/cmp50hx-e4-throughput-research.md)
 
