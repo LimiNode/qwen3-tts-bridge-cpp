@@ -110,6 +110,10 @@ jobs:
         with:
           submodules: true
 
+      - name: Initialize nested native submodules
+        shell: pwsh
+        run: git submodule update --init --recursive external/cpp/qwentts.cpp
+
       - name: Configure native backend
         shell: pwsh
         run: >
