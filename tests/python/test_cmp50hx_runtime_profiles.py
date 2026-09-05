@@ -94,6 +94,31 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
             self.launcher,
         )
 
+    def test_launcher_prefers_the_patched_qwen_source_for_faster_runtime(self) -> None:
+        self.assertIn('[string]$QwenSourcePath = ""', self.launcher)
+        self.assertIn(
+            '$qwenSource = Resolve-ExistingPath $QwenSourcePath '
+            '"Qwen3-TTS streaming source"',
+            self.launcher,
+        )
+        self.assertIn(
+            '$env:PYTHONPATH = "$runtimeSource;$qwenSource;$repoRoot\\worker\\src"',
+            self.launcher,
+        )
+        self.assertIn(
+            '$FasterSourcePath = Join-Path $repoRoot '
+            '"external\\python\\faster-qwen3-tts"',
+            self.launcher,
+        )
+
+    def test_launcher_forwards_the_automatic_route_threshold(self) -> None:
+        self.assertIn("[int]$AutoFastMaxChars = 240", self.launcher)
+        self.assertIn(
+            '$arguments += @("--auto-profile", "--auto-fast-max-chars", '
+            '"$AutoFastMaxChars")',
+            self.launcher,
+        )
+
     def test_documentation_describes_request_boundary_switching(self) -> None:
         self.assertIn("cmp50hx-low-latency", self.documentation)
         self.assertIn("cmp50hx-fastest-experimental", self.documentation)

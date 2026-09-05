@@ -165,3 +165,32 @@ prefix-KV parity experiment.
 
 Automated PCM-boundary analysis found no W29 splice signature, but human
 listening to the W29 output remains the final subjective release gate.
+
+## Automatic router acceptance
+
+The final production-integration soak ran on 2026-09-05 with an idle CMP 50HX
+20 GiB, Qwen streaming commit `25cc5886a753035ac3ed9d4000440b2e842e5e56`,
+and FasterQwen commit `90b596d2ffa41eb2da173db92e6f896df11b19cb`.
+The VRAM preflight observed `20162 MiB` free and passed its `13312 MiB`
+minimum.
+
+The persistent dual-worker matrix passed all 33 cases: 32 requests completed
+with natural EOS and the one cancellation case reached `cancelled`. Automatic
+routing produced zero profile mismatches, all later-chunk starvation proxies
+were zero, A -> B -> A voice switching restored voice A's prefix-KV cache, and
+the request immediately after cancellation completed normally.
+
+| Routed profile / case | Samples | First PCM median | First PCM p95 | Maximum | Starvation |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `cmp50hx-fastest` | 28 | 523.829 ms | 546.891 ms | 1305.779 ms | 0 |
+| `cmp50hx-safe` completed | 4 | 963.912 ms | 972.762 ms | 972.762 ms | 0 |
+
+The fastest maximum is the first request for voice B. It correctly missed the
+per-voice prefix cache and paid a one-time `1305.779 ms` preparation cost. The
+following A request hit A's preserved cache and returned first PCM in
+`522.854 ms`, providing the A -> B -> A isolation check. Normal cached fastest
+requests stayed in the approximately `517-547 ms` range.
+
+The clean report and worker log were written to
+`C:\tmp\qwen-auto-soak-final-20260905\` and remain unversioned because they
+contain machine-local paths and generated runtime output.

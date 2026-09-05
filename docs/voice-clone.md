@@ -36,7 +36,7 @@ Build `qwen_tts_play`, then run:
 ```powershell
 scripts/start-qwen-tts-clone-play.ps1 `
   -BuildDirectory build/Release `
-  -Python py `
+  -Python C:/runtime/python.exe `
   -ModelPath C:/models/Qwen3-TTS-12Hz-1.7B-Base `
   -VoiceRegistryPath config/voice-profiles.local.json `
   -VoiceId my_voice `
@@ -70,7 +70,7 @@ Example low-latency Kraftwerk playback:
 ```powershell
 scripts/start-qwen-tts-clone-play.ps1 `
   -BuildDirectory build/Release `
-  -Python py `
+  -Python C:/runtime/python.exe `
   -RuntimeProfile cmp50hx-low-latency `
   -VoiceRegistryPath config/voice-profiles.local.json `
   -VoiceId kraftwerk_robot_ru_bootstrap_fidelity `
@@ -112,3 +112,6 @@ are in [CMP E4 throughput research](cmp50hx-e4-throughput-research.md) and
 Kraftwerk listening check and target-machine VRAM measurement.
 The final bounded-graph comparison and rejected optimization results are in
 [CMP latency batch research](cmp50hx-latency-batch-research.md).
+The two-worker implementation, threshold contract, VRAM floor, and reproducible
+soak command are documented in
+[CMP automatic profile routing](cmp50hx-profile-routing.md).

@@ -14,12 +14,15 @@ param(
     [ValidateSet("default", "cmp50hx-fastest", "cmp50hx-fastest-experimental", "cmp50hx-ultra-low-latency", "cmp50hx-low-latency", "cmp50hx-safe")]
     [string]$RuntimeProfile = "default",
     [switch]$AutoProfile,
+    [ValidateRange(1, 1048576)]
+    [int]$AutoFastMaxChars = 240,
     [ValidateRange(0.05, 2.0)]
     [double]$Temperature = 0.45,
     [switch]$StyleExperiment,
     [string]$Python = "",
     [string]$ModelPath = "",
     [string]$FasterSourcePath = "",
+    [string]$QwenSourcePath = "",
     [string]$BuildDirectory = "build"
 )
 
@@ -59,6 +62,9 @@ if ($RuntimeProfile -in @("cmp50hx-fastest", "cmp50hx-fastest-experimental") -an
 }
 if ($AutoProfile -and $RuntimeProfile -eq "default") {
     throw "AutoProfile requires an explicit FasterQwen RuntimeProfile"
+}
+if ($AutoProfile -and $RuntimeBackend -ne "faster") {
+    throw "AutoProfile requires RuntimeBackend=faster"
 }
 
 $referenceAudio = ""
@@ -109,22 +115,26 @@ if ([string]::IsNullOrWhiteSpace($ModelPath)) {
 }
 $model = Resolve-ExistingPath $ModelPath "Base model"
 
+if ([string]::IsNullOrWhiteSpace($QwenSourcePath)) {
+    $QwenSourcePath = Join-Path $repoRoot "external\python\Qwen3-TTS-streaming"
+}
+$qwenSource = Resolve-ExistingPath $QwenSourcePath "Qwen3-TTS streaming source"
+
 if ($RuntimeBackend -eq "faster") {
     if ([string]::IsNullOrWhiteSpace($FasterSourcePath)) {
-        if ($null -eq $runtimeConfig -or [string]::IsNullOrWhiteSpace($runtimeConfig.faster_qwen_source_path)) {
-            throw "FasterSourcePath was not provided and faster_qwen_source_path is not set in $localConfigPath"
+        if ($null -ne $runtimeConfig -and -not [string]::IsNullOrWhiteSpace($runtimeConfig.faster_qwen_source_path)) {
+            $FasterSourcePath = $runtimeConfig.faster_qwen_source_path
         }
-        $FasterSourcePath = $runtimeConfig.faster_qwen_source_path
+        else {
+            $FasterSourcePath = Join-Path $repoRoot "external\python\faster-qwen3-tts"
+        }
     }
     $runtimeSource = Resolve-ExistingPath $FasterSourcePath "FasterQwen source"
 }
 else {
-    $runtimeSource = Join-Path $repoRoot "external\python\Qwen3-TTS-streaming"
-    if (-not (Test-Path -LiteralPath $runtimeSource)) {
-        throw "Vendored Qwen3-TTS streaming source was not found: $runtimeSource"
-    }
+    $runtimeSource = $qwenSource
 }
-$env:PYTHONPATH = "$runtimeSource;$repoRoot\worker\src"
+$env:PYTHONPATH = "$runtimeSource;$qwenSource;$repoRoot\worker\src"
 $emitEveryFrames = 8
 $emitChunkSchedule = @()
 $decodeWindowFrames = 80
@@ -240,7 +250,7 @@ if ($XVectorOnly) {
 # different sink in applications.
 $arguments += @("--playback-prebuffer-chunks", "1")
 if ($AutoProfile) {
-    $arguments += "--auto-profile"
+    $arguments += @("--auto-profile", "--auto-fast-max-chars", "$AutoFastMaxChars")
 }
 
 & $cliPath @arguments

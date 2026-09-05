@@ -35,8 +35,8 @@ ready и повторно использует подготовленный prom
 
 ```powershell
 scripts/start-qwen-tts-clone-play.ps1 `
-  -PlayerPath build/Release/qwen_tts_play.exe `
-  -PythonPath py `
+  -BuildDirectory build/Release `
+  -Python C:/runtime/python.exe `
   -ModelPath C:/models/Qwen3-TTS-12Hz-1.7B-Base `
   -VoiceRegistryPath config/voice-profiles.local.json `
   -VoiceId my_voice `
@@ -48,11 +48,41 @@ scripts/start-qwen-tts-clone-play.ps1 `
 приложениям следует использовать зарегистрированные профили, чтобы подготовка
 не попадала в задержку запроса.
 
-## Профиль CMP 50HX
+## Профили CMP 50HX
 
-Принятый idle-профиль быстрого старта использует opt-in bootstrap контекста
-Base, right-padded W33 codec decode, фиксированный E8 и один playback prebuffer
-на CMP 50HX. В проверенном прогоне первый PCM был примерно через 988 мс,
-а proxy starvation равнялся нулю.
-chunk. Измеренная область применимости, parity, listening и точная команда
-описаны в [CMP Base Startup](cmp50hx-base-profile-startup.md).
+Launcher предоставляет четыре явных профиля через `-RuntimeProfile`:
+
+| Профиль | Ёмкость Talker | Эмиссия / decoder | Первый PCM | Назначение |
+| --- | ---: | --- | ---: | --- |
+| `cmp50hx-fastest` | 448 | сначала E3, затем E4 / W29 | около 0,53 с | Короткие звуки с приоритетом минимальной задержки; prefix-KV может немного изменить произношение |
+| `cmp50hx-ultra-low-latency` | 448 | сначала E3, затем E4 / W29 | около 0,61 с | Самые короткие ограниченные реплики без prefix-KV |
+| `cmp50hx-low-latency` | 768 | E4 / W33 | около 0,68 с | Короткие и средние ограниченные реплики ассистента или аватара |
+| `cmp50hx-safe` | 2048 | E8 / W33 | около 0,97 с | Длинный текст или заранее неизвестная длительность |
+
+Профиль выбирается при запуске worker. Нельзя изменять статический CUDA Graph
+во время запроса. Для переключения без перезагрузки автоматический роутер держит
+одновременно прогретыми `cmp50hx-fastest` и `cmp50hx-safe`, а затем выбирает
+worker до отправки очередной реплики:
+
+```powershell
+scripts/start-qwen-tts-clone-play.ps1 `
+  -BuildDirectory build/Release `
+  -Python C:/runtime/python.exe `
+  -RuntimeProfile cmp50hx-fastest `
+  -AutoProfile `
+  -VoiceRegistryPath config/voice-profiles.local.json `
+  -VoiceId my_voice `
+  -Interactive
+```
+
+По умолчанию быстрый worker используется до 240 непробельных UTF-8 байт,
+дальше выбирается safe. Порог можно изменить параметром
+`-AutoFastMaxChars`. Два прогретых worker требуют около 11,9 ГиБ VRAM;
+для этого режима нужно оставлять примерно 13 ГиБ свободной видеопамяти.
+
+Подробные измерения находятся в
+[CMP E4 throughput research](cmp50hx-e4-throughput-research.md),
+[CMP latency batch research](cmp50hx-latency-batch-research.md) и
+[CMP Base Startup](cmp50hx-base-profile-startup.md). Реализация роутера,
+ограничения памяти и команда эксплуатационного soak-теста описаны в
+[CMP automatic profile routing](cmp50hx-profile-routing.md).
