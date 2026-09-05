@@ -390,6 +390,18 @@ external/python/Qwen3-TTS-streaming/
 https://github.com/NewYaroslav/Qwen3-TTS-streaming
 ```
 
+Selected native engine fork:
+
+```text
+external/cpp/qwentts.cpp/
+https://github.com/LimiNode/qwentts.cpp
+```
+
+The native fork is an opt-in shared-library backend and is pinned to a
+reviewed commit. See [native qwentts.cpp backend](docs/native-qwentts-backend.md)
+for the build command and promotion gates. It does not replace the Python
+worker until those gates pass on the target hardware.
+
 Future WebSocket dependencies:
 
 ```text
@@ -415,6 +427,10 @@ qwen_tts_worker.exe
 ```
 
 The C++ component is built with CMake and a C++17 compiler.
+
+The accepted runtime is the persistent Python worker. To build the experimental
+native qwentts.cpp/GGML adapter and its shared `qwen.dll`, configure with
+`-DQWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND=ON`; normal builds leave this path out.
 
 The Python worker is packaged using Nuitka in standalone directory mode.
 Onefile packaging is not the initial target because PyTorch and CUDA
