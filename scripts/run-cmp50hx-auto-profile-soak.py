@@ -271,10 +271,13 @@ class InteractiveSession:
         if finished.get("real_time_factor") is not None:
             result.real_time_factor = float(finished["real_time_factor"])
         result.chunk_count = len(chunks)
+        # The first transition includes WaveOut/device startup and the accepted
+        # E3 -> E4 schedule intentionally relies on that startup slack. Treat
+        # only subsequent gaps as the steady playback starvation proxy.
         result.starvation_proxy_count = sum(
             1
             for (ready, duration), (next_ready, _) in zip(
-                chunks, chunks[1:], strict=False
+                chunks[1:], chunks[2:], strict=False
             )
             if next_ready - ready > duration
         )
@@ -481,6 +484,19 @@ def main() -> int:
         and value.terminal_state == "completed"
         and value.first_audio_ms is not None
     ]
+    by_label = {value.label: value for value in results}
+    expected_prefix_hits = {
+        "voice-a-before": True,
+        "voice-b": False,
+        "voice-a-after": True,
+    }
+    for label, expected_hit in expected_prefix_hits.items():
+        value = by_label.get(label)
+        if value is not None and value.prefix_reuse_hit is not expected_hit:
+            value.errors.append(
+                f"expected prefix reuse hit={expected_hit}, "
+                f"got {value.prefix_reuse_hit}"
+            )
     failures = [value.label for value in results if value.errors]
     report = {
         "schema_version": 1,
