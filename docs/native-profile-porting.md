@@ -18,10 +18,10 @@ same acceptance gates before a profile is enabled by default.
 The current Python acceptance values remain the reference contract:
 
 ```text
-cmp50hx-low-latency       E8 + W33 + prebuffer=1
+cmp50hx-low-latency       E4 + W33 + prebuffer=1 + max_seq_len=768
 cmp50hx-ultra-low-latency E3/E4 + W29 + bounded sequence
 cmp50hx-safe              E8 + W33 + max_seq_len=2048
-cmp50hx-fastest           prefix-KV reuse + W448 (experimental)
+cmp50hx-fastest           prefix-KV reuse + codec W29 + max_seq_len=448 (experimental)
 ```
 
 RTX 4090 values are a separate hardware preset. Do not copy CMP constants to

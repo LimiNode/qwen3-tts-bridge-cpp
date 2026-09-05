@@ -31,16 +31,20 @@ struct Probe {
     std::vector<TtsError> errors;
 };
 
-StdIoTransportOptions options() {
+StdIoTransportOptions options(int stream_max_chunk_frames = 8, std::string* stderr_capture = nullptr) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
         QWEN_TTS_NATIVE_WORKER_EXE,
         "--runtime-dir", runtime.string(),
+        "--stream-max-chunk-frames", std::to_string(stream_max_chunk_frames),
         "--talker-model", (runtime / "talker.gguf").string(),
         "--codec-model", (runtime / "codec.gguf").string()
     };
-    result.stderr_handler = [](std::string message) {
+    result.stderr_handler = [stderr_capture](std::string message) {
+        if (stderr_capture != nullptr) {
+            *stderr_capture += message;
+        }
         std::cerr << "[native-worker-stderr] " << message << '\n';
     };
     return result;
@@ -59,10 +63,18 @@ StdIoTransportOptions missing_dll_options() {
     return result;
 }
 
-StdIoTransportOptions manifest_options(const std::filesystem::path& manifest) {
+StdIoTransportOptions manifest_options(
+    const std::filesystem::path& manifest,
+    std::string* stderr_capture = nullptr) {
     auto result = options();
+    if (stderr_capture != nullptr) {
+        result.stderr_handler = [stderr_capture](std::string message) {
+            *stderr_capture += message;
+        };
+    }
     result.arguments = {
         QWEN_TTS_NATIVE_WORKER_EXE,
+        "--runtime-dir", manifest.parent_path().string(),
         "--manifest-path", manifest.string(),
         "--talker-model", (manifest.parent_path() / "talker.gguf").string(),
         "--codec-model", (manifest.parent_path() / "codec.gguf").string()
@@ -86,7 +98,10 @@ int main() {
     QwenTtsClient mismatched_client;
     QwenTtsClientOptions mismatched_options;
     mismatched_options.session.startup_timeout = std::chrono::seconds(2);
-    CHECK(!mismatched_client.start(manifest_options(mismatch_manifest), mismatched_options));
+    std::string mismatch_stderr;
+    CHECK(!mismatched_client.start(
+        manifest_options(mismatch_manifest, &mismatch_stderr), mismatched_options));
+    CHECK(mismatch_stderr.find("engine commit does not match") != std::string::npos);
 
     QwenTtsClient invalid_client;
     QwenTtsClientOptions invalid_options;
@@ -96,7 +111,9 @@ int main() {
     QwenTtsClient client;
     QwenTtsClientOptions client_options;
     client_options.session.startup_timeout = std::chrono::seconds(5);
-    CHECK(client.start(options(), client_options));
+    std::string cadence_stderr;
+    CHECK(client.start(options(4, &cadence_stderr), client_options));
+    CHECK(cadence_stderr.find("stream_max_chunk_frames=4") != std::string::npos);
 
     ReadyMessage ready;
     CHECK(client.ready_message(ready));

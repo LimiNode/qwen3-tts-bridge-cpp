@@ -1,6 +1,0 @@
-{"label":"ru-short","text":"Профиль Kraftwerk Robot работает на CMP 50HX.","language":"russian","seed":4242}
-{"label":"en-short","text":"The Kraftwerk Robot profile is running on the CMP 50HX.","language":"english","seed":4243}
-{"label":"ru-medium","text":"Это средняя русская реплика для проверки первого PCM, межчанковой cadence и естественного окончания фразы.","language":"russian","seed":4244}
-{"label":"en-medium","text":"This medium English utterance checks first PCM latency, inter-chunk cadence, and a natural end of speech.","language":"english","seed":4245}
-{"label":"ru-long","text":"Это длинная русская реплика для эксплуатационного прогона. Она нужна, чтобы проверить устойчивость генерации, отсутствие starvation, корректное завершение и стабильность голоса на протяжении всего ответа.","language":"russian","seed":4246}
-{"label":"en-long","text":"This longer English utterance is used for the operational soak. It checks generation stability, absence of playback starvation, correct EOS handling, and voice consistency across the entire response.","language":"english","seed":4247}

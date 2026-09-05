@@ -56,7 +56,7 @@ Generate a manifest for a prepared runtime with:
 ```powershell
 python scripts/write-qwentts-runtime-manifest.py `
   --runtime-dir E:\models\qwentts-runtime `
-  --engine-commit a69194fc `
+  --engine-commit 4010244 `
   --backend cuda
 ```
 
