@@ -98,3 +98,36 @@ jobs:
           .\scripts\test-portable-python-worker-cpp.ps1
           -Python python
           -ExampleExe "${{ matrix.build-dir }}\Release\qwen_tts_save_wav.exe"
+
+  native-abi:
+    name: Windows native qwentts ABI
+    runs-on: windows-2022
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Initialize nested native submodules
+        shell: pwsh
+        run: git submodule update --init --recursive external/cpp/qwentts.cpp
+
+      - name: Configure native backend
+        shell: pwsh
+        run: >
+          cmake -S . -B build/native-qwentts
+          -G "Visual Studio 17 2022" -A x64
+          -DQWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND=ON
+          -DQWEN_TTS_BRIDGE_BUILD_EXAMPLES=OFF
+          -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON
+          -DGGML_CUDA=OFF
+
+      - name: Build native ABI smoke-test
+        shell: pwsh
+        run: cmake --build build/native-qwentts --config Release --target native_qwen_backend_abi_test --parallel
+
+      - name: Run native ABI smoke-test
+        shell: pwsh
+        run: ctest --test-dir build/native-qwentts -C Release -R native_qwen_backend_abi_test --output-on-failure

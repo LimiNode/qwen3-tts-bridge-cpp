@@ -8,6 +8,8 @@ project(QwenTTSBridge
 
 option(QWEN_TTS_BRIDGE_BUILD_EXAMPLES "Build QwenTTSBridge examples" ON)
 option(QWEN_TTS_BRIDGE_BUILD_TESTS "Build QwenTTSBridge tests" ON)
+option(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND
+    "Build the opt-in qwentts.cpp/GGML native backend adapter" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,6 +19,30 @@ set(QWEN_TTS_BRIDGE_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(QWEN_TTS_BRIDGE_WORKER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/worker/src")
 set(QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cpp")
 set(QWEN_TTS_BRIDGE_EXTERNAL_PYTHON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/python")
+
+if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
+    # qwentts.cpp is intentionally opt-in: its GGML graph and model format are
+    # a separate runtime path and must not alter the accepted Python worker
+    # build. The upstream project exposes the stable C ABI from its shared
+    # `qwen` target when QWEN_SHARED is enabled.
+    set(QWEN_SHARED ON CACHE BOOL
+        "Build qwentts.cpp shared ABI library for the bridge" FORCE)
+    add_subdirectory(
+        "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/qwentts.cpp"
+        EXCLUDE_FROM_ALL
+    )
+    # qwentts.cpp's standalone CMake assumes its own binary directory is also
+    # CMAKE_BINARY_DIR when locating the generated version.h. As a nested
+    # subdirectory that assumption no longer holds, so restore the generated
+    # include path for the ABI targets we consume.
+    foreach(_qwentts_target qwen qwen-core)
+        if(TARGET ${_qwentts_target})
+            target_include_directories(${_qwentts_target}
+                PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/qwentts.cpp")
+        endif()
+    endforeach()
+endif()
 
 add_subdirectory("${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tiny-process-library" EXCLUDE_FROM_ALL)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
@@ -63,6 +89,24 @@ target_link_libraries(qwen_tts_bridge
         nlohmann_json::nlohmann_json
         tiny-process-library::tiny-process-library
 )
+
+if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
+    add_library(qwen_tts_bridge_native STATIC
+        src/qwen_tts_bridge/native/NativeQwenBackend.cpp
+    )
+    add_library(QwenTTSBridge::qwen_tts_bridge_native ALIAS qwen_tts_bridge_native)
+    target_compile_features(qwen_tts_bridge_native PUBLIC cxx_std_17)
+    target_include_directories(qwen_tts_bridge_native
+        PUBLIC
+            "${QWEN_TTS_BRIDGE_SRC_DIR}"
+        PRIVATE
+            "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src"
+    )
+    target_link_libraries(qwen_tts_bridge_native
+        PUBLIC
+            qwen
+    )
+endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     set(QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE "")
@@ -136,6 +180,17 @@ endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     enable_testing()
+
+    if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
+        add_executable(native_qwen_backend_abi_test
+            tests/native_qwen_backend_abi_test.cpp
+        )
+        target_link_libraries(native_qwen_backend_abi_test
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge_native
+        )
+        add_test(NAME native_qwen_backend_abi_test COMMAND native_qwen_backend_abi_test)
+    endif()
 
     add_executable(protocol_frame_test
         tests/protocol_frame_test.cpp
