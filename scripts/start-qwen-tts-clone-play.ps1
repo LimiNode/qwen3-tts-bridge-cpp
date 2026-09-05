@@ -122,10 +122,12 @@ $qwenSource = Resolve-ExistingPath $QwenSourcePath "Qwen3-TTS streaming source"
 
 if ($RuntimeBackend -eq "faster") {
     if ([string]::IsNullOrWhiteSpace($FasterSourcePath)) {
-        if ($null -eq $runtimeConfig -or [string]::IsNullOrWhiteSpace($runtimeConfig.faster_qwen_source_path)) {
-            throw "FasterSourcePath was not provided and faster_qwen_source_path is not set in $localConfigPath"
+        if ($null -ne $runtimeConfig -and -not [string]::IsNullOrWhiteSpace($runtimeConfig.faster_qwen_source_path)) {
+            $FasterSourcePath = $runtimeConfig.faster_qwen_source_path
         }
-        $FasterSourcePath = $runtimeConfig.faster_qwen_source_path
+        else {
+            $FasterSourcePath = Join-Path $repoRoot "external\python\faster-qwen3-tts"
+        }
     }
     $runtimeSource = Resolve-ExistingPath $FasterSourcePath "FasterQwen source"
 }

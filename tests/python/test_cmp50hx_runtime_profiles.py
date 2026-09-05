@@ -105,6 +105,11 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
             '$env:PYTHONPATH = "$runtimeSource;$qwenSource;$repoRoot\\worker\\src"',
             self.launcher,
         )
+        self.assertIn(
+            '$FasterSourcePath = Join-Path $repoRoot '
+            '"external\\python\\faster-qwen3-tts"',
+            self.launcher,
+        )
 
     def test_launcher_forwards_the_automatic_route_threshold(self) -> None:
         self.assertIn("[int]$AutoFastMaxChars = 240", self.launcher)
