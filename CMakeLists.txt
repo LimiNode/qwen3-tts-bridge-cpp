@@ -8,6 +8,7 @@ project(QwenTTSBridge
 
 option(QWEN_TTS_BRIDGE_BUILD_EXAMPLES "Build QwenTTSBridge examples" ON)
 option(QWEN_TTS_BRIDGE_BUILD_TESTS "Build QwenTTSBridge tests" ON)
+option(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER "Build the optional qwentts.cpp process worker" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,12 +16,21 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(QWEN_TTS_BRIDGE_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(QWEN_TTS_BRIDGE_WORKER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/worker/src")
-set(QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cpp")
-set(QWEN_TTS_BRIDGE_EXTERNAL_PYTHON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/python")
+set(QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cpp" CACHE PATH "C++ dependency directory")
+set(QWEN_TTS_BRIDGE_EXTERNAL_PYTHON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/python" CACHE PATH "Python dependency directory")
+set(QWEN_TTS_BRIDGE_QWENTTS_DIR "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp" CACHE PATH "qwentts.cpp reference directory")
 
-add_subdirectory("${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tiny-process-library" EXCLUDE_FROM_ALL)
+add_subdirectory(
+    "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tiny-process-library"
+    "${CMAKE_CURRENT_BINARY_DIR}/tiny-process-library"
+    EXCLUDE_FROM_ALL
+)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
-add_subdirectory("${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/nlohmann-json" EXCLUDE_FROM_ALL)
+add_subdirectory(
+    "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/nlohmann-json"
+    "${CMAKE_CURRENT_BINARY_DIR}/nlohmann-json"
+    EXCLUDE_FROM_ALL
+)
 
 if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES OR QWEN_TTS_BRIDGE_BUILD_TESTS)
     find_package(Python3 COMPONENTS Interpreter QUIET)
@@ -63,6 +73,40 @@ target_link_libraries(qwen_tts_bridge
         nlohmann_json::nlohmann_json
         tiny-process-library::tiny-process-library
 )
+
+if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
+    if(NOT WIN32)
+        message(FATAL_ERROR "The qwentts.cpp process worker currently supports Windows only")
+    endif()
+    if(NOT EXISTS "${QWEN_TTS_BRIDGE_QWENTTS_DIR}/src/qwen.h")
+        message(FATAL_ERROR
+            "Initialize external/cpp/qwentts.cpp before building the native worker")
+    endif()
+
+    add_executable(qwen_tts_native_worker
+        worker/native/qwentts/Main.cpp
+        worker/native/qwentts/NativeEngine.cpp
+        worker/native/qwentts/QwenDllLoader.cpp
+        worker/native/qwentts/RuntimeManifest.cpp
+        worker/native/qwentts/StdioServer.cpp
+        worker/native/qwentts/WavReader.cpp
+    )
+    target_compile_definitions(qwen_tts_native_worker PRIVATE QWEN_STATIC)
+    target_include_directories(qwen_tts_native_worker
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
+            "${QWEN_TTS_BRIDGE_QWENTTS_DIR}/src"
+    )
+    target_link_libraries(qwen_tts_native_worker
+        PRIVATE
+            QwenTTSBridge::qwen_tts_bridge
+            nlohmann_json::nlohmann_json
+            bcrypt
+    )
+    if(MINGW)
+        target_link_options(qwen_tts_native_worker PRIVATE -municode)
+    endif()
+endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     set(QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE "")
@@ -136,6 +180,49 @@ endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     enable_testing()
+
+    if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
+        add_library(qwen_tts_fake_qwen SHARED
+            tests/native/fake_qwen_dll.cpp
+        )
+        target_compile_definitions(qwen_tts_fake_qwen PRIVATE QWEN_BUILD)
+        target_include_directories(qwen_tts_fake_qwen
+            PRIVATE
+                "${QWEN_TTS_BRIDGE_QWENTTS_DIR}/src"
+        )
+        set_target_properties(qwen_tts_fake_qwen PROPERTIES
+            OUTPUT_NAME qwen
+            PREFIX ""
+        )
+
+        set(QWEN_TTS_FAKE_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/native-fake-runtime")
+        add_custom_command(TARGET qwen_tts_fake_qwen POST_BUILD
+            COMMAND "${CMAKE_COMMAND}"
+                -DQWEN_DLL=$<TARGET_FILE:qwen_tts_fake_qwen>
+                -DOUTPUT_DIR=${QWEN_TTS_FAKE_RUNTIME_DIR}
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/native/write_fake_manifest.cmake"
+            VERBATIM
+        )
+
+        add_executable(qwen_tts_native_worker_test
+            tests/native/qwen_tts_native_worker_test.cpp
+        )
+        target_link_libraries(qwen_tts_native_worker_test
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge
+        )
+        target_compile_definitions(qwen_tts_native_worker_test
+            PRIVATE
+                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker>"
+                QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
+        )
+        add_dependencies(qwen_tts_native_worker_test
+            qwen_tts_native_worker
+            qwen_tts_fake_qwen
+        )
+        add_test(NAME qwen_tts_native_worker_test COMMAND qwen_tts_native_worker_test)
+        set_tests_properties(qwen_tts_native_worker_test PROPERTIES TIMEOUT 60)
+    endif()
 
     add_executable(protocol_frame_test
         tests/protocol_frame_test.cpp
