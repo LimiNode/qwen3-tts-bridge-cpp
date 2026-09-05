@@ -34,6 +34,11 @@ the native counterpart of the steady streaming emission cadence. The bridge
 passes it through `--stream-max-chunk-frames` and keeps the default at 8 until
 hardware measurements prove a smaller cadence is stable.
 
+Successful native synthesis also reports a finish reason through
+`qt_last_finish_reason()`: `natural_eos` or `max_tokens`. The bridge forwards
+this as `completed.execution_outcome`, allowing acceptance runs to reject
+utterances truncated by the configured token limit.
+
 Several earlier optimizations already have native equivalents, but they still
 need to be measured under the common matrix:
 
