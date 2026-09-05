@@ -59,10 +59,18 @@ StdIoTransportOptions missing_dll_options() {
     return result;
 }
 
-StdIoTransportOptions manifest_options(const std::filesystem::path& manifest) {
+StdIoTransportOptions manifest_options(
+    const std::filesystem::path& manifest,
+    std::string* stderr_capture = nullptr) {
     auto result = options();
+    if (stderr_capture != nullptr) {
+        result.stderr_handler = [stderr_capture](std::string message) {
+            *stderr_capture += message;
+        };
+    }
     result.arguments = {
         QWEN_TTS_NATIVE_WORKER_EXE,
+        "--runtime-dir", manifest.parent_path().string(),
         "--manifest-path", manifest.string(),
         "--talker-model", (manifest.parent_path() / "talker.gguf").string(),
         "--codec-model", (manifest.parent_path() / "codec.gguf").string()
@@ -86,7 +94,10 @@ int main() {
     QwenTtsClient mismatched_client;
     QwenTtsClientOptions mismatched_options;
     mismatched_options.session.startup_timeout = std::chrono::seconds(2);
-    CHECK(!mismatched_client.start(manifest_options(mismatch_manifest), mismatched_options));
+    std::string mismatch_stderr;
+    CHECK(!mismatched_client.start(
+        manifest_options(mismatch_manifest, &mismatch_stderr), mismatched_options));
+    CHECK(mismatch_stderr.find("engine commit does not match") != std::string::npos);
 
     QwenTtsClient invalid_client;
     QwenTtsClientOptions invalid_options;
