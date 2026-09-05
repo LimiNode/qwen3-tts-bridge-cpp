@@ -34,6 +34,20 @@ the native counterpart of the steady streaming emission cadence. The bridge
 passes it through `--stream-max-chunk-frames` and keeps the default at 8 until
 hardware measurements prove a smaller cadence is stable.
 
+Several earlier optimizations already have native equivalents, but they still
+need to be measured under the common matrix:
+
+| Python/RTX research item | Native qwentts equivalent | State |
+| --- | --- | --- |
+| CUDA Graph decode | persistent Talker/Code Predictor graph sets | implemented, unbenchmarked cross-backend |
+| fused attention | `use_fa` GGML/CUDA path | implemented, hardware gate pending |
+| quantized weights | GGUF BF16/Q8/Q4 variants | engine capability, quality gate pending |
+| persistent worker/KV state | internal compute worker and per-slot KV cache | implemented |
+| E4/E8 steady cadence | `stream_max_chunk_frames` 4/8 | ABI and worker control added |
+| W29/W33 codec windows | native codec stream state | no equivalent parameter yet |
+| prefix-KV reuse | prompt embedding cache only | KV reuse not implemented |
+| FP32 MLP island | no native precision-island switch | not implemented |
+
 The following fields still require native implementation before the matching
 profile can be marked release-ready:
 
