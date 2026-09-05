@@ -91,7 +91,14 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
         worker/native/qwentts/StdioServer.cpp
         worker/native/qwentts/WavReader.cpp
     )
-    target_compile_definitions(qwen_tts_native_worker PRIVATE QWEN_STATIC)
+    # Keep the Windows min/max macros out of the native worker.  The worker
+    # uses std::numeric_limits<>::max(), which otherwise collides with the
+    # legacy max macro from windows.h under MSVC.
+    target_compile_definitions(qwen_tts_native_worker
+        PRIVATE
+            QWEN_STATIC
+            NOMINMAX
+    )
     target_include_directories(qwen_tts_native_worker
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"

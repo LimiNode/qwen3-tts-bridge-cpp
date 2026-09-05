@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <cctype>
 
 namespace qwen_tts_bridge::native_worker {
 namespace {
@@ -33,6 +34,21 @@ Function load_symbol(HMODULE module, const char* name) {
         throw std::runtime_error(std::string("qwen.dll is missing required export: ") + name);
     }
     return reinterpret_cast<Function>(symbol);
+}
+
+bool version_matches_commit(const std::string& version, const std::string& commit) {
+    if (commit.empty() || version.size() < commit.size()) {
+        return false;
+    }
+    for (std::size_t index = 0; index < commit.size(); ++index) {
+        const auto expected = static_cast<unsigned char>(commit[index]);
+        const auto actual = static_cast<unsigned char>(version[index]);
+        if (std::tolower(expected) != std::tolower(actual)) {
+            return false;
+        }
+    }
+    return version.size() == commit.size() || version[commit.size()] == ' ' ||
+        version[commit.size()] == '(';
 }
 
 } // namespace
@@ -78,6 +94,11 @@ void QwenDllLoader::load(
             throw std::runtime_error("qwen.dll returned an empty engine version");
         }
         engine_version_ = version;
+        if (!version_matches_commit(engine_version_, manifest_.engine_commit)) {
+            throw std::runtime_error(
+                "qwen.dll engine commit does not match runtime manifest: manifest=" +
+                manifest_.engine_commit + ", runtime=" + engine_version_);
+        }
     }
     catch (...) {
         unload();

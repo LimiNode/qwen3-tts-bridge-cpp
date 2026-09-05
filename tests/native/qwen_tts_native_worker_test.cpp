@@ -7,6 +7,9 @@
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <fstream>
+#include <iterator>
+#include <thread>
 #include <vector>
 
 #define CHECK(expr) do { \
@@ -55,9 +58,36 @@ StdIoTransportOptions missing_dll_options() {
     };
     return result;
 }
+
+StdIoTransportOptions manifest_options(const std::filesystem::path& manifest) {
+    auto result = options();
+    result.arguments = {
+        QWEN_TTS_NATIVE_WORKER_EXE,
+        "--manifest-path", manifest.string(),
+        "--talker-model", (manifest.parent_path() / "talker.gguf").string(),
+        "--codec-model", (manifest.parent_path() / "codec.gguf").string()
+    };
+    return result;
+}
 }
 
 int main() {
+    const auto runtime = std::filesystem::path(QWEN_TTS_FAKE_RUNTIME_DIR);
+    const auto mismatch_manifest = runtime / "manifest-mismatch.json";
+    {
+        std::ifstream input(runtime / "manifest.json", std::ios::binary);
+        std::string text((std::istreambuf_iterator<char>(input)), {});
+        const auto marker = text.find("fake-qwentts-test");
+        CHECK(marker != std::string::npos);
+        text.replace(marker, std::string("fake-qwentts-test").size(), "wrong-commit");
+        std::ofstream output(mismatch_manifest, std::ios::binary);
+        output << text;
+    }
+    QwenTtsClient mismatched_client;
+    QwenTtsClientOptions mismatched_options;
+    mismatched_options.session.startup_timeout = std::chrono::seconds(2);
+    CHECK(!mismatched_client.start(manifest_options(mismatch_manifest), mismatched_options));
+
     QwenTtsClient invalid_client;
     QwenTtsClientOptions invalid_options;
     invalid_options.session.startup_timeout = std::chrono::seconds(2);
@@ -110,6 +140,76 @@ int main() {
     CHECK(static_cast<unsigned char>(probe.audio[1]) == 0x80u);
     CHECK(static_cast<unsigned char>(probe.audio[10]) == 0xffu);
     CHECK(static_cast<unsigned char>(probe.audio[11]) == 0x7fu);
+
+    Probe cancelled_probe;
+    TtsCallbacks cancelled_callbacks;
+    cancelled_callbacks.on_audio = [&cancelled_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(cancelled_probe.mutex);
+        cancelled_probe.audio.insert(
+            cancelled_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+        cancelled_probe.condition.notify_all();
+    };
+    cancelled_callbacks.on_cancelled = [&cancelled_probe]() {
+        std::lock_guard<std::mutex> lock(cancelled_probe.mutex);
+        ++cancelled_probe.cancelled;
+        cancelled_probe.condition.notify_all();
+    };
+    cancelled_callbacks.on_completed = [&cancelled_probe]() {
+        std::lock_guard<std::mutex> lock(cancelled_probe.mutex);
+        ++cancelled_probe.completed;
+        cancelled_probe.condition.notify_all();
+    };
+    cancelled_callbacks.on_error = [&cancelled_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(cancelled_probe.mutex);
+        cancelled_probe.errors.push_back(error);
+        cancelled_probe.condition.notify_all();
+    };
+    const RequestId cancelled_id = client.synthesize_async("cancel native worker", cancelled_callbacks);
+    {
+        std::unique_lock<std::mutex> lock(cancelled_probe.mutex);
+        CHECK(cancelled_probe.condition.wait_for(lock, std::chrono::seconds(5), [&cancelled_probe]() {
+            return cancelled_probe.audio.size() >= 8 || !cancelled_probe.errors.empty();
+        }));
+    }
+    CHECK(client.cancel(cancelled_id));
+    {
+        std::unique_lock<std::mutex> lock(cancelled_probe.mutex);
+        CHECK(cancelled_probe.condition.wait_for(lock, std::chrono::seconds(5), [&cancelled_probe]() {
+            return cancelled_probe.cancelled != 0 || !cancelled_probe.errors.empty();
+        }));
+    }
+    CHECK(cancelled_probe.errors.empty());
+    CHECK(cancelled_probe.cancelled == 1);
+    const auto cancelled_audio_size = cancelled_probe.audio.size();
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    CHECK(cancelled_probe.audio.size() == cancelled_audio_size);
+
+    Probe recovery_probe;
+    TtsCallbacks recovery_callbacks;
+    recovery_callbacks.on_audio = [&recovery_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(recovery_probe.mutex);
+        recovery_probe.audio.insert(
+            recovery_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    };
+    recovery_callbacks.on_completed = [&recovery_probe]() {
+        std::lock_guard<std::mutex> lock(recovery_probe.mutex);
+        ++recovery_probe.completed;
+        recovery_probe.condition.notify_all();
+    };
+    recovery_callbacks.on_error = [&recovery_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(recovery_probe.mutex);
+        recovery_probe.errors.push_back(error);
+        recovery_probe.condition.notify_all();
+    };
+    CHECK(client.synthesize_async("after cancellation", recovery_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(recovery_probe.mutex);
+        CHECK(recovery_probe.condition.wait_for(lock, std::chrono::seconds(5), [&recovery_probe]() {
+            return recovery_probe.completed != 0 || !recovery_probe.errors.empty();
+        }));
+    }
+    CHECK(recovery_probe.errors.empty());
+    CHECK(recovery_probe.completed == 1);
 
     client.stop();
     return EXIT_SUCCESS;
