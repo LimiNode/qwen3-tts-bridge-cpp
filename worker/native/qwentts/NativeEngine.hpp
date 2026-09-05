@@ -21,6 +21,7 @@ struct NativeEngineOptions {
     bool clamp_fp16 = false;
     int max_batch = 1;
     float codec_chunk_seconds = 24.0F;
+    int stream_max_chunk_frames = 8;
     int max_new_tokens = 2048;
 };
 

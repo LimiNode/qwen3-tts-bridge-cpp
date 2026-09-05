@@ -78,6 +78,7 @@ void NativeEngine::load() {
     params.clamp_fp16 = options_.clamp_fp16;
     params.max_batch = options_.max_batch;
     params.codec_chunk_sec = options_.codec_chunk_seconds;
+    params.stream_max_chunk_frames = options_.stream_max_chunk_frames;
     context_ = api.init(&params);
     if (context_ == nullptr) {
         throw std::runtime_error(last_error(api, "qt_init failed"));
