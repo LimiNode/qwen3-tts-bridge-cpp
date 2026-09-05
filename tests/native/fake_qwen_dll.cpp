@@ -5,14 +5,19 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <chrono>
+#include <thread>
 
 struct qt_context {
     qt_log_cb log = nullptr;
     void* log_user_data = nullptr;
+    int stream_max_chunk_frames = 8;
 };
 
 namespace {
 thread_local std::string last_error;
+qt_log_cb g_log_callback = nullptr;
+void* g_log_user_data = nullptr;
 
 void set_error(const char* value) {
     last_error = value != nullptr ? value : "";
@@ -27,6 +32,10 @@ QT_API const char* qt_version(void) {
 
 QT_API const char* qt_last_error(void) {
     return last_error.c_str();
+}
+
+QT_API qt_finish_reason qt_last_finish_reason(void) {
+    return QT_FINISH_EOS;
 }
 
 QT_API void qt_init_default_params(qt_init_params* params) {
@@ -45,7 +54,17 @@ QT_API qt_context* qt_init(const qt_init_params* params) {
         set_error("fake init ABI mismatch");
         return nullptr;
     }
-    return new qt_context{};
+    auto* context = new qt_context{};
+    context->stream_max_chunk_frames = params->stream_max_chunk_frames > 0
+        ? params->stream_max_chunk_frames
+        : 8;
+    if (g_log_callback != nullptr) {
+        const std::string message =
+            "fake stream_max_chunk_frames=" +
+            std::to_string(context->stream_max_chunk_frames);
+        g_log_callback(QT_LOG_INFO, message.c_str(), g_log_user_data);
+    }
+    return context;
 }
 
 QT_API void qt_free(qt_context* context) {
@@ -95,6 +114,7 @@ QT_API qt_status qt_synthesize(
             if (!params->on_chunk(chunk, 4, params->on_chunk_user_data)) {
                 return QT_STATUS_CANCELLED;
             }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         return QT_STATUS_OK;
     }
@@ -136,8 +156,10 @@ QT_API int qt_duration_sec_to_tokens(const qt_context*, float seconds) {
     return std::max(1, static_cast<int>(std::ceil(seconds * 12.5F)));
 }
 QT_API void qt_log_set(qt_log_cb callback, void* user_data) {
-    (void)callback;
-    (void)user_data;
+    // The fake context is created after this callback is installed. Keep the
+    // callback globally so qt_init can report the received cadence value.
+    g_log_callback = callback;
+    g_log_user_data = user_data;
 }
 
 }

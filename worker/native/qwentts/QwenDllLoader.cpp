@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <cctype>
 
 namespace qwen_tts_bridge::native_worker {
 namespace {
@@ -35,6 +36,21 @@ Function load_symbol(HMODULE module, const char* name) {
     return reinterpret_cast<Function>(symbol);
 }
 
+bool version_matches_commit(const std::string& version, const std::string& commit) {
+    if (commit.empty() || version.size() < commit.size()) {
+        return false;
+    }
+    for (std::size_t index = 0; index < commit.size(); ++index) {
+        const auto expected = static_cast<unsigned char>(commit[index]);
+        const auto actual = static_cast<unsigned char>(version[index]);
+        if (std::tolower(expected) != std::tolower(actual)) {
+            return false;
+        }
+    }
+    return version.size() == commit.size() || version[commit.size()] == ' ' ||
+        version[commit.size()] == '(';
+}
+
 } // namespace
 
 QwenDllLoader::~QwenDllLoader() {
@@ -61,6 +77,7 @@ void QwenDllLoader::load(
     try {
         api_.version = load_symbol<decltype(api_.version)>(module_, "qt_version");
         api_.last_error = load_symbol<decltype(api_.last_error)>(module_, "qt_last_error");
+        api_.last_finish_reason = load_symbol<decltype(api_.last_finish_reason)>(module_, "qt_last_finish_reason");
         api_.init_default_params = load_symbol<decltype(api_.init_default_params)>(module_, "qt_init_default_params");
         api_.init = load_symbol<decltype(api_.init)>(module_, "qt_init");
         api_.free = load_symbol<decltype(api_.free)>(module_, "qt_free");
@@ -78,6 +95,11 @@ void QwenDllLoader::load(
             throw std::runtime_error("qwen.dll returned an empty engine version");
         }
         engine_version_ = version;
+        if (!version_matches_commit(engine_version_, manifest_.engine_commit)) {
+            throw std::runtime_error(
+                "qwen.dll engine commit does not match runtime manifest: manifest=" +
+                manifest_.engine_commit + ", runtime=" + engine_version_);
+        }
     }
     catch (...) {
         unload();

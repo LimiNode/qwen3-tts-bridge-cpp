@@ -41,6 +41,8 @@ hashes, exports, or incompatible ABI fail before the worker sends `ready`.
 The native process currently supports mono 24 kHz s16le output. qwentts emits
 float PCM; the worker clamps/converts it to s16le before creating QTB audio
 frames. Reference cloning accepts mono 24 kHz PCM16 or float32 WAV files.
+Streaming cadence can be capped with `--stream-max-chunk-frames 1|2|4|8`;
+the default is 8 and the ramp starts at one frame before doubling to that cap.
 
 The Python/FasterQwen worker remains the accepted production backend until the
 native process passes the documented quality, streaming, cancellation,
@@ -54,9 +56,13 @@ Generate a manifest for a prepared runtime with:
 ```powershell
 python scripts/write-qwentts-runtime-manifest.py `
   --runtime-dir E:\models\qwentts-runtime `
-  --engine-commit a69194fc `
+  --engine-commit f1bffae `
   --backend cuda
 ```
+
+The manifest `engine_commit` must match the prefix returned by `qt_version()`;
+the worker rejects a DLL built from a different fork revision before sending
+`ready`.
 
 The command hashes every regular file in the runtime directory except the
 manifest itself. Keep the generated runtime outside the repository; model
