@@ -34,6 +34,10 @@ QT_API const char* qt_last_error(void) {
     return last_error.c_str();
 }
 
+QT_API qt_finish_reason qt_last_finish_reason(void) {
+    return QT_FINISH_EOS;
+}
+
 QT_API void qt_init_default_params(qt_init_params* params) {
     if (params == nullptr) {
         return;

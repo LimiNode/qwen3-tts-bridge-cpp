@@ -477,7 +477,9 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
     if (result.outcome == SynthesisOutcome::Completed) {
         CompletedMessage completed;
         completed.has_execution_outcome = true;
-        completed.execution_outcome = "completed";
+        completed.execution_outcome = result.execution_outcome.empty()
+            ? "completed"
+            : result.execution_outcome;
         send_control(slot->id, std::move(completed));
     }
     else if (result.outcome == SynthesisOutcome::Cancelled) {

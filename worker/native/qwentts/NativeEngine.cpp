@@ -198,7 +198,11 @@ SynthesisResult NativeEngine::synthesize(
     const qt_status status = api.synthesize(context_, &params, &output);
     api.audio_free(&output);
     if (status == QT_STATUS_OK) {
-        return {SynthesisOutcome::Completed, {}, {}, {}};
+        const auto finish_reason = api.last_finish_reason();
+        const std::string outcome = finish_reason == QT_FINISH_EOS
+            ? "natural_eos"
+            : finish_reason == QT_FINISH_MAX_TOKENS ? "max_tokens" : "completed";
+        return {SynthesisOutcome::Completed, {}, {}, {}, outcome};
     }
     if (status == QT_STATUS_CANCELLED || cancelled.load(std::memory_order_relaxed)) {
         return {SynthesisOutcome::Cancelled, {}, {}, {}};

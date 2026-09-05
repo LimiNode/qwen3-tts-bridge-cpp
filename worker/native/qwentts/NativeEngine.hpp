@@ -36,6 +36,7 @@ struct SynthesisResult {
     std::string category;
     std::string code;
     std::string message;
+    std::string execution_outcome;
 };
 
 using AudioChunkHandler = std::function<bool(const float*, int)>;
