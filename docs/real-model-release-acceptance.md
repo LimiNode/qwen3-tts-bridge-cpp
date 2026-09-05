@@ -62,8 +62,10 @@ same `voice_id`; a generic
 CustomVoice-style warmup does not prepare the Base profile's first generation.
 
 Use the separate [CMP 50HX Base-profile startup A/B](cmp50hx-base-profile-startup.md)
-before making any claim about first-audio latency. Continuous delivery after
-the two-chunk prebuffer and low startup latency are separate gates.
+before making any claim about first-audio latency. For the registered 1.7B Base
+profile, the selected low-latency baseline is `E8 + W33 + prebuffer=1` (first
+PCM about `988 ms`, starvation proxy `0`). The CustomVoice matrix above keeps
+its independent W48/E16 acceptance settings.
 
 If these arguments are absent, `summary.json` marks Base profiles `not_run`.
 Do not advertise clone profiles as release-validated from that run.

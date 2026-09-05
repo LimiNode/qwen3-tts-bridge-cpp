@@ -9,6 +9,7 @@ from qwen_tts_bridge_worker.config import CanaryRuntimeProvenance
 from qwen_tts_bridge_worker.engine import (
     EngineRequestValidationError,
     GenerationSafetyLimitError,
+    GenerationSequenceCapacityError,
 )
 from qwen_tts_bridge_worker.engine.types import (
     EngineCapabilities,
@@ -310,6 +311,21 @@ class SafetyLimitEngine(NoopWarmupEngine):
         yield b"\0" * 480
         self.limit_reached.set()
         raise GenerationSafetyLimitError(60.0, 60.0)
+
+
+class SequenceCapacityEngine(NoopWarmupEngine):
+    def __init__(self) -> None:
+        self.limit_reached = threading.Event()
+
+    def synthesize_stream(
+        self,
+        request: SynthesisRequest,
+        cancel_event: threading.Event,
+    ) -> Iterable[bytes]:
+        del request, cancel_event
+        yield b"\0" * 480
+        self.limit_reached.set()
+        raise GenerationSequenceCapacityError(768, 531)
 
 
 class _EofAfterEvent:
@@ -644,6 +660,58 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         )
         self.assertEqual("failed", terminal["terminal_state"])
         self.assertEqual("safety_duration_limit", terminal["generation_outcome"])
+
+    def test_sequence_capacity_exhaustion_is_a_resource_error(self) -> None:
+        payload = (
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+            + _control_frame(
+                1,
+                {
+                    "message_type": "synthesize",
+                    "text": "Hello",
+                },
+            )
+        )
+        engine = SequenceCapacityEngine()
+        output_stream = io.BytesIO()
+        error_stream = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=cast(BinaryIO, _EofAfterEvent(payload, engine.limit_reached)),
+            output_stream=output_stream,
+            error_stream=error_stream,
+            engine=engine,
+        )
+
+        self.assertEqual(0, server.run())
+
+        frames = _parse_frames(output_stream.getvalue())
+        error = next(
+            frame
+            for frame in frames
+            if frame.header.frame_type == FrameType.ERROR_JSON
+        )
+        error_payload = _payload(error)
+        self.assertEqual("resource_error", error_payload["category"])
+        self.assertEqual("sequence_capacity_exceeded", error_payload["code"])
+        metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in error_stream.getvalue().splitlines()
+            if line.startswith("qtb_metric ")
+        ]
+        terminal = next(
+            metric
+            for metric in metrics
+            if metric["event"] == "request_finished" and metric["request_id"] == 1
+        )
+        self.assertEqual("failed", terminal["terminal_state"])
+        self.assertEqual("max_seq_len", terminal["generation_outcome"])
 
     def test_warmup_metrics_are_emitted(self) -> None:
         input_stream = io.BytesIO(

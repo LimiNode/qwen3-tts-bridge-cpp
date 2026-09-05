@@ -6,9 +6,14 @@ The supported product path for cloned voices is a registered Base `voice_id`.
 Sending a reference WAV with every request is diagnostic-only and is not part of
 this investigation.
 
-The tested steady-delivery configuration is FasterQwen with right-padded codec
-decode at window `48`, its manual codec CUDA Graph, `emit_every_frames=16`, and
-a two-chunk WaveOut prebuffer.
+The current CMP 50HX low-latency configuration is FasterQwen with the
+reference-context bootstrap, right-padded codec decode at window `33`, its
+manual codec CUDA Graph, `emit_every_frames=8`, and a one-chunk WaveOut
+prebuffer. The fixed `E8 + W33 + prebuffer=1` profile is the accepted baseline:
+first PCM is about `988 ms` and the bounded starvation proxy is `0`.
+
+The older W48/E16 and `8,23` measurements below are retained as historical
+comparators. They are not the selected low-latency profile.
 
 The consolidated production bridge pins FasterQwen commit
 `c2c271340d65cd3e9e6d36d9d75af4b57de510f9`, which is reachable from the
@@ -162,9 +167,10 @@ the old RTX-style profile is not a viable continuous-playback mode on CMP
 50HX, and restoring the old FasterQwen commit does not help. It also sharpens
 the latency statement: roughly four and a half seconds is not a hardware
 minimum for *audible onset*--fixed `E8` can start near `1.64 s`--but the tested
-fast start starves systematically. Keep the low-latency profile diagnostic and
-default-off; retain `8,23` plus prebuffer 2 as the continuous candidate until a
-producer-throughput improvement passes the same long-request gate.
+the historical W48 fast-start arm starves systematically. That result does not
+apply to the current W33 profile: the bounded E8/W33 run below has a zero
+starvation proxy. The `8,23` plus prebuffer 2 arm remains a historical
+continuous-playback comparator, not the selected low-latency profile.
 
 ## Reference-context bootstrap experiment
 
@@ -177,7 +183,7 @@ codec frames, so the fixed graph was captured but could not be used by that
 path. RTX 4090 had enough decoder throughput to hide more of this repeated
 work; the CMP 50HX crossed the playback deadline.
 
-A default-off FasterQwen experiment now bootstraps Base decoding from the last
+The earlier W48-reference experiment bootstrapped Base decoding from the last
 25 precomputed reference codec frames. Each fixed-`E8` iteration decodes
 exactly `25 + 8 = 33` causal frames in the right-padded 48-frame CUDA Graph and
 returns the final eight frames' `640 ms` PCM interval. It does not alter talker
@@ -236,15 +242,15 @@ one controlled run it worsened RTF to `1.042` and produced four later-chunk
 proxy observations, while leaving the generated codec hash unchanged.
 
 The experiment is exposed through
-`-BaseReferenceContextBootstrap` on the CMP playback launcher. It remains
-default-off and requires `-CodecRightPaddedDecode`; unsupported or too-short
+`-BaseReferenceContextBootstrap` on the CMP playback launcher. The switch is
+kept default-off globally and requires `-CodecRightPaddedDecode`; unsupported or too-short
 reference-code histories fail closed. The current idle-CMP acceptance scope is
 now passed: varied text, persistent-worker state reuse, short through extended
 playback, natural EOS, PCM parity, and listening have all been covered. A
 representative LLM/avatar load gate is explicitly deferred until that workload
 exists; it is not a prerequisite for using the explicit idle CMP 50HX profile.
-Keep the experimental switch default-off until that profile is deliberately
-integrated into the release configuration.
+Keep the experimental switch default-off for non-CMP/default configurations;
+the explicit CMP low-latency profile enables it.
 
 ```powershell
 .\scripts\run-cmp50hx-playback-etw-soak.ps1 `

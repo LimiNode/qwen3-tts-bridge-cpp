@@ -68,6 +68,24 @@ class GenerationSafetyLimitError(QwenEngineError):
         )
 
 
+class GenerationSequenceCapacityError(QwenEngineError):
+    """Raised when generation exhausts the selected static Talker graph."""
+
+    def __init__(self, max_seq_len: int, generated_frames: int | None) -> None:
+        self.max_seq_len = max_seq_len
+        self.generated_frames = generated_frames
+        frame_text = (
+            f", generated_frames={generated_frames}"
+            if generated_frames is not None
+            else ""
+        )
+        super().__init__(
+            "generation exhausted the selected Talker graph capacity "
+            f"(max_seq_len={max_seq_len}{frame_text}); retry with a wider "
+            "runtime profile"
+        )
+
+
 class QwenTtsEngine:
     """Adapter around the vendored Qwen3-TTS streaming package."""
 
@@ -442,6 +460,15 @@ class QwenTtsEngine:
         if reset_metadata is not None:
             captured_trace["bridge_reset_after_generation"] = reset_metadata
         self._last_generation_trace = captured_trace
+        if (
+            captured_trace.get("hit_max_seq_len") is True
+            or captured_trace.get("termination_reason") == "max_seq_len"
+        ):
+            frame_count = captured_trace.get("codec_frame_count")
+            raise GenerationSequenceCapacityError(
+                self._config.max_seq_len,
+                frame_count if isinstance(frame_count, int) else None,
+            )
 
     def close(self) -> None:
         """Release the loaded model reference."""
@@ -878,7 +905,9 @@ class QwenTtsEngine:
         model: Any,
         request: SynthesisRequest,
         cancel_event: threading.Event,
-    ) -> Iterable[tuple[Any, int]]:
+    ) -> Iterable[
+        tuple[Any, int] | tuple[Any, int, dict[str, Any]]
+    ]:
         clone_inputs = self._voice_clone_inputs_for(model, request)
         stream = _qwen_stream_generate_audio(
             model,
@@ -1626,6 +1655,12 @@ def _runtime_execution_policy_fields(config: QwenEngineConfig) -> dict[str, obje
             "bridge_compile_control": "not_applicable",
             "bridge_cuda_graph_control": "not_applicable",
             "runtime_internal_cuda_graphs_may_be_enabled": True,
+            "voice_prefix_kv_reuse_enabled": (
+                config.voice_prefix_kv_reuse_enabled
+            ),
+            "voice_prefix_kv_reuse_prefix_length": (
+                config.voice_prefix_kv_reuse_prefix_length
+            ),
         }
     return {
         "runtime_backend": "upstream",
@@ -1773,7 +1808,7 @@ def _qwen_stream_generate_audio(
     request: SynthesisRequest,
     cancel_event: threading.Event,
     voice_clone_inputs: _VoiceCloneInputs | None = None,
-) -> Iterable[tuple[Any, int]] | None:
+) -> Iterable[tuple[Any, int] | tuple[Any, int, dict[str, Any]]] | None:
     model_type = _qwen_model_type(model)
     language = _qwen_language(request.language)
     sampling = _resolve_faster_sampling(config, request)
@@ -1921,8 +1956,42 @@ def _qwen_stream_generate_audio(
                     "voice_clone_prompt": clone_inputs.prompt,
                     "chunk_size": config.emit_every_frames,
                     "chunk_schedule": config.emit_chunk_schedule or None,
+                    "prefill_backend": config.prefill_backend,
+                    "prefill_compile_compat_mode": (
+                        config.prefill_compile_compat_mode
+                    ),
                     **sampling,
                 }
+                if config.voice_prefix_kv_reuse_enabled:
+                    if not request.voice_id:
+                        raise QwenEngineError(
+                            "voice prefix KV reuse requires a registered voice_id"
+                        )
+                    stream_kwargs.update(
+                        {
+                            "voice_prefix_kv_reuse_enabled": True,
+                            "voice_prefix_kv_cache_key": json.dumps(
+                                [
+                                    request.voice_id,
+                                    _qwen_runtime_language(request.language),
+                                ],
+                                ensure_ascii=False,
+                                separators=(",", ":"),
+                            ),
+                            "voice_prefix_kv_reuse_prefix_length": (
+                                config.voice_prefix_kv_reuse_prefix_length
+                            ),
+                        }
+                    )
+                if config.profile_prefill:
+                    stream_kwargs["profile_prefill"] = True
+                if config.profile_nvtx:
+                    stream_kwargs["profile_nvtx"] = True
+                if config.profile_prefill or config.profile_nvtx:
+                    profile_request_role = _profile_request_role(request.request_id)
+                    if profile_request_role is not None:
+                        stream_kwargs["profile_request_role"] = profile_request_role
+                stream_kwargs["cancel_check"] = cancel_event.is_set
                 return _faster_voice_clone_stream(
                     cast(
                         Iterable[tuple[Any, int, dict[str, Any]]],
@@ -1967,7 +2036,7 @@ def _qwen_stream_generate_audio(
 def _faster_voice_clone_stream(
     stream: Iterable[tuple[Any, int, dict[str, Any]]],
     cancel_event: threading.Event,
-) -> Iterator[tuple[Any, int]]:
+) -> Iterator[tuple[Any, int, dict[str, Any]]]:
     """Adapt FasterQwen Base's timing-bearing stream to bridge PCM tuples."""
 
     close = getattr(stream, "close", None)
@@ -1979,12 +2048,12 @@ def _faster_voice_clone_stream(
                 raise QwenEngineError(
                     "FasterQwen Base streaming yielded an invalid chunk"
                 )
-            audio, sample_rate, _timing = item
+            audio, sample_rate, timing = item
             if not isinstance(sample_rate, int) or sample_rate <= 0:
                 raise QwenEngineError(
                     "FasterQwen Base streaming yielded an invalid sample rate"
                 )
-            yield audio, sample_rate
+            yield audio, sample_rate, dict(timing)
     finally:
         if callable(close):
             close()
@@ -2233,6 +2302,7 @@ def _first_chunk_timing_fields(
     for key in (
         "text_token_count",
         "instruction_token_count",
+        "prefill_batch_size",
         "prefill_sequence_length",
         "talker_prefill_length",
         "profile_schema_version",
@@ -2262,6 +2332,9 @@ def _first_chunk_timing_fields(
         "prefill_dynamo_unique_graphs_delta",
         "prefill_shape_call_ordinal",
         "prefill_shape_length",
+        "prefix_split_probe_prefix_length",
+        "voice_prefix_kv_reuse_prefix_length",
+        "voice_prefix_kv_reuse_cache_entries",
         "chunk_target_steps",
         "chunk_schedule_index",
         "prefill_cuda_memory_before_allocated_bytes",
@@ -2280,11 +2353,17 @@ def _first_chunk_timing_fields(
         "profile_request_role",
         "prefill_backend_requested",
         "prefill_backend_used",
+        "voice_clone_prompt_mode",
+        "voice_clone_prompt_source",
         "prefill_compile_error",
         "prefill_compile_compat_mode",
         "prefill_compile_cache_kind",
         "prefill_shape_policy",
         "chunk_schedule_decision",
+        "prefill_mask_decision_source",
+        "prefill_attn_implementation",
+        "predictor_output_mode",
+        "prefix_split_probe_error",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, str):
@@ -2307,8 +2386,24 @@ def _first_chunk_timing_fields(
         "prefill_dynamo_counter_available",
         "generation_state_mask_cache_hit",
         "generation_state_attention_mask_all_valid",
+        "prefill_attention_mask_all_valid",
+        "prefill_has_sliding_window",
         "is_final",
         "stream_next_gpu_ready",
+        "decode_backbone_compile_enabled",
+        "prefix_split_probe_enabled",
+        "prefix_split_probe_attempted",
+        "prefix_split_probe_supported",
+        "prefix_split_probe_logits_allclose",
+        "prefix_split_probe_kv_allclose",
+        "prefix_split_probe_first_token_match",
+        "prefix_split_probe_prefix_kv_allclose",
+        "prefix_split_probe_seeded_logits_allclose",
+        "prefix_split_probe_seeded_first_token_match",
+        "prefix_split_probe_seeded_kv_allclose",
+        "voice_prefix_kv_reuse_enabled",
+        "voice_prefix_kv_reuse_hit",
+        "voice_prefix_kv_reuse_prefix_mismatch",
     ):
         value = chunk_timing.get(key)
         if isinstance(value, bool):
@@ -2318,6 +2413,8 @@ def _first_chunk_timing_fields(
         fields["prefill_compile_compat_patched_modules"] = dict(value)
     for key in (
         "selected_chunk_schedule",
+        "ar_frame_timings",
+        "talker_input_position_sha256",
         "prefill_shape_talker_input_embeds",
         "prefill_shape_attention_mask",
         "prefill_shape_trailing_text_hiddens",
@@ -2329,6 +2426,7 @@ def _first_chunk_timing_fields(
     for key in (
         "tokenize_wall_ms",
         "build_talker_inputs_wall_ms",
+        "voice_clone_prompt_resolution_wall_ms",
         "prefill_total_gpu_ms",
         "talker_forward_launch_wall_ms",
         "talker_forward_gpu_ms",
@@ -2390,6 +2488,17 @@ def _first_chunk_timing_fields(
         "ar_state_update_gpu_ms",
         "stream_next_gpu_ms",
         "stream_next_host_residual_ms",
+        "prefix_split_probe_hidden_max_abs_delta",
+        "prefix_split_probe_hidden_mean_abs_delta",
+        "prefix_split_probe_prefix_hidden_max_abs_delta",
+        "prefix_split_probe_prefix_hidden_mean_abs_delta",
+        "prefix_split_probe_logits_max_abs_delta",
+        "prefix_split_probe_kv_max_abs_delta",
+        "prefix_split_probe_prefix_kv_max_abs_delta",
+        "prefix_split_probe_seeded_hidden_max_abs_delta",
+        "prefix_split_probe_seeded_hidden_mean_abs_delta",
+        "prefix_split_probe_seeded_logits_max_abs_delta",
+        "prefix_split_probe_seeded_kv_max_abs_delta",
     ):
         value = _number_field(chunk_timing, key)
         if value is not None:

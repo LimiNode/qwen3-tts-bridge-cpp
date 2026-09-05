@@ -406,6 +406,9 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         worker_args.extend(["--attn-implementation", attn_implementation])
     if args.enable_streaming_optimizations:
         worker_args.append("--enable-streaming-optimizations")
+    emit_chunk_schedule = str(getattr(args, "emit_chunk_schedule", ""))
+    if emit_chunk_schedule:
+        worker_args.extend(["--emit-chunk-schedule", emit_chunk_schedule])
     if args.no_compile:
         worker_args.append("--no-compile")
     if args.no_cuda_graphs:
@@ -429,6 +432,14 @@ def _worker_args(args: argparse.Namespace) -> list[str]:
         args, "require_natural_eos", False
     ):
         worker_args.append("--collect-generation-trace")
+    if getattr(args, "voice_prefix_kv_reuse", False):
+        worker_args.append("--voice-prefix-kv-reuse")
+        worker_args.extend(
+            [
+                "--voice-prefix-kv-reuse-prefix-length",
+                str(getattr(args, "voice_prefix_kv_reuse_prefix_length", 86)),
+            ]
+        )
     prefill_backend = str(getattr(args, "prefill_backend", "eager"))
     if prefill_backend:
         worker_args.extend(["--prefill-backend", prefill_backend])

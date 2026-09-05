@@ -62,6 +62,9 @@ param(
     [ValidateRange(1, 64)]
     [int]$EmitEveryFrames = 8,
 
+    [ValidateRange(256, 4096)]
+    [int]$MaxSeqLen = 2048,
+
     [ValidateRange(1, 64)]
     [int[]]$EmitChunkSchedule = @(),
 
@@ -70,7 +73,40 @@ param(
 
     [switch]$ProfilePrefill,
 
+    [ValidateSet('eager', 'compile_inductor_default', 'compile_reduce_overhead')]
+    [string]$PrefillBackend = 'eager',
+
+    [ValidateSet('none', 'strict_bf16_sdpa_v1')]
+    [string]$PrefillCompileCompatMode = 'none',
+
     [switch]$CollectGenerationTrace,
+
+    [switch]$PredictorStaticOutput,
+
+    [switch]$CompileDecodeGraphs,
+
+    [switch]$CompileTalkerOnly,
+
+    [switch]$DropPrefillHiddenStates,
+
+    [switch]$ForceSdpaEfficient,
+
+    [switch]$TorchProfileFirstChunk,
+
+    [switch]$DisableCmpPrecisionDiagnostics,
+
+    [switch]$FusedMlpGateUp,
+
+    [switch]$TritonMlpSiluMul,
+
+    [switch]$AsyncCodecDecode,
+
+    [switch]$ProfileInputHashes,
+
+    [switch]$PrefixSplitProbe,
+
+    [ValidateRange(1, 2048)]
+    [int]$PrefixSplitProbeLength = 86,
 
     [switch]$CodecRightPaddedDecode,
 
@@ -272,7 +308,17 @@ $environmentNames = @(
     'QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH',
     'QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP',
     'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE',
-    'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE'
+    'QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE',
+    'QTB_FASTER_PREDICTOR_STATIC_OUTPUT', 'QTB_FASTER_COMPILE_DECODE_GRAPHS',
+    'QTB_FASTER_COMPILE_TALKER_ONLY',
+    'QTB_FASTER_DROP_PREFILL_HIDDEN_STATES',
+    'QTB_FASTER_FORCE_SDPA_EFFICIENT',
+    'QTB_FASTER_MLP_FUSED_GATE_UP',
+    'QTB_FASTER_MLP_TRITON_SILU_MUL',
+    'QTB_FASTER_ASYNC_CODEC_DECODE',
+    'QTB_FASTER_TORCH_PROFILE_FIRST_CHUNK',
+    'QTB_FASTER_PROFILE_INPUT_HASHES', 'QTB_FASTER_PREFIX_SPLIT_PROBE',
+    'QTB_FASTER_PREFIX_SPLIT_PROBE_LENGTH'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -293,10 +339,10 @@ function Set-FrozenCEnvironment {
     $env:HF_HUB_OFFLINE = '1'
     $env:TRANSFORMERS_OFFLINE = '1'
     $env:QTB_FASTER_EAGER_DIAGNOSTIC = '0'
-    $env:QTB_FASTER_MLP_FP32_ISLAND = '1'
+    $env:QTB_FASTER_MLP_FP32_ISLAND = if ($DisableCmpPrecisionDiagnostics) { '0' } else { '1' }
     $env:QTB_FASTER_RESIDUAL_CARRIER_FP32 = '0'
-    $env:QTB_FASTER_GRAPH_RESIDUAL_CARRIER_FP32 = '1'
-    $env:QTB_FASTER_MLP_NARROW_GATE_UP_FP16 = '1'
+    $env:QTB_FASTER_GRAPH_RESIDUAL_CARRIER_FP32 = if ($DisableCmpPrecisionDiagnostics) { '0' } else { '1' }
+    $env:QTB_FASTER_MLP_NARROW_GATE_UP_FP16 = if ($DisableCmpPrecisionDiagnostics) { '0' } else { '1' }
     $env:QTB_FASTER_GRAPH_CARRIER_PROOF_PATH = ''
     $env:QTB_FASTER_GRAPH_FINITE_CHECKER = '0'
     $env:QTB_FASTER_GRAPH_FINITE_PROOF_PATH = ''
@@ -310,6 +356,20 @@ function Set-FrozenCEnvironment {
         $CodecRightPaddedHistoryFrames + $largestEmitChunk)"
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_CUDA_GRAPH = if ($CodecRightPaddedCudaGraph) { '1' } else { '0' }
     $env:QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP = if ($BaseReferenceContextBootstrap) { '1' } else { '0' }
+    $env:QTB_FASTER_PREDICTOR_STATIC_OUTPUT = if ($PredictorStaticOutput) { '1' } else { '0' }
+    $env:QTB_FASTER_COMPILE_DECODE_GRAPHS = if ($CompileDecodeGraphs) { '1' } else { '0' }
+    $env:QTB_FASTER_COMPILE_TALKER_ONLY = if ($CompileTalkerOnly) { '1' } else { '0' }
+    $env:QTB_FASTER_DROP_PREFILL_HIDDEN_STATES = if ($DropPrefillHiddenStates) { '1' } else { '0' }
+    $env:QTB_FASTER_FORCE_SDPA_EFFICIENT = if ($ForceSdpaEfficient) { '1' } else { '0' }
+    $env:QTB_FASTER_MLP_FUSED_GATE_UP = if ($FusedMlpGateUp) { '1' } else { '0' }
+    $env:QTB_FASTER_MLP_TRITON_SILU_MUL = if ($TritonMlpSiluMul) { '1' } else { '0' }
+    $env:QTB_FASTER_ASYNC_CODEC_DECODE = if ($AsyncCodecDecode) { '1' } else { '0' }
+    $env:QTB_FASTER_TORCH_PROFILE_FIRST_CHUNK = if ($TorchProfileFirstChunk) {
+        Join-Path $runDirectory 'first-chunk-torch-trace.json'
+    } else { '' }
+    $env:QTB_FASTER_PROFILE_INPUT_HASHES = if ($ProfileInputHashes) { '1' } else { '0' }
+    $env:QTB_FASTER_PREFIX_SPLIT_PROBE = if ($PrefixSplitProbe) { '1' } else { '0' }
+    $env:QTB_FASTER_PREFIX_SPLIT_PROBE_LENGTH = "$PrefixSplitProbeLength"
     # A prior compile experiment in the same shell must not affect this graph-only run.
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE = '0'
     $env:QTB_FASTER_CODEC_RIGHT_PADDED_COMPILE_MODE = ''
@@ -470,7 +530,8 @@ function Invoke-PlaybackRun {
         '--worker-arg', '--device', '--worker-arg', 'cuda:0',
         '--worker-arg', '--dtype', '--worker-arg', 'float16',
         '--worker-arg', '--attn-implementation', '--worker-arg', 'sdpa',
-        '--worker-arg', '--prefill-backend', '--worker-arg', 'eager',
+        '--worker-arg', '--prefill-backend', '--worker-arg', $PrefillBackend,
+        '--worker-arg', '--max-seq-len', '--worker-arg', $MaxSeqLen,
         '--worker-arg', '--emit-every-frames', '--worker-arg', $EmitEveryFrames,
         '--worker-arg', '--decode-window-frames', '--worker-arg', '80',
         '--worker-arg', '--no-compile', '--worker-arg', '--no-cuda-graphs',
@@ -509,6 +570,12 @@ function Invoke-PlaybackRun {
     }
     if ($ProfilePrefill) {
         $arguments += @('--worker-arg', '--profile-prefill')
+    }
+    if ($PrefillCompileCompatMode -ne 'none') {
+        $arguments += @(
+            '--worker-arg', '--prefill-compile-compat-mode',
+            '--worker-arg', $PrefillCompileCompatMode
+        )
     }
     if ($CollectGenerationTrace) {
         $arguments += @('--worker-arg', '--collect-generation-trace')
@@ -769,10 +836,24 @@ try {
             preload_voice_profiles = [bool]$PreloadVoiceProfiles
             playback_prebuffer_chunks = $PlaybackPrebufferChunks
             emit_every_frames = $EmitEveryFrames
+            max_seq_len = $MaxSeqLen
             emit_chunk_schedule = if ($EmitChunkSchedule.Count -gt 0) { @($EmitChunkSchedule) } else { @() }
             matmul_precision = if ($MatmulPrecision) { $MatmulPrecision } else { 'torch_default' }
             diagnostic_profile_prefill = [bool]$ProfilePrefill
             diagnostic_generation_trace = [bool]$CollectGenerationTrace
+            predictor_static_output = [bool]$PredictorStaticOutput
+            compile_decode_graphs = [bool]$CompileDecodeGraphs
+            compile_talker_only = [bool]$CompileTalkerOnly
+            drop_prefill_hidden_states = [bool]$DropPrefillHiddenStates
+            force_sdpa_efficient = [bool]$ForceSdpaEfficient
+            torch_profile_first_chunk = [bool]$TorchProfileFirstChunk
+            disable_cmp_precision_diagnostics = [bool]$DisableCmpPrecisionDiagnostics
+            fused_mlp_gate_up = [bool]$FusedMlpGateUp
+            triton_mlp_silu_mul = [bool]$TritonMlpSiluMul
+            async_codec_decode = [bool]$AsyncCodecDecode
+            profile_input_hashes = [bool]$ProfileInputHashes
+            prefix_split_probe = [bool]$PrefixSplitProbe
+            prefix_split_probe_length = if ($PrefixSplitProbe) { $PrefixSplitProbeLength } else { $null }
             codec_right_padded_decode = [bool]$CodecRightPaddedDecode
             codec_right_padded_decode_window_frames = if ($CodecRightPaddedDecode) {
                 $CodecRightPaddedWindowFrames

@@ -24,7 +24,9 @@ from qwen_tts_bridge_worker.engine import (
     UnsupportedAudioFormatError,
 )
 from qwen_tts_bridge_worker.engine.qwen_engine import (
+    GenerationSequenceCapacityError,
     _create_stall_telemetry,
+    _first_chunk_timing_fields,
     _load_prefill_allowlist_warmup_manifest,
     _prefill_snapshot_max_abs,
     _preserved_rng_state,
@@ -33,6 +35,77 @@ from qwen_tts_bridge_worker.engine.qwen_engine import (
     _seed_runtime,
 )
 from qwen_tts_bridge_worker.engine.voice_profiles import VoicePromptPolicy
+
+
+class FirstChunkTimingFieldsTests(unittest.TestCase):
+    def test_forwards_prefix_split_probe_telemetry(self) -> None:
+        fields = _first_chunk_timing_fields(
+            {
+                "prefix_split_probe_enabled": True,
+                "prefix_split_probe_attempted": True,
+                "prefix_split_probe_supported": True,
+                "prefix_split_probe_prefix_length": 86,
+                "prefix_split_probe_error": None,
+                "prefix_split_probe_hidden_max_abs_delta": 0.001,
+                "prefix_split_probe_hidden_mean_abs_delta": 0.0001,
+                "prefix_split_probe_prefix_hidden_max_abs_delta": 0.0005,
+                "prefix_split_probe_prefix_hidden_mean_abs_delta": 0.00005,
+                "prefix_split_probe_logits_max_abs_delta": 0.01,
+                "prefix_split_probe_logits_allclose": True,
+                "prefix_split_probe_kv_max_abs_delta": 0.002,
+                "prefix_split_probe_kv_allclose": True,
+                "prefix_split_probe_prefix_kv_max_abs_delta": 0.001,
+                "prefix_split_probe_prefix_kv_allclose": True,
+                "prefix_split_probe_seeded_hidden_max_abs_delta": 0.0007,
+                "prefix_split_probe_seeded_hidden_mean_abs_delta": 0.00007,
+                "prefix_split_probe_seeded_logits_max_abs_delta": 0.007,
+                "prefix_split_probe_seeded_logits_allclose": True,
+                "prefix_split_probe_seeded_first_token_match": True,
+                "prefix_split_probe_seeded_kv_max_abs_delta": 0.0015,
+                "prefix_split_probe_seeded_kv_allclose": True,
+                "prefix_split_probe_first_token_match": True,
+            },
+            next_wall_ms=1.0,
+            pcm_convert_ms=0.0,
+        )
+        self.assertTrue(fields["prefix_split_probe_enabled"])
+        self.assertEqual(86, fields["prefix_split_probe_prefix_length"])
+        self.assertAlmostEqual(
+            0.001,
+            cast(float, fields["prefix_split_probe_hidden_max_abs_delta"]),
+        )
+        self.assertTrue(fields["prefix_split_probe_logits_allclose"])
+        self.assertAlmostEqual(
+            0.0005,
+            cast(float, fields["prefix_split_probe_prefix_hidden_max_abs_delta"]),
+        )
+        self.assertTrue(fields["prefix_split_probe_prefix_kv_allclose"])
+        self.assertAlmostEqual(
+            0.0007,
+            cast(float, fields["prefix_split_probe_seeded_hidden_max_abs_delta"]),
+        )
+        self.assertTrue(fields["prefix_split_probe_seeded_logits_allclose"])
+        self.assertTrue(fields["prefix_split_probe_seeded_first_token_match"])
+        self.assertTrue(fields["prefix_split_probe_seeded_kv_allclose"])
+
+    def test_forwards_voice_prefix_reuse_telemetry(self) -> None:
+        fields = _first_chunk_timing_fields(
+            {
+                "voice_prefix_kv_reuse_enabled": True,
+                "voice_prefix_kv_reuse_hit": True,
+                "voice_prefix_kv_reuse_prefix_length": 86,
+                "voice_prefix_kv_reuse_cache_entries": 2,
+                "voice_prefix_kv_reuse_prefix_mismatch": False,
+            },
+            next_wall_ms=1.0,
+            pcm_convert_ms=0.0,
+        )
+
+        self.assertTrue(fields["voice_prefix_kv_reuse_enabled"])
+        self.assertTrue(fields["voice_prefix_kv_reuse_hit"])
+        self.assertEqual(86, fields["voice_prefix_kv_reuse_prefix_length"])
+        self.assertEqual(2, fields["voice_prefix_kv_reuse_cache_entries"])
+        self.assertFalse(fields["voice_prefix_kv_reuse_prefix_mismatch"])
 
 
 class _InnerModel:
@@ -351,6 +424,8 @@ class _FasterStreamingModel:
                         "chunk_steps": 8,
                         "chunk_target_steps": 8,
                         "chunk_schedule_index": 1,
+                        "talker_prefill_length": 21,
+                        "prefill_batch_size": 1,
                         "profile_schema_version": 3,
                         "profile_path": "fast",
                         "profile_request_role": "first_user",
@@ -374,6 +449,16 @@ class _FasterStreamingModel:
                         "prefill_shape_policy": "compiled_allowlist",
                         "prefill_shape_allowlist_hit": True,
                         "prefill_compile_on_miss": False,
+                        "ar_frame_timings": [
+                            {
+                                "frame_index": 0,
+                                "host_wall_ms": 71.0,
+                                "gpu_total_ms": 63.0,
+                                "ar_predictor_graph_gpu_ms": 27.0,
+                                "ar_talker_graph_replay_gpu_ms": 31.0,
+                            }
+                        ],
+                        "talker_input_position_sha256": ["abc", "def"],
                     },
                 )
 
@@ -1247,6 +1332,12 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(1, metrics["chunk_schedule_index"])
         self.assertEqual(10.0, metrics["ar_ms_per_step"])
         self.assertIn("codec_wrapper_residual_ms", metrics)
+        frame_timings = cast(list[dict[str, object]], metrics["ar_frame_timings"])
+        self.assertEqual(
+            31.0,
+            frame_timings[0]["ar_talker_graph_replay_gpu_ms"],
+        )
+        self.assertEqual(["abc", "def"], metrics["talker_input_position_sha256"])
 
     def test_faster_custom_voice_request_sampling_overrides_profile(self) -> None:
         fake_model = _FasterStreamingModel(
@@ -1497,6 +1588,37 @@ class QwenEngineTests(unittest.TestCase):
         assert trace is not None
         self.assertEqual(3, trace["codec_frame_count"])
         self.assertIsNone(engine.pop_last_generation_trace())
+
+    def test_faster_max_sequence_trace_fails_closed(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-base",
+                runtime_backend="faster",
+                max_seq_len=768,
+                collect_generation_trace=True,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        engine.load()
+        fake_model.last_generation_trace = {
+            "generated_codec_frame_count": 531,
+            "termination_reason": "max_seq_len",
+            "hit_eos": False,
+            "hit_max_new_tokens": False,
+            "hit_max_seq_len": True,
+        }
+
+        with self.assertRaisesRegex(
+            GenerationSequenceCapacityError,
+            "retry with a wider runtime profile",
+        ):
+            engine._capture_generation_trace(fake_model)
+
+        trace = engine.pop_last_generation_trace()
+        self.assertIsNotNone(trace)
+        assert trace is not None
+        self.assertEqual(531, trace["codec_frame_count"])
 
     def test_faster_stream_preserves_timing_input_metadata(self) -> None:
         fake_model = _FasterStreamingModel(
@@ -1925,6 +2047,44 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(25, fake_model.voice_clone_stream_calls[0]["top_k"])
         self.assertEqual(1, fake_model.reset_calls)
 
+    def test_faster_base_voice_clone_forwards_prefill_profile_controls(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        engine = QwenTtsEngine(
+            QwenEngineConfig(
+                model_path="models/qwen-base",
+                runtime_backend="faster",
+                device="cpu",
+                profile_prefill=True,
+                profile_nvtx=True,
+            ),
+            model_loader=lambda _config: fake_model,
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference = Path(temporary_directory) / "reference.wav"
+            _write_reference_wav(reference)
+            request = SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                language="English",
+                reference_audio_path=str(reference),
+                reference_text="Reference text.",
+            )
+            engine.load()
+            list(engine.synthesize_stream(request, threading.Event()))
+
+        call = fake_model.voice_clone_stream_calls[0]
+        self.assertTrue(call["profile_prefill"])
+        self.assertTrue(call["profile_nvtx"])
+        self.assertEqual("first_user", call["profile_request_role"])
+        self.assertEqual("eager", call["prefill_backend"])
+        self.assertEqual("none", call["prefill_compile_compat_mode"])
+        self.assertFalse(cast(Callable[[], bool], call["cancel_check"])())
+        metrics = engine.pop_last_chunk_metrics()
+        self.assertIsNotNone(metrics)
+        assert metrics is not None
+        self.assertEqual(12.0, metrics["prefill_ms"])
+        self.assertEqual(21, metrics["talker_prefill_length"])
+
     def test_base_voice_profile_reuses_prepared_prompt(self) -> None:
         fake_model = _StreamingBaseModel()
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -2052,6 +2212,96 @@ class QwenEngineTests(unittest.TestCase):
         self.assertEqual(60_000, len(prepared_audio))
         self.assertEqual("Reference text.", prepared_fields["ref_text"])
         self.assertFalse(cast(bool, prepared_fields["x_vector_only_mode"]))
+
+    def test_faster_base_registered_voice_forwards_prefix_kv_reuse(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            registry = directory / "voices.json"
+            _write_reference_wav(reference)
+            registry.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voices": [
+                            {
+                                "voice_id": "robot",
+                                "reference_audio_path": "reference.wav",
+                                "reference_text": "Reference text.",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            engine = QwenTtsEngine(
+                QwenEngineConfig(
+                    model_path="models/qwen-base",
+                    runtime_backend="faster",
+                    device="cpu",
+                    voice_registry_path=str(registry),
+                    voice_prefix_kv_reuse_enabled=True,
+                    voice_prefix_kv_reuse_prefix_length=86,
+                ),
+                model_loader=lambda _config: fake_model,
+            )
+            engine.load()
+            with patch(
+                "qwen_tts_bridge_worker.engine.voice_profiles._prompt_reference_audio",
+                return_value=([0.0] * 60_000, 24_000),
+            ):
+                list(
+                    engine.synthesize_stream(
+                        SynthesisRequest(
+                            request_id=1,
+                            text="Hello",
+                            language="English",
+                            voice_id="robot",
+                        ),
+                        threading.Event(),
+                    )
+                )
+
+        call = fake_model.voice_clone_stream_calls[0]
+        self.assertTrue(call["voice_prefix_kv_reuse_enabled"])
+        self.assertEqual('["robot","English"]', call["voice_prefix_kv_cache_key"])
+        self.assertEqual(86, call["voice_prefix_kv_reuse_prefix_length"])
+
+    def test_prefix_kv_reuse_rejects_direct_reference_request(self) -> None:
+        fake_model = _FasterStreamingModel("base")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            registry = directory / "voices.json"
+            _write_reference_wav(reference)
+            registry.write_text(
+                json.dumps({"schema_version": 1, "voices": []}),
+                encoding="utf-8",
+            )
+            engine = QwenTtsEngine(
+                QwenEngineConfig(
+                    model_path="models/qwen-base",
+                    runtime_backend="faster",
+                    device="cpu",
+                    voice_registry_path=str(registry),
+                    voice_prefix_kv_reuse_enabled=True,
+                ),
+                model_loader=lambda _config: fake_model,
+            )
+            engine.load()
+            request = SynthesisRequest(
+                request_id=1,
+                text="Hello",
+                language="English",
+                reference_audio_path=str(reference),
+                reference_text="Reference text.",
+            )
+            with self.assertRaisesRegex(
+                QwenEngineError,
+                "requires a registered voice_id",
+            ):
+                list(engine.synthesize_stream(request, threading.Event()))
 
     def test_faster_base_profile_preload_keeps_prompt_off_request_path(self) -> None:
         fake_model = _FasterBaseWithNestedPrompt()

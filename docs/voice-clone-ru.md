@@ -51,6 +51,8 @@ scripts/start-qwen-tts-clone-play.ps1 `
 ## Профиль CMP 50HX
 
 Принятый idle-профиль быстрого старта использует opt-in bootstrap контекста
-Base, right-padded W48 codec decode, фиксированный E8 и один playback prebuffer
+Base, right-padded W33 codec decode, фиксированный E8 и один playback prebuffer
+на CMP 50HX. В проверенном прогоне первый PCM был примерно через 988 мс,
+а proxy starvation равнялся нулю.
 chunk. Измеренная область применимости, parity, listening и точная команда
 описаны в [CMP Base Startup](cmp50hx-base-profile-startup.md).

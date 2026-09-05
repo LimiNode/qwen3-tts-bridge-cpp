@@ -737,6 +737,13 @@ The project should skip a sync-only public API and aim directly at the async
 WebSocket is not required for async behavior. It is only a different connection
 model.
 
+## Hardware research
+
+CMP 50HX Base-profile latency and cadence evidence is maintained separately:
+
+- [CMP Base first-PCM profile](docs/cmp50hx-base-first-pcm-research.md)
+- [E4 throughput optimization matrix](docs/cmp50hx-e4-throughput-research.md)
+
 ## References
 
 - Qwen3-TTS upstream: https://github.com/QwenLM/Qwen3-TTS

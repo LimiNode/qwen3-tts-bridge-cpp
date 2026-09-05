@@ -5,6 +5,7 @@ from qwen_tts_bridge_worker.engine.factory import EngineFactoryError, create_eng
 from qwen_tts_bridge_worker.engine.mock_engine import MockTtsEngine
 from qwen_tts_bridge_worker.engine.qwen_engine import (
     GenerationSafetyLimitError,
+    GenerationSequenceCapacityError,
     QwenEngineError,
     QwenTtsEngine,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "EngineCapabilities",
     "EngineRequestValidationError",
     "GenerationSafetyLimitError",
+    "GenerationSequenceCapacityError",
     "EngineFactoryError",
     "MockTtsEngine",
     "QwenEngineError",

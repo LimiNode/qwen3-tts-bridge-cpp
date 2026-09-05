@@ -137,6 +137,8 @@ class QwenEngineConfig:
     profile_prefill: bool = False
     profile_nvtx: bool = False
     collect_generation_trace: bool = False
+    voice_prefix_kv_reuse_enabled: bool = False
+    voice_prefix_kv_reuse_prefix_length: int = 86
     prefill_backend: Literal[
         "eager",
         "compile_backend_eager",
@@ -196,6 +198,26 @@ class QwenEngineConfig:
         if self.collect_generation_trace and self.runtime_backend != "faster":
             raise ValueError(
                 "qwen.collect_generation_trace requires runtime_backend=faster"
+            )
+        if self.voice_prefix_kv_reuse_enabled:
+            if self.runtime_backend != "faster":
+                raise ValueError(
+                    "qwen.voice_prefix_kv_reuse_enabled requires "
+                    "runtime_backend=faster"
+                )
+            if self.prefill_backend != "eager":
+                raise ValueError(
+                    "qwen.voice_prefix_kv_reuse_enabled requires "
+                    "prefill_backend=eager"
+                )
+            if not self.voice_registry_path:
+                raise ValueError(
+                    "qwen.voice_prefix_kv_reuse_enabled requires "
+                    "voice_registry_path"
+                )
+        if self.voice_prefix_kv_reuse_prefix_length <= 0:
+            raise ValueError(
+                "qwen.voice_prefix_kv_reuse_prefix_length must be greater than zero"
             )
         if not self.device:
             raise ValueError("qwen.device must not be empty")

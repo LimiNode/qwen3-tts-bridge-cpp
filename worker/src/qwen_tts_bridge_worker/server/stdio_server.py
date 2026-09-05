@@ -19,6 +19,7 @@ from qwen_tts_bridge_worker.engine import (
     EngineCapabilities,
     EngineRequestValidationError,
     GenerationSafetyLimitError,
+    GenerationSequenceCapacityError,
     SamplingOptions,
     SynthesisRequest,
     TtsEngine,
@@ -1006,6 +1007,28 @@ class StdioWorkerServer:
                 request_id,
                 "resource_error",
                 "safety_duration_limit",
+                str(exc),
+            )
+            return
+        except GenerationSequenceCapacityError as exc:
+            with self._condition:
+                self._terminalize_locked(request_id)
+            self._emit_request_finished(
+                slot,
+                "failed",
+                generation_outcome="max_seq_len",
+            )
+            self._metrics.emit(
+                "request_generation_outcome",
+                request_id=request_id,
+                generation_outcome="max_seq_len",
+                max_seq_len=exc.max_seq_len,
+                generated_codec_frames=exc.generated_frames,
+            )
+            self._send_error(
+                request_id,
+                "resource_error",
+                "sequence_capacity_exceeded",
                 str(exc),
             )
             return
