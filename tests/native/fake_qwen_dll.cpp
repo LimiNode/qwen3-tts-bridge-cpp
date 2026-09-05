@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <chrono>
+#include <thread>
 
 struct qt_context {
     qt_log_cb log = nullptr;
@@ -95,6 +97,7 @@ QT_API qt_status qt_synthesize(
             if (!params->on_chunk(chunk, 4, params->on_chunk_user_data)) {
                 return QT_STATUS_CANCELLED;
             }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         return QT_STATUS_OK;
     }
