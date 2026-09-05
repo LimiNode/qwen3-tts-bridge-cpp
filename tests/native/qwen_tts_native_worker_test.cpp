@@ -1,6 +1,7 @@
 #include <qwen_tts_bridge/client.hpp>
 
 #include <chrono>
+#include <atomic>
 #include <condition_variable>
 #include <cstdlib>
 #include <filesystem>
@@ -31,7 +32,10 @@ struct Probe {
     std::vector<TtsError> errors;
 };
 
-StdIoTransportOptions options(int stream_max_chunk_frames = 8, std::string* stderr_capture = nullptr) {
+StdIoTransportOptions options(
+    int stream_max_chunk_frames = 8,
+    std::string* stderr_capture = nullptr,
+    std::atomic<bool>* cadence_observed = nullptr) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
@@ -41,9 +45,13 @@ StdIoTransportOptions options(int stream_max_chunk_frames = 8, std::string* stde
         "--talker-model", (runtime / "talker.gguf").string(),
         "--codec-model", (runtime / "codec.gguf").string()
     };
-    result.stderr_handler = [stderr_capture](std::string message) {
+    result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
         if (stderr_capture != nullptr) {
             *stderr_capture += message;
+        }
+        if (cadence_observed != nullptr &&
+            message.find("stream_max_chunk_frames=4") != std::string::npos) {
+            cadence_observed->store(true, std::memory_order_release);
         }
         std::cerr << "[native-worker-stderr] " << message << '\n';
     };
@@ -65,12 +73,23 @@ StdIoTransportOptions missing_dll_options() {
 
 StdIoTransportOptions manifest_options(
     const std::filesystem::path& manifest,
-    std::string* stderr_capture = nullptr) {
+    std::string* stderr_capture = nullptr,
+    std::atomic<bool>* mismatch_observed = nullptr) {
     auto result = options();
     if (stderr_capture != nullptr) {
         result.stderr_handler = [stderr_capture](std::string message) {
             *stderr_capture += message;
         };
+        if (mismatch_observed != nullptr) {
+            result.stderr_handler = [stderr_capture, mismatch_observed](std::string message) {
+                if (stderr_capture != nullptr) {
+                    *stderr_capture += message;
+                }
+                if (message.find("engine commit does not match") != std::string::npos) {
+                    mismatch_observed->store(true, std::memory_order_release);
+                }
+            };
+        }
     }
     result.arguments = {
         QWEN_TTS_NATIVE_WORKER_EXE,
@@ -99,9 +118,14 @@ int main() {
     QwenTtsClientOptions mismatched_options;
     mismatched_options.session.startup_timeout = std::chrono::seconds(2);
     std::string mismatch_stderr;
+    std::atomic<bool> mismatch_observed{false};
     CHECK(!mismatched_client.start(
-        manifest_options(mismatch_manifest, &mismatch_stderr), mismatched_options));
-    CHECK(mismatch_stderr.find("engine commit does not match") != std::string::npos);
+        manifest_options(mismatch_manifest, &mismatch_stderr, &mismatch_observed), mismatched_options));
+    for (int attempt = 0; attempt < 20 &&
+         !mismatch_observed.load(std::memory_order_acquire); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(mismatch_observed.load(std::memory_order_acquire));
 
     QwenTtsClient invalid_client;
     QwenTtsClientOptions invalid_options;
@@ -111,9 +135,13 @@ int main() {
     QwenTtsClient client;
     QwenTtsClientOptions client_options;
     client_options.session.startup_timeout = std::chrono::seconds(5);
-    std::string cadence_stderr;
-    CHECK(client.start(options(4, &cadence_stderr), client_options));
-    CHECK(cadence_stderr.find("stream_max_chunk_frames=4") != std::string::npos);
+    std::atomic<bool> cadence_observed{false};
+    CHECK(client.start(options(4, nullptr, &cadence_observed), client_options));
+    for (int attempt = 0; attempt < 20 &&
+         !cadence_observed.load(std::memory_order_acquire); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(cadence_observed.load(std::memory_order_acquire));
 
     ReadyMessage ready;
     CHECK(client.ready_message(ready));
