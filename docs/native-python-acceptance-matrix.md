@@ -29,3 +29,35 @@ pauses, clipping, word endings, and voice identity after objective gates pass.
 The repository currently has no local GGUF pair, so a real hardware comparison
 is intentionally not claimed by CI. Supply model paths from outside the source
 tree when running the matrix.
+
+## Runner
+
+`scripts/run-native-python-matrix.ps1` wraps every worker argument as a
+repeated `--worker-arg`, runs the same benchmark configuration against both
+workers, and stores raw JSON plus stderr logs. Use a JSONL request manifest to
+exercise multiple languages, lengths, voices, and deterministic seeds:
+
+```powershell
+.\scripts\run-native-python-matrix.ps1 `
+  -BenchmarkExecutable .\build\Release\qwen_tts_latency_benchmark.exe `
+  -PythonWorkerExecutable .\.venv\Scripts\python.exe `
+  -PythonWorkerArgument @('worker/src/qwen_tts_bridge_worker/main.py', '--model-path', 'E:\models\qwen') `
+  -NativeWorkerExecutable .\build\Release\qwen_tts_native_worker.exe `
+  -NativeWorkerArgument @('--runtime-dir', 'E:\models\qwentts-runtime', '--talker-model', 'E:\models\talker.gguf', '--codec-model', 'E:\models\codec.gguf') `
+  -RequestManifest .\docs\acceptance\native-python.jsonl `
+  -Warmups 5 -Requests 30 -CancelEvery 5 -Seed 4242 `
+  -PlaybackExecutable .\build\Release\qwen_tts_play.exe `
+  -Output .\artifacts\native-python-matrix.json
+```
+
+Each manifest line may contain `label`, `text`, `language`, `speaker`,
+`voice_id`, `instruction`, `reference_audio_path`, `reference_text`,
+`x_vector_only`, and `seed`. The benchmark forwards those fields per request,
+which makes A→B→A voice isolation and Base reference cloning reproducible.
+
+The runner samples system GPU memory every 250 ms when `nvidia-smi` is
+available. `host_peak_gpu_memory_used_mib` is a system-level peak, not a
+process-exclusive allocation; retain the raw samples for interpretation. If
+`-PlaybackExecutable` is supplied, the runner performs a separate physical
+WaveOut run and marks the gate failed when playback does not complete or
+`queue_empty_before_later_chunk_count` is non-zero.

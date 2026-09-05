@@ -55,6 +55,9 @@ struct ProgramOptions {
     std::string speaker;
     std::string voice_id;
     std::string instruction;
+    std::string reference_audio_path;
+    std::string reference_text;
+    bool x_vector_only = false;
     std::string request_manifest;
     std::string result_json_path;
     std::uint32_t sample_rate = 24000;
@@ -75,7 +78,11 @@ struct RequestSpec {
     std::string text;
     std::string language;
     std::string speaker;
+    std::string voice_id;
     std::string instruction;
+    std::string reference_audio_path;
+    std::string reference_text;
+    bool x_vector_only = false;
     std::optional<std::uint64_t> seed;
     std::optional<int> expected_prefill_length;
     std::string expected_route;
@@ -277,6 +284,9 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --voice-id <id>                Registered Base voice profile identifier.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
+        << "  --reference-audio-path <path>  Base voice-clone reference WAV.\n"
+        << "  --reference-text <utf8>       Reference WAV transcript.\n"
+        << "  --x-vector-only               Use speaker embedding without ICL codes.\n"
         << "  --request-manifest <jsonl>     Cycle measured requests through JSONL cases.\n"
         << "  --result-json <path>           Write raw diagnostic JSON to a file.\n"
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
@@ -383,6 +393,15 @@ ProgramOptions parse_options(int argc, char** argv) {
         }
         else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
             options.instruction = require_value(index, argc, argv, "--instruction");
+        }
+        else if (arg == "--reference-audio-path" || arg.rfind("--reference-audio-path=", 0) == 0) {
+            options.reference_audio_path = require_value(index, argc, argv, "--reference-audio-path");
+        }
+        else if (arg == "--reference-text" || arg.rfind("--reference-text=", 0) == 0) {
+            options.reference_text = require_value(index, argc, argv, "--reference-text");
+        }
+        else if (arg == "--x-vector-only") {
+            options.x_vector_only = true;
         }
         else if (arg == "--request-manifest" || arg.rfind("--request-manifest=", 0) == 0) {
             options.request_manifest = require_value(index, argc, argv, "--request-manifest");
@@ -508,7 +527,11 @@ std::vector<RequestSpec> load_request_manifest(const ProgramOptions& options) {
         spec.text = value.at("text").get<std::string>();
         spec.language = value.value("language", options.language);
         spec.speaker = value.value("speaker", options.speaker);
+        spec.voice_id = value.value("voice_id", options.voice_id);
         spec.instruction = value.value("instruction", options.instruction);
+        spec.reference_audio_path = value.value("reference_audio_path", options.reference_audio_path);
+        spec.reference_text = value.value("reference_text", options.reference_text);
+        spec.x_vector_only = value.value("x_vector_only", options.x_vector_only);
         if (value.contains("seed")) {
             spec.seed = value.at("seed").get<std::uint64_t>();
         }
@@ -700,8 +723,13 @@ TtsRequest make_request(
     request.text = spec != nullptr ? spec->text : options.text;
     request.language = spec != nullptr ? spec->language : options.language;
     request.speaker = spec != nullptr ? spec->speaker : options.speaker;
-    request.voice_id = options.voice_id;
+    request.voice_id = spec != nullptr ? spec->voice_id : options.voice_id;
     request.instruction = spec != nullptr ? spec->instruction : options.instruction;
+    request.reference_audio_path = spec != nullptr
+        ? spec->reference_audio_path
+        : options.reference_audio_path;
+    request.reference_text = spec != nullptr ? spec->reference_text : options.reference_text;
+    request.x_vector_only = spec != nullptr ? spec->x_vector_only : options.x_vector_only;
     const std::optional<std::uint64_t> seed = spec != nullptr ? spec->seed : options.seed;
     if (seed.has_value()) {
         request.has_seed = true;
@@ -1066,6 +1094,10 @@ void write_results_json(
         << "\"language\":\"" << json_escape(options.language) << "\","
         << "\"speaker\":\"" << json_escape(options.speaker) << "\","
         << "\"instruction\":\"" << json_escape(options.instruction) << "\","
+        << "\"voice_id\":\"" << json_escape(options.voice_id) << "\","
+        << "\"reference_audio_path\":\"" << json_escape(options.reference_audio_path) << "\","
+        << "\"reference_text\":\"" << json_escape(options.reference_text) << "\","
+        << "\"x_vector_only\":" << (options.x_vector_only ? "true" : "false") << ","
         << "\"sample_rate\":" << options.sample_rate << ","
         << "\"channels\":" << options.channels << ","
         << "\"warmups\":" << options.warmups << ","
