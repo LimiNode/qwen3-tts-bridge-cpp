@@ -134,6 +134,7 @@ struct RequestResult {
     bool warmup = false;
     bool success = false;
     bool cancelled = false;
+    bool cancellation_expected = false;
     std::optional<double> first_audio_ms;
     std::optional<double> completed_ms;
     double enqueue_ms = 0.0;
@@ -162,6 +163,8 @@ struct RequestResult {
     bool contract_checked = false;
     bool contract_valid = true;
     std::vector<std::string> contract_failures;
+    bool acceptance_valid = true;
+    std::vector<std::string> acceptance_failures;
 };
 
 struct WorkerRequestMetrics {
@@ -730,7 +733,8 @@ TtsRequest make_request(
         : options.reference_audio_path;
     request.reference_text = spec != nullptr ? spec->reference_text : options.reference_text;
     request.x_vector_only = spec != nullptr ? spec->x_vector_only : options.x_vector_only;
-    const std::optional<std::uint64_t> seed = spec != nullptr ? spec->seed : options.seed;
+    const std::optional<std::uint64_t> seed =
+        spec != nullptr && spec->seed.has_value() ? spec->seed : options.seed;
     if (seed.has_value()) {
         request.has_seed = true;
         request.seed = seed.value();
@@ -798,6 +802,7 @@ RequestResult run_request(
         result.warmup = warmup;
         result.success = probe.success;
         result.cancelled = probe.cancelled;
+        result.cancellation_expected = probe.cancel_after_first_audio;
         result.first_audio_ms = probe.first_audio_ms;
         result.completed_ms = probe.completed_ms;
         result.enqueue_ms = probe.enqueue_ms;
@@ -973,6 +978,44 @@ void validate_request_contract(RequestResult& result) {
     }
 }
 
+void fail_acceptance(RequestResult& result, std::string message) {
+    result.acceptance_valid = false;
+    result.acceptance_failures.push_back(std::move(message));
+}
+
+void validate_generic_acceptance(RequestResult& result) {
+    if (result.cancellation_expected) {
+        if (!result.cancelled) {
+            fail_acceptance(result, "expected cancellation did not occur");
+        }
+        if (result.success) {
+            fail_acceptance(result, "request completed despite expected cancellation");
+        }
+    }
+    else {
+        if (result.cancelled) {
+            fail_acceptance(result, "unexpected cancellation");
+        }
+        if (!result.success) {
+            fail_acceptance(result, "request failed");
+        }
+    }
+
+    if (result.success && (result.audio_bytes == 0u || result.audio_chunks == 0u)) {
+        fail_acceptance(result, "completed request produced no PCM");
+    }
+    if (result.success && result.worker_finished.is_object()) {
+        const auto outcome = result.worker_finished.find("execution_outcome");
+        if (outcome != result.worker_finished.end() && outcome->is_string() &&
+            outcome->get<std::string>() == "max_tokens") {
+            fail_acceptance(result, "request exhausted max_new_tokens before natural EOS");
+        }
+    }
+    if (result.cancelled && result.audio_bytes == 0u) {
+        fail_acceptance(result, "cancelled request produced no PCM prefix");
+    }
+}
+
 bool has_contract_failures(const std::vector<RequestResult>& results) {
     return std::any_of(
         results.begin(),
@@ -980,6 +1023,13 @@ bool has_contract_failures(const std::vector<RequestResult>& results) {
         [](const RequestResult& result) {
             return result.contract_checked && !result.contract_valid;
         });
+}
+
+bool has_acceptance_failures(const std::vector<RequestResult>& results) {
+    return std::any_of(
+        results.begin(),
+        results.end(),
+        [](const RequestResult& result) { return !result.acceptance_valid; });
 }
 
 std::string json_escape(const std::string& value) {
@@ -1131,9 +1181,14 @@ void write_results_json(
         [](const RequestResult& result) {
             return result.contract_checked && !result.contract_valid;
         });
+    const auto acceptance_failure_count = std::count_if(
+        measured.begin(),
+        measured.end(),
+        [](const RequestResult& result) { return !result.acceptance_valid; });
     out << "\"cancelled_requests\":" << cancelled_count << ","
         << "\"failed_requests\":" << failed_count << ","
         << "\"excluded_contract_requests\":" << excluded_contract_count << ",";
+    out << "\"acceptance_failed_requests\":" << acceptance_failure_count << ",";
     write_metric_summary(out, "first_audio_ms", collect_metric(measured, &RequestResult::first_audio_ms));
     out << ",";
     write_metric_summary(out, "completed_ms", collect_metric(measured, &RequestResult::completed_ms));
@@ -1158,6 +1213,8 @@ void write_results_json(
                 << "\"request_id\":" << result.request_id << ","
                 << "\"success\":" << (result.success ? "true" : "false") << ","
                 << "\"cancelled\":" << (result.cancelled ? "true" : "false") << ","
+                << "\"cancellation_expected\":"
+                << (result.cancellation_expected ? "true" : "false") << ","
                 << "\"enqueue_ms\":" << std::fixed << std::setprecision(3) << result.enqueue_ms
                 << ",\"first_audio_ms\":";
             write_number_or_null(out, result.first_audio_ms);
@@ -1221,6 +1278,11 @@ void write_results_json(
             }
             out << ",\"failures\":"
                 << nlohmann::json(result.contract_failures).dump()
+                << "}"
+                << ",\"acceptance\":{"
+                << "\"valid\":" << (result.acceptance_valid ? "true" : "false")
+                << ",\"failures\":"
+                << nlohmann::json(result.acceptance_failures).dump()
                 << "}"
                 << ",\"worker_telemetry\":{"
                 << "\"first_chunk_phases\":" << result.worker_first_chunk_phases.dump()
@@ -1304,7 +1366,11 @@ int main(int argc, char** argv) {
         const auto metrics_by_request = worker_metrics.request_metrics();
         attach_worker_metrics(warmups, metrics_by_request);
         attach_worker_metrics(measured, metrics_by_request);
+        for (RequestResult& result : warmups) {
+            validate_generic_acceptance(result);
+        }
         for (RequestResult& result : measured) {
+            validate_generic_acceptance(result);
             validate_request_contract(result);
         }
         if (options.result_json_path.empty()) {
@@ -1320,7 +1386,9 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("failed to write --result-json output");
             }
         }
-        return has_contract_failures(measured) ? 2 : 0;
+        return (has_acceptance_failures(warmups) ||
+                has_acceptance_failures(measured) ||
+                has_contract_failures(measured)) ? 2 : 0;
     }
     catch (const std::exception& exc) {
         std::cerr << "qwen_tts_latency_benchmark: " << exc.what() << '\n';

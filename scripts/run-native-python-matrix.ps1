@@ -149,19 +149,20 @@ if ($outputDirectory) { New-Item -ItemType Directory -Force -Path $outputDirecto
 
 $manifestPath = ""
 if ($RequestManifest) { $manifestPath = Resolve-ExistingFile $RequestManifest "RequestManifest" }
-$temporaryDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("qwen-native-python-matrix-" + [guid]::NewGuid().ToString("N"))
-New-Item -ItemType Directory -Path $temporaryDirectory | Out-Null
-try {
-    $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $temporaryDirectory "python.json") (Join-Path $temporaryDirectory "python.stderr.log") $manifestPath
-    $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $temporaryDirectory "native.json") (Join-Path $temporaryDirectory "native.stderr.log") $manifestPath
+$artifactDirectory = $outputPath + ".artifacts"
+$runDirectory = Join-Path $artifactDirectory ((Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssfffZ") + "-" + [guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
+$pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $manifestPath
+    $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $runDirectory "native.json") (Join-Path $runDirectory "native.stderr.log") $manifestPath
     $playback = [ordered]@{
-        python = Invoke-Playback "python" $python $PythonWorkerArgument $temporaryDirectory
-        native = Invoke-Playback "native" $native $NativeWorkerArgument $temporaryDirectory
+        python = Invoke-Playback "python" $python $PythonWorkerArgument $runDirectory
+        native = Invoke-Playback "native" $native $NativeWorkerArgument $runDirectory
     }
     $gpu = @()
     try { $gpu = @(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits 2>$null) } catch { }
     [ordered]@{
         schema_version = 2
+        artifact_directory = $runDirectory
         host = [ordered]@{ computer = $env:COMPUTERNAME; gpu = $gpu }
         workload = [ordered]@{
             text = $Text; language = $Language; request_manifest = $manifestPath
@@ -172,7 +173,10 @@ try {
         native = $nativeResult
         playback = $playback
     } | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $outputPath -Encoding UTF8
-}
-finally {
-    if (Test-Path -LiteralPath $temporaryDirectory) { Remove-Item -Recurse -Force -LiteralPath $temporaryDirectory }
-}
+    if ($PlaybackExecutable) {
+        foreach ($name in @("python", "native")) {
+            if (-not $playback[$name].gate_passed) {
+                throw "$name playback acceptance gate failed; see $($playback[$name].stderr_path)"
+            }
+        }
+    }
