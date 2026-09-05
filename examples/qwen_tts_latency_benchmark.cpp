@@ -55,6 +55,9 @@ struct ProgramOptions {
     std::string speaker;
     std::string voice_id;
     std::string instruction;
+    std::string reference_audio_path;
+    std::string reference_text;
+    bool x_vector_only = false;
     std::string request_manifest;
     std::string result_json_path;
     std::uint32_t sample_rate = 24000;
@@ -75,7 +78,11 @@ struct RequestSpec {
     std::string text;
     std::string language;
     std::string speaker;
+    std::string voice_id;
     std::string instruction;
+    std::string reference_audio_path;
+    std::string reference_text;
+    bool x_vector_only = false;
     std::optional<std::uint64_t> seed;
     std::optional<int> expected_prefill_length;
     std::string expected_route;
@@ -127,6 +134,7 @@ struct RequestResult {
     bool warmup = false;
     bool success = false;
     bool cancelled = false;
+    bool cancellation_expected = false;
     std::optional<double> first_audio_ms;
     std::optional<double> completed_ms;
     double enqueue_ms = 0.0;
@@ -155,6 +163,8 @@ struct RequestResult {
     bool contract_checked = false;
     bool contract_valid = true;
     std::vector<std::string> contract_failures;
+    bool acceptance_valid = true;
+    std::vector<std::string> acceptance_failures;
 };
 
 struct WorkerRequestMetrics {
@@ -277,6 +287,9 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --voice-id <id>                Registered Base voice profile identifier.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
+        << "  --reference-audio-path <path>  Base voice-clone reference WAV.\n"
+        << "  --reference-text <utf8>       Reference WAV transcript.\n"
+        << "  --x-vector-only               Use speaker embedding without ICL codes.\n"
         << "  --request-manifest <jsonl>     Cycle measured requests through JSONL cases.\n"
         << "  --result-json <path>           Write raw diagnostic JSON to a file.\n"
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
@@ -383,6 +396,15 @@ ProgramOptions parse_options(int argc, char** argv) {
         }
         else if (arg == "--instruction" || arg.rfind("--instruction=", 0) == 0) {
             options.instruction = require_value(index, argc, argv, "--instruction");
+        }
+        else if (arg == "--reference-audio-path" || arg.rfind("--reference-audio-path=", 0) == 0) {
+            options.reference_audio_path = require_value(index, argc, argv, "--reference-audio-path");
+        }
+        else if (arg == "--reference-text" || arg.rfind("--reference-text=", 0) == 0) {
+            options.reference_text = require_value(index, argc, argv, "--reference-text");
+        }
+        else if (arg == "--x-vector-only") {
+            options.x_vector_only = true;
         }
         else if (arg == "--request-manifest" || arg.rfind("--request-manifest=", 0) == 0) {
             options.request_manifest = require_value(index, argc, argv, "--request-manifest");
@@ -508,7 +530,11 @@ std::vector<RequestSpec> load_request_manifest(const ProgramOptions& options) {
         spec.text = value.at("text").get<std::string>();
         spec.language = value.value("language", options.language);
         spec.speaker = value.value("speaker", options.speaker);
+        spec.voice_id = value.value("voice_id", options.voice_id);
         spec.instruction = value.value("instruction", options.instruction);
+        spec.reference_audio_path = value.value("reference_audio_path", options.reference_audio_path);
+        spec.reference_text = value.value("reference_text", options.reference_text);
+        spec.x_vector_only = value.value("x_vector_only", options.x_vector_only);
         if (value.contains("seed")) {
             spec.seed = value.at("seed").get<std::uint64_t>();
         }
@@ -700,9 +726,15 @@ TtsRequest make_request(
     request.text = spec != nullptr ? spec->text : options.text;
     request.language = spec != nullptr ? spec->language : options.language;
     request.speaker = spec != nullptr ? spec->speaker : options.speaker;
-    request.voice_id = options.voice_id;
+    request.voice_id = spec != nullptr ? spec->voice_id : options.voice_id;
     request.instruction = spec != nullptr ? spec->instruction : options.instruction;
-    const std::optional<std::uint64_t> seed = spec != nullptr ? spec->seed : options.seed;
+    request.reference_audio_path = spec != nullptr
+        ? spec->reference_audio_path
+        : options.reference_audio_path;
+    request.reference_text = spec != nullptr ? spec->reference_text : options.reference_text;
+    request.x_vector_only = spec != nullptr ? spec->x_vector_only : options.x_vector_only;
+    const std::optional<std::uint64_t> seed =
+        spec != nullptr && spec->seed.has_value() ? spec->seed : options.seed;
     if (seed.has_value()) {
         request.has_seed = true;
         request.seed = seed.value();
@@ -770,6 +802,7 @@ RequestResult run_request(
         result.warmup = warmup;
         result.success = probe.success;
         result.cancelled = probe.cancelled;
+        result.cancellation_expected = probe.cancel_after_first_audio;
         result.first_audio_ms = probe.first_audio_ms;
         result.completed_ms = probe.completed_ms;
         result.enqueue_ms = probe.enqueue_ms;
@@ -945,6 +978,44 @@ void validate_request_contract(RequestResult& result) {
     }
 }
 
+void fail_acceptance(RequestResult& result, std::string message) {
+    result.acceptance_valid = false;
+    result.acceptance_failures.push_back(std::move(message));
+}
+
+void validate_generic_acceptance(RequestResult& result) {
+    if (result.cancellation_expected) {
+        if (!result.cancelled) {
+            fail_acceptance(result, "expected cancellation did not occur");
+        }
+        if (result.success) {
+            fail_acceptance(result, "request completed despite expected cancellation");
+        }
+    }
+    else {
+        if (result.cancelled) {
+            fail_acceptance(result, "unexpected cancellation");
+        }
+        if (!result.success) {
+            fail_acceptance(result, "request failed");
+        }
+    }
+
+    if (result.success && (result.audio_bytes == 0u || result.audio_chunks == 0u)) {
+        fail_acceptance(result, "completed request produced no PCM");
+    }
+    if (result.success && result.worker_finished.is_object()) {
+        const auto outcome = result.worker_finished.find("execution_outcome");
+        if (outcome != result.worker_finished.end() && outcome->is_string() &&
+            outcome->get<std::string>() == "max_tokens") {
+            fail_acceptance(result, "request exhausted max_new_tokens before natural EOS");
+        }
+    }
+    if (result.cancelled && result.audio_bytes == 0u) {
+        fail_acceptance(result, "cancelled request produced no PCM prefix");
+    }
+}
+
 bool has_contract_failures(const std::vector<RequestResult>& results) {
     return std::any_of(
         results.begin(),
@@ -952,6 +1023,13 @@ bool has_contract_failures(const std::vector<RequestResult>& results) {
         [](const RequestResult& result) {
             return result.contract_checked && !result.contract_valid;
         });
+}
+
+bool has_acceptance_failures(const std::vector<RequestResult>& results) {
+    return std::any_of(
+        results.begin(),
+        results.end(),
+        [](const RequestResult& result) { return !result.acceptance_valid; });
 }
 
 std::string json_escape(const std::string& value) {
@@ -1066,6 +1144,10 @@ void write_results_json(
         << "\"language\":\"" << json_escape(options.language) << "\","
         << "\"speaker\":\"" << json_escape(options.speaker) << "\","
         << "\"instruction\":\"" << json_escape(options.instruction) << "\","
+        << "\"voice_id\":\"" << json_escape(options.voice_id) << "\","
+        << "\"reference_audio_path\":\"" << json_escape(options.reference_audio_path) << "\","
+        << "\"reference_text\":\"" << json_escape(options.reference_text) << "\","
+        << "\"x_vector_only\":" << (options.x_vector_only ? "true" : "false") << ","
         << "\"sample_rate\":" << options.sample_rate << ","
         << "\"channels\":" << options.channels << ","
         << "\"warmups\":" << options.warmups << ","
@@ -1099,9 +1181,14 @@ void write_results_json(
         [](const RequestResult& result) {
             return result.contract_checked && !result.contract_valid;
         });
+    const auto acceptance_failure_count = std::count_if(
+        measured.begin(),
+        measured.end(),
+        [](const RequestResult& result) { return !result.acceptance_valid; });
     out << "\"cancelled_requests\":" << cancelled_count << ","
         << "\"failed_requests\":" << failed_count << ","
         << "\"excluded_contract_requests\":" << excluded_contract_count << ",";
+    out << "\"acceptance_failed_requests\":" << acceptance_failure_count << ",";
     write_metric_summary(out, "first_audio_ms", collect_metric(measured, &RequestResult::first_audio_ms));
     out << ",";
     write_metric_summary(out, "completed_ms", collect_metric(measured, &RequestResult::completed_ms));
@@ -1126,6 +1213,8 @@ void write_results_json(
                 << "\"request_id\":" << result.request_id << ","
                 << "\"success\":" << (result.success ? "true" : "false") << ","
                 << "\"cancelled\":" << (result.cancelled ? "true" : "false") << ","
+                << "\"cancellation_expected\":"
+                << (result.cancellation_expected ? "true" : "false") << ","
                 << "\"enqueue_ms\":" << std::fixed << std::setprecision(3) << result.enqueue_ms
                 << ",\"first_audio_ms\":";
             write_number_or_null(out, result.first_audio_ms);
@@ -1189,6 +1278,11 @@ void write_results_json(
             }
             out << ",\"failures\":"
                 << nlohmann::json(result.contract_failures).dump()
+                << "}"
+                << ",\"acceptance\":{"
+                << "\"valid\":" << (result.acceptance_valid ? "true" : "false")
+                << ",\"failures\":"
+                << nlohmann::json(result.acceptance_failures).dump()
                 << "}"
                 << ",\"worker_telemetry\":{"
                 << "\"first_chunk_phases\":" << result.worker_first_chunk_phases.dump()
@@ -1272,7 +1366,11 @@ int main(int argc, char** argv) {
         const auto metrics_by_request = worker_metrics.request_metrics();
         attach_worker_metrics(warmups, metrics_by_request);
         attach_worker_metrics(measured, metrics_by_request);
+        for (RequestResult& result : warmups) {
+            validate_generic_acceptance(result);
+        }
         for (RequestResult& result : measured) {
+            validate_generic_acceptance(result);
             validate_request_contract(result);
         }
         if (options.result_json_path.empty()) {
@@ -1288,7 +1386,9 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("failed to write --result-json output");
             }
         }
-        return has_contract_failures(measured) ? 2 : 0;
+        return (has_acceptance_failures(warmups) ||
+                has_acceptance_failures(measured) ||
+                has_contract_failures(measured)) ? 2 : 0;
     }
     catch (const std::exception& exc) {
         std::cerr << "qwen_tts_latency_benchmark: " << exc.what() << '\n';
