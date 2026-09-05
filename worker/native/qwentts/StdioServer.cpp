@@ -474,18 +474,29 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
     if (!terminalize(slot)) {
         return;
     }
+    const auto emit_finished_metric = [&](const char* terminal_state, const char* outcome) {
+        std::cerr << "qtb_metric {\"event\":\"request_finished\",\"request_id\":"
+                  << slot->id << ",\"terminal_state\":\"" << terminal_state << "\"";
+        if (outcome != nullptr) {
+            std::cerr << ",\"execution_outcome\":\"" << outcome << "\"";
+        }
+        std::cerr << "}\n" << std::flush;
+    };
     if (result.outcome == SynthesisOutcome::Completed) {
         CompletedMessage completed;
         completed.has_execution_outcome = true;
         completed.execution_outcome = result.execution_outcome.empty()
             ? "completed"
             : result.execution_outcome;
+        emit_finished_metric("completed", completed.execution_outcome.c_str());
         send_control(slot->id, std::move(completed));
     }
     else if (result.outcome == SynthesisOutcome::Cancelled) {
+        emit_finished_metric("cancelled", nullptr);
         send_control(slot->id, CancelledMessage{});
     }
     else {
+        emit_finished_metric("failed", nullptr);
         send_error(slot->id, result.category, result.code, result.message);
     }
 }
