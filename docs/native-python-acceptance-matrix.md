@@ -62,6 +62,12 @@ Each manifest line may contain `label`, `text`, `language`, `speaker`,
 `voice_id`, `instruction`, `reference_audio_path`, `reference_text`,
 `x_vector_only`, and `seed`. The benchmark forwards those fields per request,
 which makes A→B→A voice isolation and Base reference cloning reproducible.
+For negative or fallback cases, `allowed_terminal_outcomes` may list values
+such as `natural_eos`, `completed`, and `request_error`; optional
+`expected_error_category` and `expected_error_code` constrain an error without
+rejecting an explicitly allowed fallback. Global language, speaker, voice ID,
+and seed values are passed as defaults and are overridden by fields present in
+each manifest row.
 
 The runner samples system GPU memory every 250 ms when `nvidia-smi` is
 available. `host_peak_gpu_memory_used_mib` is a system-level peak, not a

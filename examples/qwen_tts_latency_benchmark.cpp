@@ -89,6 +89,9 @@ struct RequestSpec {
     std::string expected_route;
     std::string expected_backend;
     std::vector<int> expected_chunk_schedule;
+    std::vector<std::string> allowed_terminal_outcomes;
+    std::string expected_error_category;
+    std::string expected_error_code;
 
     bool has_contract() const {
         return expected_prefill_length.has_value();
@@ -132,6 +135,9 @@ struct RequestResult {
     std::string expected_route;
     std::string expected_backend;
     std::vector<int> expected_chunk_schedule;
+    std::vector<std::string> allowed_terminal_outcomes;
+    std::string expected_error_category;
+    std::string expected_error_code;
     RequestId request_id = 0;
     bool warmup = false;
     bool success = false;
@@ -541,6 +547,25 @@ std::vector<RequestSpec> load_request_manifest(const ProgramOptions& options) {
         if (value.contains("seed")) {
             spec.seed = value.at("seed").get<std::uint64_t>();
         }
+        if (value.contains("allowed_terminal_outcomes")) {
+            spec.allowed_terminal_outcomes =
+                value.at("allowed_terminal_outcomes").get<std::vector<std::string>>();
+            if (spec.allowed_terminal_outcomes.empty() ||
+                std::any_of(spec.allowed_terminal_outcomes.begin(),
+                    spec.allowed_terminal_outcomes.end(),
+                    [](const std::string& outcome) { return outcome.empty(); })) {
+                throw std::runtime_error(
+                    "--request-manifest line " + std::to_string(line_number) +
+                    " has invalid allowed_terminal_outcomes");
+            }
+        }
+        spec.expected_error_category = value.value("expected_error_category", "");
+        spec.expected_error_code = value.value("expected_error_code", "");
+        if (!spec.expected_error_code.empty() && spec.expected_error_category.empty()) {
+            throw std::runtime_error(
+                "--request-manifest line " + std::to_string(line_number) +
+                " expected_error_code requires expected_error_category");
+        }
         const bool has_any_contract_field =
             value.contains("expected_prefill_length") ||
             value.contains("expected_route") ||
@@ -799,6 +824,11 @@ RequestResult run_request(
         std::lock_guard<std::mutex> lock(probe.mutex);
         result.index = index;
         result.label = spec != nullptr ? spec->label : "";
+        if (spec != nullptr) {
+            result.allowed_terminal_outcomes = spec->allowed_terminal_outcomes;
+            result.expected_error_category = spec->expected_error_category;
+            result.expected_error_code = spec->expected_error_code;
+        }
         if (spec != nullptr && spec->has_contract()) {
             result.expected_prefill_length = spec->expected_prefill_length;
             result.expected_route = spec->expected_route;
@@ -994,6 +1024,31 @@ void fail_acceptance(RequestResult& result, std::string message) {
 }
 
 void validate_generic_acceptance(RequestResult& result) {
+    if (!result.allowed_terminal_outcomes.empty()) {
+        std::string actual;
+        if (result.success) {
+            actual = result.completion_execution_outcome.value_or("completed");
+        } else if (result.cancelled) {
+            actual = "cancelled";
+        } else {
+            actual = result.error_category;
+        }
+        if (std::find(result.allowed_terminal_outcomes.begin(),
+                      result.allowed_terminal_outcomes.end(), actual) ==
+            result.allowed_terminal_outcomes.end()) {
+            fail_acceptance(result, "terminal outcome '" + actual + "' was not allowed");
+        }
+        if (!result.success && !result.cancelled &&
+            !result.expected_error_category.empty() &&
+            result.error_category != result.expected_error_category) {
+            fail_acceptance(result, "unexpected error category");
+        }
+        if (!result.success && !result.cancelled &&
+            !result.expected_error_code.empty() &&
+            result.error_code != result.expected_error_code) {
+            fail_acceptance(result, "unexpected error code");
+        }
+    }
     if (result.cancellation_expected) {
         if (!result.cancelled) {
             fail_acceptance(result, "expected cancellation did not occur");
@@ -1006,7 +1061,7 @@ void validate_generic_acceptance(RequestResult& result) {
         if (result.cancelled) {
             fail_acceptance(result, "unexpected cancellation");
         }
-        if (!result.success) {
+        if (!result.success && result.allowed_terminal_outcomes.empty()) {
             fail_acceptance(result, "request failed");
         }
     }
@@ -1297,6 +1352,12 @@ void write_results_json(
                 << "\"valid\":" << (result.acceptance_valid ? "true" : "false")
                 << ",\"failures\":"
                 << nlohmann::json(result.acceptance_failures).dump()
+                << ",\"allowed_terminal_outcomes\":"
+                << nlohmann::json(result.allowed_terminal_outcomes).dump()
+                << ",\"expected_error_category\":\""
+                << json_escape(result.expected_error_category)
+                << "\",\"expected_error_code\":\""
+                << json_escape(result.expected_error_code)
                 << "}"
                 << ",\"worker_telemetry\":{"
                 << "\"first_chunk_phases\":" << result.worker_first_chunk_phases.dump()

@@ -93,10 +93,12 @@ function Invoke-Benchmark(
         [void]$command.Add("--request-manifest"); [void]$command.Add($ManifestPath)
     } else {
         [void]$command.Add("--text"); [void]$command.Add($Text)
-        [void]$command.Add("--language"); [void]$command.Add($Language)
-        if ($Speaker) { [void]$command.Add("--speaker"); [void]$command.Add($Speaker) }
-        if ($VoiceId) { [void]$command.Add("--voice-id"); [void]$command.Add($VoiceId) }
     }
+    # Global values are defaults for manifest rows as well; a row overrides
+    # each field it explicitly contains.
+    [void]$command.Add("--language"); [void]$command.Add($Language)
+    if ($Speaker) { [void]$command.Add("--speaker"); [void]$command.Add($Speaker) }
+    if ($VoiceId) { [void]$command.Add("--voice-id"); [void]$command.Add($VoiceId) }
     [void]$command.Add("--warmups"); [void]$command.Add($Warmups.ToString())
     [void]$command.Add("--requests"); [void]$command.Add($Requests.ToString())
     [void]$command.Add("--cancel-every"); [void]$command.Add($CancelEvery.ToString())
@@ -165,11 +167,11 @@ function Invoke-Playback(
     $manifestText = Get-ManifestValue $ManifestSpec "text"
     $manifestLanguage = Get-ManifestValue $ManifestSpec "language"
     $playText = if ($manifestText) { [string]$manifestText } elseif ($PlaybackText) { $PlaybackText } else { $Text }
-    $playLanguage = if ($manifestLanguage) { [string]$manifestLanguage } else { $Language }
+    $playLanguage = if ($null -ne $manifestLanguage) { [string]$manifestLanguage } else { $Language }
     [void]$command.Add("--text"); [void]$command.Add($playText)
     [void]$command.Add("--language"); [void]$command.Add($playLanguage)
-    $playSpeaker = if ($null -ne $ManifestSpec) { Get-ManifestValue $ManifestSpec "speaker" } else { $Speaker }
-    $playVoiceId = if ($null -ne $ManifestSpec) { Get-ManifestValue $ManifestSpec "voice_id" } else { $VoiceId }
+    $playSpeaker = if ($null -ne (Get-ManifestValue $ManifestSpec "speaker")) { Get-ManifestValue $ManifestSpec "speaker" } else { $Speaker }
+    $playVoiceId = if ($null -ne (Get-ManifestValue $ManifestSpec "voice_id")) { Get-ManifestValue $ManifestSpec "voice_id" } else { $VoiceId }
     $playInstruction = Get-ManifestValue $ManifestSpec "instruction"
     $playReferenceAudio = Get-ManifestValue $ManifestSpec "reference_audio_path"
     $playReferenceText = Get-ManifestValue $ManifestSpec "reference_text"
@@ -182,7 +184,7 @@ function Invoke-Playback(
     $playSeed = Get-ManifestValue $ManifestSpec "seed"
     if ([bool]$playXVectorOnly) { [void]$command.Add("--x-vector-only") }
     if ($null -ne $playSeed) { Add-OptionalPlaybackArgument $command "--seed" $playSeed }
-    elseif ($null -eq $ManifestSpec) { Add-OptionalPlaybackArgument $command "--seed" $Seed }
+    else { Add-OptionalPlaybackArgument $command "--seed" $Seed }
     [void]$command.Add("--playback-metrics-file"); [void]$command.Add($metrics)
     [void]$command.Add("--etw-playback-markers")
     & $PlaybackExecutable @($command) 2> $stderr
@@ -243,6 +245,21 @@ function Snapshot-HashArgument([string[]] $Arguments, [string] $ArgumentName) {
     return $null
 }
 $nativeRuntimeSnapshot = Snapshot-ManifestArgument $NativeWorkerArgument "native-runtime-manifest.json"
+if ($null -eq $nativeRuntimeSnapshot) {
+    for ($index = 0; $index -lt $NativeWorkerArgument.Count - 1; $index++) {
+        if ($NativeWorkerArgument[$index] -eq "--runtime-dir") {
+            $runtimeManifest = Join-Path $NativeWorkerArgument[$index + 1] "manifest.json"
+            if (Test-Path -LiteralPath $runtimeManifest -PathType Leaf) {
+                $destination = Join-Path $runDirectory "native-runtime-manifest.json"
+                Copy-Item -LiteralPath $runtimeManifest -Destination $destination
+                $nativeRuntimeSnapshot = [ordered]@{
+                    path = $destination
+                    sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant()
+                }
+            }
+        }
+    }
+}
 $nativeDllSnapshot = Snapshot-HashArgument $NativeWorkerArgument "--dll-path"
 if ($null -eq $nativeDllSnapshot) {
     for ($index = 0; $index -lt $NativeWorkerArgument.Count - 1; $index++) {
