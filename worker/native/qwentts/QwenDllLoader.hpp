@@ -15,6 +15,7 @@ namespace qwen_tts_bridge::native_worker {
 struct QwenApi {
     decltype(&qt_version) version = nullptr;
     decltype(&qt_last_error) last_error = nullptr;
+    decltype(&qt_last_finish_reason) last_finish_reason = nullptr;
     decltype(&qt_init_default_params) init_default_params = nullptr;
     decltype(&qt_init) init = nullptr;
     decltype(&qt_free) free = nullptr;

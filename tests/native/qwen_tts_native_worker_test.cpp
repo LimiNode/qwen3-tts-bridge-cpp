@@ -1,6 +1,7 @@
 #include <qwen_tts_bridge/client.hpp>
 
 #include <chrono>
+#include <atomic>
 #include <condition_variable>
 #include <cstdlib>
 #include <filesystem>
@@ -29,18 +30,30 @@ struct Probe {
     std::size_t completed = 0;
     std::size_t cancelled = 0;
     std::vector<TtsError> errors;
+    std::vector<TtsCompletion> completions;
 };
 
-StdIoTransportOptions options() {
+StdIoTransportOptions options(
+    int stream_max_chunk_frames = 8,
+    std::string* stderr_capture = nullptr,
+    std::atomic<bool>* cadence_observed = nullptr) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
         QWEN_TTS_NATIVE_WORKER_EXE,
         "--runtime-dir", runtime.string(),
+        "--stream-max-chunk-frames", std::to_string(stream_max_chunk_frames),
         "--talker-model", (runtime / "talker.gguf").string(),
         "--codec-model", (runtime / "codec.gguf").string()
     };
-    result.stderr_handler = [](std::string message) {
+    result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
+        if (stderr_capture != nullptr) {
+            *stderr_capture += message;
+        }
+        if (cadence_observed != nullptr &&
+            message.find("stream_max_chunk_frames=4") != std::string::npos) {
+            cadence_observed->store(true, std::memory_order_release);
+        }
         std::cerr << "[native-worker-stderr] " << message << '\n';
     };
     return result;
@@ -61,12 +74,23 @@ StdIoTransportOptions missing_dll_options() {
 
 StdIoTransportOptions manifest_options(
     const std::filesystem::path& manifest,
-    std::string* stderr_capture = nullptr) {
+    std::string* stderr_capture = nullptr,
+    std::atomic<bool>* mismatch_observed = nullptr) {
     auto result = options();
     if (stderr_capture != nullptr) {
         result.stderr_handler = [stderr_capture](std::string message) {
             *stderr_capture += message;
         };
+        if (mismatch_observed != nullptr) {
+            result.stderr_handler = [stderr_capture, mismatch_observed](std::string message) {
+                if (stderr_capture != nullptr) {
+                    *stderr_capture += message;
+                }
+                if (message.find("engine commit does not match") != std::string::npos) {
+                    mismatch_observed->store(true, std::memory_order_release);
+                }
+            };
+        }
     }
     result.arguments = {
         QWEN_TTS_NATIVE_WORKER_EXE,
@@ -95,9 +119,14 @@ int main() {
     QwenTtsClientOptions mismatched_options;
     mismatched_options.session.startup_timeout = std::chrono::seconds(2);
     std::string mismatch_stderr;
+    std::atomic<bool> mismatch_observed{false};
     CHECK(!mismatched_client.start(
-        manifest_options(mismatch_manifest, &mismatch_stderr), mismatched_options));
-    CHECK(mismatch_stderr.find("engine commit does not match") != std::string::npos);
+        manifest_options(mismatch_manifest, &mismatch_stderr, &mismatch_observed), mismatched_options));
+    for (int attempt = 0; attempt < 20 &&
+         !mismatch_observed.load(std::memory_order_acquire); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(mismatch_observed.load(std::memory_order_acquire));
 
     QwenTtsClient invalid_client;
     QwenTtsClientOptions invalid_options;
@@ -107,7 +136,13 @@ int main() {
     QwenTtsClient client;
     QwenTtsClientOptions client_options;
     client_options.session.startup_timeout = std::chrono::seconds(5);
-    CHECK(client.start(options(), client_options));
+    std::atomic<bool> cadence_observed{false};
+    CHECK(client.start(options(4, nullptr, &cadence_observed), client_options));
+    for (int attempt = 0; attempt < 20 &&
+         !cadence_observed.load(std::memory_order_acquire); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(cadence_observed.load(std::memory_order_acquire));
 
     ReadyMessage ready;
     CHECK(client.ready_message(ready));
@@ -123,6 +158,11 @@ int main() {
     callbacks.on_completed = [&probe]() {
         std::lock_guard<std::mutex> lock(probe.mutex);
         ++probe.completed;
+        probe.condition.notify_all();
+    };
+    callbacks.on_completion_metadata = [&probe](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.completions.push_back(completion);
         probe.condition.notify_all();
     };
     callbacks.on_cancelled = [&probe]() {
@@ -146,6 +186,8 @@ int main() {
     }
     CHECK(probe.errors.empty());
     CHECK(probe.completed == 1);
+    CHECK(probe.completions.size() == 1);
+    CHECK(probe.completions.front().execution_outcome == "natural_eos");
     CHECK(probe.audio.size() == 16);
     CHECK(static_cast<unsigned char>(probe.audio[0]) == 0x00u);
     CHECK(static_cast<unsigned char>(probe.audio[1]) == 0x80u);
@@ -221,6 +263,66 @@ int main() {
     }
     CHECK(recovery_probe.errors.empty());
     CHECK(recovery_probe.completed == 1);
+
+    Probe max_probe;
+    TtsCallbacks max_callbacks;
+    max_callbacks.on_audio = [&max_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(max_probe.mutex);
+        max_probe.audio.insert(max_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    };
+    max_callbacks.on_completion_metadata = [&max_probe](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(max_probe.mutex);
+        max_probe.completions.push_back(completion);
+        max_probe.condition.notify_all();
+    };
+    max_callbacks.on_completed = [&max_probe]() {
+        std::lock_guard<std::mutex> lock(max_probe.mutex);
+        ++max_probe.completed;
+        max_probe.condition.notify_all();
+    };
+    max_callbacks.on_error = [&max_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(max_probe.mutex);
+        max_probe.errors.push_back(error);
+        max_probe.condition.notify_all();
+    };
+    CHECK(client.synthesize_async("force max tokens", max_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(max_probe.mutex);
+        CHECK(max_probe.condition.wait_for(lock, std::chrono::seconds(5), [&max_probe]() {
+            return max_probe.completed != 0 || !max_probe.errors.empty();
+        }));
+    }
+    CHECK(max_probe.errors.empty());
+    CHECK(max_probe.completed == 1);
+    CHECK(max_probe.completions.size() == 1);
+    CHECK(max_probe.completions.front().execution_outcome == "max_tokens");
+
+    Probe unknown_probe;
+    TtsCallbacks unknown_callbacks;
+    unknown_callbacks.on_audio = [&unknown_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
+        unknown_probe.audio.insert(unknown_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    };
+    unknown_callbacks.on_error = [&unknown_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
+        unknown_probe.errors.push_back(error);
+        unknown_probe.condition.notify_all();
+    };
+    unknown_callbacks.on_completed = [&unknown_probe]() {
+        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
+        ++unknown_probe.completed;
+        unknown_probe.condition.notify_all();
+    };
+    CHECK(client.synthesize_async("force unknown finish reason", unknown_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(unknown_probe.mutex);
+        CHECK(unknown_probe.condition.wait_for(lock, std::chrono::seconds(5), [&unknown_probe]() {
+            return !unknown_probe.errors.empty() || unknown_probe.completed != 0;
+        }));
+    }
+    CHECK(unknown_probe.completed == 0);
+    CHECK(unknown_probe.errors.size() == 1);
+    CHECK(unknown_probe.errors.front().code == "invalid_finish_reason");
 
     client.stop();
     return EXIT_SUCCESS;

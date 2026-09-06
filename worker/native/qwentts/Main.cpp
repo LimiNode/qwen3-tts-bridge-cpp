@@ -89,6 +89,10 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
             const auto value = require_value(index, argc, argv, L"--codec-chunk-sec");
             options.codec_chunk_seconds = std::stof(value.wstring());
         }
+        else if (argument == L"--stream-max-chunk-frames") {
+            const auto value = require_value(index, argc, argv, L"--stream-max-chunk-frames");
+            options.stream_max_chunk_frames = std::stoi(value.wstring());
+        }
         else if (argument == L"--max-new-tokens") {
             const auto value = require_value(index, argc, argv, L"--max-new-tokens");
             options.max_new_tokens = std::stoi(value.wstring());
@@ -98,7 +102,7 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
                 << "qwen_tts_native_worker --runtime-dir DIR --talker-model FILE --codec-model FILE\n"
                 << "  [--dll-path FILE] [--manifest-path FILE] [--no-flash-attention]\n"
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
-                << "  [--max-new-tokens N]\n";
+                << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n";
             std::exit(EXIT_SUCCESS);
         }
         else {
@@ -128,6 +132,10 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
     }
     if (!(options.codec_chunk_seconds > 0.0F) || options.codec_chunk_seconds > 3600.0F) {
         throw std::invalid_argument("--codec-chunk-sec must be in (0, 3600]");
+    }
+    if (options.stream_max_chunk_frames != 1 && options.stream_max_chunk_frames != 2 &&
+        options.stream_max_chunk_frames != 4 && options.stream_max_chunk_frames != 8) {
+        throw std::invalid_argument("--stream-max-chunk-frames must be one of 1, 2, 4 or 8");
     }
     if (options.max_new_tokens < 1 || options.max_new_tokens > 65536) {
         throw std::invalid_argument("--max-new-tokens must be in [1, 65536]");

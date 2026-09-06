@@ -77,6 +77,7 @@ void QwenDllLoader::load(
     try {
         api_.version = load_symbol<decltype(api_.version)>(module_, "qt_version");
         api_.last_error = load_symbol<decltype(api_.last_error)>(module_, "qt_last_error");
+        api_.last_finish_reason = load_symbol<decltype(api_.last_finish_reason)>(module_, "qt_last_finish_reason");
         api_.init_default_params = load_symbol<decltype(api_.init_default_params)>(module_, "qt_init_default_params");
         api_.init = load_symbol<decltype(api_.init)>(module_, "qt_init");
         api_.free = load_symbol<decltype(api_.free)>(module_, "qt_free");
