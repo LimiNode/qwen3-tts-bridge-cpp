@@ -35,7 +35,8 @@ class NativePythonMatrixRunnerTests(unittest.TestCase):
     def test_runner_preserves_defaults_and_negative_outcome_contract(self) -> None:
         source = RUNNER.read_text(encoding="utf-8")
         self.assertIn(
-            '$runtimeManifest = Join-Path $NativeWorkerArgument[$index + 1] "manifest.json"',
+            '$runtimeManifest = Join-Path $NativeWorkerArgument[$index + 1] '
+            '"manifest.json"',
             source,
         )
         self.assertIn('Add-OptionalPlaybackArgument $command "--seed" $Seed', source)
