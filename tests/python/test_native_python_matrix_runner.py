@@ -30,6 +30,12 @@ class NativePythonMatrixRunnerTests(unittest.TestCase):
         self.assertIn("native_dll", source)
         self.assertIn("native_runtime_manifest", source)
 
+    def test_runner_preserves_defaults_and_negative_outcome_contract(self) -> None:
+        source = RUNNER.read_text(encoding="utf-8")
+        self.assertIn('Join-Path $NativeWorkerArgument[$index + 1] "manifest.json"', source)
+        self.assertIn('Add-OptionalPlaybackArgument $command "--seed" $Seed', source)
+        self.assertIn('allowed_terminal_outcomes', source)
+
 
 if __name__ == "__main__":
     unittest.main()
