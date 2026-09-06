@@ -71,7 +71,9 @@ Pass `-WarmupText` to keep warmup requests out of the acceptance manifest; this
 prevents cancellation, negative-capacity, and voice-switch rows from being
 silently consumed as warmups. For Base/reference-clone workers, also pass
 `-WarmupReferenceAudioPath` and `-WarmupReferenceText` so warmup uses a valid
-reference request rather than a text-only request.
+reference request rather than a text-only request. The runner resolves and
+records this WAV as `warmup_reference_audio` with an artifact copy and SHA-256,
+and stores the warmup transcript and terminal quiet period in `workload`.
 For negative or fallback cases, `allowed_terminal_outcomes` may list values
 such as `natural_eos`, `completed`, and `request_error`; optional
 `expected_error_category` and `expected_error_code` constrain an error without

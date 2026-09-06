@@ -195,6 +195,19 @@ function Get-ManifestValue([object] $Spec, [string] $Name) {
     return $property.Value
 }
 
+function Resolve-ReferencePath([string] $Source, [string] $ManifestRoot) {
+    if ([System.IO.Path]::IsPathRooted($Source)) {
+        return [System.IO.Path]::GetFullPath($Source)
+    }
+    # Manifest-relative paths are deterministic and take precedence over the
+    # caller's working directory. Fall back to CWD for legacy CLI manifests.
+    $manifestCandidate = [System.IO.Path]::GetFullPath((Join-Path $ManifestRoot $Source))
+    if (Test-Path -LiteralPath $manifestCandidate -PathType Leaf) {
+        return $manifestCandidate
+    }
+    return [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Source))
+}
+
 function New-EffectiveManifest([string] $Path, [string] $Destination) {
     if (-not $Path) { return "" }
     $manifestRoot = Split-Path -Parent $Path
@@ -204,17 +217,7 @@ function New-EffectiveManifest([string] $Path, [string] $Destination) {
         $property = $row.PSObject.Properties["reference_audio_path"]
         if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
             $source = [string]$property.Value
-            if ([System.IO.Path]::IsPathRooted($source)) {
-                $resolved = [System.IO.Path]::GetFullPath($source)
-            } else {
-                $launchCandidate = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $source))
-                $manifestCandidate = [System.IO.Path]::GetFullPath((Join-Path $manifestRoot $source))
-                $resolved = if (Test-Path -LiteralPath $launchCandidate -PathType Leaf) {
-                    $launchCandidate
-                } else {
-                    $manifestCandidate
-                }
-            }
+            $resolved = Resolve-ReferencePath $source $manifestRoot
             $row.reference_audio_path = $resolved
         }
         $effectiveRows += ($row | ConvertTo-Json -Compress -Depth 100)
@@ -420,20 +423,7 @@ function Get-ReferenceAudioProvenance([string] $ManifestPath) {
         $property = $row.PSObject.Properties["reference_audio_path"]
         if ($null -eq $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { continue }
         $source = [string]$property.Value
-        if ([System.IO.Path]::IsPathRooted($source)) {
-            $resolved = $source
-        } else {
-            # The worker receives the manifest value unchanged, so its normal
-            # relative-path semantics are rooted at the launch directory.
-            $launchCandidate = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $source)
-            )
-            $manifestCandidate = Join-Path $manifestRoot $source
-            $resolved = if (Test-Path -LiteralPath $launchCandidate -PathType Leaf) {
-                $launchCandidate
-            } else {
-                $manifestCandidate
-            }
-        }
+        $resolved = Resolve-ReferencePath $source $manifestRoot
         $entry = [ordered]@{
             row = $lineIndex + 1
             source_path = $source
@@ -450,6 +440,22 @@ function Get-ReferenceAudioProvenance([string] $ManifestPath) {
         $entries += [pscustomobject]$entry
     }
     return ,$entries
+}
+function Get-WarmupReferenceProvenance([string] $PathValue, [string] $ManifestRoot) {
+    if (-not $PathValue) { return $null }
+    $resolved = Resolve-ReferencePath $PathValue $ManifestRoot
+    $entry = [ordered]@{
+        source_path = $PathValue
+        resolved_path = $resolved
+        exists = (Test-Path -LiteralPath $resolved -PathType Leaf)
+    }
+    if ($entry.exists) {
+        $destination = Join-Path $runDirectory ("warmup-reference-" + [System.IO.Path]::GetFileName($resolved))
+        Copy-Item -LiteralPath $resolved -Destination $destination
+        $entry.artifact_path = $destination
+        $entry.sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant()
+    }
+    return $entry
 }
 $pythonSourceProvenance = Get-ArgumentPathProvenance $PythonWorkerArgument
 if ($FasterQwenSourcePath) {
@@ -500,6 +506,13 @@ if ($null -eq $nativeDllSnapshot) {
         }
     }
 }
+$manifestRootForWarmup = if ($manifestPath) { Split-Path -Parent $manifestPath } else { Get-Location }
+$warmupReferenceProvenance = $null
+if ($WarmupReferenceAudioPath) {
+    $originalWarmupReferencePath = $WarmupReferenceAudioPath
+    $WarmupReferenceAudioPath = Resolve-ReferencePath $WarmupReferenceAudioPath $manifestRootForWarmup
+    $warmupReferenceProvenance = Get-WarmupReferenceProvenance $originalWarmupReferencePath $manifestRootForWarmup
+}
 $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $effectiveManifestPath
     $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $runDirectory "native.json") (Join-Path $runDirectory "native.stderr.log") $effectiveManifestPath
     $playback = [ordered]@{
@@ -520,7 +533,7 @@ $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Pa
         host = [ordered]@{ computer = $env:COMPUTERNAME; gpu = $gpu }
         workload = [ordered]@{
             text = $Text; language = $Language; request_manifest = $manifestPath; effective_request_manifest = $effectiveManifestPath
-            warmups = $Warmups; warmup_text = $WarmupText; requests = $Requests; cancel_every = $CancelEvery; gpu_index = $GpuIndex; seed = $Seed
+            warmups = $Warmups; warmup_text = $WarmupText; warmup_reference_audio_path = $WarmupReferenceAudioPath; warmup_reference_text = $WarmupReferenceText; terminal_quiet_ms = $TerminalQuietMs; requests = $Requests; cancel_every = $CancelEvery; gpu_index = $GpuIndex; seed = $Seed
             speaker = $Speaker; voice_id = $VoiceId
             playback_manifest_label = $PlaybackManifestLabel
         }
@@ -540,6 +553,7 @@ $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Pa
             python_sources = $pythonSourceProvenance
             bridge_commit = $bridgeCommit
             reference_audio = Get-ReferenceAudioProvenance $manifestPath
+            warmup_reference_audio = $warmupReferenceProvenance
             python_worker_arguments = @($PythonWorkerArgument)
             native_worker_arguments = @($NativeWorkerArgument)
         }
