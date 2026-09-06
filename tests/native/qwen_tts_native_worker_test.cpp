@@ -297,6 +297,33 @@ int main() {
     CHECK(max_probe.completions.size() == 1);
     CHECK(max_probe.completions.front().execution_outcome == "max_tokens");
 
+    Probe unknown_probe;
+    TtsCallbacks unknown_callbacks;
+    unknown_callbacks.on_audio = [&unknown_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
+        unknown_probe.audio.insert(unknown_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    };
+    unknown_callbacks.on_error = [&unknown_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
+        unknown_probe.errors.push_back(error);
+        unknown_probe.condition.notify_all();
+    };
+    unknown_callbacks.on_completed = [&unknown_probe]() {
+        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
+        ++unknown_probe.completed;
+        unknown_probe.condition.notify_all();
+    };
+    CHECK(client.synthesize_async("force unknown finish reason", unknown_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(unknown_probe.mutex);
+        CHECK(unknown_probe.condition.wait_for(lock, std::chrono::seconds(5), [&unknown_probe]() {
+            return !unknown_probe.errors.empty() || unknown_probe.completed != 0;
+        }));
+    }
+    CHECK(unknown_probe.completed == 0);
+    CHECK(unknown_probe.errors.size() == 1);
+    CHECK(unknown_probe.errors.front().code == "invalid_finish_reason");
+
     client.stop();
     return EXIT_SUCCESS;
 }

@@ -105,9 +105,13 @@ QT_API qt_status qt_synthesize(
         g_finish_reason = QT_FINISH_UNKNOWN;
         return QT_STATUS_CANCELLED;
     }
-    g_finish_reason = std::strcmp(params->text, "force max tokens") == 0
-        ? QT_FINISH_MAX_TOKENS
-        : QT_FINISH_EOS;
+    if (std::strcmp(params->text, "force max tokens") == 0) {
+        g_finish_reason = QT_FINISH_MAX_TOKENS;
+    } else if (std::strcmp(params->text, "force unknown finish reason") == 0) {
+        g_finish_reason = QT_FINISH_UNKNOWN;
+    } else {
+        g_finish_reason = QT_FINISH_EOS;
+    }
     const float chunks[][4] = {
         {-1.2F, -0.5F, 0.0F, 0.5F},
         {0.75F, 1.0F, 0.25F, 0.0F}
