@@ -48,6 +48,7 @@ using qwen_tts_bridge::TtsRequest;
 
 struct ProgramOptions {
     bool help = false;
+    bool self_test_eos_contract = false;
     bool use_mock_worker = false;
     std::string worker_executable;
     std::vector<std::string> worker_arguments;
@@ -299,6 +300,7 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  " << executable_name << " --worker qwen_tts_worker.exe --text \"Hello\"\n\n"
         << "Options:\n"
         << "  --help                         Show this help.\n"
+        << "  --self-test-eos-contract       Exercise backend-neutral EOS acceptance branches.\n"
         << "  --mock                         Run the bundled Python mock worker.\n"
         << "  --worker <path>                Worker executable path.\n"
         << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
@@ -393,6 +395,9 @@ ProgramOptions parse_options(int argc, char** argv) {
 
         if (arg == "--help" || arg == "-h") {
             options.help = true;
+        }
+        else if (arg == "--self-test-eos-contract") {
+            options.self_test_eos_contract = true;
         }
         else if (arg == "--mock") {
             options.use_mock_worker = true;
@@ -1216,6 +1221,43 @@ bool has_acceptance_failures(const std::vector<RequestResult>& results) {
         [](const RequestResult& result) { return !result.acceptance_valid; });
 }
 
+int run_eos_contract_self_test() {
+    auto make_result = [](const std::string& outcome) {
+        RequestResult result;
+        result.success = true;
+        result.audio_bytes = 2;
+        result.audio_chunks = 1;
+        TtsCompletion completion;
+        completion.execution_outcome = outcome;
+        completion.has_generation_trace = false;
+        result.completion_execution_outcome = outcome;
+        result.completion_metadata = completion;
+        return result;
+    };
+
+    RequestResult native_natural = make_result("natural_eos");
+    validate_generic_acceptance(native_natural);
+    if (!native_natural.acceptance_valid) {
+        std::cerr << "EOS self-test: native natural_eos was rejected\n";
+        return 1;
+    }
+
+    RequestResult bare_completed = make_result("completed");
+    validate_generic_acceptance(bare_completed);
+    if (bare_completed.acceptance_valid) {
+        std::cerr << "EOS self-test: bare completed was accepted\n";
+        return 1;
+    }
+
+    RequestResult max_tokens = make_result("max_tokens");
+    validate_generic_acceptance(max_tokens);
+    if (max_tokens.acceptance_valid) {
+        std::cerr << "EOS self-test: max_tokens was accepted\n";
+        return 1;
+    }
+    return 0;
+}
+
 std::string json_escape(const std::string& value) {
     std::ostringstream out;
     for (const char ch : value) {
@@ -1553,6 +1595,9 @@ void write_results_json(
 int main(int argc, char** argv) {
     try {
         ProgramOptions options = parse_options(argc, argv);
+        if (options.self_test_eos_contract) {
+            return run_eos_contract_self_test();
+        }
         validate_options(options);
 
         if (options.help) {

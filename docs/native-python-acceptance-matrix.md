@@ -54,10 +54,12 @@ exercise multiple languages, lengths, voices, and deterministic seeds:
   -PythonWorkerArgument @('-m', 'qwen_tts_bridge_worker', 'qwen', '--model-path', 'E:\models\qwen', '--runtime-backend', 'faster', '--runtime-profile', 'cmp50hx-low-latency') `
   -NativeWorkerExecutable .\build\Release\qwen_tts_native_worker.exe `
   -NativeWorkerArgument @('--runtime-dir', 'E:\models\qwentts-runtime', '--talker-model', 'E:\models\talker.gguf', '--codec-model', 'E:\models\codec.gguf') `
-  -RequestManifest .\docs\acceptance\native-python-smoke.jsonl `
+  -RequestManifest .\docs\acceptance\native-python-full.jsonl `
   -FasterQwenSourcePath .\external\python\faster-qwen3-tts `
   -QwenSourcePath .\external\python\Qwen3-TTS-streaming `
-  -WarmupText "Warmup request." -Warmups 5 -Requests 30 -CancelEvery 5 -GpuIndex 0 -Seed 4242 `
+  -WarmupText "Warmup request." -WarmupReferenceAudioPath .\voices\warmup-ref.wav `
+  -WarmupReferenceText "Warmup reference transcript." `
+  -Warmups 5 -Requests 30 -CancelEvery 5 -GpuIndex 0 -Seed 4242 `
   -PlaybackExecutable .\build\Release\qwen_tts_play.exe `
   -PlaybackManifestLabel ru-short `
   -Output .\artifacts\native-python-matrix.json

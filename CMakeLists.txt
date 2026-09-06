@@ -375,6 +375,10 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                     --result-json
                     "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_latency_benchmark_manifest_mock.json"
             )
+            add_test(
+                NAME qwen_tts_latency_benchmark_eos_contract
+                COMMAND qwen_tts_latency_benchmark --self-test-eos-contract
+            )
             if(WIN32)
                 add_test(
                     NAME qwen_tts_play_mock_utf8_example

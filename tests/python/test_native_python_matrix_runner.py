@@ -62,6 +62,7 @@ class NativePythonMatrixRunnerTests(unittest.TestCase):
         self.assertIn("terminal_quiet", source)
         self.assertIn("warmup_reference_audio", source)
         self.assertIn("warmup_reference_text", source)
+        self.assertIn("self-test-eos-contract", source)
         self.assertIn('"request_error"', template)
         self.assertIn('"resource_error"', template)
         self.assertIn("allowed_errors", template)
