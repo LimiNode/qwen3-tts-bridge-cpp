@@ -31,6 +31,10 @@ class NativePythonMatrixRunnerTests(unittest.TestCase):
         self.assertIn("Get-FileHash -Algorithm SHA256", source)
         self.assertIn("native_dll", source)
         self.assertIn("native_runtime_manifest", source)
+        self.assertIn("Get-ReferenceAudioProvenance", source)
+        self.assertIn("Get-PythonPackageProvenance", source)
+        self.assertIn("python_sources", source)
+        self.assertIn("reference_audio", source)
 
     def test_runner_preserves_defaults_and_negative_outcome_contract(self) -> None:
         source = RUNNER.read_text(encoding="utf-8")
@@ -45,8 +49,12 @@ class NativePythonMatrixRunnerTests(unittest.TestCase):
         source = BENCHMARK.read_text(encoding="utf-8")
         template = FULL_TEMPLATE.read_text(encoding="utf-8")
         self.assertIn("allowed_terminal_outcomes", source)
+        self.assertIn("allowed_errors", source)
+        self.assertIn("cancel_after_first_pcm", source)
+        self.assertIn("completion_metadata", source)
         self.assertIn('"request_error"', template)
-        self.assertIn("expected_error_category", template)
+        self.assertIn('"resource_error"', template)
+        self.assertIn("allowed_errors", template)
 
 
 if __name__ == "__main__":

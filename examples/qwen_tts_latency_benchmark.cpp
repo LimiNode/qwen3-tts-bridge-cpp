@@ -92,6 +92,8 @@ struct RequestSpec {
     std::vector<std::string> allowed_terminal_outcomes;
     std::string expected_error_category;
     std::string expected_error_code;
+    std::vector<std::pair<std::string, std::string>> allowed_errors;
+    bool cancel_after_first_pcm = false;
 
     bool has_contract() const {
         return expected_prefill_length.has_value();
@@ -138,6 +140,8 @@ struct RequestResult {
     std::vector<std::string> allowed_terminal_outcomes;
     std::string expected_error_category;
     std::string expected_error_code;
+    std::vector<std::pair<std::string, std::string>> allowed_errors;
+    bool cancel_after_first_pcm = false;
     RequestId request_id = 0;
     bool warmup = false;
     bool success = false;
@@ -164,6 +168,7 @@ struct RequestResult {
     std::string error_code;
     std::string error_message;
     std::optional<std::string> completion_execution_outcome;
+    std::optional<TtsCompletion> completion_metadata;
     nlohmann::json worker_first_chunk_phases;
     std::vector<nlohmann::json> worker_pcm_chunks;
     nlohmann::json worker_generation_trace;
@@ -561,6 +566,30 @@ std::vector<RequestSpec> load_request_manifest(const ProgramOptions& options) {
         }
         spec.expected_error_category = value.value("expected_error_category", "");
         spec.expected_error_code = value.value("expected_error_code", "");
+        if (value.contains("allowed_errors")) {
+            for (const auto& error : value.at("allowed_errors")) {
+                if (!error.is_object() || !error.contains("category") ||
+                    !error.contains("code")) {
+                    throw std::runtime_error(
+                        "--request-manifest line " + std::to_string(line_number) +
+                        " has invalid allowed_errors");
+                }
+                const std::string category = error.at("category").get<std::string>();
+                const std::string code = error.at("code").get<std::string>();
+                if (category.empty() || code.empty()) {
+                    throw std::runtime_error(
+                        "--request-manifest line " + std::to_string(line_number) +
+                        " has empty allowed error category/code");
+                }
+                spec.allowed_errors.emplace_back(category, code);
+            }
+            if (spec.allowed_errors.empty()) {
+                throw std::runtime_error(
+                    "--request-manifest line " + std::to_string(line_number) +
+                    " has empty allowed_errors");
+            }
+        }
+        spec.cancel_after_first_pcm = value.value("cancel_after_first_pcm", false);
         if (!spec.expected_error_code.empty() && spec.expected_error_category.empty()) {
             throw std::runtime_error(
                 "--request-manifest line " + std::to_string(line_number) +
@@ -783,8 +812,12 @@ RequestResult run_request(
     bool warmup,
     const RequestSpec* spec = nullptr) {
     RequestProbe probe;
-    probe.cancel_after_first_audio =
-        !warmup && options.cancel_every > 0 && index % options.cancel_every == 0;
+    const bool row_has_terminal_contract = spec != nullptr &&
+        (!spec->allowed_terminal_outcomes.empty() ||
+         !spec->expected_error_category.empty() || !spec->allowed_errors.empty());
+    probe.cancel_after_first_audio = !warmup &&
+        ((spec != nullptr && spec->cancel_after_first_pcm) ||
+         (!row_has_terminal_contract && options.cancel_every > 0 && index % options.cancel_every == 0));
     probe.start = Clock::now();
     const RequestId request_id = client.synthesize_async(
         make_request(options, audio_format, spec),
@@ -828,6 +861,8 @@ RequestResult run_request(
             result.allowed_terminal_outcomes = spec->allowed_terminal_outcomes;
             result.expected_error_category = spec->expected_error_category;
             result.expected_error_code = spec->expected_error_code;
+            result.allowed_errors = spec->allowed_errors;
+            result.cancel_after_first_pcm = spec->cancel_after_first_pcm;
         }
         if (spec != nullptr && spec->has_contract()) {
             result.expected_prefill_length = spec->expected_prefill_length;
@@ -850,6 +885,7 @@ RequestResult run_request(
         result.error_code = probe.error_code;
         result.error_message = probe.error_message;
         if (probe.completion.has_value()) {
+            result.completion_metadata = probe.completion;
             result.completion_execution_outcome = probe.completion->execution_outcome;
         }
     }
@@ -1024,7 +1060,7 @@ void fail_acceptance(RequestResult& result, std::string message) {
 }
 
 void validate_generic_acceptance(RequestResult& result) {
-    if (!result.allowed_terminal_outcomes.empty()) {
+    if (!result.allowed_terminal_outcomes.empty() || !result.allowed_errors.empty()) {
         std::string actual;
         if (result.success) {
             actual = result.completion_execution_outcome.value_or("completed");
@@ -1033,9 +1069,18 @@ void validate_generic_acceptance(RequestResult& result) {
         } else {
             actual = result.error_category;
         }
-        if (std::find(result.allowed_terminal_outcomes.begin(),
-                      result.allowed_terminal_outcomes.end(), actual) ==
-            result.allowed_terminal_outcomes.end()) {
+        bool terminal_allowed = std::find(result.allowed_terminal_outcomes.begin(),
+            result.allowed_terminal_outcomes.end(), actual) !=
+            result.allowed_terminal_outcomes.end();
+        if (!result.success && !result.cancelled) {
+            terminal_allowed = std::any_of(result.allowed_errors.begin(),
+                result.allowed_errors.end(),
+                [&result](const auto& allowed) {
+                    return allowed.first == result.error_category &&
+                        allowed.second == result.error_code;
+                });
+        }
+        if (!terminal_allowed) {
             fail_acceptance(result, "terminal outcome '" + actual + "' was not allowed");
         }
         if (!result.success && !result.cancelled &&
@@ -1061,7 +1106,8 @@ void validate_generic_acceptance(RequestResult& result) {
         if (result.cancelled) {
             fail_acceptance(result, "unexpected cancellation");
         }
-        if (!result.success && result.allowed_terminal_outcomes.empty()) {
+        if (!result.success && result.allowed_terminal_outcomes.empty() &&
+            result.allowed_errors.empty()) {
             fail_acceptance(result, "request failed");
         }
     }
@@ -1072,6 +1118,19 @@ void validate_generic_acceptance(RequestResult& result) {
     if (result.success && result.completion_execution_outcome.has_value() &&
         result.completion_execution_outcome.value() == "max_tokens") {
             fail_acceptance(result, "request exhausted max_new_tokens before natural EOS");
+    }
+    if (result.success && result.completion_metadata.has_value()) {
+        const TtsCompletion& completion = result.completion_metadata.value();
+        if (completion.has_generation_trace) {
+            if (!completion.hit_eos || completion.hit_max_seq_len ||
+                completion.hit_max_new_tokens ||
+                completion.termination_reason != "eos") {
+                fail_acceptance(result, "generation trace did not report natural EOS");
+            }
+        } else if (completion.execution_outcome != "natural_eos" &&
+                   completion.execution_outcome != "completed") {
+            fail_acceptance(result, "completion metadata reported non-natural termination");
+        }
     }
     if (result.cancelled && result.audio_bytes == 0u) {
         fail_acceptance(result, "cancelled request produced no PCM prefix");
@@ -1277,9 +1336,32 @@ void write_results_json(
                 << "\"cancelled\":" << (result.cancelled ? "true" : "false") << ","
                 << "\"cancellation_expected\":"
                 << (result.cancellation_expected ? "true" : "false") << ","
+                << "\"cancel_after_first_pcm\":"
+                << (result.cancel_after_first_pcm ? "true" : "false") << ","
                 << "\"completion_execution_outcome\":";
             if (result.completion_execution_outcome.has_value()) {
                 out << "\"" << json_escape(result.completion_execution_outcome.value()) << "\"";
+            } else {
+                out << "null";
+            }
+            out << ","
+                << "\"completion_metadata\":";
+            if (result.completion_metadata.has_value()) {
+                const TtsCompletion& completion = result.completion_metadata.value();
+                out << "{\"execution_outcome\":\""
+                    << json_escape(completion.execution_outcome)
+                    << "\",\"has_generation_trace\":"
+                    << (completion.has_generation_trace ? "true" : "false")
+                    << ",\"termination_reason\":\""
+                    << json_escape(completion.termination_reason)
+                    << "\",\"hit_eos\":" << (completion.hit_eos ? "true" : "false")
+                    << ",\"hit_max_seq_len\":" << (completion.hit_max_seq_len ? "true" : "false")
+                    << ",\"hit_max_new_tokens\":" << (completion.hit_max_new_tokens ? "true" : "false")
+                    << ",\"codec_frame_count\":" << completion.codec_frame_count
+                    << ",\"generated_steps\":" << completion.generated_steps
+                    << ",\"emitted_steps\":" << completion.emitted_steps
+                    << ",\"terminal_step_index\":" << completion.terminal_step_index
+                    << "}";
             } else {
                 out << "null";
             }
@@ -1358,7 +1440,18 @@ void write_results_json(
                 << json_escape(result.expected_error_category)
                 << "\",\"expected_error_code\":\""
                 << json_escape(result.expected_error_code)
-                << "\"}"
+                << "\",\"allowed_errors\":[";
+            for (std::size_t error_index = 0; error_index < result.allowed_errors.size(); ++error_index) {
+                if (error_index != 0u) {
+                    out << ",";
+                }
+                out << "{\"category\":\""
+                    << json_escape(result.allowed_errors[error_index].first)
+                    << "\",\"code\":\""
+                    << json_escape(result.allowed_errors[error_index].second)
+                    << "\"}";
+            }
+            out << "]}"
                 << ",\"worker_telemetry\":{"
                 << "\"first_chunk_phases\":" << result.worker_first_chunk_phases.dump()
                 << ",\"pcm_chunks\":" << nlohmann::json(result.worker_pcm_chunks).dump()

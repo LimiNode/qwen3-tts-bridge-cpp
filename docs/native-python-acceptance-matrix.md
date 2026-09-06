@@ -67,13 +67,22 @@ such as `natural_eos`, `completed`, and `request_error`; optional
 `expected_error_category` and `expected_error_code` constrain an error without
 rejecting an explicitly allowed fallback. Global language, speaker, voice ID,
 and seed values are passed as defaults and are overridden by fields present in
-each manifest row.
+each manifest row. Use `allowed_errors` for backend-equivalent error pairs,
+for example native `request_error/invalid_native_request` and Python
+`resource_error/sequence_capacity_exceeded`.
 
 The runner samples system GPU memory every 250 ms when `nvidia-smi` is
 available. `host_peak_gpu_memory_used_mib` is a system-level peak, not a
 process-exclusive allocation; retain the raw samples for interpretation. Each
 run stores evidence in `<Output>.artifacts/<run-id>/`; the reported stderr,
 GPU-sample, and playback paths therefore remain valid after the runner exits.
+The evidence record also snapshots the request manifest, native runtime/DLL
+identity, bridge commit, Python worker hash, installed Python package versions,
+source-tree revisions supplied through worker arguments, and optional canary
+FasterQwen manifests when those paths are supplied. Every referenced audio
+file is copied into the run artifact directory and recorded with its SHA-256;
+missing references remain explicit in the evidence instead of being silently
+ignored.
 If
 `-PlaybackExecutable` is supplied, the runner performs a separate physical
 WaveOut run and marks the gate failed when playback does not complete or

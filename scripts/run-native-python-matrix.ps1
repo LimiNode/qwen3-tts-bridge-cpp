@@ -244,6 +244,96 @@ function Snapshot-HashArgument([string[]] $Arguments, [string] $ArgumentName) {
     }
     return $null
 }
+function Get-GitSourceProvenance([string] $PathValue, [string] $Label) {
+    if (-not (Test-Path -LiteralPath $PathValue)) {
+        return [ordered]@{ label = $Label; path = $PathValue; exists = $false }
+    }
+    $resolved = (Resolve-Path -LiteralPath $PathValue).Path
+    $commit = $null
+    $dirty = $null
+    try {
+        $commit = (& git -C $resolved rev-parse HEAD 2>$null).Trim()
+        $dirty = [bool]((& git -C $resolved status --porcelain 2>$null).Trim())
+    } catch { }
+    return [ordered]@{
+        label = $Label
+        path = $resolved
+        exists = $true
+        git_commit = $commit
+        git_dirty = $dirty
+    }
+}
+function Get-ArgumentPathProvenance([string[]] $Arguments) {
+    $known = [ordered]@{}
+    $argumentLabels = [ordered]@{
+        "--faster-source-path" = "faster_qwen3_tts_source"
+        "--qwen-source-path" = "qwen3_tts_source"
+        "--source-path" = "worker_source"
+    }
+    foreach ($entry in $argumentLabels.GetEnumerator()) {
+        for ($index = 0; $index -lt $Arguments.Count - 1; $index++) {
+            if ($Arguments[$index] -eq $entry.Key) {
+                $known[$entry.Value] = Get-GitSourceProvenance $Arguments[$index + 1] $entry.Value
+                break
+            }
+        }
+    }
+    return $known
+}
+function Get-PythonPackageProvenance([string] $PythonExecutable) {
+    $code = @'
+import importlib.metadata as metadata
+import json
+names = ("faster-qwen3-tts", "qwen-tts", "qwen3-tts-streaming", "torch")
+result = {}
+for name in names:
+    try:
+        result[name] = metadata.version(name)
+    except metadata.PackageNotFoundError:
+        pass
+print(json.dumps(result, sort_keys=True))
+'@
+    try {
+        $raw = (& $PythonExecutable -c $code 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -eq 0 -and $raw) { return ($raw | ConvertFrom-Json) }
+    } catch { }
+    return [ordered]@{}
+}
+function Get-ReferenceAudioProvenance([string] $ManifestPath) {
+    $entries = @()
+    if (-not $ManifestPath) { return ,$entries }
+    $manifestRoot = Split-Path -Parent $ManifestPath
+    $lines = @(Get-Content -LiteralPath $ManifestPath | Where-Object { $_.Trim() })
+    if ($lines.Count -eq 0) { return ,$entries }
+    $destinationRoot = Join-Path $runDirectory "reference-audio"
+    foreach ($lineIndex in 0..($lines.Count - 1)) {
+        $row = $lines[$lineIndex] | ConvertFrom-Json
+        $property = $row.PSObject.Properties["reference_audio_path"]
+        if ($null -eq $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { continue }
+        $source = [string]$property.Value
+        $resolved = if ([System.IO.Path]::IsPathRooted($source)) {
+            $source
+        } else {
+            Join-Path $manifestRoot $source
+        }
+        $entry = [ordered]@{
+            row = $lineIndex + 1
+            source_path = $source
+            resolved_path = $resolved
+            exists = (Test-Path -LiteralPath $resolved -PathType Leaf)
+        }
+        if ($entry.exists) {
+            New-Item -ItemType Directory -Force -Path $destinationRoot | Out-Null
+            $destination = Join-Path $destinationRoot ((($lineIndex + 1).ToString("D3")) + "-" + [System.IO.Path]::GetFileName($resolved))
+            Copy-Item -LiteralPath $resolved -Destination $destination
+            $entry.artifact_path = $destination
+            $entry.sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant()
+        }
+        $entries += [pscustomobject]$entry
+    }
+    return ,$entries
+}
+$pythonSourceProvenance = Get-ArgumentPathProvenance $PythonWorkerArgument
 $nativeRuntimeSnapshot = Snapshot-ManifestArgument $NativeWorkerArgument "native-runtime-manifest.json"
 if ($null -eq $nativeRuntimeSnapshot) {
     for ($index = 0; $index -lt $NativeWorkerArgument.Count - 1; $index++) {
@@ -260,6 +350,18 @@ if ($null -eq $nativeRuntimeSnapshot) {
         }
     }
 }
+$pythonProfileSnapshot = Snapshot-ManifestArgument $PythonWorkerArgument "python-runtime-profile-manifest.json"
+$pythonAllowlistSnapshot = Snapshot-ManifestArgument $PythonWorkerArgument "python-compiled-allowlist-manifest.json"
+$pythonExecutableSnapshot = [ordered]@{
+    path = $python
+    sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $python).Hash.ToLowerInvariant()
+    packages = Get-PythonPackageProvenance $python
+    sources = $pythonSourceProvenance
+}
+$bridgeCommit = $null
+try {
+    $bridgeCommit = (& git -C (Split-Path -Parent $PSScriptRoot) rev-parse HEAD 2>$null).Trim()
+} catch { }
 $nativeDllSnapshot = Snapshot-HashArgument $NativeWorkerArgument "--dll-path"
 if ($null -eq $nativeDllSnapshot) {
     for ($index = 0; $index -lt $NativeWorkerArgument.Count - 1; $index++) {
@@ -293,6 +395,12 @@ $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Pa
             request_manifest = if ($manifestPath) { [ordered]@{ path = (Join-Path $runDirectory "request-manifest.jsonl"); sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $runDirectory "request-manifest.jsonl")).Hash.ToLowerInvariant() } } else { $null }
             native_runtime_manifest = $nativeRuntimeSnapshot
             native_dll = $nativeDllSnapshot
+            python_worker = $pythonExecutableSnapshot
+            python_runtime_profile_manifest = $pythonProfileSnapshot
+            python_compiled_allowlist_manifest = $pythonAllowlistSnapshot
+            python_sources = $pythonSourceProvenance
+            bridge_commit = $bridgeCommit
+            reference_audio = Get-ReferenceAudioProvenance $manifestPath
         }
         python = $pythonResult
         native = $nativeResult
