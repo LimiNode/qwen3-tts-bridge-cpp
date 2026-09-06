@@ -143,6 +143,13 @@ function Get-ManifestPlaybackSpec([string] $Path, [string] $Label) {
     return $rows[0]
 }
 
+function Get-ManifestValue([object] $Spec, [string] $Name) {
+    if ($null -eq $Spec) { return $null }
+    $property = $Spec.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $null }
+    return $property.Value
+}
+
 function Invoke-Playback(
     [string] $Name,
     [string] $Worker,
@@ -155,22 +162,26 @@ function Invoke-Playback(
     $command = [System.Collections.Generic.List[string]]::new()
     [void]$command.Add("--worker"); [void]$command.Add($Worker)
     Add-WorkerArguments $command $WorkerArguments
-    $playText = if ($null -ne $ManifestSpec -and $ManifestSpec.text) { [string]$ManifestSpec.text } elseif ($PlaybackText) { $PlaybackText } else { $Text }
-    $playLanguage = if ($null -ne $ManifestSpec -and $ManifestSpec.language) { [string]$ManifestSpec.language } else { $Language }
+    $manifestText = Get-ManifestValue $ManifestSpec "text"
+    $manifestLanguage = Get-ManifestValue $ManifestSpec "language"
+    $playText = if ($manifestText) { [string]$manifestText } elseif ($PlaybackText) { $PlaybackText } else { $Text }
+    $playLanguage = if ($manifestLanguage) { [string]$manifestLanguage } else { $Language }
     [void]$command.Add("--text"); [void]$command.Add($playText)
     [void]$command.Add("--language"); [void]$command.Add($playLanguage)
-    $playSpeaker = if ($null -ne $ManifestSpec) { $ManifestSpec.speaker } else { $Speaker }
-    $playVoiceId = if ($null -ne $ManifestSpec) { $ManifestSpec.voice_id } else { $VoiceId }
-    $playInstruction = if ($null -ne $ManifestSpec) { $ManifestSpec.instruction } else { $null }
-    $playReferenceAudio = if ($null -ne $ManifestSpec) { $ManifestSpec.reference_audio_path } else { $null }
-    $playReferenceText = if ($null -ne $ManifestSpec) { $ManifestSpec.reference_text } else { $null }
+    $playSpeaker = if ($null -ne $ManifestSpec) { Get-ManifestValue $ManifestSpec "speaker" } else { $Speaker }
+    $playVoiceId = if ($null -ne $ManifestSpec) { Get-ManifestValue $ManifestSpec "voice_id" } else { $VoiceId }
+    $playInstruction = Get-ManifestValue $ManifestSpec "instruction"
+    $playReferenceAudio = Get-ManifestValue $ManifestSpec "reference_audio_path"
+    $playReferenceText = Get-ManifestValue $ManifestSpec "reference_text"
     Add-OptionalPlaybackArgument $command "--speaker" $playSpeaker
     Add-OptionalPlaybackArgument $command "--voice-id" $playVoiceId
     Add-OptionalPlaybackArgument $command "--instruction" $playInstruction
     Add-OptionalPlaybackArgument $command "--reference-audio" $playReferenceAudio
     Add-OptionalPlaybackArgument $command "--reference-text" $playReferenceText
-    if ($null -ne $ManifestSpec -and [bool]$ManifestSpec.x_vector_only) { [void]$command.Add("--x-vector-only") }
-    if ($null -ne $ManifestSpec -and $null -ne $ManifestSpec.seed) { Add-OptionalPlaybackArgument $command "--seed" $ManifestSpec.seed }
+    $playXVectorOnly = Get-ManifestValue $ManifestSpec "x_vector_only"
+    $playSeed = Get-ManifestValue $ManifestSpec "seed"
+    if ([bool]$playXVectorOnly) { [void]$command.Add("--x-vector-only") }
+    if ($null -ne $playSeed) { Add-OptionalPlaybackArgument $command "--seed" $playSeed }
     elseif ($null -eq $ManifestSpec) { Add-OptionalPlaybackArgument $command "--seed" $Seed }
     [void]$command.Add("--playback-metrics-file"); [void]$command.Add($metrics)
     [void]$command.Add("--etw-playback-markers")
