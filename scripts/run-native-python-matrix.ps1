@@ -238,6 +238,7 @@ function Invoke-Playback(
 }
 
 $benchmark = Resolve-ExistingFile $BenchmarkExecutable "BenchmarkExecutable"
+if ($GpuIndex -lt -1) { throw "GpuIndex must be -1 (all GPUs) or a non-negative adapter index." }
 $python = Resolve-ExistingFile $PythonWorkerExecutable "PythonWorkerExecutable"
 $native = Resolve-ExistingFile $NativeWorkerExecutable "NativeWorkerExecutable"
 if ($PlaybackExecutable) { $PlaybackExecutable = Resolve-ExistingFile $PlaybackExecutable "PlaybackExecutable" }
