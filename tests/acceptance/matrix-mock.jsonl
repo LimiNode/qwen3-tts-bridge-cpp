@@ -1,0 +1,2 @@
+{"label":"explicit-cancel","text":"Manifest row opts into cancellation.","language":"english","cancel_after_first_pcm":true,"allowed_terminal_outcomes":["cancelled"]}
+{"label":"contract-row","text":"Manifest row is not affected by periodic cancellation.","language":"english","allowed_terminal_outcomes":["completed"]}

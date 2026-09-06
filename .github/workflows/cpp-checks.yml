@@ -11,6 +11,7 @@ on:
       - "scripts/package-python-worker.ps1"
       - "scripts/setup-python-packaging.ps1"
       - "scripts/test-portable-python-worker-cpp.ps1"
+      - "scripts/run-native-python-matrix.ps1"
       - "src/**"
       - "tests/**"
       - "worker/**"
@@ -27,6 +28,7 @@ on:
       - "scripts/package-python-worker.ps1"
       - "scripts/setup-python-packaging.ps1"
       - "scripts/test-portable-python-worker-cpp.ps1"
+      - "scripts/run-native-python-matrix.ps1"
       - "src/**"
       - "tests/**"
       - "worker/**"
@@ -89,6 +91,13 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: ctest --test-dir "${{ matrix.build-dir }}" -C Release --output-on-failure
+
+      - name: Parse native/Python matrix runner
+        if: ${{ matrix.name == 'default' }}
+        shell: pwsh
+        run: >
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+          'scripts/run-native-python-matrix.ps1', [ref]$null, [ref]$null)
 
       - name: Install portable worker packaging tooling
         if: ${{ matrix.build-examples == 'ON' }}

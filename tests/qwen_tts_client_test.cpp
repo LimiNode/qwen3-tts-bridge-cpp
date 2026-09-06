@@ -165,6 +165,46 @@ private:
     bool release_block_ = false;
 };
 
+class InjectableTransport final : public ITransport {
+public:
+    bool start(
+        ReceiveHandler receive_handler,
+        ErrorHandler error_handler,
+        ExitHandler exit_handler) override {
+        receive_handler_ = std::move(receive_handler);
+        error_handler_ = std::move(error_handler);
+        exit_handler_ = std::move(exit_handler);
+        running_ = true;
+        return true;
+    }
+
+    SendResult send(const std::byte* data, std::size_t size) override {
+        if (!running_ || (data == nullptr && size != 0u)) {
+            return SendResult::Closed;
+        }
+        if (send_count_++ == 0) {
+            receive_handler_(ready_frame_bytes());
+        }
+        return SendResult::Accepted;
+    }
+
+    bool is_running() const override { return running_; }
+
+    void stop() override { running_ = false; }
+
+    void emit(std::vector<std::byte> bytes) {
+        CHECK(receive_handler_ != nullptr);
+        receive_handler_(std::move(bytes));
+    }
+
+private:
+    ReceiveHandler receive_handler_;
+    ErrorHandler error_handler_;
+    ExitHandler exit_handler_;
+    std::atomic<bool> running_{false};
+    std::atomic<int> send_count_{0};
+};
+
 StdIoTransportOptions make_worker_options(
     int mock_chunks,
     double chunk_delay_seconds = 0.0) {
@@ -646,6 +686,46 @@ void test_transport_send_failure_fails_request_once() {
     client.stop();
 }
 
+void test_terminal_diagnostics_reject_late_audio_and_duplicate_terminal() {
+    auto transport = std::make_unique<InjectableTransport>();
+    auto* raw_transport = transport.get();
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), make_client_options()));
+
+    RequestProbe cancelled_probe;
+    const RequestId cancelled_id = client.synthesize_async(
+        make_request("Late audio request."), make_callbacks(cancelled_probe));
+    CHECK(cancelled_id != 0);
+    CHECK(client.cancel(cancelled_id));
+    raw_transport->emit(control_frame_bytes(
+        cancelled_id, "{\"message_type\":\"cancelled\"}"));
+    CHECK(wait_for_probe(cancelled_probe, [](const RequestProbe& state) {
+        return state.cancelled;
+    }));
+    raw_transport->emit(frame_bytes(
+        FrameType::AudioPcm,
+        cancelled_id,
+        std::vector<std::byte>{std::byte{0}, std::byte{0}}));
+
+    RequestProbe completed_probe;
+    const RequestId completed_id = client.synthesize_async(
+        make_request("Duplicate terminal request."), make_callbacks(completed_probe));
+    CHECK(completed_id != 0);
+    const auto completed = control_frame_bytes(
+        completed_id,
+        "{\"message_type\":\"completed\",\"execution_outcome\":\"natural_eos\"}");
+    raw_transport->emit(completed);
+    CHECK(wait_for_probe(completed_probe, [](const RequestProbe& state) {
+        return state.completed;
+    }));
+    raw_transport->emit(completed);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    CHECK(client.late_audio_after_terminal_count() == 1);
+    CHECK(client.duplicate_terminal_event_count() == 1);
+    client.stop();
+}
+
 } // namespace
 
 int main() {
@@ -662,5 +742,6 @@ int main() {
     test_invalid_request_is_rejected_before_id_assignment();
     test_duplicate_explicit_request_id_is_rejected();
     test_transport_send_failure_fails_request_once();
+    test_terminal_diagnostics_reject_late_audio_and_duplicate_terminal();
     return 0;
 }
