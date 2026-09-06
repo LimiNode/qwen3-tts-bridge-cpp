@@ -1,10 +1,7 @@
 """Static contract checks for the cross-backend matrix runner."""
 
-from __future__ import annotations
-
 import pathlib
 import unittest
-
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 RUNNER = ROOT / "scripts" / "run-native-python-matrix.ps1"
