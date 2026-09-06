@@ -10,3 +10,6 @@
 [submodule "external/python/faster-qwen3-tts"]
 	path = external/python/faster-qwen3-tts
 	url = https://github.com/LimiNode/faster-qwen3-tts.git
+[submodule "external/cpp/qwentts.cpp"]
+	path = external/cpp/qwentts.cpp
+	url = https://github.com/LimiNode/qwentts.cpp.git
