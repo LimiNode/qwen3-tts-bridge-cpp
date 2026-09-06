@@ -311,10 +311,19 @@ function Get-ReferenceAudioProvenance([string] $ManifestPath) {
         $property = $row.PSObject.Properties["reference_audio_path"]
         if ($null -eq $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { continue }
         $source = [string]$property.Value
-        $resolved = if ([System.IO.Path]::IsPathRooted($source)) {
-            $source
+        if ([System.IO.Path]::IsPathRooted($source)) {
+            $resolved = $source
         } else {
-            Join-Path $manifestRoot $source
+            # The worker receives the manifest value unchanged, so its normal
+            # relative-path semantics are rooted at the launch directory.
+            $launchCandidate = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $source)
+            )
+            $manifestCandidate = Join-Path $manifestRoot $source
+            $resolved = if (Test-Path -LiteralPath $launchCandidate -PathType Leaf) {
+                $launchCandidate
+            } else {
+                $manifestCandidate
+            }
         }
         $entry = [ordered]@{
             row = $lineIndex + 1
