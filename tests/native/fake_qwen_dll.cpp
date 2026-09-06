@@ -18,6 +18,7 @@ namespace {
 thread_local std::string last_error;
 qt_log_cb g_log_callback = nullptr;
 void* g_log_user_data = nullptr;
+thread_local qt_finish_reason g_finish_reason = QT_FINISH_UNKNOWN;
 
 void set_error(const char* value) {
     last_error = value != nullptr ? value : "";
@@ -35,7 +36,7 @@ QT_API const char* qt_last_error(void) {
 }
 
 QT_API qt_finish_reason qt_last_finish_reason(void) {
-    return QT_FINISH_EOS;
+    return g_finish_reason;
 }
 
 QT_API void qt_init_default_params(qt_init_params* params) {
@@ -96,12 +97,17 @@ QT_API qt_status qt_synthesize(
     qt_audio* out) {
     if (context == nullptr || params == nullptr || params->abi_version != QT_ABI_VERSION ||
         params->text == nullptr || *params->text == '\0') {
+        g_finish_reason = QT_FINISH_UNKNOWN;
         set_error("fake synthesis invalid params");
         return QT_STATUS_INVALID_PARAMS;
     }
     if (params->cancel != nullptr && params->cancel(params->cancel_user_data)) {
+        g_finish_reason = QT_FINISH_UNKNOWN;
         return QT_STATUS_CANCELLED;
     }
+    g_finish_reason = std::strcmp(params->text, "force max tokens") == 0
+        ? QT_FINISH_MAX_TOKENS
+        : QT_FINISH_EOS;
     const float chunks[][4] = {
         {-1.2F, -0.5F, 0.0F, 0.5F},
         {0.75F, 1.0F, 0.25F, 0.0F}
@@ -109,6 +115,7 @@ QT_API qt_status qt_synthesize(
     if (params->on_chunk != nullptr) {
         for (const auto& chunk : chunks) {
             if (params->cancel != nullptr && params->cancel(params->cancel_user_data)) {
+                g_finish_reason = QT_FINISH_UNKNOWN;
                 return QT_STATUS_CANCELLED;
             }
             if (!params->on_chunk(chunk, 4, params->on_chunk_user_data)) {

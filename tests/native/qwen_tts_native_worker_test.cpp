@@ -30,6 +30,7 @@ struct Probe {
     std::size_t completed = 0;
     std::size_t cancelled = 0;
     std::vector<TtsError> errors;
+    std::vector<TtsCompletion> completions;
 };
 
 StdIoTransportOptions options(
@@ -159,6 +160,11 @@ int main() {
         ++probe.completed;
         probe.condition.notify_all();
     };
+    callbacks.on_completion_metadata = [&probe](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.completions.push_back(completion);
+        probe.condition.notify_all();
+    };
     callbacks.on_cancelled = [&probe]() {
         std::lock_guard<std::mutex> lock(probe.mutex);
         ++probe.cancelled;
@@ -180,6 +186,8 @@ int main() {
     }
     CHECK(probe.errors.empty());
     CHECK(probe.completed == 1);
+    CHECK(probe.completions.size() == 1);
+    CHECK(probe.completions.front().execution_outcome == "natural_eos");
     CHECK(probe.audio.size() == 16);
     CHECK(static_cast<unsigned char>(probe.audio[0]) == 0x00u);
     CHECK(static_cast<unsigned char>(probe.audio[1]) == 0x80u);
@@ -255,6 +263,39 @@ int main() {
     }
     CHECK(recovery_probe.errors.empty());
     CHECK(recovery_probe.completed == 1);
+
+    Probe max_probe;
+    TtsCallbacks max_callbacks;
+    max_callbacks.on_audio = [&max_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(max_probe.mutex);
+        max_probe.audio.insert(max_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    };
+    max_callbacks.on_completion_metadata = [&max_probe](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(max_probe.mutex);
+        max_probe.completions.push_back(completion);
+        max_probe.condition.notify_all();
+    };
+    max_callbacks.on_completed = [&max_probe]() {
+        std::lock_guard<std::mutex> lock(max_probe.mutex);
+        ++max_probe.completed;
+        max_probe.condition.notify_all();
+    };
+    max_callbacks.on_error = [&max_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(max_probe.mutex);
+        max_probe.errors.push_back(error);
+        max_probe.condition.notify_all();
+    };
+    CHECK(client.synthesize_async("force max tokens", max_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(max_probe.mutex);
+        CHECK(max_probe.condition.wait_for(lock, std::chrono::seconds(5), [&max_probe]() {
+            return max_probe.completed != 0 || !max_probe.errors.empty();
+        }));
+    }
+    CHECK(max_probe.errors.empty());
+    CHECK(max_probe.completed == 1);
+    CHECK(max_probe.completions.size() == 1);
+    CHECK(max_probe.completions.front().execution_outcome == "max_tokens");
 
     client.stop();
     return EXIT_SUCCESS;

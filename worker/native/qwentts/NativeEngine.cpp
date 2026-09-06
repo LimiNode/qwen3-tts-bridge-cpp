@@ -199,10 +199,14 @@ SynthesisResult NativeEngine::synthesize(
     api.audio_free(&output);
     if (status == QT_STATUS_OK) {
         const auto finish_reason = api.last_finish_reason();
-        const std::string outcome = finish_reason == QT_FINISH_EOS
-            ? "natural_eos"
-            : finish_reason == QT_FINISH_MAX_TOKENS ? "max_tokens" : "completed";
-        return {SynthesisOutcome::Completed, {}, {}, {}, outcome};
+        if (finish_reason == QT_FINISH_EOS) {
+            return {SynthesisOutcome::Completed, {}, {}, {}, "natural_eos"};
+        }
+        if (finish_reason == QT_FINISH_MAX_TOKENS) {
+            return {SynthesisOutcome::Completed, {}, {}, {}, "max_tokens"};
+        }
+        return {SynthesisOutcome::Failed, "model_error", "invalid_finish_reason",
+                "qwentts reported successful synthesis without EOS or MAX_TOKENS", {}};
     }
     if (status == QT_STATUS_CANCELLED || cancelled.load(std::memory_order_relaxed)) {
         return {SynthesisOutcome::Cancelled, {}, {}, {}};
