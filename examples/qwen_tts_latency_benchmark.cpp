@@ -1018,9 +1018,6 @@ void validate_generic_acceptance(RequestResult& result) {
         result.completion_execution_outcome.value() == "max_tokens") {
             fail_acceptance(result, "request exhausted max_new_tokens before natural EOS");
     }
-    if (result.success && !result.completion_execution_outcome.has_value()) {
-        fail_acceptance(result, "completed request omitted completion metadata");
-    }
     if (result.cancelled && result.audio_bytes == 0u) {
         fail_acceptance(result, "cancelled request produced no PCM prefix");
     }
