@@ -5,6 +5,8 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 RUNNER = ROOT / "scripts" / "run-native-python-matrix.ps1"
+BENCHMARK = ROOT / "examples" / "qwen_tts_latency_benchmark.cpp"
+FULL_TEMPLATE = ROOT / "docs" / "acceptance" / "native-python-full.template.jsonl"
 
 
 class NativePythonMatrixRunnerTests(unittest.TestCase):
@@ -32,9 +34,18 @@ class NativePythonMatrixRunnerTests(unittest.TestCase):
 
     def test_runner_preserves_defaults_and_negative_outcome_contract(self) -> None:
         source = RUNNER.read_text(encoding="utf-8")
-        self.assertIn('Join-Path $NativeWorkerArgument[$index + 1] "manifest.json"', source)
+        self.assertIn(
+            '$runtimeManifest = Join-Path $NativeWorkerArgument[$index + 1] "manifest.json"',
+            source,
+        )
         self.assertIn('Add-OptionalPlaybackArgument $command "--seed" $Seed', source)
-        self.assertIn('allowed_terminal_outcomes', source)
+
+    def test_benchmark_accepts_explicit_negative_outcomes(self) -> None:
+        source = BENCHMARK.read_text(encoding="utf-8")
+        template = FULL_TEMPLATE.read_text(encoding="utf-8")
+        self.assertIn("allowed_terminal_outcomes", source)
+        self.assertIn('"request_error"', template)
+        self.assertIn("expected_error_category", template)
 
 
 if __name__ == "__main__":
