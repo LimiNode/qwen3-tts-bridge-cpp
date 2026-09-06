@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import pathlib
 import unittest
-from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 RUNNER = ROOT / "scripts" / "run-native-python-matrix.ps1"
 
 
