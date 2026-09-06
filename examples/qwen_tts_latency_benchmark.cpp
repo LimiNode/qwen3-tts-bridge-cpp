@@ -1358,7 +1358,7 @@ void write_results_json(
                 << json_escape(result.expected_error_category)
                 << "\",\"expected_error_code\":\""
                 << json_escape(result.expected_error_code)
-                << "}"
+                << "\"}"
                 << ",\"worker_telemetry\":{"
                 << "\"first_chunk_phases\":" << result.worker_first_chunk_phases.dump()
                 << ",\"pcm_chunks\":" << nlohmann::json(result.worker_pcm_chunks).dump()
