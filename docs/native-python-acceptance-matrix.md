@@ -26,10 +26,12 @@ completed request has no PCM, PCM arrives after cancellation, EOS is missing,
 or a protocol/stdout violation occurs. Keep raw JSON and stderr telemetry. Add a short subjective listening check for clicks,
 pauses, clipping, word endings, and voice identity after objective gates pass.
 
-Native runs emit `execution_outcome` telemetry (`natural_eos` or
-`max_tokens`). A completed request that reports `max_tokens` is rejected as
-truncated; Python workers that do not expose this optional field remain
-compatible with the generic terminal gate.
+The benchmark records the backend-neutral `TtsCompletion` callback as
+`completion_execution_outcome` when supplied. Native runs report
+`natural_eos` or `max_tokens`; a completed request that reports `max_tokens` is
+rejected as truncated. The stderr `qtb_metric` line remains diagnostic only,
+and Python workers that do not expose this optional field remain compatible
+with the generic terminal gate.
 
 The repository currently has no local GGUF pair, so a real hardware comparison
 is intentionally not claimed by CI. Supply model paths from outside the source
