@@ -54,6 +54,7 @@ exercise multiple languages, lengths, voices, and deterministic seeds:
   -RequestManifest .\docs\acceptance\native-python-smoke.jsonl `
   -Warmups 5 -Requests 30 -CancelEvery 5 -Seed 4242 `
   -PlaybackExecutable .\build\Release\qwen_tts_play.exe `
+  -PlaybackManifestLabel ru-short `
   -Output .\artifacts\native-python-matrix.json
 ```
 
