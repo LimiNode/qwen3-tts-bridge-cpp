@@ -36,6 +36,7 @@ class MockTtsEngine:
         self._chunk_duration_ms = chunk_duration_ms
         self._chunk_delay_seconds = chunk_delay_seconds
         self._loaded = False
+        self._last_generation_trace: dict[str, object] | None = None
 
     @property
     def capabilities(self) -> EngineCapabilities:
@@ -95,11 +96,29 @@ class MockTtsEngine:
         sample_index = 0
         for _chunk_index in range(self._chunk_count):
             if cancel_event.is_set():
+                self._last_generation_trace = None
                 return
             yield _sine_chunk(samples_per_chunk, sample_index)
             sample_index += samples_per_chunk
             if self._chunk_delay_seconds > 0:
                 time.sleep(self._chunk_delay_seconds)
+        self._last_generation_trace = {
+            "termination_reason": "eos",
+            "hit_eos": True,
+            "hit_max_seq_len": False,
+            "hit_max_new_tokens": False,
+            "codec_frame_count": self._chunk_count,
+            "generated_steps": self._chunk_count,
+            "emitted_steps": self._chunk_count,
+            "terminal_step_index": self._chunk_count - 1,
+        }
+
+    def pop_last_generation_trace(self) -> dict[str, object] | None:
+        """Return and clear the deterministic completion trace."""
+
+        trace = self._last_generation_trace
+        self._last_generation_trace = None
+        return trace
 
     def close(self) -> None:
         """Release mock resources."""

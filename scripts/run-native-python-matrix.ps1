@@ -6,11 +6,13 @@ param(
     [Parameter(Mandatory = $true)] [string] $NativeWorkerExecutable,
     [Parameter(Mandatory = $true)] [string[]] $NativeWorkerArgument,
     [string] $Text = "Native/Python acceptance request.",
+    [string] $WarmupText = "",
     [string] $RequestManifest = "",
     [string] $Language = "auto",
     [int] $Warmups = 5,
     [int] $Requests = 30,
     [int] $CancelEvery = 0,
+    [int] $GpuIndex = -1,
     [UInt64] $Seed = 4242,
     [string] $Speaker = "",
     [string] $VoiceId = "",
@@ -18,6 +20,8 @@ param(
     [string] $PlaybackExecutable = "",
     [string] $PlaybackText = "",
     [string] $PlaybackManifestLabel = "",
+    [string] $FasterQwenSourcePath = "",
+    [string] $QwenSourcePath = "",
     [switch] $SkipGpuSampling
 )
 
@@ -41,11 +45,15 @@ function Add-WorkerArguments([System.Collections.Generic.List[string]] $Command,
 
 function Start-GpuSampler([string] $Path) {
     if ($SkipGpuSampling) { return $null }
-    return Start-Job -ArgumentList $Path -ScriptBlock {
-        param($OutputPath)
+    return Start-Job -ArgumentList $Path,$GpuIndex -ScriptBlock {
+        param($OutputPath, $SelectedGpuIndex)
         while ($true) {
             try {
-                $sample = @(nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits 2>$null)
+                $sample = if ($SelectedGpuIndex -ge 0) {
+                    @(nvidia-smi --id=$SelectedGpuIndex --query-gpu=index,memory.used --format=csv,noheader,nounits 2>$null)
+                } else {
+                    @(nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits 2>$null)
+                }
                 foreach ($line in $sample) {
                     if ($line) {
                         Add-Content -LiteralPath $OutputPath -Value ((Get-Date).ToUniversalTime().ToString("o") + "," + $line.Trim())
@@ -97,6 +105,7 @@ function Invoke-Benchmark(
     # Global values are defaults for manifest rows as well; a row overrides
     # each field it explicitly contains.
     [void]$command.Add("--language"); [void]$command.Add($Language)
+    if ($WarmupText) { [void]$command.Add("--warmup-text"); [void]$command.Add($WarmupText) }
     if ($Speaker) { [void]$command.Add("--speaker"); [void]$command.Add($Speaker) }
     if ($VoiceId) { [void]$command.Add("--voice-id"); [void]$command.Add($VoiceId) }
     [void]$command.Add("--warmups"); [void]$command.Add($Warmups.ToString())
@@ -152,6 +161,34 @@ function Get-ManifestValue([object] $Spec, [string] $Name) {
     return $property.Value
 }
 
+function New-EffectiveManifest([string] $Path, [string] $Destination) {
+    if (-not $Path) { return "" }
+    $manifestRoot = Split-Path -Parent $Path
+    $effectiveRows = @()
+    foreach ($line in @(Get-Content -LiteralPath $Path | Where-Object { $_.Trim() })) {
+        $row = $line | ConvertFrom-Json
+        $property = $row.PSObject.Properties["reference_audio_path"]
+        if ($null -ne $property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+            $source = [string]$property.Value
+            if ([System.IO.Path]::IsPathRooted($source)) {
+                $resolved = [System.IO.Path]::GetFullPath($source)
+            } else {
+                $launchCandidate = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $source))
+                $manifestCandidate = [System.IO.Path]::GetFullPath((Join-Path $manifestRoot $source))
+                $resolved = if (Test-Path -LiteralPath $launchCandidate -PathType Leaf) {
+                    $launchCandidate
+                } else {
+                    $manifestCandidate
+                }
+            }
+            $row.reference_audio_path = $resolved
+        }
+        $effectiveRows += ($row | ConvertTo-Json -Compress -Depth 100)
+    }
+    $effectiveRows | Set-Content -LiteralPath $Destination -Encoding UTF8
+    return $Destination
+}
+
 function Invoke-Playback(
     [string] $Name,
     [string] $Worker,
@@ -203,26 +240,32 @@ function Invoke-Playback(
 $benchmark = Resolve-ExistingFile $BenchmarkExecutable "BenchmarkExecutable"
 $python = Resolve-ExistingFile $PythonWorkerExecutable "PythonWorkerExecutable"
 $native = Resolve-ExistingFile $NativeWorkerExecutable "NativeWorkerExecutable"
+if ($PlaybackExecutable) { $PlaybackExecutable = Resolve-ExistingFile $PlaybackExecutable "PlaybackExecutable" }
 $outputPath = [System.IO.Path]::GetFullPath($Output)
 $outputDirectory = [System.IO.Path]::GetDirectoryName($outputPath)
 if ($outputDirectory) { New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null }
 
 $manifestPath = ""
 if ($RequestManifest) { $manifestPath = Resolve-ExistingFile $RequestManifest "RequestManifest" }
-$playbackManifestSpec = if ($PlaybackExecutable) {
-    Get-ManifestPlaybackSpec $manifestPath $PlaybackManifestLabel
-} else {
-    $null
-}
 $artifactDirectory = $outputPath + ".artifacts"
 $runDirectory = Join-Path $artifactDirectory ((Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssfffZ") + "-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
+$effectiveManifestPath = ""
 if ($manifestPath) {
     Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $runDirectory "request-manifest.jsonl")
+    $effectiveManifestPath = New-EffectiveManifest $manifestPath (Join-Path $runDirectory "effective-request-manifest.jsonl")
 }
-function Snapshot-ManifestArgument([string[]] $Arguments, [string] $DestinationName) {
+$playbackManifestSpec = if ($PlaybackExecutable) {
+    Get-ManifestPlaybackSpec $effectiveManifestPath $PlaybackManifestLabel
+} else {
+    $null
+}
+function Snapshot-ManifestArgument(
+    [string[]] $Arguments,
+    [string] $DestinationName,
+    [string[]] $ArgumentNames = @("--manifest-path")) {
     for ($index = 0; $index -lt $Arguments.Count - 1; $index++) {
-        if ($Arguments[$index] -eq "--manifest-path") {
+        if ($Arguments[$index] -in $ArgumentNames) {
             $candidate = $Arguments[$index + 1]
             if (Test-Path -LiteralPath $candidate -PathType Leaf) {
                 $destination = Join-Path $runDirectory $DestinationName
@@ -279,6 +322,21 @@ function Get-ArgumentPathProvenance([string[]] $Arguments) {
         }
     }
     return $known
+}
+function Get-ModelPathProvenance([string[]] $Arguments) {
+    for ($index = 0; $index -lt $Arguments.Count - 1; $index++) {
+        if ($Arguments[$index] -eq "--model-path") {
+            $candidate = $Arguments[$index + 1]
+            $resolved = if (Test-Path -LiteralPath $candidate) { (Resolve-Path -LiteralPath $candidate).Path } else { $candidate }
+            $config = if (Test-Path -LiteralPath (Join-Path $resolved "config.json") -PathType Leaf) { Join-Path $resolved "config.json" } else { $null }
+            return [ordered]@{
+                path = $resolved
+                exists = (Test-Path -LiteralPath $resolved)
+                config_sha256 = if ($config) { (Get-FileHash -Algorithm SHA256 -LiteralPath $config).Hash.ToLowerInvariant() } else { $null }
+            }
+        }
+    }
+    return $null
 }
 function Get-PythonPackageProvenance([string] $PythonExecutable) {
     $code = @'
@@ -343,6 +401,12 @@ function Get-ReferenceAudioProvenance([string] $ManifestPath) {
     return ,$entries
 }
 $pythonSourceProvenance = Get-ArgumentPathProvenance $PythonWorkerArgument
+if ($FasterQwenSourcePath) {
+    $pythonSourceProvenance["faster_qwen3_tts_source"] = Get-GitSourceProvenance $FasterQwenSourcePath "faster_qwen3_tts_source"
+}
+if ($QwenSourcePath) {
+    $pythonSourceProvenance["qwen3_tts_source"] = Get-GitSourceProvenance $QwenSourcePath "qwen3_tts_source"
+}
 $nativeRuntimeSnapshot = Snapshot-ManifestArgument $NativeWorkerArgument "native-runtime-manifest.json"
 if ($null -eq $nativeRuntimeSnapshot) {
     for ($index = 0; $index -lt $NativeWorkerArgument.Count - 1; $index++) {
@@ -359,19 +423,22 @@ if ($null -eq $nativeRuntimeSnapshot) {
         }
     }
 }
-$pythonProfileSnapshot = Snapshot-ManifestArgument $PythonWorkerArgument "python-runtime-profile-manifest.json"
-$pythonAllowlistSnapshot = Snapshot-ManifestArgument $PythonWorkerArgument "python-compiled-allowlist-manifest.json"
+$pythonProfileSnapshot = Snapshot-ManifestArgument $PythonWorkerArgument "python-runtime-profile-manifest.json" @("--canary-runtime-profile-manifest")
+$pythonAllowlistSnapshot = Snapshot-ManifestArgument $PythonWorkerArgument "python-compiled-allowlist-manifest.json" @("--canary-compiled-allowlist-manifest")
 $pythonExecutableSnapshot = [ordered]@{
     path = $python
     sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $python).Hash.ToLowerInvariant()
     packages = Get-PythonPackageProvenance $python
     sources = $pythonSourceProvenance
+    model = Get-ModelPathProvenance $PythonWorkerArgument
 }
 $bridgeCommit = $null
 try {
     $bridgeCommit = (& git -C (Split-Path -Parent $PSScriptRoot) rev-parse HEAD 2>$null).Trim()
 } catch { }
 $nativeDllSnapshot = Snapshot-HashArgument $NativeWorkerArgument "--dll-path"
+$talkerModelSnapshot = Snapshot-HashArgument $NativeWorkerArgument "--talker-model"
+$codecModelSnapshot = Snapshot-HashArgument $NativeWorkerArgument "--codec-model"
 if ($null -eq $nativeDllSnapshot) {
     for ($index = 0; $index -lt $NativeWorkerArgument.Count - 1; $index++) {
         if ($NativeWorkerArgument[$index] -eq "--runtime-dir") {
@@ -382,28 +449,40 @@ if ($null -eq $nativeDllSnapshot) {
         }
     }
 }
-$pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $manifestPath
-    $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $runDirectory "native.json") (Join-Path $runDirectory "native.stderr.log") $manifestPath
+$pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $effectiveManifestPath
+    $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $runDirectory "native.json") (Join-Path $runDirectory "native.stderr.log") $effectiveManifestPath
     $playback = [ordered]@{
         python = Invoke-Playback "python" $python $PythonWorkerArgument $runDirectory $playbackManifestSpec
         native = Invoke-Playback "native" $native $NativeWorkerArgument $runDirectory $playbackManifestSpec
     }
     $gpu = @()
-    try { $gpu = @(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits 2>$null) } catch { }
+    try {
+        $gpu = if ($GpuIndex -ge 0) {
+            @(nvidia-smi --id=$GpuIndex --query-gpu=index,name,memory.total,driver_version --format=csv,noheader,nounits 2>$null)
+        } else {
+            @(nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv,noheader,nounits 2>$null)
+        }
+    } catch { }
     [ordered]@{
         schema_version = 2
         artifact_directory = $runDirectory
         host = [ordered]@{ computer = $env:COMPUTERNAME; gpu = $gpu }
         workload = [ordered]@{
-            text = $Text; language = $Language; request_manifest = $manifestPath
-            warmups = $Warmups; requests = $Requests; cancel_every = $CancelEvery; seed = $Seed
+            text = $Text; language = $Language; request_manifest = $manifestPath; effective_request_manifest = $effectiveManifestPath
+            warmups = $Warmups; warmup_text = $WarmupText; requests = $Requests; cancel_every = $CancelEvery; gpu_index = $GpuIndex; seed = $Seed
             speaker = $Speaker; voice_id = $VoiceId
             playback_manifest_label = $PlaybackManifestLabel
         }
         evidence = [ordered]@{
             request_manifest = if ($manifestPath) { [ordered]@{ path = (Join-Path $runDirectory "request-manifest.jsonl"); sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $runDirectory "request-manifest.jsonl")).Hash.ToLowerInvariant() } } else { $null }
+            effective_request_manifest = if ($effectiveManifestPath) { [ordered]@{ path = $effectiveManifestPath; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $effectiveManifestPath).Hash.ToLowerInvariant() } } else { $null }
             native_runtime_manifest = $nativeRuntimeSnapshot
             native_dll = $nativeDllSnapshot
+            talker_model = $talkerModelSnapshot
+            codec_model = $codecModelSnapshot
+            benchmark_executable = [ordered]@{ path = $benchmark; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $benchmark).Hash.ToLowerInvariant() }
+            native_worker_executable = [ordered]@{ path = $native; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $native).Hash.ToLowerInvariant() }
+            playback_executable = if ($PlaybackExecutable) { [ordered]@{ path = (Resolve-Path -LiteralPath $PlaybackExecutable).Path; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $PlaybackExecutable).Hash.ToLowerInvariant() } } else { $null }
             python_worker = $pythonExecutableSnapshot
             python_runtime_profile_manifest = $pythonProfileSnapshot
             python_compiled_allowlist_manifest = $pythonAllowlistSnapshot

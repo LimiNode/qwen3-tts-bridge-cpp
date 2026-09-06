@@ -13,17 +13,20 @@ Required workload rows:
 | --- | --- |
 | Language | Russian, English |
 | Length | 1–2 words, short sentence, medium paragraph, long paragraph near the configured limit |
-| Lifecycle | warmed worker, cold start, 30–100 sequential requests, cancellation after first PCM, reset/restart |
+| Lifecycle | warmed worker, cold start, 30–100 sequential requests, cancellation after first PCM |
 | Voice | Kraftwerk profile/reference, A→B→A voice switch |
 | Metrics | startup, first PCM, inter-chunk cadence, total synthesis, RTF, starvation, EOS, errors, peak VRAM |
 
 Run every row with the same model family, seed policy, and runtime settings.
-The native manifest commit, ABI, DLL hashes, and backend must be retained with
-the raw result. The Python package and source revisions must be retained too.
+The native manifest commit, ABI, model/DLL hashes, and backend must be retained
+with the raw result. The Python package, model identity, and source revisions
+must be retained too. Restart/recovery is a separate lifecycle phase and is not
+implicitly covered by one persistent benchmark invocation.
 
 The benchmark fails a row if an unexpected request fails or is cancelled, a
-completed request has no PCM, PCM arrives after cancellation, EOS is missing,
-or a protocol/stdout violation occurs. Keep raw JSON and stderr telemetry. Add a short subjective listening check for clicks,
+completed request has no PCM, late PCM or duplicate terminal events are
+observed, EOS evidence is missing, or a protocol/stdout violation occurs. Keep
+raw JSON and stderr telemetry. Add a short subjective listening check for clicks,
 pauses, clipping, word endings, and voice identity after objective gates pass.
 
 The benchmark records the backend-neutral `TtsCompletion` callback as
@@ -48,11 +51,13 @@ exercise multiple languages, lengths, voices, and deterministic seeds:
 .\scripts\run-native-python-matrix.ps1 `
   -BenchmarkExecutable .\build\Release\qwen_tts_latency_benchmark.exe `
   -PythonWorkerExecutable .\.venv\Scripts\python.exe `
-  -PythonWorkerArgument @('worker/src/qwen_tts_bridge_worker/main.py', '--model-path', 'E:\models\qwen') `
+  -PythonWorkerArgument @('-m', 'qwen_tts_bridge_worker', 'qwen', '--model-path', 'E:\models\qwen', '--runtime-backend', 'faster', '--runtime-profile', 'cmp50hx-low-latency') `
   -NativeWorkerExecutable .\build\Release\qwen_tts_native_worker.exe `
   -NativeWorkerArgument @('--runtime-dir', 'E:\models\qwentts-runtime', '--talker-model', 'E:\models\talker.gguf', '--codec-model', 'E:\models\codec.gguf') `
   -RequestManifest .\docs\acceptance\native-python-smoke.jsonl `
-  -Warmups 5 -Requests 30 -CancelEvery 5 -Seed 4242 `
+  -FasterQwenSourcePath .\external\python\faster-qwen3-tts `
+  -QwenSourcePath .\external\python\Qwen3-TTS-streaming `
+  -WarmupText "Warmup request." -Warmups 5 -Requests 30 -CancelEvery 5 -GpuIndex 0 -Seed 4242 `
   -PlaybackExecutable .\build\Release\qwen_tts_play.exe `
   -PlaybackManifestLabel ru-short `
   -Output .\artifacts\native-python-matrix.json
@@ -62,6 +67,9 @@ Each manifest line may contain `label`, `text`, `language`, `speaker`,
 `voice_id`, `instruction`, `reference_audio_path`, `reference_text`,
 `x_vector_only`, and `seed`. The benchmark forwards those fields per request,
 which makes A→B→A voice isolation and Base reference cloning reproducible.
+Pass `-WarmupText` to keep warmup requests out of the acceptance manifest; this
+prevents cancellation, negative-capacity, and voice-switch rows from being
+silently consumed as warmups.
 For negative or fallback cases, `allowed_terminal_outcomes` may list values
 such as `natural_eos`, `completed`, and `request_error`; optional
 `expected_error_category` and `expected_error_code` constrain an error without
@@ -76,6 +84,9 @@ available. `host_peak_gpu_memory_used_mib` is a system-level peak, not a
 process-exclusive allocation; retain the raw samples for interpretation. Each
 run stores evidence in `<Output>.artifacts/<run-id>/`; the reported stderr,
 GPU-sample, and playback paths therefore remain valid after the runner exits.
+The runner writes an `effective-request-manifest.jsonl` in which relative
+reference paths are converted to absolute paths before either benchmark or
+playback starts. The original and effective manifests are both retained.
 The evidence record also snapshots the request manifest, native runtime/DLL
 identity, bridge commit, Python worker hash, installed Python package versions,
 source-tree revisions supplied through worker arguments, and optional canary

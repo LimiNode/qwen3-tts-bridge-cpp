@@ -35,6 +35,11 @@ class NativePythonMatrixRunnerTests(unittest.TestCase):
         self.assertIn("Get-PythonPackageProvenance", source)
         self.assertIn("python_sources", source)
         self.assertIn("reference_audio", source)
+        self.assertIn("effective-request-manifest.jsonl", source)
+        self.assertIn("--canary-runtime-profile-manifest", source)
+        self.assertIn("--canary-compiled-allowlist-manifest", source)
+        self.assertIn("talker_model", source)
+        self.assertIn("codec_model", source)
 
     def test_runner_preserves_defaults_and_negative_outcome_contract(self) -> None:
         source = RUNNER.read_text(encoding="utf-8")

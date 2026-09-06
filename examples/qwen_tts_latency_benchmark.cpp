@@ -52,6 +52,7 @@ struct ProgramOptions {
     std::vector<std::string> worker_arguments;
     std::string working_directory;
     std::string text = "Latency benchmark request.";
+    std::string warmup_text;
     std::string language = "auto";
     std::string speaker;
     std::string voice_id;
@@ -169,6 +170,8 @@ struct RequestResult {
     std::string error_message;
     std::optional<std::string> completion_execution_outcome;
     std::optional<TtsCompletion> completion_metadata;
+    std::uint64_t late_audio_after_terminal_count = 0;
+    std::uint64_t duplicate_terminal_event_count = 0;
     nlohmann::json worker_first_chunk_phases;
     std::vector<nlohmann::json> worker_pcm_chunks;
     nlohmann::json worker_generation_trace;
@@ -297,6 +300,7 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --text <utf8>                  Text to synthesize.\n"
+        << "  --warmup-text <utf8>           Dedicated warmup text; keeps manifest rows measured-only.\n"
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --voice-id <id>                Registered Base voice profile identifier.\n"
@@ -398,6 +402,9 @@ ProgramOptions parse_options(int argc, char** argv) {
         }
         else if (arg == "--text" || arg.rfind("--text=", 0) == 0) {
             options.text = require_value(index, argc, argv, "--text");
+        }
+        else if (arg == "--warmup-text" || arg.rfind("--warmup-text=", 0) == 0) {
+            options.warmup_text = require_value(index, argc, argv, "--warmup-text");
         }
         else if (arg == "--language" || arg.rfind("--language=", 0) == 0) {
             options.language = require_value(index, argc, argv, "--language");
@@ -812,6 +819,8 @@ RequestResult run_request(
     bool warmup,
     const RequestSpec* spec = nullptr) {
     RequestProbe probe;
+    const std::uint64_t late_audio_before = client.late_audio_after_terminal_count();
+    const std::uint64_t duplicate_terminal_before = client.duplicate_terminal_event_count();
     const bool row_has_terminal_contract = spec != nullptr &&
         (!spec->allowed_terminal_outcomes.empty() ||
          !spec->expected_error_category.empty() || !spec->allowed_errors.empty());
@@ -901,6 +910,10 @@ RequestResult run_request(
         result.inverse_real_time_factor =
             result.audio_duration_ms / result.completed_ms.value();
     }
+    result.late_audio_after_terminal_count =
+        client.late_audio_after_terminal_count() - late_audio_before;
+    result.duplicate_terminal_event_count =
+        client.duplicate_terminal_event_count() - duplicate_terminal_before;
     return result;
 }
 
@@ -1060,7 +1073,10 @@ void fail_acceptance(RequestResult& result, std::string message) {
 }
 
 void validate_generic_acceptance(RequestResult& result) {
-    if (!result.allowed_terminal_outcomes.empty() || !result.allowed_errors.empty()) {
+    const bool has_expected_error = !result.expected_error_category.empty() ||
+        !result.expected_error_code.empty();
+    if (!result.allowed_terminal_outcomes.empty() || !result.allowed_errors.empty() ||
+        has_expected_error) {
         std::string actual;
         if (result.success) {
             actual = result.completion_execution_outcome.value_or("completed");
@@ -1079,6 +1095,13 @@ void validate_generic_acceptance(RequestResult& result) {
                     return allowed.first == result.error_category &&
                         allowed.second == result.error_code;
                 });
+            if (has_expected_error &&
+                (result.expected_error_category.empty() ||
+                 result.error_category == result.expected_error_category) &&
+                (result.expected_error_code.empty() ||
+                 result.error_code == result.expected_error_code)) {
+                terminal_allowed = true;
+            }
         }
         if (!terminal_allowed) {
             fail_acceptance(result, "terminal outcome '" + actual + "' was not allowed");
@@ -1092,6 +1115,9 @@ void validate_generic_acceptance(RequestResult& result) {
             !result.expected_error_code.empty() &&
             result.error_code != result.expected_error_code) {
             fail_acceptance(result, "unexpected error code");
+        }
+        if (has_expected_error && result.success) {
+            fail_acceptance(result, "expected an error but request completed");
         }
     }
     if (result.cancellation_expected) {
@@ -1107,7 +1133,7 @@ void validate_generic_acceptance(RequestResult& result) {
             fail_acceptance(result, "unexpected cancellation");
         }
         if (!result.success && result.allowed_terminal_outcomes.empty() &&
-            result.allowed_errors.empty()) {
+            result.allowed_errors.empty() && !has_expected_error) {
             fail_acceptance(result, "request failed");
         }
     }
@@ -1119,21 +1145,26 @@ void validate_generic_acceptance(RequestResult& result) {
         result.completion_execution_outcome.value() == "max_tokens") {
             fail_acceptance(result, "request exhausted max_new_tokens before natural EOS");
     }
+    if (result.success && !result.completion_metadata.has_value()) {
+        fail_acceptance(result, "completed request has no completion metadata/EOS evidence");
+    }
     if (result.success && result.completion_metadata.has_value()) {
         const TtsCompletion& completion = result.completion_metadata.value();
-        if (completion.has_generation_trace) {
-            if (!completion.hit_eos || completion.hit_max_seq_len ||
-                completion.hit_max_new_tokens ||
-                completion.termination_reason != "eos") {
-                fail_acceptance(result, "generation trace did not report natural EOS");
-            }
-        } else if (completion.execution_outcome != "natural_eos" &&
-                   completion.execution_outcome != "completed") {
-            fail_acceptance(result, "completion metadata reported non-natural termination");
+        if (!completion.has_generation_trace) {
+            fail_acceptance(result, "completed request has no generation trace/EOS evidence");
+        } else if (!completion.hit_eos || completion.hit_max_seq_len ||
+                   completion.hit_max_new_tokens || completion.termination_reason != "eos") {
+            fail_acceptance(result, "generation trace did not report natural EOS");
         }
     }
     if (result.cancelled && result.audio_bytes == 0u) {
         fail_acceptance(result, "cancelled request produced no PCM prefix");
+    }
+    if (result.late_audio_after_terminal_count != 0u) {
+        fail_acceptance(result, "audio arrived after request terminal state");
+    }
+    if (result.duplicate_terminal_event_count != 0u) {
+        fail_acceptance(result, "duplicate terminal event arrived after request terminal state");
     }
 }
 
@@ -1208,7 +1239,8 @@ std::vector<double> collect_metric(
     std::optional<double> RequestResult::*field) {
     std::vector<double> values;
     for (const RequestResult& result : results) {
-        if (!result.success || (result.contract_checked && !result.contract_valid)) {
+        if (!result.success || !result.acceptance_valid ||
+            (result.contract_checked && !result.contract_valid)) {
             continue;
         }
         const std::optional<double>& value = result.*field;
@@ -1262,6 +1294,7 @@ void write_results_json(
     out << "{";
     out << "\"config\":{"
         << "\"text\":\"" << json_escape(options.text) << "\","
+        << "\"warmup_text\":\"" << json_escape(options.warmup_text) << "\","
         << "\"language\":\"" << json_escape(options.language) << "\","
         << "\"speaker\":\"" << json_escape(options.speaker) << "\","
         << "\"instruction\":\"" << json_escape(options.instruction) << "\","
@@ -1338,6 +1371,10 @@ void write_results_json(
                 << (result.cancellation_expected ? "true" : "false") << ","
                 << "\"cancel_after_first_pcm\":"
                 << (result.cancel_after_first_pcm ? "true" : "false") << ","
+                << "\"late_audio_after_terminal_count\":"
+                << result.late_audio_after_terminal_count << ","
+                << "\"duplicate_terminal_event_count\":"
+                << result.duplicate_terminal_event_count << ","
                 << "\"completion_execution_outcome\":";
             if (result.completion_execution_outcome.has_value()) {
                 out << "\"" << json_escape(result.completion_execution_outcome.value()) << "\"";
@@ -1505,13 +1542,19 @@ int main(int argc, char** argv) {
         warmups.reserve(static_cast<std::size_t>(options.warmups));
         measured.reserve(static_cast<std::size_t>(options.requests));
 
+        ProgramOptions warmup_options = options;
+        if (!options.warmup_text.empty()) {
+            warmup_options.text = options.warmup_text;
+        }
         for (int index = 0; index < options.warmups; ++index) {
-            const RequestSpec* spec = request_specs.empty()
+            const RequestSpec* spec = !options.warmup_text.empty()
                 ? nullptr
-                : &request_specs[static_cast<std::size_t>(index) % request_specs.size()];
+                : (request_specs.empty()
+                ? nullptr
+                : &request_specs[static_cast<std::size_t>(index) % request_specs.size()]);
             warmups.push_back(run_request(
                 client,
-                options,
+                warmup_options,
                 audio_format,
                 index + 1,
                 true,
