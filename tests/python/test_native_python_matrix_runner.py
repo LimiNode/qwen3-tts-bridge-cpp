@@ -1,5 +1,7 @@
 """Static contract checks for the cross-backend matrix runner."""
 
+from __future__ import annotations
+
 import unittest
 from pathlib import Path
 
