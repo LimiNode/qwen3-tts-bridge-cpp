@@ -207,7 +207,11 @@ if ($outputDirectory) { New-Item -ItemType Directory -Force -Path $outputDirecto
 
 $manifestPath = ""
 if ($RequestManifest) { $manifestPath = Resolve-ExistingFile $RequestManifest "RequestManifest" }
-$playbackManifestSpec = Get-ManifestPlaybackSpec $manifestPath $PlaybackManifestLabel
+$playbackManifestSpec = if ($PlaybackExecutable) {
+    Get-ManifestPlaybackSpec $manifestPath $PlaybackManifestLabel
+} else {
+    $null
+}
 $artifactDirectory = $outputPath + ".artifacts"
 $runDirectory = Join-Path $artifactDirectory ((Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssfffZ") + "-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
@@ -227,7 +231,29 @@ function Snapshot-ManifestArgument([string[]] $Arguments, [string] $DestinationN
     }
     return $null
 }
+function Snapshot-HashArgument([string[]] $Arguments, [string] $ArgumentName) {
+    for ($index = 0; $index -lt $Arguments.Count - 1; $index++) {
+        if ($Arguments[$index] -eq $ArgumentName) {
+            $candidate = $Arguments[$index + 1]
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                return [ordered]@{ path = (Resolve-Path -LiteralPath $candidate).Path; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $candidate).Hash.ToLowerInvariant() }
+            }
+        }
+    }
+    return $null
+}
 $nativeRuntimeSnapshot = Snapshot-ManifestArgument $NativeWorkerArgument "native-runtime-manifest.json"
+$nativeDllSnapshot = Snapshot-HashArgument $NativeWorkerArgument "--dll-path"
+if ($null -eq $nativeDllSnapshot) {
+    for ($index = 0; $index -lt $NativeWorkerArgument.Count - 1; $index++) {
+        if ($NativeWorkerArgument[$index] -eq "--runtime-dir") {
+            $runtimeDll = Join-Path $NativeWorkerArgument[$index + 1] "qwen.dll"
+            if (Test-Path -LiteralPath $runtimeDll -PathType Leaf) {
+                $nativeDllSnapshot = [ordered]@{ path = (Resolve-Path -LiteralPath $runtimeDll).Path; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $runtimeDll).Hash.ToLowerInvariant() }
+            }
+        }
+    }
+}
 $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $manifestPath
     $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $runDirectory "native.json") (Join-Path $runDirectory "native.stderr.log") $manifestPath
     $playback = [ordered]@{
@@ -249,6 +275,7 @@ $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Pa
         evidence = [ordered]@{
             request_manifest = if ($manifestPath) { [ordered]@{ path = (Join-Path $runDirectory "request-manifest.jsonl"); sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $runDirectory "request-manifest.jsonl")).Hash.ToLowerInvariant() } } else { $null }
             native_runtime_manifest = $nativeRuntimeSnapshot
+            native_dll = $nativeDllSnapshot
         }
         python = $pythonResult
         native = $nativeResult
