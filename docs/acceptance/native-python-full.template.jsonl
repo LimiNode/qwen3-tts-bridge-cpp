@@ -1,0 +1,6 @@
+{"label":"voice-a","text":"Voice A acceptance row.","language":"english","voice_id":"voice-a","seed":5001}
+{"label":"voice-b","text":"Voice B acceptance row.","language":"english","voice_id":"voice-b","seed":5002}
+{"label":"voice-a-return","text":"Voice A returns after switching voices.","language":"english","voice_id":"voice-a","seed":5003}
+{"label":"near-capacity","text":"Replace this text with a target-specific utterance near the selected profile sequence capacity.","language":"english","seed":5004}
+{"label":"over-capacity","text":"Replace this text with a target-specific utterance that exceeds the selected low-latency capacity and must exercise fallback or an explicit request error.","language":"english","seed":5005}
+{"label":"base-reference","text":"Base voice clone acceptance row.","language":"english","reference_audio_path":"A.wav","reference_text":"Reference transcript.","x_vector_only":false,"seed":5006}

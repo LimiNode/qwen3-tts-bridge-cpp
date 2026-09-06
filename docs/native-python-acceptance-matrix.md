@@ -49,7 +49,7 @@ exercise multiple languages, lengths, voices, and deterministic seeds:
   -PythonWorkerArgument @('worker/src/qwen_tts_bridge_worker/main.py', '--model-path', 'E:\models\qwen') `
   -NativeWorkerExecutable .\build\Release\qwen_tts_native_worker.exe `
   -NativeWorkerArgument @('--runtime-dir', 'E:\models\qwentts-runtime', '--talker-model', 'E:\models\talker.gguf', '--codec-model', 'E:\models\codec.gguf') `
-  -RequestManifest .\docs\acceptance\native-python.jsonl `
+  -RequestManifest .\docs\acceptance\native-python-smoke.jsonl `
   -Warmups 5 -Requests 30 -CancelEvery 5 -Seed 4242 `
   -PlaybackExecutable .\build\Release\qwen_tts_play.exe `
   -Output .\artifacts\native-python-matrix.json
@@ -68,4 +68,11 @@ GPU-sample, and playback paths therefore remain valid after the runner exits.
 If
 `-PlaybackExecutable` is supplied, the runner performs a separate physical
 WaveOut run and marks the gate failed when playback does not complete or
-`queue_empty_before_later_chunk_count` is non-zero.
+`queue_empty_before_later_chunk_count` is non-zero. With a multi-row manifest,
+pass `-PlaybackManifestLabel` to replay one exact row, including its voice,
+seed, instruction, and reference fields.
+
+The checked-in smoke manifest intentionally has no machine-specific reference
+audio. Use `docs/acceptance/native-python-full.template.jsonl` as a starting
+point for target-specific workloads covering A→B→A switching, near/over
+capacity, and explicit Base references.

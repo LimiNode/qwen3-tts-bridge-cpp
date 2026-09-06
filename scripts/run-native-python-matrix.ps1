@@ -17,6 +17,7 @@ param(
     [string] $Output = "native-python-matrix.json",
     [string] $PlaybackExecutable = "",
     [string] $PlaybackText = "",
+    [string] $PlaybackManifestLabel = "",
     [switch] $SkipGpuSampling
 )
 
@@ -116,15 +117,61 @@ function Invoke-Benchmark(
     return $result
 }
 
-function Invoke-Playback([string] $Name, [string] $Worker, [string[]] $WorkerArguments, [string] $Directory) {
+function Add-OptionalPlaybackArgument(
+    [System.Collections.Generic.List[string]] $Command,
+    [string] $Name,
+    [object] $Value) {
+    if ($null -eq $Value) { return }
+    $text = [string]$Value
+    if ($text) {
+        [void]$Command.Add($Name); [void]$Command.Add($text)
+    }
+}
+
+function Get-ManifestPlaybackSpec([string] $Path, [string] $Label) {
+    if (-not $Path) { return $null }
+    $rows = @(Get-Content -LiteralPath $Path | Where-Object { $_.Trim() } | ConvertFrom-Json)
+    if ($rows.Count -eq 0) { throw "RequestManifest contains no rows." }
+    if ($Label) {
+        $matches = @($rows | Where-Object { $_.label -eq $Label })
+        if ($matches.Count -ne 1) { throw "PlaybackManifestLabel '$Label' must match exactly one manifest row." }
+        return $matches[0]
+    }
+    if ($rows.Count -gt 1) {
+        throw "Playback with RequestManifest requires -PlaybackManifestLabel to select an exact row."
+    }
+    return $rows[0]
+}
+
+function Invoke-Playback(
+    [string] $Name,
+    [string] $Worker,
+    [string[]] $WorkerArguments,
+    [string] $Directory,
+    [object] $ManifestSpec) {
     if (-not $PlaybackExecutable) { return [ordered]@{ attempted = $false; reason = "PlaybackExecutable not supplied" } }
     $metrics = Join-Path $Directory "$Name-playback.json"
     $stderr = Join-Path $Directory "$Name-playback.stderr.log"
     $command = [System.Collections.Generic.List[string]]::new()
     [void]$command.Add("--worker"); [void]$command.Add($Worker)
     Add-WorkerArguments $command $WorkerArguments
-    [void]$command.Add("--text"); [void]$command.Add($(if ($PlaybackText) { $PlaybackText } else { $Text }))
-    [void]$command.Add("--language"); [void]$command.Add($Language)
+    $playText = if ($null -ne $ManifestSpec -and $ManifestSpec.text) { [string]$ManifestSpec.text } elseif ($PlaybackText) { $PlaybackText } else { $Text }
+    $playLanguage = if ($null -ne $ManifestSpec -and $ManifestSpec.language) { [string]$ManifestSpec.language } else { $Language }
+    [void]$command.Add("--text"); [void]$command.Add($playText)
+    [void]$command.Add("--language"); [void]$command.Add($playLanguage)
+    $playSpeaker = if ($null -ne $ManifestSpec) { $ManifestSpec.speaker } else { $Speaker }
+    $playVoiceId = if ($null -ne $ManifestSpec) { $ManifestSpec.voice_id } else { $VoiceId }
+    $playInstruction = if ($null -ne $ManifestSpec) { $ManifestSpec.instruction } else { $null }
+    $playReferenceAudio = if ($null -ne $ManifestSpec) { $ManifestSpec.reference_audio_path } else { $null }
+    $playReferenceText = if ($null -ne $ManifestSpec) { $ManifestSpec.reference_text } else { $null }
+    Add-OptionalPlaybackArgument $command "--speaker" $playSpeaker
+    Add-OptionalPlaybackArgument $command "--voice-id" $playVoiceId
+    Add-OptionalPlaybackArgument $command "--instruction" $playInstruction
+    Add-OptionalPlaybackArgument $command "--reference-audio" $playReferenceAudio
+    Add-OptionalPlaybackArgument $command "--reference-text" $playReferenceText
+    if ($null -ne $ManifestSpec -and [bool]$ManifestSpec.x_vector_only) { [void]$command.Add("--x-vector-only") }
+    if ($null -ne $ManifestSpec -and $null -ne $ManifestSpec.seed) { Add-OptionalPlaybackArgument $command "--seed" $ManifestSpec.seed }
+    elseif ($null -eq $ManifestSpec) { Add-OptionalPlaybackArgument $command "--seed" $Seed }
     [void]$command.Add("--playback-metrics-file"); [void]$command.Add($metrics)
     [void]$command.Add("--etw-playback-markers")
     & $PlaybackExecutable @($command) 2> $stderr
@@ -149,14 +196,32 @@ if ($outputDirectory) { New-Item -ItemType Directory -Force -Path $outputDirecto
 
 $manifestPath = ""
 if ($RequestManifest) { $manifestPath = Resolve-ExistingFile $RequestManifest "RequestManifest" }
+$playbackManifestSpec = Get-ManifestPlaybackSpec $manifestPath $PlaybackManifestLabel
 $artifactDirectory = $outputPath + ".artifacts"
 $runDirectory = Join-Path $artifactDirectory ((Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssfffZ") + "-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
+if ($manifestPath) {
+    Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $runDirectory "request-manifest.jsonl")
+}
+function Snapshot-ManifestArgument([string[]] $Arguments, [string] $DestinationName) {
+    for ($index = 0; $index -lt $Arguments.Count - 1; $index++) {
+        if ($Arguments[$index] -eq "--manifest-path") {
+            $candidate = $Arguments[$index + 1]
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                $destination = Join-Path $runDirectory $DestinationName
+                Copy-Item -LiteralPath $candidate -Destination $destination
+                return [ordered]@{ path = $destination; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant() }
+            }
+        }
+    }
+    return $null
+}
+$nativeRuntimeSnapshot = Snapshot-ManifestArgument $NativeWorkerArgument "native-runtime-manifest.json"
 $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $manifestPath
     $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $runDirectory "native.json") (Join-Path $runDirectory "native.stderr.log") $manifestPath
     $playback = [ordered]@{
-        python = Invoke-Playback "python" $python $PythonWorkerArgument $runDirectory
-        native = Invoke-Playback "native" $native $NativeWorkerArgument $runDirectory
+        python = Invoke-Playback "python" $python $PythonWorkerArgument $runDirectory $playbackManifestSpec
+        native = Invoke-Playback "native" $native $NativeWorkerArgument $runDirectory $playbackManifestSpec
     }
     $gpu = @()
     try { $gpu = @(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader,nounits 2>$null) } catch { }
@@ -168,6 +233,11 @@ $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Pa
             text = $Text; language = $Language; request_manifest = $manifestPath
             warmups = $Warmups; requests = $Requests; cancel_every = $CancelEvery; seed = $Seed
             speaker = $Speaker; voice_id = $VoiceId
+            playback_manifest_label = $PlaybackManifestLabel
+        }
+        evidence = [ordered]@{
+            request_manifest = if ($manifestPath) { [ordered]@{ path = (Join-Path $runDirectory "request-manifest.jsonl"); sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $runDirectory "request-manifest.jsonl")).Hash.ToLowerInvariant() } } else { $null }
+            native_runtime_manifest = $nativeRuntimeSnapshot
         }
         python = $pythonResult
         native = $nativeResult

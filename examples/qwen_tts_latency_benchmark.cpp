@@ -41,6 +41,7 @@ using qwen_tts_bridge::QwenTtsClientOptions;
 using qwen_tts_bridge::RequestId;
 using qwen_tts_bridge::StdIoTransportOptions;
 using qwen_tts_bridge::TtsCallbacks;
+using qwen_tts_bridge::TtsCompletion;
 using qwen_tts_bridge::TtsError;
 using qwen_tts_bridge::TtsRequest;
 
@@ -114,6 +115,7 @@ struct RequestProbe {
     std::string error_category;
     std::string error_code;
     std::string error_message;
+    std::optional<TtsCompletion> completion;
     std::optional<double> first_audio_ms;
     std::optional<double> completed_ms;
     double enqueue_ms = 0.0;
@@ -155,6 +157,7 @@ struct RequestResult {
     std::string error_category;
     std::string error_code;
     std::string error_message;
+    std::optional<std::string> completion_execution_outcome;
     nlohmann::json worker_first_chunk_phases;
     std::vector<nlohmann::json> worker_pcm_chunks;
     nlohmann::json worker_generation_trace;
@@ -692,6 +695,10 @@ TtsCallbacks make_latency_callbacks(QwenTtsClient& client, RequestProbe& probe) 
         }
         probe.condition.notify_all();
     };
+    callbacks.on_completion_metadata = [&probe](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.completion = completion;
+    };
     callbacks.on_cancelled = [&probe]() {
         {
             std::lock_guard<std::mutex> lock(probe.mutex);
@@ -812,6 +819,9 @@ RequestResult run_request(
         result.error_category = probe.error_category;
         result.error_code = probe.error_code;
         result.error_message = probe.error_message;
+        if (probe.completion.has_value()) {
+            result.completion_execution_outcome = probe.completion->execution_outcome;
+        }
     }
 
     const double bytes_per_ms =
@@ -1004,12 +1014,12 @@ void validate_generic_acceptance(RequestResult& result) {
     if (result.success && (result.audio_bytes == 0u || result.audio_chunks == 0u)) {
         fail_acceptance(result, "completed request produced no PCM");
     }
-    if (result.success && result.worker_finished.is_object()) {
-        const auto outcome = result.worker_finished.find("execution_outcome");
-        if (outcome != result.worker_finished.end() && outcome->is_string() &&
-            outcome->get<std::string>() == "max_tokens") {
+    if (result.success && result.completion_execution_outcome.has_value() &&
+        result.completion_execution_outcome.value() == "max_tokens") {
             fail_acceptance(result, "request exhausted max_new_tokens before natural EOS");
-        }
+    }
+    if (result.success && !result.completion_execution_outcome.has_value()) {
+        fail_acceptance(result, "completed request omitted completion metadata");
     }
     if (result.cancelled && result.audio_bytes == 0u) {
         fail_acceptance(result, "cancelled request produced no PCM prefix");
@@ -1215,6 +1225,13 @@ void write_results_json(
                 << "\"cancelled\":" << (result.cancelled ? "true" : "false") << ","
                 << "\"cancellation_expected\":"
                 << (result.cancellation_expected ? "true" : "false") << ","
+                << "\"completion_execution_outcome\":";
+            if (result.completion_execution_outcome.has_value()) {
+                out << "\"" << json_escape(result.completion_execution_outcome.value()) << "\"";
+            } else {
+                out << "null";
+            }
+            out << ","
                 << "\"enqueue_ms\":" << std::fixed << std::setprecision(3) << result.enqueue_ms
                 << ",\"first_audio_ms\":";
             write_number_or_null(out, result.first_audio_ms);
