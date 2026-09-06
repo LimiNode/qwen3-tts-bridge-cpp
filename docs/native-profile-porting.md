@@ -56,7 +56,8 @@ need to be measured under the common matrix:
 The following fields still require native implementation before the matching
 profile can be marked release-ready:
 
-- codec history/window policy equivalent to W29/W33/W448;
+- codec history/window policy equivalent to W29/W33;
+- sequence-capacity controls equivalent to max_seq_len 448/768/2048;
 - explicit playback prebuffer and physical WaveOut starvation gate;
 - prefix-KV reuse with a documented quality policy;
 - graph/kernel variants corresponding to FasterQwen CUDA Graph and MLP work;
