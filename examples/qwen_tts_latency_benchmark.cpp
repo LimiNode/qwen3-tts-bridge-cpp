@@ -18,6 +18,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -53,6 +54,8 @@ struct ProgramOptions {
     std::string working_directory;
     std::string text = "Latency benchmark request.";
     std::string warmup_text;
+    std::string warmup_reference_audio_path;
+    std::string warmup_reference_text;
     std::string language = "auto";
     std::string speaker;
     std::string voice_id;
@@ -73,6 +76,7 @@ struct ProgramOptions {
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
     std::chrono::milliseconds request_timeout{60000};
+    std::chrono::milliseconds terminal_quiet{250};
 };
 
 struct RequestSpec {
@@ -301,6 +305,9 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --text <utf8>                  Text to synthesize.\n"
         << "  --warmup-text <utf8>           Dedicated warmup text; keeps manifest rows measured-only.\n"
+        << "  --warmup-reference-audio-path <path>  Optional Base reference for warmup requests.\n"
+        << "  --warmup-reference-text <utf8>       Transcript for the warmup reference.\n"
+        << "  --terminal-quiet-ms <ms>       Quiet period before lifecycle counters are sampled.\n"
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --voice-id <id>                Registered Base voice profile identifier.\n"
@@ -405,6 +412,17 @@ ProgramOptions parse_options(int argc, char** argv) {
         }
         else if (arg == "--warmup-text" || arg.rfind("--warmup-text=", 0) == 0) {
             options.warmup_text = require_value(index, argc, argv, "--warmup-text");
+        }
+        else if (arg == "--warmup-reference-audio-path" || arg.rfind("--warmup-reference-audio-path=", 0) == 0) {
+            options.warmup_reference_audio_path = require_value(index, argc, argv, "--warmup-reference-audio-path");
+        }
+        else if (arg == "--warmup-reference-text" || arg.rfind("--warmup-reference-text=", 0) == 0) {
+            options.warmup_reference_text = require_value(index, argc, argv, "--warmup-reference-text");
+        }
+        else if (arg == "--terminal-quiet-ms" || arg.rfind("--terminal-quiet-ms=", 0) == 0) {
+            options.terminal_quiet = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--terminal-quiet-ms"),
+                "--terminal-quiet-ms"));
         }
         else if (arg == "--language" || arg.rfind("--language=", 0) == 0) {
             options.language = require_value(index, argc, argv, "--language");
@@ -515,6 +533,14 @@ void validate_options(const ProgramOptions& options) {
     }
     if (options.cancel_every < 0) {
         throw std::runtime_error("--cancel-every must be non-negative");
+    }
+    if (options.terminal_quiet.count() < 0) {
+        throw std::runtime_error("--terminal-quiet-ms must be non-negative");
+    }
+    if (!options.warmup_reference_audio_path.empty() &&
+        options.warmup_reference_text.empty()) {
+        throw std::runtime_error(
+            "--warmup-reference-text is required with --warmup-reference-audio-path");
     }
     if (options.mock_chunks <= 0) {
         throw std::runtime_error("--mock-chunks must be greater than zero");
@@ -860,6 +886,9 @@ RequestResult run_request(
             throw std::runtime_error("synthesis request timed out");
         }
     }
+    if (options.terminal_quiet.count() > 0) {
+        std::this_thread::sleep_for(options.terminal_quiet);
+    }
 
     RequestResult result;
     {
@@ -1150,7 +1179,10 @@ void validate_generic_acceptance(RequestResult& result) {
     }
     if (result.success && result.completion_metadata.has_value()) {
         const TtsCompletion& completion = result.completion_metadata.value();
-        if (!completion.has_generation_trace) {
+        if (!completion.has_generation_trace && completion.execution_outcome == "natural_eos") {
+            // Native workers may provide an explicit finish outcome without
+            // exposing model-specific generation trace fields.
+        } else if (!completion.has_generation_trace) {
             fail_acceptance(result, "completed request has no generation trace/EOS evidence");
         } else if (!completion.hit_eos || completion.hit_max_seq_len ||
                    completion.hit_max_new_tokens || completion.termination_reason != "eos") {
@@ -1295,6 +1327,8 @@ void write_results_json(
     out << "\"config\":{"
         << "\"text\":\"" << json_escape(options.text) << "\","
         << "\"warmup_text\":\"" << json_escape(options.warmup_text) << "\","
+        << "\"warmup_reference_audio_path\":\""
+        << json_escape(options.warmup_reference_audio_path) << "\","
         << "\"language\":\"" << json_escape(options.language) << "\","
         << "\"speaker\":\"" << json_escape(options.speaker) << "\","
         << "\"instruction\":\"" << json_escape(options.instruction) << "\","
@@ -1547,11 +1581,23 @@ int main(int argc, char** argv) {
             warmup_options.text = options.warmup_text;
         }
         for (int index = 0; index < options.warmups; ++index) {
-            const RequestSpec* spec = !options.warmup_text.empty()
-                ? nullptr
-                : (request_specs.empty()
-                ? nullptr
-                : &request_specs[static_cast<std::size_t>(index) % request_specs.size()]);
+            RequestSpec warmup_spec;
+            const RequestSpec* spec = nullptr;
+            if (!options.warmup_reference_audio_path.empty()) {
+                warmup_spec.text = warmup_options.text;
+                warmup_spec.language = options.language;
+                warmup_spec.speaker = options.speaker;
+                warmup_spec.instruction = options.instruction;
+                warmup_spec.reference_audio_path = options.warmup_reference_audio_path;
+                warmup_spec.reference_text = options.warmup_reference_text;
+                warmup_spec.x_vector_only = options.x_vector_only;
+                warmup_spec.seed = options.seed;
+                spec = &warmup_spec;
+            } else if (options.warmup_text.empty()) {
+                spec = request_specs.empty()
+                    ? nullptr
+                    : &request_specs[static_cast<std::size_t>(index) % request_specs.size()];
+            }
             warmups.push_back(run_request(
                 client,
                 warmup_options,

@@ -7,6 +7,9 @@ param(
     [Parameter(Mandatory = $true)] [string[]] $NativeWorkerArgument,
     [string] $Text = "Native/Python acceptance request.",
     [string] $WarmupText = "",
+    [string] $WarmupReferenceAudioPath = "",
+    [string] $WarmupReferenceText = "",
+    [int] $TerminalQuietMs = 250,
     [string] $RequestManifest = "",
     [string] $Language = "auto",
     [int] $Warmups = 5,
@@ -65,6 +68,22 @@ function Start-GpuSampler([string] $Path) {
     }
 }
 
+function Assert-GpuSelection() {
+    if ($SkipGpuSampling) { return }
+    try {
+        $query = if ($GpuIndex -ge 0) {
+            @(nvidia-smi --id=$GpuIndex --query-gpu=index --format=csv,noheader,nounits 2>$null)
+        } else {
+            @(nvidia-smi --query-gpu=index --format=csv,noheader,nounits 2>$null)
+        }
+    } catch {
+        throw "nvidia-smi is required unless -SkipGpuSampling is supplied."
+    }
+    if ($LASTEXITCODE -ne 0 -or $query.Count -eq 0) {
+        throw "Selected GPU index $GpuIndex is unavailable; use -SkipGpuSampling only for non-VRAM diagnostic runs."
+    }
+}
+
 function Stop-GpuSampler($Job, [string] $Path) {
     $peak = $null
     if ($null -ne $Job) {
@@ -106,12 +125,15 @@ function Invoke-Benchmark(
     # each field it explicitly contains.
     [void]$command.Add("--language"); [void]$command.Add($Language)
     if ($WarmupText) { [void]$command.Add("--warmup-text"); [void]$command.Add($WarmupText) }
+    if ($WarmupReferenceAudioPath) { [void]$command.Add("--warmup-reference-audio-path"); [void]$command.Add($WarmupReferenceAudioPath) }
+    if ($WarmupReferenceText) { [void]$command.Add("--warmup-reference-text"); [void]$command.Add($WarmupReferenceText) }
     if ($Speaker) { [void]$command.Add("--speaker"); [void]$command.Add($Speaker) }
     if ($VoiceId) { [void]$command.Add("--voice-id"); [void]$command.Add($VoiceId) }
     [void]$command.Add("--warmups"); [void]$command.Add($Warmups.ToString())
     [void]$command.Add("--requests"); [void]$command.Add($Requests.ToString())
     [void]$command.Add("--cancel-every"); [void]$command.Add($CancelEvery.ToString())
     [void]$command.Add("--seed"); [void]$command.Add($Seed.ToString())
+    [void]$command.Add("--terminal-quiet-ms"); [void]$command.Add($TerminalQuietMs.ToString())
     [void]$command.Add("--result-json"); [void]$command.Add($ResultPath)
 
     Write-Host "[$Name] running benchmark"
@@ -119,12 +141,24 @@ function Invoke-Benchmark(
     $sampler = Start-GpuSampler $gpuSamples
     try {
         & $BenchmarkExecutable @($command) 2> $StderrPath
-        if ($LASTEXITCODE -ne 0) { throw "$Name benchmark failed with exit code $LASTEXITCODE" }
+        $exitCode = $LASTEXITCODE
     } finally {
         $peak = Stop-GpuSampler $sampler $gpuSamples
     }
+    if (-not (Test-Path -LiteralPath $ResultPath -PathType Leaf)) {
+        return [ordered]@{
+            name = $Name
+            exit_code = $exitCode
+            result = $null
+            stderr_path = $StderrPath
+            gate_passed = $false
+        }
+    }
     $result = Get-Content -Raw -LiteralPath $ResultPath | ConvertFrom-Json
     Add-Member -InputObject $result -NotePropertyName host_peak_gpu_memory_used_mib -NotePropertyValue $peak
+    Add-Member -InputObject $result -NotePropertyName benchmark_exit_code -NotePropertyValue $exitCode
+    Add-Member -InputObject $result -NotePropertyName benchmark_stderr_path -NotePropertyValue $StderrPath
+    Add-Member -InputObject $result -NotePropertyName benchmark_gate_passed -NotePropertyValue ($exitCode -eq 0)
     return $result
 }
 
@@ -239,6 +273,8 @@ function Invoke-Playback(
 
 $benchmark = Resolve-ExistingFile $BenchmarkExecutable "BenchmarkExecutable"
 if ($GpuIndex -lt -1) { throw "GpuIndex must be -1 (all GPUs) or a non-negative adapter index." }
+if ($TerminalQuietMs -lt 0) { throw "TerminalQuietMs must be non-negative." }
+Assert-GpuSelection
 $python = Resolve-ExistingFile $PythonWorkerExecutable "PythonWorkerExecutable"
 $native = Resolve-ExistingFile $NativeWorkerExecutable "NativeWorkerExecutable"
 if ($PlaybackExecutable) { $PlaybackExecutable = Resolve-ExistingFile $PlaybackExecutable "PlaybackExecutable" }
@@ -334,6 +370,20 @@ function Get-ModelPathProvenance([string[]] $Arguments) {
                 path = $resolved
                 exists = (Test-Path -LiteralPath $resolved)
                 config_sha256 = if ($config) { (Get-FileHash -Algorithm SHA256 -LiteralPath $config).Hash.ToLowerInvariant() } else { $null }
+                weights = @(
+                    if (Test-Path -LiteralPath $resolved -PathType Container) {
+                        Get-ChildItem -LiteralPath $resolved -File -Recurse |
+                            Where-Object { $_.Extension -in @(".safetensors", ".bin", ".pt", ".pth") } |
+                            Sort-Object FullName |
+                            ForEach-Object {
+                                [ordered]@{
+                                    path = $_.FullName
+                                    size = $_.Length
+                                    sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()
+                                }
+                            }
+                    }
+                )
             }
         }
     }
@@ -490,6 +540,8 @@ $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Pa
             python_sources = $pythonSourceProvenance
             bridge_commit = $bridgeCommit
             reference_audio = Get-ReferenceAudioProvenance $manifestPath
+            python_worker_arguments = @($PythonWorkerArgument)
+            native_worker_arguments = @($NativeWorkerArgument)
         }
         python = $pythonResult
         native = $nativeResult
@@ -501,4 +553,14 @@ $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Pa
                 throw "$name playback acceptance gate failed; see $($playback[$name].stderr_path)"
             }
         }
+    }
+    $benchmarkFailures = @()
+    if ($null -eq $pythonResult -or $pythonResult.benchmark_gate_passed -ne $true) {
+        $benchmarkFailures += "python benchmark failed (raw result retained)"
+    }
+    if ($null -eq $nativeResult -or $nativeResult.benchmark_gate_passed -ne $true) {
+        $benchmarkFailures += "native benchmark failed (raw result retained)"
+    }
+    if ($benchmarkFailures.Count -gt 0) {
+        throw ($benchmarkFailures -join "; ")
     }

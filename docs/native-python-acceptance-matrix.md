@@ -30,11 +30,11 @@ raw JSON and stderr telemetry. Add a short subjective listening check for clicks
 pauses, clipping, word endings, and voice identity after objective gates pass.
 
 The benchmark records the backend-neutral `TtsCompletion` callback as
-`completion_execution_outcome` when supplied. Native runs report
-`natural_eos` or `max_tokens`; a completed request that reports `max_tokens` is
-rejected as truncated. The stderr `qtb_metric` line remains diagnostic only,
-and Python workers that do not expose this optional field remain compatible
-with the generic terminal gate.
+`completion_execution_outcome`. Native runs may provide explicit
+`natural_eos`/`max_tokens` without a model generation trace; Python/Faster runs
+must provide a generation trace proving natural EOS. A bare `completed` without
+either form of EOS evidence is rejected, as is `max_tokens`. The stderr
+`qtb_metric` line remains diagnostic only.
 
 The repository currently has no local GGUF pair, so a real hardware comparison
 is intentionally not claimed by CI. Supply model paths from outside the source
@@ -69,7 +69,9 @@ Each manifest line may contain `label`, `text`, `language`, `speaker`,
 which makes A→B→A voice isolation and Base reference cloning reproducible.
 Pass `-WarmupText` to keep warmup requests out of the acceptance manifest; this
 prevents cancellation, negative-capacity, and voice-switch rows from being
-silently consumed as warmups.
+silently consumed as warmups. For Base/reference-clone workers, also pass
+`-WarmupReferenceAudioPath` and `-WarmupReferenceText` so warmup uses a valid
+reference request rather than a text-only request.
 For negative or fallback cases, `allowed_terminal_outcomes` may list values
 such as `natural_eos`, `completed`, and `request_error`; optional
 `expected_error_category` and `expected_error_code` constrain an error without
