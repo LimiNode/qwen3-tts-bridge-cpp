@@ -47,6 +47,13 @@ repeated `--worker-arg`, runs the same benchmark configuration against both
 workers, and stores raw JSON plus stderr logs. Use a JSONL request manifest to
 exercise multiple languages, lengths, voices, and deterministic seeds:
 
+The checked-in full manifest is a template because it contains local model and
+voice paths. Copy it before editing those placeholders:
+
+```powershell
+Copy-Item .\docs\acceptance\native-python-full.template.jsonl .\docs\acceptance\native-python-full.jsonl
+```
+
 ```powershell
 .\scripts\run-native-python-matrix.ps1 `
   -BenchmarkExecutable .\build\Release\qwen_tts_latency_benchmark.exe `
@@ -59,9 +66,9 @@ exercise multiple languages, lengths, voices, and deterministic seeds:
   -QwenSourcePath .\external\python\Qwen3-TTS-streaming `
   -WarmupText "Warmup request." -WarmupReferenceAudioPath .\voices\warmup-ref.wav `
   -WarmupReferenceText "Warmup reference transcript." `
-  -Warmups 5 -Requests 30 -CancelEvery 5 -GpuIndex 0 -Seed 4242 `
+  -Warmups 5 -Requests 30 -CancelEvery 0 -GpuIndex 0 -Seed 4242 `
   -PlaybackExecutable .\build\Release\qwen_tts_play.exe `
-  -PlaybackManifestLabel ru-short `
+  -PlaybackManifestLabel base-reference `
   -Output .\artifacts\native-python-matrix.json
 ```
 
