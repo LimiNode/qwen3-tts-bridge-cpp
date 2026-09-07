@@ -18,6 +18,32 @@ struct NativeQwenBackendOptions {
     std::string codec_path; ///< Qwen 12 Hz tokenizer GGUF path.
     bool use_flash_attention = true; ///< Enable GGML fused attention when available.
     bool clamp_fp16 = false; ///< Guard FP16 residuals on older CUDA devices.
+    int stream_max_chunk_frames = 0; ///< 0 for native default (8), otherwise 1, 2, 4, or 8.
+};
+
+/// \enum NativeQwenFinishReason
+/// \brief Terminal reason reported by a successful native synthesis.
+enum class NativeQwenFinishReason {
+    Unknown,
+    NaturalEos,
+    MaxTokens,
+};
+
+/// \struct NativeQwenCompletion
+/// \brief Completion metadata returned by native synthesis.
+struct NativeQwenCompletion {
+    NativeQwenFinishReason finish_reason = NativeQwenFinishReason::Unknown;
+};
+
+/// \struct NativeQwenCapabilities
+/// \brief Explicit support matrix for native profile controls.
+struct NativeQwenCapabilities {
+    bool stream_max_chunk_frames = true;
+    bool codec_window = false;
+    bool sequence_capacity = false;
+    bool playback_prebuffer = false;
+    bool prefix_kv_reuse = false;
+    bool fp32_mlp_island = false;
 };
 
 /// \struct NativeQwenSynthesisRequest
@@ -70,17 +96,22 @@ public:
     /// \brief Returns the exact qwentts.cpp build identity.
     [[nodiscard]] std::string version() const;
 
+    /// \brief Returns the profile controls implemented by this adapter.
+    [[nodiscard]] static NativeQwenCapabilities capabilities() noexcept;
+
     /// \brief Runs one buffered or streaming synthesis request.
     /// \param request Native model request.
     /// \param on_chunk Optional callback; returning false cancels generation.
     /// \param cancel Optional cooperative cancellation callback.
     /// \param output Buffered output when `on_chunk` is empty.
+    /// \param completion Optional terminal metadata output.
     /// \return True when the engine reports QT_STATUS_OK.
     bool synthesize(
         const NativeQwenSynthesisRequest& request,
         AudioChunkCallback on_chunk = {},
         CancelCallback cancel = {},
-        NativeQwenAudio* output = nullptr);
+        NativeQwenAudio* output = nullptr,
+        NativeQwenCompletion* completion = nullptr);
 
 private:
     struct Impl;

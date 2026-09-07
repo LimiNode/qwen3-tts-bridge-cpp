@@ -46,6 +46,11 @@ if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
     endforeach()
 endif()
 
+# ggml exposes BUILD_SHARED_LIBS as a directory-wide option. Keep the bridge
+# and its process dependency static even when the opt-in qwentts build selected
+# shared GGML targets; otherwise MSVC would make the normal bridge target a DLL
+# and leave consumers looking for a missing static import library.
+set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(
     "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tiny-process-library"
     "${CMAKE_CURRENT_BINARY_DIR}/tiny-process-library"
@@ -284,6 +289,18 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 QwenTTSBridge::qwen_tts_bridge_native
         )
         add_test(NAME native_qwen_backend_abi_test COMMAND native_qwen_backend_abi_test)
+
+        add_executable(native_qwen_backend_finish_test
+            src/qwen_tts_bridge/native/NativeQwenBackend.cpp
+            tests/native_qwen_backend_finish_test.cpp
+        )
+        target_compile_definitions(native_qwen_backend_finish_test PRIVATE QWEN_STATIC)
+        target_include_directories(native_qwen_backend_finish_test
+            PRIVATE
+                "${QWEN_TTS_BRIDGE_SRC_DIR}"
+                "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src"
+        )
+        add_test(NAME native_qwen_backend_finish_test COMMAND native_qwen_backend_finish_test)
     endif()
 
     add_executable(protocol_frame_test
