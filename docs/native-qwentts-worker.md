@@ -2,8 +2,9 @@
 
 The bridge has an optional Windows worker target, `qwen_tts_native_worker`.
 It is a separate process that speaks the same QTB protocol v1 over stdin/stdout
-as the Python worker. The bridge does not compile qwentts.cpp, link against its
-import library, or include GGML/CUDA headers in the normal library target.
+as the Python worker. The normal `qwen_tts_bridge` target does not compile
+qwentts.cpp or include GGML/CUDA headers; the native worker and the separate
+in-process adapter enable that dependency only through explicit opt-in options.
 
 Build the target after initializing the pinned `external/cpp/qwentts.cpp`
 submodule:
@@ -47,7 +48,8 @@ the default is 8 and the ramp starts at one frame before doubling to that cap.
 The Python/FasterQwen worker remains the accepted production backend until the
 native process passes the documented quality, streaming, cancellation,
 lifecycle, and target-hardware gates. The native process is intentionally
-opt-in; the future in-process DLL backend is a separate, higher-risk option.
+opt-in. The in-process `NativeQwenBackend` is also opt-in and higher risk
+because it runs the qwentts engine in the application process.
 
 ## Runtime manifest generator
 
@@ -56,8 +58,15 @@ Generate a manifest for a prepared runtime with:
 ```powershell
 python scripts/write-qwentts-runtime-manifest.py `
   --runtime-dir E:\models\qwentts-runtime `
-  --engine-commit 62497ff `
+  --engine-commit 1c119f69b0008edb8b687a8df3d7a537c8a22dbe `
   --backend cuda
+```
+
+For a checked-out repository, obtain the pinned value instead of copying it
+manually:
+
+```powershell
+git -C external/cpp/qwentts.cpp rev-parse HEAD
 ```
 
 The manifest `engine_commit` must match the prefix returned by `qt_version()`;
