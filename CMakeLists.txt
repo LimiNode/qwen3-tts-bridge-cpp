@@ -58,7 +58,12 @@ endif()
 if(_qwen_tts_bridge_build_shared_libs_defined)
     set(BUILD_SHARED_LIBS "${_qwen_tts_bridge_build_shared_libs_value}")
 else()
-    set(BUILD_SHARED_LIBS OFF)
+    # ggml's option(BUILD_SHARED_LIBS, ...) creates a cache entry when the
+    # caller did not provide one.  Remove both scopes so that this nested
+    # project's default cannot leak into the next configure of the same build
+    # directory.
+    unset(BUILD_SHARED_LIBS)
+    unset(BUILD_SHARED_LIBS CACHE)
 endif()
 add_subdirectory(
     "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tiny-process-library"
