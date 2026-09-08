@@ -453,6 +453,25 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                     --requests 2
                     --request-timeout-ms 10000
             )
+            add_test(
+                NAME qwen_tts_latency_benchmark_manifest_mock
+                COMMAND qwen_tts_latency_benchmark
+                    --mock
+                    --request-manifest
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/acceptance/matrix-mock.jsonl"
+                    --seed 4242
+                    --warmups 0
+                    --requests 2
+                    --cancel-every 2
+                    --mock-chunk-delay 0.02
+                    --request-timeout-ms 10000
+                    --result-json
+                    "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_latency_benchmark_manifest_mock.json"
+            )
+            add_test(
+                NAME qwen_tts_latency_benchmark_eos_contract
+                COMMAND qwen_tts_latency_benchmark --self-test-eos-contract
+            )
             if(WIN32)
                 add_test(
                     NAME qwen_tts_play_mock_utf8_example

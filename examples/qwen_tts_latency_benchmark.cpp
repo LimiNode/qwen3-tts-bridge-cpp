@@ -18,6 +18,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -41,16 +42,21 @@ using qwen_tts_bridge::QwenTtsClientOptions;
 using qwen_tts_bridge::RequestId;
 using qwen_tts_bridge::StdIoTransportOptions;
 using qwen_tts_bridge::TtsCallbacks;
+using qwen_tts_bridge::TtsCompletion;
 using qwen_tts_bridge::TtsError;
 using qwen_tts_bridge::TtsRequest;
 
 struct ProgramOptions {
     bool help = false;
+    bool self_test_eos_contract = false;
     bool use_mock_worker = false;
     std::string worker_executable;
     std::vector<std::string> worker_arguments;
     std::string working_directory;
     std::string text = "Latency benchmark request.";
+    std::string warmup_text;
+    std::string warmup_reference_audio_path;
+    std::string warmup_reference_text;
     std::string language = "auto";
     std::string speaker;
     std::string voice_id;
@@ -71,6 +77,7 @@ struct ProgramOptions {
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
     std::chrono::milliseconds request_timeout{60000};
+    std::chrono::milliseconds terminal_quiet{250};
 };
 
 struct RequestSpec {
@@ -88,6 +95,11 @@ struct RequestSpec {
     std::string expected_route;
     std::string expected_backend;
     std::vector<int> expected_chunk_schedule;
+    std::vector<std::string> allowed_terminal_outcomes;
+    std::string expected_error_category;
+    std::string expected_error_code;
+    std::vector<std::pair<std::string, std::string>> allowed_errors;
+    bool cancel_after_first_pcm = false;
 
     bool has_contract() const {
         return expected_prefill_length.has_value();
@@ -114,6 +126,7 @@ struct RequestProbe {
     std::string error_category;
     std::string error_code;
     std::string error_message;
+    std::optional<TtsCompletion> completion;
     std::optional<double> first_audio_ms;
     std::optional<double> completed_ms;
     double enqueue_ms = 0.0;
@@ -130,10 +143,16 @@ struct RequestResult {
     std::string expected_route;
     std::string expected_backend;
     std::vector<int> expected_chunk_schedule;
+    std::vector<std::string> allowed_terminal_outcomes;
+    std::string expected_error_category;
+    std::string expected_error_code;
+    std::vector<std::pair<std::string, std::string>> allowed_errors;
+    bool cancel_after_first_pcm = false;
     RequestId request_id = 0;
     bool warmup = false;
     bool success = false;
     bool cancelled = false;
+    bool cancellation_expected = false;
     std::optional<double> first_audio_ms;
     std::optional<double> completed_ms;
     double enqueue_ms = 0.0;
@@ -154,6 +173,10 @@ struct RequestResult {
     std::string error_category;
     std::string error_code;
     std::string error_message;
+    std::optional<std::string> completion_execution_outcome;
+    std::optional<TtsCompletion> completion_metadata;
+    std::uint64_t late_audio_after_terminal_count = 0;
+    std::uint64_t duplicate_terminal_event_count = 0;
     nlohmann::json worker_first_chunk_phases;
     std::vector<nlohmann::json> worker_pcm_chunks;
     nlohmann::json worker_generation_trace;
@@ -162,6 +185,8 @@ struct RequestResult {
     bool contract_checked = false;
     bool contract_valid = true;
     std::vector<std::string> contract_failures;
+    bool acceptance_valid = true;
+    std::vector<std::string> acceptance_failures;
 };
 
 struct WorkerRequestMetrics {
@@ -275,11 +300,16 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  " << executable_name << " --worker qwen_tts_worker.exe --text \"Hello\"\n\n"
         << "Options:\n"
         << "  --help                         Show this help.\n"
+        << "  --self-test-eos-contract       Exercise backend-neutral EOS acceptance branches.\n"
         << "  --mock                         Run the bundled Python mock worker.\n"
         << "  --worker <path>                Worker executable path.\n"
         << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --text <utf8>                  Text to synthesize.\n"
+        << "  --warmup-text <utf8>           Dedicated warmup text; keeps manifest rows measured-only.\n"
+        << "  --warmup-reference-audio-path <path>  Optional Base reference for warmup requests.\n"
+        << "  --warmup-reference-text <utf8>       Transcript for the warmup reference.\n"
+        << "  --terminal-quiet-ms <ms>       Quiet period before lifecycle counters are sampled.\n"
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --voice-id <id>                Registered Base voice profile identifier.\n"
@@ -366,6 +396,9 @@ ProgramOptions parse_options(int argc, char** argv) {
         if (arg == "--help" || arg == "-h") {
             options.help = true;
         }
+        else if (arg == "--self-test-eos-contract") {
+            options.self_test_eos_contract = true;
+        }
         else if (arg == "--mock") {
             options.use_mock_worker = true;
         }
@@ -381,6 +414,20 @@ ProgramOptions parse_options(int argc, char** argv) {
         }
         else if (arg == "--text" || arg.rfind("--text=", 0) == 0) {
             options.text = require_value(index, argc, argv, "--text");
+        }
+        else if (arg == "--warmup-text" || arg.rfind("--warmup-text=", 0) == 0) {
+            options.warmup_text = require_value(index, argc, argv, "--warmup-text");
+        }
+        else if (arg == "--warmup-reference-audio-path" || arg.rfind("--warmup-reference-audio-path=", 0) == 0) {
+            options.warmup_reference_audio_path = require_value(index, argc, argv, "--warmup-reference-audio-path");
+        }
+        else if (arg == "--warmup-reference-text" || arg.rfind("--warmup-reference-text=", 0) == 0) {
+            options.warmup_reference_text = require_value(index, argc, argv, "--warmup-reference-text");
+        }
+        else if (arg == "--terminal-quiet-ms" || arg.rfind("--terminal-quiet-ms=", 0) == 0) {
+            options.terminal_quiet = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--terminal-quiet-ms"),
+                "--terminal-quiet-ms"));
         }
         else if (arg == "--language" || arg.rfind("--language=", 0) == 0) {
             options.language = require_value(index, argc, argv, "--language");
@@ -492,6 +539,14 @@ void validate_options(const ProgramOptions& options) {
     if (options.cancel_every < 0) {
         throw std::runtime_error("--cancel-every must be non-negative");
     }
+    if (options.terminal_quiet.count() < 0) {
+        throw std::runtime_error("--terminal-quiet-ms must be non-negative");
+    }
+    if (!options.warmup_reference_audio_path.empty() &&
+        options.warmup_reference_text.empty()) {
+        throw std::runtime_error(
+            "--warmup-reference-text is required with --warmup-reference-audio-path");
+    }
     if (options.mock_chunks <= 0) {
         throw std::runtime_error("--mock-chunks must be greater than zero");
     }
@@ -534,6 +589,49 @@ std::vector<RequestSpec> load_request_manifest(const ProgramOptions& options) {
         spec.x_vector_only = value.value("x_vector_only", options.x_vector_only);
         if (value.contains("seed")) {
             spec.seed = value.at("seed").get<std::uint64_t>();
+        }
+        if (value.contains("allowed_terminal_outcomes")) {
+            spec.allowed_terminal_outcomes =
+                value.at("allowed_terminal_outcomes").get<std::vector<std::string>>();
+            if (spec.allowed_terminal_outcomes.empty() ||
+                std::any_of(spec.allowed_terminal_outcomes.begin(),
+                    spec.allowed_terminal_outcomes.end(),
+                    [](const std::string& outcome) { return outcome.empty(); })) {
+                throw std::runtime_error(
+                    "--request-manifest line " + std::to_string(line_number) +
+                    " has invalid allowed_terminal_outcomes");
+            }
+        }
+        spec.expected_error_category = value.value("expected_error_category", "");
+        spec.expected_error_code = value.value("expected_error_code", "");
+        if (value.contains("allowed_errors")) {
+            for (const auto& error : value.at("allowed_errors")) {
+                if (!error.is_object() || !error.contains("category") ||
+                    !error.contains("code")) {
+                    throw std::runtime_error(
+                        "--request-manifest line " + std::to_string(line_number) +
+                        " has invalid allowed_errors");
+                }
+                const std::string category = error.at("category").get<std::string>();
+                const std::string code = error.at("code").get<std::string>();
+                if (category.empty() || code.empty()) {
+                    throw std::runtime_error(
+                        "--request-manifest line " + std::to_string(line_number) +
+                        " has empty allowed error category/code");
+                }
+                spec.allowed_errors.emplace_back(category, code);
+            }
+            if (spec.allowed_errors.empty()) {
+                throw std::runtime_error(
+                    "--request-manifest line " + std::to_string(line_number) +
+                    " has empty allowed_errors");
+            }
+        }
+        spec.cancel_after_first_pcm = value.value("cancel_after_first_pcm", false);
+        if (!spec.expected_error_code.empty() && spec.expected_error_category.empty()) {
+            throw std::runtime_error(
+                "--request-manifest line " + std::to_string(line_number) +
+                " expected_error_code requires expected_error_category");
         }
         const bool has_any_contract_field =
             value.contains("expected_prefill_length") ||
@@ -689,6 +787,10 @@ TtsCallbacks make_latency_callbacks(QwenTtsClient& client, RequestProbe& probe) 
         }
         probe.condition.notify_all();
     };
+    callbacks.on_completion_metadata = [&probe](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.completion = completion;
+    };
     callbacks.on_cancelled = [&probe]() {
         {
             std::lock_guard<std::mutex> lock(probe.mutex);
@@ -730,7 +832,8 @@ TtsRequest make_request(
         : options.reference_audio_path;
     request.reference_text = spec != nullptr ? spec->reference_text : options.reference_text;
     request.x_vector_only = spec != nullptr ? spec->x_vector_only : options.x_vector_only;
-    const std::optional<std::uint64_t> seed = spec != nullptr ? spec->seed : options.seed;
+    const std::optional<std::uint64_t> seed =
+        spec != nullptr && spec->seed.has_value() ? spec->seed : options.seed;
     if (seed.has_value()) {
         request.has_seed = true;
         request.seed = seed.value();
@@ -747,8 +850,14 @@ RequestResult run_request(
     bool warmup,
     const RequestSpec* spec = nullptr) {
     RequestProbe probe;
-    probe.cancel_after_first_audio =
-        !warmup && options.cancel_every > 0 && index % options.cancel_every == 0;
+    const std::uint64_t late_audio_before = client.late_audio_after_terminal_count();
+    const std::uint64_t duplicate_terminal_before = client.duplicate_terminal_event_count();
+    const bool row_has_terminal_contract = spec != nullptr &&
+        (!spec->allowed_terminal_outcomes.empty() ||
+         !spec->expected_error_category.empty() || !spec->allowed_errors.empty());
+    probe.cancel_after_first_audio = !warmup &&
+        ((spec != nullptr && spec->cancel_after_first_pcm) ||
+         (!row_has_terminal_contract && options.cancel_every > 0 && index % options.cancel_every == 0));
     probe.start = Clock::now();
     const RequestId request_id = client.synthesize_async(
         make_request(options, audio_format, spec),
@@ -782,12 +891,22 @@ RequestResult run_request(
             throw std::runtime_error("synthesis request timed out");
         }
     }
+    if (options.terminal_quiet.count() > 0) {
+        std::this_thread::sleep_for(options.terminal_quiet);
+    }
 
     RequestResult result;
     {
         std::lock_guard<std::mutex> lock(probe.mutex);
         result.index = index;
         result.label = spec != nullptr ? spec->label : "";
+        if (spec != nullptr) {
+            result.allowed_terminal_outcomes = spec->allowed_terminal_outcomes;
+            result.expected_error_category = spec->expected_error_category;
+            result.expected_error_code = spec->expected_error_code;
+            result.allowed_errors = spec->allowed_errors;
+            result.cancel_after_first_pcm = spec->cancel_after_first_pcm;
+        }
         if (spec != nullptr && spec->has_contract()) {
             result.expected_prefill_length = spec->expected_prefill_length;
             result.expected_route = spec->expected_route;
@@ -798,6 +917,7 @@ RequestResult run_request(
         result.warmup = warmup;
         result.success = probe.success;
         result.cancelled = probe.cancelled;
+        result.cancellation_expected = probe.cancel_after_first_audio;
         result.first_audio_ms = probe.first_audio_ms;
         result.completed_ms = probe.completed_ms;
         result.enqueue_ms = probe.enqueue_ms;
@@ -807,6 +927,10 @@ RequestResult run_request(
         result.error_category = probe.error_category;
         result.error_code = probe.error_code;
         result.error_message = probe.error_message;
+        if (probe.completion.has_value()) {
+            result.completion_metadata = probe.completion;
+            result.completion_execution_outcome = probe.completion->execution_outcome;
+        }
     }
 
     const double bytes_per_ms =
@@ -820,6 +944,10 @@ RequestResult run_request(
         result.inverse_real_time_factor =
             result.audio_duration_ms / result.completed_ms.value();
     }
+    result.late_audio_after_terminal_count =
+        client.late_audio_after_terminal_count() - late_audio_before;
+    result.duplicate_terminal_event_count =
+        client.duplicate_terminal_event_count() - duplicate_terminal_before;
     return result;
 }
 
@@ -973,6 +1101,110 @@ void validate_request_contract(RequestResult& result) {
     }
 }
 
+void fail_acceptance(RequestResult& result, std::string message) {
+    result.acceptance_valid = false;
+    result.acceptance_failures.push_back(std::move(message));
+}
+
+void validate_generic_acceptance(RequestResult& result) {
+    const bool has_expected_error = !result.expected_error_category.empty() ||
+        !result.expected_error_code.empty();
+    if (!result.allowed_terminal_outcomes.empty() || !result.allowed_errors.empty() ||
+        has_expected_error) {
+        std::string actual;
+        if (result.success) {
+            actual = result.completion_execution_outcome.value_or("completed");
+        } else if (result.cancelled) {
+            actual = "cancelled";
+        } else {
+            actual = result.error_category;
+        }
+        bool terminal_allowed = std::find(result.allowed_terminal_outcomes.begin(),
+            result.allowed_terminal_outcomes.end(), actual) !=
+            result.allowed_terminal_outcomes.end();
+        if (!result.success && !result.cancelled) {
+            terminal_allowed = std::any_of(result.allowed_errors.begin(),
+                result.allowed_errors.end(),
+                [&result](const auto& allowed) {
+                    return allowed.first == result.error_category &&
+                        allowed.second == result.error_code;
+                });
+            if (has_expected_error &&
+                (result.expected_error_category.empty() ||
+                 result.error_category == result.expected_error_category) &&
+                (result.expected_error_code.empty() ||
+                 result.error_code == result.expected_error_code)) {
+                terminal_allowed = true;
+            }
+        }
+        if (!terminal_allowed) {
+            fail_acceptance(result, "terminal outcome '" + actual + "' was not allowed");
+        }
+        if (!result.success && !result.cancelled &&
+            !result.expected_error_category.empty() &&
+            result.error_category != result.expected_error_category) {
+            fail_acceptance(result, "unexpected error category");
+        }
+        if (!result.success && !result.cancelled &&
+            !result.expected_error_code.empty() &&
+            result.error_code != result.expected_error_code) {
+            fail_acceptance(result, "unexpected error code");
+        }
+        if (has_expected_error && result.success) {
+            fail_acceptance(result, "expected an error but request completed");
+        }
+    }
+    if (result.cancellation_expected) {
+        if (!result.cancelled) {
+            fail_acceptance(result, "expected cancellation did not occur");
+        }
+        if (result.success) {
+            fail_acceptance(result, "request completed despite expected cancellation");
+        }
+    }
+    else {
+        if (result.cancelled) {
+            fail_acceptance(result, "unexpected cancellation");
+        }
+        if (!result.success && result.allowed_terminal_outcomes.empty() &&
+            result.allowed_errors.empty() && !has_expected_error) {
+            fail_acceptance(result, "request failed");
+        }
+    }
+
+    if (result.success && (result.audio_bytes == 0u || result.audio_chunks == 0u)) {
+        fail_acceptance(result, "completed request produced no PCM");
+    }
+    if (result.success && result.completion_execution_outcome.has_value() &&
+        result.completion_execution_outcome.value() == "max_tokens") {
+            fail_acceptance(result, "request exhausted max_new_tokens before natural EOS");
+    }
+    if (result.success && !result.completion_metadata.has_value()) {
+        fail_acceptance(result, "completed request has no completion metadata/EOS evidence");
+    }
+    if (result.success && result.completion_metadata.has_value()) {
+        const TtsCompletion& completion = result.completion_metadata.value();
+        if (!completion.has_generation_trace && completion.execution_outcome == "natural_eos") {
+            // Native workers may provide an explicit finish outcome without
+            // exposing model-specific generation trace fields.
+        } else if (!completion.has_generation_trace) {
+            fail_acceptance(result, "completed request has no generation trace/EOS evidence");
+        } else if (!completion.hit_eos || completion.hit_max_seq_len ||
+                   completion.hit_max_new_tokens || completion.termination_reason != "eos") {
+            fail_acceptance(result, "generation trace did not report natural EOS");
+        }
+    }
+    if (result.cancelled && result.audio_bytes == 0u) {
+        fail_acceptance(result, "cancelled request produced no PCM prefix");
+    }
+    if (result.late_audio_after_terminal_count != 0u) {
+        fail_acceptance(result, "audio arrived after request terminal state");
+    }
+    if (result.duplicate_terminal_event_count != 0u) {
+        fail_acceptance(result, "duplicate terminal event arrived after request terminal state");
+    }
+}
+
 bool has_contract_failures(const std::vector<RequestResult>& results) {
     return std::any_of(
         results.begin(),
@@ -980,6 +1212,50 @@ bool has_contract_failures(const std::vector<RequestResult>& results) {
         [](const RequestResult& result) {
             return result.contract_checked && !result.contract_valid;
         });
+}
+
+bool has_acceptance_failures(const std::vector<RequestResult>& results) {
+    return std::any_of(
+        results.begin(),
+        results.end(),
+        [](const RequestResult& result) { return !result.acceptance_valid; });
+}
+
+int run_eos_contract_self_test() {
+    auto make_result = [](const std::string& outcome) {
+        RequestResult result;
+        result.success = true;
+        result.audio_bytes = 2;
+        result.audio_chunks = 1;
+        TtsCompletion completion;
+        completion.execution_outcome = outcome;
+        completion.has_generation_trace = false;
+        result.completion_execution_outcome = outcome;
+        result.completion_metadata = completion;
+        return result;
+    };
+
+    RequestResult native_natural = make_result("natural_eos");
+    validate_generic_acceptance(native_natural);
+    if (!native_natural.acceptance_valid) {
+        std::cerr << "EOS self-test: native natural_eos was rejected\n";
+        return 1;
+    }
+
+    RequestResult bare_completed = make_result("completed");
+    validate_generic_acceptance(bare_completed);
+    if (bare_completed.acceptance_valid) {
+        std::cerr << "EOS self-test: bare completed was accepted\n";
+        return 1;
+    }
+
+    RequestResult max_tokens = make_result("max_tokens");
+    validate_generic_acceptance(max_tokens);
+    if (max_tokens.acceptance_valid) {
+        std::cerr << "EOS self-test: max_tokens was accepted\n";
+        return 1;
+    }
+    return 0;
 }
 
 std::string json_escape(const std::string& value) {
@@ -1037,7 +1313,8 @@ std::vector<double> collect_metric(
     std::optional<double> RequestResult::*field) {
     std::vector<double> values;
     for (const RequestResult& result : results) {
-        if (!result.success || (result.contract_checked && !result.contract_valid)) {
+        if (!result.success || !result.acceptance_valid ||
+            (result.contract_checked && !result.contract_valid)) {
             continue;
         }
         const std::optional<double>& value = result.*field;
@@ -1091,6 +1368,12 @@ void write_results_json(
     out << "{";
     out << "\"config\":{"
         << "\"text\":\"" << json_escape(options.text) << "\","
+        << "\"warmup_text\":\"" << json_escape(options.warmup_text) << "\","
+        << "\"warmup_reference_audio_path\":\""
+        << json_escape(options.warmup_reference_audio_path) << "\","
+        << "\"warmup_reference_text\":\""
+        << json_escape(options.warmup_reference_text) << "\","
+        << "\"terminal_quiet_ms\":" << options.terminal_quiet.count() << ","
         << "\"language\":\"" << json_escape(options.language) << "\","
         << "\"speaker\":\"" << json_escape(options.speaker) << "\","
         << "\"instruction\":\"" << json_escape(options.instruction) << "\","
@@ -1131,9 +1414,14 @@ void write_results_json(
         [](const RequestResult& result) {
             return result.contract_checked && !result.contract_valid;
         });
+    const auto acceptance_failure_count = std::count_if(
+        measured.begin(),
+        measured.end(),
+        [](const RequestResult& result) { return !result.acceptance_valid; });
     out << "\"cancelled_requests\":" << cancelled_count << ","
         << "\"failed_requests\":" << failed_count << ","
         << "\"excluded_contract_requests\":" << excluded_contract_count << ",";
+    out << "\"acceptance_failed_requests\":" << acceptance_failure_count << ",";
     write_metric_summary(out, "first_audio_ms", collect_metric(measured, &RequestResult::first_audio_ms));
     out << ",";
     write_metric_summary(out, "completed_ms", collect_metric(measured, &RequestResult::completed_ms));
@@ -1158,6 +1446,42 @@ void write_results_json(
                 << "\"request_id\":" << result.request_id << ","
                 << "\"success\":" << (result.success ? "true" : "false") << ","
                 << "\"cancelled\":" << (result.cancelled ? "true" : "false") << ","
+                << "\"cancellation_expected\":"
+                << (result.cancellation_expected ? "true" : "false") << ","
+                << "\"cancel_after_first_pcm\":"
+                << (result.cancel_after_first_pcm ? "true" : "false") << ","
+                << "\"late_audio_after_terminal_count\":"
+                << result.late_audio_after_terminal_count << ","
+                << "\"duplicate_terminal_event_count\":"
+                << result.duplicate_terminal_event_count << ","
+                << "\"completion_execution_outcome\":";
+            if (result.completion_execution_outcome.has_value()) {
+                out << "\"" << json_escape(result.completion_execution_outcome.value()) << "\"";
+            } else {
+                out << "null";
+            }
+            out << ","
+                << "\"completion_metadata\":";
+            if (result.completion_metadata.has_value()) {
+                const TtsCompletion& completion = result.completion_metadata.value();
+                out << "{\"execution_outcome\":\""
+                    << json_escape(completion.execution_outcome)
+                    << "\",\"has_generation_trace\":"
+                    << (completion.has_generation_trace ? "true" : "false")
+                    << ",\"termination_reason\":\""
+                    << json_escape(completion.termination_reason)
+                    << "\",\"hit_eos\":" << (completion.hit_eos ? "true" : "false")
+                    << ",\"hit_max_seq_len\":" << (completion.hit_max_seq_len ? "true" : "false")
+                    << ",\"hit_max_new_tokens\":" << (completion.hit_max_new_tokens ? "true" : "false")
+                    << ",\"codec_frame_count\":" << completion.codec_frame_count
+                    << ",\"generated_steps\":" << completion.generated_steps
+                    << ",\"emitted_steps\":" << completion.emitted_steps
+                    << ",\"terminal_step_index\":" << completion.terminal_step_index
+                    << "}";
+            } else {
+                out << "null";
+            }
+            out << ","
                 << "\"enqueue_ms\":" << std::fixed << std::setprecision(3) << result.enqueue_ms
                 << ",\"first_audio_ms\":";
             write_number_or_null(out, result.first_audio_ms);
@@ -1222,6 +1546,28 @@ void write_results_json(
             out << ",\"failures\":"
                 << nlohmann::json(result.contract_failures).dump()
                 << "}"
+                << ",\"acceptance\":{"
+                << "\"valid\":" << (result.acceptance_valid ? "true" : "false")
+                << ",\"failures\":"
+                << nlohmann::json(result.acceptance_failures).dump()
+                << ",\"allowed_terminal_outcomes\":"
+                << nlohmann::json(result.allowed_terminal_outcomes).dump()
+                << ",\"expected_error_category\":\""
+                << json_escape(result.expected_error_category)
+                << "\",\"expected_error_code\":\""
+                << json_escape(result.expected_error_code)
+                << "\",\"allowed_errors\":[";
+            for (std::size_t error_index = 0; error_index < result.allowed_errors.size(); ++error_index) {
+                if (error_index != 0u) {
+                    out << ",";
+                }
+                out << "{\"category\":\""
+                    << json_escape(result.allowed_errors[error_index].first)
+                    << "\",\"code\":\""
+                    << json_escape(result.allowed_errors[error_index].second)
+                    << "\"}";
+            }
+            out << "]}"
                 << ",\"worker_telemetry\":{"
                 << "\"first_chunk_phases\":" << result.worker_first_chunk_phases.dump()
                 << ",\"pcm_chunks\":" << nlohmann::json(result.worker_pcm_chunks).dump()
@@ -1249,6 +1595,9 @@ void write_results_json(
 int main(int argc, char** argv) {
     try {
         ProgramOptions options = parse_options(argc, argv);
+        if (options.self_test_eos_contract) {
+            return run_eos_contract_self_test();
+        }
         validate_options(options);
 
         if (options.help) {
@@ -1275,13 +1624,31 @@ int main(int argc, char** argv) {
         warmups.reserve(static_cast<std::size_t>(options.warmups));
         measured.reserve(static_cast<std::size_t>(options.requests));
 
+        ProgramOptions warmup_options = options;
+        if (!options.warmup_text.empty()) {
+            warmup_options.text = options.warmup_text;
+        }
         for (int index = 0; index < options.warmups; ++index) {
-            const RequestSpec* spec = request_specs.empty()
-                ? nullptr
-                : &request_specs[static_cast<std::size_t>(index) % request_specs.size()];
+            RequestSpec warmup_spec;
+            const RequestSpec* spec = nullptr;
+            if (!options.warmup_reference_audio_path.empty()) {
+                warmup_spec.text = warmup_options.text;
+                warmup_spec.language = options.language;
+                warmup_spec.speaker = options.speaker;
+                warmup_spec.instruction = options.instruction;
+                warmup_spec.reference_audio_path = options.warmup_reference_audio_path;
+                warmup_spec.reference_text = options.warmup_reference_text;
+                warmup_spec.x_vector_only = options.x_vector_only;
+                warmup_spec.seed = options.seed;
+                spec = &warmup_spec;
+            } else if (options.warmup_text.empty()) {
+                spec = request_specs.empty()
+                    ? nullptr
+                    : &request_specs[static_cast<std::size_t>(index) % request_specs.size()];
+            }
             warmups.push_back(run_request(
                 client,
-                options,
+                warmup_options,
                 audio_format,
                 index + 1,
                 true,
@@ -1304,7 +1671,11 @@ int main(int argc, char** argv) {
         const auto metrics_by_request = worker_metrics.request_metrics();
         attach_worker_metrics(warmups, metrics_by_request);
         attach_worker_metrics(measured, metrics_by_request);
+        for (RequestResult& result : warmups) {
+            validate_generic_acceptance(result);
+        }
         for (RequestResult& result : measured) {
+            validate_generic_acceptance(result);
             validate_request_contract(result);
         }
         if (options.result_json_path.empty()) {
@@ -1320,7 +1691,9 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("failed to write --result-json output");
             }
         }
-        return has_contract_failures(measured) ? 2 : 0;
+        return (has_acceptance_failures(warmups) ||
+                has_acceptance_failures(measured) ||
+                has_contract_failures(measured)) ? 2 : 0;
     }
     catch (const std::exception& exc) {
         std::cerr << "qwen_tts_latency_benchmark: " << exc.what() << '\n';
