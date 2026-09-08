@@ -105,7 +105,7 @@ public:
     /// \param cancel Optional cooperative cancellation callback.
     /// \param output Buffered output when `on_chunk` is empty.
     /// \param completion Optional terminal metadata output.
-    /// \return True when the engine reports QT_STATUS_OK.
+    /// \return True when the engine reports QT_STATUS_OK and a recognized finish reason.
     bool synthesize(
         const NativeQwenSynthesisRequest& request,
         AudioChunkCallback on_chunk = {},

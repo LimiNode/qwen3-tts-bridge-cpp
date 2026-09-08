@@ -56,17 +56,11 @@ because it runs the qwentts engine in the application process.
 Generate a manifest for a prepared runtime with:
 
 ```powershell
+$engineCommit = git -C external/cpp/qwentts.cpp rev-parse --short HEAD
 python scripts/write-qwentts-runtime-manifest.py `
   --runtime-dir E:\models\qwentts-runtime `
-  --engine-commit 1c119f69b0008edb8b687a8df3d7a537c8a22dbe `
+  --engine-commit $engineCommit `
   --backend cuda
-```
-
-For a checked-out repository, obtain the pinned value instead of copying it
-manually:
-
-```powershell
-git -C external/cpp/qwentts.cpp rev-parse HEAD
 ```
 
 The manifest `engine_commit` must match the prefix returned by `qt_version()`;

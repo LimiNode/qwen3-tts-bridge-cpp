@@ -1,6 +1,6 @@
 #include <qwen_tts_bridge/native.hpp>
 
-#include <cassert>
+#include <iostream>
 
 int main() {
     using qwen_tts_bridge::native::NativeQwenBackend;
@@ -14,21 +14,30 @@ int main() {
     options.stream_max_chunk_frames = 4;
     NativeQwenBackend backend(options);
 
+#define CHECK(expression) \
+    do { \
+        if (!(expression)) { \
+            std::cerr << "CHECK failed: " #expression << " (line " << __LINE__ << ")\n"; \
+            return __LINE__; \
+        } \
+    } while (false)
+
     // This is an ABI/linkage smoke test, not a model test. Missing GGUF files
     // must fail locally and leave a diagnostic without crashing the process.
-    assert(!backend.is_ready());
-    assert(!backend.last_error().empty());
-    assert(!backend.version().empty());
+    CHECK(!backend.is_ready());
+    CHECK(!backend.last_error().empty());
+    CHECK(!backend.version().empty());
 
     const auto capabilities = NativeQwenBackend::capabilities();
-    assert(capabilities.stream_max_chunk_frames);
-    assert(!capabilities.codec_window);
-    assert(!capabilities.sequence_capacity);
-    assert(!capabilities.playback_prebuffer);
-    assert(!capabilities.prefix_kv_reuse);
-    assert(!capabilities.fp32_mlp_island);
+    CHECK(capabilities.stream_max_chunk_frames);
+    CHECK(!capabilities.codec_window);
+    CHECK(!capabilities.sequence_capacity);
+    CHECK(!capabilities.playback_prebuffer);
+    CHECK(!capabilities.prefix_kv_reuse);
+    CHECK(!capabilities.fp32_mlp_island);
 
     NativeQwenCompletion completion;
-    assert(completion.finish_reason == NativeQwenFinishReason::Unknown);
+    CHECK(completion.finish_reason == NativeQwenFinishReason::Unknown);
+#undef CHECK
     return 0;
 }

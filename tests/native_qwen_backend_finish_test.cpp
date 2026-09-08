@@ -2,9 +2,9 @@
 
 #include <qwen.h>
 
-#include <cassert>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <string>
 
 struct qt_context {};
@@ -83,24 +83,33 @@ int main() {
     options.codec_path = "fake-codec.gguf";
     options.stream_max_chunk_frames = 4;
     NativeQwenBackend backend(options);
-    assert(backend.is_ready());
-    assert(g_stream_max_chunk_frames == 4);
+#define CHECK(expression) \
+    do { \
+        if (!(expression)) { \
+            std::cerr << "CHECK failed: " #expression << " (line " << __LINE__ << ")\n"; \
+            return __LINE__; \
+        } \
+    } while (false)
+
+    CHECK(backend.is_ready());
+    CHECK(g_stream_max_chunk_frames == 4);
 
     NativeQwenCompletion completion;
     NativeQwenSynthesisRequest request;
     request.text = "eos";
-    assert(backend.synthesize(request, {}, {}, nullptr, &completion));
-    assert(completion.finish_reason == NativeQwenFinishReason::NaturalEos);
+    CHECK(backend.synthesize(request, {}, {}, nullptr, &completion));
+    CHECK(completion.finish_reason == NativeQwenFinishReason::NaturalEos);
 
     request.text = "max";
     completion.finish_reason = NativeQwenFinishReason::NaturalEos;
-    assert(backend.synthesize(request, {}, {}, nullptr, &completion));
-    assert(completion.finish_reason == NativeQwenFinishReason::MaxTokens);
+    CHECK(backend.synthesize(request, {}, {}, nullptr, &completion));
+    CHECK(completion.finish_reason == NativeQwenFinishReason::MaxTokens);
 
     request.text = "unknown";
     completion.finish_reason = NativeQwenFinishReason::NaturalEos;
-    assert(!backend.synthesize(request, {}, {}, nullptr, &completion));
-    assert(completion.finish_reason == NativeQwenFinishReason::Unknown);
-    assert(backend.last_error().find("unknown finish reason") != std::string::npos);
+    CHECK(!backend.synthesize(request, {}, {}, nullptr, &completion));
+    CHECK(completion.finish_reason == NativeQwenFinishReason::Unknown);
+    CHECK(backend.last_error().find("unknown finish reason") != std::string::npos);
+#undef CHECK
     return 0;
 }

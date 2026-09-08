@@ -144,8 +144,14 @@ jobs:
 
       - name: Build native ABI smoke-test
         shell: pwsh
-        run: cmake --build build/native-qwentts --config Release --target native_qwen_backend_abi_test --parallel
+        run: >
+          cmake --build build/native-qwentts --config Release
+          --target native_qwen_backend_abi_test native_qwen_backend_finish_test
+          --parallel
 
       - name: Run native ABI smoke-test
         shell: pwsh
-        run: ctest --test-dir build/native-qwentts -C Release -R native_qwen_backend_abi_test --output-on-failure
+        run: >
+          ctest --test-dir build/native-qwentts -C Release
+          -R "native_qwen_backend_(abi|finish)_test"
+          --output-on-failure

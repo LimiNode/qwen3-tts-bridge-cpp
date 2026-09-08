@@ -22,6 +22,12 @@ set(QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cpp" 
 set(QWEN_TTS_BRIDGE_EXTERNAL_PYTHON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/python" CACHE PATH "Python dependency directory")
 set(QWEN_TTS_BRIDGE_QWENTTS_DIR "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp" CACHE PATH "qwentts.cpp reference directory")
 
+set(_qwen_tts_bridge_build_shared_libs_defined FALSE)
+if(DEFINED BUILD_SHARED_LIBS)
+    set(_qwen_tts_bridge_build_shared_libs_defined TRUE)
+    set(_qwen_tts_bridge_build_shared_libs_value "${BUILD_SHARED_LIBS}")
+endif()
+
 if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
     # qwentts.cpp is intentionally opt-in: its GGML graph and model format are
     # a separate runtime path and must not alter the accepted Python worker
@@ -46,11 +52,14 @@ if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
     endforeach()
 endif()
 
-# ggml exposes BUILD_SHARED_LIBS as a directory-wide option. Keep the bridge
-# and its process dependency static even when the opt-in qwentts build selected
-# shared GGML targets; otherwise MSVC would make the normal bridge target a DLL
-# and leave consumers looking for a missing static import library.
-set(BUILD_SHARED_LIBS OFF)
+# qwentts.cpp/ggml may modify BUILD_SHARED_LIBS while being configured as a
+# nested project. Restore the caller's value before configuring bridge-owned
+# dependencies and targets, so an opt-in native build cannot leak its policy.
+if(_qwen_tts_bridge_build_shared_libs_defined)
+    set(BUILD_SHARED_LIBS "${_qwen_tts_bridge_build_shared_libs_value}")
+else()
+    set(BUILD_SHARED_LIBS OFF)
+endif()
 add_subdirectory(
     "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tiny-process-library"
     "${CMAKE_CURRENT_BINARY_DIR}/tiny-process-library"
