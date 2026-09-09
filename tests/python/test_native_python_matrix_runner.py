@@ -16,7 +16,10 @@ FULL_TEMPLATE = ROOT / "docs" / "acceptance" / "native-python-full.template.json
 
 class NativePythonMatrixRunnerTests(unittest.TestCase):
     def test_failed_playback_gate_returns_nonzero(self) -> None:
-        powershell = shutil.which("powershell.exe") or shutil.which("pwsh")
+        # Prefer PowerShell 7 when available: the runner relies on modern
+        # cmdlets such as Get-FileHash, which are not present in legacy
+        # Windows PowerShell installations found on some hosted images.
+        powershell = shutil.which("pwsh") or shutil.which("powershell.exe")
         if powershell is None:
             self.skipTest("PowerShell is required for the runner integration check")
 
