@@ -101,6 +101,8 @@ bool QwenTtsClient::start(
         running_ = true;
         stopping_ = false;
         terminal_failure_handled_ = false;
+        late_audio_after_terminal_count_ = 0;
+        duplicate_terminal_event_count_ = 0;
     }
 
     try {
@@ -210,6 +212,16 @@ bool QwenTtsClient::cancel(RequestId request_id) {
 bool QwenTtsClient::is_running() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return running_ && !stopping_ && session_ != nullptr;
+}
+
+std::uint64_t QwenTtsClient::late_audio_after_terminal_count() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return late_audio_after_terminal_count_;
+}
+
+std::uint64_t QwenTtsClient::duplicate_terminal_event_count() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return duplicate_terminal_event_count_;
 }
 
 bool QwenTtsClient::ready_message(ReadyMessage& ready) const {
@@ -477,6 +489,7 @@ void QwenTtsClient::handle_audio_event(WorkerSessionEvent event) {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = active_requests_.find(event.request_id);
         if (it == active_requests_.end()) {
+            ++late_audio_after_terminal_count_;
             return;
         }
         callbacks = it->second.callbacks;
@@ -550,6 +563,7 @@ void QwenTtsClient::complete_request(
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = active_requests_.find(request_id);
         if (it == active_requests_.end()) {
+            ++duplicate_terminal_event_count_;
             return;
         }
         callbacks = std::move(it->second.callbacks);
@@ -584,6 +598,7 @@ void QwenTtsClient::cancel_request_locally(RequestId request_id) {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = active_requests_.find(request_id);
         if (it == active_requests_.end()) {
+            ++duplicate_terminal_event_count_;
             return;
         }
         callbacks = std::move(it->second.callbacks);
@@ -601,6 +616,7 @@ void QwenTtsClient::fail_request(RequestId request_id, TtsError error) {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = active_requests_.find(request_id);
         if (it == active_requests_.end()) {
+            ++duplicate_terminal_event_count_;
             return;
         }
         callbacks = std::move(it->second.callbacks);

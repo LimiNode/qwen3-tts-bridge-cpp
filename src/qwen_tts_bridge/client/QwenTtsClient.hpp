@@ -5,6 +5,7 @@
 
 #include <condition_variable>
 #include <cstddef>
+#include <cstdint>
 #include <deque>
 #include <exception>
 #include <functional>
@@ -104,6 +105,12 @@ public:
     /// \return True when the worker is running and has sent ready.
     bool ready_message(ReadyMessage& ready) const;
 
+    /// \brief Returns the number of audio frames discarded after request termination.
+    std::uint64_t late_audio_after_terminal_count() const;
+
+    /// \brief Returns the number of duplicate terminal events discarded.
+    std::uint64_t duplicate_terminal_event_count() const;
+
     /// \brief Stops the client, worker session, and internal threads.
     ///
     /// This method is idempotent. It may block while the worker stops and
@@ -160,6 +167,8 @@ private:
     bool running_ = false;
     bool stopping_ = false;
     bool terminal_failure_handled_ = false;
+    std::uint64_t late_audio_after_terminal_count_ = 0;
+    std::uint64_t duplicate_terminal_event_count_ = 0;
 };
 
 } // namespace qwen_tts_bridge
