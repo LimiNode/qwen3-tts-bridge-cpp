@@ -53,18 +53,21 @@ standalone acceleration candidate on this build.
 ## Compatibility findings
 
 The launcher-only `--runtime-profile` settings are not sufficient to reproduce
-the historical 520--680 ms FasterQwen measurements. The old result depended on
-additional FasterQwen codec/runtime capabilities. On the current Base model,
-`QTB_FASTER_CODEC_RIGHT_PADDED_DECODE` (and its CUDA-graph and base-reference
-bootstrap companions) fails closed because the loaded 12 Hz decoder does not
-implement the required capture path. These switches were therefore disabled
-for the comparable run rather than silently mixing incompatible environments.
+the historical 520--680 ms FasterQwen measurements. The first comparison also
+exposed an environment problem: Windows Python was importing a stale per-user
+`qwen_tts` package from `%APPDATA%`, whose 12 Hz decoder class lacked
+`capture_cuda_graph` and `forward_optimized`. With `PYTHONNOUSERSITE=1`, the
+bundled decoder exposes both methods and the right-padded path starts normally.
+The acceptance runner now enforces that isolation for Python benchmark and
+playback processes.
 
-Consequently, the old 520--680 ms values must not be used as a native-vs-Python
-comparison until the exact compatible decoder/runtime package is restored. The
-current run is still valuable: it proves the native worker, provenance capture,
-EOS/cancellation gates, and cross-backend lifecycle harness work on real CMP
-hardware.
+Even with the correct decoder import, the restored-profile smoke measured about
+1.41 s first PCM after one warmup, not the historical ~520 ms. Reproducing that
+number still requires the exact voice-prefix warmup/profile artifact used by
+the original experiment; it must not be presented as a native-vs-Python result
+until that artifact is recovered. The current run remains valuable: it proves
+the native worker, provenance capture, EOS/cancellation gates, and cross-backend
+lifecycle harness work on real CMP hardware.
 
 ## Follow-up gates
 
