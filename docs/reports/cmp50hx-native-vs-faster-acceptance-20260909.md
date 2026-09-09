@@ -75,7 +75,8 @@ The launcher was then corrected to make the profile warmup use the same
 language as the first request and to export `PYTHONNOUSERSITE=1` while the
 worker process is running. A one-shot English request using the registered
 `kraftwerk_robot_ru_bootstrap_fidelity` voice, FasterQwen source
-`C:\\tmp\\qwen-prefix-reuse-20260904\\faster`, right-padded W29/CUDA Graph,
+`C:\\tmp\\qwen-prefix-reuse-20260904\\faster` at commit
+`90b596d2ffa41eb2da173db92e6f896df11b19cb`, right-padded W29/CUDA Graph,
 E3-to-E4 schedule, and one warmup produced the following objective result:
 
 ```text
