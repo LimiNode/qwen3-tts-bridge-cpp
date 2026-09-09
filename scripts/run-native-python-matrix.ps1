@@ -79,7 +79,10 @@ function Assert-GpuSelection() {
     } catch {
         throw "nvidia-smi is required unless -SkipGpuSampling is supplied."
     }
-    if ($LASTEXITCODE -ne 0 -or $query.Count -eq 0) {
+    # PowerShell unwraps a one-line command result to a scalar even when the
+    # producer is wrapped in @(...).  Re-wrap at the check site so StrictMode
+    # behaves consistently for one-GPU and multi-GPU hosts.
+    if ($LASTEXITCODE -ne 0 -or @($query).Count -eq 0) {
         throw "Selected GPU index $GpuIndex is unavailable; use -SkipGpuSampling only for non-VRAM diagnostic runs."
     }
 }
@@ -140,8 +143,19 @@ function Invoke-Benchmark(
     $gpuSamples = Join-Path ([System.IO.Path]::GetDirectoryName($ResultPath)) "$Name-gpu.csv"
     $sampler = Start-GpuSampler $gpuSamples
     try {
-        & $BenchmarkExecutable @($command) 2> $StderrPath
-        $exitCode = $LASTEXITCODE
+        # Native workers may intentionally emit diagnostics/warnings to
+        # stderr even when the benchmark itself succeeds.  With
+        # $ErrorActionPreference=Stop, PowerShell promotes that redirected
+        # native stream to a terminating NativeCommandError.  Capture the
+        # stream and inspect the process exit code explicitly instead.
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            & $BenchmarkExecutable @($command) 2> $StderrPath
+            $exitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
     } finally {
         $peak = Stop-GpuSampler $sampler $gpuSamples
     }
