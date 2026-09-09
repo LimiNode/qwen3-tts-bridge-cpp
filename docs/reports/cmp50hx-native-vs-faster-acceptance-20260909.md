@@ -44,6 +44,12 @@ the current qwentts.cpp ABI does not yet expose the Python profile's split/fallb
 policy, so long text must be routed or rejected before native generation in a
 release configuration.
 
+An additional native A/B with `stream_max_chunk_frames=4` versus `8` (three
+short/medium rows, fresh worker each time) showed no meaningful first-PCM
+improvement: median 2.130 s versus 2.117 s, respectively. The setting changed
+chunk grouping but not the dominant time-to-first-audio path, so it is not a
+standalone acceleration candidate on this build.
+
 ## Compatibility findings
 
 The launcher-only `--runtime-profile` settings are not sufficient to reproduce
