@@ -581,11 +581,34 @@ if ($WarmupReferenceAudioPath) {
     $WarmupReferenceAudioPath = Resolve-ReferencePath $WarmupReferenceAudioPath $manifestRootForWarmup
     $warmupReferenceProvenance = Get-WarmupReferenceProvenance $originalWarmupReferencePath $manifestRootForWarmup
 }
-$pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $effectiveManifestPath
+$pythonUserSite = [Environment]::GetEnvironmentVariable("PYTHONNOUSERSITE", "Process")
+$env:PYTHONNOUSERSITE = "1"
+try {
+    # Acceptance must use the packaged/runtime PYTHONPATH deterministically.
+    # A stale per-user qwen_tts install can shadow the bundled 12 Hz decoder
+    # and make right-padded CUDA-graph capability appear to be missing.
+    $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $effectiveManifestPath
+} finally {
+    if ($null -eq $pythonUserSite) {
+        Remove-Item Env:PYTHONNOUSERSITE -ErrorAction SilentlyContinue
+    } else {
+        $env:PYTHONNOUSERSITE = $pythonUserSite
+    }
+}
     $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $runDirectory "native.json") (Join-Path $runDirectory "native.stderr.log") $effectiveManifestPath
+    $pythonUserSite = [Environment]::GetEnvironmentVariable("PYTHONNOUSERSITE", "Process")
+    $env:PYTHONNOUSERSITE = "1"
+    try {
     $playback = [ordered]@{
         python = Invoke-Playback "python" $python $PythonWorkerArgument $runDirectory $playbackManifestSpec
         native = Invoke-Playback "native" $native $NativeWorkerArgument $runDirectory $playbackManifestSpec
+    }
+    } finally {
+        if ($null -eq $pythonUserSite) {
+            Remove-Item Env:PYTHONNOUSERSITE -ErrorAction SilentlyContinue
+        } else {
+            $env:PYTHONNOUSERSITE = $pythonUserSite
+        }
     }
     $gpu = @()
     try {
