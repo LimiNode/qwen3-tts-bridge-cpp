@@ -4,6 +4,7 @@ import json
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -23,8 +24,8 @@ class NativePythonMatrixRunnerTests(unittest.TestCase):
             root = pathlib.Path(temporary)
             benchmark = root / "mock-benchmark.ps1"
             playback = root / "mock-playback.ps1"
-            python_worker = root / "python-worker.exe"
-            native_worker = root / "native-worker.exe"
+            python_worker = pathlib.Path(sys.executable)
+            native_worker = pathlib.Path(sys.executable)
             output = root / "matrix.json"
 
             benchmark.write_text(
@@ -49,9 +50,6 @@ exit 0
 """.strip(),
                 encoding="utf-8",
             )
-            python_worker.touch()
-            native_worker.touch()
-
             completed = subprocess.run(
                 [
                     powershell,
@@ -87,7 +85,10 @@ exit 0
                 0,
                 completed.stdout + completed.stderr,
             )
-            self.assertTrue(output.is_file())
+            self.assertTrue(
+                output.is_file(),
+                completed.stdout + completed.stderr,
+            )
             matrix = json.loads(output.read_text(encoding="utf-8-sig"))
             self.assertFalse(matrix["playback"]["python"]["gate_passed"])
             self.assertFalse(matrix["playback"]["native"]["gate_passed"])
