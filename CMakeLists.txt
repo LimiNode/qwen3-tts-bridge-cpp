@@ -22,6 +22,12 @@ set(QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cpp" 
 set(QWEN_TTS_BRIDGE_EXTERNAL_PYTHON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/python" CACHE PATH "Python dependency directory")
 set(QWEN_TTS_BRIDGE_QWENTTS_DIR "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp" CACHE PATH "qwentts.cpp reference directory")
 
+set(_qwen_tts_bridge_build_shared_libs_defined FALSE)
+if(DEFINED BUILD_SHARED_LIBS)
+    set(_qwen_tts_bridge_build_shared_libs_defined TRUE)
+    set(_qwen_tts_bridge_build_shared_libs_value "${BUILD_SHARED_LIBS}")
+endif()
+
 if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
     # qwentts.cpp is intentionally opt-in: its GGML graph and model format are
     # a separate runtime path and must not alter the accepted Python worker
@@ -46,6 +52,19 @@ if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
     endforeach()
 endif()
 
+# qwentts.cpp/ggml may modify BUILD_SHARED_LIBS while being configured as a
+# nested project. Restore the caller's value before configuring bridge-owned
+# dependencies and targets, so an opt-in native build cannot leak its policy.
+if(_qwen_tts_bridge_build_shared_libs_defined)
+    set(BUILD_SHARED_LIBS "${_qwen_tts_bridge_build_shared_libs_value}")
+else()
+    # ggml's option(BUILD_SHARED_LIBS, ...) creates a cache entry when the
+    # caller did not provide one.  Remove both scopes so that this nested
+    # project's default cannot leak into the next configure of the same build
+    # directory.
+    unset(BUILD_SHARED_LIBS)
+    unset(BUILD_SHARED_LIBS CACHE)
+endif()
 add_subdirectory(
     "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tiny-process-library"
     "${CMAKE_CURRENT_BINARY_DIR}/tiny-process-library"
@@ -284,6 +303,18 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 QwenTTSBridge::qwen_tts_bridge_native
         )
         add_test(NAME native_qwen_backend_abi_test COMMAND native_qwen_backend_abi_test)
+
+        add_executable(native_qwen_backend_finish_test
+            src/qwen_tts_bridge/native/NativeQwenBackend.cpp
+            tests/native_qwen_backend_finish_test.cpp
+        )
+        target_compile_definitions(native_qwen_backend_finish_test PRIVATE QWEN_STATIC)
+        target_include_directories(native_qwen_backend_finish_test
+            PRIVATE
+                "${QWEN_TTS_BRIDGE_SRC_DIR}"
+                "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src"
+        )
+        add_test(NAME native_qwen_backend_finish_test COMMAND native_qwen_backend_finish_test)
     endif()
 
     add_executable(protocol_frame_test

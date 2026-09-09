@@ -13,6 +13,18 @@ std::string qwen_error_or(const char* fallback) {
                                                    : std::string(message);
 }
 
+NativeQwenFinishReason map_finish_reason(qt_finish_reason reason) noexcept {
+    switch (reason) {
+    case QT_FINISH_EOS:
+        return NativeQwenFinishReason::NaturalEos;
+    case QT_FINISH_MAX_TOKENS:
+        return NativeQwenFinishReason::MaxTokens;
+    case QT_FINISH_UNKNOWN:
+    default:
+        return NativeQwenFinishReason::Unknown;
+    }
+}
+
 struct CallbackState {
     const NativeQwenBackend::AudioChunkCallback* on_chunk = nullptr;
     const NativeQwenBackend::CancelCallback* cancel = nullptr;
@@ -57,6 +69,7 @@ NativeQwenBackend::NativeQwenBackend(const NativeQwenBackendOptions& options)
     params.codec_path = options.codec_path.c_str();
     params.use_fa = options.use_flash_attention;
     params.clamp_fp16 = options.clamp_fp16;
+    params.stream_max_chunk_frames = options.stream_max_chunk_frames;
     impl_->context = qt_init(&params);
     if (impl_->context == nullptr) {
         impl_->error = qwen_error_or("qwentts.cpp initialization failed");
@@ -84,11 +97,19 @@ std::string NativeQwenBackend::version() const {
     return value == nullptr ? std::string() : std::string(value);
 }
 
+NativeQwenCapabilities NativeQwenBackend::capabilities() noexcept {
+    return {};
+}
+
 bool NativeQwenBackend::synthesize(
     const NativeQwenSynthesisRequest& request,
     AudioChunkCallback on_chunk,
     CancelCallback cancel,
-    NativeQwenAudio* output) {
+    NativeQwenAudio* output,
+    NativeQwenCompletion* completion) {
+    if (completion != nullptr) {
+        completion->finish_reason = NativeQwenFinishReason::Unknown;
+    }
     if (!is_ready()) {
         return false;
     }
@@ -125,6 +146,15 @@ bool NativeQwenBackend::synthesize(
         impl_->error = qwen_error_or("qwentts.cpp synthesis failed");
         qt_audio_free(&audio);
         return false;
+    }
+    const auto finish_reason = map_finish_reason(qt_last_finish_reason());
+    if (finish_reason == NativeQwenFinishReason::Unknown) {
+        impl_->error = "native synthesis returned unknown finish reason";
+        qt_audio_free(&audio);
+        return false;
+    }
+    if (completion != nullptr) {
+        completion->finish_reason = finish_reason;
     }
     if (output != nullptr && !on_chunk) {
         if (audio.samples != nullptr && audio.n_samples > 0) {

@@ -31,13 +31,19 @@ RTX 4090 or vice versa; route by adapter capabilities and measured gates.
 
 The qwentts ABI now exposes `stream_max_chunk_frames` (1, 2, 4, or 8). This is
 the native counterpart of the steady streaming emission cadence. The bridge
-passes it through `--stream-max-chunk-frames` and keeps the default at 8 until
-hardware measurements prove a smaller cadence is stable.
+passes it through `--stream-max-chunk-frames` and exposes the same setting on
+`NativeQwenBackendOptions`. It keeps the default at 8 until hardware
+measurements prove a smaller cadence is stable.
 
 Successful native synthesis also reports a finish reason through
 `qt_last_finish_reason()`: `natural_eos` or `max_tokens`. The bridge forwards
 this as `completed.execution_outcome`, allowing acceptance runs to reject
 utterances truncated by the configured token limit.
+
+The in-process adapter exposes `NativeQwenBackend::capabilities()`. Unsupported
+profile fields are reported as false there rather than silently treated as
+native settings. Its completion output maps the ABI finish reason to
+`NaturalEos` or `MaxTokens` and rejects an unknown successful reason.
 
 Several earlier optimizations already have native equivalents, but they still
 need to be measured under the common matrix:
