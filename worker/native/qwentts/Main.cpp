@@ -97,12 +97,17 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
             const auto value = require_value(index, argc, argv, L"--max-new-tokens");
             options.max_new_tokens = std::stoi(value.wstring());
         }
+        else if (argument == L"--max-text-bytes") {
+            const auto value = require_value(index, argc, argv, L"--max-text-bytes");
+            options.max_text_bytes = std::stoi(value.wstring());
+        }
         else if (argument == L"--help" || argument == L"-h") {
             std::cerr
                 << "qwen_tts_native_worker --runtime-dir DIR --talker-model FILE --codec-model FILE\n"
                 << "  [--dll-path FILE] [--manifest-path FILE] [--no-flash-attention]\n"
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
-                << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n";
+                << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
+                << "  [--max-text-bytes N]\n";
             std::exit(EXIT_SUCCESS);
         }
         else {
@@ -139,6 +144,9 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
     }
     if (options.max_new_tokens < 1 || options.max_new_tokens > 65536) {
         throw std::invalid_argument("--max-new-tokens must be in [1, 65536]");
+    }
+    if (options.max_text_bytes < 0 || options.max_text_bytes > 1048576) {
+        throw std::invalid_argument("--max-text-bytes must be in [0, 1048576]");
     }
     return options;
 }

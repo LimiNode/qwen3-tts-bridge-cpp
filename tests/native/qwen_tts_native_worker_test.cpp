@@ -36,7 +36,8 @@ struct Probe {
 StdIoTransportOptions options(
     int stream_max_chunk_frames = 8,
     std::string* stderr_capture = nullptr,
-    std::atomic<bool>* cadence_observed = nullptr) {
+    std::atomic<bool>* cadence_observed = nullptr,
+    int max_text_bytes = 0) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
@@ -46,6 +47,10 @@ StdIoTransportOptions options(
         "--talker-model", (runtime / "talker.gguf").string(),
         "--codec-model", (runtime / "codec.gguf").string()
     };
+    if (max_text_bytes > 0) {
+        result.arguments.push_back("--max-text-bytes");
+        result.arguments.push_back(std::to_string(max_text_bytes));
+    }
     result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
         if (stderr_capture != nullptr) {
             *stderr_capture += message;
@@ -193,6 +198,28 @@ int main() {
     CHECK(static_cast<unsigned char>(probe.audio[1]) == 0x80u);
     CHECK(static_cast<unsigned char>(probe.audio[10]) == 0xffu);
     CHECK(static_cast<unsigned char>(probe.audio[11]) == 0x7fu);
+
+    QwenTtsClient limited_client;
+    QwenTtsClientOptions limited_options;
+    limited_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(limited_client.start(options(8, nullptr, nullptr, 4), limited_options));
+    Probe limited_probe;
+    TtsCallbacks limited_callbacks;
+    limited_callbacks.on_error = [&limited_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(limited_probe.mutex);
+        limited_probe.errors.push_back(error);
+        limited_probe.condition.notify_all();
+    };
+    CHECK(limited_client.synthesize_async("native worker request", limited_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(limited_probe.mutex);
+        CHECK(limited_probe.condition.wait_for(lock, std::chrono::seconds(5), [&limited_probe]() {
+            return !limited_probe.errors.empty();
+        }));
+    }
+    CHECK(limited_probe.errors.size() == 1);
+    CHECK(limited_probe.errors.front().code == "sequence_capacity_exceeded");
+    limited_client.stop();
 
     Probe cancelled_probe;
     TtsCallbacks cancelled_callbacks;

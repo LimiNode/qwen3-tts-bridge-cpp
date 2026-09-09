@@ -23,6 +23,7 @@ struct NativeEngineOptions {
     float codec_chunk_seconds = 24.0F;
     int stream_max_chunk_frames = 8;
     int max_new_tokens = 2048;
+    int max_text_bytes = 0; ///< Optional preflight bound; 0 disables length routing.
 };
 
 enum class SynthesisOutcome {
