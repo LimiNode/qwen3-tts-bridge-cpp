@@ -479,6 +479,69 @@ print(json.dumps(result, sort_keys=True))
     } catch { }
     return [ordered]@{}
 }
+function Get-PythonImportProvenance([string] $PythonExecutable) {
+    $code = @'
+import importlib.util
+import json
+
+result = {}
+for name in ("faster_qwen3_tts", "qwen_tts", "qwen_tts_bridge_worker"):
+    try:
+        spec = importlib.util.find_spec(name)
+    except Exception as exc:
+        result[name] = {"available": False, "error": str(exc)}
+        continue
+    if spec is None:
+        result[name] = {"available": False}
+        continue
+    result[name] = {
+        "available": True,
+        "origin": spec.origin,
+        "submodule_search_locations": list(spec.submodule_search_locations or []),
+    }
+print(json.dumps(result, sort_keys=True))
+'@
+    try {
+        $raw = (& $PythonExecutable -c $code 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -eq 0 -and $raw) { return ($raw | ConvertFrom-Json) }
+    } catch { }
+    return [ordered]@{}
+}
+function Enter-PythonSourceEnvironment() {
+    $state = [ordered]@{
+        python_path = [Environment]::GetEnvironmentVariable("PYTHONPATH", "Process")
+        no_user_site = [Environment]::GetEnvironmentVariable("PYTHONNOUSERSITE", "Process")
+    }
+    $paths = [System.Collections.Generic.List[string]]::new()
+    foreach ($source in @($FasterQwenSourcePath, $QwenSourcePath)) {
+        if (-not [string]::IsNullOrWhiteSpace($source)) {
+            [void]$paths.Add([System.IO.Path]::GetFullPath($source))
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string]$state.python_path)) {
+        [void]$paths.Add([string]$state.python_path)
+    }
+    if ($paths.Count -gt 0) {
+        $env:PYTHONPATH = $paths -join [System.IO.Path]::PathSeparator
+    } else {
+        Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+    }
+    $env:PYTHONNOUSERSITE = "1"
+    return [pscustomobject]$state
+}
+function Exit-PythonSourceEnvironment([object] $State) {
+    if ($null -eq $State) { return }
+    if ($null -eq $State.python_path) {
+        Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+    } else {
+        $env:PYTHONPATH = $State.python_path
+    }
+    if ($null -eq $State.no_user_site) {
+        Remove-Item Env:PYTHONNOUSERSITE -ErrorAction SilentlyContinue
+    } else {
+        $env:PYTHONNOUSERSITE = $State.no_user_site
+    }
+}
 function Get-ReferenceAudioProvenance([string] $ManifestPath) {
     $entries = @()
     if (-not $ManifestPath) { return ,$entries }
@@ -581,34 +644,33 @@ if ($WarmupReferenceAudioPath) {
     $WarmupReferenceAudioPath = Resolve-ReferencePath $WarmupReferenceAudioPath $manifestRootForWarmup
     $warmupReferenceProvenance = Get-WarmupReferenceProvenance $originalWarmupReferencePath $manifestRootForWarmup
 }
-$pythonUserSite = [Environment]::GetEnvironmentVariable("PYTHONNOUSERSITE", "Process")
-$env:PYTHONNOUSERSITE = "1"
+$pythonEnvironmentState = Enter-PythonSourceEnvironment
+$pythonImportProvenance = [ordered]@{}
+$pythonImportSnapshot = $null
 try {
-    # Acceptance must use the packaged/runtime PYTHONPATH deterministically.
-    # A stale per-user qwen_tts install can shadow the bundled 12 Hz decoder
-    # and make right-padded CUDA-graph capability appear to be missing.
+    # Acceptance must use the supplied source trees deterministically.  A
+    # stale package in the selected venv can otherwise shadow the pinned
+    # FasterQwen/Qwen sources even when PYTHONNOUSERSITE is enabled.
+    $pythonImportProvenance = Get-PythonImportProvenance $python
+    $pythonImportPath = Join-Path $runDirectory "python-import-provenance.json"
+    $pythonImportProvenance | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $pythonImportPath -Encoding UTF8
+    $pythonImportSnapshot = [ordered]@{
+        path = $pythonImportPath
+        sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $pythonImportPath).Hash.ToLowerInvariant()
+    }
     $pythonResult = Invoke-Benchmark "python" $python $PythonWorkerArgument (Join-Path $runDirectory "python.json") (Join-Path $runDirectory "python.stderr.log") $effectiveManifestPath
 } finally {
-    if ($null -eq $pythonUserSite) {
-        Remove-Item Env:PYTHONNOUSERSITE -ErrorAction SilentlyContinue
-    } else {
-        $env:PYTHONNOUSERSITE = $pythonUserSite
-    }
+    Exit-PythonSourceEnvironment $pythonEnvironmentState
 }
     $nativeResult = Invoke-Benchmark "native" $native $NativeWorkerArgument (Join-Path $runDirectory "native.json") (Join-Path $runDirectory "native.stderr.log") $effectiveManifestPath
-    $pythonUserSite = [Environment]::GetEnvironmentVariable("PYTHONNOUSERSITE", "Process")
-    $env:PYTHONNOUSERSITE = "1"
+    $playbackEnvironmentState = Enter-PythonSourceEnvironment
     try {
     $playback = [ordered]@{
         python = Invoke-Playback "python" $python $PythonWorkerArgument $runDirectory $playbackManifestSpec
         native = Invoke-Playback "native" $native $NativeWorkerArgument $runDirectory $playbackManifestSpec
     }
     } finally {
-        if ($null -eq $pythonUserSite) {
-            Remove-Item Env:PYTHONNOUSERSITE -ErrorAction SilentlyContinue
-        } else {
-            $env:PYTHONNOUSERSITE = $pythonUserSite
-        }
+        Exit-PythonSourceEnvironment $playbackEnvironmentState
     }
     $gpu = @()
     try {
@@ -639,6 +701,8 @@ try {
             native_worker_executable = [ordered]@{ path = $native; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $native).Hash.ToLowerInvariant() }
             playback_executable = if ($PlaybackExecutable) { [ordered]@{ path = (Resolve-Path -LiteralPath $PlaybackExecutable).Path; sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $PlaybackExecutable).Hash.ToLowerInvariant() } } else { $null }
             python_worker = $pythonExecutableSnapshot
+            python_imports = $pythonImportProvenance
+            python_import_provenance = $pythonImportSnapshot
             python_runtime_profile_manifest = $pythonProfileSnapshot
             python_compiled_allowlist_manifest = $pythonAllowlistSnapshot
             python_sources = $pythonSourceProvenance

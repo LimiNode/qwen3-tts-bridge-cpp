@@ -351,6 +351,39 @@ int main() {
     CHECK(unknown_probe.errors.size() == 1);
     CHECK(unknown_probe.errors.front().code == "invalid_finish_reason");
 
+    Probe empty_eos_probe;
+    TtsCallbacks empty_eos_callbacks;
+    empty_eos_callbacks.on_audio = [&empty_eos_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(empty_eos_probe.mutex);
+        empty_eos_probe.audio.insert(
+            empty_eos_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+        empty_eos_probe.condition.notify_all();
+    };
+    empty_eos_callbacks.on_completed = [&empty_eos_probe]() {
+        std::lock_guard<std::mutex> lock(empty_eos_probe.mutex);
+        ++empty_eos_probe.completed;
+        empty_eos_probe.condition.notify_all();
+    };
+    empty_eos_callbacks.on_error = [&empty_eos_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(empty_eos_probe.mutex);
+        empty_eos_probe.errors.push_back(error);
+        empty_eos_probe.condition.notify_all();
+    };
+    CHECK(client.synthesize_async("force empty eos", empty_eos_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(empty_eos_probe.mutex);
+        CHECK(empty_eos_probe.condition.wait_for(
+            lock, std::chrono::seconds(5), [&empty_eos_probe]() {
+                return !empty_eos_probe.errors.empty() ||
+                    empty_eos_probe.completed != 0;
+            }));
+    }
+    CHECK(empty_eos_probe.completed == 0);
+    CHECK(empty_eos_probe.errors.size() == 1);
+    CHECK(empty_eos_probe.errors.front().category == "model_error");
+    CHECK(empty_eos_probe.errors.front().code == "empty_audio");
+    CHECK(empty_eos_probe.audio.empty());
+
     client.stop();
     return EXIT_SUCCESS;
 }
