@@ -69,10 +69,35 @@ until that artifact is recovered. The current run remains valuable: it proves
 the native worker, provenance capture, EOS/cancellation gates, and cross-backend
 lifecycle harness work on real CMP hardware.
 
+### Corrected registered-voice smoke
+
+The launcher was then corrected to make the profile warmup use the same
+language as the first request and to export `PYTHONNOUSERSITE=1` while the
+worker process is running. A one-shot English request using the registered
+`kraftwerk_robot_ru_bootstrap_fidelity` voice, FasterQwen source
+`C:\\tmp\\qwen-prefix-reuse-20260904\\faster`, right-padded W29/CUDA Graph,
+E3-to-E4 schedule, and one warmup produced the following objective result:
+
+```text
+first_audio_ms = 524.731
+audio_duration_ms = 5920.0
+audio_chunks = 19
+termination = natural EOS
+voice_clone_prompt_source = precomputed
+voice_clone_prompt_sha256_before == voice_clone_prompt_sha256_after
+```
+
+This reproduces the historical approximately 520--543 ms cache-hit range on
+the CMP 50HX. The earlier 1.41 s observation was a cold/mismatched warmup and
+must not be used as the restored-profile performance number. The isolated
+user-site environment is now enforced by both the acceptance runners and the
+interactive launcher.
+
 ## Follow-up gates
 
-1. Restore or package the compatible FasterQwen decoder if the historical
-   low-latency numbers must be reproduced.
+1. Keep the compatible FasterQwen decoder revision and user-site isolation
+   pinned in deployment; the historical low-latency range is now reproduced by
+   the registered-voice launcher smoke.
 2. Add native profile routing/fallback before accepting long rows; native
    currently supports stream cadence values 1/2/4/8, but not W29/W33, prefix-KV
    reuse, or the Python codec scheduling policy.
