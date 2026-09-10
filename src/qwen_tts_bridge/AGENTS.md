@@ -1,4 +1,4 @@
-# `src/qwen_tts_bridge/` ? bridge domains
+# `src/qwen_tts_bridge/` — bridge domains
 
 This directory contains the stable C++ bridge API. Public umbrella headers
 should be the connection points between domains; use local quoted includes

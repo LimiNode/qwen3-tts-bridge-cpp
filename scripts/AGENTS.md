@@ -1,4 +1,4 @@
-# `scripts/` ? setup, benchmark, and packaging scripts
+# `scripts/` — setup, benchmark, and packaging scripts
 
 Scripts are part of the product contract. Validate paths before use, avoid
 machine-specific defaults, preserve caller environment variables, and return a

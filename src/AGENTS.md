@@ -1,4 +1,4 @@
-# `src/` ? C++ library source
+# `src/` — C++ library source
 
 The public bridge is split by protocol, transport, session, client, audio, and
 native adapter responsibilities. Read the root [`AGENTS.md`](../AGENTS.md) for

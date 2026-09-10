@@ -1,4 +1,4 @@
-# `tests/` ? regression and acceptance tests
+# `tests/` — regression and acceptance tests
 
 Tests must exercise observable behavior and failure modes. Prefer deterministic
 fixtures and the mock worker for protocol/lifecycle tests; keep real-model and

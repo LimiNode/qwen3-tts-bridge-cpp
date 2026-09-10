@@ -1,4 +1,4 @@
-# `docs/` ? durable project knowledge
+# `docs/` — durable project knowledge
 
 Keep reproducible methods, benchmark evidence, profile trade-offs, and
 architecture decisions here. Research reports must distinguish measured facts,

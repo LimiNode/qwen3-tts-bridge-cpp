@@ -1,4 +1,4 @@
-# `external/` ? pinned dependencies
+# `external/` — pinned dependencies
 
 All external source dependencies are git submodules pinned to reachable
 commits. Do not edit vendored code as part of a bridge change. For qwentts.cpp,

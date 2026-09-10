@@ -1,6 +1,6 @@
 # AI-assisted code quality review (2026-09-09)
 
-This review applies the heuristics from [???????? C++ ????](https://habr.com/ru/companies/pvs-studio/articles/1072264/)
+This review applies the heuristics from [“Опухший C++ код”](https://habr.com/ru/companies/pvs-studio/articles/1072264/)
 to the bridge at commit `1f2affffe88f772707bae25218e276ba4db8f1ca` (`main`
 after #74 and #75). It looks for duplicated policy, dead or
 redundant branches, unjustified abstractions, misleading exception contracts,

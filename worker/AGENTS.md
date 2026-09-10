@@ -1,4 +1,4 @@
-# `worker/` ? Python and native workers
+# `worker/` — Python and native workers
 
 The Python worker owns Python/FasterQwen model loading, CUDA policy, warmup,
 and model-specific streaming. The native worker owns qwentts runtime loading

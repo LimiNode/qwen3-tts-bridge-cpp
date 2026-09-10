@@ -1,4 +1,4 @@
-# `examples/` ? executable examples
+# `examples/` — executable examples
 
 Examples are integration probes, not a second library layer. Keep transport,
 protocol, and worker policy in the library; examples may compose them and own

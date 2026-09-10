@@ -4,7 +4,7 @@ This project accepts AI-assisted changes, but generated code is not a quality
 criterion. The goal is the smallest implementation that makes the required
 invariant explicit, testable, and maintainable.
 
-The policy is informed by Andrey Karpov's review [???????? C++ ????](https://habr.com/ru/companies/pvs-studio/articles/1072264/),
+The policy is informed by Andrey Karpov's review [“Опухший C++ код”](https://habr.com/ru/companies/pvs-studio/articles/1072264/),
 especially its observations about copy-paste growth, redundant conditions,
 unnecessary abstractions, and code that is harder for both people and static
 analysis to inspect.
@@ -17,7 +17,7 @@ analysis to inspect.
    blocks must either share one implementation or document why their semantics
    are intentionally different.
 3. Keep a function focused. Split a function when it owns independent policy,
-   lifecycle, parsing, or I/O decisions?not merely to hit an arbitrary line
+   lifecycle, parsing, or I/O decisions—not merely to hit an arbitrary line
    count.
 4. Do not add speculative layers, generic wrappers, compatibility aliases, or
    configuration knobs without a current caller and a test.
@@ -49,7 +49,7 @@ Before opening a PR, an agent must perform a short anti-slop pass:
 - run the narrowest relevant tests plus the normal build/lint checks;
 - record any intentionally deferred refactor instead of copying a second
   implementation;
-- include a brief ?quality review? note in the PR body when the change touches
+- include a brief “quality review” note in the PR body when the change touches
   a large file or adds more than one similar branch.
 
 The existing large benchmark, launcher, and model-adapter files are historical

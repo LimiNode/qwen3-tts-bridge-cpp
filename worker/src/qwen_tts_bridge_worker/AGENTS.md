@@ -1,6 +1,6 @@
 # Python worker package
 
-Keep the package layered as `cli` ? server/application lifecycle ? engine and
+Keep the package layered as `cli` → server/application lifecycle → engine and
 protocol mappings. The engine interface must not know stdin/stdout framing or
 JSON payload shapes. Keep the mock engine usable so protocol and lifecycle
 tests do not require CUDA.
