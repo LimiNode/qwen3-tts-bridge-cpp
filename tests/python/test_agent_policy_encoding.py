@@ -33,10 +33,15 @@ POLICY_FILES = (
     "worker/src/qwen_tts_bridge_worker/protocol/AGENTS.md",
 )
 
-SUSPICIOUS_QUESTION_MARK = re.compile(r"\w\?\w|\?{4,}")
+SUSPICIOUS_QUESTION_MARK = re.compile(r"\w\?\w| \? |\?{4,}")
 
 
 class AgentPolicyEncodingTests(unittest.TestCase):
+    def test_detects_known_question_mark_corruption_signatures(self) -> None:
+        for value in ("decisions?not", "docs/ ? durable knowledge", "????"):
+            with self.subTest(value=value):
+                self.assertIsNotNone(SUSPICIOUS_QUESTION_MARK.search(value))
+
     def test_policy_files_are_strict_utf8_without_replacement_characters(self) -> None:
         for relative_path in POLICY_FILES:
             with self.subTest(path=relative_path):
