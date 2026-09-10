@@ -452,7 +452,7 @@ class StdioWorkerServer:
         self._metrics.emit(
             "request_received",
             request_id=request_id,
-            voice_id=message.get("voice_id", ""),
+            has_reference_audio=bool(message.get("reference_audio_path")),
         )
         if self._shutdown_requested:
             self._send_error(
