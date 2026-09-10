@@ -57,6 +57,51 @@ def main() -> int:
         )
         if not warmup.get("has_reference_audio"):
             raise AssertionError(f"warmup did not receive reference audio: {warmup!r}")
+        if warmup.get("voice_id") != "":
+            raise AssertionError(
+                f"reference warmup unexpectedly had voice_id: {warmup!r}"
+            )
+
+        voice_result_path = work_dir / "voice-result.json"
+        voice_command = [
+            str(args.benchmark),
+            "--mock",
+            "--warmup-text",
+            "Warmup request",
+            "--voice-id",
+            "test-profile",
+            "--warmups",
+            "1",
+            "--requests",
+            "1",
+            "--result-json",
+            str(voice_result_path),
+        ]
+        voice_run = subprocess.run(
+            voice_command, capture_output=True, text=True, check=False
+        )
+        if voice_run.returncode != 0:
+            raise AssertionError(voice_run.stderr)
+        voice_metrics = [
+            json.loads(line.removeprefix("qtb_metric "))
+            for line in voice_run.stderr.splitlines()
+            if line.startswith("qtb_metric ")
+        ]
+        voice_warmup = next(
+            metric
+            for metric in voice_metrics
+            if metric.get("event") == "request_received"
+            and metric.get("request_id") == 1
+        )
+        if voice_warmup.get("voice_id") != "test-profile":
+            raise AssertionError(
+                f"registered-voice warmup lost voice_id: {voice_warmup!r}"
+            )
+        if voice_warmup.get("has_reference_audio"):
+            raise AssertionError(
+                f"registered-voice warmup unexpectedly had reference audio: "
+                f"{voice_warmup!r}"
+            )
 
         conflict = subprocess.run(
             [*command, "--voice-id", "test-profile"],
