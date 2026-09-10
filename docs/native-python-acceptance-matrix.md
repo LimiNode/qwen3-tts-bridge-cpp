@@ -84,6 +84,10 @@ silently consumed as warmups. For Base/reference-clone workers, also pass
 reference request rather than a text-only request. The runner resolves and
 records this WAV as `warmup_reference_audio` with an artifact copy and SHA-256,
 and stores the warmup transcript and terminal quiet period in `workload`.
+Do not combine `-VoiceId` with `-WarmupReferenceAudioPath`: registered voice
+profiles and direct reference-audio cloning are mutually exclusive protocol
+modes. Measure the registered-voice/prefix-KV path separately without a direct
+reference warmup.
 For negative or fallback cases, `allowed_terminal_outcomes` may list values such
 as `natural_eos`, `completed`, and `request_error`; optional
 `expected_error_category` and `expected_error_code` constrain an error without
