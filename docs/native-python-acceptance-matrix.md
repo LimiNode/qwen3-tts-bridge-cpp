@@ -115,11 +115,19 @@ pass `-PlaybackManifestLabel` to replay one exact row, including its voice,
 seed, instruction, and reference fields.
 
 When `-FasterQwenSourcePath` or `-QwenSourcePath` is supplied, the runner adds
-those trees to `PYTHONPATH` (in that order) for both Python benchmark and
-playback processes, while temporarily setting `PYTHONNOUSERSITE=1`. The prior
-environment is restored when each phase exits. The run evidence records the
-actual import origins discovered by the selected Python interpreter, so a
-venv/system package cannot silently stand in for the pinned source tree.
+the checked-out `worker/src` first, followed by those trees, to `PYTHONPATH` for
+both Python benchmark and playback processes, while temporarily setting
+`PYTHONNOUSERSITE=1`. The prior environment is restored when each phase exits.
+The run evidence records the actual import origins discovered by the selected
+Python interpreter, so a venv/system package cannot silently stand in for the
+checked-out bridge worker or pinned Qwen source trees.
+
+Registered-voice prefix-KV profiles are a separate best-latency experiment.
+Native qwentts currently accepts direct reference audio but does not expose the
+Python worker's registered `voice_id` registry, so a combined run must not pass
+the same `voice_id` to both backends. Use the direct-reference manifest for
+engine-parity measurements, then run `cmp50hx-fastest` independently as the
+optimized FasterQwen baseline.
 
 The checked-in smoke manifest intentionally has no machine-specific reference
 audio. Use `docs/acceptance/native-python-full.template.jsonl` as a starting

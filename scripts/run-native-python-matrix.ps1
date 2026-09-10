@@ -473,10 +473,13 @@ for name in names:
         pass
 print(json.dumps(result, sort_keys=True))
 '@
+    $probePath = Join-Path $runDirectory "python-package-provenance-probe.py"
     try {
-        $raw = (& $PythonExecutable -c $code 2>$null | Out-String).Trim()
+        Set-Content -LiteralPath $probePath -Value $code -Encoding UTF8
+        $raw = (& $PythonExecutable $probePath 2>$null | Out-String).Trim()
         if ($LASTEXITCODE -eq 0 -and $raw) { return ($raw | ConvertFrom-Json) }
     } catch { }
+    finally { Remove-Item -LiteralPath $probePath -Force -ErrorAction SilentlyContinue }
     return [ordered]@{}
 }
 function Get-PythonImportProvenance([string] $PythonExecutable) {
@@ -501,10 +504,13 @@ for name in ("faster_qwen3_tts", "qwen_tts", "qwen_tts_bridge_worker"):
     }
 print(json.dumps(result, sort_keys=True))
 '@
+    $probePath = Join-Path $runDirectory "python-import-provenance-probe.py"
     try {
-        $raw = (& $PythonExecutable -c $code 2>$null | Out-String).Trim()
+        Set-Content -LiteralPath $probePath -Value $code -Encoding UTF8
+        $raw = (& $PythonExecutable $probePath 2>$null | Out-String).Trim()
         if ($LASTEXITCODE -eq 0 -and $raw) { return ($raw | ConvertFrom-Json) }
     } catch { }
+    finally { Remove-Item -LiteralPath $probePath -Force -ErrorAction SilentlyContinue }
     return [ordered]@{}
 }
 function Enter-PythonSourceEnvironment() {

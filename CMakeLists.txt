@@ -472,6 +472,10 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 NAME qwen_tts_latency_benchmark_eos_contract
                 COMMAND qwen_tts_latency_benchmark --self-test-eos-contract
             )
+            add_test(
+                NAME qwen_tts_latency_benchmark_warmup_voice_id
+                COMMAND qwen_tts_latency_benchmark --self-test-warmup-voice-id
+            )
             if(WIN32)
                 add_test(
                     NAME qwen_tts_play_mock_utf8_example

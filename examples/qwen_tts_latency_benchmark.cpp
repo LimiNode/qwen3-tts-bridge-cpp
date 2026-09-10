@@ -49,6 +49,7 @@ using qwen_tts_bridge::TtsRequest;
 struct ProgramOptions {
     bool help = false;
     bool self_test_eos_contract = false;
+    bool self_test_warmup_voice_id = false;
     bool use_mock_worker = false;
     std::string worker_executable;
     std::vector<std::string> worker_arguments;
@@ -301,6 +302,7 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "Options:\n"
         << "  --help                         Show this help.\n"
         << "  --self-test-eos-contract       Exercise backend-neutral EOS acceptance branches.\n"
+        << "  --self-test-warmup-voice-id    Verify benchmark warmup keeps the global VoiceId.\n"
         << "  --mock                         Run the bundled Python mock worker.\n"
         << "  --worker <path>                Worker executable path.\n"
         << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
@@ -398,6 +400,9 @@ ProgramOptions parse_options(int argc, char** argv) {
         }
         else if (arg == "--self-test-eos-contract") {
             options.self_test_eos_contract = true;
+        }
+        else if (arg == "--self-test-warmup-voice-id") {
+            options.self_test_warmup_voice_id = true;
         }
         else if (arg == "--mock") {
             options.use_mock_worker = true;
@@ -1258,6 +1263,39 @@ int run_eos_contract_self_test() {
     return 0;
 }
 
+RequestSpec make_reference_warmup_spec(
+    const ProgramOptions& options,
+    const ProgramOptions& warmup_options) {
+    RequestSpec warmup_spec;
+    warmup_spec.text = warmup_options.text;
+    warmup_spec.language = options.language;
+    warmup_spec.speaker = options.speaker;
+    warmup_spec.voice_id = options.voice_id;
+    warmup_spec.instruction = options.instruction;
+    warmup_spec.reference_audio_path = options.warmup_reference_audio_path;
+    warmup_spec.reference_text = options.warmup_reference_text;
+    warmup_spec.x_vector_only = options.x_vector_only;
+    warmup_spec.seed = options.seed;
+    return warmup_spec;
+}
+
+int run_warmup_voice_id_self_test() {
+    ProgramOptions options;
+    options.text = "warmup";
+    options.language = "russian";
+    options.voice_id = "test-profile";
+    options.warmup_reference_audio_path = "reference.wav";
+    options.warmup_reference_text = "reference";
+
+    const RequestSpec warmup_spec = make_reference_warmup_spec(options, options);
+    const TtsRequest request = make_request(options, AudioFormat{}, &warmup_spec);
+    if (request.voice_id != options.voice_id) {
+        std::cerr << "warmup VoiceId self-test: voice_id was not forwarded\n";
+        return 1;
+    }
+    return 0;
+}
+
 std::string json_escape(const std::string& value) {
     std::ostringstream out;
     for (const char ch : value) {
@@ -1598,6 +1636,9 @@ int main(int argc, char** argv) {
         if (options.self_test_eos_contract) {
             return run_eos_contract_self_test();
         }
+        if (options.self_test_warmup_voice_id) {
+            return run_warmup_voice_id_self_test();
+        }
         validate_options(options);
 
         if (options.help) {
@@ -1632,15 +1673,7 @@ int main(int argc, char** argv) {
             RequestSpec warmup_spec;
             const RequestSpec* spec = nullptr;
             if (!options.warmup_reference_audio_path.empty()) {
-                warmup_spec.text = warmup_options.text;
-                warmup_spec.language = options.language;
-                warmup_spec.speaker = options.speaker;
-                warmup_spec.voice_id = options.voice_id;
-                warmup_spec.instruction = options.instruction;
-                warmup_spec.reference_audio_path = options.warmup_reference_audio_path;
-                warmup_spec.reference_text = options.warmup_reference_text;
-                warmup_spec.x_vector_only = options.x_vector_only;
-                warmup_spec.seed = options.seed;
+                warmup_spec = make_reference_warmup_spec(options, warmup_options);
                 spec = &warmup_spec;
             } else if (options.warmup_text.empty()) {
                 spec = request_specs.empty()
