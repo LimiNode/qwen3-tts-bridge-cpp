@@ -6,7 +6,6 @@ import re
 import unittest
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 # These files are the canonical routing and quality-policy surface added in
