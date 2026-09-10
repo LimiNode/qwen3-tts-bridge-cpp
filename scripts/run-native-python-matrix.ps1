@@ -513,6 +513,11 @@ function Enter-PythonSourceEnvironment() {
         no_user_site = [Environment]::GetEnvironmentVariable("PYTHONNOUSERSITE", "Process")
     }
     $paths = [System.Collections.Generic.List[string]]::new()
+    # The benchmark launches the selected interpreter directly rather than
+    # through check-python.ps1.  Include the checked-out bridge package here so
+    # acceptance cannot silently fall back to an older installed worker.
+    $worker_source = Join-Path (Split-Path -Parent $PSScriptRoot) "worker/src"
+    [void]$paths.Add([System.IO.Path]::GetFullPath($worker_source))
     foreach ($source in @($FasterQwenSourcePath, $QwenSourcePath)) {
         if (-not [string]::IsNullOrWhiteSpace($source)) {
             [void]$paths.Add([System.IO.Path]::GetFullPath($source))

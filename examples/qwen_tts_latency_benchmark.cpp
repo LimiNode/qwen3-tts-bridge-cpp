@@ -1635,6 +1635,7 @@ int main(int argc, char** argv) {
                 warmup_spec.text = warmup_options.text;
                 warmup_spec.language = options.language;
                 warmup_spec.speaker = options.speaker;
+                warmup_spec.voice_id = options.voice_id;
                 warmup_spec.instruction = options.instruction;
                 warmup_spec.reference_audio_path = options.warmup_reference_audio_path;
                 warmup_spec.reference_text = options.warmup_reference_text;
