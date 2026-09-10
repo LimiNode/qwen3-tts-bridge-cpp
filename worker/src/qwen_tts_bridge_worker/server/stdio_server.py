@@ -449,7 +449,11 @@ class StdioWorkerServer:
 
     def _handle_synthesize(self, request_id: int, message: dict[str, Any]) -> None:
         received_at = monotonic_seconds()
-        self._metrics.emit("request_received", request_id=request_id)
+        self._metrics.emit(
+            "request_received",
+            request_id=request_id,
+            voice_id=message.get("voice_id", ""),
+        )
         if self._shutdown_requested:
             self._send_error(
                 request_id,

@@ -169,7 +169,6 @@ exit 0
         self.assertIn("warmup_reference_audio", source)
         self.assertIn("warmup_reference_text", source)
         self.assertIn("self-test-eos-contract", source)
-        self.assertIn("self-test-warmup-voice-id", source)
         self.assertIn('"request_error"', template)
         self.assertIn('"resource_error"', template)
         self.assertIn("allowed_errors", template)

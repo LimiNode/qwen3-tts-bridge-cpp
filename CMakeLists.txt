@@ -473,8 +473,10 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 COMMAND qwen_tts_latency_benchmark --self-test-eos-contract
             )
             add_test(
-                NAME qwen_tts_latency_benchmark_warmup_voice_id
-                COMMAND qwen_tts_latency_benchmark --self-test-warmup-voice-id
+                NAME qwen_tts_latency_benchmark_warmup_voice_id_mock
+                COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_benchmark_warmup_voice_id.py"
+                    --benchmark "$<TARGET_FILE:qwen_tts_latency_benchmark>"
             )
             if(WIN32)
                 add_test(
