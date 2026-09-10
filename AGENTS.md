@@ -1277,3 +1277,33 @@ The first usable version is complete when:
 - the worker can process multiple sequential requests;
 - the target machine does not require a separate Python installation;
 - setup, build, packaging, and dependency steps are documented.
+
+## Agent documentation routing
+
+Use the nearest module document for work in that tree. Keep this file focused
+on invariants that apply to the whole repository; do not copy module details
+into every document.
+
+| Area | Instructions |
+| --- | --- |
+| C++ library | [`src/AGENTS.md`](src/AGENTS.md) and [`src/qwen_tts_bridge/AGENTS.md`](src/qwen_tts_bridge/AGENTS.md) |
+| Python worker | [`worker/AGENTS.md`](worker/AGENTS.md) and [`worker/src/qwen_tts_bridge_worker/AGENTS.md`](worker/src/qwen_tts_bridge_worker/AGENTS.md) |
+| Native worker | [`worker/native/AGENTS.md`](worker/native/AGENTS.md) |
+| Examples | [`examples/AGENTS.md`](examples/AGENTS.md) |
+| Tests | [`tests/AGENTS.md`](tests/AGENTS.md) |
+| Scripts | [`scripts/AGENTS.md`](scripts/AGENTS.md) |
+| CI and dependencies | [`.github/AGENTS.md`](.github/AGENTS.md), [`external/AGENTS.md`](external/AGENTS.md) |
+| Research and reports | [`docs/AGENTS.md`](docs/AGENTS.md) |
+
+## AI-assisted code quality
+
+AI-generated volume is not a design goal. Before adding code, search for the
+existing owner and prefer reuse or deletion over a parallel implementation.
+Do not add speculative abstractions, redundant branches, copy-pasted policy,
+or `noexcept` declarations that can let an exception escape. A performance claim
+requires a reproducible baseline and hardware/runtime identity; a behavior
+claim requires a test or explicit manual gate.
+
+The complete anti-generated-code review checklist, including the required
+quality note for large-file changes, lives in
+[`docs/ai-code-quality.md`](docs/ai-code-quality.md).
