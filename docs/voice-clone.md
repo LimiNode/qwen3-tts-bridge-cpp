@@ -93,6 +93,13 @@ switching cannot silently reuse B's prefix for A. The legacy name
 accept this quality trade-off should select `cmp50hx-ultra-low-latency` or a
 slower profile.
 
+The launcher isolates the worker from the Python per-user site
+(`PYTHONNOUSERSITE=1`) so a stale globally installed `qwen_tts` package cannot
+silently replace the pinned streaming decoder that provides the right-padded
+CUDA-graph path. For a multilingual service, pass `-Language` explicitly;
+the selected language is also used for the registered-voice warmup so the
+prefix cache is ready for the same cache key as the first request.
+
 Applications may expose these profiles as a latency/quality preference and
 combine that preference with an utterance-length estimate. Because graph
 capacity is fixed per worker, automatic routing means keeping the selected

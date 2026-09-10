@@ -114,6 +114,13 @@ WaveOut run and marks the gate failed when playback does not complete or
 pass `-PlaybackManifestLabel` to replay one exact row, including its voice,
 seed, instruction, and reference fields.
 
+When `-FasterQwenSourcePath` or `-QwenSourcePath` is supplied, the runner adds
+those trees to `PYTHONPATH` (in that order) for both Python benchmark and
+playback processes, while temporarily setting `PYTHONNOUSERSITE=1`. The prior
+environment is restored when each phase exits. The run evidence records the
+actual import origins discovered by the selected Python interpreter, so a
+venv/system package cannot silently stand in for the pinned source tree.
+
 The checked-in smoke manifest intentionally has no machine-specific reference
 audio. Use `docs/acceptance/native-python-full.template.jsonl` as a starting
 point for target-specific workloads covering A→B→A switching, near/over

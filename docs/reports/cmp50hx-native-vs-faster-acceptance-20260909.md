@@ -31,6 +31,13 @@ that produced audio was 2.02--3.07 s (median 2.11 s on the ten-row run), with a
 5.44 s process/model startup and a system GPU peak of 4,268 MiB. The explicit
 cancellation row cancelled after the first PCM as expected.
 
+The empty medium result is reproducible for the English `B.wav` row at seed
+`5104`: qwentts reports EOS at generation step zero and emits zero codec/audio
+frames. Nearby seeds `5105` and `5114` emit PCM, so this is a seed-dependent
+native generation outcome rather than a dropped transport callback. The native
+worker now maps that combination to `model_error/empty_audio` instead of
+reporting successful completion.
+
 The Python worker also completed the ordinary rows and cancelled correctly,
 but its low-latency run on this host reported a 18.15 s startup and first PCM
 of 1.75--2.64 s on ordinary rows. The two long rows hit the FasterQwen sequence
@@ -69,10 +76,36 @@ until that artifact is recovered. The current run remains valuable: it proves
 the native worker, provenance capture, EOS/cancellation gates, and cross-backend
 lifecycle harness work on real CMP hardware.
 
+### Corrected registered-voice smoke
+
+The launcher was then corrected to make the profile warmup use the same
+language as the first request and to export `PYTHONNOUSERSITE=1` while the
+worker process is running. A one-shot English request using the registered
+`kraftwerk_robot_ru_bootstrap_fidelity` voice, FasterQwen source
+`C:\\tmp\\qwen-prefix-reuse-20260904\\faster` at commit
+`90b596d2ffa41eb2da173db92e6f896df11b19cb`, right-padded W29/CUDA Graph,
+E3-to-E4 schedule, and one warmup produced the following objective result:
+
+```text
+first_audio_ms = 524.731
+audio_duration_ms = 5920.0
+audio_chunks = 19
+termination = natural EOS
+voice_clone_prompt_source = precomputed
+voice_clone_prompt_sha256_before == voice_clone_prompt_sha256_after
+```
+
+This reproduces the historical approximately 520--543 ms cache-hit range on
+the CMP 50HX. The earlier 1.41 s observation was a cold/mismatched warmup and
+must not be used as the restored-profile performance number. The isolated
+user-site environment is now enforced by both the acceptance runners and the
+interactive launcher.
+
 ## Follow-up gates
 
-1. Restore or package the compatible FasterQwen decoder if the historical
-   low-latency numbers must be reproduced.
+1. Keep the compatible FasterQwen decoder revision and user-site isolation
+   pinned in deployment; the historical low-latency range is now reproduced by
+   the registered-voice launcher smoke.
 2. Add native profile routing/fallback before accepting long rows; native
    currently supports stream cadence values 1/2/4/8, but not W29/W33, prefix-KV
    reuse, or the Python codec scheduling policy.

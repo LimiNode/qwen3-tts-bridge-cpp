@@ -6,6 +6,7 @@ param(
     # UTF-8-without-BOM script consistently. Pass Russian text with -Text.
     [string]$Text = "I am your robot. I am your worker. I execute the order now.",
     [switch]$Interactive,
+    [string]$Language = "Russian",
     [switch]$XVectorOnly,
     [string]$VoiceRegistryPath = "",
     [string]$VoiceId = "",
@@ -216,7 +217,7 @@ if ($VoiceId -and $RuntimeBackend -eq "faster") {
         "--warmup-synthesis",
         "--warmup-voice-id", $VoiceId,
         "--warmup-text", "Voice profile warmup.",
-        "--warmup-language", "Russian",
+        "--warmup-language", $Language,
         "--warmup-max-output-chunks", "2"
     )
 }
@@ -231,7 +232,7 @@ foreach ($workerArgument in $workerArguments) {
 if (-not $Interactive) {
     $arguments += @("--text", $Text)
 }
-$arguments += @("--language", "Russian")
+$arguments += @("--language", $Language)
 if ($VoiceId) {
     $arguments += @("--voice-id", $VoiceId)
 }
@@ -253,5 +254,21 @@ if ($AutoProfile) {
     $arguments += @("--auto-profile", "--auto-fast-max-chars", "$AutoFastMaxChars")
 }
 
-& $cliPath @arguments
-exit $LASTEXITCODE
+$previousPythonNoUserSite = [Environment]::GetEnvironmentVariable("PYTHONNOUSERSITE", "Process")
+$previousErrorActionPreference = $ErrorActionPreference
+$env:PYTHONNOUSERSITE = "1"
+$ErrorActionPreference = "Continue"
+try {
+    & $cliPath @arguments
+    $exitCode = $LASTEXITCODE
+}
+finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($null -eq $previousPythonNoUserSite) {
+        Remove-Item Env:PYTHONNOUSERSITE -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:PYTHONNOUSERSITE = $previousPythonNoUserSite
+    }
+}
+exit $exitCode

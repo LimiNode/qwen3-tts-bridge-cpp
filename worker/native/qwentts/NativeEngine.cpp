@@ -28,6 +28,7 @@ std::string path_utf8(const std::filesystem::path& path) {
 struct CallbackContext {
     const std::atomic<bool>* cancelled = nullptr;
     const AudioChunkHandler* on_chunk = nullptr;
+    bool emitted_audio = false;
 };
 
 bool cancel_callback(void* user_data) {
@@ -36,9 +37,12 @@ bool cancel_callback(void* user_data) {
 }
 
 bool audio_callback(const float* samples, int count, void* user_data) {
-    const auto* context = static_cast<const CallbackContext*>(user_data);
+    auto* context = static_cast<CallbackContext*>(user_data);
     if (context == nullptr || context->cancelled->load(std::memory_order_relaxed)) {
         return false;
+    }
+    if (samples != nullptr && count > 0) {
+        context->emitted_audio = true;
     }
     return (*context->on_chunk)(samples, count);
 }
@@ -135,6 +139,11 @@ SynthesisResult NativeEngine::synthesize(
     catch (const std::exception& error) {
         return {SynthesisOutcome::Failed, "worker_error", "worker_not_ready", error.what()};
     }
+    if (options_.max_text_bytes > 0 &&
+        request.text.size() > static_cast<std::size_t>(options_.max_text_bytes)) {
+        return {SynthesisOutcome::Failed, "resource_error", "sequence_capacity_exceeded",
+                "native text preflight exceeds configured max-text-bytes; route to the safe/Python backend", {}};
+    }
 
     const QwenApi& api = loader_.api();
     qt_tts_params params{};
@@ -200,6 +209,10 @@ SynthesisResult NativeEngine::synthesize(
     if (status == QT_STATUS_OK) {
         const auto finish_reason = api.last_finish_reason();
         if (finish_reason == QT_FINISH_EOS) {
+            if (!callbacks.emitted_audio) {
+                return {SynthesisOutcome::Failed, "model_error", "empty_audio",
+                        "qwentts reported natural EOS without emitting PCM", {}};
+            }
             return {SynthesisOutcome::Completed, {}, {}, {}, "natural_eos"};
         }
         if (finish_reason == QT_FINISH_MAX_TOKENS) {

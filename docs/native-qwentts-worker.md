@@ -44,6 +44,16 @@ float PCM; the worker clamps/converts it to s16le before creating QTB audio
 frames. Reference cloning accepts mono 24 kHz PCM16 or float32 WAV files.
 Streaming cadence can be capped with `--stream-max-chunk-frames 1|2|4|8`;
 the default is 8 and the ramp starts at one frame before doubling to that cap.
+An optional `--max-text-bytes N` preflight bound makes the native worker return
+`resource_error/sequence_capacity_exceeded` before generation for longer text.
+Supervisors can use that explicit result to route the request to a safe native
+worker or the Python/FasterQwen worker; `0` (the default) disables the bound.
+This is a conservative byte bound, not a tokenizer-derived duration estimate.
+
+The worker also rejects a successful qwentts EOS that emitted no PCM as
+`model_error/empty_audio`. This prevents an empty natural-EOS result from being
+reported as a successful synthesis; a supervisor may retry with a different
+seed or use its configured fallback policy.
 
 The Python/FasterQwen worker remains the accepted production backend until the
 native process passes the documented quality, streaming, cancellation,

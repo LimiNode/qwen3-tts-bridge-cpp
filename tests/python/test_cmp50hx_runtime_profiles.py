@@ -70,6 +70,9 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
         self.assertIn("Prefix KV reuse can change pronunciation", block)
 
     def test_launcher_passes_selected_values_and_one_chunk_prebuffer(self) -> None:
+        self.assertIn('[string]$Language = "Russian"', self.launcher)
+        self.assertIn('"--warmup-language", $Language', self.launcher)
+        self.assertIn('$arguments += @("--language", $Language)', self.launcher)
         self.assertIn('"--max-seq-len", $maxSeqLen', self.launcher)
         self.assertIn('"--emit-every-frames", $emitEveryFrames', self.launcher)
         self.assertIn(
@@ -93,6 +96,8 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
             '$env:QTB_FASTER_BASE_REFERENCE_CONTEXT_BOOTSTRAP = "1"',
             self.launcher,
         )
+        self.assertIn('$env:PYTHONNOUSERSITE = "1"', self.launcher)
+        self.assertIn('Remove-Item Env:PYTHONNOUSERSITE', self.launcher)
 
     def test_launcher_prefers_the_patched_qwen_source_for_faster_runtime(self) -> None:
         self.assertIn('[string]$QwenSourcePath = ""', self.launcher)
