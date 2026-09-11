@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "measurement": "native_pcm_capture",
+  "captured_at": "2026-09-11",
+  "hardware": "NVIDIA CMP 50HX",
+  "runtime": {
+    "worker": "qwen_tts_native_worker.exe",
+    "playback_probe": "qwen_tts_play.exe",
+    "sample_format": "s16le",
+    "sample_rate": 24000,
+    "channels": 1
+  },
+  "captures": [
+    {
+      "label": "en-short-b",
+      "seed": 5102,
+      "completed": true,
+      "audio_chunk_count": 3,
+      "byte_count": 19200,
+      "pcm_sha256": "96eca24eb7bf3cf72841b35905ffd97161ced6ba370bbd10b73b039e755abf6a"
+    },
+    {
+      "label": "en-medium-b",
+      "seed": 5104,
+      "completed": true,
+      "audio_chunk_count": 3,
+      "byte_count": 26880,
+      "pcm_sha256": "08257dc78d6fb2d2bac3bd96a7277729ad0c3699ae7de203e01b88ed882d9e66"
+    }
+  ],
+  "interpretation": "This records successful native PCM delivery after the step-zero EOS fix. It is transport/terminal evidence only; subjective quality and voice identity require human listening."
+}

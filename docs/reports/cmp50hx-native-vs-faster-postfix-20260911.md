@@ -38,6 +38,12 @@ same three labels and seeds in fresh worker processes. First-PCM, completion,
 RTF, and PCM byte counts were materially unchanged; the per-row values are
 preserved in `evidence/cmp50hx-postfix-20260911/pre-post-comparison.json`.
 
+The native playback probe also captured non-empty PCM for the two English rows
+that were used to reproduce the original empty-audio report. The capture
+metadata and SHA-256 digests are preserved in
+`evidence/cmp50hx-postfix-20260911/pcm-capture-summary.json`; the raw PCM stays
+outside git under the local acceptance artifact directory.
+
 ## Interpretation
 
 The engine-side EOS guard removed the `empty_audio` failure without changing
