@@ -1,0 +1,4 @@
+{"label":"ru-short-a","text":"Профиль Kraftwerk Robot работает на CMP 50HX.","language":"russian","reference_audio_path":"A.wav","reference_text":"Профиль Kraftwerk Robot.","seed":5101}
+{"label":"en-short-b","text":"The Kraftwerk Robot profile is running on the CMP 50HX.","language":"english","reference_audio_path":"B.wav","reference_text":"The warm voice sample.","seed":5102}
+{"label":"ru-medium-a","text":"Это средняя проверочная реплика для оценки естественного окончания речи, скорости выдачи PCM и стабильности голоса на русском языке.","language":"russian","reference_audio_path":"A.wav","reference_text":"Профиль Kraftwerk Robot.","seed":5103}
+{"label":"en-medium-b","text":"This medium acceptance sentence checks streaming cadence, natural termination, and stable speaker identity in English.","language":"english","reference_audio_path":"B.wav","reference_text":"The warm voice sample.","seed":5104}

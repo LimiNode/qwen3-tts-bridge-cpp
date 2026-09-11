@@ -1,0 +1,11 @@
+{
+  "method": "same MSVC/CUDA build settings, same three rows and seeds, one fresh worker process per run",
+  "pre_fix_runtime": "1c119f6",
+  "post_fix_runtime": "7dea823",
+  "rows": [
+    {"label":"ru-short-a","pre":{"first_pcm_ms":8437.822,"completion_ms":8721.160,"rtf":15.574,"audio_bytes":26880},"post":{"first_pcm_ms":8496.330,"completion_ms":8767.069,"rtf":15.655,"audio_bytes":26880}},
+    {"label":"en-short-b","pre":{"first_pcm_ms":7792.165,"completion_ms":7914.758,"rtf":19.787,"audio_bytes":19200},"post":{"first_pcm_ms":7784.420,"completion_ms":7907.127,"rtf":19.768,"audio_bytes":19200}},
+    {"label":"ru-medium-a","pre":{"first_pcm_ms":7005.117,"completion_ms":7442.993,"rtf":4.897,"audio_bytes":72960},"post":{"first_pcm_ms":6890.042,"completion_ms":7323.204,"rtf":4.818,"audio_bytes":72960}}
+  ],
+  "conclusion": "No material timing regression is observed on the controlled three-row comparison; the post-fix runtime also prevents the former step-0 empty-audio case."
+}
