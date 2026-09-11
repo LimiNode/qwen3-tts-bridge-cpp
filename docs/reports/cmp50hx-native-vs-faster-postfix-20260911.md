@@ -32,6 +32,12 @@ first four rows; the Faster sizes were 30,684 / 42,188 / 72,876 / 69,038
 bytes. Byte-for-byte equality is not expected across different codec engines;
 listen-based quality and voice-identity review remains a separate gate.
 
+A controlled pre/post check rebuilt qwentts.cpp at the old `1c119f6` commit
+and the fixed `7dea823` commit with identical MSVC/CUDA settings, then ran the
+same three labels and seeds in fresh worker processes. First-PCM, completion,
+RTF, and PCM byte counts were materially unchanged; the per-row values are
+preserved in `evidence/cmp50hx-postfix-20260911/pre-post-comparison.json`.
+
 ## Interpretation
 
 The engine-side EOS guard removed the `empty_audio` failure without changing
