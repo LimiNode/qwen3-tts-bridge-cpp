@@ -24,9 +24,9 @@ struct NativeQwenBackendOptions {
 /// \enum NativeQwenFinishReason
 /// \brief Terminal reason reported by a successful native synthesis.
 enum class NativeQwenFinishReason {
-    Unknown,
-    NaturalEos,
-    MaxTokens,
+    Unknown, ///< No recognized successful termination reason is available.
+    NaturalEos, ///< Generation stopped at the model's natural end of speech.
+    MaxTokens, ///< Generation stopped at the configured token limit.
 };
 
 /// \struct NativeQwenCompletion
@@ -38,12 +38,12 @@ struct NativeQwenCompletion {
 /// \struct NativeQwenCapabilities
 /// \brief Explicit support matrix for native profile controls.
 struct NativeQwenCapabilities {
-    bool stream_max_chunk_frames = true;
-    bool codec_window = false;
-    bool sequence_capacity = false;
-    bool playback_prebuffer = false;
-    bool prefix_kv_reuse = false;
-    bool fp32_mlp_island = false;
+    bool stream_max_chunk_frames = true; ///< Supports native stream chunk cadence.
+    bool codec_window = false; ///< Supports a configurable codec decode window.
+    bool sequence_capacity = false; ///< Supports a configurable sequence capacity.
+    bool playback_prebuffer = false; ///< Supports playback prebuffering.
+    bool prefix_kv_reuse = false; ///< Supports registered-voice prefix-KV reuse.
+    bool fp32_mlp_island = false; ///< Supports the FasterQwen FP32 MLP island.
 };
 
 /// \struct NativeQwenSynthesisRequest
@@ -81,7 +81,11 @@ public:
     using AudioChunkCallback = std::function<bool(const float*, std::size_t)>;
     using CancelCallback = std::function<bool()>;
 
+    /// \brief Loads the configured qwentts.cpp runtime and GGUF models.
+    /// \param options Runtime DLL, model, and streaming configuration.
     explicit NativeQwenBackend(const NativeQwenBackendOptions& options);
+
+    /// \brief Releases the native runtime and model resources.
     ~NativeQwenBackend();
 
     NativeQwenBackend(const NativeQwenBackend&) = delete;
