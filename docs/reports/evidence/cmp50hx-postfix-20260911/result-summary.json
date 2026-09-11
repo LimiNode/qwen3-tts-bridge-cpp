@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "hardware": "NVIDIA CMP 50HX",
+  "bridge_commit": "ca8e0b49",
+  "qwentts_commit": "7dea823fa9e2b9d65ae596231a75edc7f9a2c9f7",
+  "workload": {
+    "requests": 6,
+    "manifest_rows": 4,
+    "cancellation": false,
+    "physical_playback": false,
+    "terminal_quiet_ms": 250
+  },
+  "backends": {
+    "fasterqwen_low_latency": {
+      "requests": "6/6",
+      "first_pcm_median_ms": 6260.139,
+      "first_pcm_p95_ms": 12138.993,
+      "completion_median_ms": 18686.529,
+      "completion_p95_ms": 23225.294,
+      "rtf_median": 14.332
+    },
+    "native_qwentts": {
+      "requests": "6/6",
+      "first_pcm_median_ms": 6883.437,
+      "first_pcm_p95_ms": 8318.353,
+      "completion_median_ms": 7174.119,
+      "completion_p95_ms": 8552.084,
+      "rtf_median": 14.100
+    }
+  },
+  "native_rows": [
+    {"label":"ru-short-a","audio_bytes":26880,"outcome":"natural_eos"},
+    {"label":"en-short-b","audio_bytes":19200,"outcome":"natural_eos"},
+    {"label":"ru-medium-a","audio_bytes":72960,"outcome":"natural_eos"},
+    {"label":"en-medium-b","audio_bytes":26880,"outcome":"natural_eos"}
+  ],
+  "automated_gates": {
+    "terminal_and_provenance": true,
+    "starvation": true,
+    "empty_audio": true,
+    "long_or_near_capacity": false,
+    "physical_playback": false,
+    "quality_and_voice_identity": false,
+    "cancellation_and_restart": false
+  }
+}

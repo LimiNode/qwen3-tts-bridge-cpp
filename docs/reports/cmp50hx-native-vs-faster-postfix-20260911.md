@@ -18,8 +18,9 @@ Raw combined artifacts are retained outside git:
 ## Acceptance result
 
 The runner exited successfully. Both backends completed all six requests with
-non-empty PCM and passed the fail-closed acceptance gates. In particular, the
-previously failing `en-medium-b` native row completed successfully.
+non-empty PCM and passed all automated terminal/provenance gates exercised by
+this six-request no-playback run. In particular, the previously failing
+`en-medium-b` native row completed successfully.
 
 | Backend | First PCM median | First PCM p95 | Completion median | Completion p95 | RTF median | Requests |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -40,6 +41,7 @@ These values supersede neither the initial pre-fix report nor the separate
 registered-voice/prefix-KV Faster baseline; those remain preserved as distinct
 experiments with different runtime semantics.
 
-Remaining release gates are physical playback, starvation/cadence under the
-real sink, cancellation/restart lifecycle, multilingual quality and voice
-identity, and a separate exact-condition `cmp50hx-fastest` prefix-KV baseline.
+Remaining release gates are a 30–100-request sequential soak, long and
+near-capacity rows, physical playback, starvation/cadence under the real sink,
+cancellation/restart lifecycle, multilingual quality and voice identity, and a
+separate exact-condition `cmp50hx-fastest` prefix-KV baseline.

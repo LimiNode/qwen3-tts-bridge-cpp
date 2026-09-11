@@ -1,0 +1,17 @@
+{
+  "hardware": {"gpu":"NVIDIA CMP 50HX","vram_mib":20480,"driver":"581.94","cuda":true},
+  "sources": {
+    "bridge_commit":"ca8e0b49",
+    "qwentts_commit":"7dea823fa9e2b9d65ae596231a75edc7f9a2c9f7",
+    "fasterqwen_commit":"90b596d2ffa41eb2da173db92e6f896df11b19cb"
+  },
+  "files": [
+    {"role":"reference_audio","name":"A.wav","sha256":"90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1"},
+    {"role":"reference_audio","name":"B.wav","sha256":"b8285c5925d89d90435afa2f084a197a9e428dec41fff09c74969e6624a4b147"},
+    {"role":"talker_model","name":"qwen-talker-1.7b-base-Q8_0.gguf","sha256":"4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda"},
+    {"role":"codec_model","name":"qwen-tokenizer-12hz-Q8_0.gguf","sha256":"1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94"},
+    {"role":"native_runtime","name":"qwen.dll","sha256":"ffd904688fbadb9303dfe9fc16ea220c5c67b3734f4bc08b02370613675f4d42"},
+    {"role":"native_worker","name":"qwen_tts_native_worker.exe","sha256":"98bafabedeec1c96c7c2870b65f975dd49d12606eac29eb4a76f855c54b57f91"},
+    {"role":"benchmark","name":"qwen_tts_latency_benchmark.exe","sha256":"041d277bfb9cea1af61767e2269ad6ad1c1d9b8bc90e0eda9169ca2b2d9b059a"}
+  ]
+}

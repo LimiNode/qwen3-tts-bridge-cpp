@@ -81,8 +81,8 @@ public:
     using AudioChunkCallback = std::function<bool(const float*, std::size_t)>;
     using CancelCallback = std::function<bool()>;
 
-    /// \brief Loads the configured qwentts.cpp runtime and GGUF models.
-    /// \param options Runtime DLL, model, and streaming configuration.
+    /// \brief Initializes the linked qwentts.cpp runtime and loads the GGUF models.
+    /// \param options Model paths and native synthesis/streaming configuration.
     explicit NativeQwenBackend(const NativeQwenBackendOptions& options);
 
     /// \brief Releases the native runtime and model resources.
