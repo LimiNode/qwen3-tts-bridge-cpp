@@ -15,6 +15,7 @@ param(
     [int] $Warmups = 5,
     [int] $Requests = 30,
     [int] $CancelEvery = 0,
+    [int] $StartupTimeoutMs = 30000,
     [int] $GpuIndex = -1,
     [UInt64] $Seed = 4242,
     [string] $Speaker = "",
@@ -134,6 +135,7 @@ function Invoke-Benchmark(
     if ($VoiceId) { [void]$command.Add("--voice-id"); [void]$command.Add($VoiceId) }
     [void]$command.Add("--warmups"); [void]$command.Add($Warmups.ToString())
     [void]$command.Add("--requests"); [void]$command.Add($Requests.ToString())
+    [void]$command.Add("--startup-timeout-ms"); [void]$command.Add($StartupTimeoutMs.ToString())
     [void]$command.Add("--cancel-every"); [void]$command.Add($CancelEvery.ToString())
     [void]$command.Add("--seed"); [void]$command.Add($Seed.ToString())
     [void]$command.Add("--terminal-quiet-ms"); [void]$command.Add($TerminalQuietMs.ToString())
