@@ -547,6 +547,10 @@ void validate_options(const ProgramOptions& options) {
         throw std::runtime_error(
             "--warmup-reference-text is required with --warmup-reference-audio-path");
     }
+    if (!options.voice_id.empty() && !options.warmup_reference_audio_path.empty()) {
+        throw std::runtime_error(
+            "--voice-id cannot be combined with --warmup-reference-audio-path");
+    }
     if (options.mock_chunks <= 0) {
         throw std::runtime_error("--mock-chunks must be greater than zero");
     }
@@ -1258,6 +1262,21 @@ int run_eos_contract_self_test() {
     return 0;
 }
 
+RequestSpec make_reference_warmup_spec(
+    const ProgramOptions& options,
+    const ProgramOptions& warmup_options) {
+    RequestSpec warmup_spec;
+    warmup_spec.text = warmup_options.text;
+    warmup_spec.language = options.language;
+    warmup_spec.speaker = options.speaker;
+    warmup_spec.instruction = options.instruction;
+    warmup_spec.reference_audio_path = options.warmup_reference_audio_path;
+    warmup_spec.reference_text = options.warmup_reference_text;
+    warmup_spec.x_vector_only = options.x_vector_only;
+    warmup_spec.seed = options.seed;
+    return warmup_spec;
+}
+
 std::string json_escape(const std::string& value) {
     std::ostringstream out;
     for (const char ch : value) {
@@ -1632,14 +1651,7 @@ int main(int argc, char** argv) {
             RequestSpec warmup_spec;
             const RequestSpec* spec = nullptr;
             if (!options.warmup_reference_audio_path.empty()) {
-                warmup_spec.text = warmup_options.text;
-                warmup_spec.language = options.language;
-                warmup_spec.speaker = options.speaker;
-                warmup_spec.instruction = options.instruction;
-                warmup_spec.reference_audio_path = options.warmup_reference_audio_path;
-                warmup_spec.reference_text = options.warmup_reference_text;
-                warmup_spec.x_vector_only = options.x_vector_only;
-                warmup_spec.seed = options.seed;
+                warmup_spec = make_reference_warmup_spec(options, warmup_options);
                 spec = &warmup_spec;
             } else if (options.warmup_text.empty()) {
                 spec = request_specs.empty()

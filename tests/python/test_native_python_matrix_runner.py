@@ -95,6 +95,15 @@ exit 0
             matrix = json.loads(output.read_text(encoding="utf-8-sig"))
             self.assertFalse(matrix["playback"]["python"]["gate_passed"])
             self.assertFalse(matrix["playback"]["native"]["gate_passed"])
+            worker_origin = pathlib.Path(
+                matrix["evidence"]["python_imports"]["qwen_tts_bridge_worker"][
+                    "origin"
+                ]
+            ).resolve()
+            self.assertTrue(
+                worker_origin.is_relative_to((ROOT / "worker" / "src").resolve()),
+                worker_origin,
+            )
 
     def test_playback_selects_and_replays_exact_manifest_fields(self) -> None:
         source = RUNNER.read_text(encoding="utf-8")
