@@ -19,6 +19,8 @@ struct NativeEngineOptions {
     std::filesystem::path manifest_path;
     std::filesystem::path talker_model;
     std::filesystem::path codec_model;
+    /// Optional registered Base voice profile registry loaded at startup.
+    std::filesystem::path voice_registry_path;
     bool use_flash_attention = true;
     bool clamp_fp16 = false;
     int max_batch = 1;
@@ -92,6 +94,8 @@ public:
 
     WorkerCapabilities capabilities() const;
     std::vector<std::string> speaker_names() const;
+    /// Return the registered Base voice identifiers advertised in `ready`.
+    std::vector<std::string> voice_ids() const;
     const RuntimeManifest& manifest() const;
     const std::string& engine_version() const;
 
@@ -100,11 +104,23 @@ private:
         qt_voice_ref value{};
     };
 
+    struct VoiceProfile {
+        std::filesystem::path reference_audio_path;
+        std::string reference_text;
+        bool preserve_reference_text_whitespace = false;
+        bool x_vector_only = false;
+        std::vector<float> reference_audio;
+        std::string reference_cache_key;
+    };
+
     void clear_voice_reference_cache() noexcept;
+    void load_voice_registry();
+    void preload_voice_registry();
 
     NativeEngineOptions options_;
     QwenDllLoader loader_;
     qt_context* context_ = nullptr;
+    std::unordered_map<std::string, VoiceProfile> voice_profiles_;
     std::unordered_map<std::string, std::unique_ptr<CachedVoiceReference>> voice_reference_cache_;
 };
 

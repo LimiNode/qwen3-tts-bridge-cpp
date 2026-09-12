@@ -1,8 +1,13 @@
 #include "NativeEngine.hpp"
 #include "WavReader.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <cstdint>
+#include <algorithm>
 #include <chrono>
+#include <cctype>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <mutex>
@@ -11,6 +16,8 @@
 
 namespace qwen_tts_bridge::native_worker {
 namespace {
+
+using Json = nlohmann::json;
 
 std::mutex log_mutex;
 
@@ -46,6 +53,26 @@ std::string voice_reference_cache_key(
         }
     }
     return path_utf8(path) + ":" + std::to_string(samples.size()) + ":" + std::to_string(hash);
+}
+
+std::string required_string(const Json& object, const char* name, const std::string& voice_id) {
+    const auto it = object.find(name);
+    if (it == object.end() || !it->is_string() || it->get<std::string>().empty()) {
+        throw std::runtime_error("voice profile '" + voice_id + "' requires a non-empty " + name);
+    }
+    return it->get<std::string>();
+}
+
+std::string trim_reference_text(std::string value) {
+    const auto is_space = [](char character) {
+        return std::isspace(static_cast<unsigned char>(character)) != 0;
+    };
+    const auto first = std::find_if_not(value.begin(), value.end(), is_space);
+    const auto last = std::find_if_not(value.rbegin(), value.rend(), is_space).base();
+    if (first >= last) {
+        return {};
+    }
+    return std::string(first, last);
 }
 
 struct CallbackContext {
@@ -88,6 +115,109 @@ NativeEngine::NativeEngine(NativeEngineOptions options)
 
 NativeEngine::~NativeEngine() {
     close();
+}
+
+void NativeEngine::load_voice_registry() {
+    voice_profiles_.clear();
+    if (options_.voice_registry_path.empty()) {
+        return;
+    }
+
+    std::ifstream input(options_.voice_registry_path, std::ios::binary);
+    if (!input) {
+        throw std::runtime_error("unable to open native voice registry: " +
+                                 options_.voice_registry_path.u8string());
+    }
+    const Json document = Json::parse(input, nullptr, true, true);
+    if (!document.is_object() || document.value("schema_version", 0) != 1) {
+        throw std::runtime_error("native voice registry schema_version must be 1");
+    }
+    const auto voices = document.find("voices");
+    if (voices == document.end() || !voices->is_array() || voices->empty()) {
+        throw std::runtime_error("native voice registry must contain a non-empty voices array");
+    }
+    const auto registry_dir = options_.voice_registry_path.parent_path();
+    for (const auto& item : *voices) {
+        if (!item.is_object()) {
+            throw std::runtime_error("native voice registry entries must be objects");
+        }
+        const std::string voice_id = required_string(item, "voice_id", "<unknown>");
+        if (voice_profiles_.find(voice_id) != voice_profiles_.end()) {
+            throw std::runtime_error("duplicate native voice profile: " + voice_id);
+        }
+        const auto reference = required_string(item, "reference_audio_path", voice_id);
+        auto reference_path = std::filesystem::u8path(reference);
+        if (reference_path.is_relative()) {
+            reference_path = registry_dir / reference_path;
+        }
+        reference_path = std::filesystem::weakly_canonical(reference_path);
+        if (!std::filesystem::is_regular_file(reference_path)) {
+            throw std::runtime_error("native voice profile reference audio is missing: " +
+                                     reference_path.u8string());
+        }
+        VoiceProfile profile;
+        profile.reference_audio_path = std::move(reference_path);
+        if (const auto text = item.find("reference_text"); text != item.end()) {
+            if (!text->is_string()) {
+                throw std::runtime_error("native voice profile reference_text must be a string: " + voice_id);
+            }
+            profile.reference_text = text->get<std::string>();
+        }
+        if (const auto preserve = item.find("preserve_reference_text_whitespace"); preserve != item.end()) {
+            if (!preserve->is_boolean()) {
+                throw std::runtime_error(
+                    "native voice profile preserve_reference_text_whitespace must be a boolean: " + voice_id);
+            }
+            profile.preserve_reference_text_whitespace = preserve->get<bool>();
+        }
+        profile.x_vector_only = item.value("x_vector_only", false);
+        if (!profile.x_vector_only) {
+            if (!profile.preserve_reference_text_whitespace) {
+                profile.reference_text = trim_reference_text(std::move(profile.reference_text));
+            }
+            if (profile.reference_text.empty()) {
+                throw std::runtime_error(
+                    "native voice profile '" + voice_id +
+                    "' requires a non-empty reference_text unless x_vector_only is true");
+            }
+        }
+        voice_profiles_.emplace(voice_id, std::move(profile));
+    }
+}
+
+void NativeEngine::preload_voice_registry() {
+    if (voice_profiles_.empty()) {
+        return;
+    }
+    const QwenApi& api = loader_.api();
+    if (!loader_.supports_voice_reference()) {
+        throw std::runtime_error(
+            "--voice-registry-path requires qt_extract_voice_ref and qt_voice_ref_free exports");
+    }
+    for (auto& [voice_id, profile] : voice_profiles_) {
+        profile.reference_audio = read_mono_24k_wav(profile.reference_audio_path);
+        profile.reference_cache_key = voice_reference_cache_key(
+            profile.reference_audio_path, profile.reference_audio);
+        const auto cached = voice_reference_cache_.find(profile.reference_cache_key);
+        if (cached != voice_reference_cache_.end()) {
+            profile.reference_audio.clear();
+            continue;
+        }
+        auto entry = std::make_unique<CachedVoiceReference>();
+        const auto status = api.extract_voice_ref(
+            context_,
+            profile.reference_audio.data(),
+            static_cast<int>(profile.reference_audio.size()),
+            &entry->value);
+        if (status != QT_STATUS_OK) {
+            api.voice_ref_free(&entry->value);
+            throw std::runtime_error(
+                "failed to preload native voice profile '" + voice_id + "': " +
+                last_error(api, "qwentts voice reference extraction failed"));
+        }
+        voice_reference_cache_.emplace(profile.reference_cache_key, std::move(entry));
+        profile.reference_audio.clear();
+    }
 }
 
 void NativeEngine::clear_voice_reference_cache() noexcept {
@@ -133,6 +263,8 @@ void NativeEngine::load() {
     if (context_ == nullptr) {
         throw std::runtime_error(last_error(api, "qt_init failed"));
     }
+    load_voice_registry();
+    preload_voice_registry();
 }
 
 void NativeEngine::close() noexcept {
@@ -157,7 +289,13 @@ void NativeEngine::validate_request(const SynthesizeMessage& request) const {
         throw std::invalid_argument("native qwentts worker supports only mono 24000 Hz s16le output");
     }
     if (!request.voice_id.empty()) {
-        throw std::invalid_argument("registered voice_id profiles are not configured for the native worker");
+        if (voice_profiles_.find(request.voice_id) == voice_profiles_.end()) {
+            throw std::invalid_argument("unknown native voice_id profile: " + request.voice_id);
+        }
+        if (!request.reference_audio_path.empty() || !request.reference_text.empty() ||
+            request.x_vector_only || !request.speaker.empty()) {
+            throw std::invalid_argument("voice_id cannot be combined with direct reference or speaker fields");
+        }
     }
     if (request.x_vector_only && request.reference_audio_path.empty()) {
         throw std::invalid_argument("x_vector_only requires reference_audio_path");
@@ -199,6 +337,20 @@ SynthesisResult NativeEngine::synthesize(
         return {SynthesisOutcome::Failed, "worker_error", "abi_mismatch", "qwen.dll returned incompatible TTS params"};
     }
 
+    const VoiceProfile* voice_profile = nullptr;
+    if (!request.voice_id.empty()) {
+        voice_profile = &voice_profiles_.at(request.voice_id);
+    }
+    const std::filesystem::path effective_reference_path = voice_profile != nullptr
+        ? voice_profile->reference_audio_path
+        : std::filesystem::u8path(request.reference_audio_path);
+    const std::string& effective_reference_text = voice_profile != nullptr
+        ? voice_profile->reference_text
+        : request.reference_text;
+    const bool effective_x_vector_only = voice_profile != nullptr
+        ? voice_profile->x_vector_only
+        : request.x_vector_only;
+
     std::vector<float> reference_audio;
     std::string reference_cache_key;
     const qt_voice_ref* cached_reference = nullptr;
@@ -206,14 +358,24 @@ SynthesisResult NativeEngine::synthesize(
     double voice_reference_extract_ms = 0.0;
     double reference_audio_decode_ms = 0.0;
     try {
-        if (!request.reference_audio_path.empty()) {
+        if (voice_profile != nullptr) {
+            reference_cache_key = voice_profile->reference_cache_key;
+            const auto cached = voice_reference_cache_.find(reference_cache_key);
+            if (cached == voice_reference_cache_.end()) {
+                return {SynthesisOutcome::Failed, "worker_error", "voice_profile_not_ready",
+                        "native voice profile was not preloaded"};
+            }
+            cached_reference = &cached->second->value;
+            voice_reference_cache_hit = true;
+        }
+        else if (!request.reference_audio_path.empty()) {
             const auto reference_decode_start = std::chrono::steady_clock::now();
             reference_audio = read_mono_24k_wav(std::filesystem::u8path(request.reference_audio_path));
             reference_audio_decode_ms = std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - reference_decode_start).count();
             if (options_.precompute_voice_refs) {
                 reference_cache_key = voice_reference_cache_key(
-                    std::filesystem::u8path(request.reference_audio_path), reference_audio);
+                    effective_reference_path, reference_audio);
                 const auto cached = voice_reference_cache_.find(reference_cache_key);
                 if (cached != voice_reference_cache_.end()) {
                     cached_reference = &cached->second->value;
@@ -260,16 +422,16 @@ SynthesisResult NativeEngine::synthesize(
     params.ref_n_samples = cached_reference == nullptr
         ? static_cast<int>(reference_audio.size())
         : 0;
-    params.ref_text = request.x_vector_only || request.reference_text.empty()
+    params.ref_text = effective_x_vector_only || effective_reference_text.empty()
         ? nullptr
-        : request.reference_text.c_str();
+        : effective_reference_text.c_str();
     if (cached_reference != nullptr) {
         params.ref_spk_emb = cached_reference->ref_spk_emb;
         params.ref_spk_dim = cached_reference->ref_spk_dim;
         // A raw reference without a transcript is x-vector mode. Supplying
         // RVQ codes in that mode changes the qwentts prompt semantics and is
         // not equivalent to the uncached path. Reuse codes only for ICL.
-        const bool use_cached_codes = !request.x_vector_only && !request.reference_text.empty();
+        const bool use_cached_codes = !effective_x_vector_only && !effective_reference_text.empty();
         params.ref_codes = use_cached_codes ? cached_reference->ref_codes : nullptr;
         params.ref_T = use_cached_codes ? cached_reference->ref_T : 0;
     }
@@ -382,7 +544,7 @@ WorkerCapabilities NativeEngine::capabilities() const {
     value.sampling_overrides = true;
     value.deterministic_seed = true;
     value.voice_clone_streaming = true;
-    value.voice_profiles = false;
+    value.voice_profiles = !voice_profiles_.empty();
     return value;
 }
 
@@ -400,6 +562,17 @@ std::vector<std::string> NativeEngine::speaker_names() const {
         }
     }
     return names;
+}
+
+std::vector<std::string> NativeEngine::voice_ids() const {
+    std::vector<std::string> ids;
+    ids.reserve(voice_profiles_.size());
+    for (const auto& [voice_id, profile] : voice_profiles_) {
+        (void)profile;
+        ids.push_back(voice_id);
+    }
+    std::sort(ids.begin(), ids.end());
+    return ids;
 }
 
 const RuntimeManifest& NativeEngine::manifest() const {

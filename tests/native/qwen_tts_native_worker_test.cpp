@@ -113,6 +113,15 @@ StdIoTransportOptions manifest_options(
     return result;
 }
 
+StdIoTransportOptions voice_registry_options(
+    const std::filesystem::path& registry,
+    std::string* stderr_capture = nullptr) {
+    auto result = options(8, stderr_capture);
+    result.arguments.push_back("--voice-registry-path");
+    result.arguments.push_back(registry.string());
+    return result;
+}
+
 void write_reference_wav(const std::filesystem::path& path) {
     const std::array<std::int16_t, 4> samples{0, 4096, -4096, 0};
     const std::uint32_t data_size = static_cast<std::uint32_t>(samples.size() * sizeof(samples[0]));
@@ -281,6 +290,64 @@ int main() {
     CHECK(reference_stderr.find("\"reference_audio_decode_ms\":") != std::string::npos);
     CHECK(reference_stderr.find("\"synthesis_ms\":") != std::string::npos);
     cached_client.stop();
+
+    const auto voice_registry = runtime / "voice-registry.json";
+    {
+        std::ofstream output(voice_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":[{\"voice_id\":\"fake-voice\","
+                   "\"reference_audio_path\":\"reference-cache-test.wav\","
+                   "\"reference_text\":\"Fake reference\",\"x_vector_only\":false}]}";
+    }
+    std::string registry_stderr;
+    QwenTtsClient registry_client;
+    QwenTtsClientOptions registry_options;
+    registry_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(registry_client.start(
+        voice_registry_options(voice_registry, &registry_stderr), registry_options));
+    ReadyMessage registry_ready;
+    CHECK(registry_client.ready_message(registry_ready));
+    CHECK(registry_ready.capabilities.voice_profiles);
+    CHECK(registry_ready.voice_ids.size() == 1);
+    CHECK(registry_ready.voice_ids.front() == "fake-voice");
+    Probe registry_probe;
+    TtsCallbacks registry_callbacks;
+    registry_callbacks.on_completed = [&registry_probe]() {
+        std::lock_guard<std::mutex> lock(registry_probe.mutex);
+        ++registry_probe.completed;
+        registry_probe.condition.notify_all();
+    };
+    registry_callbacks.on_error = [&registry_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(registry_probe.mutex);
+        registry_probe.errors.push_back(error);
+        registry_probe.condition.notify_all();
+    };
+    TtsRequest registry_request;
+    registry_request.text = "registered voice request";
+    registry_request.voice_id = "fake-voice";
+    CHECK(registry_client.synthesize_async(registry_request, registry_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(registry_probe.mutex);
+        CHECK(registry_probe.condition.wait_for(lock, std::chrono::seconds(5), [&registry_probe]() {
+            return registry_probe.completed == 1 || !registry_probe.errors.empty();
+        }));
+    }
+    CHECK(registry_probe.errors.empty());
+    CHECK(registry_probe.completed == 1);
+    CHECK(registry_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
+    registry_client.stop();
+
+    const auto malformed_registry = runtime / "voice-registry-missing-reference-text.json";
+    {
+        std::ofstream output(malformed_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":[{\"voice_id\":\"malformed-voice\","
+                   "\"reference_audio_path\":\"reference-cache-test.wav\","
+                   "\"reference_text\":\"   \",\"x_vector_only\":false}]}";
+    }
+    QwenTtsClient malformed_registry_client;
+    QwenTtsClientOptions malformed_registry_options;
+    malformed_registry_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!malformed_registry_client.start(
+        voice_registry_options(malformed_registry), malformed_registry_options));
 
     QwenTtsClient limited_client;
     QwenTtsClientOptions limited_options;
