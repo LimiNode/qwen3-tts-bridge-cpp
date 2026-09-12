@@ -7,7 +7,6 @@ import io
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
     "run_native_hardware_probe", ROOT / "scripts" / "run-native-hardware-probe.py"
