@@ -92,7 +92,7 @@ failing.
 With a qwentts runtime that exports `qt_last_synthesis_metrics`, the same
 metric includes `qwen_prompt_build_ms`, `qwen_prefill_ms`, `qwen_ttfa_ms`,
 `qwen_talker_ms`, `qwen_predictor_ms`, `qwen_host_ms`, `qwen_codec_ms`, and
-`qwen_n_frames`. Older DLLs leave these fields at zero; this is a diagnostic
+`qwen_total_ms`, together with `qwen_n_frames`. Older DLLs leave these fields at zero; this is a diagnostic
 compatibility fallback, not permission to claim that a phase took zero time.
 
 The worker also rejects a successful qwentts EOS that emitted no PCM as

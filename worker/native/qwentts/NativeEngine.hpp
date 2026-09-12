@@ -75,6 +75,8 @@ struct SynthesisResult {
     double qwen_host_ms = 0.0;
     /// qwentts codec-decode phase, when exposed by the runtime ABI.
     double qwen_codec_ms = 0.0;
+    /// qwentts internal total phase span, when exposed by the runtime ABI.
+    double qwen_total_ms = 0.0;
     /// Number of generated codec frames reported by qwentts.
     int qwen_n_frames = 0;
 };

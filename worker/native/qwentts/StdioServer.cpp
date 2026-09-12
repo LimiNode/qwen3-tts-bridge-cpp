@@ -555,6 +555,7 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                   << ",\"qwen_predictor_ms\":" << result.qwen_predictor_ms
                   << ",\"qwen_host_ms\":" << result.qwen_host_ms
                   << ",\"qwen_codec_ms\":" << result.qwen_codec_ms
+                  << ",\"qwen_total_ms\":" << result.qwen_total_ms
                   << ",\"qwen_n_frames\":" << result.qwen_n_frames;
         if (outcome != nullptr) {
             std::cerr << ",\"execution_outcome\":\"" << outcome << "\"";

@@ -511,6 +511,7 @@ SynthesisResult NativeEngine::synthesize(
             result.qwen_predictor_ms = qwen_metrics.predictor_ms;
             result.qwen_host_ms = qwen_metrics.host_ms;
             result.qwen_codec_ms = qwen_metrics.codec_ms;
+            result.qwen_total_ms = qwen_metrics.total_ms;
             result.qwen_n_frames = qwen_metrics.n_frames;
         }
         return result;
