@@ -312,7 +312,7 @@ SynthesisResult NativeEngine::synthesize(
     api.audio_free(&output);
     qt_synthesis_metrics qwen_metrics{};
     if (api.last_synthesis_metrics != nullptr) {
-        api.last_synthesis_metrics(&qwen_metrics);
+        api.last_synthesis_metrics(&qwen_metrics, sizeof(qwen_metrics));
     }
     const auto apply_qwen_metrics = [&qwen_metrics](SynthesisResult result) {
         if (qwen_metrics.abi_version == QT_ABI_VERSION) {
