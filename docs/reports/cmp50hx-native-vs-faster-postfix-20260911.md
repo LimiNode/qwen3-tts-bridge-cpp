@@ -15,6 +15,11 @@ Raw combined artifacts are retained outside git:
 
 `C:\\tmp\\cmp50hx-native-acceptance\\formal-parity-postfix-20260911.json.artifacts\\20260911T164334270Z-dba8bfc4147b4e55ad752b29d213ee44`
 
+Sanitized per-request measurements are retained in
+`evidence/cmp50hx-postfix-20260911/request-results.jsonl`; they are sufficient
+to recompute the aggregate values below without access to the machine-local
+raw JSON.
+
 ## Acceptance result
 
 The runner exited successfully. Both backends completed all six requests with
@@ -42,7 +47,21 @@ The native playback probe also captured non-empty PCM for the two English rows
 that were used to reproduce the original empty-audio report. The capture
 metadata and SHA-256 digests are preserved in
 `evidence/cmp50hx-postfix-20260911/pcm-capture-summary.json`; the raw PCM stays
-outside git under the local acceptance artifact directory.
+outside git under the local acceptance artifact directory. This proves transport
+delivery and terminal completion only. Full-text pronunciation, truncation,
+quality, and voice identity remain unverified and are explicit release gates.
+The follow-up signal diagnostic found peak amplitudes of only 12 and 7 in the
+two English native captures (normalized peaks below 0.0004); therefore these
+files must currently be treated as near-silent output, not as evidence that the
+target sentences were spoken. The native decoder/output-scaling path is now a
+functional blocker for semantic acceptance. A canary using the exact
+pre-follow-up Bridge pin, `qwentts.cpp@e9ead9e`, and a fresh DLL hash reproduced
+the same near-silent `en-medium-b` signature; details are in
+`evidence/cmp50hx-postfix-20260911/current-pin-canary.json`.
+The follow-up submodule bump to `a3eecf1` contains only the upstream sampling
+contract test and CI changes (no runtime source changes), but its exact CUDA
+DLL was not rebuilt for this canary. A release-quality semantic gate therefore
+still requires a fresh capture from the pinned `a3eecf1` runtime.
 
 ## Interpretation
 
@@ -53,7 +72,9 @@ These values supersede neither the initial pre-fix report nor the separate
 registered-voice/prefix-KV Faster baseline; those remain preserved as distinct
 experiments with different runtime semantics.
 
-Remaining release gates are a 30–100-request sequential soak, long and
-near-capacity rows, physical playback, starvation/cadence under the real sink,
+`benchmark_starvation_proxy` refers only to the benchmark-side transport
+check. It is not a physical playback starvation result. Remaining release
+gates are a 30–100-request sequential soak, long and near-capacity rows,
+physical playback, starvation/cadence under the real sink,
 cancellation/restart lifecycle, multilingual quality and voice identity, and a
 separate exact-condition `cmp50hx-fastest` prefix-KV baseline.

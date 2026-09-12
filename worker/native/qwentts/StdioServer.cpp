@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -31,6 +32,46 @@ std::vector<std::byte> make_frame(
 std::string make_session_id() {
     const auto ticks = GetTickCount64();
     return "native-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(ticks);
+}
+
+struct PcmSignalStats {
+    double peak_abs = 0.0;
+    double rms = 0.0;
+};
+
+PcmSignalStats float_pcm_stats(const float* samples, int count) {
+    PcmSignalStats stats;
+    if (samples == nullptr || count <= 0) {
+        return stats;
+    }
+    long double sum_squares = 0.0L;
+    for (int index = 0; index < count; ++index) {
+        const double value = std::isfinite(samples[index]) ? samples[index] : 0.0;
+        stats.peak_abs = std::max(stats.peak_abs, std::abs(value));
+        sum_squares += value * value;
+    }
+    stats.rms = std::sqrt(static_cast<double>(sum_squares / count));
+    return stats;
+}
+
+PcmSignalStats s16le_pcm_stats(const std::vector<std::byte>& pcm) {
+    PcmSignalStats stats;
+    if (pcm.size() < 2) {
+        return stats;
+    }
+    long double sum_squares = 0.0L;
+    const std::size_t sample_count = pcm.size() / 2u;
+    for (std::size_t index = 0; index < sample_count; ++index) {
+        const auto low = std::to_integer<std::uint8_t>(pcm[index * 2u]);
+        const auto high = std::to_integer<std::uint8_t>(pcm[index * 2u + 1u]);
+        const auto sample = static_cast<std::int16_t>(static_cast<std::uint16_t>(low) |
+            (static_cast<std::uint16_t>(high) << 8u));
+        const double value = sample;
+        stats.peak_abs = std::max(stats.peak_abs, std::abs(value));
+        sum_squares += value * value;
+    }
+    stats.rms = std::sqrt(static_cast<double>(sum_squares / sample_count));
+    return stats;
 }
 
 } // namespace
@@ -452,10 +493,12 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
     started.audio_format = slot->request.output;
     send_control(slot->id, started);
 
+    const auto request_start = std::chrono::steady_clock::now();
+    std::size_t chunk_index = 0;
     const SynthesisResult result = engine_.synthesize(
         slot->request,
         slot->cancelled,
-        [this, &slot](const float* samples, int count) {
+        [this, &slot, &request_start, &chunk_index](const float* samples, int count) {
             if (slot->cancelled.load(std::memory_order_relaxed) || slot->terminal.load()) {
                 return false;
             }
@@ -463,8 +506,29 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                 fail_fatal("qwen.dll emitted an invalid audio chunk");
                 return false;
             }
+            if (chunk_index == 0) {
+                const auto float_stats = float_pcm_stats(samples, count);
+                const auto first_chunk_ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - request_start).count();
+                std::cerr << "qtb_metric {\"event\":\"native_pcm_signal\",\"request_id\":"
+                          << slot->id << ",\"chunk_index\":0,\"samples\":" << count
+                          << ",\"first_chunk_ms\":" << first_chunk_ms
+                          << ",\"float_peak_abs\":" << float_stats.peak_abs
+                          << ",\"float_rms\":" << float_stats.rms;
+                const auto pcm = float_pcm_to_s16le(samples, count);
+                const auto s16_stats = s16le_pcm_stats(pcm);
+                std::cerr << ",\"s16_peak_abs\":" << s16_stats.peak_abs
+                          << ",\"s16_rms\":" << s16_stats.rms << "}\n" << std::flush;
+                const bool sent = writer_->send(make_frame(FrameType::AudioPcm, slot->id, pcm));
+                ++chunk_index;
+                if (!sent) {
+                    fail_fatal("stdout writer failed while streaming native audio");
+                }
+                return sent && !slot->cancelled.load(std::memory_order_relaxed);
+            }
             auto pcm = float_pcm_to_s16le(samples, count);
             const bool sent = writer_->send(make_frame(FrameType::AudioPcm, slot->id, std::move(pcm)));
+            ++chunk_index;
             if (!sent) {
                 fail_fatal("stdout writer failed while streaming native audio");
             }
@@ -477,6 +541,12 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
     const auto emit_finished_metric = [&](const char* terminal_state, const char* outcome) {
         std::cerr << "qtb_metric {\"event\":\"request_finished\",\"request_id\":"
                   << slot->id << ",\"terminal_state\":\"" << terminal_state << "\"";
+        std::cerr << ",\"voice_reference_cache_hit\":"
+                  << (result.voice_reference_cache_hit ? "true" : "false")
+                  << ",\"voice_reference_extract_ms\":" << result.voice_reference_extract_ms
+                  << ",\"reference_audio_decode_ms\":" << result.reference_audio_decode_ms
+                  << ",\"synthesis_ms\":" << result.synthesis_ms
+                  << ",\"first_chunk_callback_ms\":" << result.first_chunk_callback_ms;
         if (outcome != nullptr) {
             std::cerr << ",\"execution_outcome\":\"" << outcome << "\"";
         }

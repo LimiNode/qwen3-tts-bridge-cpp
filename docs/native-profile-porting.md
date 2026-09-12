@@ -70,6 +70,12 @@ profile can be marked release-ready:
 - profile-aware sequence limits and automatic text-length routing;
 - RTX 4090 and CMP 50HX hardware presets with independent measurements.
 
+The native worker now has an opt-in `--precompute-voice-ref` experiment that
+uses qwentts' `qt_extract_voice_ref()` / `qt_voice_ref` ABI and caches the
+speaker embedding plus RVQ reference codes. This removes repeated reference
+encoding, but it is not prefix-KV reuse and is not a release profile until the
+PCM, semantic completeness, and voice-identity gates pass.
+
 An unsupported field must be reported as unsupported by the native capability
 manifest; silently ignoring it is not allowed. Until a native profile passes
 the common matrix, Python/FasterQwen remains the default release backend.

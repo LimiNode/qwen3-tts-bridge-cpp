@@ -302,6 +302,20 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             PRIVATE
                 QwenTTSBridge::qwen_tts_bridge_native
         )
+        # The nested qwentts project registers its sampling-contract test, but
+        # that target is not part of the bridge's default build graph.  Make
+        # the native ABI smoke target pull it in so a normal CTest build cannot
+        # leave the registered test as NOT_RUN.
+        if(TARGET test-sampling-contract)
+            # qwentts.cpp uses CMAKE_SOURCE_DIR in this test's include path;
+            # when embedded below the bridge that resolves to the parent
+            # project, so restore the nested source directory explicitly.
+            target_include_directories(test-sampling-contract
+                PRIVATE
+                    "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src"
+            )
+            add_dependencies(native_qwen_backend_abi_test test-sampling-contract)
+        endif()
         add_test(NAME native_qwen_backend_abi_test COMMAND native_qwen_backend_abi_test)
 
         add_executable(native_qwen_backend_finish_test
@@ -315,6 +329,17 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src"
         )
         add_test(NAME native_qwen_backend_finish_test COMMAND native_qwen_backend_finish_test)
+
+        # Keep the pinned qwentts.cpp step-zero EOS contract in the bridge's
+        # native CI as well as in the upstream project.  The target is owned by
+        # the nested qwentts project; this wrapper gives it a stable bridge
+        # test name for the native ABI job.
+        if(TARGET test-sampling-contract)
+            add_test(
+                NAME native_qwentts_sampling_contract
+                COMMAND $<TARGET_FILE:test-sampling-contract>
+            )
+        endif()
     endif()
 
     add_executable(protocol_frame_test

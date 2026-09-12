@@ -10,6 +10,7 @@
     "sample_rate": 24000,
     "channels": 1
   },
+  "provenance": "provenance.json",
   "captures": [
     {
       "label": "en-short-b",
@@ -28,5 +29,7 @@
       "pcm_sha256": "08257dc78d6fb2d2bac3bd96a7277729ad0c3699ae7de203e01b88ed882d9e66"
     }
   ],
-  "interpretation": "This records successful native PCM delivery after the step-zero EOS fix. It is transport/terminal evidence only; subjective quality and voice identity require human listening."
+  "interpretation": "This records successful native PCM delivery after the step-zero EOS fix. It is transport/terminal evidence only; semantic completeness, subjective quality, and voice identity are not verified by this capture.",
+  "semantic_completeness": "not_verified",
+  "release_gate": "blocked_pending_full_text_review"
 }

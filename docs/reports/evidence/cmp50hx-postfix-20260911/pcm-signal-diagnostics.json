@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "measurement": "native_pcm_signal_diagnostic",
+  "format": "s16le mono 24000 Hz",
+  "interpretation": "The captures contain non-zero samples, but their amplitude is near digital silence. This diagnostic blocks semantic completeness acceptance; it is not a quality pass.",
+  "captures": [
+    {
+      "label": "en-short-b",
+      "byte_count": 19200,
+      "duration_seconds": 0.4,
+      "peak_abs_s16": 12,
+      "rms_s16": 2.902028744,
+      "normalized_peak": 0.000366222,
+      "semantic_signal_present": false
+    },
+    {
+      "label": "en-medium-b",
+      "byte_count": 26880,
+      "duration_seconds": 0.56,
+      "peak_abs_s16": 7,
+      "rms_s16": 1.022878175,
+      "normalized_peak": 0.00021363,
+      "semantic_signal_present": false
+    }
+  ],
+  "release_gate": "blocked_pending_native_decoder_signal_investigation"
+}

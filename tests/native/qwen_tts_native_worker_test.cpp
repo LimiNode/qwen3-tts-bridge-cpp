@@ -1,8 +1,10 @@
 #include <qwen_tts_bridge/client.hpp>
 
+#include <array>
 #include <chrono>
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -37,7 +39,8 @@ StdIoTransportOptions options(
     int stream_max_chunk_frames = 8,
     std::string* stderr_capture = nullptr,
     std::atomic<bool>* cadence_observed = nullptr,
-    int max_text_bytes = 0) {
+    int max_text_bytes = 0,
+    bool precompute_voice_ref = false) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
@@ -50,6 +53,9 @@ StdIoTransportOptions options(
     if (max_text_bytes > 0) {
         result.arguments.push_back("--max-text-bytes");
         result.arguments.push_back(std::to_string(max_text_bytes));
+    }
+    if (precompute_voice_ref) {
+        result.arguments.push_back("--precompute-voice-ref");
     }
     result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
         if (stderr_capture != nullptr) {
@@ -105,6 +111,43 @@ StdIoTransportOptions manifest_options(
         "--codec-model", (manifest.parent_path() / "codec.gguf").string()
     };
     return result;
+}
+
+void write_reference_wav(const std::filesystem::path& path) {
+    const std::array<std::int16_t, 4> samples{0, 4096, -4096, 0};
+    const std::uint32_t data_size = static_cast<std::uint32_t>(samples.size() * sizeof(samples[0]));
+    const std::uint32_t riff_size = 36u + data_size;
+    std::ofstream output(path, std::ios::binary);
+    if (!output.good()) {
+        std::abort();
+    }
+    const auto write_u16 = [&output](std::uint16_t value) {
+        output.put(static_cast<char>(value & 0xffu));
+        output.put(static_cast<char>((value >> 8u) & 0xffu));
+    };
+    const auto write_u32 = [&output](std::uint32_t value) {
+        for (unsigned shift = 0; shift < 32; shift += 8) {
+            output.put(static_cast<char>((value >> shift) & 0xffu));
+        }
+    };
+    output.write("RIFF", 4);
+    write_u32(riff_size);
+    output.write("WAVEfmt ", 8);
+    write_u32(16);
+    write_u16(1);
+    write_u16(1);
+    write_u32(24000);
+    write_u32(24000u * 2u);
+    write_u16(2);
+    write_u16(16);
+    output.write("data", 4);
+    write_u32(data_size);
+    for (const auto sample : samples) {
+        write_u16(static_cast<std::uint16_t>(sample));
+    }
+    if (!output.good()) {
+        std::abort();
+    }
 }
 }
 
@@ -198,6 +241,46 @@ int main() {
     CHECK(static_cast<unsigned char>(probe.audio[1]) == 0x80u);
     CHECK(static_cast<unsigned char>(probe.audio[10]) == 0xffu);
     CHECK(static_cast<unsigned char>(probe.audio[11]) == 0x7fu);
+
+    const auto reference_wav = runtime / "reference-cache-test.wav";
+    write_reference_wav(reference_wav);
+    std::string reference_stderr;
+    QwenTtsClient cached_client;
+    QwenTtsClientOptions cached_options;
+    cached_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(cached_client.start(
+        options(8, &reference_stderr, nullptr, 0, true), cached_options));
+    Probe reference_probe;
+    TtsCallbacks reference_callbacks;
+    reference_callbacks.on_completed = [&reference_probe]() {
+        std::lock_guard<std::mutex> lock(reference_probe.mutex);
+        ++reference_probe.completed;
+        reference_probe.condition.notify_all();
+    };
+    reference_callbacks.on_error = [&reference_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(reference_probe.mutex);
+        reference_probe.errors.push_back(error);
+        reference_probe.condition.notify_all();
+    };
+    TtsRequest reference_request;
+    reference_request.text = "cached reference request";
+    reference_request.reference_audio_path = reference_wav.string();
+    reference_request.x_vector_only = true;
+    CHECK(cached_client.synthesize_async(reference_request, reference_callbacks) != 0);
+    CHECK(cached_client.synthesize_async(reference_request, reference_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(reference_probe.mutex);
+        CHECK(reference_probe.condition.wait_for(lock, std::chrono::seconds(5), [&reference_probe]() {
+            return reference_probe.completed == 2 || !reference_probe.errors.empty();
+        }));
+    }
+    CHECK(reference_probe.errors.empty());
+    CHECK(reference_probe.completed == 2);
+    CHECK(reference_stderr.find("\"voice_reference_cache_hit\":false") != std::string::npos);
+    CHECK(reference_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
+    CHECK(reference_stderr.find("\"reference_audio_decode_ms\":") != std::string::npos);
+    CHECK(reference_stderr.find("\"synthesis_ms\":") != std::string::npos);
+    cached_client.stop();
 
     QwenTtsClient limited_client;
     QwenTtsClientOptions limited_options;

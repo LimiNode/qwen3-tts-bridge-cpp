@@ -36,6 +36,12 @@ Function load_symbol(HMODULE module, const char* name) {
     return reinterpret_cast<Function>(symbol);
 }
 
+template <typename Function>
+Function load_optional_symbol(HMODULE module, const char* name) noexcept {
+    const auto symbol = GetProcAddress(module, name);
+    return symbol == nullptr ? nullptr : reinterpret_cast<Function>(symbol);
+}
+
 bool version_matches_commit(const std::string& version, const std::string& commit) {
     if (commit.empty() || version.size() < commit.size()) {
         return false;
@@ -84,6 +90,14 @@ void QwenDllLoader::load(
         api_.tts_default_params = load_symbol<decltype(api_.tts_default_params)>(module_, "qt_tts_default_params");
         api_.synthesize = load_symbol<decltype(api_.synthesize)>(module_, "qt_synthesize");
         api_.audio_free = load_symbol<decltype(api_.audio_free)>(module_, "qt_audio_free");
+        // Voice-reference extraction was added after the initial native ABI.
+        // Keep these exports optional so the default raw-WAV path remains
+        // compatible with an older runtime; NativeEngine rejects the opt-in
+        // cache explicitly when the pair is unavailable.
+        api_.extract_voice_ref = load_optional_symbol<decltype(api_.extract_voice_ref)>(
+            module_, "qt_extract_voice_ref");
+        api_.voice_ref_free = load_optional_symbol<decltype(api_.voice_ref_free)>(
+            module_, "qt_voice_ref_free");
         api_.num_codebooks = load_symbol<decltype(api_.num_codebooks)>(module_, "qt_num_codebooks");
         api_.n_speakers = load_symbol<decltype(api_.n_speakers)>(module_, "qt_n_speakers");
         api_.speaker_name = load_symbol<decltype(api_.speaker_name)>(module_, "qt_speaker_name");
@@ -121,6 +135,10 @@ const QwenApi& QwenDllLoader::api() const {
         throw std::logic_error("qwen.dll is not loaded");
     }
     return api_;
+}
+
+bool QwenDllLoader::supports_voice_reference() const noexcept {
+    return api_.extract_voice_ref != nullptr && api_.voice_ref_free != nullptr;
 }
 
 const RuntimeManifest& QwenDllLoader::manifest() const {

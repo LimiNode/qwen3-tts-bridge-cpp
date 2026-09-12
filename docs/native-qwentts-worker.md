@@ -49,6 +49,26 @@ An optional `--max-text-bytes N` preflight bound makes the native worker return
 Supervisors can use that explicit result to route the request to a safe native
 worker or the Python/FasterQwen worker; `0` (the default) disables the bound.
 This is a conservative byte bound, not a tokenizer-derived duration estimate.
+For repeated Base reference requests, the opt-in `--precompute-voice-ref` flag
+extracts and caches qwentts' reusable speaker embedding and RVQ reference codes
+per decoded WAV. The raw-WAV path remains the default; use this flag only for an
+explicit A/B run because precomputed conditioning must still pass the same PCM
+and voice-identity gates.
+
+Each request emits a diagnostic `native_pcm_signal` metric on stderr for the
+first callback. It reports float PCM peak/RMS before Bridge conversion and
+s16le peak/RMS after conversion, together with first-chunk latency. This is a
+diagnostic boundary check, not a loudness normalizer: the Bridge must never
+silently amplify native output.
+
+The terminal `request_finished` metric also records the timing boundaries used
+by hardware acceptance: `reference_audio_decode_ms`,
+`voice_reference_extract_ms`, `synthesis_ms`, and
+`first_chunk_callback_ms`. These values are intentionally wall-clock
+diagnostics; qwentts does not expose its internal Talker-prefill and codec
+decode spans through the Bridge ABI yet. Do not interpret `synthesis_ms` or
+first PCM arrival as audible speech quality while the semantic PCM gate is
+failing.
 
 The worker also rejects a successful qwentts EOS that emitted no PCM as
 `model_error/empty_audio`. This prevents an empty natural-EOS result from being
