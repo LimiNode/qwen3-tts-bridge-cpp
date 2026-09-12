@@ -546,7 +546,15 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                   << ",\"voice_reference_extract_ms\":" << result.voice_reference_extract_ms
                   << ",\"reference_audio_decode_ms\":" << result.reference_audio_decode_ms
                   << ",\"synthesis_ms\":" << result.synthesis_ms
-                  << ",\"first_chunk_callback_ms\":" << result.first_chunk_callback_ms;
+                  << ",\"first_chunk_callback_ms\":" << result.first_chunk_callback_ms
+                  << ",\"qwen_prompt_build_ms\":" << result.qwen_prompt_build_ms
+                  << ",\"qwen_prefill_ms\":" << result.qwen_prefill_ms
+                  << ",\"qwen_ttfa_ms\":" << result.qwen_ttfa_ms
+                  << ",\"qwen_talker_ms\":" << result.qwen_talker_ms
+                  << ",\"qwen_predictor_ms\":" << result.qwen_predictor_ms
+                  << ",\"qwen_host_ms\":" << result.qwen_host_ms
+                  << ",\"qwen_codec_ms\":" << result.qwen_codec_ms
+                  << ",\"qwen_n_frames\":" << result.qwen_n_frames;
         if (outcome != nullptr) {
             std::cerr << ",\"execution_outcome\":\"" << outcome << "\"";
         }

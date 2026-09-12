@@ -11,7 +11,10 @@ int main() {
     NativeQwenBackendOptions options;
     options.talker_path = "missing-talker.gguf";
     options.codec_path = "missing-codec.gguf";
-    options.stream_max_chunk_frames = 4;
+    // Reject an invalid ABI value before model loading.  This keeps the smoke
+    // test deterministic even when a qwentts build defers GGUF validation
+    // until the first synthesis request.
+    options.stream_max_chunk_frames = 3;
     NativeQwenBackend backend(options);
 
 #define CHECK(expression) \
@@ -22,7 +25,7 @@ int main() {
         } \
     } while (false)
 
-    // This is an ABI/linkage smoke test, not a model test. Missing GGUF files
+    // This is an ABI/linkage smoke test, not a model test. Invalid ABI input
     // must fail locally and leave a diagnostic without crashing the process.
     CHECK(!backend.is_ready());
     CHECK(!backend.last_error().empty());
