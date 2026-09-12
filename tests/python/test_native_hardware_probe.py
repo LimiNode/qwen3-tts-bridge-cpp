@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import io
-import unittest
 from pathlib import Path
+import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +37,9 @@ class NativeHardwareProbeTests(unittest.TestCase):
             probe.read_frame(io.BytesIO(header))
 
     def test_probe_source_keeps_acceptance_gates(self) -> None:
-        source = (ROOT / "scripts" / "run-native-hardware-probe.py").read_text(encoding="utf-8")
+        source = (ROOT / "scripts" / "run-native-hardware-probe.py").read_text(
+            encoding="utf-8"
+        )
 
         for required in (
             'message_type") != "completed"',
@@ -45,7 +47,7 @@ class NativeHardwareProbeTests(unittest.TestCase):
             '"starvation_detected"',
             '"buffer_slack_ms"',
             '"hashes"',
-            'stderr_thread.join',
+            "stderr_thread.join",
         ):
             self.assertIn(required, source)
 

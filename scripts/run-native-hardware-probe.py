@@ -39,7 +39,9 @@ def read_frame(stream: Any) -> tuple[int, int, Any]:
     if magic != b"QTB1" or version != 1 or header_size < HEADER.size or flags != 0:
         raise RuntimeError("native worker returned an invalid QTB frame header")
     if payload_size > MAX_FRAME_PAYLOAD:
-        raise RuntimeError(f"native worker returned an oversized QTB payload: {payload_size}")
+        raise RuntimeError(
+            f"native worker returned an oversized QTB payload: {payload_size}"
+        )
     if header_size > HEADER.size:
         extension = stream.read(header_size - HEADER.size)
         if len(extension) != header_size - HEADER.size:
@@ -58,7 +60,9 @@ class FrameReader:
     def __init__(self, stream: Any) -> None:
         self._stream = stream
         self._items: queue.Queue[tuple[str, Any]] = queue.Queue()
-        self._thread = threading.Thread(target=self._run, name="qtb-frame-reader", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name="qtb-frame-reader", daemon=True
+        )
 
     def start(self) -> None:
         self._thread.start()
@@ -74,7 +78,9 @@ class FrameReader:
         try:
             kind, value = self._items.get(timeout=timeout)
         except queue.Empty as error:
-            raise TimeoutError(f"timed out waiting for a native worker frame ({timeout:.1f}s)") from error
+            raise TimeoutError(
+                f"timed out waiting for a native worker frame ({timeout:.1f}s)"
+            ) from error
         if kind == "error":
             raise value
         return value
@@ -102,7 +108,11 @@ def hardware_identity() -> dict[str, Any]:
     }
     try:
         probe = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,driver_version,memory.total", "--format=csv,noheader"],
+            [
+                "nvidia-smi",
+                "--query-gpu=name,driver_version,memory.total",
+                "--format=csv,noheader",
+            ],
             capture_output=True,
             text=True,
             timeout=10,
@@ -160,10 +170,14 @@ def main() -> int:
 
     worker_args = [
         str(args.worker),
-        "--runtime-dir", str(args.runtime_dir),
-        "--talker-model", str(args.talker_model),
-        "--codec-model", str(args.codec_model),
-        "--stream-max-chunk-frames", str(args.stream_max_chunk_frames),
+        "--runtime-dir",
+        str(args.runtime_dir),
+        "--talker-model",
+        str(args.talker_model),
+        "--codec-model",
+        str(args.codec_model),
+        "--stream-max-chunk-frames",
+        str(args.stream_max_chunk_frames),
     ]
     if args.voice_registry_path:
         worker_args += ["--voice-registry-path", str(args.voice_registry_path)]
@@ -188,7 +202,9 @@ def main() -> int:
         for line in process.stderr:
             stderr_lines.append(line.decode("utf-8", errors="replace").rstrip())
 
-    stderr_thread = threading.Thread(target=drain_stderr, name="qtb-stderr-reader", daemon=True)
+    stderr_thread = threading.Thread(
+        target=drain_stderr, name="qtb-stderr-reader", daemon=True
+    )
     stderr_thread.start()
 
     def send(request_id: int, payload: dict[str, Any]) -> None:
@@ -200,7 +216,9 @@ def main() -> int:
         args.runtime_dir / "runtime-manifest.json",
         args.runtime_dir / "manifest.json",
     )
-    dll = first_existing(args.runtime_dir / "qwen.dll", args.runtime_dir / "qwen-cuda.dll")
+    dll = first_existing(
+        args.runtime_dir / "qwen.dll", args.runtime_dir / "qwen-cuda.dll"
+    )
     evidence: dict[str, Any] = {
         "worker": str(args.worker),
         "worker_args": worker_args,
@@ -208,9 +226,13 @@ def main() -> int:
         "runtime_manifest": str(runtime_manifest) if runtime_manifest else None,
         "talker_model": str(args.talker_model),
         "codec_model": str(args.codec_model),
-        "voice_registry_path": str(args.voice_registry_path) if args.voice_registry_path else "",
+        "voice_registry_path": str(args.voice_registry_path)
+        if args.voice_registry_path
+        else "",
         "voice_id": args.voice_id,
-        "reference_audio_path": str(args.reference_audio_path) if args.reference_audio_path else "",
+        "reference_audio_path": str(args.reference_audio_path)
+        if args.reference_audio_path
+        else "",
         "reference_text": args.reference_text,
         "x_vector_only": args.x_vector_only,
         "text": args.text,
@@ -237,23 +259,40 @@ def main() -> int:
             "qwen_dll": sha256_file(dll) if dll else None,
             "talker_model": sha256_file(args.talker_model),
             "codec_model": sha256_file(args.codec_model),
-            "runtime_manifest": sha256_file(runtime_manifest) if runtime_manifest else None,
-            "voice_registry": sha256_file(args.voice_registry_path) if args.voice_registry_path else None,
-            "reference_audio": sha256_file(args.reference_audio_path) if args.reference_audio_path else None,
+            "runtime_manifest": sha256_file(runtime_manifest)
+            if runtime_manifest
+            else None,
+            "voice_registry": sha256_file(args.voice_registry_path)
+            if args.voice_registry_path
+            else None,
+            "reference_audio": sha256_file(args.reference_audio_path)
+            if args.reference_audio_path
+            else None,
         },
     }
 
     failure: BaseException | None = None
     try:
-        send(0, {"message_type": "hello", "client_name": "native-hardware-probe", "client_version": "1"})
+        send(
+            0,
+            {
+                "message_type": "hello",
+                "client_name": "native-hardware-probe",
+                "client_version": "1",
+            },
+        )
         frame_type, _, ready = frame_reader.read(args.startup_timeout_seconds)
         if frame_type != 1 or ready.get("message_type") != "ready":
             raise RuntimeError(f"expected ready, got {ready!r}")
         evidence["ready"] = ready
         if bool(ready.get("warmed_up")) != args.warmup_synthesis:
-            raise RuntimeError("ready.warmed_up does not match the requested warmup state")
+            raise RuntimeError(
+                "ready.warmed_up does not match the requested warmup state"
+            )
         if args.voice_id and args.voice_id not in ready.get("voice_ids", []):
-            raise RuntimeError(f"requested voice_id is absent from ready.voice_ids: {args.voice_id}")
+            raise RuntimeError(
+                f"requested voice_id is absent from ready.voice_ids: {args.voice_id}"
+            )
 
         request: dict[str, Any] = {
             "message_type": "synthesize",
@@ -274,12 +313,18 @@ def main() -> int:
         previous_arrival_ms: float | None = None
         previous_audio_duration_ms: float | None = None
         while True:
-            frame_type, request_id, payload = frame_reader.read(args.request_timeout_seconds)
+            frame_type, request_id, payload = frame_reader.read(
+                args.request_timeout_seconds
+            )
             if frame_type == 2 and request_id == 1:
                 arrival_ms = (time.perf_counter() - request_started) * 1000.0
                 audio_bytes = len(payload)
                 audio_duration_ms = audio_bytes / (2.0 * 24000.0) * 1000.0
-                gap_ms = None if previous_arrival_ms is None else arrival_ms - previous_arrival_ms
+                gap_ms = (
+                    None
+                    if previous_arrival_ms is None
+                    else arrival_ms - previous_arrival_ms
+                )
                 buffer_slack_ms = (
                     None
                     if gap_ms is None or previous_audio_duration_ms is None
@@ -287,14 +332,16 @@ def main() -> int:
                 )
                 if buffer_slack_ms is not None and buffer_slack_ms < 0.0:
                     evidence["starvation_detected"] = True
-                evidence["chunks"].append({
-                    "index": len(evidence["chunks"]),
-                    "arrival_ms": arrival_ms,
-                    "bytes": audio_bytes,
-                    "audio_duration_ms": audio_duration_ms,
-                    "gap_ms": gap_ms,
-                    "buffer_slack_ms": buffer_slack_ms,
-                })
+                evidence["chunks"].append(
+                    {
+                        "index": len(evidence["chunks"]),
+                        "arrival_ms": arrival_ms,
+                        "bytes": audio_bytes,
+                        "audio_duration_ms": audio_duration_ms,
+                        "gap_ms": gap_ms,
+                        "buffer_slack_ms": buffer_slack_ms,
+                    }
+                )
                 evidence["audio_bytes"] += audio_bytes
                 if evidence["first_pcm_ms"] is None:
                     evidence["first_pcm_ms"] = arrival_ms
@@ -309,12 +356,16 @@ def main() -> int:
                 evidence["terminal"] = payload
                 break
         terminal = evidence["terminal"]
-        if not isinstance(terminal, dict) or terminal.get("message_type") != "completed":
+        if (
+            not isinstance(terminal, dict)
+            or terminal.get("message_type") != "completed"
+        ):
             raise RuntimeError(f"request did not complete successfully: {terminal!r}")
         if terminal.get("execution_outcome") != args.expected_execution_outcome:
             raise RuntimeError(
                 "unexpected execution outcome: "
-                f"{terminal.get('execution_outcome')!r} != {args.expected_execution_outcome!r}"
+                f"{terminal.get('execution_outcome')!r} != "
+                f"{args.expected_execution_outcome!r}"
             )
         if evidence["first_pcm_ms"] is None or evidence["audio_bytes"] <= 0:
             raise RuntimeError("completed request did not emit PCM")
@@ -346,7 +397,9 @@ def main() -> int:
     evidence["stderr_tail"] = stderr_lines[-200:]
     evidence["worker_exit_code"] = process.returncode
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return 1 if failure is not None or process.returncode != 0 else 0
 
 
