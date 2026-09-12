@@ -156,12 +156,12 @@ jobs:
         shell: pwsh
         run: >
           cmake --build build/native-qwentts --config Release
-          --target native_qwen_backend_abi_test native_qwen_backend_finish_test
+          --target native_qwen_backend_abi_test native_qwen_backend_finish_test test-sampling-contract
           --parallel
 
       - name: Run native ABI smoke-test
         shell: pwsh
         run: >
           ctest --test-dir build/native-qwentts -C Release
-          -R "native_qwen_backend_(abi|finish)_test"
+          -R "native_qwen_backend_(abi|finish)_test|native_qwentts_sampling_contract"
           --output-on-failure
