@@ -45,7 +45,7 @@ the repository stores only their sanitized hash and measurements.
 ## Multi-seed semantic soak
 
 The 10-seed registered-voice soak confirms that the boundary fix is causal but
-not sufficient to close the semantic blocker. Eight seeds produced natural EOS
+not sufficient to close the semantic blocker. Nine seeds produced natural EOS
 between 2.08 s and 37.52 s; one seed produced 163.84 s and hit
 `max_tokens`. The frame counts were:
 
