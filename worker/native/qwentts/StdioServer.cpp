@@ -543,7 +543,10 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                   << slot->id << ",\"terminal_state\":\"" << terminal_state << "\"";
         std::cerr << ",\"voice_reference_cache_hit\":"
                   << (result.voice_reference_cache_hit ? "true" : "false")
-                  << ",\"voice_reference_extract_ms\":" << result.voice_reference_extract_ms;
+                  << ",\"voice_reference_extract_ms\":" << result.voice_reference_extract_ms
+                  << ",\"reference_audio_decode_ms\":" << result.reference_audio_decode_ms
+                  << ",\"synthesis_ms\":" << result.synthesis_ms
+                  << ",\"first_chunk_callback_ms\":" << result.first_chunk_callback_ms;
         if (outcome != nullptr) {
             std::cerr << ",\"execution_outcome\":\"" << outcome << "\"";
         }

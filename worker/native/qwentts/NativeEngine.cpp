@@ -52,6 +52,8 @@ struct CallbackContext {
     const std::atomic<bool>* cancelled = nullptr;
     const AudioChunkHandler* on_chunk = nullptr;
     bool emitted_audio = false;
+    std::chrono::steady_clock::time_point synthesis_started_at;
+    double first_chunk_callback_ms = 0.0;
 };
 
 bool cancel_callback(void* user_data) {
@@ -66,6 +68,10 @@ bool audio_callback(const float* samples, int count, void* user_data) {
     }
     if (samples != nullptr && count > 0) {
         context->emitted_audio = true;
+        if (context->first_chunk_callback_ms == 0.0) {
+            context->first_chunk_callback_ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - context->synthesis_started_at).count();
+        }
     }
     return (*context->on_chunk)(samples, count);
 }
@@ -102,6 +108,11 @@ void NativeEngine::load() {
     }
     loader_.load(options_.dll_path, options_.manifest_path);
     const QwenApi& api = loader_.api();
+    if (options_.precompute_voice_refs && !loader_.supports_voice_reference()) {
+        loader_.unload();
+        throw std::runtime_error(
+            "--precompute-voice-ref requires qt_extract_voice_ref and qt_voice_ref_free exports");
+    }
     api.log_set(&qwen_log_callback, nullptr);
 
     qt_init_params params{};
@@ -193,9 +204,13 @@ SynthesisResult NativeEngine::synthesize(
     const qt_voice_ref* cached_reference = nullptr;
     bool voice_reference_cache_hit = false;
     double voice_reference_extract_ms = 0.0;
+    double reference_audio_decode_ms = 0.0;
     try {
         if (!request.reference_audio_path.empty()) {
+            const auto reference_decode_start = std::chrono::steady_clock::now();
             reference_audio = read_mono_24k_wav(std::filesystem::u8path(request.reference_audio_path));
+            reference_audio_decode_ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - reference_decode_start).count();
             if (options_.precompute_voice_refs) {
                 reference_cache_key = voice_reference_cache_key(
                     std::filesystem::u8path(request.reference_audio_path), reference_audio);
@@ -218,7 +233,7 @@ SynthesisResult NativeEngine::synthesize(
                         api.voice_ref_free(&entry->value);
                         return {SynthesisOutcome::Failed, "model_error", "voice_reference_extract_failed",
                                 last_error(api, "qwentts voice reference extraction failed"), {}, false,
-                                voice_reference_extract_ms};
+                                voice_reference_extract_ms, reference_audio_decode_ms};
                     }
                     cached_reference = &entry->value;
                     auto [inserted, was_inserted] = voice_reference_cache_.emplace(
@@ -251,8 +266,12 @@ SynthesisResult NativeEngine::synthesize(
     if (cached_reference != nullptr) {
         params.ref_spk_emb = cached_reference->ref_spk_emb;
         params.ref_spk_dim = cached_reference->ref_spk_dim;
-        params.ref_codes = request.x_vector_only ? nullptr : cached_reference->ref_codes;
-        params.ref_T = request.x_vector_only ? 0 : cached_reference->ref_T;
+        // A raw reference without a transcript is x-vector mode. Supplying
+        // RVQ codes in that mode changes the qwentts prompt semantics and is
+        // not equivalent to the uncached path. Reuse codes only for ICL.
+        const bool use_cached_codes = !request.x_vector_only && !request.reference_text.empty();
+        params.ref_codes = use_cached_codes ? cached_reference->ref_codes : nullptr;
+        params.ref_T = use_cached_codes ? cached_reference->ref_T : 0;
     }
     params.max_new_tokens = options_.max_new_tokens;
     if (request.has_seed) {
@@ -279,13 +298,17 @@ SynthesisResult NativeEngine::synthesize(
     }
 
     CallbackContext callbacks{&cancelled, &on_chunk};
+    callbacks.synthesis_started_at = std::chrono::steady_clock::now();
     params.cancel = &cancel_callback;
     params.cancel_user_data = &callbacks;
     params.on_chunk = &audio_callback;
     params.on_chunk_user_data = &callbacks;
 
     qt_audio output{};
+    const auto synthesis_start = callbacks.synthesis_started_at;
     const qt_status status = api.synthesize(context_, &params, &output);
+    const double synthesis_ms = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - synthesis_start).count();
     api.audio_free(&output);
     if (status == QT_STATUS_OK) {
         const auto finish_reason = api.last_finish_reason();
@@ -293,28 +316,44 @@ SynthesisResult NativeEngine::synthesize(
             if (!callbacks.emitted_audio) {
                 return {SynthesisOutcome::Failed, "model_error", "empty_audio",
                         "qwentts reported natural EOS without emitting PCM", {}, voice_reference_cache_hit,
-                        voice_reference_extract_ms};
+                        voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
+                        callbacks.first_chunk_callback_ms};
             }
             return {SynthesisOutcome::Completed, {}, {}, {}, "natural_eos", voice_reference_cache_hit,
-                    voice_reference_extract_ms};
+                    voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
+                    callbacks.first_chunk_callback_ms};
         }
         if (finish_reason == QT_FINISH_MAX_TOKENS) {
             return {SynthesisOutcome::Completed, {}, {}, {}, "max_tokens", voice_reference_cache_hit,
-                    voice_reference_extract_ms};
+                    voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
+                    callbacks.first_chunk_callback_ms};
         }
         return {SynthesisOutcome::Failed, "model_error", "invalid_finish_reason",
-                "qwentts reported successful synthesis without EOS or MAX_TOKENS", {}};
+                "qwentts reported successful synthesis without EOS or MAX_TOKENS", {},
+                voice_reference_cache_hit, voice_reference_extract_ms,
+                reference_audio_decode_ms, synthesis_ms, callbacks.first_chunk_callback_ms};
     }
     if (status == QT_STATUS_CANCELLED || cancelled.load(std::memory_order_relaxed)) {
-        return {SynthesisOutcome::Cancelled, {}, {}, {}};
+        return {SynthesisOutcome::Cancelled, {}, {}, {}, {}, voice_reference_cache_hit,
+                voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
+                callbacks.first_chunk_callback_ms};
     }
     if (status == QT_STATUS_OOM) {
-        return {SynthesisOutcome::Failed, "resource_error", "resource_exhausted", last_error(api, "qwentts ran out of memory")};
+        return {SynthesisOutcome::Failed, "resource_error", "resource_exhausted",
+                last_error(api, "qwentts ran out of memory"), {}, voice_reference_cache_hit,
+                voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
+                callbacks.first_chunk_callback_ms};
     }
     if (status == QT_STATUS_INVALID_PARAMS || status == QT_STATUS_MODE_INVALID) {
-        return {SynthesisOutcome::Failed, "request_error", "invalid_native_request", last_error(api, "qwentts rejected the request")};
+        return {SynthesisOutcome::Failed, "request_error", "invalid_native_request",
+                last_error(api, "qwentts rejected the request"), {}, voice_reference_cache_hit,
+                voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
+                callbacks.first_chunk_callback_ms};
     }
-    return {SynthesisOutcome::Failed, "model_error", "synthesis_failed", last_error(api, "qwentts synthesis failed")};
+    return {SynthesisOutcome::Failed, "model_error", "synthesis_failed",
+            last_error(api, "qwentts synthesis failed"), {}, voice_reference_cache_hit,
+            voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
+            callbacks.first_chunk_callback_ms};
 }
 
 WorkerCapabilities NativeEngine::capabilities() const {

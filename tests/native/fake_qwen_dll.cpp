@@ -161,10 +161,35 @@ QT_API void qt_audio_free(qt_audio* audio) {
     std::memset(audio, 0, sizeof(*audio));
 }
 
-QT_API void qt_voice_ref_free(qt_voice_ref*) {}
-QT_API qt_status qt_extract_voice_ref(qt_context*, const float*, int, qt_voice_ref*) {
-    set_error("fake voice extraction is not implemented");
-    return QT_STATUS_MODE_INVALID;
+QT_API void qt_voice_ref_free(qt_voice_ref* ref) {
+    if (ref == nullptr) {
+        return;
+    }
+    std::free(ref->ref_spk_emb);
+    std::free(ref->ref_codes);
+    std::memset(ref, 0, sizeof(*ref));
+}
+QT_API qt_status qt_extract_voice_ref(
+    qt_context*, const float* audio, int sample_count, qt_voice_ref* out) {
+    if (audio == nullptr || sample_count <= 0 || out == nullptr) {
+        set_error("fake voice extraction invalid params");
+        return QT_STATUS_INVALID_PARAMS;
+    }
+    qt_voice_ref_free(out);
+    out->ref_spk_dim = 2;
+    out->ref_T = 1;
+    out->num_codebooks = 1;
+    out->ref_spk_emb = static_cast<float*>(std::malloc(sizeof(float) * 2));
+    out->ref_codes = static_cast<std::int32_t*>(std::malloc(sizeof(std::int32_t)));
+    if (out->ref_spk_emb == nullptr || out->ref_codes == nullptr) {
+        qt_voice_ref_free(out);
+        set_error("fake voice extraction allocation failed");
+        return QT_STATUS_OOM;
+    }
+    out->ref_spk_emb[0] = audio[0];
+    out->ref_spk_emb[1] = audio[sample_count - 1];
+    out->ref_codes[0] = 1;
+    return QT_STATUS_OK;
 }
 QT_API int qt_num_codebooks(const qt_context*) { return 1; }
 QT_API int qt_n_speakers(const qt_context*) { return 1; }

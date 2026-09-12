@@ -61,6 +61,15 @@ s16le peak/RMS after conversion, together with first-chunk latency. This is a
 diagnostic boundary check, not a loudness normalizer: the Bridge must never
 silently amplify native output.
 
+The terminal `request_finished` metric also records the timing boundaries used
+by hardware acceptance: `reference_audio_decode_ms`,
+`voice_reference_extract_ms`, `synthesis_ms`, and
+`first_chunk_callback_ms`. These values are intentionally wall-clock
+diagnostics; qwentts does not expose its internal Talker-prefill and codec
+decode spans through the Bridge ABI yet. Do not interpret `synthesis_ms` or
+first PCM arrival as audible speech quality while the semantic PCM gate is
+failing.
+
 The worker also rejects a successful qwentts EOS that emitted no PCM as
 `model_error/empty_audio`. This prevents an empty natural-EOS result from being
 reported as a successful synthesis; a supervisor may retry with a different

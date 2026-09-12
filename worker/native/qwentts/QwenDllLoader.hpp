@@ -45,6 +45,8 @@ public:
     void unload() noexcept;
 
     const QwenApi& api() const;
+    /** Return whether this runtime exposes the optional voice-reference ABI. */
+    bool supports_voice_reference() const noexcept;
     const RuntimeManifest& manifest() const;
     const std::string& engine_version() const;
 
