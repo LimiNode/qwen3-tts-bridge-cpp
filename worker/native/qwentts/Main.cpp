@@ -107,6 +107,18 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
         else if (argument == L"--precompute-voice-ref") {
             options.precompute_voice_refs = true;
         }
+        else if (argument == L"--warmup-synthesis") {
+            options.warmup_synthesis = true;
+        }
+        else if (argument == L"--warmup-text") {
+            options.warmup_text = wide_to_utf8(require_value(index, argc, argv, L"--warmup-text").wstring());
+        }
+        else if (argument == L"--warmup-language") {
+            options.warmup_language = wide_to_utf8(require_value(index, argc, argv, L"--warmup-language").wstring());
+        }
+        else if (argument == L"--warmup-voice-id") {
+            options.warmup_voice_id = wide_to_utf8(require_value(index, argc, argv, L"--warmup-voice-id").wstring());
+        }
         else if (argument == L"--help" || argument == L"-h") {
             std::cerr
                 << "qwen_tts_native_worker --runtime-dir DIR --talker-model FILE --codec-model FILE\n"
@@ -114,7 +126,9 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
                 << "  [--no-flash-attention]\n"
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
                 << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
-                << "  [--max-text-bytes N] [--precompute-voice-ref]\n";
+                << "  [--max-text-bytes N] [--precompute-voice-ref]\n"
+                << "  [--warmup-synthesis] [--warmup-text TEXT] [--warmup-language LANG]\n"
+                << "  [--warmup-voice-id ID]\n";
             std::exit(EXIT_SUCCESS);
         }
         else {
@@ -155,6 +169,9 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
     if (options.max_text_bytes < 0 || options.max_text_bytes > 1048576) {
         throw std::invalid_argument("--max-text-bytes must be in [0, 1048576]");
     }
+    if (options.warmup_synthesis && options.warmup_text.empty()) {
+        throw std::invalid_argument("--warmup-text must not be empty when --warmup-synthesis is enabled");
+    }
     return options;
 }
 
@@ -170,6 +187,7 @@ int wmain(int argc, wchar_t** argv) {
         NativeEngineOptions options = parse_arguments(argc, argv);
         qwen_tts_bridge::native_worker::NativeEngine engine(std::move(options));
         engine.load();
+        engine.warmup();
         const auto& manifest = engine.manifest();
         std::cerr
             << "[native-worker:info] qwentts runtime ready"

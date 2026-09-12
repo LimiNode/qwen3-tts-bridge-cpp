@@ -40,7 +40,8 @@ StdIoTransportOptions options(
     std::string* stderr_capture = nullptr,
     std::atomic<bool>* cadence_observed = nullptr,
     int max_text_bytes = 0,
-    bool precompute_voice_ref = false) {
+    bool precompute_voice_ref = false,
+    bool warmup_synthesis = false) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
@@ -56,6 +57,11 @@ StdIoTransportOptions options(
     }
     if (precompute_voice_ref) {
         result.arguments.push_back("--precompute-voice-ref");
+    }
+    if (warmup_synthesis) {
+        result.arguments.push_back("--warmup-synthesis");
+        result.arguments.push_back("--warmup-text");
+        result.arguments.push_back("warmup test");
     }
     result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
         if (stderr_capture != nullptr) {
@@ -205,6 +211,16 @@ int main() {
     CHECK(client.ready_message(ready));
     CHECK(ready.capabilities.streaming);
     CHECK(ready.capabilities.cancellation);
+
+    QwenTtsClient warmed_client;
+    QwenTtsClientOptions warmed_options;
+    warmed_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(warmed_client.start(options(8, nullptr, nullptr, 0, false, true), warmed_options));
+    ReadyMessage warmed_ready;
+    CHECK(warmed_client.ready_message(warmed_ready));
+    CHECK(warmed_ready.has_warmed_up);
+    CHECK(warmed_ready.warmed_up);
+    warmed_client.stop();
 
     Probe probe;
     TtsCallbacks callbacks;

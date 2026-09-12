@@ -32,6 +32,11 @@ struct NativeEngineOptions {
     /// The option is deliberately opt-in because it must preserve PCM and
     /// voice-identity parity with the uncached raw-WAV path first.
     bool precompute_voice_refs = false;
+    /// Run one discarded synthesis before the worker announces `ready`.
+    bool warmup_synthesis = false;
+    std::string warmup_text = "Warmup.";
+    std::string warmup_language = "auto";
+    std::string warmup_voice_id;
 };
 
 enum class SynthesisOutcome {
@@ -85,6 +90,8 @@ public:
     NativeEngine& operator=(const NativeEngine&) = delete;
 
     void load();
+    /// Run the optional discarded synthesis warmup and mark the engine ready.
+    void warmup();
     void close() noexcept;
     void validate_request(const SynthesizeMessage& request) const;
     SynthesisResult synthesize(
@@ -96,6 +103,7 @@ public:
     std::vector<std::string> speaker_names() const;
     /// Return the registered Base voice identifiers advertised in `ready`.
     std::vector<std::string> voice_ids() const;
+    bool warmed_up() const noexcept { return warmed_up_; }
     const RuntimeManifest& manifest() const;
     const std::string& engine_version() const;
 
@@ -122,6 +130,7 @@ private:
     qt_context* context_ = nullptr;
     std::unordered_map<std::string, VoiceProfile> voice_profiles_;
     std::unordered_map<std::string, std::unique_ptr<CachedVoiceReference>> voice_reference_cache_;
+    bool warmed_up_ = false;
 };
 
 } // namespace qwen_tts_bridge::native_worker

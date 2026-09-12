@@ -267,7 +267,32 @@ void NativeEngine::load() {
     preload_voice_registry();
 }
 
+void NativeEngine::warmup() {
+    if (!options_.warmup_synthesis) {
+        warmed_up_ = false;
+        return;
+    }
+    SynthesizeMessage request;
+    request.text = options_.warmup_text;
+    request.language = options_.warmup_language;
+    request.voice_id = options_.warmup_voice_id;
+    request.output.sample_format = "s16le";
+    request.output.sample_rate = 24000;
+    request.output.channels = 1;
+    const std::atomic<bool> cancelled{false};
+    const auto result = synthesize(request, cancelled, [](const float*, int) {
+        return true;
+    });
+    if (result.outcome != SynthesisOutcome::Completed) {
+        throw std::runtime_error(
+            "native synthesis warmup failed: " +
+            (result.message.empty() ? result.code : result.message));
+    }
+    warmed_up_ = true;
+}
+
 void NativeEngine::close() noexcept {
+    warmed_up_ = false;
     clear_voice_reference_cache();
     if (context_ != nullptr) {
         loader_.api().free(context_);
@@ -275,6 +300,7 @@ void NativeEngine::close() noexcept {
     }
     loader_.unload();
 }
+
 
 void NativeEngine::validate_request(const SynthesizeMessage& request) const {
     if (context_ == nullptr) {

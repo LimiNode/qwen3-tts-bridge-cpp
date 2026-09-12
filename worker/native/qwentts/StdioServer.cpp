@@ -298,7 +298,7 @@ void StdioServer::handle_hello(RequestId request_id) {
     ready.worker_version = "0.2.0-native-qwentts/" + engine_.engine_version();
     ready.session_id = make_session_id();
     ready.has_warmed_up = true;
-    ready.warmed_up = false;
+    ready.warmed_up = engine_.warmed_up();
     ready.capabilities = engine_.capabilities();
     ready.voice_ids = engine_.voice_ids();
     send_control(0, std::move(ready));
