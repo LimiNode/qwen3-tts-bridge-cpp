@@ -75,6 +75,9 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
         else if (argument == L"--codec-model") {
             options.codec_model = require_value(index, argc, argv, L"--codec-model");
         }
+        else if (argument == L"--voice-registry-path") {
+            options.voice_registry_path = require_value(index, argc, argv, L"--voice-registry-path");
+        }
         else if (argument == L"--no-flash-attention") {
             options.use_flash_attention = false;
         }
@@ -107,7 +110,8 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
         else if (argument == L"--help" || argument == L"-h") {
             std::cerr
                 << "qwen_tts_native_worker --runtime-dir DIR --talker-model FILE --codec-model FILE\n"
-                << "  [--dll-path FILE] [--manifest-path FILE] [--no-flash-attention]\n"
+                << "  [--dll-path FILE] [--manifest-path FILE] [--voice-registry-path FILE]\n"
+                << "  [--no-flash-attention]\n"
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
                 << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
                 << "  [--max-text-bytes N] [--precompute-voice-ref]\n";
