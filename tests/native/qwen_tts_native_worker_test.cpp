@@ -1,4 +1,5 @@
 #include <qwen_tts_bridge/client.hpp>
+#include "WavReader.hpp"
 
 #include <array>
 #include <chrono>
@@ -167,6 +168,13 @@ void write_reference_wav(const std::filesystem::path& path) {
 }
 
 int main() {
+    std::vector<float> reference_samples{0.25F, -0.25F};
+    qwen_tts_bridge::native_worker::append_reference_trailing_silence(reference_samples);
+    CHECK(reference_samples.size() == 12002);
+    CHECK(reference_samples[0] == 0.25F);
+    CHECK(reference_samples[1] == -0.25F);
+    CHECK(reference_samples.back() == 0.0F);
+
     const auto runtime = std::filesystem::path(QWEN_TTS_FAKE_RUNTIME_DIR);
     const auto mismatch_manifest = runtime / "manifest-mismatch.json";
     {

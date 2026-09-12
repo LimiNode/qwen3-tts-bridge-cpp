@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import tempfile
 import unittest
+import wave
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,6 +51,18 @@ class NativeHardwareProbeTests(unittest.TestCase):
             "stderr_thread.join",
         ):
             self.assertIn(required, source)
+
+    def test_write_pcm_wav_has_canonical_output_format(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "capture.wav"
+            probe.write_pcm_wav(path, b"\x00\x00\xff\x7f")
+            with wave.open(str(path), "rb") as stream:
+                self.assertEqual((1, 2, 24000, 2), (
+                    stream.getnchannels(),
+                    stream.getsampwidth(),
+                    stream.getframerate(),
+                    stream.getnframes(),
+                ))
 
 
 if __name__ == "__main__":
