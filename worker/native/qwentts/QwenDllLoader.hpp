@@ -22,6 +22,8 @@ struct QwenApi {
     decltype(&qt_tts_default_params) tts_default_params = nullptr;
     decltype(&qt_synthesize) synthesize = nullptr;
     decltype(&qt_audio_free) audio_free = nullptr;
+    decltype(&qt_extract_voice_ref) extract_voice_ref = nullptr;
+    decltype(&qt_voice_ref_free) voice_ref_free = nullptr;
     decltype(&qt_num_codebooks) num_codebooks = nullptr;
     decltype(&qt_n_speakers) n_speakers = nullptr;
     decltype(&qt_speaker_name) speaker_name = nullptr;

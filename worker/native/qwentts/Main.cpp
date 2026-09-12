@@ -101,13 +101,16 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
             const auto value = require_value(index, argc, argv, L"--max-text-bytes");
             options.max_text_bytes = std::stoi(value.wstring());
         }
+        else if (argument == L"--precompute-voice-ref") {
+            options.precompute_voice_refs = true;
+        }
         else if (argument == L"--help" || argument == L"-h") {
             std::cerr
                 << "qwen_tts_native_worker --runtime-dir DIR --talker-model FILE --codec-model FILE\n"
                 << "  [--dll-path FILE] [--manifest-path FILE] [--no-flash-attention]\n"
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
                 << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
-                << "  [--max-text-bytes N]\n";
+                << "  [--max-text-bytes N] [--precompute-voice-ref]\n";
             std::exit(EXIT_SUCCESS);
         }
         else {

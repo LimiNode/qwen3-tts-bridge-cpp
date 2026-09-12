@@ -2,6 +2,7 @@
 #include "WavReader.hpp"
 
 #include <cstdint>
+#include <chrono>
 #include <iostream>
 #include <limits>
 #include <mutex>
@@ -23,6 +24,28 @@ void qwen_log_callback(qt_log_level level, const char* message, void*) {
 
 std::string path_utf8(const std::filesystem::path& path) {
     return path.u8string();
+}
+
+std::string voice_reference_cache_key(
+    const std::filesystem::path& path,
+    const std::vector<float>& samples) {
+    // The decoded sample fingerprint invalidates the entry if a WAV is
+    // replaced in place while keeping the same path.  FNV-1a is sufficient
+    // here because the key selects a cache entry, not a security boundary.
+    std::uint64_t hash = 1469598103934665603ULL;
+    for (const auto byte : path_utf8(path)) {
+        hash ^= static_cast<unsigned char>(byte);
+        hash *= 1099511628211ULL;
+    }
+    if (!samples.empty()) {
+        const auto* begin = reinterpret_cast<const unsigned char*>(samples.data());
+        const auto* end = begin + samples.size() * sizeof(float);
+        for (const auto* byte = begin; byte != end; ++byte) {
+            hash ^= *byte;
+            hash *= 1099511628211ULL;
+        }
+    }
+    return path_utf8(path) + ":" + std::to_string(samples.size()) + ":" + std::to_string(hash);
 }
 
 struct CallbackContext {
@@ -61,6 +84,18 @@ NativeEngine::~NativeEngine() {
     close();
 }
 
+void NativeEngine::clear_voice_reference_cache() noexcept {
+    if (context_ == nullptr || voice_reference_cache_.empty()) {
+        voice_reference_cache_.clear();
+        return;
+    }
+    const QwenApi& api = loader_.api();
+    for (auto& entry : voice_reference_cache_) {
+        api.voice_ref_free(&entry.second->value);
+    }
+    voice_reference_cache_.clear();
+}
+
 void NativeEngine::load() {
     if (context_ != nullptr) {
         throw std::logic_error("native engine is already loaded");
@@ -90,6 +125,7 @@ void NativeEngine::load() {
 }
 
 void NativeEngine::close() noexcept {
+    clear_voice_reference_cache();
     if (context_ != nullptr) {
         loader_.api().free(context_);
         context_ = nullptr;
@@ -153,9 +189,44 @@ SynthesisResult NativeEngine::synthesize(
     }
 
     std::vector<float> reference_audio;
+    std::string reference_cache_key;
+    const qt_voice_ref* cached_reference = nullptr;
+    bool voice_reference_cache_hit = false;
+    double voice_reference_extract_ms = 0.0;
     try {
         if (!request.reference_audio_path.empty()) {
             reference_audio = read_mono_24k_wav(std::filesystem::u8path(request.reference_audio_path));
+            if (options_.precompute_voice_refs) {
+                reference_cache_key = voice_reference_cache_key(
+                    std::filesystem::u8path(request.reference_audio_path), reference_audio);
+                const auto cached = voice_reference_cache_.find(reference_cache_key);
+                if (cached != voice_reference_cache_.end()) {
+                    cached_reference = &cached->second->value;
+                    voice_reference_cache_hit = true;
+                }
+                else {
+                    auto entry = std::make_unique<CachedVoiceReference>();
+                    const auto extraction_start = std::chrono::steady_clock::now();
+                    const qt_status extraction_status = api.extract_voice_ref(
+                        context_,
+                        reference_audio.data(),
+                        static_cast<int>(reference_audio.size()),
+                        &entry->value);
+                    voice_reference_extract_ms = std::chrono::duration<double, std::milli>(
+                        std::chrono::steady_clock::now() - extraction_start).count();
+                    if (extraction_status != QT_STATUS_OK) {
+                        api.voice_ref_free(&entry->value);
+                        return {SynthesisOutcome::Failed, "model_error", "voice_reference_extract_failed",
+                                last_error(api, "qwentts voice reference extraction failed"), {}, false,
+                                voice_reference_extract_ms};
+                    }
+                    cached_reference = &entry->value;
+                    auto [inserted, was_inserted] = voice_reference_cache_.emplace(
+                        std::move(reference_cache_key), std::move(entry));
+                    (void)was_inserted;
+                    cached_reference = &inserted->second->value;
+                }
+            }
         }
     }
     catch (const std::exception& error) {
@@ -168,11 +239,21 @@ SynthesisResult NativeEngine::synthesize(
         : request.language.c_str();
     params.instruct = request.instruction.empty() ? nullptr : request.instruction.c_str();
     params.speaker = request.speaker.empty() ? nullptr : request.speaker.c_str();
-    params.ref_audio_24k = reference_audio.empty() ? nullptr : reference_audio.data();
-    params.ref_n_samples = static_cast<int>(reference_audio.size());
+    params.ref_audio_24k = cached_reference == nullptr && !reference_audio.empty()
+        ? reference_audio.data()
+        : nullptr;
+    params.ref_n_samples = cached_reference == nullptr
+        ? static_cast<int>(reference_audio.size())
+        : 0;
     params.ref_text = request.x_vector_only || request.reference_text.empty()
         ? nullptr
         : request.reference_text.c_str();
+    if (cached_reference != nullptr) {
+        params.ref_spk_emb = cached_reference->ref_spk_emb;
+        params.ref_spk_dim = cached_reference->ref_spk_dim;
+        params.ref_codes = request.x_vector_only ? nullptr : cached_reference->ref_codes;
+        params.ref_T = request.x_vector_only ? 0 : cached_reference->ref_T;
+    }
     params.max_new_tokens = options_.max_new_tokens;
     if (request.has_seed) {
         params.seed = static_cast<std::int64_t>(request.seed);
@@ -211,12 +292,15 @@ SynthesisResult NativeEngine::synthesize(
         if (finish_reason == QT_FINISH_EOS) {
             if (!callbacks.emitted_audio) {
                 return {SynthesisOutcome::Failed, "model_error", "empty_audio",
-                        "qwentts reported natural EOS without emitting PCM", {}};
+                        "qwentts reported natural EOS without emitting PCM", {}, voice_reference_cache_hit,
+                        voice_reference_extract_ms};
             }
-            return {SynthesisOutcome::Completed, {}, {}, {}, "natural_eos"};
+            return {SynthesisOutcome::Completed, {}, {}, {}, "natural_eos", voice_reference_cache_hit,
+                    voice_reference_extract_ms};
         }
         if (finish_reason == QT_FINISH_MAX_TOKENS) {
-            return {SynthesisOutcome::Completed, {}, {}, {}, "max_tokens"};
+            return {SynthesisOutcome::Completed, {}, {}, {}, "max_tokens", voice_reference_cache_hit,
+                    voice_reference_extract_ms};
         }
         return {SynthesisOutcome::Failed, "model_error", "invalid_finish_reason",
                 "qwentts reported successful synthesis without EOS or MAX_TOKENS", {}};

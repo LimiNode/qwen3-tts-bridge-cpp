@@ -84,6 +84,8 @@ void QwenDllLoader::load(
         api_.tts_default_params = load_symbol<decltype(api_.tts_default_params)>(module_, "qt_tts_default_params");
         api_.synthesize = load_symbol<decltype(api_.synthesize)>(module_, "qt_synthesize");
         api_.audio_free = load_symbol<decltype(api_.audio_free)>(module_, "qt_audio_free");
+        api_.extract_voice_ref = load_symbol<decltype(api_.extract_voice_ref)>(module_, "qt_extract_voice_ref");
+        api_.voice_ref_free = load_symbol<decltype(api_.voice_ref_free)>(module_, "qt_voice_ref_free");
         api_.num_codebooks = load_symbol<decltype(api_.num_codebooks)>(module_, "qt_num_codebooks");
         api_.n_speakers = load_symbol<decltype(api_.n_speakers)>(module_, "qt_n_speakers");
         api_.speaker_name = load_symbol<decltype(api_.speaker_name)>(module_, "qt_speaker_name");
