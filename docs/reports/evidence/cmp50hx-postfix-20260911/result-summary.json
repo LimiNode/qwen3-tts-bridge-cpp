@@ -36,8 +36,9 @@
   ],
   "automated_gates": {
     "terminal_and_provenance": true,
-    "starvation": true,
+    "benchmark_starvation_proxy": true,
     "empty_audio": true,
+    "semantic_signal_present": false,
     "long_or_near_capacity": false,
     "physical_playback": false,
     "quality_and_voice_identity": false,

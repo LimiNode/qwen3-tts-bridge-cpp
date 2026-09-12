@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "measurement": "current_qwentts_pin_canary",
+  "pin_context": "pre_followup_bridge_pin_before_submodule_bump",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "driver": "581.94",
+    "cuda": true
+  },
+  "sources": {
+    "bridge_commit": "bb29bdb8d228bc2dee8e4fa26f17eb2dae39675b",
+    "qwentts_commit": "e9ead9e0201463d0887bbed625720d1edfa63cf0",
+    "qwentts_version_manifest": "e9ead9e",
+    "native_worker_sha256": "98bafabedeec1c96c7c2870b65f975dd49d12606eac29eb4a76f855c54b57f91",
+    "playback_probe_sha256": "83bef251b75a533eabc9e1b421b3e6c6bdd61caf03cd58b8729178f555bb31e2",
+    "qwen_dll_sha256": "1919fd8f6596dcd480dd972ce4aa1267e4a109b755160c0443925c7b5551c5c4",
+    "talker_model_sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+    "codec_model_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "reference_audio_sha256": "b8285c5925d89d90435afa2f084a197a9e428dec41fff09c74969e6624a4b147"
+  },
+  "followup_pin": {
+    "qwentts_commit": "a3eecf12a802633589edd10b6a003369874874f6",
+    "runtime_source_diff_from_canary_pin": [
+      "tests/sampling-contract.cpp",
+      ".github/workflows/abi-build.yml"
+    ],
+    "exact_followup_runtime_binary_captured": false
+  },
+  "request": {
+    "label": "en-medium-b",
+    "seed": 5104,
+    "language": "english",
+    "reference_audio": "B.wav",
+    "text": "This medium acceptance sentence checks streaming cadence, natural termination, and stable speaker identity in English.",
+    "completed": true,
+    "terminal_outcome": "natural_eos",
+    "audio_bytes": 26880,
+    "audio_chunks": 3,
+    "duration_seconds": 0.56,
+    "pcm_sha256": "08257dc78d6fb2d2bac3bd96a7277729ad0c3699ae7de203e01b88ed882d9e66",
+    "peak_abs_s16": 7,
+    "rms_s16": 1.022878175,
+    "normalized_peak": 0.000213623,
+    "semantic_signal_present": false
+  },
+  "interpretation": "The pre-follow-up qwentts runtime pin reproduces the same near-silent native PCM signature. Terminal transport succeeds, but semantic speech completeness is not demonstrated.",
+  "release_gate": "blocked_pending_native_decoder_signal_investigation"
+}

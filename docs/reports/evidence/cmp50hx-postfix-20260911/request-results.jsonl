@@ -1,0 +1,12 @@
+{"backend":"fasterqwen_low_latency","label":"ru-short-a","seed":5101,"pass_index":1,"first_pcm_ms":13959.073,"completion_ms":17436.681,"audio_bytes":30684,"rtf":27.277,"terminal_outcome":"completed"}
+{"backend":"fasterqwen_low_latency","label":"en-short-b","seed":5102,"pass_index":2,"first_pcm_ms":6678.755,"completion_ms":13512.059,"audio_bytes":42188,"rtf":15.374,"terminal_outcome":"completed"}
+{"backend":"fasterqwen_low_latency","label":"ru-medium-a","seed":5103,"pass_index":3,"first_pcm_ms":6274.946,"completion_ms":20498.870,"audio_bytes":72876,"rtf":13.502,"terminal_outcome":"completed"}
+{"backend":"fasterqwen_low_latency","label":"en-medium-b","seed":5104,"pass_index":4,"first_pcm_ms":6169.511,"completion_ms":19936.376,"audio_bytes":69038,"rtf":13.861,"terminal_outcome":"completed"}
+{"backend":"fasterqwen_low_latency","label":"ru-short-a","seed":5101,"pass_index":5,"first_pcm_ms":6245.331,"completion_ms":24134.103,"audio_bytes":92054,"rtf":12.584,"terminal_outcome":"completed"}
+{"backend":"fasterqwen_low_latency","label":"en-short-b","seed":5102,"pass_index":6,"first_pcm_ms":6174.467,"completion_ms":13010.965,"audio_bytes":42188,"rtf":14.803,"terminal_outcome":"completed"}
+{"backend":"native_qwentts","label":"ru-short-a","seed":5101,"pass_index":1,"first_pcm_ms":8496.330,"completion_ms":8767.069,"audio_bytes":26880,"rtf":15.655,"terminal_outcome":"natural_eos"}
+{"backend":"native_qwentts","label":"en-short-b","seed":5102,"pass_index":2,"first_pcm_ms":7784.420,"completion_ms":7907.127,"audio_bytes":19200,"rtf":19.768,"terminal_outcome":"natural_eos"}
+{"backend":"native_qwentts","label":"ru-medium-a","seed":5103,"pass_index":3,"first_pcm_ms":6890.042,"completion_ms":7323.204,"audio_bytes":72960,"rtf":4.818,"terminal_outcome":"natural_eos"}
+{"backend":"native_qwentts","label":"en-medium-b","seed":5104,"pass_index":4,"first_pcm_ms":6742.520,"completion_ms":6903.050,"audio_bytes":26880,"rtf":12.327,"terminal_outcome":"natural_eos"}
+{"backend":"native_qwentts","label":"ru-short-a","seed":5101,"pass_index":5,"first_pcm_ms":6876.832,"completion_ms":7025.034,"audio_bytes":26880,"rtf":12.545,"terminal_outcome":"natural_eos"}
+{"backend":"native_qwentts","label":"en-short-b","seed":5102,"pass_index":6,"first_pcm_ms":6664.435,"completion_ms":6771.525,"audio_bytes":19200,"rtf":16.929,"terminal_outcome":"natural_eos"}
