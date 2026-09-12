@@ -22,9 +22,10 @@ codec frames must represent silence rather than the last phoneme of the
 recording.
 
 The native worker now appends 0.5 s of zero 24 kHz samples immediately after
-every reference WAV decode. Registry preload and per-request raw extraction
+every ICL reference WAV decode. Registry preload and per-request raw extraction
 therefore use identical conditioning, and the cache key includes the padded
-sample vector.
+sample vector. `x_vector_only` references deliberately remain unmodified; the
+speaker-embedding path does not use ICL codec context.
 
 ## Post-fix verification
 
@@ -41,10 +42,27 @@ The captured post-fix WAVs are byte-identical for the fixed seed (SHA-256
 probe now supports `--output-wav`; the local captures remain outside git so
 the repository stores only their sanitized hash and measurements.
 
+## Multi-seed semantic soak
+
+The 10-seed registered-voice soak confirms that the boundary fix is causal but
+not sufficient to close the semantic blocker. Eight seeds produced natural EOS
+between 2.08 s and 37.52 s; one seed produced 163.84 s and hit
+`max_tokens`. The frame counts were:
+
+```text
+156, 147, 464, 197, 155, 156, 26, 469, 2048, 85
+```
+
+Therefore the evidence now claims a **confirmed causal factor**, not a fully
+resolved cause of the old 41-second runaway. The remaining work is generation
+trajectory analysis (prompt geometry, sampling/EOS behavior, and listening to
+the captured WAVs), not another latency claim.
+
 First PCM remains a separate performance characteristic: raw extraction pays
 the speaker/codec conditioning cost, while the registered path reuses it. The
-semantic output trajectory now matches the padded pre-fix control in both
-paths; no max-token truncation or forced EOS was introduced.
+semantic output trajectory now matches the padded pre-fix control for the
+fixed-seed bisection in both paths; the multi-seed soak still shows outliers,
+including a max-token termination, so no semantic acceptance is claimed.
 
 Sanitized machine-independent measurements are stored in
 [`evidence/cmp50hx-native-reference-bisection-ab734.json`](evidence/cmp50hx-native-reference-bisection-ab734.json).

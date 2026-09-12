@@ -9,21 +9,25 @@
     "driver": "581.94"
   },
   "runtime": {
+    "bridge_commit": "d84e22a0",
     "engine_commit": "ab73452eb33e71b25d8fa2e267ae85d6cb88d895",
     "engine_abi": 5,
     "backend": "cuda",
+    "worker_sha256": "925068fa5e7c116f0fa3fa670ac9293991df16bc96fe64b218ce5e572c610dac",
+    "qwen_dll_sha256": "b47d0589df3282fd9d1644d62f38abdfa616686d8ce5f1006baaa74e2e971f8d",
+    "runtime_manifest_sha256": "f177fb008e94bbf82d1f1263b5c5cf21ce881f4669325afe677e2575b9772740",
     "talker_model_sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
     "codec_model_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
     "reference_wav_sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
     "seed": 1234,
     "language": "russian",
     "text": "Профиль Kraftwerk Robot работает на CMP 50HX.",
-    "reference_mode": "ICL",
-    "reference_trailing_silence_seconds": 0.5
+    "reference_mode": "ICL"
   },
   "pre_fix_bisection": [
     {
       "case": "raw_reference",
+      "reference_trailing_silence_seconds": 0.0,
       "cache_hit": false,
       "first_pcm_ms": 3757.447,
       "codec_frames": 237,
@@ -34,6 +38,7 @@
     },
     {
       "case": "cached_voice_ref",
+      "reference_trailing_silence_seconds": 0.0,
       "cache_hit": true,
       "first_pcm_ms": 1365.569,
       "codec_frames": 237,
@@ -44,6 +49,7 @@
     },
     {
       "case": "raw_reference_plus_500ms_silence",
+      "reference_trailing_silence_seconds": 0.5,
       "cache_hit": false,
       "first_pcm_ms": 3838.2,
       "codec_frames": 152,
@@ -54,6 +60,7 @@
     },
     {
       "case": "cached_voice_ref_plus_500ms_silence",
+      "reference_trailing_silence_seconds": 0.5,
       "cache_hit": true,
       "first_pcm_ms": 1393.4,
       "codec_frames": 152,
@@ -66,6 +73,7 @@
   "post_fix_verification": [
     {
       "case": "raw_reference_with_native_boundary_normalization",
+      "reference_trailing_silence_seconds": 0.5,
       "cache_hit": false,
       "first_pcm_ms": 3876.3,
       "codec_frames": 152,
@@ -76,6 +84,7 @@
     },
     {
       "case": "cached_voice_ref_with_native_boundary_normalization",
+      "reference_trailing_silence_seconds": 0.5,
       "cache_hit": true,
       "first_pcm_ms": 1474.2,
       "codec_frames": 152,
@@ -92,14 +101,27 @@
     "sample_rate": 24000,
     "duration_seconds": 12.16
   },
+  "post_fix_multi_seed_soak": [
+    {"seed": 1000, "first_pcm_ms": 1398.8, "codec_frames": 156, "audio_duration_seconds": 12.48, "execution_outcome": "natural_eos", "wav_sha256": "ae1e9682320346c320fbe6b02dedd64db3dc29f3b137702eafc23f3a3b98b8b1"},
+    {"seed": 1001, "first_pcm_ms": 1393.2, "codec_frames": 147, "audio_duration_seconds": 11.76, "execution_outcome": "natural_eos", "wav_sha256": "7d968af01ad6c6d92c0a4bd0e9a02df4038dbb2de6dd2577173a80b76e302c23"},
+    {"seed": 1002, "first_pcm_ms": 1392.9, "codec_frames": 464, "audio_duration_seconds": 37.12, "execution_outcome": "natural_eos", "wav_sha256": "ef7288172ee8213c22cfa743a0c1d8543dba0784316ba3be7afe6cb638b0737f"},
+    {"seed": 1003, "first_pcm_ms": 1385.8, "codec_frames": 197, "audio_duration_seconds": 15.76, "execution_outcome": "natural_eos", "wav_sha256": "f62bbafcb3f1f0fc9c71ce624589b39617302805969d68025dbf11e1e5941ea1"},
+    {"seed": 1004, "first_pcm_ms": 1387.9, "codec_frames": 155, "audio_duration_seconds": 12.4, "execution_outcome": "natural_eos", "wav_sha256": "0ce7d201e24deaa5168330fbba8818644aab7f858b09aeddd53415e624e53bcc"},
+    {"seed": 1005, "first_pcm_ms": 1403.7, "codec_frames": 156, "audio_duration_seconds": 12.48, "execution_outcome": "natural_eos", "wav_sha256": "02675fc9365bdc1f60317334e4761167bd9ca60d28d661867938bb80574572b0"},
+    {"seed": 1006, "first_pcm_ms": 1391.9, "codec_frames": 26, "audio_duration_seconds": 2.08, "execution_outcome": "natural_eos", "wav_sha256": "36e70341a458f52ce016d12ec2c04727f0f21900f329ccafb0817ab1e0964315"},
+    {"seed": 1007, "first_pcm_ms": 1390.6, "codec_frames": 469, "audio_duration_seconds": 37.52, "execution_outcome": "natural_eos", "wav_sha256": "a16d7defe72d3e290abd4b6a3d00939c1728b1a379b51828efd4928be4f042ff"},
+    {"seed": 1008, "first_pcm_ms": 1390.7, "codec_frames": 2048, "audio_duration_seconds": 163.84, "execution_outcome": "max_tokens", "wav_sha256": "a547228584bf6fc39c64b1cd46fa19df276154bb3afa578cabadf15887000035"},
+    {"seed": 1009, "first_pcm_ms": 1394.0, "codec_frames": 85, "audio_duration_seconds": 6.8, "execution_outcome": "natural_eos", "wav_sha256": "c909d631e78200dd09476b019d9b42a933fd4e5254834a3429d11aa01f542e55"}
+  ],
   "interpretation": {
     "cache_bisection": "raw and cached paths produced the same codec-frame count before the fix; cache was not the semantic cause",
-    "confirmed_cause": "the native ICL reference lacked the 0.5 second trailing-silence boundary used by FasterQwen",
+    "confirmed_causal_factor": "the native ICL reference lacked the 0.5 second trailing-silence boundary used by FasterQwen",
     "raw_and_cached_post_fix_audio": "byte-identical for the fixed-seed probe",
     "production_change": "append 0.5 seconds of zero 24 kHz samples before raw synthesis and qt_voice_ref extraction/cache population",
     "remaining_gates": [
       "listen to the post-fix WAV and verify pronunciation",
       "verify voice identity against the reference",
+      "resolve remaining multi-seed generation trajectory variance before semantic acceptance",
       "repeat long-text, cancellation, restart/recovery, and direct-reference parity acceptance"
     ]
   }
