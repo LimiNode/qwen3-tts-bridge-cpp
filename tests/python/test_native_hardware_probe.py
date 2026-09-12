@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import importlib.util
 import io
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
