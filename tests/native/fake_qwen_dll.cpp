@@ -175,6 +175,11 @@ QT_API qt_status qt_extract_voice_ref(
         set_error("fake voice extraction invalid params");
         return QT_STATUS_INVALID_PARAMS;
     }
+    if (g_log_callback != nullptr) {
+        const std::string message =
+            "fake voice_ref_samples=" + std::to_string(sample_count);
+        g_log_callback(QT_LOG_INFO, message.c_str(), g_log_user_data);
+    }
     qt_voice_ref_free(out);
     out->ref_spk_dim = 2;
     out->ref_T = 1;

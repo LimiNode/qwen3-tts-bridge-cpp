@@ -311,9 +311,43 @@ int main() {
     CHECK(reference_probe.completed == 2);
     CHECK(reference_stderr.find("\"voice_reference_cache_hit\":false") != std::string::npos);
     CHECK(reference_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
+    CHECK(reference_stderr.find("fake voice_ref_samples=4") != std::string::npos);
     CHECK(reference_stderr.find("\"reference_audio_decode_ms\":") != std::string::npos);
     CHECK(reference_stderr.find("\"synthesis_ms\":") != std::string::npos);
     cached_client.stop();
+
+    std::string icl_stderr;
+    QwenTtsClient icl_client;
+    QwenTtsClientOptions icl_options;
+    icl_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(icl_client.start(options(8, &icl_stderr, nullptr, 0, true), icl_options));
+    Probe icl_probe;
+    TtsCallbacks icl_callbacks;
+    icl_callbacks.on_completed = [&icl_probe]() {
+        std::lock_guard<std::mutex> lock(icl_probe.mutex);
+        ++icl_probe.completed;
+        icl_probe.condition.notify_all();
+    };
+    icl_callbacks.on_error = [&icl_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(icl_probe.mutex);
+        icl_probe.errors.push_back(error);
+        icl_probe.condition.notify_all();
+    };
+    TtsRequest icl_request;
+    icl_request.text = "raw ICL reference request";
+    icl_request.reference_audio_path = reference_wav.string();
+    icl_request.reference_text = "Fake reference";
+    CHECK(icl_client.synthesize_async(icl_request, icl_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(icl_probe.mutex);
+        CHECK(icl_probe.condition.wait_for(lock, std::chrono::seconds(5), [&icl_probe]() {
+            return icl_probe.completed == 1 || !icl_probe.errors.empty();
+        }));
+    }
+    CHECK(icl_probe.errors.empty());
+    CHECK(icl_probe.completed == 1);
+    CHECK(icl_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
+    icl_client.stop();
 
     const auto voice_registry = runtime / "voice-registry.json";
     {
@@ -333,6 +367,7 @@ int main() {
     CHECK(registry_ready.capabilities.voice_profiles);
     CHECK(registry_ready.voice_ids.size() == 1);
     CHECK(registry_ready.voice_ids.front() == "fake-voice");
+    CHECK(registry_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
     Probe registry_probe;
     TtsCallbacks registry_callbacks;
     registry_callbacks.on_completed = [&registry_probe]() {
