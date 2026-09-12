@@ -19,6 +19,8 @@ struct NativeEngineOptions {
     std::filesystem::path manifest_path;
     std::filesystem::path talker_model;
     std::filesystem::path codec_model;
+    /// Optional registered Base voice profile registry loaded at startup.
+    std::filesystem::path voice_registry_path;
     bool use_flash_attention = true;
     bool clamp_fp16 = false;
     int max_batch = 1;
@@ -30,6 +32,11 @@ struct NativeEngineOptions {
     /// The option is deliberately opt-in because it must preserve PCM and
     /// voice-identity parity with the uncached raw-WAV path first.
     bool precompute_voice_refs = false;
+    /// Run one discarded synthesis before the worker announces `ready`.
+    bool warmup_synthesis = false;
+    std::string warmup_text = "Warmup.";
+    std::string warmup_language = "auto";
+    std::string warmup_voice_id;
 };
 
 enum class SynthesisOutcome {
@@ -68,6 +75,8 @@ struct SynthesisResult {
     double qwen_host_ms = 0.0;
     /// qwentts codec-decode phase, when exposed by the runtime ABI.
     double qwen_codec_ms = 0.0;
+    /// qwentts internal total phase span, when exposed by the runtime ABI.
+    double qwen_total_ms = 0.0;
     /// Number of generated codec frames reported by qwentts.
     int qwen_n_frames = 0;
 };
@@ -83,6 +92,8 @@ public:
     NativeEngine& operator=(const NativeEngine&) = delete;
 
     void load();
+    /// Run the optional discarded synthesis warmup and mark the engine ready.
+    void warmup();
     void close() noexcept;
     void validate_request(const SynthesizeMessage& request) const;
     SynthesisResult synthesize(
@@ -92,6 +103,9 @@ public:
 
     WorkerCapabilities capabilities() const;
     std::vector<std::string> speaker_names() const;
+    /// Return the registered Base voice identifiers advertised in `ready`.
+    std::vector<std::string> voice_ids() const;
+    bool warmed_up() const noexcept { return warmed_up_; }
     const RuntimeManifest& manifest() const;
     const std::string& engine_version() const;
 
@@ -100,12 +114,25 @@ private:
         qt_voice_ref value{};
     };
 
+    struct VoiceProfile {
+        std::filesystem::path reference_audio_path;
+        std::string reference_text;
+        bool preserve_reference_text_whitespace = false;
+        bool x_vector_only = false;
+        std::vector<float> reference_audio;
+        std::string reference_cache_key;
+    };
+
     void clear_voice_reference_cache() noexcept;
+    void load_voice_registry();
+    void preload_voice_registry();
 
     NativeEngineOptions options_;
     QwenDllLoader loader_;
     qt_context* context_ = nullptr;
+    std::unordered_map<std::string, VoiceProfile> voice_profiles_;
     std::unordered_map<std::string, std::unique_ptr<CachedVoiceReference>> voice_reference_cache_;
+    bool warmed_up_ = false;
 };
 
 } // namespace qwen_tts_bridge::native_worker

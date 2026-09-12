@@ -298,8 +298,9 @@ void StdioServer::handle_hello(RequestId request_id) {
     ready.worker_version = "0.2.0-native-qwentts/" + engine_.engine_version();
     ready.session_id = make_session_id();
     ready.has_warmed_up = true;
-    ready.warmed_up = false;
+    ready.warmed_up = engine_.warmed_up();
     ready.capabilities = engine_.capabilities();
+    ready.voice_ids = engine_.voice_ids();
     send_control(0, std::move(ready));
 }
 
@@ -554,6 +555,7 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                   << ",\"qwen_predictor_ms\":" << result.qwen_predictor_ms
                   << ",\"qwen_host_ms\":" << result.qwen_host_ms
                   << ",\"qwen_codec_ms\":" << result.qwen_codec_ms
+                  << ",\"qwen_total_ms\":" << result.qwen_total_ms
                   << ",\"qwen_n_frames\":" << result.qwen_n_frames;
         if (outcome != nullptr) {
             std::cerr << ",\"execution_outcome\":\"" << outcome << "\"";

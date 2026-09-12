@@ -29,7 +29,8 @@ Example launch:
 build\native\qwen_tts_native_worker.exe `
   --runtime-dir E:\models\qwentts-runtime `
   --talker-model E:\models\talker.gguf `
-  --codec-model E:\models\codec.gguf
+  --codec-model E:\models\codec.gguf `
+  --voice-registry-path E:\voices\voice-profiles.local.json
 ```
 
 `manifest.json` is schema version 1 and must declare the engine name,
@@ -55,6 +56,24 @@ per decoded WAV. The raw-WAV path remains the default; use this flag only for an
 explicit A/B run because precomputed conditioning must still pass the same PCM
 and voice-identity gates.
 
+For the product registered-voice path, pass `--voice-registry-path` instead.
+The registry uses the same schema as `config/voice-profiles.example.json` and
+is resolved relative to its own directory. Every profile is decoded and its
+`qt_voice_ref` is extracted before the worker announces `ready`; a request then
+selects it with `voice_id` and does not read or extract the WAV on the critical
+path. The ready message advertises the sorted `voice_ids`, and an unknown ID is
+rejected fail-closed. This startup cost is intentional: it moves reference
+conditioning out of first-PCM latency without changing the PCM or sampling
+contract.
+
+For a latency-sensitive deployment, add `--warmup-synthesis` and select the
+same `--warmup-voice-id` used by the first request (plus `--warmup-language`
+when language is fixed). The worker discards one complete synthesis before
+`ready`; `ready.warmed_up` is then true. This primes lazy codec weights,
+persistent graph arenas, and CUDA graph captures. Without this flag the first
+request includes that one-time cost and must not be compared with a warmed
+FasterQwen profile.
+
 Each request emits a diagnostic `native_pcm_signal` metric on stderr for the
 first callback. It reports float PCM peak/RMS before Bridge conversion and
 s16le peak/RMS after conversion, together with first-chunk latency. This is a
@@ -73,7 +92,7 @@ failing.
 With a qwentts runtime that exports `qt_last_synthesis_metrics`, the same
 metric includes `qwen_prompt_build_ms`, `qwen_prefill_ms`, `qwen_ttfa_ms`,
 `qwen_talker_ms`, `qwen_predictor_ms`, `qwen_host_ms`, `qwen_codec_ms`, and
-`qwen_n_frames`. Older DLLs leave these fields at zero; this is a diagnostic
+`qwen_total_ms`, together with `qwen_n_frames`. Older DLLs leave these fields at zero; this is a diagnostic
 compatibility fallback, not permission to claim that a phase took zero time.
 
 The worker also rejects a successful qwentts EOS that emitted no PCM as
