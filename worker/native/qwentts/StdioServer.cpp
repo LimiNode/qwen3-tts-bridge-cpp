@@ -300,6 +300,7 @@ void StdioServer::handle_hello(RequestId request_id) {
     ready.has_warmed_up = true;
     ready.warmed_up = false;
     ready.capabilities = engine_.capabilities();
+    ready.voice_ids = engine_.voice_ids();
     send_control(0, std::move(ready));
 }
 
