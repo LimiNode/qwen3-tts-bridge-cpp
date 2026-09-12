@@ -32,8 +32,10 @@ C:\tmp\native-cmp50hx-base-registered-ab734-30req.json
 The single probe passed every automated gate: ready handshake, warmed state,
 registered voice cache hit, non-empty PCM, natural EOS, and no starvation.
 
-The 30-request sequential soak also passed all 30 requests with no failures,
-cancellations, acceptance failures, or starvation events.
+The 30-request sequential soak passed protocol/transport/terminal acceptance
+for all 30 requests with no failures, cancellations, acceptance failures, or
+starvation events. This is not a semantic TTS acceptance result: the short
+text produced an invalidly long output before the reference-boundary fix.
 
 | Metric | Value |
 | --- | ---: |
@@ -44,7 +46,7 @@ cancellations, acceptance failures, or starvation events.
 | Completion median | 12,820.794 ms |
 | Completion p95 | 13,033.649 ms |
 | RTF median | 0.313 |
-| Requests | 30/30 |
+| Protocol/transport/terminal acceptance | 30/30 |
 
 The qwentts phase metrics in the single probe reported approximately 178 ms
 TTFA and 161 ms prefill. The first PCM signal was non-empty (`s16_rms` about

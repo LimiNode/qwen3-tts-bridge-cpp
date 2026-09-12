@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "kind": "native_reference_bisection",
+  "status": "diagnostic_evidence_not_release_acceptance",
+  "captured_at": "2026-09-13",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94"
+  },
+  "runtime": {
+    "engine_commit": "ab73452eb33e71b25d8fa2e267ae85d6cb88d895",
+    "engine_abi": 5,
+    "backend": "cuda",
+    "talker_model_sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+    "codec_model_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "reference_wav_sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+    "seed": 1234,
+    "language": "russian",
+    "text": "Профиль Kraftwerk Robot работает на CMP 50HX.",
+    "reference_mode": "ICL",
+    "reference_trailing_silence_seconds": 0.5
+  },
+  "pre_fix_bisection": [
+    {
+      "case": "raw_reference",
+      "cache_hit": false,
+      "first_pcm_ms": 3757.447,
+      "codec_frames": 237,
+      "audio_duration_seconds": 18.96,
+      "execution_outcome": "natural_eos",
+      "qwen_ttfa_ms": 3516.4,
+      "qwen_prefill_ms": 165.12
+    },
+    {
+      "case": "cached_voice_ref",
+      "cache_hit": true,
+      "first_pcm_ms": 1365.569,
+      "codec_frames": 237,
+      "audio_duration_seconds": 18.96,
+      "execution_outcome": "natural_eos",
+      "qwen_ttfa_ms": 1347.19,
+      "qwen_prefill_ms": 166.289
+    },
+    {
+      "case": "raw_reference_plus_500ms_silence",
+      "cache_hit": false,
+      "first_pcm_ms": 3838.2,
+      "codec_frames": 152,
+      "audio_duration_seconds": 12.16,
+      "execution_outcome": "natural_eos",
+      "qwen_ttfa_ms": 3601.97,
+      "qwen_prefill_ms": 164.864
+    },
+    {
+      "case": "cached_voice_ref_plus_500ms_silence",
+      "cache_hit": true,
+      "first_pcm_ms": 1393.4,
+      "codec_frames": 152,
+      "audio_duration_seconds": 12.16,
+      "execution_outcome": "natural_eos",
+      "qwen_ttfa_ms": 1375.59,
+      "qwen_prefill_ms": 164.676
+    }
+  ],
+  "post_fix_verification": [
+    {
+      "case": "raw_reference_with_native_boundary_normalization",
+      "cache_hit": false,
+      "first_pcm_ms": 3876.3,
+      "codec_frames": 152,
+      "audio_duration_seconds": 12.16,
+      "execution_outcome": "natural_eos",
+      "qwen_ttfa_ms": 3625.02,
+      "qwen_prefill_ms": 165.485
+    },
+    {
+      "case": "cached_voice_ref_with_native_boundary_normalization",
+      "cache_hit": true,
+      "first_pcm_ms": 1474.2,
+      "codec_frames": 152,
+      "audio_duration_seconds": 12.16,
+      "execution_outcome": "natural_eos",
+      "qwen_ttfa_ms": 1455.38,
+      "qwen_prefill_ms": 168.062
+    }
+  ],
+  "post_fix_wav_sha256": {
+    "raw_reference": "6ac364c844431490d741e4310837f2fb49ad6c569dd1ce2745fb996de4ecaa51",
+    "cached_voice_ref": "6ac364c844431490d741e4310837f2fb49ad6c569dd1ce2745fb996de4ecaa51",
+    "pcm_samples": 291840,
+    "sample_rate": 24000,
+    "duration_seconds": 12.16
+  },
+  "interpretation": {
+    "cache_bisection": "raw and cached paths produced the same codec-frame count before the fix; cache was not the semantic cause",
+    "confirmed_cause": "the native ICL reference lacked the 0.5 second trailing-silence boundary used by FasterQwen",
+    "raw_and_cached_post_fix_audio": "byte-identical for the fixed-seed probe",
+    "production_change": "append 0.5 seconds of zero 24 kHz samples before raw synthesis and qt_voice_ref extraction/cache population",
+    "remaining_gates": [
+      "listen to the post-fix WAV and verify pronunciation",
+      "verify voice identity against the reference",
+      "repeat long-text, cancellation, restart/recovery, and direct-reference parity acceptance"
+    ]
+  }
+}
