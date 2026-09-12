@@ -1,15 +1,18 @@
-"""Run one reproducible QTB native-worker hardware probe.
+"""Run one fail-closed, reproducible QTB native-worker hardware probe.
 
-The probe intentionally measures first PCM from the first byte of a request
-until the first audio frame arrives.  It does not normalize, trim, or play the
-audio; the worker's stderr diagnostics and the raw protocol result are kept in
-the evidence JSON for later acceptance analysis.
+The probe measures request-to-first-PCM and records every PCM arrival. It does
+not normalize, trim, or play audio. A successful exit requires a completed
+request with the expected execution outcome, non-empty PCM, and no playback
+starvation between chunks.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import platform
+import queue
 import struct
 import subprocess
 import threading
@@ -18,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 HEADER = struct.Struct("<4sHHHHIQ")
+MAX_FRAME_PAYLOAD = 64 * 1024 * 1024
 
 
 def frame(request_id: int, payload: dict[str, Any]) -> bytes:
@@ -34,6 +38,8 @@ def read_frame(stream: Any) -> tuple[int, int, Any]:
     )
     if magic != b"QTB1" or version != 1 or header_size < HEADER.size or flags != 0:
         raise RuntimeError("native worker returned an invalid QTB frame header")
+    if payload_size > MAX_FRAME_PAYLOAD:
+        raise RuntimeError(f"native worker returned an oversized QTB payload: {payload_size}")
     if header_size > HEADER.size:
         extension = stream.read(header_size - HEADER.size)
         if len(extension) != header_size - HEADER.size:
@@ -44,6 +50,72 @@ def read_frame(stream: Any) -> tuple[int, int, Any]:
     if frame_type in (1, 3):
         return frame_type, request_id, json.loads(payload.decode("utf-8"))
     return frame_type, request_id, payload
+
+
+class FrameReader:
+    """Read blocking stdout frames on a daemon thread with caller timeouts."""
+
+    def __init__(self, stream: Any) -> None:
+        self._stream = stream
+        self._items: queue.Queue[tuple[str, Any]] = queue.Queue()
+        self._thread = threading.Thread(target=self._run, name="qtb-frame-reader", daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def _run(self) -> None:
+        try:
+            while True:
+                self._items.put(("frame", read_frame(self._stream)))
+        except BaseException as error:
+            self._items.put(("error", error))
+
+    def read(self, timeout: float) -> tuple[int, int, Any]:
+        try:
+            kind, value = self._items.get(timeout=timeout)
+        except queue.Empty as error:
+            raise TimeoutError(f"timed out waiting for a native worker frame ({timeout:.1f}s)") from error
+        if kind == "error":
+            raise value
+        return value
+
+
+def sha256_file(path: Path) -> str | None:
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def first_existing(*paths: Path) -> Path | None:
+    return next((path.resolve() for path in paths if path.is_file()), None)
+
+
+def hardware_identity() -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+    }
+    try:
+        probe = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,driver_version,memory.total", "--format=csv,noheader"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        probe = None
+    if probe is not None:
+        result["nvidia_smi_exit_code"] = probe.returncode
+        result["nvidia_smi"] = probe.stdout.strip()
+        if probe.stderr.strip():
+            result["nvidia_smi_stderr"] = probe.stderr.strip()
+    return result
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,6 +137,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--warmup-text", default="Warmup.")
     parser.add_argument("--warmup-language", default="auto")
     parser.add_argument("--warmup-voice-id", default="")
+    parser.add_argument("--expected-execution-outcome", default="natural_eos")
+    parser.add_argument("--startup-timeout-seconds", type=float, default=30.0)
+    parser.add_argument("--request-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
 
@@ -82,16 +157,13 @@ def main() -> int:
     args.output = args.output.resolve()
     if args.voice_id and args.reference_audio_path:
         raise SystemExit("--voice-id and --reference-audio-path are mutually exclusive")
+
     worker_args = [
         str(args.worker),
-        "--runtime-dir",
-        str(args.runtime_dir),
-        "--talker-model",
-        str(args.talker_model),
-        "--codec-model",
-        str(args.codec_model),
-        "--stream-max-chunk-frames",
-        str(args.stream_max_chunk_frames),
+        "--runtime-dir", str(args.runtime_dir),
+        "--talker-model", str(args.talker_model),
+        "--codec-model", str(args.codec_model),
+        "--stream-max-chunk-frames", str(args.stream_max_chunk_frames),
     ]
     if args.voice_registry_path:
         worker_args += ["--voice-registry-path", str(args.voice_registry_path)]
@@ -108,13 +180,15 @@ def main() -> int:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+    frame_reader = FrameReader(process.stdout)
+    frame_reader.start()
 
     def drain_stderr() -> None:
         assert process.stderr is not None
         for line in process.stderr:
             stderr_lines.append(line.decode("utf-8", errors="replace").rstrip())
 
-    stderr_thread = threading.Thread(target=drain_stderr, daemon=True)
+    stderr_thread = threading.Thread(target=drain_stderr, name="qtb-stderr-reader", daemon=True)
     stderr_thread.start()
 
     def send(request_id: int, payload: dict[str, Any]) -> None:
@@ -122,38 +196,64 @@ def main() -> int:
         process.stdin.write(frame(request_id, payload))
         process.stdin.flush()
 
+    runtime_manifest = first_existing(
+        args.runtime_dir / "runtime-manifest.json",
+        args.runtime_dir / "manifest.json",
+    )
+    dll = first_existing(args.runtime_dir / "qwen.dll", args.runtime_dir / "qwen-cuda.dll")
     evidence: dict[str, Any] = {
         "worker": str(args.worker),
+        "worker_args": worker_args,
         "runtime_dir": str(args.runtime_dir),
+        "runtime_manifest": str(runtime_manifest) if runtime_manifest else None,
         "talker_model": str(args.talker_model),
         "codec_model": str(args.codec_model),
+        "voice_registry_path": str(args.voice_registry_path) if args.voice_registry_path else "",
         "voice_id": args.voice_id,
-        "reference_audio_path": (
-            str(args.reference_audio_path) if args.reference_audio_path else ""
-        ),
+        "reference_audio_path": str(args.reference_audio_path) if args.reference_audio_path else "",
+        "reference_text": args.reference_text,
+        "x_vector_only": args.x_vector_only,
         "text": args.text,
         "language": args.language,
+        "seed": args.seed,
         "stream_max_chunk_frames": args.stream_max_chunk_frames,
-        "warmup_synthesis": args.warmup_synthesis,
+        "warmup": {
+            "synthesis": args.warmup_synthesis,
+            "text": args.warmup_text,
+            "language": args.warmup_language,
+            "voice_id": args.warmup_voice_id,
+        },
+        "expected_execution_outcome": args.expected_execution_outcome,
         "ready": None,
         "first_pcm_ms": None,
         "audio_bytes": 0,
+        "chunks": [],
+        "starvation_detected": False,
         "terminal": None,
         "qtb_metrics": [],
+        "hardware": hardware_identity(),
+        "hashes": {
+            "worker": sha256_file(args.worker),
+            "qwen_dll": sha256_file(dll) if dll else None,
+            "talker_model": sha256_file(args.talker_model),
+            "codec_model": sha256_file(args.codec_model),
+            "runtime_manifest": sha256_file(runtime_manifest) if runtime_manifest else None,
+            "voice_registry": sha256_file(args.voice_registry_path) if args.voice_registry_path else None,
+            "reference_audio": sha256_file(args.reference_audio_path) if args.reference_audio_path else None,
+        },
     }
+
+    failure: BaseException | None = None
     try:
-        send(
-            0,
-            {
-                "message_type": "hello",
-                "client_name": "native-hardware-probe",
-                "client_version": "1",
-            },
-        )
-        frame_type, _, ready = read_frame(process.stdout)
+        send(0, {"message_type": "hello", "client_name": "native-hardware-probe", "client_version": "1"})
+        frame_type, _, ready = frame_reader.read(args.startup_timeout_seconds)
         if frame_type != 1 or ready.get("message_type") != "ready":
             raise RuntimeError(f"expected ready, got {ready!r}")
         evidence["ready"] = ready
+        if bool(ready.get("warmed_up")) != args.warmup_synthesis:
+            raise RuntimeError("ready.warmed_up does not match the requested warmup state")
+        if args.voice_id and args.voice_id not in ready.get("voice_ids", []):
+            raise RuntimeError(f"requested voice_id is absent from ready.voice_ids: {args.voice_id}")
 
         request: dict[str, Any] = {
             "message_type": "synthesize",
@@ -169,23 +269,61 @@ def main() -> int:
             request["x_vector_only"] = args.x_vector_only
         if args.seed is not None:
             request["seed"] = args.seed
+        request_started = time.perf_counter()
         send(1, request)
-        started = time.perf_counter()
+        previous_arrival_ms: float | None = None
+        previous_audio_duration_ms: float | None = None
         while True:
-            frame_type, request_id, payload = read_frame(process.stdout)
+            frame_type, request_id, payload = frame_reader.read(args.request_timeout_seconds)
             if frame_type == 2 and request_id == 1:
-                evidence["audio_bytes"] += len(payload)
+                arrival_ms = (time.perf_counter() - request_started) * 1000.0
+                audio_bytes = len(payload)
+                audio_duration_ms = audio_bytes / (2.0 * 24000.0) * 1000.0
+                gap_ms = None if previous_arrival_ms is None else arrival_ms - previous_arrival_ms
+                buffer_slack_ms = (
+                    None
+                    if gap_ms is None or previous_audio_duration_ms is None
+                    else previous_audio_duration_ms - gap_ms
+                )
+                if buffer_slack_ms is not None and buffer_slack_ms < 0.0:
+                    evidence["starvation_detected"] = True
+                evidence["chunks"].append({
+                    "index": len(evidence["chunks"]),
+                    "arrival_ms": arrival_ms,
+                    "bytes": audio_bytes,
+                    "audio_duration_ms": audio_duration_ms,
+                    "gap_ms": gap_ms,
+                    "buffer_slack_ms": buffer_slack_ms,
+                })
+                evidence["audio_bytes"] += audio_bytes
                 if evidence["first_pcm_ms"] is None:
-                    evidence["first_pcm_ms"] = (time.perf_counter() - started) * 1000.0
+                    evidence["first_pcm_ms"] = arrival_ms
+                previous_arrival_ms = arrival_ms
+                previous_audio_duration_ms = audio_duration_ms
             elif frame_type == 1 and request_id == 1:
                 message_type = payload.get("message_type")
-                if message_type in {"completed", "cancelled", "error"}:
+                if message_type in {"completed", "cancelled"}:
                     evidence["terminal"] = payload
                     break
             elif frame_type == 3 and request_id == 1:
                 evidence["terminal"] = payload
                 break
+        terminal = evidence["terminal"]
+        if not isinstance(terminal, dict) or terminal.get("message_type") != "completed":
+            raise RuntimeError(f"request did not complete successfully: {terminal!r}")
+        if terminal.get("execution_outcome") != args.expected_execution_outcome:
+            raise RuntimeError(
+                "unexpected execution outcome: "
+                f"{terminal.get('execution_outcome')!r} != {args.expected_execution_outcome!r}"
+            )
+        if evidence["first_pcm_ms"] is None or evidence["audio_bytes"] <= 0:
+            raise RuntimeError("completed request did not emit PCM")
+        if evidence["starvation_detected"]:
+            raise RuntimeError("PCM arrival gaps exceeded the preceding audio buffer")
         send(0, {"message_type": "shutdown", "mode": "cancel"})
+    except BaseException as error:
+        failure = error
+        evidence["probe_error"] = str(error)
     finally:
         if process.stdin is not None:
             process.stdin.close()
@@ -194,6 +332,7 @@ def main() -> int:
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait()
+        stderr_thread.join(timeout=5)
 
     for line in stderr_lines:
         if line.startswith("qtb_metric "):
@@ -204,12 +343,8 @@ def main() -> int:
     evidence["stderr_tail"] = stderr_lines[-200:]
     evidence["worker_exit_code"] = process.returncode
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    if process.returncode != 0 or evidence["terminal"] is None:
-        return 1
-    return 0 if evidence["first_pcm_ms"] is not None else 1
+    args.output.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return 1 if failure is not None or process.returncode != 0 else 0
 
 
 if __name__ == "__main__":
