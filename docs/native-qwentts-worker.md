@@ -106,6 +106,33 @@ lifecycle, and target-hardware gates. The native process is intentionally
 opt-in. The in-process `NativeQwenBackend` is also opt-in and higher risk
 because it runs the qwentts engine in the application process.
 
+## Reproducible hardware probe
+
+Use the standard-library probe to capture one request without a playback
+device. It records the ready handshake, first PCM timing, terminal event,
+audio byte count, and `qtb_metric` diagnostics:
+
+```powershell
+python scripts/run-native-hardware-probe.py `
+  --worker build\Release\qwen_tts_native_worker.exe `
+  --runtime-dir E:\models\qwentts-runtime `
+  --talker-model E:\models\talker.gguf `
+  --codec-model E:\models\codec.gguf `
+  --voice-registry-path E:\voices\voice-profiles.local.json `
+  --voice-id kraftwerk_robot_ru_bootstrap_fidelity `
+  --text "Профиль Kraftwerk Robot работает на CMP 50HX." `
+  --language russian `
+  --warmup-synthesis `
+  --warmup-voice-id kraftwerk_robot_ru_bootstrap_fidelity `
+  --warmup-language russian `
+  --output docs\reports\native-cmp50hx-probe.json
+```
+
+Keep the JSON artifact with the exact runtime manifest and hardware metadata.
+Compare warmed native runs only with warmed FasterQwen runs; a cold first
+request includes one-time codec and CUDA-graph setup and is a separate
+lifecycle measurement.
+
 ## Runtime manifest generator
 
 Generate a manifest for a prepared runtime with:
