@@ -252,6 +252,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     enable_testing()
 
     if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
+        # Keep the test double out of the main configuration output directory.
+        # The real qwentts runtime is also named qwen.dll; sharing the default
+        # directory lets the fake library overwrite the production DLL and
+        # makes native_qwen_backend_abi_test order-dependent.
+        set(QWEN_TTS_FAKE_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/native-fake-runtime")
         add_library(qwen_tts_fake_qwen SHARED
             tests/native/fake_qwen_dll.cpp
         )
@@ -263,9 +268,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         set_target_properties(qwen_tts_fake_qwen PROPERTIES
             OUTPUT_NAME qwen
             PREFIX ""
+            RUNTIME_OUTPUT_DIRECTORY "${QWEN_TTS_FAKE_RUNTIME_DIR}"
+            LIBRARY_OUTPUT_DIRECTORY "${QWEN_TTS_FAKE_RUNTIME_DIR}"
+            ARCHIVE_OUTPUT_DIRECTORY "${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
 
-        set(QWEN_TTS_FAKE_RUNTIME_DIR "${CMAKE_CURRENT_BINARY_DIR}/native-fake-runtime")
         add_custom_command(TARGET qwen_tts_fake_qwen POST_BUILD
             COMMAND "${CMAKE_COMMAND}"
                 -DQWEN_DLL=$<TARGET_FILE:qwen_tts_fake_qwen>

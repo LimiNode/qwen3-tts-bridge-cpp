@@ -310,50 +310,67 @@ SynthesisResult NativeEngine::synthesize(
     const double synthesis_ms = std::chrono::duration<double, std::milli>(
         std::chrono::steady_clock::now() - synthesis_start).count();
     api.audio_free(&output);
+    qt_synthesis_metrics qwen_metrics{};
+    if (api.last_synthesis_metrics != nullptr) {
+        api.last_synthesis_metrics(&qwen_metrics);
+    }
+    const auto apply_qwen_metrics = [&qwen_metrics](SynthesisResult result) {
+        if (qwen_metrics.abi_version == QT_ABI_VERSION) {
+            result.qwen_prompt_build_ms = qwen_metrics.prompt_build_ms;
+            result.qwen_prefill_ms = qwen_metrics.prefill_ms;
+            result.qwen_ttfa_ms = qwen_metrics.ttfa_ms;
+            result.qwen_talker_ms = qwen_metrics.talker_ms;
+            result.qwen_predictor_ms = qwen_metrics.predictor_ms;
+            result.qwen_host_ms = qwen_metrics.host_ms;
+            result.qwen_codec_ms = qwen_metrics.codec_ms;
+            result.qwen_n_frames = qwen_metrics.n_frames;
+        }
+        return result;
+    };
     if (status == QT_STATUS_OK) {
         const auto finish_reason = api.last_finish_reason();
         if (finish_reason == QT_FINISH_EOS) {
             if (!callbacks.emitted_audio) {
-                return {SynthesisOutcome::Failed, "model_error", "empty_audio",
+                return apply_qwen_metrics({SynthesisOutcome::Failed, "model_error", "empty_audio",
                         "qwentts reported natural EOS without emitting PCM", {}, voice_reference_cache_hit,
                         voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
-                        callbacks.first_chunk_callback_ms};
+                        callbacks.first_chunk_callback_ms});
             }
-            return {SynthesisOutcome::Completed, {}, {}, {}, "natural_eos", voice_reference_cache_hit,
+            return apply_qwen_metrics({SynthesisOutcome::Completed, {}, {}, {}, "natural_eos", voice_reference_cache_hit,
                     voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
-                    callbacks.first_chunk_callback_ms};
+                    callbacks.first_chunk_callback_ms});
         }
         if (finish_reason == QT_FINISH_MAX_TOKENS) {
-            return {SynthesisOutcome::Completed, {}, {}, {}, "max_tokens", voice_reference_cache_hit,
+            return apply_qwen_metrics({SynthesisOutcome::Completed, {}, {}, {}, "max_tokens", voice_reference_cache_hit,
                     voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
-                    callbacks.first_chunk_callback_ms};
+                    callbacks.first_chunk_callback_ms});
         }
-        return {SynthesisOutcome::Failed, "model_error", "invalid_finish_reason",
+        return apply_qwen_metrics({SynthesisOutcome::Failed, "model_error", "invalid_finish_reason",
                 "qwentts reported successful synthesis without EOS or MAX_TOKENS", {},
                 voice_reference_cache_hit, voice_reference_extract_ms,
-                reference_audio_decode_ms, synthesis_ms, callbacks.first_chunk_callback_ms};
+                reference_audio_decode_ms, synthesis_ms, callbacks.first_chunk_callback_ms});
     }
     if (status == QT_STATUS_CANCELLED || cancelled.load(std::memory_order_relaxed)) {
-        return {SynthesisOutcome::Cancelled, {}, {}, {}, {}, voice_reference_cache_hit,
+        return apply_qwen_metrics({SynthesisOutcome::Cancelled, {}, {}, {}, {}, voice_reference_cache_hit,
                 voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
-                callbacks.first_chunk_callback_ms};
+                callbacks.first_chunk_callback_ms});
     }
     if (status == QT_STATUS_OOM) {
-        return {SynthesisOutcome::Failed, "resource_error", "resource_exhausted",
+        return apply_qwen_metrics({SynthesisOutcome::Failed, "resource_error", "resource_exhausted",
                 last_error(api, "qwentts ran out of memory"), {}, voice_reference_cache_hit,
                 voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
-                callbacks.first_chunk_callback_ms};
+                callbacks.first_chunk_callback_ms});
     }
     if (status == QT_STATUS_INVALID_PARAMS || status == QT_STATUS_MODE_INVALID) {
-        return {SynthesisOutcome::Failed, "request_error", "invalid_native_request",
+        return apply_qwen_metrics({SynthesisOutcome::Failed, "request_error", "invalid_native_request",
                 last_error(api, "qwentts rejected the request"), {}, voice_reference_cache_hit,
                 voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
-                callbacks.first_chunk_callback_ms};
+                callbacks.first_chunk_callback_ms});
     }
-    return {SynthesisOutcome::Failed, "model_error", "synthesis_failed",
+    return apply_qwen_metrics({SynthesisOutcome::Failed, "model_error", "synthesis_failed",
             last_error(api, "qwentts synthesis failed"), {}, voice_reference_cache_hit,
             voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
-            callbacks.first_chunk_callback_ms};
+            callbacks.first_chunk_callback_ms});
 }
 
 WorkerCapabilities NativeEngine::capabilities() const {

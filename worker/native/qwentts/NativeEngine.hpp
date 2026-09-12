@@ -54,6 +54,22 @@ struct SynthesisResult {
     double synthesis_ms = 0.0;
     /// Time from qt_synthesize entry to the first non-empty PCM callback.
     double first_chunk_callback_ms = 0.0;
+    /// qwentts internal prompt-build phase, when exposed by the runtime ABI.
+    double qwen_prompt_build_ms = 0.0;
+    /// qwentts internal Talker prefill phase, when exposed by the runtime ABI.
+    double qwen_prefill_ms = 0.0;
+    /// qwentts time to first generated codec frame, when exposed by the ABI.
+    double qwen_ttfa_ms = 0.0;
+    /// qwentts Talker autoregressive phase, when exposed by the runtime ABI.
+    double qwen_talker_ms = 0.0;
+    /// qwentts code-predictor phase, when exposed by the runtime ABI.
+    double qwen_predictor_ms = 0.0;
+    /// qwentts host-side composition phase, when exposed by the runtime ABI.
+    double qwen_host_ms = 0.0;
+    /// qwentts codec-decode phase, when exposed by the runtime ABI.
+    double qwen_codec_ms = 0.0;
+    /// Number of generated codec frames reported by qwentts.
+    int qwen_n_frames = 0;
 };
 
 using AudioChunkHandler = std::function<bool(const float*, int)>;
