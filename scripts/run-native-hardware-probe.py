@@ -326,7 +326,10 @@ def main() -> int:
         evidence["probe_error"] = str(error)
     finally:
         if process.stdin is not None:
-            process.stdin.close()
+            try:
+                process.stdin.close()
+            except OSError:
+                pass
         try:
             process.wait(timeout=30)
         except subprocess.TimeoutExpired:
