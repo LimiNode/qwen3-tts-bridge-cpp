@@ -53,6 +53,11 @@ between 2.08 s and 37.52 s; one seed produced 163.84 s and hit
 156, 147, 464, 197, 155, 156, 26, 469, 2048, 85
 ```
 
+The soak preloaded the registered reference but did not enable startup
+synthesis warmup. Its approximately 1.39 s first-PCM values therefore describe
+a cold synthesis lifecycle and must not be compared with the previously
+measured approximately 182 ms warmed hot path as a pre/post regression.
+
 Therefore the evidence now claims a **confirmed causal factor**, not a fully
 resolved cause of the old 41-second runaway. The remaining work is generation
 trajectory analysis (prompt geometry, sampling/EOS behavior, and listening to

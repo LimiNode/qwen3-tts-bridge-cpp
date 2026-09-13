@@ -101,6 +101,11 @@
     "sample_rate": 24000,
     "duration_seconds": 12.16
   },
+  "post_fix_multi_seed_soak_configuration": {
+    "startup_synthesis_warmup": false,
+    "registered_reference_preloaded": true,
+    "stream_max_chunk_frames": 1
+  },
   "post_fix_multi_seed_soak": [
     {"seed": 1000, "first_pcm_ms": 1398.8, "codec_frames": 156, "audio_duration_seconds": 12.48, "execution_outcome": "natural_eos", "wav_sha256": "ae1e9682320346c320fbe6b02dedd64db3dc29f3b137702eafc23f3a3b98b8b1"},
     {"seed": 1001, "first_pcm_ms": 1393.2, "codec_frames": 147, "audio_duration_seconds": 11.76, "execution_outcome": "natural_eos", "wav_sha256": "7d968af01ad6c6d92c0a4bd0e9a02df4038dbb2de6dd2577173a80b76e302c23"},
@@ -117,7 +122,7 @@
     "cache_bisection": "raw and cached paths produced the same codec-frame count before the fix; cache was not the semantic cause",
     "confirmed_causal_factor": "the native ICL reference lacked the 0.5 second trailing-silence boundary used by FasterQwen",
     "raw_and_cached_post_fix_audio": "byte-identical for the fixed-seed probe",
-    "production_change": "append 0.5 seconds of zero 24 kHz samples before raw synthesis and qt_voice_ref extraction/cache population",
+    "production_change": "append 0.5 seconds of zero 24 kHz samples only to Base ICL references before raw synthesis and qt_voice_ref extraction/cache population; x_vector_only remains unchanged",
     "remaining_gates": [
       "listen to the post-fix WAV and verify pronunciation",
       "verify voice identity against the reference",
