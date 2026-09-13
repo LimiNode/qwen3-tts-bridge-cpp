@@ -76,6 +76,26 @@ class NativeHardwareProbeTests(unittest.TestCase):
             probe.extract_ar_trace(lines),
         )
 
+    def test_predictor_philox_trace_requires_contiguous_fifteen_draws(self) -> None:
+        draws = ",".join(f"{index}:{index / 100.0:.10f}" for index in range(1, 16))
+        parsed = probe.parse_predictor_philox_trace(
+            f"predictor_philox step=0 base=0 draws={draws}"
+        )
+
+        self.assertEqual(0, parsed["step"])
+        self.assertEqual(0, parsed["base"])
+        self.assertEqual(15, len(parsed["draws"]))
+        self.assertEqual(15, parsed["draws"][-1][0])
+
+    def test_predictor_philox_trace_rejects_schedule_gap(self) -> None:
+        draws = ",".join(f"{index}:{index / 100.0:.10f}" for index in range(1, 15))
+        draws += ",16:0.15"
+
+        with self.assertRaisesRegex(ValueError, "contiguous"):
+            probe.parse_predictor_philox_trace(
+                f"predictor_philox step=1 base=0 draws={draws}"
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

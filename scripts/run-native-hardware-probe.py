@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import platform
 import queue
 import struct
@@ -111,6 +112,36 @@ def extract_ar_trace(stderr_lines: list[str]) -> list[str]:
     """Return machine-independent qwentts AR trace payloads from stderr."""
     marker = "[ARTrace] "
     return [line.split(marker, 1)[1] for line in stderr_lines if marker in line]
+
+
+def parse_predictor_philox_trace(payload: str) -> dict[str, Any]:
+    """Parse and validate one qwentts predictor Philox schedule record."""
+    prefix = "predictor_philox "
+    if not payload.startswith(prefix):
+        raise ValueError("predictor Philox trace has an unknown payload")
+    fields = dict(
+        item.split("=", 1)
+        for item in payload[len(prefix) :].split(" ")
+        if "=" in item
+    )
+    try:
+        step = int(fields["step"])
+        base = int(fields["base"])
+        raw_draws = fields["draws"].split(",")
+        draws = [
+            (int(item.split(":", 1)[0]), float(item.split(":", 1)[1]))
+            for item in raw_draws
+        ]
+    except (KeyError, ValueError, IndexError) as error:
+        raise ValueError("malformed predictor Philox trace") from error
+    if step < 0 or len(draws) != 15:
+        raise ValueError("predictor Philox trace must contain 15 draws")
+    expected_ids = list(range(base + 1, base + 16))
+    if [draw_id for draw_id, _ in draws] != expected_ids:
+        raise ValueError("predictor Philox subsequences are not contiguous after base")
+    if any(not math.isfinite(draw) or not 0.0 <= draw < 1.0 for _, draw in draws):
+        raise ValueError("predictor Philox uniforms must be finite values in [0, 1)")
+    return {"step": step, "base": base, "draws": draws}
 
 
 def first_existing(*paths: Path) -> Path | None:
@@ -431,6 +462,18 @@ def main() -> int:
                 pass
     evidence["stderr_tail"] = stderr_lines[-200:]
     evidence["ar_trace"] = extract_ar_trace(stderr_lines)
+    predictor_philox_trace: list[dict[str, Any]] = []
+    try:
+        predictor_philox_trace = [
+            parse_predictor_philox_trace(payload)
+            for payload in evidence["ar_trace"]
+            if payload.startswith("predictor_philox ")
+        ]
+    except ValueError as error:
+        failure = failure or error
+        evidence["probe_error"] = str(error)
+    if predictor_philox_trace:
+        evidence["predictor_philox_trace"] = predictor_philox_trace
     evidence["worker_exit_code"] = process.returncode
     if args.output_wav and captured_pcm:
         write_pcm_wav(args.output_wav, bytes(captured_pcm))
