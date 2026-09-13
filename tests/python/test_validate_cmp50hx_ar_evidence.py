@@ -47,10 +47,13 @@ class ValidateCmp50hxArEvidenceTests(unittest.TestCase):
             "codec_frames": 2048,
             "execution_outcome": "max_tokens",
             "wav_sha256": self.wav_hash,
+            "first_32_or_all_c0": [1721],
         }
         current = {
             "first_divergence": {
                 "talker_step_0": {
+                    "selected_token": 1721,
+                    "selected_probability": 0.774972141,
                     "top5": self.top5,
                     "philox_draw_by_seed": {"1008": 0.7998353243},
                 }
@@ -104,6 +107,7 @@ class ValidateCmp50hxArEvidenceTests(unittest.TestCase):
                     "codec_frames": 2048,
                     "execution_outcome": "max_tokens",
                     "wav_sha256": "0" * 64,
+                    "first_32_or_all_c0": [1721],
                 }
             ]
         }

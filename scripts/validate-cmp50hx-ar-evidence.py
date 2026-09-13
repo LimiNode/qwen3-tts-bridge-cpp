@@ -65,6 +65,12 @@ def validate(
     step0 = evidence.get("first_divergence", {}).get("talker_step_0", {})
     expected_top5 = step0.get("top5")
     expected_draws = step0.get("philox_draw_by_seed")
+    expected_token = step0.get("selected_token")
+    expected_probability = step0.get("selected_probability")
+    if not isinstance(expected_token, int) or not isinstance(
+        expected_probability, (int, float)
+    ):
+        raise ValueError("step-0 selected token and probability are required")
     if not isinstance(expected_top5, list) or len(expected_top5) != 5:
         raise ValueError("step-0 sanitized top5 must have 5 entries")
     if not isinstance(expected_draws, dict):
@@ -97,7 +103,9 @@ def validate(
         )
         if match is None:
             raise ValueError(f"malformed Talker step-0 line: {probe_path}")
+        selected_token = int(match.group(1))
         draw = float(match.group(2))
+        selected_probability = float(match.group(3))
         top5 = tuple(
             (int(item.split(":", 1)[0]), float(item.split(":", 1)[1]))
             for item in match.group(4).split(",")
@@ -106,6 +114,13 @@ def validate(
             observed_top5 = top5
         elif top5 != observed_top5:
             raise ValueError(f"seed {seed} step-0 top-5 differs across probes")
+        if selected_token != expected_token:
+            raise ValueError(f"seed {seed} step-0 selected token mismatch")
+        if abs(selected_probability - float(expected_probability)) > 1e-9:
+            raise ValueError(f"seed {seed} step-0 selected probability mismatch")
+        first_c0 = current_runs[seed].get("first_32_or_all_c0", [None])[0]
+        if first_c0 != selected_token:
+            raise ValueError(f"seed {seed} first c0 does not match step-0 selection")
         expected_draw = expected_draws.get(str(seed))
         if expected_draw is None or abs(float(expected_draw) - draw) > 1e-9:
             raise ValueError(f"seed {seed} step-0 Philox draw mismatch")
