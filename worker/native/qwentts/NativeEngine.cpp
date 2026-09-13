@@ -239,6 +239,13 @@ void NativeEngine::load() {
     if (context_ != nullptr) {
         throw std::logic_error("native engine is already loaded");
     }
+    if (!options_.diagnostic_dump_dir.empty()) {
+        std::filesystem::create_directories(options_.diagnostic_dump_dir);
+        if (!std::filesystem::is_directory(options_.diagnostic_dump_dir)) {
+            throw std::runtime_error("native diagnostic dump path is not a directory: " +
+                                     options_.diagnostic_dump_dir.u8string());
+        }
+    }
     loader_.load(options_.dll_path, options_.manifest_path);
     const QwenApi& api = loader_.api();
     if (options_.precompute_voice_refs && !loader_.supports_voice_reference()) {
@@ -458,6 +465,10 @@ SynthesisResult NativeEngine::synthesize(
     params.ref_text = effective_x_vector_only || effective_reference_text.empty()
         ? nullptr
         : effective_reference_text.c_str();
+    const std::string diagnostic_dump_dir = options_.diagnostic_dump_dir.empty()
+        ? std::string{}
+        : options_.diagnostic_dump_dir.u8string();
+    params.dump_dir = diagnostic_dump_dir.empty() ? nullptr : diagnostic_dump_dir.c_str();
     if (cached_reference != nullptr) {
         params.ref_spk_emb = cached_reference->ref_spk_emb;
         params.ref_spk_dim = cached_reference->ref_spk_dim;
