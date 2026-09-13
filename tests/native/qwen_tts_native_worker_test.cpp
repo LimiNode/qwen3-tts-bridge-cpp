@@ -42,7 +42,8 @@ StdIoTransportOptions options(
     std::atomic<bool>* cadence_observed = nullptr,
     int max_text_bytes = 0,
     bool precompute_voice_ref = false,
-    bool warmup_synthesis = false) {
+    bool warmup_synthesis = false,
+    const std::filesystem::path& diagnostic_dump_dir = {}) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
@@ -63,6 +64,10 @@ StdIoTransportOptions options(
         result.arguments.push_back("--warmup-synthesis");
         result.arguments.push_back("--warmup-text");
         result.arguments.push_back("warmup test");
+    }
+    if (!diagnostic_dump_dir.empty()) {
+        result.arguments.push_back("--diagnostic-dump-dir");
+        result.arguments.push_back(diagnostic_dump_dir.string());
     }
     result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
         if (stderr_capture != nullptr) {
@@ -276,13 +281,14 @@ int main() {
     CHECK(static_cast<unsigned char>(probe.audio[11]) == 0x7fu);
 
     const auto reference_wav = runtime / "reference-cache-test.wav";
+    const auto diagnostic_dump_dir = runtime / "diagnostic-dump";
     write_reference_wav(reference_wav);
     std::string reference_stderr;
     QwenTtsClient cached_client;
     QwenTtsClientOptions cached_options;
     cached_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(cached_client.start(
-        options(8, &reference_stderr, nullptr, 0, true), cached_options));
+        options(8, &reference_stderr, nullptr, 0, true, false, diagnostic_dump_dir), cached_options));
     Probe reference_probe;
     TtsCallbacks reference_callbacks;
     reference_callbacks.on_completed = [&reference_probe]() {
@@ -312,6 +318,8 @@ int main() {
     CHECK(reference_stderr.find("\"voice_reference_cache_hit\":false") != std::string::npos);
     CHECK(reference_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
     CHECK(reference_stderr.find("fake voice_ref_samples=4") != std::string::npos);
+    CHECK(reference_stderr.find("fake diagnostic_dump_dir=") != std::string::npos);
+    CHECK(std::filesystem::is_directory(diagnostic_dump_dir));
     CHECK(reference_stderr.find("\"reference_audio_decode_ms\":") != std::string::npos);
     CHECK(reference_stderr.find("\"synthesis_ms\":") != std::string::npos);
     cached_client.stop();
