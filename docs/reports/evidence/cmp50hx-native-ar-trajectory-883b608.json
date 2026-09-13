@@ -49,7 +49,20 @@
     "talker_step_0": {
       "selected_token": 1721,
       "selected_probability": 0.774972141,
-      "same_distribution_and_selection_across_seeds": true
+      "same_observed_top5_and_selection_across_seeds": true,
+      "top5": [
+        {"token": 1721, "probability": 0.774972},
+        {"token": 1687, "probability": 0.100051},
+        {"token": 367, "probability": 0.034855},
+        {"token": 2, "probability": 0.025219},
+        {"token": 1733, "probability": 0.019549}
+      ],
+      "philox_draw_by_seed": {
+        "1006": 0.2774515748,
+        "1000": 0.3931494057,
+        "1002": 0.5435120463,
+        "1008": 0.7998353243
+      }
     },
     "first_seed_dependent_state": "predictor_step_0_complete_frame",
     "first_divergent_main_talker_step": 1,

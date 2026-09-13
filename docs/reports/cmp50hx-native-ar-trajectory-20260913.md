@@ -62,14 +62,32 @@ Each captured WAV has the same SHA-256 as the corresponding seed in the
 earlier non-diagnostic semantic soak. This hardware result confirms that the
 trace did not perturb the generated token/PCM trajectory.
 
+The comparison is executable rather than a manual transcription check:
+
+```powershell
+python scripts/validate-cmp50hx-ar-evidence.py `
+  --probe-root C:\path\to\native-ar-trace `
+  --evidence docs/reports/evidence/cmp50hx-native-ar-trajectory-883b608.json `
+  --prior-evidence docs/reports/evidence/cmp50hx-native-reference-bisection-ab734.json
+```
+
+The validator hashes every raw WAV and compares its frame count and terminal
+outcome with both sanitized evidence files. It also verifies the recorded
+step-0 top-five values and Philox draw for every diagnostic seed. The earlier
+seed-1008 soak hash was corrected from a one-character transcription error
+after checking the raw WAV (`...154fb3...`).
+
 These are cold-synthesis measurements: the worker preloaded the registered
 reference, but `ready.warmed_up` was false. They must not be compared with the
 previous approximately 182 ms warmed first-PCM result.
 
 ## First divergence
 
-The step-0 Talker distribution is identical for every seed. Token `1721` has
-probability `0.774972141` and is selected in all four runs. The trajectory
+The observed step-0 Talker top-five distribution is identical for every seed.
+Token `1721` has probability `0.774972141` and is selected in all four runs.
+The trace does not persist a full-vocabulary weight hash, so this evidence
+deliberately claims identical observed top-five values, not an unqualified
+full-distribution identity. The trajectory
 nevertheless starts diverging inside the predictor that completes this first
 codec frame: its sampled codebook values already differ by seed.
 
