@@ -184,5 +184,17 @@ listening gates. The first model-free step is tracked in
 an explicit-uniform sampler seam and deterministic policy tests without
 changing production defaults.
 
+## Follow-up instrumentation
+
+The subsequent qwentts.cpp parity work added two opt-in diagnostics. The
+explicit-uniform policy harness compares native sampling with a dependency-free
+Python reference over fixed edge cases; the predictor Philox trace records the
+`base+1` through `base+15` subsequences and uniforms for the first two frames.
+The latter is emitted only when the diagnostic dump is enabled and does not
+consume or alter the production RNG stream. This historical report predates
+those traces, so no new schedule claim is retroactively attributed to the four
+recorded runs. Future hardware probes must preserve and validate the new
+`predictor_philox` records before drawing RNG-schedule conclusions.
+
 Sanitized measurements and bounded derived traces are stored in
 [`evidence/cmp50hx-native-ar-trajectory-883b608.json`](evidence/cmp50hx-native-ar-trajectory-883b608.json).
