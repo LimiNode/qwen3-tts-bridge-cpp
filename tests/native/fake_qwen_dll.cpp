@@ -105,6 +105,10 @@ QT_API qt_status qt_synthesize(
         g_finish_reason = QT_FINISH_UNKNOWN;
         return QT_STATUS_CANCELLED;
     }
+    if (params->dump_dir != nullptr && g_log_callback != nullptr) {
+        const std::string message = std::string("fake diagnostic_dump_dir=") + params->dump_dir;
+        g_log_callback(QT_LOG_INFO, message.c_str(), g_log_user_data);
+    }
     if (std::strcmp(params->text, "force max tokens") == 0) {
         g_finish_reason = QT_FINISH_MAX_TOKENS;
     } else if (std::strcmp(params->text, "force unknown finish reason") == 0) {

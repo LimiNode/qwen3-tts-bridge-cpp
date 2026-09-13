@@ -115,7 +115,7 @@
     {"seed": 1005, "first_pcm_ms": 1403.7, "codec_frames": 156, "audio_duration_seconds": 12.48, "execution_outcome": "natural_eos", "wav_sha256": "02675fc9365bdc1f60317334e4761167bd9ca60d28d661867938bb80574572b0"},
     {"seed": 1006, "first_pcm_ms": 1391.9, "codec_frames": 26, "audio_duration_seconds": 2.08, "execution_outcome": "natural_eos", "wav_sha256": "36e70341a458f52ce016d12ec2c04727f0f21900f329ccafb0817ab1e0964315"},
     {"seed": 1007, "first_pcm_ms": 1390.6, "codec_frames": 469, "audio_duration_seconds": 37.52, "execution_outcome": "natural_eos", "wav_sha256": "a16d7defe72d3e290abd4b6a3d00939c1728b1a379b51828efd4928be4f042ff"},
-    {"seed": 1008, "first_pcm_ms": 1390.7, "codec_frames": 2048, "audio_duration_seconds": 163.84, "execution_outcome": "max_tokens", "wav_sha256": "a547228584bf6fc39c64b1cd46fa19df276154bb3afa578cabadf15887000035"},
+    {"seed": 1008, "first_pcm_ms": 1390.7, "codec_frames": 2048, "audio_duration_seconds": 163.84, "execution_outcome": "max_tokens", "wav_sha256": "a547228584bf6fc39c64b1cd46fa19df276154fb3afa578cabadf15887000035"},
     {"seed": 1009, "first_pcm_ms": 1394.0, "codec_frames": 85, "audio_duration_seconds": 6.8, "execution_outcome": "natural_eos", "wav_sha256": "c909d631e78200dd09476b019d9b42a933fd4e5254834a3429d11aa01f542e55"}
   ],
   "interpretation": {

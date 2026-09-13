@@ -64,6 +64,18 @@ class NativeHardwareProbeTests(unittest.TestCase):
                     stream.getnframes(),
                 ))
 
+    def test_extract_ar_trace_strips_worker_prefix(self) -> None:
+        lines = [
+            "ordinary worker log",
+            "[qwentts:debug] [ARTrace] prompt seed=1006 T_ctx=7",
+            "[qwentts:debug] [ARTrace] sample step=0 c0=42",
+        ]
+
+        self.assertEqual(
+            ["prompt seed=1006 T_ctx=7", "sample step=0 c0=42"],
+            probe.extract_ar_trace(lines),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

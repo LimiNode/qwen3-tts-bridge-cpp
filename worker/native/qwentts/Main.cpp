@@ -78,6 +78,9 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
         else if (argument == L"--voice-registry-path") {
             options.voice_registry_path = require_value(index, argc, argv, L"--voice-registry-path");
         }
+        else if (argument == L"--diagnostic-dump-dir") {
+            options.diagnostic_dump_dir = require_value(index, argc, argv, L"--diagnostic-dump-dir");
+        }
         else if (argument == L"--no-flash-attention") {
             options.use_flash_attention = false;
         }
@@ -123,6 +126,7 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
             std::cerr
                 << "qwen_tts_native_worker --runtime-dir DIR --talker-model FILE --codec-model FILE\n"
                 << "  [--dll-path FILE] [--manifest-path FILE] [--voice-registry-path FILE]\n"
+                << "  [--diagnostic-dump-dir DIR]\n"
                 << "  [--no-flash-attention]\n"
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
                 << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"

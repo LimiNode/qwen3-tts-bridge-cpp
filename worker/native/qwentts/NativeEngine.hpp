@@ -21,6 +21,9 @@ struct NativeEngineOptions {
     std::filesystem::path codec_model;
     /// Optional registered Base voice profile registry loaded at startup.
     std::filesystem::path voice_registry_path;
+    /// Optional directory for qwentts tensor dumps and bounded AR traces.
+    /// Diagnostic only; enabling it adds host work and filesystem I/O.
+    std::filesystem::path diagnostic_dump_dir;
     bool use_flash_attention = true;
     bool clamp_fp16 = false;
     int max_batch = 1;

@@ -107,6 +107,12 @@ def write_pcm_wav(path: Path, pcm_s16le: bytes) -> None:
         stream.writeframes(pcm_s16le)
 
 
+def extract_ar_trace(stderr_lines: list[str]) -> list[str]:
+    """Return machine-independent qwentts AR trace payloads from stderr."""
+    marker = "[ARTrace] "
+    return [line.split(marker, 1)[1] for line in stderr_lines if marker in line]
+
+
 def first_existing(*paths: Path) -> Path | None:
     return next((path.resolve() for path in paths if path.is_file()), None)
 
@@ -146,6 +152,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--talker-model", type=Path, required=True)
     parser.add_argument("--codec-model", type=Path, required=True)
     parser.add_argument("--voice-registry-path", type=Path)
+    parser.add_argument("--diagnostic-dump-dir", type=Path)
     parser.add_argument("--voice-id", default="")
     parser.add_argument("--reference-audio-path", type=Path)
     parser.add_argument("--reference-text", default="")
@@ -178,6 +185,8 @@ def main() -> int:
     args.codec_model = args.codec_model.resolve()
     if args.voice_registry_path:
         args.voice_registry_path = args.voice_registry_path.resolve()
+    if args.diagnostic_dump_dir:
+        args.diagnostic_dump_dir = args.diagnostic_dump_dir.resolve()
     if args.reference_audio_path:
         args.reference_audio_path = args.reference_audio_path.resolve()
     args.output = args.output.resolve()
@@ -199,6 +208,8 @@ def main() -> int:
     ]
     if args.voice_registry_path:
         worker_args += ["--voice-registry-path", str(args.voice_registry_path)]
+    if args.diagnostic_dump_dir:
+        worker_args += ["--diagnostic-dump-dir", str(args.diagnostic_dump_dir)]
     if args.warmup_synthesis:
         worker_args += ["--warmup-synthesis", "--warmup-text", args.warmup_text]
         worker_args += ["--warmup-language", args.warmup_language]
@@ -246,6 +257,9 @@ def main() -> int:
         "codec_model": str(args.codec_model),
         "voice_registry_path": str(args.voice_registry_path)
         if args.voice_registry_path
+        else "",
+        "diagnostic_dump_dir": str(args.diagnostic_dump_dir)
+        if args.diagnostic_dump_dir
         else "",
         "voice_id": args.voice_id,
         "reference_audio_path": str(args.reference_audio_path)
@@ -416,6 +430,7 @@ def main() -> int:
             except json.JSONDecodeError:
                 pass
     evidence["stderr_tail"] = stderr_lines[-200:]
+    evidence["ar_trace"] = extract_ar_trace(stderr_lines)
     evidence["worker_exit_code"] = process.returncode
     if args.output_wav and captured_pcm:
         write_pcm_wav(args.output_wav, bytes(captured_pcm))
