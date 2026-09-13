@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "kind": "native_ar_trajectory",
+  "status": "diagnostic_evidence_not_release_acceptance",
+  "captured_at": "2026-09-13",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94"
+  },
+  "runtime": {
+    "bridge_commit": "754911e888774329861d8c11079ce38fd98a8ad3",
+    "qwentts_pinned_merge_commit": "608695582641419bbc11a4055a379319afe822ab",
+    "qwentts_diagnostic_source_commit": "883b608",
+    "faster_qwen_static_comparison_commit": "90b596d2ffa41eb2da173db92e6f896df11b19cb",
+    "engine_abi": 5,
+    "backend": "cuda",
+    "worker_sha256": "e9a471e8c6201538d29bf5a932453f9a7f5f6382b12874044d435b89cbcce442",
+    "qwen_dll_sha256": "9f5ede296936670d27f71dd11729f090b258dddab74e9a354b800c5b92a94ed9",
+    "runtime_manifest_sha256": "c8e4f9b8143cca6a64e8b37dbcbd4faf67714c7fd1ec2fe234e2d426a623c3cc",
+    "talker_model_sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+    "codec_model_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "voice_registry_sha256": "e6cc57ee2859769ec639e26d93ec5f1389bad4b032849b5ff84475acd96bb781",
+    "reference_wav_sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1"
+  },
+  "configuration": {
+    "reference_mode": "registered_preloaded_icl",
+    "startup_synthesis_warmup": false,
+    "stream_max_chunk_frames": 1,
+    "language": "russian",
+    "sample_rate": 24000,
+    "trace_step_limit": 128,
+    "trace_observes_existing_rng_without_consuming_it": true,
+    "wav_hashes_match_prior_non_diagnostic_soak": true
+  },
+  "prompt": {
+    "T_ctx": 236,
+    "T_trailing": 1,
+    "ref_T": 226,
+    "fingerprint_kind": "qwentts_engine_diagnostic_hash",
+    "prompt_ids_hash": "d0f93610a7cca36e",
+    "input_hash": "64cd364a2d82af99",
+    "trailing_hash": "45a6fd74b5820cfa",
+    "speaker_hash": "1f559899313e76ea",
+    "ref_codes_hash": "a1baa1af50d7b4f1",
+    "identical_across_seeds": true
+  },
+  "first_divergence": {
+    "talker_step_0": {
+      "selected_token": 1721,
+      "selected_probability": 0.774972141,
+      "same_distribution_and_selection_across_seeds": true
+    },
+    "first_seed_dependent_state": "predictor_step_0_complete_frame",
+    "first_divergent_main_talker_step": 1,
+    "talker_step_1_tokens": {
+      "1006": 2,
+      "1000": 2,
+      "1002": 367,
+      "1008": 1687
+    }
+  },
+  "runs": [
+    {
+      "seed": 1006,
+      "first_pcm_ms": 1418.9,
+      "codec_frames": 26,
+      "audio_duration_seconds": 2.08,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "36e70341a458f52ce016d12ec2c04727f0f21900f329ccafb0817ab1e0964315",
+      "traced_steps": 27,
+      "first_32_or_all_c0": [1721, 2, 1571, 257, 1294, 1185, 1830, 113, 348, 878, 1866, 1257, 295, 195, 792, 165, 1304, 1653, 1290, 1358, 340, 914, 1145, 17, 952, 1739, 2150],
+      "predictor_frames": [
+        [1721, 1722, 355, 310, 1296, 1093, 1960, 278, 930, 38, 1846, 1247, 1110, 889, 812, 803],
+        [2, 800, 999, 282, 293, 1085, 2019, 484, 1356, 19, 111, 1603, 365, 291, 1120, 1687]
+      ],
+      "eos_events": [
+        {"step": 25, "probability": 0.00221908651, "rank": 39, "selected": false},
+        {"step": 26, "probability": 0.96802026, "rank": 1, "selected": true}
+      ]
+    },
+    {
+      "seed": 1000,
+      "first_pcm_ms": 1422.8,
+      "codec_frames": 156,
+      "audio_duration_seconds": 12.48,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "ae1e9682320346c320fbe6b02dedd64db3dc29f3b137702eafc23f3a3b98b8b1",
+      "traced_steps": 128,
+      "first_32_or_all_c0": [1721, 2, 1879, 1294, 1953, 1834, 1830, 113, 287, 178, 1772, 750, 1653, 1830, 113, 1647, 1917, 587, 1145, 2032, 1804, 1555, 519, 1937, 851, 511, 1830, 1830, 1803, 1643, 1496, 2032],
+      "predictor_frames": [
+        [1721, 1722, 355, 310, 1296, 819, 625, 278, 930, 1144, 679, 1247, 1110, 889, 812, 901],
+        [2, 1134, 1130, 241, 1047, 824, 20, 812, 734, 38, 679, 1247, 896, 889, 1845, 1978]
+      ],
+      "eos_events": [
+        {"step": 103, "probability": 0.000169754159, "rank": 23, "selected": false},
+        {"step": 107, "probability": 0.00441757357, "rank": 17, "selected": false},
+        {"step": 112, "probability": 0.0000453552675, "rank": 30, "selected": false},
+        {"step": 113, "probability": 0.000448811566, "rank": 46, "selected": false},
+        {"step": 114, "probability": 0.000848213967, "rank": 33, "selected": false},
+        {"step": 115, "probability": 0.00146382244, "rank": 32, "selected": false},
+        {"step": 116, "probability": 0.0107127875, "rank": 21, "selected": false},
+        {"step": 121, "probability": 0.000670592184, "rank": 34, "selected": false}
+      ]
+    },
+    {
+      "seed": 1002,
+      "first_pcm_ms": 1427.2,
+      "codec_frames": 464,
+      "audio_duration_seconds": 37.12,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "ef7288172ee8213c22cfa743a0c1d8543dba0784316ba3be7afe6cb638b0737f",
+      "traced_steps": 128,
+      "first_32_or_all_c0": [1721, 367, 1294, 1185, 1830, 113, 131, 532, 1610, 2015, 156, 165, 1669, 75, 930, 1581, 165, 2029, 516, 1705, 1705, 1358, 1772, 1304, 1904, 1545, 457, 1875, 954, 2029, 786, 477],
+      "predictor_frames": [
+        [1721, 1722, 355, 310, 1296, 1093, 625, 278, 930, 1144, 1846, 1247, 1110, 889, 812, 901],
+        [367, 614, 894, 1489, 664, 238, 1250, 1124, 201, 384, 821, 564, 318, 1391, 139, 1406]
+      ],
+      "eos_events": [
+        {"step": 35, "probability": 0.00000239419433, "rank": 44, "selected": false},
+        {"step": 36, "probability": 0.000035087447, "rank": 36, "selected": false},
+        {"step": 37, "probability": 0.0000206211844, "rank": 49, "selected": false},
+        {"step": 94, "probability": 0.000825895113, "rank": 26, "selected": false},
+        {"step": 97, "probability": 0.00177517661, "rank": 34, "selected": false},
+        {"step": 98, "probability": 0.00206393772, "rank": 27, "selected": false},
+        {"step": 102, "probability": 0.000368661858, "rank": 37, "selected": false},
+        {"step": 123, "probability": 0.000114606017, "rank": 45, "selected": false},
+        {"step": 124, "probability": 0.000173346372, "rank": 23, "selected": false}
+      ]
+    },
+    {
+      "seed": 1008,
+      "first_pcm_ms": 1415.7,
+      "codec_frames": 2048,
+      "audio_duration_seconds": 163.84,
+      "execution_outcome": "max_tokens",
+      "wav_sha256": "a547228584bf6fc39c64b1cd46fa19df276154fb3afa578cabadf15887000035",
+      "traced_steps": 128,
+      "first_32_or_all_c0": [1721, 1687, 1687, 936, 1294, 1978, 440, 1390, 1129, 1172, 49, 1290, 1693, 1653, 440, 113, 1363, 1290, 433, 1892, 1772, 750, 1830, 69, 1689, 222, 1391, 1002, 1907, 967, 1277, 604],
+      "predictor_frames": [
+        [1721, 1722, 355, 310, 1296, 1093, 625, 278, 930, 1144, 1846, 1247, 1110, 1838, 812, 901],
+        [1687, 1722, 355, 310, 1296, 1093, 625, 278, 930, 1144, 1846, 1247, 1110, 889, 812, 901]
+      ],
+      "eos_events": [
+        {"step": 2, "probability": 0.0000182948552, "rank": 50, "selected": false},
+        {"step": 3, "probability": 0.0000326664267, "rank": 43, "selected": false},
+        {"step": 97, "probability": 0.0001347043, "rank": 50, "selected": false},
+        {"step": 109, "probability": 0.000160675467, "rank": 43, "selected": false},
+        {"step": 112, "probability": 0.00113844685, "rank": 46, "selected": false},
+        {"step": 126, "probability": 0.00027102654, "rank": 37, "selected": false}
+      ]
+    }
+  ],
+  "interpretation": {
+    "fixed_input_result": "prompt geometry and all prompt/reference fingerprints are identical across seeds",
+    "first_divergence": "predictor sampling for codec frame 0 diverges before the main Talker token diverges at step 1",
+    "eos_result": "EOS is functional and dominant on seed 1006, but has negligible or zero post-filter probability through almost all of the captured seed-1008 trajectory",
+    "static_cross_implementation_check": {
+      "matching_active_defaults": "temperature 0.9, top_k 50, top_p 1.0, Talker repetition_penalty 1.05, sampled Talker and predictor",
+      "rng_mapping": "native uses explicit per-token Philox subsequences while FasterQwen uses torch.multinomial, including inside its predictor CUDA graph; equal seed does not yet prove token parity",
+      "early_eos_difference": "FasterQwen min_new_tokens=2 suppresses Talker EOS at steps 0 and 1; native suppresses it only at step 0",
+      "inactive_top_p_difference": "for top_p below 1, native keeps the nucleus-boundary crossing candidate while the pinned FasterQwen descending helper removes it; this run used top_p=1"
+    },
+    "production_change": "none",
+    "next_gate": "compare native sampling order, RNG consumption, filtering, and EOS handling with pinned Python/FasterQwen before changing production sampling"
+  }
+}
