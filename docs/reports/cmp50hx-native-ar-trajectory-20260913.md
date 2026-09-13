@@ -179,7 +179,10 @@ The next targeted investigation should compare native Talker/predictor
 sampling order, RNG consumption, filtering, and EOS handling with the pinned
 Python/FasterQwen implementation. Any production change should be justified by
 that comparison and then rerun through the multi-seed semantic soak and audio
-listening gates.
+listening gates. The first model-free step is tracked in
+[`qwentts.cpp PR #8`](https://github.com/LimiNode/qwentts.cpp/pull/8): it adds
+an explicit-uniform sampler seam and deterministic policy tests without
+changing production defaults.
 
 Sanitized measurements and bounded derived traces are stored in
 [`evidence/cmp50hx-native-ar-trajectory-883b608.json`](evidence/cmp50hx-native-ar-trajectory-883b608.json).
