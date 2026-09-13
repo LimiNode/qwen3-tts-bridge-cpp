@@ -17,6 +17,7 @@ import struct
 import subprocess
 import threading
 import time
+import wave
 from pathlib import Path
 from typing import Any
 
@@ -96,6 +97,16 @@ def sha256_file(path: Path) -> str | None:
     return digest.hexdigest()
 
 
+def write_pcm_wav(path: Path, pcm_s16le: bytes) -> None:
+    """Write captured mono 24 kHz s16le probe PCM as a reviewable WAV."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), "wb") as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(24000)
+        stream.writeframes(pcm_s16le)
+
+
 def first_existing(*paths: Path) -> Path | None:
     return next((path.resolve() for path in paths if path.is_file()), None)
 
@@ -151,6 +162,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--startup-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--request-timeout-seconds", type=float, default=120.0)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--output-wav",
+        type=Path,
+        help="optional path for the captured mono 24 kHz s16le PCM WAV",
+    )
     return parser.parse_args()
 
 
@@ -165,6 +181,8 @@ def main() -> int:
     if args.reference_audio_path:
         args.reference_audio_path = args.reference_audio_path.resolve()
     args.output = args.output.resolve()
+    if args.output_wav:
+        args.output_wav = args.output_wav.resolve()
     if args.voice_id and args.reference_audio_path:
         raise SystemExit("--voice-id and --reference-audio-path are mutually exclusive")
 
@@ -250,6 +268,7 @@ def main() -> int:
         "first_pcm_ms": None,
         "audio_bytes": 0,
         "chunks": [],
+        "output_wav": str(args.output_wav) if args.output_wav else "",
         "starvation_detected": False,
         "terminal": None,
         "qtb_metrics": [],
@@ -272,6 +291,7 @@ def main() -> int:
     }
 
     failure: BaseException | None = None
+    captured_pcm = bytearray()
     try:
         send(
             0,
@@ -343,6 +363,7 @@ def main() -> int:
                     }
                 )
                 evidence["audio_bytes"] += audio_bytes
+                captured_pcm.extend(payload)
                 if evidence["first_pcm_ms"] is None:
                     evidence["first_pcm_ms"] = arrival_ms
                 previous_arrival_ms = arrival_ms
@@ -396,6 +417,9 @@ def main() -> int:
                 pass
     evidence["stderr_tail"] = stderr_lines[-200:]
     evidence["worker_exit_code"] = process.returncode
+    if args.output_wav and captured_pcm:
+        write_pcm_wav(args.output_wav, bytes(captured_pcm))
+        evidence["output_wav_sha256"] = sha256_file(args.output_wav)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

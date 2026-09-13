@@ -196,6 +196,9 @@ void NativeEngine::preload_voice_registry() {
     }
     for (auto& [voice_id, profile] : voice_profiles_) {
         profile.reference_audio = read_mono_24k_wav(profile.reference_audio_path);
+        if (!profile.x_vector_only) {
+            append_reference_trailing_silence(profile.reference_audio);
+        }
         profile.reference_cache_key = voice_reference_cache_key(
             profile.reference_audio_path, profile.reference_audio);
         const auto cached = voice_reference_cache_.find(profile.reference_cache_key);
@@ -397,6 +400,10 @@ SynthesisResult NativeEngine::synthesize(
         else if (!request.reference_audio_path.empty()) {
             const auto reference_decode_start = std::chrono::steady_clock::now();
             reference_audio = read_mono_24k_wav(std::filesystem::u8path(request.reference_audio_path));
+            const bool is_icl = !effective_x_vector_only && !effective_reference_text.empty();
+            if (is_icl) {
+                append_reference_trailing_silence(reference_audio);
+            }
             reference_audio_decode_ms = std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - reference_decode_start).count();
             if (options_.precompute_voice_refs) {

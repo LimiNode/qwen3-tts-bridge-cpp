@@ -283,6 +283,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         add_executable(qwen_tts_native_worker_test
             tests/native/qwen_tts_native_worker_test.cpp
+            worker/native/qwentts/WavReader.cpp
+        )
+        target_include_directories(qwen_tts_native_worker_test
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
         )
         target_link_libraries(qwen_tts_native_worker_test
             PRIVATE

@@ -134,4 +134,21 @@ std::vector<float> read_mono_24k_wav(const std::filesystem::path& path) {
     return samples;
 }
 
+void append_reference_trailing_silence(std::vector<float>& samples, double silence_seconds) {
+    if (!(silence_seconds >= 0.0) || !std::isfinite(silence_seconds)) {
+        throw std::invalid_argument("reference trailing silence must be finite and non-negative");
+    }
+    if (silence_seconds > static_cast<double>(samples.max_size()) / 24000.0) {
+        throw std::length_error("reference trailing silence exceeds sample capacity");
+    }
+    const auto silence_samples = static_cast<std::size_t>(std::llround(silence_seconds * 24000.0));
+    if (silence_samples == 0) {
+        return;
+    }
+    if (silence_samples > samples.max_size() - samples.size()) {
+        throw std::length_error("reference trailing silence exceeds sample capacity");
+    }
+    samples.insert(samples.end(), silence_samples, 0.0F);
+}
+
 } // namespace qwen_tts_bridge::native_worker
