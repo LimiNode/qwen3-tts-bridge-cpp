@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "experiment": "cmp50hx-base-f32-predictor-parity",
+  "captured_at": "2026-09-14",
+  "checkpoint": {
+    "repository": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "revision": "fd4b254389122332181a7c3db7f27e918eec64e3"
+  },
+  "qwentts": {
+    "base_runtime_commit": "ed3c6658d448d762f71e903b53676d5561dd7cee",
+    "diagnostic_source_head": "4cff8c1c71a2f9f6ebd626e370725cfeb425a62b",
+    "merge_commit": "4cff8c1c71a2f9f6ebd626e370725cfeb425a62b",
+    "worker_binary_sha256": "277ae41b3a3c4cb1f6ecefff1b1ba8e8c6782d1cbd279bc85a333a522efad742"
+  },
+  "inputs": {
+    "mode": "base_icl",
+    "sampling_mode": "greedy",
+    "stochastic_sampler_tested": false,
+    "long_horizon_ar_kv_tested": false,
+    "seed": 42,
+    "native_max_new_frames": 2,
+    "python_frames_captured": 1,
+    "talker_gguf": {
+      "sha256": "7f563aa562e6dd2327e35e10ee7c050760495d2eca654d21f1d5b1460bd6528a",
+      "bytes": 7720664192
+    },
+    "codec_gguf": {
+      "sha256": "b16b95557c7c7340a121757bd6855b9609e1cf4ad3fad0778b89393293ae5f3d",
+      "bytes": 647263104
+    },
+    "reference_wav": {
+      "name": "examples/freeman.wav",
+      "sha256": "b125a318b550dace422dd3d75650ab6dafe5aff20f38fc8fe39c59b96356dc08"
+    },
+    "reference_text": {
+      "name": "examples/freeman.txt",
+      "sha256": "4827483657a624a5675d9b43917b8d584e885aa4f07f2c9fd60b5974096cac39"
+    },
+    "forced_reference_latents": {
+      "speaker_embedding_sha256": "283739a8c1f4aff8d0b5f1ea8e92cde60d4d50625d3e060e5b131af7dc5ac950",
+      "rvq_sha256": "fd8c6fdc98c08785cccedf710cce26d9ac23a6f56df156d41561066470eafbe1"
+    }
+  },
+  "independent_reference_probe": {
+    "reference_codes_equal": 3314,
+    "reference_codes_total": 3440,
+    "talker_prefill_cosine": 0.999965,
+    "first_selected_token_divergence": {
+      "predictor_step": 13,
+      "native": 122,
+      "python": 1100,
+      "classification": "near_tie_under_independently_computed_conditioning"
+    }
+  },
+  "forced_same_conditioning": {
+    "prompt_ids_exact": true,
+    "reference_codes_equal": 3440,
+    "reference_codes_total": 3440,
+    "speaker_embedding": {
+      "cosine": 1.0,
+      "max_abs": 0.0
+    },
+    "talker_prefill_logits": {
+      "cosine": 0.9999999999985061,
+      "max_abs": 0.00005626678466796875,
+      "mean_abs": 0.000008003346920304466
+    },
+    "predictor_steps": [
+      {"step": 0, "cosine": 0.9999999999992455, "max_abs": 0.000026702880859375, "mean_abs": 0.000005968064215267077, "python_argmax": 1408, "native_argmax": 1408},
+      {"step": 1, "cosine": 0.9999999999997474, "max_abs": 0.000018596649169921875, "mean_abs": 0.000004792811523657292, "python_argmax": 1824, "native_argmax": 1824},
+      {"step": 2, "cosine": 0.9999999999999241, "max_abs": 0.00002288818359375, "mean_abs": 0.000005072572093922645, "python_argmax": 400, "native_argmax": 400},
+      {"step": 3, "cosine": 0.9999999999999094, "max_abs": 0.00002574920654296875, "mean_abs": 0.000004983390681445599, "python_argmax": 442, "native_argmax": 442},
+      {"step": 4, "cosine": 0.999999999999944, "max_abs": 0.00002384185791015625, "mean_abs": 0.000008318806067109108, "python_argmax": 1506, "native_argmax": 1506},
+      {"step": 5, "cosine": 0.9999999999999618, "max_abs": 0.00002288818359375, "mean_abs": 0.000005666166543960571, "python_argmax": 1085, "native_argmax": 1085},
+      {"step": 6, "cosine": 0.9999999999999577, "max_abs": 0.0000171661376953125, "mean_abs": 0.0000036749988794326782, "python_argmax": 470, "native_argmax": 470},
+      {"step": 7, "cosine": 0.999999999999974, "max_abs": 0.0000152587890625, "mean_abs": 0.0000031623058021068573, "python_argmax": 1713, "native_argmax": 1713},
+      {"step": 8, "cosine": 0.9999999999999761, "max_abs": 0.0000171661376953125, "mean_abs": 0.000004066620022058487, "python_argmax": 843, "native_argmax": 843},
+      {"step": 9, "cosine": 0.999999999999969, "max_abs": 0.0000171661376953125, "mean_abs": 0.0000037918798625469208, "python_argmax": 391, "native_argmax": 391},
+      {"step": 10, "cosine": 0.9999999999999215, "max_abs": 0.000026702880859375, "mean_abs": 0.000005600973963737488, "python_argmax": 829, "native_argmax": 829},
+      {"step": 11, "cosine": 0.9999999999999604, "max_abs": 0.0000286102294921875, "mean_abs": 0.000007704831659793854, "python_argmax": 411, "native_argmax": 411},
+      {"step": 12, "cosine": 0.9999999999999669, "max_abs": 0.000019073486328125, "mean_abs": 0.000003976747393608093, "python_argmax": 866, "native_argmax": 866},
+      {"step": 13, "cosine": 0.9999999999999784, "max_abs": 0.0000171661376953125, "mean_abs": 0.000004314817488193512, "python_argmax": 1100, "native_argmax": 1100},
+      {"step": 14, "cosine": 0.9999999999999752, "max_abs": 0.000019073486328125, "mean_abs": 0.000004088506102561951, "python_argmax": 998, "native_argmax": 998}
+    ],
+    "first_frame_codes_exact": true,
+    "first_frame_codes": [27, 1408, 1824, 400, 442, 1506, 1085, 470, 1713, 843, 391, 829, 411, 866, 1100, 998],
+    "philox_schedule_context": {
+      "frame_0_predictor_subsequences": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "used_for_token_selection": false
+    }
+  },
+  "conclusion": {
+    "first_frame_f32_forward_defect_observed": false,
+    "stochastic_sampler_parity_closed": false,
+    "long_horizon_ar_kv_parity_closed": false,
+    "production_sampling_or_eos_changed": false
+  }
+}

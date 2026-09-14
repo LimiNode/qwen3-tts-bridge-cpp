@@ -12,15 +12,17 @@ was changed.
 | --- | --- |
 | Hugging Face checkpoint | Qwen3-TTS-12Hz-1.7B-Base |
 | HF revision | fd4b254389122332181a7c3db7f27e918eec64e3 |
-| qwentts.cpp runtime | ed3c6658d448d762f71e903b53676d5561dd7cee |
-| predictor-logit diagnostic | qwentts PR #11, 7ef9182 (not yet merged at capture time) |
+| qwentts.cpp base/runtime commit | ed3c6658d448d762f71e903b53676d5561dd7cee |
+| qwentts.cpp diagnostic source/head | 4cff8c1c71a2f9f6ebd626e370725cfeb425a62b |
 | quantization | F32 Talker and F32 12 Hz tokenizer GGUF |
 | mode | Base ICL / greedy, English, seed 42, two generated frames |
 | reference | examples/freeman.wav + examples/freeman.txt |
 
 The raw dumps and WAV are machine-local diagnostic outputs and are not
 committed. The run used the opt-in dump path; normal qwentts execution does
-not read predictor logits back from the device.
+not read predictor logits back from the device. The machine-readable
+sanitized record is
+docs/reports/evidence/cmp50hx-base-f32-predictor-parity-20260914.json.
 
 ## Observed results
 
@@ -64,7 +66,7 @@ Python reference codes as the native packed RVQ stream. Native qwentts was
 rerun with --ref-spk and --ref-rvq, so both stacks consumed exactly the same
 conditioning tensors.
 
-The forced replay produced:
+The forced replay was greedy. It produced:
 
 | Check | Result |
 | --- | --- |
@@ -73,26 +75,27 @@ The forced replay produced:
 | Talker prefill logits | cosine 1.000000, max error 5.63e-5 |
 | Predictor logits, steps 0–14 | cosine 1.000000 at every step, max error 2.67e-5 |
 | First predictor frame codes | 16/16 exact |
-| Philox subsequences | identical (1..15 for frame 0) |
+| Philox schedule | recorded as contract context; no stochastic draw was consumed |
 
-This is the decisive model-level result: with the same prompt, conditioning
-tensors, F32 weights, and explicit random schedule, qwentts.cpp and Python
-select the same predictor tokens.
+This is the first-frame forward-path result: with the same prompt, conditioning
+tensors, and F32 weights, qwentts.cpp and Python produce the same greedy
+predictor tokens. It is not an end-to-end stochastic sampler test.
 
 ## Interpretation
 
 The run does not justify changing production sampling or EOS behavior. It
 does establish three useful facts:
 
-1. F32 qwentts Talker and predictor logits match Python under frozen
-   same-conditioning replay.
+1. No first-frame F32 Talker/predictor forward-path defect was observed under
+   frozen same-conditioning replay.
 2. The first mismatch in the independent-encoder run was a near-tie caused by
    small conditioning or numerical differences, not a Philox sequence
    mismatch.
-3. The native model implementation and sampler are not the cause of the
-   earlier runaway hypothesis.
+3. Stochastic sampler parity and long-horizon AR/KV parity remain separate
+   gates; this run does not close either one.
 
-Remaining investigations should focus on independently computed reference
-encoder parity and multi-seed AR trajectory statistics. Production
-sampling/EOS parameters must remain unchanged until those experiments provide
-separate evidence.
+The independently computed reference encoder remains a separate parity issue.
+The next experiments are stochastic same-conditioning first-frame parity,
+multi-frame AR/KV parity, and then multi-seed CMP 50HX trajectory statistics.
+Production sampling/EOS parameters must remain unchanged until those
+experiments provide separate evidence.
