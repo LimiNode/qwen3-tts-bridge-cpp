@@ -56,6 +56,7 @@ not the historical experiment branches, define current runtime policy.
 - [Faster runtime optimization](faster-runtime.md)
 - [Native GGML proof and comparison contract](native-ggml.md)
 - [Base F32 predictor parity probe](../reports/cmp50hx-base-f32-predictor-parity-20260914.md)
+- [Stochastic same-conditioning parity](../reports/cmp50hx-stochastic-same-conditioning-parity-20260914.md)
 - [Native engine boundary ADR](../architecture/adr-native-engine-boundaries.md)
 
 The final production measurements are in
