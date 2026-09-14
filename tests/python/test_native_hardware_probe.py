@@ -48,6 +48,7 @@ class NativeHardwareProbeTests(unittest.TestCase):
             '"starvation_detected"',
             '"buffer_slack_ms"',
             '"hashes"',
+            "bridge-source-commit",
             "stderr_thread.join",
         ):
             self.assertIn(required, source)

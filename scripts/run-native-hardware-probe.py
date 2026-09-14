@@ -180,6 +180,10 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worker", type=Path, required=True)
     parser.add_argument("--runtime-dir", type=Path, required=True)
+    parser.add_argument(
+        "--bridge-source-commit",
+        help="source checkout commit used to build the worker (recorded only)",
+    )
     parser.add_argument("--talker-model", type=Path, required=True)
     parser.add_argument("--codec-model", type=Path, required=True)
     parser.add_argument("--voice-registry-path", type=Path)
@@ -281,6 +285,7 @@ def main() -> int:
     )
     evidence: dict[str, Any] = {
         "worker": str(args.worker),
+        "bridge_source_commit": args.bridge_source_commit,
         "worker_args": worker_args,
         "runtime_dir": str(args.runtime_dir),
         "runtime_manifest": str(runtime_manifest) if runtime_manifest else None,

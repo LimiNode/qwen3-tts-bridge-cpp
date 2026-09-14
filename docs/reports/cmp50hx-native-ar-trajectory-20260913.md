@@ -198,3 +198,9 @@ recorded runs. Future hardware probes must preserve and validate the new
 
 Sanitized measurements and bounded derived traces are stored in
 [`evidence/cmp50hx-native-ar-trajectory-883b608.json`](evidence/cmp50hx-native-ar-trajectory-883b608.json).
+
+The later seed-1006 hybrid capture has a separate executable Philox schedule
+check. It validates all 30 recorded predictor uniforms and documents the
+hybrid-runtime performance caveat without retroactively changing this
+four-seed evidence:
+[`cmp50hx-native-philox-schedule-20260914.md`](cmp50hx-native-philox-schedule-20260914.md).
