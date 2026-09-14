@@ -34,6 +34,11 @@ def _probe() -> dict[str, object]:
 
 
 class ValidateCmp50HxPhiloxTraceTests(unittest.TestCase):
+    def test_philox_known_answer_vectors(self) -> None:
+        self.assertEqual(0.26007080078125, validator.philox_uniform(1006, 1))
+        self.assertEqual(0.2744620144367218, validator.philox_uniform(1006, 2))
+        self.assertEqual(0.8717605471611023, validator.philox_uniform(1006, 17))
+
     def test_accepts_python_mirror_schedule(self) -> None:
         result = validator.validate_probe(_probe())
 

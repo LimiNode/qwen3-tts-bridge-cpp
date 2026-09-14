@@ -36,16 +36,21 @@ seed=1006 records=2 draws=30 steps=[0, 1]
 max_abs_error=4.988709445541417e-11 tolerance=1e-7
 ```
 
-Both complete predictor records passed:
+Both complete predictor records passed (the Talker bases shown here are
+source-derived context; the validator checks only the predictor draws):
 
 ```text
-Talker subsequence 0  -> predictor 1..15
-Talker subsequence 16 -> predictor 17..31
+Talker base 0  -> validated predictor 1..15
+Talker base 16 -> validated predictor 17..31
 ```
 
-The trace itself observed the existing RNG draws and did not consume an extra
-random number. The validator confirms the schedule and each recorded uniform;
-it does not claim that native and FasterQwen select identical tokens.
+The trace independently reproduces the predictor Philox uniforms from the
+exact seed/subsequence inputs passed to the predictor. Because Philox is
+counter-based, this diagnostic call does not advance or perturb generation
+RNG state. The validator confirms the predictor schedule and each recorded
+uniform; the Talker bases are source-derived context, not a readback from the
+sampler state tensor. It does not claim that native and FasterQwen select
+identical tokens.
 
 ## Request geometry and bounded result
 

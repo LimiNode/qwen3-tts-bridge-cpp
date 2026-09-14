@@ -73,8 +73,9 @@ def philox_uniform(seed: int, subsequence: int) -> float:
 def validate_probe(probe: dict[str, Any], *, tolerance: float = 1e-7) -> dict[str, Any]:
     """Validate schedule shape and every recorded uniform.
 
-    The native trace reserves subsequence ``step * 16`` for the Talker draw;
-    predictor codebooks then consume ``base + 1`` through ``base + 15``.
+    The native trace passes ``step * 16`` as the predictor base; predictor
+    codebooks then consume ``base + 1`` through ``base + 15``. The Talker
+    draw itself is source-derived context and is not present in this trace.
     """
 
     seed = probe.get("seed")
