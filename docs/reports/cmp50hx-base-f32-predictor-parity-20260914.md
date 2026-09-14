@@ -13,7 +13,7 @@ was changed.
 | Hugging Face checkpoint | Qwen3-TTS-12Hz-1.7B-Base |
 | HF revision | fd4b254389122332181a7c3db7f27e918eec64e3 |
 | qwentts.cpp runtime | ed3c6658d448d762f71e903b53676d5561dd7cee |
-| predictor-logit diagnostic | qwentts PR #11, 05df1ab (not yet merged at capture time) |
+| predictor-logit diagnostic | qwentts PR #11, 7ef9182 (not yet merged at capture time) |
 | quantization | F32 Talker and F32 12 Hz tokenizer GGUF |
 | mode | Base ICL / greedy, English, seed 42, two generated frames |
 | reference | examples/freeman.wav + examples/freeman.txt |
@@ -57,21 +57,42 @@ not evidence of an RNG or sampler bug. Once that token differs, step 14
 diverges substantially (max absolute error about 3.79) because its history
 contains a different preceding code.
 
+## Forced same-conditioning replay
+
+The harness then exported the Python speaker embedding as raw F32 and the
+Python reference codes as the native packed RVQ stream. Native qwentts was
+rerun with --ref-spk and --ref-rvq, so both stacks consumed exactly the same
+conditioning tensors.
+
+The forced replay produced:
+
+| Check | Result |
+| --- | --- |
+| Reference codes | 3440/3440 exact |
+| Speaker embedding | cosine 1.000000, max error 0 |
+| Talker prefill logits | cosine 1.000000, max error 5.63e-5 |
+| Predictor logits, steps 0–14 | cosine 1.000000 at every step, max error 2.67e-5 |
+| First predictor frame codes | 16/16 exact |
+| Philox subsequences | identical (1..15 for frame 0) |
+
+This is the decisive model-level result: with the same prompt, conditioning
+tensors, F32 weights, and explicit random schedule, qwentts.cpp and Python
+select the same predictor tokens.
+
 ## Interpretation
 
 The run does not justify changing production sampling or EOS behavior. It
 does establish three useful facts:
 
-1. F32 qwentts Talker and predictor logits remain very close through predictor
-   step 13.
-2. The first token mismatch is a near-tie at step 13, after a small numerical
-   or model-conditioning difference, rather than a Philox sequence mismatch.
-3. A strict forced-parity experiment still needs native injection of the
-   Python reference codes and speaker embedding (or an equivalent shared
-   tensor artifact). Comparing two independently computed reference encoders
-   cannot prove same-conditioning model parity.
+1. F32 qwentts Talker and predictor logits match Python under frozen
+   same-conditioning replay.
+2. The first mismatch in the independent-encoder run was a near-tie caused by
+   small conditioning or numerical differences, not a Philox sequence
+   mismatch.
+3. The native model implementation and sampler are not the cause of the
+   earlier runaway hypothesis.
 
-The next diagnostic should freeze and inject the same prompt, reference-code,
-and speaker-embedding tensors into both paths, then replay the same explicit
-Philox uniforms. Only that experiment can distinguish a remaining model
-implementation difference from ordinary floating-point boundary sensitivity.
+Remaining investigations should focus on independently computed reference
+encoder parity and multi-seed AR trajectory statistics. Production
+sampling/EOS parameters must remain unchanged until those experiments provide
+separate evidence.
