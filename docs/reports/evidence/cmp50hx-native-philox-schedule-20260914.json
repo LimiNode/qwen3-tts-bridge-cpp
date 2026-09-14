@@ -16,7 +16,7 @@
   "runtime": {
     "bridge_worker_sha256": "c75367abbb5557da5333a4bd2dae607ee6461314ed3ca6ef2e478868a423b925",
     "qwen_dll_sha256": "bca91de322186dd15bdf4bb1a1b4ee00b246aa6bacf61d8c53439bbf496efae9",
-    "qwentts_source_commit": "ed3c665",
+    "qwentts_source_commit": "ed3c6658d448d762f71e903b53676d5561dd7cee",
     "qwentts_pinned_merge_commit": "ed3c6658d448d762f71e903b53676d5561dd7cee",
     "bridge_source_commit": null,
     "bridge_source_commit_status": "not_recorded_in_raw_runtime_manifest; worker binary SHA is recorded below",
