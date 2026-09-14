@@ -7,10 +7,11 @@
     "revision": "fd4b254389122332181a7c3db7f27e918eec64e3"
   },
   "qwentts": {
-    "base_runtime_commit": "ed3c6658d448d762f71e903b53676d5561dd7cee",
-    "diagnostic_source_head": "4cff8c1c71a2f9f6ebd626e370725cfeb425a62b",
-    "merge_commit": "4cff8c1c71a2f9f6ebd626e370725cfeb425a62b",
-    "worker_binary_sha256": "277ae41b3a3c4cb1f6ecefff1b1ba8e8c6782d1cbd279bc85a333a522efad742"
+    "base_commit": "ed3c6658d448d762f71e903b53676d5561dd7cee",
+    "diagnostic_capture_head": "7ef91826a131d3163c69af234b484d28091e8b69",
+    "canonical_merge_commit": "4cff8c1c71a2f9f6ebd626e370725cfeb425a62b",
+    "diagnostic_tree_sha": "adc339698f42c2d628dc533894ad004f8b884cb7",
+    "qwen_tts_binary_sha256": "277ae41b3a3c4cb1f6ecefff1b1ba8e8c6782d1cbd279bc85a333a522efad742"
   },
   "inputs": {
     "mode": "base_icl",

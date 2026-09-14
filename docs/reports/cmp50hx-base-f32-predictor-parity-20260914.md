@@ -12,8 +12,10 @@ was changed.
 | --- | --- |
 | Hugging Face checkpoint | Qwen3-TTS-12Hz-1.7B-Base |
 | HF revision | fd4b254389122332181a7c3db7f27e918eec64e3 |
-| qwentts.cpp base/runtime commit | ed3c6658d448d762f71e903b53676d5561dd7cee |
-| qwentts.cpp diagnostic source/head | 4cff8c1c71a2f9f6ebd626e370725cfeb425a62b |
+| qwentts.cpp base commit | ed3c6658d448d762f71e903b53676d5561dd7cee |
+| qwentts.cpp diagnostic capture head | 7ef91826a131d3163c69af234b484d28091e8b69 |
+| qwentts.cpp canonical merge commit | 4cff8c1c71a2f9f6ebd626e370725cfeb425a62b |
+| qwentts.cpp diagnostic tree SHA | adc339698f42c2d628dc533894ad004f8b884cb7 |
 | quantization | F32 Talker and F32 12 Hz tokenizer GGUF |
 | mode | Base ICL / greedy, English, seed 42, two generated frames |
 | reference | examples/freeman.wav + examples/freeman.txt |
