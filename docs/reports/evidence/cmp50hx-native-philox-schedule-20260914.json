@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "kind": "native_predictor_philox_schedule",
+  "status": "diagnostic_evidence_not_release_acceptance",
+  "captured_at": "2026-09-14",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94"
+  },
+  "source_artifact": {
+    "name": "cmp50hx-native-trace-1006-hybrid.json",
+    "sha256": "2c82c150db44488dc9e47d4893d0681f9250c08d8d9568e4480f484bceafbbb",
+    "output_wav_sha256": "525e0928616a1bf13671e526fd6d70a362c1ad5f021b4039283c2f7c46dd7b3b"
+  },
+  "runtime": {
+    "bridge_worker_sha256": "c75367abbb5557da5333a4bd2dae607ee6461314ed3ca6ef2e478868a423b925",
+    "qwen_dll_sha256": "bca91de322186dd15bdf4bb1a1b4ee00b246aa6bacf61d8c53439bbf496efae9",
+    "qwentts_source_commit": "ed3c665",
+    "qwentts_pinned_merge_commit": "608695582641419bbc11a4055a379319afe822ab",
+    "ggml_commit_shared_by_diagnostic_and_working_dll": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "runtime_kind": "correctness_only_hybrid",
+    "hybrid_runtime_caveat": "The diagnostic worker and qwen pipeline came from ed3c665, while the working CMP DLLs came from qwentts 1c119f6. CUDA 13.3 builds from the new pipeline were unusable on compute capability 7.5."
+  },
+  "request": {
+    "seed": 1006,
+    "stream_max_chunk_frames": 1,
+    "startup_synthesis_warmup": false,
+    "language": "russian",
+    "reference_mode": "direct_reference",
+    "prompt_geometry": {
+      "T_ctx": 236,
+      "T_trailing": 1,
+      "ref_T": 226
+    },
+    "execution_outcome": "natural_eos",
+    "first_pcm_ms": 4934.6903,
+    "audio_bytes": 7680,
+    "chunks": 2,
+    "starvation_detected": false
+  },
+  "schedule_validation": {
+    "validator": "scripts/validate-cmp50hx-philox-trace.py",
+    "seed": 1006,
+    "records": 2,
+    "draws": 30,
+    "steps": [0, 1],
+    "expected_mapping": "Talker subsequences 0 and 16; predictor subsequences base+1 through base+15",
+    "max_abs_error": 4.988709445541417e-11,
+    "tolerance": 1e-7,
+    "result": "pass",
+    "records_detail": [
+      {
+        "step": 0,
+        "base": 0,
+        "subsequences": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        "uniforms": [0.2600708008, 0.2744620144, 0.3652778566, 0.1840938479, 0.8566530347, 0.950897336, 0.2049216777, 0.020850433, 0.2407692373, 0.4379285574, 0.440659076, 0.9809610844, 0.4614793062, 0.0620442294, 0.4712337554]
+      },
+      {
+        "step": 1,
+        "base": 16,
+        "subsequences": [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
+        "uniforms": [0.8717605472, 0.9792870879, 0.2107684463, 0.7351350188, 0.5136627555, 0.3086068928, 0.4317026734, 0.7241353989, 0.2407475263, 0.4616318941, 0.0344344005, 0.2428605109, 0.8009439707, 0.7779535651, 0.7813413143]
+      }
+    ]
+  },
+  "interpretation": {
+    "claim": "Every recorded predictor uniform matches the Python Philox4x32-10 mirror and the native schedule is contiguous for two complete codec frames.",
+    "not_claimed": [
+      "This does not establish native/FasterQwen token equality.",
+      "This does not establish production performance; first PCM was measured on a correctness-only hybrid runtime.",
+      "This does not justify changing EOS, sampling, or min_new_tokens policy."
+    ],
+    "next_gate": "Compare native predictor codes with FasterQwen patched_multinomial on identical logits/history/uniform inputs, then perform forced model-level parity."
+  }
+}
