@@ -1,0 +1,52 @@
+{
+  "schema": "qwen3-tts-bridge.cmp50hx.ar-kv-probe.v1",
+  "status": "failed_gate",
+  "captured_at_utc": "2026-09-16",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "backend": "CUDA0"
+  },
+  "software": {
+    "bridge_main_commit": "0088bc323fbc9e31b94c11b225ce7fd59e0c5ac5",
+    "qwentts_pinned_merge_commit": "a0071cb6e8fb4c6f48a1d02929ddf2c2da460abd",
+    "qwentts_capture_tree_sha": "c98602e29aec865949d12aa97d4d48acc8dc343e",
+    "python": "3.11.9",
+    "torch": "2.8.0+cu128",
+    "cuda_runtime": "12.8",
+    "qwen_tts_binary_sha256": "47f97536b5787166181995653486d3a8d348cc8b8f11915c983de652606efe914",
+    "build_profile": "diagnostic CUDA F32"
+  },
+  "inputs": {
+    "talker_model": "qwen-talker-1.7b-base-F32.gguf",
+    "talker_model_sha256": "7f563aa562e6dd2327e35e10ee7c050760495d2eca654d21f1d5b1460bd6528a",
+    "codec_model": "qwen-tokenizer-12hz-F32.gguf",
+    "codec_model_sha256": "b16b95557c7c7340a121757bd6855b9609e1cf4ad3fad0778b89393293ae5f3d",
+    "max_new_tokens": 6,
+    "seed": 1006,
+    "sampling_mode": "stochastic",
+    "same_conditioning": true
+  },
+  "observed": {
+    "native_frame_shape": [6, 16],
+    "python_frame_shape": [5, 16],
+    "native_code0_sequence": [27, 99, 1525, 220, 1206, 1053],
+    "python_code0_sequence": [27, 99, 1525, 220, 1206],
+    "first_two_frames_exact": true,
+    "first_divergent_flat_index": 42,
+    "first_divergent_frame": 2,
+    "first_divergent_codebook": 10,
+    "first_divergent_native_code": 1180,
+    "first_divergent_python_code": 1168,
+    "native_eos_probability_in_trace": 0.0
+  },
+  "gate": {
+    "philox_sampler_gate": "passed_separately",
+    "long_horizon_ar_kv_parity": "failed",
+    "eos_parity": "unresolved",
+    "harness_trace_length_assumption": "failed",
+    "production_policy_changed": false
+  },
+  "conclusion": "The first two generated frames are exact. Predictor codes diverge at frame 2/codebook 10 and Python/native generated frame counts differ (5 versus 6). This is evidence of an open long-horizon AR/KV or EOS-contract issue, not evidence to change production sampling or EOS policy. The diagnostic harness must expose full-frame traces before attributing the boundary between model-state drift and termination semantics."
+}
