@@ -1,0 +1,82 @@
+{
+  "report_id": "cmp50hx-qwentts-fulltrace-seed1006-304cd57e",
+  "status": "diagnostic_complete_parity_unresolved",
+  "captured_at": "2026-09-18",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "cuda_runtime": "12.8",
+    "torch": "2.8.0+cu128"
+  },
+  "provenance": {
+    "qwentts_source_commit": "304cd57efd5cd58a8dee3106f96292f707ca7617",
+    "qwentts_source_tree": "b02201605e2e3deabb69325eefa1fdb593e0aa31",
+    "bridge_workspace_commit": "bd3be00adb34908f19fcc853e9cf413c5c0f072b",
+    "bridge_canonical_pin": "304cd57efd5cd58a8dee3106f96292f707ca7617",
+    "binary_runtime_banner": "qwentts.cpp 304cd57 (2026-09-18)",
+    "qwen_tts_binary_sha256": "D80640757241BF703E3D2156A31A76FA32A83A7DA37CEF21D82ED593647DFD1B",
+    "raw_log": {
+      "path": "cmp50hx-qwentts-fulltrace-seed1006-304cd57e-raw.txt",
+      "sha256": "6F8A8E8948CC31F3854CAA8F5ECCDC8AB03045FFAFF476772C2CB9053070FFAB"
+    },
+    "talker_model_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+    "codec_model_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+    "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+    "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1",
+    "python_harness": "isolated debug-clone-cossim.py copy with frame-indexed predictor hooks; production qwentts sources were not modified"
+  },
+  "request": {
+    "seed": 1006,
+    "max_new_tokens": 6,
+    "mode": "stochastic_icl",
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "same_conditioning": true,
+    "startup_synthesis_warmup": false
+  },
+  "results": {
+    "talker_philox_trace": "6/6 exact",
+    "reference_codes": "3440/3440 exact",
+    "codes_full": {
+      "compared_values": 80,
+      "exact_values": 47,
+      "exact_percent": 58.75,
+      "note": "comparison is truncated to Python's five emitted frames; native emitted six"
+    },
+    "python_frames": 5,
+    "native_frames": 6,
+    "first_predictor_divergence": {
+      "frame": 2,
+      "predictor_step": 9,
+      "logical_codebook": 10,
+      "uniform_subsequence": 42,
+      "uniform": 0.6810894608,
+      "native_token": 1180,
+      "python_token": 1168,
+      "native_python_logits_cosine": 1.0,
+      "native_python_logits_max_abs": 0.013336181640625,
+      "native_python_logits_mean_abs": 0.0025941263884305954,
+      "native_python_argmax": "157/157",
+      "interpretation": "same-conditioning logits remain numerically close and have the same argmax, but stochastic selection differs; whether the cause is top-k membership, probability/CDF rounding, or backend accumulation remains unproven"
+    },
+    "post_divergence_state_drift": {
+      "frame": 2,
+      "predictor_step": 10,
+      "native_python_logits_cosine": 0.9985195994,
+      "native_python_logits_max_abs": 3.695049285888672,
+      "interpretation": "appears after the codebook-10 token mismatch and is not the first cause"
+    },
+    "eos_boundary": "separate termination mismatch: native emitted 6 frames while Python emitted 5"
+  },
+  "conclusion": {
+    "sampler_philox_schedule": "validated for Talker draws",
+    "graph_full_trace": "validated on CMP 50HX sm_75; frame-indexed predictor dumps present",
+    "first_causal_gate": "predictor stochastic selection at frame 2 codebook 10; top-k/CDF boundary is a hypothesis pending native intermediate tensors",
+    "model_state_parity": "predictor argmax and near-equal F32 logits remain stable through frame 2 step 9; divergence follows the selected-token mismatch",
+    "eos_parity": "unresolved independently of the frame-2 token divergence",
+    "production_sampling_change": "not authorized by this run"
+  }
+}
