@@ -13,6 +13,10 @@ historical report #102 remains immutable.
 - No synthesis warmup (`startup_synthesis_warmup: false`).
 - The binary self-reports `qwentts.cpp 304cd57`; its SHA-256 and all input
   hashes are recorded in the companion JSON.
+- The run used an isolated Python diagnostic harness copy with frame-indexed
+  predictor hooks. Its exact file hashes and patch hash are recorded in
+  `provenance.python_harness`; the old workspace commit is preserved as run
+  provenance and is not rewritten to the current Bridge `main`.
 
 Raw combined output is preserved in
 [cmp50hx-qwentts-fulltrace-seed1006-304cd57e-raw.txt](cmp50hx-qwentts-fulltrace-seed1006-304cd57e-raw.txt).

@@ -13,6 +13,7 @@
     "qwentts_source_commit": "304cd57efd5cd58a8dee3106f96292f707ca7617",
     "qwentts_source_tree": "b02201605e2e3deabb69325eefa1fdb593e0aa31",
     "bridge_workspace_commit": "bd3be00adb34908f19fcc853e9cf413c5c0f072b",
+    "bridge_current_main_commit_at_publication": "9687485042a4977200f52438b93b082ea5634a22",
     "bridge_canonical_pin": "304cd57efd5cd58a8dee3106f96292f707ca7617",
     "binary_runtime_banner": "qwentts.cpp 304cd57 (2026-09-18)",
     "qwen_tts_binary_sha256": "D80640757241BF703E3D2156A31A76FA32A83A7DA37CEF21D82ED593647DFD1B",
@@ -24,7 +25,15 @@
     "codec_model_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
     "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
     "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1",
-    "python_harness": "isolated debug-clone-cossim.py copy with frame-indexed predictor hooks; production qwentts sources were not modified"
+    "python_harness": {
+      "origin": "isolated debug-clone-cossim.py copy with frame-indexed predictor hooks",
+      "source_commit": null,
+      "source_commit_note": "standalone diagnostic checkout; no repository commit was recorded for the Python harness",
+      "debug_clone_source_sha256": "F19D0DB9DCE6D1559DEA24BC5D035DAA64C7FF1288FFE1CA763DD9D5208ACABE",
+      "cossim_common_sha256": "AA5973E145C77D3AE9EEF3EC0137D2E21C0F429D9AAC32C6E1A0A786BF2D8200",
+      "debug_clone_patch_sha256": "BDE10C5840D2484FA4418DD644BBA66F638A270DAEFBFF16F4F8CD8C06525465",
+      "production_qwentts_sources_modified": false
+    }
   },
   "request": {
     "seed": 1006,
@@ -56,7 +65,7 @@
       "uniform": 0.6810894608,
       "native_token": 1180,
       "python_token": 1168,
-      "native_python_logits_cosine": 1.0,
+      "native_python_logits_cosine": 0.99999998736665752,
       "native_python_logits_max_abs": 0.013336181640625,
       "native_python_logits_mean_abs": 0.0025941263884305954,
       "native_python_argmax": "157/157",
