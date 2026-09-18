@@ -1,0 +1,88 @@
+{
+  "schema": "qwen3-tts-bridge.cmp50hx.stochastic-parity.v1",
+  "status": "passed",
+  "captured_at_utc": "2026-09-16",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "backend": "CUDA0"
+  },
+  "software": {
+    "bridge_main_commit": "0088bc323fbc9e31b94c11b225ce7fd59e0c5ac5",
+    "qwentts_pinned_merge_commit": "a0071cb6e8fb4c6f48a1d02929ddf2c2da460abd",
+    "qwentts_capture_tree_sha": "c98602e29aec865949d12aa97d4d48acc8dc343e",
+    "python": "3.11.9",
+    "torch": "2.8.0+cu128",
+    "cuda_runtime": "12.8",
+    "qwen_tts_binary_sha256": "47f97536b5787166181995653486d3a8d348cc8b8f11915c983de652606efe914",
+    "build_profile": "diagnostic CUDA F32"
+  },
+  "inputs": {
+    "talker_model": "qwen-talker-1.7b-base-F32.gguf",
+    "talker_model_sha256": "7f563aa562e6dd2327e35e10ee7c050760495d2eca654d21f1d5b1460bd6528a",
+    "codec_model": "qwen-tokenizer-12hz-F32.gguf",
+    "codec_model_sha256": "b16b95557c7c7340a121757bd6855b9609e1cf4ad3fad0778b89393293ae5f3d",
+    "reference_speaker_sha256": "78fd11047f7f62f61077c0f7e14bbc884c2d1ebb3d7f7b84317ae50ee08acc42",
+    "reference_rvq_sha256": "fd8c6fdc98c08785cccedf710cce26d9ac23a6f56df156d41561066470eafbe1",
+    "reference_audio_sha256": "b125a318b550dace422dd3d75650ab6dafe5aff20f38fc8fe39c59b96356dc08",
+    "reference_text_sha256": "4827483657a624a5675d9b43917b8d584e885aa4f07f2c9fd60b5974096cac39",
+    "language": "english",
+    "max_new_tokens": 2,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "predictor_temperature": 0.9,
+    "predictor_top_k": 50,
+    "predictor_top_p": 1.0,
+    "sampling_mode": "stochastic",
+    "conditioning": "same exported speaker/RVQ latents for every seed"
+  },
+  "gates": {
+    "philox_trace_exact": true,
+    "philox_trace_draws_per_run": 2,
+    "first_frame_predictor_codebooks": 16,
+    "first_frame_predictor_codes_exact": true,
+    "frozen_stage_cosine_similarity": 1.0,
+    "codes_full_exact_percent": 100.0,
+    "stochastic_sampler_tested": true,
+    "long_horizon_ar_kv_tested": false,
+    "performance_acceptance": false
+  },
+  "runs": [
+    {
+      "seed": 1000,
+      "first_frame_codes": [416, 1042, 817, 811, 1046, 1252, 986, 1184, 422, 915, 1783, 1466, 126, 1569, 997, 448],
+      "philox_trace_draws": 2,
+      "philox_trace_exact": true,
+      "codes_full_exact_percent": 100.0,
+      "exit_code": 0
+    },
+    {
+      "seed": 1002,
+      "first_frame_codes": [1445, 1408, 325, 400, 901, 2034, 1456, 668, 1128, 1442, 1634, 658, 798, 785, 1283, 1098],
+      "philox_trace_draws": 2,
+      "philox_trace_exact": true,
+      "codes_full_exact_percent": 100.0,
+      "exit_code": 0
+    },
+    {
+      "seed": 1006,
+      "first_frame_codes": [27, 1184, 731, 881, 243, 1487, 1841, 405, 68, 367, 636, 592, 2021, 507, 119, 528],
+      "philox_trace_draws": 2,
+      "philox_trace_exact": true,
+      "codes_full_exact_percent": 100.0,
+      "exit_code": 0
+    },
+    {
+      "seed": 1008,
+      "first_frame_codes": [1755, 1995, 199, 1011, 1726, 1685, 761, 1508, 1015, 1283, 1712, 81, 1044, 1329, 1134, 2004],
+      "philox_trace_draws": 2,
+      "philox_trace_exact": true,
+      "codes_full_exact_percent": 100.0,
+      "exit_code": 0
+    }
+  ],
+  "conclusion": "Stochastic same-conditioning first-frame parity passed for all four seeds. This closes the sampler/Philox gate only; it does not claim long-horizon AR/KV parity or production performance."
+}
