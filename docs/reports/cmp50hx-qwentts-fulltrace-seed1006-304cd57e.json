@@ -27,8 +27,8 @@
     "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1",
     "python_harness": {
       "origin": "isolated debug-clone-cossim.py copy with frame-indexed predictor hooks",
-      "source_commit": null,
-      "source_commit_note": "standalone diagnostic checkout; no repository commit was recorded for the Python harness",
+      "source_commit": "1ebed080b88b8202a910d9d7753faccc8de9f59d",
+      "source_commit_note": "qwentts diagnostic checkout base; the working tree had the recorded frame-hook and import-path edits",
       "debug_clone_source_sha256": "F19D0DB9DCE6D1559DEA24BC5D035DAA64C7FF1288FFE1CA763DD9D5208ACABE",
       "cossim_common_sha256": "AA5973E145C77D3AE9EEF3EC0137D2E21C0F429D9AAC32C6E1A0A786BF2D8200",
       "debug_clone_patch_sha256": "BDE10C5840D2484FA4418DD644BBA66F638A270DAEFBFF16F4F8CD8C06525465",
