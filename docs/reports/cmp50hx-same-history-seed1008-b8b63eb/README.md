@@ -17,6 +17,11 @@ native selected token:   864
 Python selected token:   980
 ```
 
+The initial conditioning is also identical in the captured tensors: the
+`talker-input-embed` and `next-emb-step0` dumps are byte-identical. The shared
+Talker c0 history before the gate is
+`[1755, 1902, 1915, 736, 1070, 1758, 1206]`.
+
 Frames 1--6 remain near-identical (`hidden cosine >= 0.999999762`,
 `logits cosine >= 0.999999881`). At frame 7 the hidden-state cosine falls to
 `0.658544242`, and raw-logit cosine is `0.904991567`. Therefore this run does
