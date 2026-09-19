@@ -26,11 +26,13 @@ Both sides were instrumented without changing production sampling:
 
 ```text
 native candidate count = 50
+native representation  = unnormalized post-filter exponentials
 native weight sum       = 2.1130456924
 native selected         = 864 (weight 0.0984548479)
 native top token        = 980 (weight 0.8092966080)
 
 Python candidate count  = 50
+Python representation   = normalized probabilities passed to torch.multinomial
 Python probability sum  = 1.0
 Python selected         = 980 (probability 0.9043745995)
 Python probability[864] = 0.0012493390
@@ -42,8 +44,12 @@ weights differ by orders of magnitude. Therefore this frame is not a clean
 same-conditioning sampler/CDF comparison like the earlier frame-2 predictor
 gate. It is already downstream of accumulated Talker state or numerical drift.
 
-The native and Python uniform is the same deterministic Philox draw. The
-different selections are lawful for their different probability inputs.
+The sums above are different representations of the same distribution and are
+not evidence by themselves: native retains unnormalized exponentials while
+Python receives normalized probabilities. The useful comparison is candidate
+membership and normalized relative weights. Those already differ materially at
+this frame. The native and Python uniform is the same deterministic Philox draw,
+and the different selections are lawful for their different probability inputs.
 
 ## Interpretation and next gate
 

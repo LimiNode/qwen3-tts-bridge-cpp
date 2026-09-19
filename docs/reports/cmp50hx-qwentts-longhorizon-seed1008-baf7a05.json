@@ -60,6 +60,7 @@
     "native_sampler_input": {
       "candidate_count": 50,
       "candidate_set_sha256_sorted_i32": "F532FDFE7322D784A67B92F87902B69359C6D413FCC7EA5A62355DA1DCC71B10",
+      "representation": "unnormalized post-filter exponentials",
       "weight_sum_f32": 2.1130456924438477,
       "selected_weight": 0.09845484793186188,
       "selected_token": 864,
@@ -71,6 +72,7 @@
       "actual_probability_input": true,
       "candidate_count": 50,
       "candidate_ids_artifact_sha256": "2372B86B11CF1CE0FFB91EF497795F7AA044293E68B5BEBAE3F57E4DE89C24DE",
+      "representation": "normalized probabilities passed to torch.multinomial",
       "probability_sum_f64": 1.0,
       "selected_token": 980,
       "selected_probability": 0.9043745994567871,
