@@ -52,9 +52,11 @@ Machine-readable details, artifact hashes, and the committed raw log are in
 
 The native binary was built from qwentts.cpp diagnostic capture commit
 `54d9ece` (base `89faded`) and reports that capture commit in its runtime
-banner. The diagnostic commit was subsequently merged as canonical qwentts
-commit `bc938eda`; both commits have tree SHA
+banner. The diagnostic commit was subsequently merged as qwentts commit
+`bc938eda`; both commits have tree SHA
 `b9b36d227758e805fb0febe87ac43434f7349879`, so the merge introduced no code
-change relative to the captured tree. Python ran on
+change relative to the captured tree. A later test-only merge
+`53d3fd5c4d23033cb56eff59f5739724b5efe730` is the Bridge submodule pin.
+Python ran on
 CPU because the installed local PyTorch is `2.8.0+cpu`; native ran on the CMP
 50HX through GGML CUDA.
