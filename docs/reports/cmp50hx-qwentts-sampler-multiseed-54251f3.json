@@ -1,0 +1,102 @@
+{
+  "schema": "cmp50hx.qwentts_sampler_multiseed.v1",
+  "experiment": "cmp50hx-qwentts-sampler-multiseed",
+  "captured_at": "2026-09-19",
+  "purpose": "Repeat the same-conditioning stochastic sampler gate on seeds 1000, 1002, and 1008 after qwentts.cpp PR #21.",
+  "provenance": {
+    "bridge_base_commit": "843c3b75b973f973556640429212f852aed9d610",
+    "qwentts_source_commit": "54251f3d666f50788866b3d575687db113ede224",
+    "qwentts_runtime_banner": "qwentts.cpp 54251f3 (2026-09-19)",
+    "qwen_tts_binary_sha256": "1B5CBB0EEEB2CB23D9A4AD14D524D9C3173B141896A365A7A7B7B31306514F17",
+    "hardware": "NVIDIA CMP 50HX, compute capability 7.5, 20479 MiB",
+    "python_runtime": "torch 2.8.0+cu128 / CUDA 12.8",
+    "models": {
+      "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+      "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+      "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+      "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+    }
+  },
+  "request": {
+    "max_new_tokens": 6,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "gate": {
+      "frame": 2,
+      "predictor_step": 9,
+      "logical_codebook": 10,
+      "philox_subsequence": 42,
+      "vocab": 2048
+    }
+  },
+  "seeds": {
+    "1000": {
+      "classification": "same_conditioning_predictor_gate",
+      "talker_trace_exact": true,
+      "native_selected": 902,
+      "python_selected": 902,
+      "uniform": 0.5755396485,
+      "candidate_sets_equal": true,
+      "native_cutoff": {"kth_id": 1722, "kth_logit": 23.04718971, "k_plus_one_id": 827, "k_plus_one_logit": 23.01638412},
+      "native_candidate_set_hash": "a02daf5b8057512d",
+      "native_generated_frames": 6,
+      "native_ttfa_ms": 2053.9,
+      "native_total_ms": 3158.7,
+      "python_raw_log_sha256": "352a8f11fe46a92991ae7b2b9cd300afb287fd745f35fa87c91377ae1be41da1",
+      "native_raw_log_sha256": "580a6ac69e7316fb04afb14a096a2a8401fa500aba4804fc7d4e7b79e8207333",
+      "interpretation": "Candidate membership and selected token agree at the frame-2 predictor gate. This is a positive sampler parity result, not a long-horizon or EOS claim."
+    },
+    "1002": {
+      "classification": "early_talker_divergence",
+      "talker_trace_exact": false,
+      "first_observed_divergence": {"subsequence": 32, "uniform": 0.3574715555, "native": 845, "python": 1042},
+      "predictor_gate_comparable": false,
+      "native_frame2_step9_selected": 1399,
+      "python_frame2_step9_selected": 1528,
+      "native_frame2_candidate_sets_equal": false,
+      "native_cutoff": {"kth_id": 1934, "kth_logit": 23.92102623, "k_plus_one_id": 715, "k_plus_one_logit": 23.90633202},
+      "native_candidate_set_hash": "d3312a4c5af7dc74",
+      "native_generated_frames": 6,
+      "native_ttfa_ms": 2046.2,
+      "native_total_ms": 3414.9,
+      "python_raw_log_sha256": "e5c56c5669af0a705714008c165bf04eae9a6c4dc25489a9b97a79908a680fcc",
+      "native_raw_log_sha256": "7c31a113d4f3e5712c2e201485b33dade9c6b1e36100e30a1c1fd1c53b231c36",
+      "interpretation": "The Talker token already differs at subsequence 32, so later predictor values are not a same-conditioning sampler comparison and must not be pooled with seeds 1000 or 1008."
+    },
+    "1008": {
+      "classification": "same_conditioning_predictor_gate",
+      "talker_trace_exact": true,
+      "native_selected": 832,
+      "python_selected": 832,
+      "uniform": 0.4923694134,
+      "candidate_sets_equal": true,
+      "native_cutoff": {"kth_id": 1657, "kth_logit": 23.18097878, "k_plus_one_id": 1033, "k_plus_one_logit": 23.16956902},
+      "native_candidate_set_hash": "a4d2a4fd04b1483f",
+      "native_generated_frames": 6,
+      "native_ttfa_ms": 2271.6,
+      "native_total_ms": 3607.5,
+      "python_raw_log_sha256": "37b4cdd058b05109a97053751ff46c28a6bf4677f3ef5ee27a6ac2988b7b22df",
+      "native_raw_log_sha256": "65aebf76cb193f7401b5f33a6cedab4e783624dd5eadd3294298e73e2e623c7f",
+      "interpretation": "Candidate membership and selected token agree at the frame-2 predictor gate. This is a positive sampler parity result, not a long-horizon or EOS claim."
+    }
+  },
+  "artifacts": {
+    "native": "cmp50hx-qwentts-sampler-multiseed-54251f3/native/",
+    "python": "cmp50hx-qwentts-sampler-multiseed-54251f3/python/",
+    "selection_accumulator": "The Python artifacts include sampler-selection-cdf-f64.bin, sampler-sum-f64.bin, and sampler-target-f64.bin; sampler-cdf-f32.bin is retained as a separate diagnostic reconstruction."
+  },
+  "finding": {
+    "same_conditioning_seeds": [1000, 1008],
+    "same_conditioning_predictor_token_matches": "2/2",
+    "early_talker_divergence_seeds": [1002],
+    "near_tied_top_k_boundary_seed": 1006,
+    "production_sampling_changed": false,
+    "eos_or_long_horizon_parity_proven": false,
+    "conclusion": "The qwentts sampler graph and Python sampler agree at the tested predictor gate for seeds 1000 and 1008 when Talker conditioning remains exact. Seed 1002 diverges earlier in Talker and is excluded from that gate."
+  }
+}
