@@ -1,0 +1,63 @@
+{
+  "schema": "cmp50hx.qwentts_longhorizon.v1",
+  "experiment": "cmp50hx-qwentts-longhorizon-seed1008",
+  "captured_at": "2026-09-19",
+  "purpose": "Extend the clean seed-1008 stochastic comparison from six to sixteen frames to locate the first long-horizon AR/KV divergence.",
+  "provenance": {
+    "bridge_base_commit": "843c3b75b973f973556640429212f852aed9d610",
+    "qwentts_source_commit": "54251f3d666f50788866b3d575687db113ede224",
+    "qwentts_runtime_banner": "qwentts.cpp 54251f3 (2026-09-19)",
+    "qwen_tts_binary_sha256": "1B5CBB0EEEB2CB23D9A4AD14D524D9C3173B141896A365A7A7B7B31306514F17",
+    "raw_log_sha256": "A929D29E2DCB4FD743ECBCBE1823275A18EE6DE23FC7A3ECC9607EB54EF39E89",
+    "hardware": "NVIDIA CMP 50HX, compute capability 7.5, 20479 MiB",
+    "python_runtime": "torch 2.8.0+cu128 / CUDA 12.8"
+  },
+  "request": {
+    "seed": 1008,
+    "max_new_tokens": 16,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "sampling_mode": "stochastic_philox"
+  },
+  "comparison": {
+    "native_generated_frames": 16,
+    "python_generated_frames_before_abort": 15,
+    "exact_prefix_frames": 7,
+    "exact_prefix_subsequences": "0..96",
+    "first_divergence": {
+      "component": "Talker semantic token selection",
+      "frame": 7,
+      "philox_subsequence": 112,
+      "uniform": 0.4909121990,
+      "native_token": 864,
+      "python_token": 980
+    },
+    "predictor_gate_frame2_step9": {
+      "native_selected": 832,
+      "candidate_sets_equal": true,
+      "note": "The previously validated frame-2 gate remains a same-conditioning positive result; no actual frame-7 predictor intermediates were captured in this run."
+    },
+    "native_performance": {
+      "ttfa_ms": 2045.8,
+      "total_ms": 3520.6,
+      "audio_seconds": 1.28
+    }
+  },
+  "finding": {
+    "classification": "long_horizon_talker_state_or_numerical_drift",
+    "sampler_bug_proven": false,
+    "eos_or_termination_parity_tested": false,
+    "production_sampling_changed": false,
+    "conclusion": "Seed 1008 remains exact through seven semantic frames, then diverges at the Talker sample for frame 7 / Philox subsequence 112. This localizes the next investigation to accumulated Talker AR/KV state or numerical drift, not the already passing frame-2 predictor sampler gate."
+  },
+  "artifacts": {
+    "raw_log": "cmp50hx-qwentts-longhorizon-seed1008-54251f3/native/seed1008-long16.raw.log",
+    "native_codes": "cmp50hx-qwentts-longhorizon-seed1008-54251f3/native/codes-frame*.bin",
+    "frame2_sampler_summary": "cmp50hx-qwentts-longhorizon-seed1008-54251f3/native/sampler-frame2-step9.txt"
+  }
+}
