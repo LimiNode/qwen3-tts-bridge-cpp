@@ -39,6 +39,19 @@
     },
     "history_contract": "native and Python generated the same selected Talker history through step 6 before step 7"
   },
+  "conditioning_metrics": {
+    "talker_input_embed": {
+      "cosine": 1.0,
+      "max_abs": 0.0,
+      "mean_abs": 0.0
+    },
+    "next_emb_step0": {
+      "cosine": 1.0,
+      "max_abs": 0.0,
+      "mean_abs": 0.0
+    },
+    "selected_talker_history_steps_0_to_6": [1755, 1902, 1915, 736, 1070, 1758, 1206]
+  },
   "frame_metrics": {
     "comparison_files": "native talker-logits-frameN-raw.bin / talker-hidden-frameN.bin versus Python talker-logits-frameN.bin / talker-hidden-frameN.bin",
     "frames_1_to_6": {
