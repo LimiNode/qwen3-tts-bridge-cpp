@@ -1,0 +1,153 @@
+{
+  "schema": "cmp50hx.qwentts_forced_full_history.v1",
+  "experiment": "cmp50hx-forced-full-history-seed1008-54d9ece",
+  "captured_at": "2026-09-20",
+  "purpose": "Separate Talker state/history drift from stochastic sampler selection by forcing identical complete 16-codebook frames 0..6 in native and Python diagnostic replays.",
+  "provenance": {
+    "bridge_base_commit": "05afebe434ec10cf0ea5206fc0b282287f520590",
+    "qwentts_base_commit": "89faded925e1e3805c9974842bedfca2095fc44e",
+    "qwentts_diagnostic_capture_commit": "54d9ece166bbf37274601180db0b054798ca7806",
+    "qwentts_runtime_banner": "qwentts.cpp 54d9ece (2026-09-20)",
+    "qwen_tts_binary_sha256": "6457949BDC682D18C13AFA469A488E8ED3411CA9E21BCDC1DB8DC091A67655F2",
+    "raw_log_sha256": "463906F606FDA58C89A7D06B6165C971F152741FD0224B7FE5809CE38DCDD3A6",
+    "python_harness": {
+      "origin": "qwentts.cpp tests/debug-clone-cossim.py and tests/cossim_common.py",
+      "source_commit": "54d9ece166bbf37274601180db0b054798ca7806",
+      "debug_clone_sha256": "5FC0D335A64CAE5AD1B3999D16C73DF41776A1C05A977E1AADD78405EF36F70E",
+      "cossim_common_sha256": "CF0943EC5F288899BC62674186DAE34149D3CF7E3B4DE7436D4363B773D34756",
+      "torch": "2.8.0+cpu",
+      "python_device": "cpu"
+    },
+    "forced_frame_sidecar_sha256": "15D73293304CD935766D5905EB8F223833FA9784418B74AC3DD1D8473F412291"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "native_backend": "GGML CUDA",
+    "python_backend": "CPU PyTorch"
+  },
+  "models": {
+    "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+    "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+    "reference_spk_sha256": "18748F083AB54AC46E3FF3AA3340A7BD6D1E501EBC78AC32013E973B16B28B72",
+    "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+  },
+  "request": {
+    "seed": 1008,
+    "max_new_tokens": 8,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "sampling_mode": "stochastic_philox",
+    "forced_history": {
+      "representation": "complete 16-codebook frames",
+      "forced_frames": "0..6",
+      "native_sidecar": "native/forced-talker-frames.txt",
+      "python_source": "input/forced-talker-frames.txt"
+    },
+    "diagnostic_frame": 7,
+    "diagnostic_subsequence": 112,
+    "diagnostic_component": "Talker semantic token and sampler"
+  },
+  "comparison": {
+    "native_generated_frames": 8,
+    "python_materialized_code_frames": 7,
+    "python_talker_draws_recorded": 8,
+    "forced_frames_exact": true,
+    "forced_prefix_frames": 7,
+    "first_free_frame": 7,
+    "frame7_uniform": 0.4909121990,
+    "frame7_selected_token": {
+      "native": 980,
+      "python": 980,
+      "exact": true
+    },
+    "frame7_talker_hidden": {
+      "cosine": 0.9999997942090997,
+      "max_abs": 0.009045600891113281,
+      "mean_abs": 0.0011527565671940465,
+      "native_argmax": 1171,
+      "python_argmax": 1171,
+      "argmax_equal": true,
+      "native_artifact": "native/talker-hidden-frame7.bin",
+      "python_artifact": "python/talker-hidden-frame7.bin"
+    },
+    "frame7_talker_logits": {
+      "cosine": 0.9999999415006229,
+      "max_abs": 0.009031295776367188,
+      "mean_abs": 0.001236267601295064,
+      "native_argmax": 980,
+      "python_argmax": 980,
+      "argmax_equal": true,
+      "native_artifact": "native/talker-logits-frame7-raw.bin",
+      "python_artifact": "python/talker-logits-frame7.bin"
+    },
+    "sampler": {
+      "candidate_count_native": 50,
+      "candidate_count_python": 50,
+      "candidate_set_equal": true,
+      "candidate_set_overlap": 50,
+      "candidate_set_sha256_sorted_i32": "DE23F978ED8C64AE25AC1DA5506AC354F81513D9157BDC057746EB8854F6CDA4",
+      "native_representation": "unnormalized post-filter exponentials",
+      "python_representation": "normalized probabilities passed to torch.multinomial",
+      "native_weight_sum_f32": 1.105942249,
+      "python_probability_sum_f64": 1.0000001192092896,
+      "normalized_weight_max_abs_error": 0.00016874074935913086,
+      "normalized_weight_mean_abs_error": 1.1661725807243783e-07,
+      "normalized_weight_cosine": 1.0,
+      "native_selected": 980,
+      "python_selected": 980,
+      "native_artifact": "native/talker-sampler-frame7.txt",
+      "python_artifact": "python/sampler-diagnostic.txt"
+    },
+    "stochastic_trace_exact": true,
+    "stochastic_trace_draws": 8,
+    "codes_exact_forced_prefix": true,
+    "codes_compared_for_forced_prefix": 112
+  },
+  "finding": {
+    "classification": "forced_same_history_sampler_parity",
+    "talker_state_divergence_before_frame7": false,
+    "sampler_selection_defect_observed": false,
+    "eos_or_termination_parity_tested": false,
+    "production_sampling_changed": false,
+    "conclusion": "With identical complete 16-codebook history through frames 0..6, frame-7 Talker hidden/logit tensors, candidate membership, Philox uniform, and selected token agree within bounded F32/accumulation differences. The earlier frame-7 mismatch is therefore downstream of accumulated predictor/code history divergence, not an isolated CDF selection defect. The Python/native materialized-frame count is intentionally not treated as an EOS acceptance result."
+  },
+  "artifacts": {
+    "raw_log": "native/seed1008-max8.raw.log",
+    "forced_sidecar": "input/forced-talker-frames.txt",
+    "native_talker_artifacts": [
+      "native/codes-full.bin",
+      "native/talker-hidden-frame7.bin",
+      "native/talker-logits-frame7-raw.bin",
+      "native/talker-sampler-frame7.txt",
+      "native/talker-sampler-frame7-suppressed-logits.bin",
+      "native/talker-sampler-frame7-weights.bin",
+      "native/talker-sampler-frame7-selection-cdf-f32.bin",
+      "native/talker-sampler-frame7-u.bin",
+      "native/talker-sampler-frame7-sum-f32.bin",
+      "native/talker-sampler-frame7-target-f32.bin",
+      "native/talker-sampler-frame7-selected.bin"
+    ],
+    "python_talker_artifacts": [
+      "python/codes-full.bin",
+      "python/talker-hidden-frame7.bin",
+      "python/talker-logits-frame7.bin",
+      "python/sampler-diagnostic.txt",
+      "python/sampler-input-probs.bin",
+      "python/sampler-candidate-ids.bin",
+      "python/sampler-candidate-probs.bin",
+      "python/sampler-cdf-f32.bin",
+      "python/sampler-selection-cdf-f64.bin",
+      "python/sampler-sum-f64.bin",
+      "python/sampler-target-f64.bin",
+      "python/sampler-u.bin",
+      "python/sampler-selected.bin"
+    ]
+  }
+}
