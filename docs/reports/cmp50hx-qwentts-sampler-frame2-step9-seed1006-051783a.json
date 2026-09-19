@@ -1,0 +1,140 @@
+{
+  "schema": "cmp50hx.qwentts_sampler_diagnostic.v1",
+  "experiment": "cmp50hx-qwentts-sampler-frame2-step9-seed1006",
+  "captured_at": "2026-09-19",
+  "purpose": "Diagnose the first stochastic predictor-token divergence with native sampler intermediates.",
+  "provenance": {
+    "bridge_base_commit": "81dced64419de66cfa5cf3069b23f5f781bfe70c",
+    "qwentts_source_commit": "051783a167b7c1d46e4bec8db13a24435247623c",
+    "qwentts_pinned_merge_commit": "051783a167b7c1d46e4bec8db13a24435247623c",
+    "qwentts_runtime_banner": "qwentts.cpp 051783a (2026-09-19)",
+    "qwen_tts_binary_sha256": "E621A2728707CAE808A9B3043CFE4C960C032C14B73E3163E10751AB9EC47E6C",
+    "raw_log_sha256": "0A0907E3257C016741B1337B8D246F40DA14910511E256E44919F70BE55FD0A7",
+    "python_logits_sha256": "1C76C97E6B23381B37AB54B2A47669D221F2EC9CFB0C67FD239AA4A081C14D56",
+    "python_harness": {
+      "origin": "isolated debug-clone-cossim.py/cossim_common.py diagnostic checkout",
+      "source_commit": "1ebed080b88b8202a910d9d7753faccc8de9f59d",
+      "source_commit_note": "The checkout had recorded frame-hook and import-path edits.",
+      "debug_clone_source_sha256": "F19D0DB9DCE6D1559DEA24BC5D035DAA64C7FF1288FFE1CA763DD9D5208ACABE",
+      "cossim_common_sha256": "AA5973E145C77D3AE9EEF3EC0137D2E21C0F429D9AAC32C6E1A0A786BF2D8200",
+      "debug_clone_patch_sha256": "BDE10C5840D2484FA4418DD644BBA66F638A270DAEFBFF16F4F8CD8C06525465"
+    }
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "backend": "GGML CUDA",
+    "cuda_architecture": 75
+  },
+  "models": {
+    "talker": {
+      "file": "qwen-talker-1.7b-base-F32.gguf",
+      "sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A"
+    },
+    "codec": {
+      "file": "qwen-tokenizer-12hz-F32.gguf",
+      "sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D"
+    },
+    "reference_speaker": {
+      "file": "reference.spk",
+      "sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42"
+    },
+    "reference_rvq": {
+      "file": "reference.rvq",
+      "sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+    }
+  },
+  "request": {
+    "seed": 1006,
+    "max_new_tokens": 6,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "reference_mode": "exported_latents",
+    "sampling_mode": "stochastic_philox"
+  },
+  "native_run": {
+    "exit_code": 0,
+    "generated_frames": 6,
+    "audio_samples": 11520,
+    "ttfa_ms": 2045.5,
+    "total_ms": 3078.2,
+    "rtf": 6.413,
+    "first_frame_codes": [27, 1184, 731, 881, 243, 1487, 1841, 405, 68, 367, 636, 592, 2021, 507, 119, 528],
+    "diagnostic_gate": {
+      "frame": 2,
+      "predictor_step": 9,
+      "logical_codebook": 10,
+      "vocab": 2048,
+      "uniform": 0.6810894608,
+      "selected_token": 1180,
+      "top_order_hash": "1d94d06cca463e47",
+      "candidate_set_hash": "adbb0dbad1d48e54",
+      "masked_logits_hash": "2d74f1ba87080ba",
+      "probabilities_hash": "17fbbc3349ef185f",
+      "cdf_hash": "44904d516b53ab2f",
+      "kth": {"id": 1972, "logit": 23.44990921},
+      "k_plus_one": {"id": 581, "logit": 23.44897461},
+      "tokens": {
+        "1168": {
+          "logit": 24.42226601,
+          "probability": 0.0223578997,
+          "cdf_before": 0.6539161801,
+          "cdf": 0.6762740612
+        },
+        "1180": {
+          "logit": 24.33117485,
+          "probability": 0.02041129768,
+          "cdf_before": 0.6762740612,
+          "cdf": 0.6966853738
+        }
+      },
+      "top_k_ids": [157, 1039, 47, 80, 248, 530, 701, 1303, 1696, 421, 105, 1342, 1168, 1322, 1441, 1439, 359, 853, 1180, 1396, 74, 1225, 691, 435, 770, 526, 1256, 1798, 61, 1137, 1121, 1530, 442, 1750, 206, 982, 762, 1526, 2037, 1895, 1477, 502, 269, 402, 1732, 892, 1524, 431, 1141, 1972]
+    }
+  },
+  "python_comparison": {
+    "intermediates": "offline_host_reconstruction_from_captured_predictor_logits",
+    "actual_graph_readback": false,
+    "candidate_set_hash": "15346a26c6cf9f0e",
+    "kth": {"id": 581, "logit": 23.450902938842773},
+    "k_plus_one": {"id": 1972, "logit": 23.45060157775879},
+    "selected_token": 1168,
+    "tokens": {
+      "1168": {
+        "scaled_logit": 24.42862319946289,
+        "probability": 0.022467657923698425,
+        "cdf_before": 0.6618159413337708,
+        "cdf": 0.6842836141586304
+      },
+      "1180": {
+        "scaled_logit": 24.339223861694336,
+        "probability": 0.020546231418848038,
+        "cdf_before": 0.6842836141586304,
+        "cdf": 0.7048298716545105
+      }
+    },
+    "top_k_ids": [157, 1039, 47, 80, 248, 530, 701, 1303, 1696, 421, 1342, 105, 1168, 1322, 1441, 1439, 359, 853, 1180, 1396, 1225, 74, 691, 435, 770, 526, 1256, 1798, 61, 1121, 1137, 1530, 442, 1750, 206, 982, 762, 1526, 2037, 1895, 1477, 502, 269, 402, 1732, 892, 1524, 431, 1141, 581]
+  },
+  "finding": {
+    "candidate_set_equal": false,
+    "native_only_candidate": 1972,
+    "python_only_candidate": 581,
+    "first_observed_divergence": "top_k_candidate_membership_at_a_near_tied_cutoff",
+    "confidence": "supported_but_not_exclusive",
+    "not_proven": [
+      "native and Python actual graph intermediate equality",
+      "backend softmax/cumsum numerical equivalence",
+      "long_horizon AR/KV parity",
+      "EOS/termination parity"
+    ]
+  },
+  "artifacts": {
+    "raw_log": "cmp50hx-qwentts-sampler-frame2-step9-seed1006-051783a.raw.log",
+    "raw_log_sha256": "0A0907E3257C016741B1337B8D246F40DA14910511E256E44919F70BE55FD0A7"
+  }
+}
