@@ -7,6 +7,8 @@
     "bridge_base_commit": "05afebe434ec10cf0ea5206fc0b282287f520590",
     "qwentts_base_commit": "89faded925e1e3805c9974842bedfca2095fc44e",
     "qwentts_diagnostic_capture_commit": "54d9ece166bbf37274601180db0b054798ca7806",
+    "qwentts_canonical_merge_commit": "bc938eda58b7cfb10bab02ac55ef1c8d7cf351f3",
+    "qwentts_capture_tree_sha": "b9b36d227758e805fb0febe87ac43434f7349879",
     "qwentts_runtime_banner": "qwentts.cpp 54d9ece (2026-09-20)",
     "qwen_tts_binary_sha256": "6457949BDC682D18C13AFA469A488E8ED3411CA9E21BCDC1DB8DC091A67655F2",
     "raw_log_sha256": "463906F606FDA58C89A7D06B6165C971F152741FD0224B7FE5809CE38DCDD3A6",
