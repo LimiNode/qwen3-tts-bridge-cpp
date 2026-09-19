@@ -1,0 +1,113 @@
+{
+  "schema": "cmp50hx.qwentts_longhorizon.v2",
+  "experiment": "cmp50hx-qwentts-longhorizon-seed1008-baf7a05",
+  "captured_at": "2026-09-19",
+  "purpose": "Repeat the bounded long-horizon stochastic gate on qwentts.cpp #22 and capture the actual native and Python sampler inputs at the first frame-7 Talker mismatch.",
+  "provenance": {
+    "bridge_base_commit": "ae0ad87395cae8926e4e19357bb695b8f428bfb5",
+    "qwentts_source_commit": "baf7a057b92a77fb4ce96cbf16b433984e7a6cf3",
+    "qwentts_runtime_banner": "qwentts.cpp baf7a05 (2026-09-19)",
+    "qwen_tts_binary_sha256": "79D7724154640BB6CB75674C069A790ECCC199A2C0258C35E9B694F837B7830E",
+    "raw_log_sha256": "2048BDB840320C0A1EB43A4AA489BED68B0D5F32A87DF306CBB54247804A274D",
+    "python_harness": {
+      "origin": "qwentts.cpp tests/debug-clone-cossim.py and tests/cossim_common.py",
+      "source_commit": "baf7a057b92a77fb4ce96cbf16b433984e7a6cf3",
+      "debug_clone_sha256": "22F4C65BB6AE95FFF0190F887512846BD537A84989E31E47082412EED40FC30F",
+      "cossim_common_sha256": "2C6C8B70FBF62364B6EF138CCAA979EE8D778BB5B3598DEA81C0AE778C719B0E",
+      "torch": "2.8.0+cu128",
+      "cuda": "12.8"
+    }
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "backend": "GGML CUDA / PyTorch CUDA"
+  },
+  "models": {
+    "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+    "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+    "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+    "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+  },
+  "request": {
+    "seed": 1008,
+    "max_new_tokens": 16,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "sampling_mode": "stochastic_philox",
+    "diagnostic_subsequence": 112,
+    "diagnostic_frame": 7,
+    "diagnostic_component": "Talker semantic token"
+  },
+  "comparison": {
+    "native_generated_frames": 16,
+    "python_generated_frames_before_abort": 15,
+    "exact_prefix_frames": 7,
+    "exact_prefix_subsequences": "0..96",
+    "first_divergence": {
+      "frame": 7,
+      "philox_subsequence": 112,
+      "uniform": 0.4909121990,
+      "native_token": 864,
+      "python_token": 980
+    },
+    "native_sampler_input": {
+      "candidate_count": 50,
+      "candidate_set_sha256_sorted_i32": "F532FDFE7322D784A67B92F87902B69359C6D413FCC7EA5A62355DA1DCC71B10",
+      "weight_sum_f32": 2.1130456924438477,
+      "selected_weight": 0.09845484793186188,
+      "selected_token": 864,
+      "top_weight_token": 980,
+      "top_weight": 0.8092966079711914,
+      "artifact": "native/talker-sampler-frame7.txt"
+    },
+    "python_sampler_input": {
+      "actual_probability_input": true,
+      "candidate_count": 50,
+      "candidate_ids_artifact_sha256": "2372B86B11CF1CE0FFB91EF497795F7AA044293E68B5BEBAE3F57E4DE89C24DE",
+      "probability_sum_f64": 1.0,
+      "selected_token": 980,
+      "selected_probability": 0.9043745994567871,
+      "native_token_probability": 0.0012493389658629894,
+      "artifact": "python-sampler/sampler-diagnostic.txt"
+    }
+  },
+  "finding": {
+    "classification": "long_horizon_talker_state_or_numerical_drift",
+    "candidate_sets_equal": false,
+    "sampler_bug_proven": false,
+    "eos_or_termination_parity_tested": false,
+    "production_sampling_changed": false,
+    "conclusion": "At frame 7 the native and Python Talker probability inputs already differ materially (including candidate membership and token weights). The mismatch is therefore not an isolated CDF accumulator defect. The first actionable gate remains accumulated Talker AR/KV state or numerical drift; EOS is a separate unresolved question."
+  },
+  "artifacts": {
+    "raw_log": "native/seed1008-long16.raw.log",
+    "native_sampler_summary": "native/talker-sampler-frame7.txt",
+    "native_sampler_tensors": [
+      "native/talker-sampler-frame7-weights.bin",
+      "native/talker-sampler-frame7-selection-cdf-f32.bin",
+      "native/talker-sampler-frame7-u.bin",
+      "native/talker-sampler-frame7-sum-f32.bin",
+      "native/talker-sampler-frame7-target-f32.bin",
+      "native/talker-sampler-frame7-selected.bin"
+    ],
+    "python_sampler_summary": "python-sampler/sampler-diagnostic.txt",
+    "python_sampler_tensors": [
+      "python-sampler/sampler-input-probs.bin",
+      "python-sampler/sampler-candidate-ids.bin",
+      "python-sampler/sampler-candidate-probs.bin",
+      "python-sampler/sampler-cdf-f32.bin",
+      "python-sampler/sampler-selection-cdf-f64.bin",
+      "python-sampler/sampler-sum-f64.bin",
+      "python-sampler/sampler-target-f64.bin",
+      "python-sampler/sampler-u.bin",
+      "python-sampler/sampler-selected.bin"
+    ]
+  }
+}
