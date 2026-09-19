@@ -1,0 +1,113 @@
+{
+  "schema": "cmp50hx.qwentts_python_sampler_diagnostic.v1",
+  "experiment": "cmp50hx-qwentts-python-sampler-seed1006",
+  "captured_at": "2026-09-19",
+  "purpose": "Compare actual Python CUDA sampler tensors and selection arithmetic with native GGML CUDA at the first stochastic divergence.",
+  "provenance": {
+    "bridge_base_commit": "843c3b75b973f973556640429212f852aed9d610",
+    "qwentts_source_commit": "54251f3d666f50788866b3d575687db113ede224",
+    "qwentts_runtime_banner": "qwentts.cpp 54251f3 (2026-09-19)",
+    "qwen_tts_binary_sha256": "1B5CBB0EEEB2CB23D9A4AD14D524D9C3173B141896A365A7A7B7B31306514F17",
+    "native_raw_log_sha256": "9344603DB24A250FF4012F16E1491A1AA0627C49F997290FF4A2CB78EA28D4E9",
+    "python_raw_log_sha256": "DA65D3898B9C7BC7AE66711C5A68DEDEBF218A56249D9620C80FB8F736937B9C",
+    "python_harness": {
+      "origin": "qwentts.cpp tests/debug-clone-cossim.py and tests/cossim_common.py",
+      "source_commit": "54251f3d666f50788866b3d575687db113ede224",
+      "diagnostic_patch": "merged qwentts.cpp PR #20 and PR #21"
+    }
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "backend": "GGML CUDA / PyTorch CUDA",
+    "cuda_architecture": 75,
+    "python_torch": "2.8.0+cu128",
+    "python_cuda": "12.8"
+  },
+  "models": {
+    "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+    "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+    "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+    "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+  },
+  "request": {
+    "seed": 1006,
+    "max_new_tokens": 6,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "philox_subsequence": 42,
+    "frame": 2,
+    "predictor_step": 9,
+    "logical_codebook": 10
+  },
+  "native_actual_graph": {
+    "uniform": 0.6810894608,
+    "selected_token": 1180,
+    "top_k_cutoff": {
+      "kth": {"id": 1972, "logit": 23.44990921},
+      "k_plus_one": {"id": 581, "logit": 23.44897461}
+    },
+    "candidate_set_hash": "adbb0dbad1d48e54",
+    "masked_logits_hash": "2d74f1ba87080ba",
+    "probabilities_hash": "17fbbc3349ef185f",
+    "cdf_hash": "44904d516b53ab2f",
+    "tokens": {
+      "1168": {"probability": 0.0223578997, "cdf_before": 0.6539161801, "cdf": 0.6762740612},
+      "1180": {"probability": 0.02041129768, "cdf_before": 0.6762740612, "cdf": 0.6966853738}
+    },
+    "run": {"exit_code": 0, "generated_frames": 6, "ttfa_ms": 2044.2, "total_ms": 3128.5}
+  },
+  "python_actual_sampler": {
+    "actual_probability_input": true,
+    "actual_candidate_set": true,
+    "actual_selected_token": true,
+    "selection_accumulator_dtype": "float64 Python accumulation of F32 probability values",
+    "uniform": 0.6810894608,
+    "selected_token": 1168,
+    "candidate_count": 50,
+    "candidate_set_hash": "15346a26c6cf9f0e",
+    "candidate_set_only_python": [581],
+    "candidate_set_only_native": [1972],
+    "sum_f64": 0.9999999403953552,
+    "target_f64": 0.6810894202536666,
+    "tokens": {
+      "1168": {"probability": 0.022467641159892082, "cdf_f32": 0.6842835545539856, "selection_cdf_f64": 0.684283584356308},
+      "1180": {"probability": 0.020546214655041695, "cdf_f32": 0.704829752445221, "selection_cdf_f64": 0.7048297990113497}
+    },
+    "artifacts": {
+      "sampler_input_probs_sha256": "B1E82916A532FEE300AE7436467FD3DD34037F4A44A2470747D99B7AE78175B9",
+      "candidate_ids_sha256": "C92F6483540EF2220816B672D8AE6CD32E711C8F4B77DA794FE10E80291C80DD",
+      "candidate_probs_sha256": "561B275FC266E31828F800D568D0A0DED77533435D61278CC9B060C227DEF35F",
+      "cdf_f32_sha256": "1FC831048C1BD59739CA4EAE7D9A9C9AD82BC2DA8259EC90BD850ADF2F8534F6",
+      "selection_cdf_f64_sha256": "0CDECF90637FDE2BD745952DF4E2512D3DB044C0C4EE960221993AA3A862B41C",
+      "sum_f64_sha256": "05E373EE20E3C8B77673F85780E700479B45BA0726B0CEDD330CCF2671ED9785",
+      "target_f64_sha256": "36C00903DDFBDECCACE765665599A10640AC6B28F900A6A20ED1AF1AD66B62F4",
+      "selected_sha256": "32F282F9A68C2C61D3F60C568681F090FB7D244BB01F0D32BD53DE307FD77E89",
+      "uniform_sha256": "A1C82BA179C4041FC682DAF9E83CF1C8F91582E58F248938B1AD972C3103AA67"
+    }
+  },
+  "finding": {
+    "candidate_sets_equal": false,
+    "first_observed_divergence": "near-tied top-k candidate membership",
+    "native_selected": 1180,
+    "python_selected": 1168,
+    "interpretation": "The actual Python sampler confirms the earlier offline reconstruction. The candidate-set boundary differs by 581 versus 1972 before CDF selection.",
+    "not_proven": [
+      "identical native/Python probability values",
+      "identical native/Python CDF arithmetic",
+      "long-horizon AR/KV parity",
+      "EOS/termination parity"
+    ]
+  },
+  "artifacts": {
+    "native_raw_log": "native-canonical542-seed1006.raw.log",
+    "python_raw_log": "python-cuda-seed1006.raw.log",
+    "python_sampler_directory": "python-sampler/"
+  }
+}
