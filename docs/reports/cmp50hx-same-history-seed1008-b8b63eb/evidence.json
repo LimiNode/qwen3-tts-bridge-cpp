@@ -1,0 +1,103 @@
+{
+  "experiment": "cmp50hx_same_history_talker_frame_diagnostic",
+  "status": "diagnostic_complete",
+  "date_utc": "2026-09-19",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479
+  },
+  "provenance": {
+    "bridge_base_commit": "ddacfc93b2482c49a01eb827b8decbcadf32acb0",
+    "qwentts_source_commit": "b8b63ebb678a50e877fbca1a2376fc7e24aa2e51",
+    "native_binary_sha256": "8DFE016167CF8B2EB99236B578EDA6D7BA57EF2E88F8803A5DE7E06AFD1EB336",
+    "python_harness": {
+      "base_checkout": "1ebed080b88b8202a910d9d7753faccc8de9f59d",
+      "debug_clone_cossim_sha256": "22F4C65BB6AE95FFF0190F887512846BD537A84989E31E47082412EED40FC30F",
+      "cossim_common_sha256": "0453F687A9BF24F760B13ECCEFF4AD80F24B6B03DA3F351E13B681E5F88894A0",
+      "working_tree_note": "recorded frame-indexed Talker hooks and sampler diagnostics are working-tree edits"
+    },
+    "models": {
+      "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+      "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+      "reference_wav_sha256": "B125A318B550DACE422DD3D75650AB6DAFE5AFF20F38FC8FE39C59B96356DC08",
+      "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+      "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+    }
+  },
+  "request": {
+    "seed": 1008,
+    "max_new_tokens": 16,
+    "language": "english",
+    "sampling": {
+      "mode": "stochastic",
+      "temperature": 0.9,
+      "top_k": 50,
+      "top_p": 1.0,
+      "repetition_penalty": 1.05,
+      "philox_talker_subsequence": 112
+    },
+    "history_contract": "native and Python generated the same selected Talker history through step 6 before step 7"
+  },
+  "frame_metrics": {
+    "comparison_files": "native talker-logits-frameN-raw.bin / talker-hidden-frameN.bin versus Python talker-logits-frameN.bin / talker-hidden-frameN.bin",
+    "frames_1_to_6": {
+      "hidden_cosine_min": 0.999999762,
+      "hidden_max_abs_max": 0.008662,
+      "logits_cosine_min": 0.999999881,
+      "logits_max_abs_max": 0.009318,
+      "argmax_equal": true
+    },
+    "frame_7": {
+      "hidden_cosine": 0.658544242,
+      "hidden_max_abs": 20.074401,
+      "hidden_mean_abs": 1.494240,
+      "logits_cosine": 0.904991567,
+      "logits_max_abs": 14.336482,
+      "logits_mean_abs": 1.596415,
+      "native_argmax": 662,
+      "python_argmax": 980,
+      "first_observed_state_divergence": "Talker hidden/logits at frame 7, before token selection"
+    }
+  },
+  "sampler_gate": {
+    "philox_u": 0.49091219902038574,
+    "native_selected": 864,
+    "python_selected": 980,
+    "native_selected_probability": 0.0465938076,
+    "python_selected_probability": 0.9043746,
+    "native_weight_representation": "unnormalized post-filter exponentials",
+    "python_input_representation": "normalized torch.multinomial probabilities",
+    "candidate_set_overlap": 26,
+    "candidate_set_size": 50,
+    "interpretation": "selection mismatch is downstream of already-divergent Talker sampler inputs; this run does not isolate CDF arithmetic"
+  },
+  "performance": {
+    "ttfa_ms": 2057.0,
+    "talker_decode_ms": 228.6,
+    "code_predictor_ms": 628.5,
+    "total_ms": 3659.7,
+    "native_frames": 16,
+    "python_frames": 15
+  },
+  "artifacts": {
+    "raw_log": "native/seed1008-max16-b8b63eb.raw.log",
+    "raw_log_sha256": "54F02295B8FDD24ECC3978BB0CB23B8664C10A328C64D41D1A549EC9D71E341E",
+    "raw_log_committed": true
+  },
+  "conclusion": {
+    "classification": "long_horizon_talker_state_or_numerical_drift",
+    "supported": [
+      "same Philox Talker draw is observed at subsequence 112",
+      "frames 1 through 6 have near-identical hidden states and logits",
+      "frame 7 diverges in Talker hidden state and raw logits before sampler selection",
+      "native and Python candidate sets are already different at the divergent frame"
+    ],
+    "not_proven": [
+      "CDF numerical parity",
+      "top-k implementation equivalence under identical logits",
+      "EOS or long-horizon acceptance"
+    ],
+    "next_gate": "forced same-history frame-7 replay comparing Talker input, hidden state, raw/post-processed logits, top-k membership, normalized probabilities, CDF, and the shared Philox uniform"
+  }
+}
