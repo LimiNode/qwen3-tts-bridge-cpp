@@ -1,0 +1,112 @@
+{
+  "experiment": "cmp50hx_forced_predictor_prefix_frame1_step10_seed1008",
+  "status": "diagnostic_only",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479
+  },
+  "conditioning": {
+    "seed": 1008,
+    "language": "english",
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "talker_c0_history": [1755, 1902],
+    "forced_predictor_codebooks": "frame 0 and frame 1, logical codebooks 1..15",
+    "forced_prefix_scope": "frame 1 logical codebooks 1..10 are identical before step 10 comparison",
+    "eos_mode": "diagnostic impossible sentinel 65535",
+    "production_sampling_changed": false
+  },
+  "provenance": {
+    "bridge_capture_workspace_commit": "ceec8a4523e4a747d52732e511d4c9f4500e4306",
+    "qwentts_runtime_commit": "3482a74",
+    "qwentts_canonical_merge_commit": "3fe602f240534dcda6745360cfee602cfa1f634a",
+    "qwentts_bridge_pin_at_capture": "590c2a2f06546090b81a7b97b1eb6acdad529e9e",
+    "native_binary_sha256": "c33c752f0b5d5ab68108a65d5d7898857d63d0794bfefbd1261da4122548cdb6c",
+    "python_harness": {
+      "capture_commit": "87137320712b3f5cbd0fb09125e32a9b5afed087",
+      "canonical_merge_commit": "3fe602f240534dcda6745360cfee602cfa1f634a",
+      "debug_clone_sha256": "0ce4d556fcf923e777981ea49d0959ecb01edec9a1e35f54c52e859a6c7d2706",
+      "cossim_common_sha256": "7b07ac0945f572f9d09cf8c59baf0ca67adb81292ec2cd4f54ae7fb745c61ccb"
+    }
+  },
+  "capture": {
+    "native_binary_banner": "qwentts.cpp 3482a74",
+    "native_frames_generated": 3,
+    "python_frames_generated": 2,
+    "compared_frames": 2,
+    "predictor_hidden_shape": [1024],
+    "predictor_logits_shape": [2048],
+    "dtype": "float32",
+    "all_values_finite": true,
+    "raw_log": "native/seed1008-forced-prefix.raw.log",
+    "raw_log_sha256": "d5591b1a18f24e2da08236b767fcd51270c1253a2e80c35df2f6e821ab9288b6",
+    "forced_prefix_sha256": "3440142f4ac7a9dd4132c6c5aa5f0c49ed1236892a249342ea78e964681c6187"
+  },
+  "frame1_predictor": {
+    "prefix_codebooks_1_to_10_identical": true,
+    "prefix_tokens_python_and_native": [
+      781, 199, 990, 1501, 773, 274, 1472, 1169, 1015, 1337
+    ],
+    "steps": {
+      "9": {
+        "hidden_cosine": 0.9999991059303284,
+        "hidden_max_abs": 0.051680564880371094,
+        "hidden_mean_abs": 0.0030391085892915726,
+        "logits_cosine": 1.0,
+        "logits_max_abs": 0.019353866577148438,
+        "logits_mean_abs": 0.006057281978428364
+      },
+      "10": {
+        "hidden_cosine": 0.9999994039535522,
+        "hidden_max_abs": 0.036808013916015625,
+        "hidden_mean_abs": 0.0032512792386114597,
+        "logits_cosine": 0.9999998211860657,
+        "logits_max_abs": 0.014629364013671875,
+        "logits_mean_abs": 0.003193478100001812
+      },
+      "11": {
+        "hidden_cosine": 0.9999996423721313,
+        "hidden_max_abs": 0.04689216613769531,
+        "hidden_mean_abs": 0.0024210833944380283,
+        "logits_cosine": 1.0000001192092896,
+        "logits_max_abs": 0.010057449340820312,
+        "logits_mean_abs": 0.0027095875702798367
+      }
+    }
+  },
+  "interpretation": {
+    "conclusion": "With identical Talker history and predictor codebooks 1..10, the prior frame1/codebook11 hidden/logit divergence is not reproduced.",
+    "causal_boundary": "The earlier mismatch is dependent on predictor history; this run does not identify a KV/attention defect or prove exact long-horizon parity.",
+    "next_gate": "Layerwise predictor bisection only if a divergence remains under an identical prefix; otherwise repeat the same forced-prefix contract across additional seeds.",
+    "eos_separate_issue": true
+  },
+  "artifacts": {
+    "native_codes": "native/codes-full.bin",
+    "python_codes": "python/codes-full.bin",
+    "native_hidden_step9": "native/predictor-hidden-frame1-step9.bin",
+    "native_hidden_step10": "native/predictor-hidden-frame1-step10.bin",
+    "native_hidden_step11": "native/predictor-hidden-frame1-step11.bin",
+    "python_hidden_step9": "python/predictor-hidden-frame1-step9.bin",
+    "python_hidden_step10": "python/predictor-hidden-frame1-step10.bin",
+    "python_hidden_step11": "python/predictor-hidden-frame1-step11.bin",
+    "sha256": {
+      "native_codes": "1f7885b6ef5b606863a8e882c63474a6bb6a8e5b7c778533bbfecd76ca6c1c2b",
+      "python_codes": "963b87489159493fdf63efdb40791628128312958c307521045fcd106f4eaea7",
+      "native_hidden_step9": "20a957320694059b7f89bd67e0f1bcd0fbe7444419461487b355522d1a47bdf4",
+      "native_hidden_step10": "c57ef3fc55665884925bac3fb85e92c2b48e218969a29c66bf622a8c484b388b",
+      "native_hidden_step11": "f8a90f31d0c88b540f9b4d0f5fbd8fcd4c97d15fc4f0262f4d2b4e000a4cc31f",
+      "python_hidden_step9": "4cdbff696e4a46c5425ec10cdc0904f6457a6f9476f7529d19c21519be050038",
+      "python_hidden_step10": "8e4ddb7859c7955c292277e54cb55443c5eff8081ac150c1fd11adec6e1a7069",
+      "python_hidden_step11": "da2ca570f06190ada690aa938fe063503346ba47fcd6e95539444a56e398b0cd",
+      "native_logits_step9": "11bff7c566324faf026212f10dcbf440197f9457e08b6ac2dc991c7a751a8fe7",
+      "native_logits_step10": "c3358cf611e12965b825ae8d9fde6533d78db0349571385ad6c0820c3af5ef80",
+      "native_logits_step11": "fa9a312295ba542ed9ec05b82d5d0309683ced0e012393f15773d6b5f3431b17",
+      "python_logits_step9": "8011555cbbb1932eef42e613dc8c5a11f55689cab375958c5d5026ea2d2d8e05",
+      "python_logits_step10": "f0209920cf6a32e8aee4548c5526dc96b746ce488cf1e7bbd07325a3b30da8fe",
+      "python_logits_step11": "1868f977a8491d49ed4814ff9dabf772df4a2863e06be901d19c529e9570e75d"
+    }
+  }
+}
