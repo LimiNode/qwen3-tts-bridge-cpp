@@ -21,7 +21,7 @@
   },
   "provenance": {
     "bridge_capture_workspace_commit": "ceec8a4523e4a747d52732e511d4c9f4500e4306",
-    "qwentts_runtime_commit": "3482a74",
+    "qwentts_runtime_commit": "3482a74da4a9cb7ef31db5010d7693aa0856ac33",
     "qwentts_canonical_merge_commit": "3fe602f240534dcda6745360cfee602cfa1f634a",
     "qwentts_bridge_pin_at_capture": "590c2a2f06546090b81a7b97b1eb6acdad529e9e",
     "native_binary_sha256": "c33c752f0b5d5ab68108a65d5d7898857d63d0794bfefbd1261da4122548cdb6c",
