@@ -1,0 +1,124 @@
+{
+  "schema": "cmp50hx.qwentts_predictor_frame_diagnostic.v1",
+  "experiment": "cmp50hx-predictor-frame1-step10-seed1008-4a7f2c6",
+  "captured_at": "2026-09-20",
+  "purpose": "Locate the first predictor-logit divergence while complete Talker frames 0..6 are forced identically.",
+  "provenance": {
+    "bridge_base_commit": "0f276a87b35a889e45a559c24707f8c78e5eb245",
+    "qwentts_diagnostic_capture_commit": "54d9ece166bbf37274601180db0b054798ca7806",
+    "qwentts_diagnostic_merge_commit": "bc938eda58b7cfb10bab02ac55ef1c8d7cf351f3",
+    "qwentts_contract_merge_commit": "53d3fd5c4d23033cb56eff59f5739724b5efe730",
+    "qwentts_pinned_commit": "4a7f2c66e1cc0422c2e85dc558902d0fab028acd",
+    "qwentts_python_hook_capture_commit": "c00ec74",
+    "qwen_tts_runtime_banner": "qwentts.cpp 54d9ece (2026-09-20)",
+    "qwen_tts_binary_sha256": "6457949BDC682D18C13AFA469A488E8ED3411CA9E21BCDC1DB8DC091A67655F2",
+    "raw_log_sha256": "E72155CD1D92C843ED416C8622D4F37DAB16A7897DEEB864792478654815BE38",
+    "python_harness": {
+      "origin": "qwentts.cpp tests/debug-clone-cossim.py and tests/cossim_common.py",
+      "source_commit": "c00ec74",
+      "debug_clone_sha256": "9BFFB32318FA37086430A23FC133BDFE80A52D9BEB1549A511B418C49542F244",
+      "cossim_common_sha256": "CF0943EC5F288899BC62674186DAE34149D3CF7E3B4DE7436D4363B773D34756",
+      "torch": "2.8.0+cpu",
+      "python_device": "cpu"
+    },
+    "forced_frame_sidecar_sha256": "15D73293304CD935766D5905EB8F223833FA9784418B74AC3DD1D8473F412291"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "native_backend": "GGML CUDA",
+    "python_backend": "CPU PyTorch"
+  },
+  "request": {
+    "seed": 1008,
+    "max_new_tokens": 8,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "sampling_mode": "stochastic_philox",
+    "forced_frames": "complete 16-codebook frames 0..6",
+    "diagnostic_scope": "predictor logits, frames 0..7, steps 0..14"
+  },
+  "comparison": {
+    "frame0_step9": {
+      "cosine": 0.999999993,
+      "max_abs": 0.00962448,
+      "mean_abs": 0.00261698
+    },
+    "frame1_step9": {
+      "cosine": 0.999999986,
+      "max_abs": 0.0193539,
+      "mean_abs": 0.00605728,
+      "native_artifact": "native/predictor-logits-frame1-step9.bin",
+      "python_artifact": "python/predictor-logits-frame1-step9.bin"
+    },
+    "first_material_divergence": {
+      "frame": 1,
+      "predictor_step": 10,
+      "logical_codebook": 11,
+      "cosine": 0.999845277,
+      "max_abs": 1.14267,
+      "mean_abs": 0.247423,
+      "native_artifact": "native/predictor-logits-frame1-step10.bin",
+      "python_artifact": "python/predictor-logits-frame1-step10.bin"
+    },
+    "next_divergence": {
+      "frame": 1,
+      "predictor_step": 11,
+      "logical_codebook": 12,
+      "cosine": 0.997290304,
+      "max_abs": 6.10856,
+      "mean_abs": 1.10876,
+      "native_artifact": "native/predictor-logits-frame1-step11.bin",
+      "python_artifact": "python/predictor-logits-frame1-step11.bin"
+    },
+    "frame2_step10": {
+      "cosine": 0.999999982,
+      "max_abs": 0.0171223,
+      "mean_abs": 0.00336306,
+      "interpretation": "returns to near-exact after frame-1 code history is forced"
+    },
+    "forced_history_exact": true,
+    "talker_sampler_frame7_selected": 980,
+    "talker_sampler_frame7_uniform": 0.4909121990,
+    "stochastic_talker_trace_exact_draws": 8
+  },
+  "finding": {
+    "classification": "within_frame_code_predictor_state_or_numerical_drift",
+    "first_observed_boundary": "frame 1 / predictor step 10 / logical codebook 11",
+    "talker_sampler_bug_proven": false,
+    "eos_or_termination_parity_tested": false,
+    "production_sampling_changed": false,
+    "conclusion": "With complete Talker frames 0..6 forced identically, predictor logits remain near-identical through frame 1 step 9 and first materially diverge at step 10. Frame 2 returns near-identical after the frame-1 code history is forced. This localizes the next investigation to within-frame code-predictor state/numerical behavior around acoustic codebook 11, not to the Talker CDF sampler or EOS."
+  },
+  "artifacts": {
+    "raw_log": "native/seed1008-max8-predictor.raw.log",
+    "forced_sidecar": "input/forced-talker-frames.txt",
+    "native_predictor_logits": [
+      "native/predictor-logits-step9.bin",
+      "native/predictor-logits-frame1-step9.bin",
+      "native/predictor-logits-frame1-step10.bin",
+      "native/predictor-logits-frame1-step11.bin"
+    ],
+    "python_predictor_logits": [
+      "python/predictor-logits-step9.bin",
+      "python/predictor-logits-frame1-step9.bin",
+      "python/predictor-logits-frame1-step10.bin",
+      "python/predictor-logits-frame1-step11.bin"
+    ],
+    "sha256": {
+      "input/forced-talker-frames.txt": "15D73293304CD935766D5905EB8F223833FA9784418B74AC3DD1D8473F412291",
+      "native/predictor-logits-step9.bin": "37888E3A81BCA4A79B156DA803BDF7CF03B392124E115EBE1A853FB86EEBB588",
+      "native/predictor-logits-frame1-step9.bin": "11BFF7C566324FAF026212F10DCBF440197F9457E08B6AC2DC991C7A751A8FE7",
+      "native/predictor-logits-frame1-step10.bin": "D9C2A737D8F06EF18E5829F674F61BAFFDDF5B463C66DDA0AAA39181AA05DA89",
+      "native/predictor-logits-frame1-step11.bin": "4B0090669ACCCB4486C0F232195B74989D16AA765AD0A2863E7F1AF01869AFB9",
+      "native/seed1008-max8-predictor.raw.log": "E72155CD1D92C843ED416C8622D4F37DAB16A7897DEEB864792478654815BE38",
+      "python/predictor-logits-step9.bin": "693DB0B12DB96690832EA2604E6523EA8EA1667905446AC9EAB528DBB6CD8D63",
+      "python/predictor-logits-frame1-step9.bin": "8011555CBBB1932EEF42E613DC8C5A11F55689CAB375958C5D5026EA2D2D8E05",
+      "python/predictor-logits-frame1-step10.bin": "F0209920CF6A32E8AEE4548C5526DC96B746CE488CF1E7BBD07325A3B30DA8FE",
+      "python/predictor-logits-frame1-step11.bin": "1868F977A8491D49ED4814FF9DABF772DF4A2863E06BE901D19C529E9570E75D"
+    }
+  }
+}
