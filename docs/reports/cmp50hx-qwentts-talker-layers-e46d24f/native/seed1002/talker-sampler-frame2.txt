@@ -1,0 +1,8 @@
+frame=2
+subseq=32
+vocab=3072
+u=0.3574715555
+sum_f32=2.574608088
+target_f32=0.9203491807
+selected=845
+replayed_selected=845

@@ -1,0 +1,87 @@
+{
+  "schema": "cmp50hx.qwentts_talker_layer_probe.v1",
+  "experiment": "cmp50hx-qwentts-talker-layers",
+  "captured_at": "2026-09-21",
+  "purpose": "Locate the earliest observed Talker forward-path divergence for the reproducible seed-1002 stochastic mismatch.",
+  "provenance": {
+    "bridge_main_at_publication": "618a84d297c9ecddcc58f68329c5853ca767554c",
+    "qwentts_source_commit": "e46d24fcd634e385b80104c9cccd8d44b7175255",
+    "qwentts_source_tree_sha": "1bf25cce56aaba1c9274cd7ac971087bed20087a",
+    "diagnostic_checkout_commit": "5052aab22c4a237b1f14c853d2857055cd346c51",
+    "diagnostic_checkout_tree_equivalent_to_source": true,
+    "qwentts_runtime_banner_observed": "qwentts.cpp 5052aab (2026-09-21)",
+    "runtime_banner_note": "The reused CMake build directory retained a generated version.h banner from the 5052aab checkout; the working source tree was byte-for-byte tree-equivalent to e46d24f when compiled.",
+    "qwen_tts_binary_sha256": "9B6FE60040CE6975573B3DBD0B6FEF6112AE2A1B0D403572B3E9656CCEF51FB2",
+    "hardware": "NVIDIA CMP 50HX, compute capability 7.5, 20479 MiB",
+    "python_runtime": "torch 2.8.0+cu128 / CUDA 12.8",
+    "models": {
+      "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+      "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+      "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+      "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+    },
+    "python_harness": {
+      "source_commit": "e46d24fcd634e385b80104c9cccd8d44b7175255",
+      "debug_clone_sha256": "B5776A6A3063AECB3CD64F459AD1A8DB688316D2E501E61547EB267A8A66414A",
+      "cossim_common_sha256": "036F5A4848201A7400997D1AEEC02B136FA2D50469BE44979FF1B763445C310E"
+    }
+  },
+  "request": {
+    "seed": 1002,
+    "max_new_tokens": 3,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "reference_mode": "direct latent ICL",
+    "eos_disabled_for_diagnostic": true,
+    "target": {
+      "component": "Talker c0",
+      "frame": 2,
+      "philox_subsequence": 32,
+      "native_token": 845,
+      "python_token": 1042,
+      "uniform": 0.3574715555
+    }
+  },
+  "trajectory": {
+    "native_shape": [3, 16],
+    "python_shape": [2, 16],
+    "common_codes_exact": "32/32",
+    "frame_1": {
+      "classification": "near_exact",
+      "layer_metrics": {
+        "L0": {"cosine": 0.9999999494527834, "max_abs": 0.0005456209182739258, "mean_abs": 0.0000290942620036864},
+        "L7": {"cosine": 0.9999999499498377, "max_abs": 0.0005674362182617188, "mean_abs": 0.00007577370289389779},
+        "L14": {"cosine": 0.9999998975848559, "max_abs": 0.001129150390625, "mean_abs": 0.0002384922900091624},
+        "L21": {"cosine": 0.9999999628731927, "max_abs": 0.006740570068359375, "mean_abs": 0.0009839788945100736},
+        "L27": {"cosine": 0.9999999172623774, "max_abs": 0.016298651695251465, "mean_abs": 0.003710898003191687}
+      }
+    },
+    "frame_2": {
+      "classification": "first_observed_talker_forward_divergence",
+      "layer_metrics": {
+        "L0": {"cosine": 0.9700533570275264, "max_abs": 0.3030165433883667, "mean_abs": 0.020992497906263452},
+        "L7": {"cosine": 0.9829597706619001, "max_abs": 0.540152907371521, "mean_abs": 0.03777345672369847},
+        "L14": {"cosine": 0.9888679356356629, "max_abs": 0.8497246503829956, "mean_abs": 0.07027442683101981},
+        "L21": {"cosine": 0.9973682774069668, "max_abs": 2.1184775829315186, "mean_abs": 0.229372210582369},
+        "L27": {"cosine": 0.9978023263003707, "max_abs": 4.259002685546875, "mean_abs": 0.5250476064247778}
+      }
+    }
+  },
+  "artifacts": {
+    "raw": "cmp50hx-qwentts-talker-layers-e46d24f/raw/seed1002-layer-run.log",
+    "native": "cmp50hx-qwentts-talker-layers-e46d24f/native/seed1002/",
+    "python": "cmp50hx-qwentts-talker-layers-e46d24f/python/seed1002/",
+    "raw_sha256": "A289B7F82EA3B56BCBE7DF0E2CA3676E3A6B5C3603FB5F40A3A265C2C88D76A3",
+    "notes": "Layer taps are actual native GGML and Python tensors. L0 is the earliest recorded post-layer tap; the pre-layer frame input is not instrumented by this probe."
+  },
+  "finding": {
+    "first_observed_divergence": "Talker frame 2 at L0 tap",
+    "candidate_set_or_sampler_tested": false,
+    "sampler_is_not_causal_boundary": true,
+    "eos_or_long_horizon_parity_proven": false,
+    "production_sampling_changed": false,
+    "conclusion": "Seed 1002 reaches frame 2 with an exact 32-code common prefix and the same Philox draw, but the Talker forward path is already materially different at the first recorded L0 output. The stochastic sampler amplifies this pre-sampler model/state divergence; no sampler or EOS change is justified by this evidence."
+  }
+}
