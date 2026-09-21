@@ -1,0 +1,80 @@
+{
+  "schema": "cmp50hx.qwentts_talker_input_probe.v1",
+  "experiment": "cmp50hx-qwentts-talker-input-seed1002",
+  "captured_at": "2026-09-21",
+  "purpose": "Compare the actual native and Python Talker decode input embeddings before the first recorded layer tap.",
+  "provenance": {
+    "bridge_main_at_publication": "d360c875050ad4990d82f2659d2859777e5ac2b6",
+    "qwentts_source_commit": "f128fe537a048c2ff716a710611a7416bf35f526",
+    "qwentts_source_tree_sha": "136bcf0ebd685fbb9b73afc1db4d0450b967fd54",
+    "qwentts_runtime_banner_observed": "qwentts.cpp f128fe5 (2026-09-21)",
+    "qwen_tts_binary_sha256": "E7A54F5683B0E6F3909F742DAED6E8F1D05D670AE62479417B01A894D4683BFD",
+    "hardware": "NVIDIA CMP 50HX, compute capability 7.5, 20479 MiB",
+    "python_runtime": "torch 2.8.0+cu128 / CUDA 12.8",
+    "models": {
+      "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+      "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+      "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+      "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+    },
+    "python_harness": {
+      "source_commit": "2c449c03c982c846caf56727b950351cf386142a",
+      "debug_clone_sha256": "B5776A6A3063AECB3CD64F459AD1A8DB688316D2E501E61547EB267A8A66414A",
+      "cossim_common_sha256": "E873A2D0BC718B6E49804B6D15B1002B36AA38213EF0C05824E3B85722DE479B"
+    }
+  },
+  "request": {
+    "seed": 1002,
+    "max_new_tokens": 3,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "reference_mode": "direct latent ICL",
+    "eos_disabled_for_diagnostic": true,
+    "target": {
+      "component": "Talker c0",
+      "frame": 2,
+      "philox_subsequence": 32,
+      "native_token": 845,
+      "python_token": 1042,
+      "uniform": 0.3574715555
+    }
+  },
+  "trajectory": {
+    "native_shape": [3, 16],
+    "python_shape": [2, 16],
+    "common_codes_exact": "32/32",
+    "frame_1": {
+      "input_metrics": {"cosine": 0.9999999999999994, "max_abs": 0.000000059604644775390625, "mean_abs": 0.0000000005190941010368988},
+      "layer_l0_metrics": {"cosine": 0.9999999494527834, "max_abs": 0.0005456209182739258, "mean_abs": 0.0000290942620036864}
+    },
+    "frame_2": {
+      "classification": "first_observed_pre_layer_input_divergence",
+      "input_metrics": {"cosine": 0.9363623562196324, "max_abs": 0.08704376220703125, "mean_abs": 0.017133389322395942},
+      "layer_metrics": {
+        "L0": {"cosine": 0.9700533570275264, "max_abs": 0.3030165433883667, "mean_abs": 0.020992497906263452},
+        "L7": {"cosine": 0.9829597706619001, "max_abs": 0.540152907371521, "mean_abs": 0.03777345672369847},
+        "L14": {"cosine": 0.9888679356356629, "max_abs": 0.8497246503829956, "mean_abs": 0.07027442683101981},
+        "L21": {"cosine": 0.9973682774069668, "max_abs": 2.1184775829315186, "mean_abs": 0.229372210582369},
+        "L27": {"cosine": 0.9978023263003707, "max_abs": 4.259002685546875, "mean_abs": 0.5250476064247778}
+      }
+    }
+  },
+  "artifacts": {
+    "raw": "cmp50hx-qwentts-talker-input-seed1002-f128fe5/raw/seed1002-f128-layer-input.log",
+    "native": "cmp50hx-qwentts-talker-input-seed1002-f128fe5/native/seed1002/",
+    "python": "cmp50hx-qwentts-talker-input-seed1002-f128fe5/python/seed1002/",
+    "raw_sha256": "84F970BABC50A0AFC2858AD12EED651071A30AF122191F7CE1C187B7B0186232",
+    "native_input_frame2_sha256": "5554FBAD083F1D356C193FBE4AE752B45A5E784696CF4911C716CB148A06B42C",
+    "python_input_frame2_sha256": "F6FB86A4D8C135BA48B188A4744DFEFC60A116953479C4298EFCB7AE0FE9DB06",
+    "notes": "Input tensors are actual post-codebook-gather plus overlay inputs to the Talker decode graph. L0 is the first recorded post-layer output."
+  },
+  "finding": {
+    "first_observed_divergence": "Talker frame 2 input embedding, before layer 0",
+    "sampler_is_not_causal_boundary": true,
+    "eos_or_long_horizon_parity_proven": false,
+    "production_sampling_changed": false,
+    "conclusion": "Frame 1 inputs are effectively exact, while frame 2 inputs already differ materially before layer 0. The seed-1002 token mismatch is therefore caused by decode-input composition or carried state between frames; Talker layer arithmetic and stochastic sampling amplify an earlier divergence."
+  }
+}
