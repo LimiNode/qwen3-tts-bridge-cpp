@@ -1,0 +1,91 @@
+{
+  "schema": "qwentts.cmp50hx.first_mismatch.v1",
+  "status": "clean_replay_no_mismatch_in_common_frames",
+  "capture_date": "2026-09-21",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479,
+    "cuda": "13.3",
+    "ggml_cuda_arch": "sm_75"
+  },
+  "provenance": {
+    "qwentts_source_commit": "5052aab22c4a237b1f14c853d2857055cd346c51",
+    "qwentts_pinned_merge_commit": "5052aab22c4a237b1f14c853d2857055cd346c51",
+    "bridge_main_commit_at_capture": "1b59b316d498cb26a134df2ca1a75aef67aa2b93",
+    "bridge_worker_used": false,
+    "qwen_tts_binary_sha256": "41a5e4ed7f005af4065b16cc3a2d6cb8f446e779db58cfa6d7de6468fbf5c900",
+    "talker_model_sha256": "7f563aa562e6dd2327e35e10ee7c050760495d2eca654d21f1d5b1460bd6528a",
+    "codec_model_sha256": "b16b95557c7c7340a121757bd6855b9609e1cf4ad3fad0778b89393293ae5f3d",
+    "reference_spk_sha256": "78fd11047f7f62f61077c0f7e14bbc884c2d1ebb3d7f7b84317ae50ee08acc42",
+    "reference_rvq_sha256": "fd8c6fdc98c08785cccedf710cce26d9ac23a6f56df156d41561066470eafbe1",
+    "python_harness": {
+      "source_commit": "5052aab22c4a237b1f14c853d2857055cd346c51",
+      "debug_clone_sha256": "b5776a6a3063aecb3cd64f459ad1a8db688316d2e501e61547eb267a8a66414a",
+      "cossim_common_sha256": "8ce90d89bd541c8f3633bb43a911eab995c7d0e689d8304a6db283e210c70adf"
+    },
+    "raw_log_sha256": "e6c0d14a5ab1cb49730728fe8766add995d7c0d5372768938f7673ba35a81f6b"
+  },
+  "request": {
+    "seed": 1008,
+    "max_new_tokens": 3,
+    "sampling": "stochastic",
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "disable_eos_harness_only": true,
+    "diagnostic_target": {
+      "frame": 1,
+      "graph_step": 9,
+      "logical_codebook": 10,
+      "philox_subsequence": 26
+    }
+  },
+  "codes": {
+    "native_shape": [3, 16],
+    "python_shape": [2, 16],
+    "common_values_compared": 32,
+    "common_values_exact": 32,
+    "common_values_exact_percent": 100.0,
+    "first_mismatch": null,
+    "shape_mismatch": {
+      "kind": "frame_count",
+      "native_frames": 3,
+      "python_frames": 2,
+      "interpretation": "termination/materialization difference; not a predictor-token mismatch"
+    }
+  },
+  "sampler_target": {
+    "uniform": 0.7944138646,
+    "native_selected": 1337,
+    "python_selected": 1337,
+    "selected_token_exact": true,
+    "native_selected_cdf_before": 0.7925696969,
+    "native_selected_cdf": 0.8044618368,
+    "native_top_order_hash": "0x5bd6642c4bf8fc53",
+    "native_candidate_set_hash": "0x0c68fc9efcbc11e0",
+    "native_masked_logits_hash": "0x06e061ea364cf9da",
+    "native_probabilities_hash": "0x4869e4d254b8a472",
+    "native_cdf_hash": "0x5ad2e0ee542f46f7",
+    "python_sum_f64": 0.99999994039535522,
+    "python_target_f64": 0.79441381726182314
+  },
+  "predictor_forward": {
+    "logits_cosine": 1.0,
+    "logits_max_abs": 0.015787,
+    "logits_mean_abs": 0.0074808,
+    "hidden_cosine": 0.999999,
+    "hidden_max_abs": 0.078991,
+    "hidden_mean_abs": 0.0029562
+  },
+  "analyzer": {
+    "tool": "tests/analyze_first_mismatch.py",
+    "strict_shape_policy": "reject",
+    "result": "rejected_frame_count_difference_after_confirming_common_prefix_with_CodesFull"
+  },
+  "artifacts": {
+    "raw_log": "raw/cmp50hx-qwentts-first-mismatch-seed1008-5052aab.raw.log"
+  },
+  "conclusion": "The canonical sm_75 replay has no predictor-token mismatch in the two frames materialized by both stacks. The historical 1265-versus-1337 split is not reproduced and remains unreproduced evidence. The native/Python frame-count difference remains a separate termination/materialization issue."
+}
