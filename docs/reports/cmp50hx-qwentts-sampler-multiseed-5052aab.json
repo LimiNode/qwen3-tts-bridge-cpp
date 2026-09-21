@@ -1,0 +1,114 @@
+{
+  "schema": "cmp50hx.qwentts_sampler_multiseed.v2",
+  "experiment": "cmp50hx-qwentts-sampler-multiseed",
+  "captured_at": "2026-09-21",
+  "purpose": "Canonical same-conditioning stochastic replay on seeds 1000, 1002, and 1006, followed by an actual Talker sampler capture for the first reproducible mismatch.",
+  "provenance": {
+    "bridge_main_at_publication": "99c05881ee76bee7e0b3bc98089981d46fede798",
+    "qwentts_source_commit": "5052aab22c4a237b1f14c853d2857055cd346c51",
+    "qwentts_runtime_banner": "qwentts.cpp 5052aab (2026-09-21)",
+    "qwen_tts_binary_sha256": "41A5E4ED7F005AF4065B16CC3A2D6CB8F446E779DB58CFA6D7DE6468FBF5C900",
+    "hardware": "NVIDIA CMP 50HX, compute capability 7.5, 20479 MiB",
+    "python_runtime": "torch 2.8.0+cu128 / CUDA 12.8",
+    "models": {
+      "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+      "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+      "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+      "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+    },
+    "python_harness": {
+      "source_commit": "5052aab22c4a237b1f14c853d2857055cd346c51",
+      "debug_clone_sha256": "B5776A6A3063AECB3CD64F459AD1A8DB688316D2E501E61547EB267A8A66414A",
+      "cossim_common_sha256": "8CE90D89BD541C8F3633BB43A911EAB995C7D0E689D8304A6DB283E210C70ADF",
+      "description": "qwentts.cpp tests/debug-clone-cossim.py and tests/cossim_common.py copied from the canonical source checkout"
+    }
+  },
+  "request": {
+    "max_new_tokens": 3,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "reference_mode": "direct latent ICL",
+    "target": {
+      "component": "Talker c0",
+      "frame": 2,
+      "philox_subsequence": 32,
+      "vocabulary": 3072
+    }
+  },
+  "seeds": {
+    "1000": {
+      "classification": "same_conditioning_exact_prefix",
+      "talker_trace_exact": true,
+      "first_observed_divergence": null,
+      "native_shape": [3, 16],
+      "python_shape": [2, 16],
+      "common_codes_exact": "32/32",
+      "native_selected_at_subseq_32": 1551,
+      "python_selected_at_subseq_32": 1551,
+      "interpretation": "The common generated prefix is exact; the native run materializes one additional frame beyond the Python run."
+    },
+    "1002": {
+      "classification": "early_talker_stochastic_divergence",
+      "talker_trace_exact": false,
+      "first_observed_divergence": {
+        "subsequence": 32,
+        "uniform": 0.3574715555,
+        "native": 845,
+        "python": 1042
+      },
+      "native_shape": [3, 16],
+      "python_shape": [2, 16],
+      "common_codes_before_divergence": "32/32",
+      "actual_sampler_capture": {
+        "candidate_sets_equal": true,
+        "candidate_count": 50,
+        "candidate_set_sha256": "a2ee7ea0c259d3afe8fcf4fbff8148745154e74bf7a2216400ca5fd0134acef9",
+        "native_logits_python_logits_cosine": 0.99897301197052,
+        "native_logits_max_abs": 1.2155921459197998,
+        "native_logits_mean_abs": 0.18595653772354126,
+        "native_sum_f32": 2.5746078491210938,
+        "native_target_f32": 0.9203490619659424,
+        "native_cdf_before_845": 0.8650041818618774,
+        "native_cdf_at_845": 1.3105316162109375,
+        "python_sum_f64": 1.0,
+        "python_target_f64": 0.3574715554714203,
+        "python_cdf_before_1042": 0.34459060430526733,
+        "python_cdf_at_1042": 0.38628870248794556,
+        "python_cdf_at_845": 0.32847529649734497,
+        "native_cdf_at_1042": 1.4244956970214844
+      },
+      "interpretation": "The top-k candidate set is identical, while Talker logits and resulting probabilities differ before selection. The same Philox uniform therefore crosses different CDF boundaries. This is not evidence of a candidate-order or CDF implementation defect."
+    },
+    "1006": {
+      "classification": "same_conditioning_exact_prefix",
+      "talker_trace_exact": true,
+      "first_observed_divergence": null,
+      "native_shape": [3, 16],
+      "python_shape": [2, 16],
+      "common_codes_exact": "32/32",
+      "native_selected_at_subseq_32": 1525,
+      "python_selected_at_subseq_32": 1525,
+      "interpretation": "The common generated prefix is exact; the native run materializes one additional frame beyond the Python run."
+    }
+  },
+  "artifacts": {
+    "raw": "cmp50hx-qwentts-sampler-multiseed-5052aab/raw/",
+    "native_seed1002": "cmp50hx-qwentts-sampler-multiseed-5052aab/native/seed1002/",
+    "python_seed1002": "cmp50hx-qwentts-sampler-multiseed-5052aab/python/seed1002/",
+    "capture_raw_sha256": "9B711F65AC084FF14964DAF286FA98591CD4642DE0E9EF18C60147BECBA96BBF",
+    "notes": "The native files are actual GGML sampler outputs (masked logits, weights, CDF, uniform, selected token). The Python files are the actual torch.multinomial input and selection trace, not an offline reconstruction."
+  },
+  "finding": {
+    "same_conditioning_prefix_seeds": [1000, 1006],
+    "early_talker_divergence_seeds": [1002],
+    "talker_candidate_set_equal_at_seed1002": true,
+    "production_sampling_changed": false,
+    "eos_or_long_horizon_parity_proven": false,
+    "conclusion": "At seed 1002 the first mismatch is a Talker model/logit numerical divergence before sampling: candidate membership is equal, but probabilities differ enough for the same Philox draw to select 845 natively and 1042 in Python. Seeds 1000 and 1006 retain exact common prefixes."
+  }
+}
