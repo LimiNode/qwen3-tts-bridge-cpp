@@ -1,0 +1,52 @@
+{
+  "experiment": "cmp50hx_dump_transparency_seed1002_optin_trace",
+  "status": "token_level_transparency_confirmed",
+  "date_utc": "2026-09-22",
+  "provenance": {
+    "bridge_main_commit": "54bf5348fd6bfe6aa2cb59e0cab078a4816bda78",
+    "qwentts_source_commit": "08e80772e19b727dee0c756f3c1d1dcad7fb83e4",
+    "native_binary_sha256": "69468621BE41C6175F19F44423FD3DE637BA1ABE653C78020F06103685DC81AD",
+    "hardware": "NVIDIA CMP 50HX, compute capability 7.5, 20479 MiB"
+  },
+  "request": {
+    "seed": 1002,
+    "max_new_tokens": 3,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "diagnostics_off_trace_switch": "QWEN_TTS_FULL_AR_TRACE=1",
+    "diagnostics_on_switch": "--dump"
+  },
+  "comparison": {
+    "talker_c0": [1445, 1332, 845],
+    "talker_uniforms": [0.5435120463, 0.2176649570, 0.3574715555],
+    "predictor_codes": [
+      [1445, 1408, 325, 400, 901, 2034, 1456, 668, 1128, 1442, 1634, 658, 798, 785, 1283, 1098],
+      [1332, 1924, 38, 403, 218, 1922, 1048, 108, 1304, 1132, 1241, 175, 1041, 592, 1147, 240],
+      [845, 1756, 519, 819, 705, 1685, 77, 470, 1496, 1978, 1399, 1255, 1707, 904, 567, 895]
+    ],
+    "talker_c0_exact": true,
+    "predictor_codes_exact": true,
+    "predictor_values_compared": 48,
+    "generation_frame_count_off": 3,
+    "generation_frame_count_on": 3,
+    "audio_sha256_off": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D",
+    "audio_sha256_on": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D",
+    "audio_sha256_equal": true
+  },
+  "artifacts": {
+    "diagnostics_off_log": "native-off.raw.log",
+    "diagnostics_off_log_sha256": "5C9CE98B6D58FA23075FFE2730A5C46D26D9EC4DB19C40813712842288734DA4",
+    "diagnostics_on_log": "native-on.raw.log",
+    "diagnostics_on_log_sha256": "5E06BA507FE8715E28BFE1812DC07510AE0B6FA02220355C2FA7D8676CED2C2F"
+  },
+  "conclusion": {
+    "supported": "The opt-in no-dump trace and dump-enabled trace are exact for all three Talker frames and all 48 predictor code values, with byte-identical decoded audio.",
+    "production_path": "Without QWEN_TTS_FULL_AR_TRACE and without --dump, ordinary runs retain the prior compact subsequence<32 trace and do not construct full trace strings.",
+    "not_proven": ["Python/native long-horizon parity", "EOS equivalence"]
+  }
+}
