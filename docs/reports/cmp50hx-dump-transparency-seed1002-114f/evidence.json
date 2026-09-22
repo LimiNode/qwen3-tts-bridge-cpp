@@ -1,0 +1,90 @@
+{
+  "experiment": "cmp50hx_dump_transparency_seed1002",
+  "status": "audio_and_completion_transparent_token_trace_incomplete",
+  "date_utc": "2026-09-22",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479
+  },
+  "provenance": {
+    "bridge_main_merge_commit": "b2992eda74b79192fcf82903c98c9cd2cffeccb8",
+    "qwentts_source_commit": "114f7732e832ec7df1a474d8160aedbeda5bca43",
+    "native_binary_sha256": "466402A5C16E30D3D65408D1046D916BBF34EBFA1574BEE63A7372CE929836B8",
+    "models": {
+      "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+      "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+      "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+      "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1",
+      "reference_wav_sha256": "B125A318B550DACE422DD3D75650AB6DAFE5AFF20F38FC8FE39C59B96356DC08"
+    }
+  },
+  "request": {
+    "seed": 1002,
+    "max_new_tokens": 3,
+    "language": "english",
+    "sampling": {
+      "temperature": 0.9,
+      "top_k": 50,
+      "top_p": 1.0,
+      "repetition_penalty": 1.05,
+      "subtalker_temperature": 0.9,
+      "subtalker_top_k": 50,
+      "subtalker_top_p": 1.0,
+      "subtalker_repetition_penalty": 1.05
+    }
+  },
+  "comparison": {
+    "diagnostics_off": {
+      "exit_code": 0,
+      "generation_done_frames": 3,
+      "audio_sha256": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D",
+      "raw_log": "native-off.raw.log",
+      "raw_log_sha256": "EED862CBBDB48EA3B789964DFFEC16A0432952834E5C199F628431CC7569CEA6",
+      "compact_sample_trace": [
+        {"step": 0, "c0": 1445, "u": 0.5435120463, "subsequence": 0},
+        {"step": 1, "c0": 1332, "u": 0.2176649570, "subsequence": 16}
+      ],
+      "compact_trace_bound": "subsequence < 32; step 2 starts at subsequence 32 and is intentionally omitted"
+    },
+    "diagnostics_on": {
+      "exit_code": 0,
+      "generation_done_frames": 3,
+      "audio_sha256": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D",
+      "raw_log": "native-on.raw.log",
+      "raw_log_sha256": "9C7FD81219D7C872EFC4B15ED2D004D588723F89F41AF3817056E93234932064",
+      "talker_trace": [
+        {"step": 0, "c0": 1445, "u": 0.5435120463, "subsequence": 0},
+        {"step": 1, "c0": 1332, "u": 0.2176649570, "subsequence": 16},
+        {"step": 2, "c0": 845, "u": 0.3574715555, "subsequence": 32}
+      ],
+      "predictor_codes": {
+        "frame0": [1445, 1408, 325, 400, 901, 2034, 1456, 668, 1128, 1442, 1634, 658, 798, 785, 1283, 1098],
+        "frame1": [1332, 1924, 38, 403, 218, 1922, 1048, 108, 1304, 1132, 1241, 175, 1041, 592, 1147, 240],
+        "frame2": [845, 1756, 519, 819, 705, 1685, 77, 470, 1496, 1978, 1399, 1255, 1707, 904, 567, 895]
+      }
+    },
+    "audio_sha256_equal": true,
+    "generation_frame_count_equal": true,
+    "token_level_off_on_exact": false,
+    "token_level_reason": "The diagnostics-off run intentionally emits only the compact first-32 Philox trace and does not write codes-full.bin. Equal decoded WAV and equal completion count are strong transparency evidence, but do not substitute for an off-run token dump."
+  },
+  "conclusion": {
+    "supported": [
+      "diagnostics OFF and ON both completed successfully",
+      "both runs reported three generated frames",
+      "decoded WAV bytes are identical",
+      "the missing OFF step-2 Sample line is explained by the compact subsequence<32 logging bound, not EOS"
+    ],
+    "not_proven": [
+      "byte-identical Talker/predictor code trajectory for every frame",
+      "dump-on graph transparency at component-tensor level"
+    ],
+    "next_gate": "run a canonical off-mode trace that records all generated c0/predictor codes without enabling diagnostic graph outputs, then compare it with this dump-on run before publishing component-level parity evidence"
+  },
+  "artifacts": {
+    "diagnostics_off_log": "native-off.raw.log",
+    "diagnostics_on_log": "native-on.raw.log",
+    "audio_sha256": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D"
+  }
+}
