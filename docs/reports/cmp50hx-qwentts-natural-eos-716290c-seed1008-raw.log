@@ -1,0 +1,285 @@
+qwen-tts.exe : [Qwen] qwentts.cpp 716290c (2026-09-23)
+At line:2 char:905
++ ... ompt -Raw | & $bin --model $model --codec $codec --seed $seed --ref-t ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([Qwen] qwentts.cpp 716290c (2026-09-23):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 20479 MiB):
+  Device 0: NVIDIA CMP 50HX, compute capability 7.5, VMM: yes, VRAM: 20479 MiB
+[Load] Talker backend: CUDA0 (CPU threads: 18)
+[GGUF] C:\tmp\qwentts-layer-seed1002\models\qwen-talker-1.7b-base-F32.gguf: 480 tensors, data at offset 5954432
+[WeightCtx] Loaded 316 tensors, 6643.5 MB into backend
+[Talker] Loaded: 28 layers, hidden 2048, heads 16/8, head_dim 128, FFN 6144, RoPE theta 1000000, mrope sections [24,20,
+20] interleaved=0
+[WeightCtx] Loaded 88 tensors, 668.1 MB into backend
+[CodePredictor] Loaded: 5 layers, hidden 1024, heads 16/8, head_dim 128, FFN 3072, RoPE theta 1000000, 15 acoustic code
+books (vocab 2048 each), mtp_proj linear
+[GGUF] C:\tmp\qwentts-layer-seed1002\models\qwen-tokenizer-12hz-F32.gguf: 398 tensors, data at offset 29664
+[WeightCtx] Loaded 18 tensors, 33.0 MB into backend
+[Quantizer] Loaded: 16 codebooks (1 semantic + 15 acoustic), 2048 entries x 256 dim, hidden 512
+[WeightCtx] Loaded 93 tensors, 116.1 MB into backend
+[Transformer] Loaded: 8 layers, hidden 512, heads 16/16, head_dim 64, FFN 1024, RoPE theta 10000, sliding window 72
+[WeightCtx] Loaded 22 tensors, 80.1 MB into backend
+[Upsample] Loaded: 2 blocks (2x ratio per block), channels 1024, dwconv kernel 7
+[WeightCtx] Loaded 118 tensors, 142.9 MB into backend
+[DAC] Loaded: 4 blocks (strides 8/5/4/3), 24 kHz mono out, weights 142.9 MB
+[WeightCtx] Loaded 2 tensors, 3.0 MB into backend
+[Pipeline] Ready: hop 1920 samples @ 24000 Hz mono, 16 codebooks @ 12.5 Hz
+[KVCache] Allocated: 28 layers, 8 KV heads, head_dim 128, max_seq_len 4096, 1 sets -> 896 MB
+[KVCache] Allocated: 5 layers, 8 KV heads, head_dim 128, max_seq_len 16, 1 sets -> 0 MB
+[Pipeline] Loaded: arch=1b7 variant=base tokenizer=qwen3_tts_tokenizer_12hz codebooks=16 speaker_encoder=deferred speak
+ers=0 fa=on clamp_fp16=off max_batch=1
+[BPE] Loaded from GGUF: 151676 vocab, 151291 merges, eos_id=151643
+[BPE] Registered 5 arch special tokens (total specials=6)
+[Qwen] Compute worker started (max_batch=1)
+[CLI] Reference SPK: C:\tmp\qwentts-layer-seed1002\latents\reference.spk, 2048 f32 values
+[CLI] Reference RVQ: C:\tmp\qwentts-layer-seed1002\latents\reference.rvq, K=16 T=215
+[Pipeline] Latent speaker embedding: 2048 values
+[Pipeline] Latent ICL ref_codes: 215 frames at 12.5 Hz
+[Prompt] Built: 38 ids, N_text=30, N_instruct=0, T_ctx=225, hidden=2048, lang=english (id=2050), speaker=none (id=-1) r
+ef_spk_emb=yes icl=yes
+[Batch] Admit slot=0 T_ctx=225 prefill=1838.0 ms build=38.7 ms (stall for 0 active slots)
+[Sample] step=0 c0=1755 u=0.7998353243 subseq=0
+[ARTrace] predictor step=0 codes=1755,1995,199,1011,1726,1685,761,1508,1015,1283,1712,81,1044,1329,1134,2004
+[Sample] step=1 c0=1902 u=0.8325841427 subseq=16
+ggml_backend_cuda_graph_compute: CUDA graph warmup complete
+[ARTrace] predictor step=1 codes=1902,781,199,990,1501,773,274,1472,1169,1015,1265,322,2036,1332,1293,1542
+[Sample] step=2 c0=1915 u=0.9180971980 subseq=32
+[ARTrace] predictor step=2 codes=1915,441,607,168,613,1421,2011,493,1229,1055,1265,654,1286,405,1118,382
+[Sample] step=3 c0=1205 u=0.6514953375 subseq=48
+[ARTrace] predictor step=3 codes=1205,1918,681,1557,109,2032,724,1932,919,1996,1916,874,1661,1345,1452,576
+[Sample] step=4 c0=1545 u=0.4532149136 subseq=64
+[ARTrace] predictor step=4 codes=1545,1823,6,1707,1450,882,614,1909,351,918,695,2046,1378,919,758,496
+[Sample] step=5 c0=1551 u=0.9121124148 subseq=80
+[ARTrace] predictor step=5 codes=1551,52,1454,869,592,929,1461,258,924,347,1882,681,83,823,2013,851
+[Sample] step=6 c0=1206 u=0.3473594785 subseq=96
+[ARTrace] predictor step=6 codes=1206,2015,1164,154,241,311,811,374,110,338,1445,1014,911,1487,1045,138
+[Sample] step=7 c0=662 u=0.4909121990 subseq=112
+[ARTrace] predictor step=7 codes=662,1149,70,1268,1136,1018,1303,139,875,116,432,285,1934,55,892,733
+[Pipeline] Generated 8 frames (slot 0)
+[Sample] step=8 c0=1194 u=0.7950230241 subseq=128
+[ARTrace] predictor step=8 codes=1194,1081,1593,125,211,597,1700,306,65,331,1218,236,856,1262,1241,341
+[Sample] step=9 c0=1559 u=0.7253499031 subseq=144
+[ARTrace] predictor step=9 codes=1559,525,762,741,1006,1325,793,1354,1691,1249,723,1467,58,865,1874,244
+[Sample] step=10 c0=28 u=0.0005813817 subseq=160
+[ARTrace] predictor step=10 codes=28,2025,194,784,677,127,653,478,1713,170,554,255,1073,446,990,831
+[Sample] step=11 c0=894 u=0.2311717719 subseq=176
+[ARTrace] predictor step=11 codes=894,216,651,304,776,573,1384,1330,1282,37,299,856,732,438,232,1348
+[Sample] step=12 c0=1428 u=0.5788405538 subseq=192
+[ARTrace] predictor step=12 codes=1428,967,902,834,229,1375,954,1543,1811,1043,1969,650,1294,1677,1589,1513
+[Sample] step=13 c0=428 u=0.6104824543 subseq=208
+[ARTrace] predictor step=13 codes=428,1756,941,888,269,431,1047,640,1656,297,383,337,1792,581,1919,182
+[Sample] step=14 c0=718 u=0.2881962359 subseq=224
+[ARTrace] predictor step=14 codes=718,1116,1072,236,909,1736,1619,822,97,226,1358,1723,1507,1954,1822,178
+[Sample] step=15 c0=807 u=0.1338094920 subseq=240
+[ARTrace] predictor step=15 codes=807,1416,283,1489,300,1722,379,1477,366,581,73,473,326,1450,993,515
+[Pipeline] Generated 16 frames (slot 0)
+[Sample] step=16 c0=1351 u=0.8684271574 subseq=256
+[ARTrace] predictor step=16 codes=1351,136,836,1656,624,330,1129,104,1124,51,954,61,391,1918,1757,557
+[Sample] step=17 c0=862 u=0.6766760945 subseq=272
+[ARTrace] predictor step=17 codes=862,551,452,1974,1961,169,1816,535,765,260,1016,163,999,1896,484,999
+[Sample] step=18 c0=178 u=0.1067452058 subseq=288
+[ARTrace] predictor step=18 codes=178,1924,519,1327,773,1325,907,1472,249,467,414,761,1452,47,694,560
+[Sample] step=19 c0=1358 u=0.9744881392 subseq=304
+[ARTrace] predictor step=19 codes=1358,1841,259,1352,407,1184,1791,186,630,993,1124,463,337,1697,719,593
+[Sample] step=20 c0=943 u=0.8999599218 subseq=320
+[ARTrace] predictor step=20 codes=943,1326,928,1815,323,74,172,1455,769,1382,1440,382,42,399,342,1515
+[Sample] step=21 c0=1610 u=0.6129325032 subseq=336
+[ARTrace] predictor step=21 codes=1610,1756,1286,1620,350,1425,1452,1902,1058,69,223,31,1599,106,930,1074
+[Sample] step=22 c0=959 u=0.9340179563 subseq=352
+[ARTrace] predictor step=22 codes=959,1078,580,1442,463,516,46,510,1559,1580,1681,1084,529,1138,155,47
+[Sample] step=23 c0=21 u=0.0071517108 subseq=368
+[ARTrace] predictor step=23 codes=21,195,1390,94,1394,139,104,1455,512,553,224,64,833,1237,856,71
+[Pipeline] Generated 24 frames (slot 0)
+[Sample] step=24 c0=1608 u=0.8626286983 subseq=384
+[ARTrace] predictor step=24 codes=1608,1776,695,802,1031,106,1650,396,577,130,386,714,838,388,2000,322
+[Sample] step=25 c0=974 u=0.0263421498 subseq=400
+[ARTrace] predictor step=25 codes=974,35,482,650,254,210,912,1364,1849,1471,1663,1896,451,1191,808,193
+[Sample] step=26 c0=398 u=0.7918367982 subseq=416
+[ARTrace] predictor step=26 codes=398,2044,1484,1738,806,621,1553,294,302,144,592,711,1875,975,7,867
+[Sample] step=27 c0=851 u=0.9061427116 subseq=432
+[ARTrace] predictor step=27 codes=851,1079,17,560,897,1810,35,941,1482,739,1049,331,1252,81,945,134
+[Sample] step=28 c0=746 u=0.4115130603 subseq=448
+[ARTrace] predictor step=28 codes=746,1554,837,1185,508,414,616,474,643,1507,1155,1569,53,1458,269,1519
+[Sample] step=29 c0=295 u=0.2145511210 subseq=464
+[ARTrace] predictor step=29 codes=295,1623,1681,110,1748,1349,138,1682,746,379,611,1409,772,827,129,552
+[Sample] step=30 c0=42 u=0.5069260597 subseq=480
+[ARTrace] predictor step=30 codes=42,478,583,1260,1083,488,1105,1,606,704,990,124,1895,1305,151,1704
+[Sample] step=31 c0=42 u=0.0050858120 subseq=496
+[ARTrace] predictor step=31 codes=42,1591,340,218,1404,366,1949,934,1340,143,1587,849,945,911,44,1279
+[Pipeline] Generated 32 frames (slot 0)
+[Sample] step=32 c0=152 u=0.5040330291 subseq=512
+[ARTrace] predictor step=32 codes=152,2006,1011,363,82,1105,1521,1627,414,431,1702,108,768,198,85,1760
+[Sample] step=33 c0=1575 u=0.5886727571 subseq=528
+[ARTrace] predictor step=33 codes=1575,1223,273,464,1110,994,33,1169,170,839,1813,810,174,73,1333,1305
+[Sample] step=34 c0=539 u=0.0642458424 subseq=544
+[ARTrace] predictor step=34 codes=539,1572,99,1372,2010,1135,80,704,1376,956,18,1256,914,964,1797,99
+[Sample] step=35 c0=648 u=0.3008501232 subseq=560
+[ARTrace] predictor step=35 codes=648,71,1940,289,960,440,235,168,390,316,914,913,556,599,220,460
+[Sample] step=36 c0=1745 u=0.6026511788 subseq=576
+[ARTrace] predictor step=36 codes=1745,1776,1553,1685,807,1252,76,1086,585,523,0,359,637,1912,910,247
+[Sample] step=37 c0=1446 u=0.4416434467 subseq=592
+[ARTrace] predictor step=37 codes=1446,279,938,863,1402,241,1816,144,1049,1742,171,546,541,316,1567,941
+[Sample] step=38 c0=648 u=0.0116580259 subseq=608
+[ARTrace] predictor step=38 codes=648,71,1437,1072,836,737,295,70,10,1439,549,1731,825,980,773,793
+[Sample] step=39 c0=1745 u=0.5057871342 subseq=624
+[ARTrace] predictor step=39 codes=1745,1776,258,894,577,768,219,1451,364,1831,515,1853,1433,66,1683,423
+[Pipeline] Generated 40 frames (slot 0)
+[Sample] step=40 c0=811 u=0.2735867500 subseq=640
+[ARTrace] predictor step=40 codes=811,572,734,1042,569,467,2019,1923,1846,748,1745,315,154,62,1617,483
+[Sample] step=41 c0=1015 u=0.3913223147 subseq=656
+[ARTrace] predictor step=41 codes=1015,862,540,1573,1256,697,793,914,1875,1230,665,284,1390,296,1452,1419
+[Sample] step=42 c0=792 u=0.9476119876 subseq=672
+[ARTrace] predictor step=42 codes=792,1518,747,88,273,781,428,2013,630,1075,753,895,77,160,669,28
+[Sample] step=43 c0=846 u=0.8445469737 subseq=688
+[ARTrace] predictor step=43 codes=846,1638,1170,420,410,1231,1505,816,1276,121,1819,542,323,1963,1767,952
+[Sample] step=44 c0=343 u=0.2411948591 subseq=704
+[ARTrace] predictor step=44 codes=343,1915,467,1720,982,180,531,172,1200,747,1475,40,1346,481,1715,1040
+[Sample] step=45 c0=1943 u=0.4568609595 subseq=720
+[ARTrace] predictor step=45 codes=1943,29,1675,322,434,602,362,517,586,37,342,920,493,0,11,1220
+[Sample] step=46 c0=1820 u=0.9333363175 subseq=736
+[ARTrace] predictor step=46 codes=1820,667,260,494,508,1775,1162,1130,1947,1482,325,1281,1871,828,694,811
+[Sample] step=47 c0=783 u=0.2470841855 subseq=752
+[ARTrace] predictor step=47 codes=783,1752,693,1287,1915,1394,1990,1468,950,369,291,970,1088,955,1113,1409
+[Pipeline] Generated 48 frames (slot 0)
+[Sample] step=48 c0=1694 u=0.5302813053 subseq=768
+[ARTrace] predictor step=48 codes=1694,478,718,1843,1763,1607,149,1183,898,1568,2007,902,352,199,1019,1689
+[Sample] step=49 c0=1697 u=0.9627244473 subseq=784
+[ARTrace] predictor step=49 codes=1697,1827,126,48,101,403,1395,1978,257,164,1068,1454,1558,852,679,257
+[Sample] step=50 c0=449 u=0.8108580709 subseq=800
+[ARTrace] predictor step=50 codes=449,29,1422,646,312,313,1356,165,586,169,95,1413,44,1853,328,216
+[Sample] step=51 c0=918 u=0.2670128942 subseq=816
+[ARTrace] predictor step=51 codes=918,1038,290,1238,15,604,563,1321,1360,1718,1493,627,500,271,1725,199
+[Sample] step=52 c0=1835 u=0.5773942471 subseq=832
+[ARTrace] predictor step=52 codes=1835,429,1775,1867,1381,366,1215,687,980,414,349,1298,2029,949,196,1492
+[Sample] step=53 c0=1324 u=0.0591774099 subseq=848
+[ARTrace] predictor step=53 codes=1324,1126,871,94,1130,282,51,265,1699,1580,2015,132,1229,1098,1066,916
+[Sample] step=54 c0=1363 u=0.8254017830 subseq=864
+[ARTrace] predictor step=54 codes=1363,969,1971,1162,1927,107,1591,146,841,752,652,742,450,488,1054,1902
+[Sample] step=55 c0=825 u=0.7125492096 subseq=880
+[ARTrace] predictor step=55 codes=825,1260,464,415,1297,831,214,1444,1119,608,1847,615,1733,1420,343,19
+[Pipeline] Generated 56 frames (slot 0)
+[Sample] step=56 c0=389 u=0.5342283845 subseq=896
+[ARTrace] predictor step=56 codes=389,806,232,1848,1596,574,286,1824,743,1210,1976,424,346,696,160,1261
+[Sample] step=57 c0=241 u=0.8320152164 subseq=912
+[ARTrace] predictor step=57 codes=241,1387,1493,1225,962,982,726,1795,953,1606,368,856,206,26,1856,1116
+[Sample] step=58 c0=473 u=0.5411279202 subseq=928
+[ARTrace] predictor step=58 codes=473,627,1711,1356,1640,1562,633,1237,130,1432,1836,1472,1876,241,336,371
+[Sample] step=59 c0=1358 u=0.6955944896 subseq=944
+[ARTrace] predictor step=59 codes=1358,1924,1543,1327,1442,810,1759,704,1789,2033,1042,1919,783,1706,128,122
+[Sample] step=60 c0=1611 u=0.8019784689 subseq=960
+[ARTrace] predictor step=60 codes=1611,35,1703,791,1354,1107,1594,724,227,918,1512,553,836,200,476,1061
+[Sample] step=61 c0=1139 u=0.3859536052 subseq=976
+[ARTrace] predictor step=61 codes=1139,846,131,250,944,327,790,1069,443,1002,491,1313,1041,1775,801,511
+[Sample] step=62 c0=1903 u=0.4245357513 subseq=992
+[ARTrace] predictor step=62 codes=1903,1771,1728,1761,419,1941,595,406,162,759,720,1235,146,1381,1090,1448
+[Sample] step=63 c0=511 u=0.0275923293 subseq=1008
+[ARTrace] predictor step=63 codes=511,1591,307,736,1741,331,1614,574,1669,838,1691,1596,465,1777,1751,407
+[Pipeline] Generated 64 frames (slot 0)
+[Sample] step=64 c0=1631 u=0.8588446975 subseq=1024
+[ARTrace] predictor step=64 codes=1631,661,414,2013,799,1022,1064,895,1761,930,484,1565,552,491,1436,323
+[Sample] step=65 c0=118 u=0.0484510139 subseq=1040
+[ARTrace] predictor step=65 codes=118,577,1922,1041,1107,264,382,50,215,29,1186,198,57,1050,1142,301
+[Sample] step=66 c0=662 u=0.0397657454 subseq=1056
+[ARTrace] predictor step=66 codes=662,758,131,824,1623,70,446,148,375,25,1086,1442,196,1651,1572,1605
+[Sample] step=67 c0=436 u=0.1877263933 subseq=1072
+[ARTrace] predictor step=67 codes=436,370,315,1620,32,844,730,646,1459,1505,697,1580,1990,1732,1166,1587
+[Sample] step=68 c0=88 u=0.3511922956 subseq=1088
+[ARTrace] predictor step=68 codes=88,1696,1773,190,289,1949,117,1654,24,75,253,1074,198,743,1688,870
+[Sample] step=69 c0=982 u=0.8439717293 subseq=1104
+[ARTrace] predictor step=69 codes=982,1619,474,1265,774,1426,1262,1935,227,806,1291,889,1668,1952,178,1006
+[Sample] step=70 c0=1252 u=0.5530808568 subseq=1120
+[ARTrace] predictor step=70 codes=1252,770,99,1182,2010,1493,974,306,810,1039,1855,866,1406,19,1481,341
+[Sample] step=71 c0=1943 u=0.2549937665 subseq=1136
+[ARTrace] predictor step=71 codes=1943,570,1242,79,1522,12,979,1363,1633,865,1859,47,374,1614,332,196
+[Pipeline] Generated 72 frames (slot 0)
+[Sample] step=72 c0=918 u=0.1475484222 subseq=1152
+[ARTrace] predictor step=72 codes=918,967,1593,828,369,85,1682,866,1180,1274,750,472,854,1449,430,742
+[Sample] step=73 c0=1924 u=0.3012596369 subseq=1168
+[ARTrace] predictor step=73 codes=1924,221,1415,1660,1956,669,693,93,3,1241,346,1554,1612,1916,860,1784
+[Sample] step=74 c0=920 u=0.2176847756 subseq=1184
+[ARTrace] predictor step=74 codes=920,1144,17,598,311,1734,920,1393,1262,619,1610,941,748,421,130,725
+[Sample] step=75 c0=565 u=0.2468872368 subseq=1200
+[ARTrace] predictor step=75 codes=565,806,1937,80,999,445,71,401,566,1486,576,42,1209,578,895,247
+[Sample] step=76 c0=1774 u=0.9306988716 subseq=1216
+[ARTrace] predictor step=76 codes=1774,1776,694,1892,86,1551,1551,1774,889,417,1132,504,312,90,1220,1714
+[Sample] step=77 c0=1395 u=0.5910695195 subseq=1232
+[ARTrace] predictor step=77 codes=1395,1371,877,1879,222,159,267,1482,1210,498,1696,1810,669,1830,2044,765
+[Sample] step=78 c0=1866 u=0.4762422740 subseq=1248
+[ARTrace] predictor step=78 codes=1866,2008,958,1462,1240,1481,95,828,1496,1915,19,587,791,1161,852,868
+[Sample] step=79 c0=1628 u=0.7857175469 subseq=1264
+[ARTrace] predictor step=79 codes=1628,1143,1280,953,1181,1214,1628,1131,495,84,1132,1206,594,1841,1629,242
+[Pipeline] Generated 80 frames (slot 0)
+[Sample] step=80 c0=1538 u=0.0947308317 subseq=1280
+[ARTrace] predictor step=80 codes=1538,572,1918,1593,89,1826,1216,646,754,1887,780,720,2035,1631,573,917
+[Sample] step=81 c0=852 u=0.0771176443 subseq=1296
+[ARTrace] predictor step=81 codes=852,731,1392,136,398,1422,722,1078,408,1364,160,269,1571,1880,783,1579
+[Sample] step=82 c0=1825 u=0.9188475609 subseq=1312
+[ARTrace] predictor step=82 codes=1825,1000,1857,1231,638,1059,1517,283,1976,1058,349,1930,965,951,1241,68
+[Sample] step=83 c0=1119 u=0.1450950503 subseq=1328
+[ARTrace] predictor step=83 codes=1119,814,892,1761,1960,1710,1540,519,1631,335,1740,1013,352,1563,1841,93
+[Sample] step=84 c0=351 u=0.2460885644 subseq=1344
+[ARTrace] predictor step=84 codes=351,61,1519,605,1601,241,10,1749,1272,240,101,398,37,471,519,1890
+[Sample] step=85 c0=963 u=0.8089145422 subseq=1360
+[ARTrace] predictor step=85 codes=963,747,133,291,1955,1940,1941,936,363,1442,227,393,1920,434,373,1223
+[Sample] step=86 c0=417 u=0.6990944147 subseq=1376
+[ARTrace] predictor step=86 codes=417,443,1077,721,1140,1901,188,27,137,1821,804,1783,1532,1025,46,1035
+[Sample] step=87 c0=489 u=0.0663985088 subseq=1392
+[ARTrace] predictor step=87 codes=489,105,1840,471,579,1411,711,1361,344,1501,1057,139,1132,1986,819,506
+[Pipeline] Generated 88 frames (slot 0)
+[Sample] step=88 c0=1496 u=0.6804466844 subseq=1408
+[ARTrace] predictor step=88 codes=1496,980,1701,47,566,729,1055,190,104,297,754,361,41,1218,229,147
+[Sample] step=89 c0=836 u=0.1191367432 subseq=1424
+[ARTrace] predictor step=89 codes=836,52,753,846,176,1138,790,935,692,1527,652,573,96,1809,402,1822
+[Sample] step=90 c0=1824 u=0.9853436947 subseq=1440
+[ARTrace] predictor step=90 codes=1824,1814,643,1592,1262,366,788,925,1902,706,1920,1338,1390,1338,391,1304
+[Sample] step=91 c0=920 u=0.8242695332 subseq=1456
+[ARTrace] predictor step=91 codes=920,474,480,666,784,1674,443,1596,695,390,65,256,83,906,576,230
+[Sample] step=92 c0=748 u=0.1833579540 subseq=1472
+[ARTrace] predictor step=92 codes=748,614,1002,559,1787,2,234,1490,956,118,78,1096,789,1282,64,28
+[Sample] step=93 c0=437 u=0.8044353127 subseq=1488
+[ARTrace] predictor step=93 codes=437,996,1769,11,1238,1312,319,1255,868,1529,1752,1044,414,1926,1764,1373
+[Sample] step=94 c0=1301 u=0.8448332548 subseq=1504
+[ARTrace] predictor step=94 codes=1301,1379,1511,815,256,287,1497,1221,1215,664,1128,1715,534,1197,1141,550
+[Sample] step=95 c0=1018 u=0.5702709556 subseq=1520
+[ARTrace] predictor step=95 codes=1018,1541,187,1258,1168,952,57,858,285,1882,1740,669,1697,778,1317,192
+[Pipeline] Generated 96 frames (slot 0)
+[Sample] step=96 c0=42 u=0.1895289719 subseq=1536
+[ARTrace] predictor step=96 codes=42,494,604,403,1303,963,187,280,1388,1131,1611,1455,642,1402,1607,1404
+[Sample] step=97 c0=970 u=0.2224084586 subseq=1552
+[ARTrace] predictor step=97 codes=970,1431,1244,1489,1677,1798,58,616,56,1199,320,1736,1199,1129,61,1919
+[Sample] step=98 c0=1412 u=0.9777885079 subseq=1568
+[ARTrace] predictor step=98 codes=1412,1768,590,1096,247,389,1519,91,1056,1591,102,157,133,98,0,364
+[Sample] step=99 c0=545 u=0.3979088366 subseq=1584
+[ARTrace] predictor step=99 codes=545,1814,851,1859,1043,49,1492,615,881,1334,1291,227,327,2047,359,1600
+[Sample] step=100 c0=1560 u=0.7673782706 subseq=1600
+[ARTrace] predictor step=100 codes=1560,1371,2005,2032,1050,1252,1489,826,147,329,1665,1042,87,913,923,242
+[Sample] step=101 c0=388 u=0.2608167529 subseq=1616
+[ARTrace] predictor step=101 codes=388,1350,1729,1560,1211,901,1993,1892,547,1778,342,931,169,1762,234,1370
+[Sample] step=102 c0=19 u=0.1247190163 subseq=1632
+[ARTrace] predictor step=102 codes=19,1370,1184,162,259,2031,684,1511,410,1309,1050,513,656,1352,1964,997
+[Sample] step=103 c0=1446 u=0.9755070210 subseq=1648
+[ARTrace] predictor step=103 codes=1446,1924,2040,555,1402,1539,263,879,1278,1421,1110,1261,1254,302,1120,1367
+[Pipeline] Generated 104 frames (slot 0)
+[Sample] step=104 c0=187 u=0.5144026279 subseq=1664
+[ARTrace] predictor step=104 codes=187,155,1100,1172,1921,119,2016,1415,439,1241,1437,311,417,1344,433,1859
+[Sample] step=105 c0=1062 u=0.7619314790 subseq=1680
+[ARTrace] predictor step=105 codes=1062,1038,695,221,860,1079,284,1116,103,653,1469,891,1209,452,1422,969
+[Sample] step=106 c0=357 u=0.6979554892 subseq=1696
+[ARTrace] predictor step=106 codes=357,221,412,1363,773,1907,1052,1794,14,1412,18,422,1629,115,401,994
+[Sample] step=107 c0=707 u=0.5045177937 subseq=1712
+[ARTrace] predictor step=107 codes=707,1924,1949,1196,1430,1850,243,776,1529,692,1683,144,680,653,1735,1107
+[Sample] step=108 c0=2150 u=0.9060295224 subseq=1728
+[Pipeline] EOS at step 108, stopping (slot 0)
+[Pipeline] Generation done : 108 frames
+[Perf] PromptBuild 38.7 ms
+[Perf] Prefill 1838.0 ms (T_ctx prefill)
+[Perf] TTFA 1936.8 ms (first frame codes)
+[Perf] TalkerDecode 1464.6 ms (108 frames, 13.56 ms/frame)
+[Perf] CodePredictor 1838.6 ms (17.02 ms/frame)
+[Perf] HostCompose 6.3 ms (c0 sample + next emb)
+[Perf] CodecDecode 1140.9 ms
+[Perf] Total 6336.2 ms (108 frames, 30.64 ms/frame AR, audio 8.64 s, RTF 0.733)
+[WAV] Wrote C:\tmp\qwentts-natural-eos-716290c\seed1008\output.wav: 207360 samples, 24000 Hz, mono S16
+[Pipeline] Wrote 207360 samples (8.64 s) -> C:\tmp\qwentts-natural-eos-716290c\seed1008\output.wav
