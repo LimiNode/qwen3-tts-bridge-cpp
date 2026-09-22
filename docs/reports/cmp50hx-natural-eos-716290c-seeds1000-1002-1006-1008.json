@@ -1,0 +1,38 @@
+{
+  "schema": "qwentts_natural_eos_matrix_v1",
+  "experiment": "CMP 50HX canonical native natural-EOS matrix",
+  "captured_at": "2026-09-23",
+  "bridge_main_commit": "8c11a8752687932ef0c77098748bceb29b09b9ce",
+  "qwentts_source_commit": "716290c666f6cff52c3cd3e238b1052218b187b5",
+  "native_binary_sha256": "5BE575CDFA0EA31448135D74A783665AFAE2CF70B565021EA10D373ECAB24735",
+  "hardware": "NVIDIA CMP 50HX, compute capability 7.5, 20479 MiB",
+  "models": {
+    "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+    "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+    "reference_spk_sha256": "18748F083AB54AC46E3FF3AA3340A7BD6D1E501EBC78AC32013E973B16B28B72",
+    "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+  },
+  "generation_contract": {
+    "sampling_mode": "stochastic",
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "forced_history": false,
+    "disable_eos": false,
+    "diagnostic_dump": false,
+    "max_new_tokens_initial": 128,
+    "max_new_tokens_followup": 256
+  },
+  "runs": [
+    {"seed": 1000, "max_new_tokens": 128, "frames": 116, "natural_eos": true, "audio_samples": 222720, "audio_seconds": 9.28, "ttfa_ms": 1938.5, "total_ms": 6619.2, "rtf": 0.713, "raw_log": "cmp50hx-natural-eos-716290c-seed1000-raw.log", "raw_log_sha256": "2AFAD324E661FA85F8888B0D77C97EA2269BDD3E8B687ADECAA5EAB98782C343", "wav_sha256": "284A3483C5BF3A963A0DFBEC78CE0A30EFBB30FA801A9F68A8D9E4991B35CC1F"},
+    {"seed": 1002, "max_new_tokens": 128, "frames": 123, "natural_eos": true, "audio_samples": 236160, "audio_seconds": 9.84, "ttfa_ms": 1941.8, "total_ms": 6857.4, "rtf": 0.697, "raw_log": "cmp50hx-natural-eos-716290c-seed1002-raw.log", "raw_log_sha256": "C6D0BE0FE20F314BBA0F40118AED8F0154FD8496EC1913018C53B4D6D55F13BE", "wav_sha256": "0672F0767382C2C5113A239D90752CA7A2A8182F05ACC4FDE83443AF2C03B22B"},
+    {"seed": 1006, "max_new_tokens": 128, "frames": 128, "natural_eos": false, "termination": "max_new_tokens", "audio_samples": 245760, "audio_seconds": 10.24, "ttfa_ms": 1939.1, "total_ms": 7031.3, "rtf": 0.687, "raw_log": "cmp50hx-natural-eos-716290c-seed1006-limit128-raw.log", "raw_log_sha256": "43B71354568A56CA60798FC73814E40172D19A533ACFCE893017174ECE6D7BDA", "wav_sha256": "0BBB4A8F342CF19F96E3B56DD5555129D2ABB35A071950C2327414E91CD349A3"},
+    {"seed": 1006, "max_new_tokens": 256, "frames": 134, "natural_eos": true, "audio_samples": 257280, "audio_seconds": 10.72, "ttfa_ms": 1939.5, "total_ms": 7248.5, "rtf": 0.676, "raw_log": "cmp50hx-natural-eos-716290c-seed1006-limit256-raw.log", "raw_log_sha256": "226ECC276F613A2D601493A63098AE4B18795899EBB20BD42C8096102F394419", "wav_sha256": "3AD30C85DA8CB2CA33F525EC9BEE6B99F7D655030F9F72CBD7883843E200DD81"},
+    {"seed": 1008, "max_new_tokens": 128, "frames": 108, "natural_eos": true, "audio_samples": 207360, "audio_seconds": 8.64, "ttfa_ms": 1936.8, "total_ms": 6336.2, "rtf": 0.733, "raw_log": "cmp50hx-natural-eos-716290c-seed1008-raw.log", "raw_log_sha256": "5D516754FF6B447D7CDCBE16C5F854A6348AAB17F7A7E0190F2154A74D8E097B", "wav_sha256": "DD8AF8871BC8AE7FFA491BE68AD44337BF38A04ADD643403C14F92A45FF8E7D9"}
+  ],
+  "conclusion": "All four seeds completed finite natural-EOS generation on the canonical #44 runtime. Seed 1006 required the documented 256-token follow-up because the initial 128-token cap was reached; it then terminated naturally at frame 134. No runaway-to-cap behavior remained at the 256-token follow-up. This is a bounded EOS sanity gate, not a claim of stochastic Python/native token parity or full release acceptance."
+}

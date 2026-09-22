@@ -1,0 +1,73 @@
+{
+  "schema": "qwentts_component_gate_v1",
+  "experiment": "CMP 50HX Python/native component parity",
+  "captured_at": "2026-09-23",
+  "bridge_main_commit": "8c11a8752687932ef0c77098748bceb29b09b9ce",
+  "qwentts_source_commit": "716290c666f6cff52c3cd3e238b1052218b187b5",
+  "qwentts_runtime_banner": "qwentts.cpp 716290c (2026-09-23)",
+  "native_binary_sha256": "5BE575CDFA0EA31448135D74A783665AFAE2CF70B565021EA10D373ECAB24735",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479
+  },
+  "models": {
+    "talker": {
+      "path": "qwen-talker-1.7b-base-F32.gguf",
+      "sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A"
+    },
+    "codec": {
+      "path": "qwen-tokenizer-12hz-F32.gguf",
+      "sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D"
+    },
+    "reference_spk_sha256": "18748F083AB54AC46E3FF3AA3340A7BD6D1E501EBC78AC32013E973B16B28B72",
+    "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+  },
+  "python_harness": {
+    "origin": "isolated debug-clone-cossim.py with talker component readback hook",
+    "base_checkout": "1ebed080b88b8202a910d9d7753faccc8de9f59d",
+    "debug_clone_sha256": "B5776A6A3063AECB3CD64F459AD1A8DB688316D2E501E61547EB267A8A66414A",
+    "cossim_common_sha256": "DBBC46EA68C1A5AA5C1F0E59C1F580CF50FB62BE637C3477C74625F14EA2E37B",
+    "working_tree_note": "recorded frame-hook/component-readback edits are represented by the file hashes above"
+  },
+  "run": {
+    "seed": 1002,
+    "max_new_tokens": 3,
+    "sampling_mode": "stochastic",
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "forced_history": false,
+    "disable_eos": false,
+    "native_raw_log": "cmp50hx-qwentts-component-gate-716290c-seed1002-raw.log",
+    "native_raw_log_sha256": "89F1B56E01D29B1B5A6AA4456B749FE522BE4ABA30A1846EF0D39C89DE1EB445"
+  },
+  "first_mismatch": {
+    "frame": 2,
+    "talker_subsequence": 32,
+    "philox_u": 0.3574715555,
+    "native_c0": 845,
+    "python_c0": 1042
+  },
+  "component_metrics": {
+    "frame_1": {
+      "codec_embed": {"exact": true, "cosine": 1.0, "max_abs": 0.0, "mean_abs": 0.0},
+      "acoustic_embed_sum": {"exact": true, "cosine": 1.0, "max_abs": 0.0, "mean_abs": 0.0},
+      "pre_overlay_embed": {"exact": true, "cosine": 1.0, "max_abs": 0.0, "mean_abs": 0.0},
+      "overlay": {"exact": false, "cosine": 1.0, "max_abs": 2.98023224e-8, "mean_abs": 8.28144664e-10},
+      "input_embed": {"exact": false, "cosine": 1.0, "max_abs": 2.98023224e-8, "mean_abs": 8.38497272e-10}
+    },
+    "frame_2": {
+      "codec_embed": {"exact": true, "cosine": 1.0, "max_abs": 0.0, "mean_abs": 0.0},
+      "acoustic_embed_sum": {"exact": false, "cosine": 0.898462951183, "max_abs": 0.0870437622, "mean_abs": 0.0171333893},
+      "pre_overlay_embed": {"exact": false, "cosine": 0.907892227173, "max_abs": 0.0870437622, "mean_abs": 0.0171333893},
+      "overlay": {"exact": false, "cosine": 1.0, "max_abs": 2.98023224e-8, "mean_abs": 8.28144664e-10},
+      "input_embed": {"exact": false, "cosine": 0.936362445354, "max_abs": 0.0870437622, "mean_abs": 0.0171333893}
+    }
+  },
+  "conclusion": "The #44 overlay readback fix produces the same diagnostic tensor definition on both sides. Frame 1 is component-exact; frame 2 codec and overlay remain exact while acoustic/pre-overlay/input divergence follows the earlier stochastic predictor-code mismatch. No new overlay arithmetic or graph defect is indicated."
+}
