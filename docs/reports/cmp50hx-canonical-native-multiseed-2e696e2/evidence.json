@@ -1,0 +1,93 @@
+{
+  "schema": "cmp50hx.qwentts_native_multiseed.v1",
+  "experiment": "cmp50hx-canonical-native-multiseed",
+  "captured_at": "2026-09-22",
+  "purpose": "Re-run the bounded native sampler diagnostic on the canonical qwentts runtime after the dump transparency gate.",
+  "provenance": {
+    "bridge_main_at_capture": "23e23fb824379ec76fba9e5f1fd87d1245212935",
+    "qwentts_source_commit": "2e696e2f359d722f8797995e447b19f34cdacfbf",
+    "qwentts_runtime_banner": "qwentts.cpp 2e696e2 (2026-09-22)",
+    "qwen_tts_binary_sha256": "DAF16578630220340419EB676EDB9C1A067CB8B0900741171F8120299A50A599",
+    "hardware": "NVIDIA CMP 50HX, compute capability 7.5, 20479 MiB",
+    "models": {
+      "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+      "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+      "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+      "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+    }
+  },
+  "request": {
+    "seeds": [1000, 1002, 1006, 1008],
+    "max_new_tokens": 3,
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "gate": {
+      "frame": 2,
+      "predictor_step": 9,
+      "logical_codebook": 10,
+      "vocab": 2048
+    }
+  },
+  "seeds": {
+    "1000": {
+      "uniform": 0.5755396485,
+      "selected": 902,
+      "kth_id": 1722,
+      "kth_logit": 23.04718971,
+      "k_plus_one_id": 827,
+      "k_plus_one_logit": 23.01638412,
+      "candidate_set_hash": "a02daf5b8057512d",
+      "audio_sha256": "23BC027E34EA054F5A28C656E834CB5A3A7557537285B269EB37A973BEA9EF63",
+      "raw_log_sha256": "5F056414C383A90F263DE94555B6F04158D633CEA49A356198246DDB5FCABA88"
+    },
+    "1002": {
+      "uniform": 0.7919672728,
+      "selected": 1399,
+      "kth_id": 1934,
+      "kth_logit": 23.92102623,
+      "k_plus_one_id": 715,
+      "k_plus_one_logit": 23.90633202,
+      "candidate_set_hash": "d3312a4c5af7dc74",
+      "audio_sha256": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D",
+      "raw_log_sha256": "BF1EA2F2B1DB09AB064AEFA659B4BFD5C821F81D706AF261578B5FBA64FEE352"
+    },
+    "1006": {
+      "uniform": 0.6810894608,
+      "selected": 1180,
+      "kth_id": 1972,
+      "kth_logit": 23.44990921,
+      "k_plus_one_id": 581,
+      "k_plus_one_logit": 23.44897461,
+      "candidate_set_hash": "adbb0dbad1d48e54",
+      "audio_sha256": "C06F8AB84898F657ED128833A9DB386FF33FD1F66C2D8914E932DA1493D0D424",
+      "raw_log_sha256": "904317FB609550709106B5470002DCE933768A397FA8ECF9230132B5613D5F50"
+    },
+    "1008": {
+      "uniform": 0.4923694134,
+      "selected": 832,
+      "kth_id": 1657,
+      "kth_logit": 23.18097878,
+      "k_plus_one_id": 1033,
+      "k_plus_one_logit": 23.16956902,
+      "candidate_set_hash": "a4d2a4fd04b1483f",
+      "audio_sha256": "9FF1C6BC33C515011C1E09734C44BE707826D6A666D11151AB3ECF7F1154BA40",
+      "raw_log_sha256": "6EC2D9DE41CE7722CB9A00AC0E981D7622B053DFF29B68149700BEFDCB311EA6"
+    }
+  },
+  "finding": {
+    "native_runs_successful": true,
+    "all_runs_reached_frame2_gate": true,
+    "native_selected_tokens": {"1000": 902, "1002": 1399, "1006": 1180, "1008": 832},
+    "scope": "Native-only canonical rerun. Python parity interpretations remain in the versioned sampler evidence reports and are not recomputed here.",
+    "production_sampling_changed": false,
+    "eos_or_long_horizon_parity_proven": false
+  },
+  "artifacts": {
+    "per_seed": "seed<seed>/native.raw.log and seed<seed>/sampler-frame2-step9.txt"
+  }
+}
