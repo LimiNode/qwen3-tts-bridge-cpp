@@ -1,0 +1,94 @@
+{
+  "experiment": "cmp50hx_dump_transparency_seed1002",
+  "status": "token_level_transparency_confirmed",
+  "date_utc": "2026-09-22",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479
+  },
+  "provenance": {
+    "bridge_main_commit": "1ad85a995ad8af6915dc1ade19825ad8a3d904ba",
+    "bridge_repinned_qwentts_commit": "114f7732e832ec7df1a474d8160aedbeda5bca43",
+    "qwentts_transparency_trace_commit": "2e696e2f359d722f8797995e447b19f34cdacfbf",
+    "native_binary_sha256": "DAF16578630220340419EB676EDB9C1A067CB8B0900741171F8120299A50A599",
+    "models": {
+      "talker_sha256": "7F563AA562E6DD2327E35E10EE7C050760495D2ECA654D21F1D5B1460BD6528A",
+      "codec_sha256": "B16B95557C7C7340A121757BD6855B9609E1CF4AD3FAD0778B89393293AE5F3D",
+      "reference_spk_sha256": "78FD11047F7F62F61077C0F7E14BBC884C2D1EBB3D7F7B84317AE50EE08ACC42",
+      "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1",
+      "reference_wav_sha256": "B125A318B550DACE422DD3D75650AB6DAFE5AFF20F38FC8FE39C59B96356DC08"
+    }
+  },
+  "request": {
+    "seed": 1002,
+    "max_new_tokens": 3,
+    "language": "english",
+    "sampling": {
+      "temperature": 0.9,
+      "top_k": 50,
+      "top_p": 1.0,
+      "repetition_penalty": 1.05,
+      "subtalker_temperature": 0.9,
+      "subtalker_top_k": 50,
+      "subtalker_top_p": 1.0,
+      "subtalker_repetition_penalty": 1.05
+    }
+  },
+  "comparison": {
+    "diagnostics_off": {
+      "exit_code": 0,
+      "generation_done_frames": 3,
+      "audio_sha256": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D",
+      "raw_log": "native-off.raw.log",
+      "raw_log_sha256": "EF1577C473582DE3AC3EB4186025C4D5CFF62F4F2289ADA9F75A7AAB586C20BE",
+      "talker_trace": [
+        {"step": 0, "c0": 1445, "u": 0.5435120463, "subsequence": 0},
+        {"step": 1, "c0": 1332, "u": 0.2176649570, "subsequence": 16},
+        {"step": 2, "c0": 845, "u": 0.3574715555, "subsequence": 32}
+      ],
+      "predictor_codes": {
+        "frame0": [1445, 1408, 325, 400, 901, 2034, 1456, 668, 1128, 1442, 1634, 658, 798, 785, 1283, 1098],
+        "frame1": [1332, 1924, 38, 403, 218, 1922, 1048, 108, 1304, 1132, 1241, 175, 1041, 592, 1147, 240],
+        "frame2": [845, 1756, 519, 819, 705, 1685, 77, 470, 1496, 1978, 1399, 1255, 1707, 904, 567, 895]
+      }
+    },
+    "diagnostics_on": {
+      "exit_code": 0,
+      "generation_done_frames": 3,
+      "audio_sha256": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D",
+      "raw_log": "native-on.raw.log",
+      "raw_log_sha256": "1B2C284CD5EAA66019A07DB02F6687E7761A25B195D6098543976A9814C9231D",
+      "talker_trace": [
+        {"step": 0, "c0": 1445, "u": 0.5435120463, "subsequence": 0},
+        {"step": 1, "c0": 1332, "u": 0.2176649570, "subsequence": 16},
+        {"step": 2, "c0": 845, "u": 0.3574715555, "subsequence": 32}
+      ],
+      "predictor_codes": {
+        "frame0": [1445, 1408, 325, 400, 901, 2034, 1456, 668, 1128, 1442, 1634, 658, 798, 785, 1283, 1098],
+        "frame1": [1332, 1924, 38, 403, 218, 1922, 1048, 108, 1304, 1132, 1241, 175, 1041, 592, 1147, 240],
+        "frame2": [845, 1756, 519, 819, 705, 1685, 77, 470, 1496, 1978, 1399, 1255, 1707, 904, 567, 895]
+      }
+    },
+    "talker_c0_exact": true,
+    "predictor_codes_exact": true,
+    "predictor_values_compared": 48,
+    "audio_sha256_equal": true,
+    "generation_frame_count_equal": true
+  },
+  "conclusion": {
+    "supported": [
+      "diagnostics OFF and ON use the same three-frame Talker and predictor trajectory",
+      "all 48 predictor code values are exact across modes",
+      "both runs produce byte-identical decoded audio",
+      "diagnostic graph outputs do not alter this bounded seed-1002 trajectory"
+    ],
+    "scope": "This is a transparency gate for the diagnostic graph. It does not prove stochastic Python/native parity or long-horizon acceptance.",
+    "next_gate": "use the validated dump-enabled runtime for component tensor comparison, then repeat the same bounded gate for seeds 1000, 1006, and 1008"
+  },
+  "artifacts": {
+    "diagnostics_off_log": "native-off.raw.log",
+    "diagnostics_on_log": "native-on.raw.log",
+    "audio_sha256": "C984763E6CFDB19345A2B58427689E755A8265166DF8B189DA269EB7294BAE9D"
+  }
+}
