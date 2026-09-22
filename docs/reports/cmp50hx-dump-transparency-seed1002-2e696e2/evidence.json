@@ -8,8 +8,9 @@
     "vram_mib": 20479
   },
   "provenance": {
-    "bridge_main_commit": "1ad85a995ad8af6915dc1ade19825ad8a3d904ba",
-    "bridge_repinned_qwentts_commit": "114f7732e832ec7df1a474d8160aedbeda5bca43",
+    "bridge_capture_commit": "1ad85a995ad8af6915dc1ade19825ad8a3d904ba",
+    "bridge_canonical_main_commit": "3fb508ee1e37f050b412982ef6878d2e25fdf0f8",
+    "bridge_repinned_qwentts_commit": "2e696e2f359d722f8797995e447b19f34cdacfbf",
     "qwentts_transparency_trace_commit": "2e696e2f359d722f8797995e447b19f34cdacfbf",
     "native_binary_sha256": "DAF16578630220340419EB676EDB9C1A067CB8B0900741171F8120299A50A599",
     "models": {

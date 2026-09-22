@@ -1,6 +1,6 @@
 # CMP 50HX dump-off/dump-on transparency probe
 
-This canonical seed-1002 smoke uses qwentts.cpp `2e696e2f359d722f8797995e447b19f34cdacfbf`, which adds only a bounded (128-frame) AR log. Bridge remains pinned to the runtime tree from qwentts.cpp `114f7732e832ec7df1a474d8160aedbeda5bca43`; the trace-only merge is identified separately because this binary was rebuilt after that merge. The same F32 models, `.spk/.rvq`, prompt, seed, sampling parameters, and `max_new_tokens=3` were used for diagnostics OFF and ON.
+This canonical seed-1002 smoke uses qwentts.cpp `2e696e2f359d722f8797995e447b19f34cdacfbf`, which adds only a bounded (128-frame) AR log. The run was captured from Bridge commit `1ad85a995ad8af6915dc1ade19825ad8a3d904ba`; canonical Bridge `main` now includes the matching repin at `3fb508ee1e37f050b412982ef6878d2e25fdf0f8`. The same F32 models, `.spk/.rvq`, prompt, seed, sampling parameters, and `max_new_tokens=3` were used for diagnostics OFF and ON.
 
 ## Result
 
