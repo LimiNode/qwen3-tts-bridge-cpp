@@ -5,7 +5,8 @@
   "qwentts_capture_commit": "716290c666f6cff52c3cd3e238b1052218b187b5",
   "qwentts_canonical_after_cleanup": "40ab5ebac0d99041475961b29526cf10691ae2e8",
   "bridge_main_at_capture": "286e823c941f42011ab3bc9e1d273fcd30855086",
-  "bridge_main_current": "57af9231f14a02d334f5630501262f4173920aa7",
+  "bridge_main_at_evidence_publication": "57af9231f14a02d334f5630501262f4173920aa7",
+  "bridge_main_current": "5abbe41435e5f5345cf37e9dc77b312841575ef9",
   "native_binary_sha256": "5BE575CDFA0EA31448135D74A783665AFAE2CF70B565021EA10D373ECAB24735",
   "python_harness": {
     "checkout_commit": "716290c666f6cff52c3cd3e238b1052218b187b5",
@@ -39,5 +40,5 @@
     "frame_1": {"codec_exact": true, "acoustic_exact": true, "pre_overlay_exact": true, "overlay_max_abs": 2.98023224e-8, "input_max_abs": 2.98023224e-8},
     "frame_2": {"codec_exact": true, "overlay_max_abs": 2.98023224e-8, "acoustic_cosine": 0.898462951183, "pre_overlay_cosine": 0.907892227173, "input_cosine": 0.936362445354, "max_abs": 0.0870437622}
   },
-  "conclusion": "A clean committed harness at the canonical capture commit reproduces the prior component gate and mismatch. This closes the stale/dirty Python harness provenance gap. The remaining free-running divergence is consistent with stochastic/numerical predictor parity; no structural overlay or input-composition defect was found."
+  "conclusion": "A clean committed harness at the canonical capture commit reproduces the prior component gate and mismatch. This closes the stale/dirty Python harness provenance gap. Under shared history, the investigated forward paths are near-equivalent; free-running divergence remains consistent with stochastic/numerical predictor parity, where trajectories can cross token-selection boundaries and then diverge. No structural overlay or input-composition defect was found."
 }

@@ -69,5 +69,5 @@
       "input_embed": {"exact": false, "cosine": 0.936362445354, "max_abs": 0.0870437622, "mean_abs": 0.0171333893}
     }
   },
-  "conclusion": "The #44 overlay readback fix produces the same diagnostic tensor definition on both sides. Frame 1 codec/acoustic/pre-overlay are exact and overlay/input are near-exact at FP32 dump precision; frame 2 codec is exact and overlay remains near-exact while acoustic/pre-overlay/input divergence follows the earlier stochastic predictor-code mismatch. No new overlay arithmetic or graph defect is indicated."
+  "conclusion": "The #44 overlay readback fix produces the same diagnostic tensor definition on both sides. Frame 1 codec/acoustic/pre-overlay are exact and overlay/input are near-exact at FP32 dump precision; frame 2 codec is exact and overlay remains near-exact while acoustic/pre-overlay/input divergence follows the earlier stochastic predictor-code mismatch. Under shared history, the investigated forward paths are near-equivalent; this does not prove the absence of every numerical implementation difference. No new overlay arithmetic or graph defect is indicated."
 }
