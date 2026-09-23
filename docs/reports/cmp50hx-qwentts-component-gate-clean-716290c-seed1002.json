@@ -1,0 +1,43 @@
+{
+  "schema": "qwentts_component_gate_clean_rerun_v1",
+  "experiment": "Clean-checkout replay of CMP 50HX component gate",
+  "captured_at": "2026-09-24",
+  "qwentts_capture_commit": "716290c666f6cff52c3cd3e238b1052218b187b5",
+  "qwentts_canonical_after_cleanup": "40ab5ebac0d99041475961b29526cf10691ae2e8",
+  "bridge_main_at_capture": "286e823c941f42011ab3bc9e1d273fcd30855086",
+  "bridge_main_current": "57af9231f14a02d334f5630501262f4173920aa7",
+  "native_binary_sha256": "5BE575CDFA0EA31448135D74A783665AFAE2CF70B565021EA10D373ECAB24735",
+  "python_harness": {
+    "checkout_commit": "716290c666f6cff52c3cd3e238b1052218b187b5",
+    "git_status_porcelain_before_run": "",
+    "debug_clone_sha256": "A038BF324FA7E3CCF92509FFA070BEF442691440DFE65B7EA8E4AA6096886E1B",
+    "cossim_common_sha256": "AC6C7DE23CACAB75C7C7A5317EDA9994E3C19336832E56BE3DA9D0915852DCA4",
+    "source_state": "committed qwentts.cpp tests; runtime output and latent export were outside the checkout"
+  },
+  "fixture": {
+    "reference_spk_sha256": "18748F083AB54AC46E3FF3AA3340A7BD6D1E501EBC78AC32013E973B16B28B72",
+    "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+  },
+  "run": {
+    "seed": 1002,
+    "max_new_tokens": 3,
+    "sampling_mode": "stochastic",
+    "temperature": 0.9,
+    "top_k": 50,
+    "top_p": 1.0,
+    "repetition_penalty": 1.05,
+    "subtalker_temperature": 0.9,
+    "subtalker_top_k": 50,
+    "subtalker_top_p": 1.0,
+    "forced_history": false,
+    "disable_eos": false,
+    "raw_log": "cmp50hx-qwentts-component-gate-clean-716290c-seed1002-raw.log",
+    "raw_log_sha256": "10B7568AD26511C15AFB3D5E8C895AE80E557563EBB79E71443B490B7B0D100D"
+  },
+  "first_mismatch": {"frame": 2, "subsequence": 32, "philox_u": 0.3574715555, "native_c0": 845, "python_c0": 1042},
+  "component_metrics_reproduced": {
+    "frame_1": {"codec_exact": true, "acoustic_exact": true, "pre_overlay_exact": true, "overlay_max_abs": 2.98023224e-8, "input_max_abs": 2.98023224e-8},
+    "frame_2": {"codec_exact": true, "overlay_max_abs": 2.98023224e-8, "acoustic_cosine": 0.898462951183, "pre_overlay_cosine": 0.907892227173, "input_cosine": 0.936362445354, "max_abs": 0.0870437622}
+  },
+  "conclusion": "A clean committed harness at the canonical capture commit reproduces the prior component gate and mismatch. This closes the stale/dirty Python harness provenance gap. The remaining free-running divergence is consistent with stochastic/numerical predictor parity; no structural overlay or input-composition defect was found."
+}
