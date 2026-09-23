@@ -1,0 +1,296 @@
+python : [Qwen] qwentts.cpp 716290c (2026-09-23)
+At line:2 char:469
++ ... | Out-Null; python .\debug-clone-cossim.py --stochastic --trace --see ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([Qwen] qwentts.cpp 716290c (2026-09-23):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 20479 MiB):
+  Device 0: NVIDIA CMP 50HX, compute capability 7.5, VMM: yes, VRAM: 20479 MiB
+[Load] Talker backend: CUDA0 (CPU threads: 18)
+[GGUF] C:\tmp\qwentts-clean-716290c\models\qwen-talker-1.7b-base-F32.gguf: 480 tensors, data at offset 5954432
+[WeightCtx] Loaded 316 tensors, 6643.5 MB into backend
+[Talker] Loaded: 28 layers, hidden 2048, heads 16/8, head_dim 128, FFN 6144, RoPE theta 1000000, mrope sections [24,20,
+20] interleaved=0
+[WeightCtx] Loaded 88 tensors, 668.1 MB into backend
+[CodePredictor] Loaded: 5 layers, hidden 1024, heads 16/8, head_dim 128, FFN 3072, RoPE theta 1000000, 15 acoustic code
+books (vocab 2048 each), mtp_proj linear
+[GGUF] C:\tmp\qwentts-clean-716290c\models\qwen-tokenizer-12hz-F32.gguf: 398 tensors, data at offset 29664
+[WeightCtx] Loaded 18 tensors, 33.0 MB into backend
+[Quantizer] Loaded: 16 codebooks (1 semantic + 15 acoustic), 2048 entries x 256 dim, hidden 512
+[WeightCtx] Loaded 93 tensors, 116.1 MB into backend
+[Transformer] Loaded: 8 layers, hidden 512, heads 16/16, head_dim 64, FFN 1024, RoPE theta 10000, sliding window 72
+[WeightCtx] Loaded 22 tensors, 80.1 MB into backend
+[Upsample] Loaded: 2 blocks (2x ratio per block), channels 1024, dwconv kernel 7
+[WeightCtx] Loaded 118 tensors, 142.9 MB into backend
+[DAC] Loaded: 4 blocks (strides 8/5/4/3), 24 kHz mono out, weights 142.9 MB
+[WeightCtx] Loaded 2 tensors, 3.0 MB into backend
+[Pipeline] Ready: hop 1920 samples @ 24000 Hz mono, 16 codebooks @ 12.5 Hz
+[KVCache] Allocated: 28 layers, 8 KV heads, head_dim 128, max_seq_len 4096, 1 sets -> 896 MB
+[KVCache] Allocated: 5 layers, 8 KV heads, head_dim 128, max_seq_len 16, 1 sets -> 0 MB
+[Pipeline] Loaded: arch=1b7 variant=base tokenizer=qwen3_tts_tokenizer_12hz codebooks=16 speaker_encoder=deferred speak
+ers=0 fa=on clamp_fp16=off max_batch=1
+[BPE] Loaded from GGUF: 151676 vocab, 151291 merges, eos_id=151643
+[BPE] Registered 5 arch special tokens (total specials=6)
+[Qwen] Compute worker started (max_batch=1)
+[CLI] Reference SPK: C:\tmp\qwentts-clean-716290c\latents\reference.spk, 2048 f32 values
+[CLI] Reference RVQ: C:\tmp\qwentts-clean-716290c\latents\reference.rvq, K=16 T=215
+[Pipeline] Latent speaker embedding: 2048 values
+[Pipeline] sampler diagnostic target: frame=2 step=9
+[Pipeline] Latent ICL ref_codes: 215 frames at 12.5 Hz
+[Prompt] Built: 38 ids, N_text=30, N_instruct=0, T_ctx=225, hidden=2048, lang=english (id=2050), speaker=none (id=-1) r
+ef_spk_emb=yes icl=yes
+[Debug] prompt-ids: [38] first4: 151644.000000 77091.000000 198.000000 80.000000
+[Debug] talker-input-embed: [225, 2048] first4: 0.022157 -0.009049 0.008161 -0.020214
+[Debug] trailing-text-hidden: [1, 2048] first4: -0.005331 0.008751 -0.004225 0.001141
+[Debug] tts-pad-embed: [2048] first4: -0.005331 0.008751 -0.004225 0.001141
+[Debug] spk-emb: [2048] first4: 0.098318 -0.023761 -0.011860 0.006760
+[Debug] ref-codes: [16, 215] first4: 1221.000000 2042.000000 509.000000 1522.000000
+[ARTrace] prompt seed=1002 T_ctx=225 T_trailing=1 ref_T=215 prompt_ids_hash=9c9f2cadb656b7f9 input_hash=b587ed5d58bf70a
+e trailing_hash=375db8e719153cfd speaker_hash=04d8d996f3a6637b ref_codes_hash=4cd1c683bda1ae56
+[Debug] talker-hidden-prefill-l0: [225, 2048] first4: -0.460921 -0.069914 0.016044 -0.039099
+[Debug] talker-hidden-prefill-l7: [225, 2048] first4: -1.525365 -0.007548 0.340199 1.777393
+[Debug] talker-hidden-prefill-l14: [225, 2048] first4: -1.296879 0.189203 0.441197 1.743858
+[Debug] talker-hidden-prefill-l21: [225, 2048] first4: -0.771863 0.171116 0.791445 1.111795
+[Debug] talker-hidden-prefill-l27: [225, 2048] first4: 7.131171 -34.471630 -7.108008 28.673943
+[Debug] talker-hidden-prefill-final: [225, 2048] first4: 0.242831 -1.225768 -0.224906 0.889998
+[Debug] talker-logits-prefill: [3072] first4: 1.360943 -7.798378 -6.826198 -10.314211
+[Batch] Admit slot=0 T_ctx=225 prefill=1867.5 ms build=97.7 ms (stall for 0 active slots)
+[Sample] step=0 c0=1445 u=0.5435120463 subseq=0
+[Debug] talker-sampler-frame0-suppressed-logits: [3072] first4: 1.360943 -7.798378 -6.826198 -10.314211
+[Debug] talker-sampler-frame0-weights: [3072] first4: 0.000000 0.000000 0.000000 0.000000
+[Debug] talker-sampler-frame0-selection-cdf-f32: [3072] first4: 0.000000 0.000000 0.000000 0.000000
+[Debug] talker-sampler-frame0-u: [1] first4: 0.543512
+[Debug] talker-sampler-frame0-sum-f32: [1] first4: 3.121260
+[Debug] talker-sampler-frame0-target-f32: [1] first4: 1.696442
+[Debug] talker-sampler-frame0-selected: [1] first4: 1445.000000
+[ARTrace] sample step=0 c0=1445 sampled_c0=1445 forced=0 u=0.5435120463 selected_p=0.0843782872 eos_id=2150 eos_p=0 eos
+_rank=0 candidates=50 history=0 top=27:0.320383,1755:0.235457,1760:0.156939,1445:0.084378,416:0.056440
+[ARTrace] predictor_philox step=0 base=0 draws=1:0.5217262506,2:0.1641367376,3:0.3939391077,4:0.5017089844,5:0.98344093
+56,6:0.8580892086,7:0.3373192251,8:0.4449970126,9:0.7800650001,10:0.7614941001,11:0.3882018626,12:0.4234651923,13:0.336
+2016380,14:0.5906200409,15:0.5982302427
+[Debug] codes-step0: [16] first4: 1445.000000 1408.000000 325.000000 400.000000
+[Debug] predictor-logits-step0: [2048] first4: 1.831640 -3.753661 6.424256 1.689621
+[Debug] predictor-logits-step1: [2048] first4: 14.451920 15.132193 5.049052 6.396508
+[Debug] predictor-logits-step2: [2048] first4: 11.053799 11.018571 5.704789 19.880672
+[Debug] predictor-logits-step3: [2048] first4: 13.863985 14.775579 16.619427 11.490217
+[Debug] predictor-logits-step4: [2048] first4: 9.190258 15.176085 15.499483 11.240448
+[Debug] predictor-logits-step5: [2048] first4: 16.307671 17.387548 15.699732 18.121403
+[Debug] predictor-logits-step6: [2048] first4: 16.582056 14.491844 14.501198 13.832124
+[Debug] predictor-logits-step7: [2048] first4: 17.039349 20.680828 18.405975 19.393219
+[Debug] predictor-logits-step8: [2048] first4: 14.337770 17.668583 17.738752 16.906967
+[Debug] predictor-logits-step9: [2048] first4: 16.713924 19.527433 17.366310 18.120949
+[Debug] predictor-logits-step10: [2048] first4: 19.171190 15.170220 18.037727 18.310244
+[Debug] predictor-logits-step11: [2048] first4: 15.842321 19.485939 19.028507 18.830017
+[Debug] predictor-logits-step12: [2048] first4: 19.577408 17.886909 18.754082 19.225546
+[Debug] predictor-logits-step13: [2048] first4: 17.835625 20.364655 21.696703 18.975803
+[Debug] predictor-logits-step14: [2048] first4: 23.171413 20.928490 18.515858 23.898895
+[Debug] predictor-hidden-step0: [1024] first4: -0.376286 -0.030644 -2.088612 1.341933
+[Debug] predictor-hidden-step1: [1024] first4: 3.831773 -0.256407 0.501898 4.449076
+[Debug] predictor-hidden-step2: [1024] first4: 0.711802 1.942042 3.510522 2.278959
+[Debug] predictor-hidden-step3: [1024] first4: -0.088397 0.694100 2.997305 -2.626536
+[Debug] predictor-hidden-step4: [1024] first4: -0.589571 2.125341 2.857290 -1.698185
+[Debug] predictor-hidden-step5: [1024] first4: 0.952314 1.029442 -2.572492 0.890384
+[Debug] predictor-hidden-step6: [1024] first4: 1.294720 0.751094 -2.197793 1.728260
+[Debug] predictor-hidden-step7: [1024] first4: 0.759754 -0.620692 -1.557130 2.126102
+[Debug] predictor-hidden-step8: [1024] first4: 0.566999 -0.906128 0.948596 -0.056024
+[Debug] predictor-hidden-step9: [1024] first4: -0.100849 0.312833 1.026610 1.123860
+[Debug] predictor-hidden-step10: [1024] first4: 2.960058 -0.828786 -0.048896 2.235411
+[Debug] predictor-hidden-step11: [1024] first4: -1.220051 -0.848957 0.867375 1.753830
+[Debug] predictor-hidden-step12: [1024] first4: 0.724098 -1.001657 -0.479120 1.682606
+[Debug] predictor-hidden-step13: [1024] first4: 0.127935 -2.429643 -0.318768 1.040637
+[Debug] predictor-hidden-step14: [1024] first4: -0.885348 -1.701533 0.120906 1.356367
+[ARTrace] predictor step=0 codes=1445,1408,325,400,901,2034,1456,668,1128,1442,1634,658,798,785,1283,1098
+[Debug] next-emb-step0: [2048] first4: 0.021453 -0.004860 0.050332 0.032242
+[Debug] talker-logits-frame1-raw: [3072] first4: 0.274226 -3.989495 -10.099866 -11.016418
+[Debug] talker-hidden-frame1: [2048] first4: 0.441931 3.485228 -0.412093 -1.589610
+[Debug] talker-input-frame1: [2048] first4: 0.021453 -0.004860 0.050332 0.032242
+[Debug] talker-input-frame1-codec-embed: [2048] first4: 0.015198 0.006165 -0.014099 0.010010
+[Debug] talker-input-frame1-acoustic-embed-sum: [2048] first4: 0.011586 -0.019775 0.068657 0.021091
+[Debug] talker-input-frame1-pre-overlay-embed: [2048] first4: 0.026784 -0.013611 0.054558 0.031101
+[Debug] talker-input-frame1-overlay: [2048] first4: -0.005331 0.008751 -0.004225 0.001141
+[Debug] talker-hidden-frame1-l0: [2048] first4: 0.019861 -0.028469 0.070044 0.060005
+[Debug] talker-hidden-frame1-l7: [2048] first4: -0.023709 -0.027606 -0.197176 0.052002
+[Debug] talker-hidden-frame1-l14: [2048] first4: -0.213578 -0.122736 0.211698 0.175074
+[Debug] talker-hidden-frame1-l21: [2048] first4: 0.240832 -3.584815 -2.798959 0.459994
+[Debug] talker-hidden-frame1-l27: [2048] first4: 1.423408 10.749853 -1.428431 -5.617030
+[Debug] talker-hidden-step1: [2048] first4: 0.441931 3.485228 -0.412093 -1.589610
+[Sample] step=1 c0=1332 u=0.2176649570 subseq=16
+[Debug] talker-sampler-frame1-suppressed-logits: [3072] first4: 0.274226 -3.989495 -10.099866 -11.016418
+[Debug] talker-sampler-frame1-weights: [3072] first4: 0.000000 0.000000 0.000000 0.000000
+[Debug] talker-sampler-frame1-selection-cdf-f32: [3072] first4: 0.000000 0.000000 0.000000 0.000000
+[Debug] talker-sampler-frame1-u: [1] first4: 0.217665
+[Debug] talker-sampler-frame1-sum-f32: [1] first4: 2.775351
+[Debug] talker-sampler-frame1-target-f32: [1] first4: 0.604097
+[Debug] talker-sampler-frame1-selected: [1] first4: 1332.000000
+[ARTrace] sample step=1 c0=1332 sampled_c0=1332 forced=0 u=0.2176649570 selected_p=0.360314816 eos_id=2150 eos_p=0 eos_
+rank=0 candidates=50 history=1 top=1332:0.360315,1902:0.317572,280:0.161096,1457:0.075325,1544:0.048674
+[ARTrace] predictor_philox step=1 base=16 draws=17:0.9275632501,18:0.0934486389,19:0.0773916766,20:0.1512129307,21:0.93
+12452078,22:0.7755315900,23:0.0193186775,24:0.8565483093,25:0.4080414772,26:0.7316507697,27:0.1468690038,28:0.541161537
+2,29:0.3800638914,30:0.5773517489,31:0.2150663435
+ggml_backend_cuda_graph_compute: CUDA graph warmup complete
+[Debug] codes-frame1: [16] first4: 1332.000000 1924.000000 38.000000 403.000000
+[Debug] predictor-logits-frame1-step0: [2048] first4: -1.183408 -4.514274 4.889321 -1.300792
+[Debug] predictor-logits-frame1-step1: [2048] first4: 6.676468 8.057613 6.346055 3.770473
+[Debug] predictor-logits-frame1-step2: [2048] first4: 8.623224 9.757935 17.471027 17.797020
+[Debug] predictor-logits-frame1-step3: [2048] first4: 16.631475 17.591843 18.634266 20.767025
+[Debug] predictor-logits-frame1-step4: [2048] first4: 11.827265 13.738604 15.801325 9.764919
+[Debug] predictor-logits-frame1-step5: [2048] first4: 14.972288 16.835636 12.754827 15.968341
+[Debug] predictor-logits-frame1-step6: [2048] first4: 15.208893 15.027410 17.428249 12.635509
+[Debug] predictor-logits-frame1-step7: [2048] first4: 18.405453 14.397121 17.471930 16.779041
+[Debug] predictor-logits-frame1-step8: [2048] first4: 18.394796 22.181499 17.119417 19.289154
+[Debug] predictor-logits-frame1-step9: [2048] first4: 17.020634 16.143822 16.196648 15.475752
+[Debug] predictor-logits-frame1-step10: [2048] first4: 17.319500 19.780296 18.446999 17.842649
+[Debug] predictor-logits-frame1-step11: [2048] first4: 20.754353 17.745989 17.700891 19.497658
+[Debug] predictor-logits-frame1-step12: [2048] first4: 18.413975 20.322910 20.667530 18.918293
+[Debug] predictor-logits-frame1-step13: [2048] first4: 20.089622 22.727573 18.658669 19.772974
+[Debug] predictor-logits-frame1-step14: [2048] first4: 20.923561 22.070854 21.424603 22.885990
+[Debug] predictor-hidden-frame1-step0: [1024] first4: -2.748144 -2.440446 -0.688057 1.252102
+[Debug] predictor-hidden-frame1-step1: [1024] first4: 2.532593 -0.361904 -1.887232 2.490717
+[Debug] predictor-hidden-frame1-step2: [1024] first4: -0.090124 1.599586 2.558366 -1.216372
+[Debug] predictor-hidden-frame1-step3: [1024] first4: -4.288624 0.010654 0.382061 1.037443
+[Debug] predictor-hidden-frame1-step4: [1024] first4: -3.814060 2.052289 1.293451 1.030478
+[Debug] predictor-hidden-frame1-step5: [1024] first4: -4.633572 2.092823 0.286206 -0.461691
+[Debug] predictor-hidden-frame1-step6: [1024] first4: -3.503502 1.559275 -0.064788 -0.358962
+[Debug] predictor-hidden-frame1-step7: [1024] first4: -2.540218 -0.481513 0.337712 0.003185
+[Debug] predictor-hidden-frame1-step8: [1024] first4: -2.589871 0.217330 0.380269 -1.202182
+[Debug] predictor-hidden-frame1-step9: [1024] first4: -0.968972 -0.548648 -0.330985 -0.170216
+[Debug] predictor-hidden-frame1-step10: [1024] first4: 2.617651 -1.094006 -0.769550 -0.418741
+[Debug] predictor-hidden-frame1-step11: [1024] first4: -1.177441 -0.977452 -0.381860 -0.079639
+[Debug] predictor-hidden-frame1-step12: [1024] first4: 0.963921 -1.618749 -1.570192 -1.110660
+[Debug] predictor-hidden-frame1-step13: [1024] first4: 1.855356 -3.626159 -2.212073 -1.614828
+[Debug] predictor-hidden-frame1-step14: [1024] first4: 1.736691 -2.233051 -1.713692 0.241941
+[ARTrace] predictor step=1 codes=1332,1924,38,403,218,1922,1048,108,1304,1132,1241,175,1041,592,1147,240
+[Debug] talker-logits-frame2-raw: [3072] first4: -0.814811 -1.607885 -12.855518 -5.017502
+[Debug] talker-hidden-frame2: [2048] first4: 2.671716 0.875762 -2.685238 -0.191621
+[Input] Prompt: 100 chars: qwentts.cpp is a minimal C++17 and GGML port of Qwen3-TTS fo...
+[Input] RefAudio: ../examples/freeman.wav
+[Input] RefText: 213 chars: If you go into different cultures, they have different conce...
+[Input] Lang: english Seed: 1002 MaxNewTokens: 3
+[Input] Mode: stochastic ICL
+[Python] Device: cpu
+[Python] RefWav: 414337 samples 24000 Hz 17.26s
+[Python] SpeakerEmb shape: (2048,) dtype: torch.float32
+[Python] RefCodes shape: (16, 215) (K, T_codec)
+[Python] InputIds shape: (1, 38)
+[Python] RefIds shape: (1, 53)
+[Sample-PY] subseq=0 u=0.5435120463 idx=1445 top_prob=0.320300
+[Sample-PY] subseq=1 u=0.5217262506 idx=1408 top_prob=0.513488
+[Sample-PY] subseq=2 u=0.1641367376 idx=325 top_prob=0.167161
+[Sample-PY] subseq=3 u=0.3939391077 idx=400 top_prob=0.208524
+[Sample-PY] subseq=4 u=0.5017089844 idx=901 top_prob=0.149452
+[Sample-PY] subseq=5 u=0.9834409356 idx=2034 top_prob=0.121576
+[Sample-PY] subseq=6 u=0.8580892086 idx=1456 top_prob=0.137515
+[Sample-PY] subseq=7 u=0.3373192251 idx=668 top_prob=0.165261
+[Sample-PY] subseq=8 u=0.4449970126 idx=1128 top_prob=0.127167
+[Sample-PY] subseq=9 u=0.7800650001 idx=1442 top_prob=0.099261
+[Sample-PY] subseq=10 u=0.7614941001 idx=1634 top_prob=0.106768
+[Sample-PY] subseq=11 u=0.3882018626 idx=658 top_prob=0.148190
+[Sample-PY] subseq=12 u=0.4234651923 idx=798 top_prob=0.076816
+[Sample-PY] subseq=13 u=0.3362016380 idx=785 top_prob=0.095283
+[Sample-PY] subseq=14 u=0.5906200409 idx=1283 top_prob=0.114094
+[Sample-PY] subseq=15 u=0.5982302427 idx=1098 top_prob=0.062226
+[Sample-PY] subseq=16 u=0.2176649570 idx=1332 top_prob=0.360460
+[Sample-PY] subseq=17 u=0.9275632501 idx=1924 top_prob=0.415947
+[Sample-PY] subseq=18 u=0.0934486389 idx=38 top_prob=0.127559
+[Sample-PY] subseq=19 u=0.0773916766 idx=403 top_prob=0.306427
+[Sample-PY] subseq=20 u=0.1512129307 idx=218 top_prob=0.079800
+[Sample-PY] subseq=21 u=0.9312452078 idx=1922 top_prob=0.133560
+[Sample-PY] subseq=22 u=0.7755315900 idx=1048 top_prob=0.135536
+[Sample-PY] subseq=23 u=0.0193186775 idx=108 top_prob=0.177873
+[Sample-PY] subseq=24 u=0.8565483093 idx=1304 top_prob=0.160045
+[Sample-PY] subseq=25 u=0.4080414772 idx=1132 top_prob=0.073554
+[Sample-PY] subseq=26 u=0.7316507697 idx=1241 top_prob=0.248047
+[Sample-PY] subseq=27 u=0.1468690038 idx=175 top_prob=0.159238
+[Sample-PY] subseq=28 u=0.5411615372 idx=996 top_prob=0.149128
+[Sample-PY] subseq=29 u=0.3800638914 idx=463 top_prob=0.118880
+[Sample-PY] subseq=30 u=0.5773517489 idx=582 top_prob=0.165226
+[Sample-PY] subseq=31 u=0.2150663435 idx=239 top_prob=0.063359
+[Python] Codes shape: (2, 16) (T_frames, num_code_groups)
+[Python] Audio: 3835 samples 24000 Hz 0.16s -> python/clone\clone-python.wav
+[Quant] F32 -> C:\tmp\qwentts-clean-716290c\models\qwen-talker-1.7b-base-F32.gguf + C:\tmp\qwentts-clean-716290c\models\qwen-tokenizer-12hz-F32.gguf
+[GGML] Cmd: ../build/qwen-tts.exe --model C:\tmp\qwentts-clean-716290c\models\qwen-talker-1.7b-base-F32.gguf --codec C:\tmp\qwentts-clean-716290c\models\qwen-tokenizer-12hz-F32.gguf --seed 1002 --ref-text ../examples/freeman.txt --lang english --max-new 3 --dump cpp/clone -o cpp/clone\clone-cpp.wav --ref-spk C:\tmp\qwentts-clean-716290c\latents\reference.spk --ref-rvq C:\tmp\qwentts-clean-716290c\latents\reference.rvq --temp 0.9 --top-k 50 --top-p 1.0 --rep-pen 1.05 --sub-temp 0.9 --sub-top-k 50 --sub-top-p 1.0
+[Debug] talker-input-frame2: [2048] first4: 0.021082 -0.050955 -0.018469 0.028058
+[Debug] talker-input-frame2-codec-embed: [2048] first4: 0.041260 0.000725 -0.025146 0.018433
+[Debug] talker-input-frame2-acoustic-embed-sum: [2048] first4: -0.014847 -0.060431 0.010902 0.008484
+[Debug] talker-input-frame2-pre-overlay-embed: [2048] first4: 0.026413 -0.059706 -0.014244 0.026917
+[Debug] talker-input-frame2-overlay: [2048] first4: -0.005331 0.008751 -0.004225 0.001141
+[Debug] talker-hidden-frame2-l0: [2048] first4: 0.048965 -0.025328 -0.001094 0.044311
+[Debug] talker-hidden-frame2-l7: [2048] first4: -0.113152 -0.036731 -0.128379 0.017785
+[Debug] talker-hidden-frame2-l14: [2048] first4: -0.075979 -0.178606 0.026208 0.008847
+[Debug] talker-hidden-frame2-l21: [2048] first4: 1.107291 -4.067199 -2.244153 -1.702086
+[Debug] talker-hidden-frame2-l27: [2048] first4: 7.538307 2.366280 -8.153715 -0.593156
+[Sample] step=2 c0=845 u=0.3574715555 subseq=32
+[Debug] talker-sampler-frame2-suppressed-logits: [3072] first4: -0.814811 -1.607885 -12.855518 -5.017502
+[Debug] talker-sampler-frame2-weights: [3072] first4: 0.000000 0.000000 0.000000 0.000000
+[Debug] talker-sampler-frame2-selection-cdf-f32: [3072] first4: 0.000000 0.000000 0.000000 0.000000
+[Debug] talker-sampler-frame2-u: [1] first4: 0.357472
+[Debug] talker-sampler-frame2-sum-f32: [1] first4: 2.574295
+[Debug] talker-sampler-frame2-target-f32: [1] first4: 0.920237
+[Debug] talker-sampler-frame2-selected: [1] first4: 845.000000
+[ARTrace] sample step=2 c0=845 sampled_c0=845 forced=0 u=0.3574715555 selected_p=0.173059523 eos_id=2150 eos_p=0 eos_ra
+nk=0 candidates=50 history=2 top=1915:0.388456,99:0.335223,845:0.173060,1042:0.033308,1141:0.026707
+[ARTrace] predictor_philox step=2 base=32 draws=33:0.4641827941,34:0.5265223980,35:0.4182699025,36:0.3868608177,37:0.80
+08635044,38:0.0631626993,39:0.1697123051,40:0.8598667383,41:0.9936843514,42:0.7919672728,43:0.6773520708,44:0.922643005
+8,45:0.4481498599,46:0.4373333752,47:0.5323947668
+[Debug] codes-frame2: [16] first4: 845.000000 1756.000000 519.000000 819.000000
+[Debug] predictor-logits-frame2-step0: [2048] first4: -7.082911 -3.096254 2.121463 -2.379369
+[Debug] predictor-logits-frame2-step1: [2048] first4: 7.408258 6.805982 5.029794 7.688152
+[Debug] predictor-logits-frame2-step2: [2048] first4: 7.353814 10.335522 11.405336 6.882992
+[Debug] predictor-logits-frame2-step3: [2048] first4: 13.469835 18.571066 19.797815 15.231939
+[Debug] predictor-logits-frame2-step4: [2048] first4: 15.142861 13.710661 14.798203 11.447992
+[Debug] predictor-logits-frame2-step5: [2048] first4: 15.386744 15.810486 13.667259 17.232361
+[Debug] predictor-logits-frame2-step6: [2048] first4: 15.295116 14.928044 16.656693 12.829586
+[Debug] predictor-logits-frame2-step7: [2048] first4: 17.997316 17.718861 17.721205 18.606331
+[Debug] predictor-logits-frame2-step8: [2048] first4: 19.123337 19.561708 18.942636 18.411219
+[Debug] predictor-logits-frame2-step9: [2048] first4: 14.921028 18.300564 16.730331 20.237715
+[Debug] predictor-logits-frame2-step10: [2048] first4: 16.036968 19.380955 18.547741 19.270420
+[Debug] predictor-logits-frame2-step11: [2048] first4: 20.743587 18.674400 17.825298 19.053520
+[Debug] predictor-logits-frame2-step12: [2048] first4: 19.622383 19.945473 17.363998 19.455524
+[Debug] predictor-logits-frame2-step13: [2048] first4: 17.953495 18.682461 17.592953 19.450718
+[Debug] predictor-logits-frame2-step14: [2048] first4: 24.307072 20.705654 23.610191 21.705582
+[Debug] predictor-hidden-frame2-step0: [1024] first4: -1.519701 -0.958032 0.213503 0.674924
+[Debug] predictor-hidden-frame2-step1: [1024] first4: 3.795210 -0.876476 -5.037188 2.562334
+[Debug] predictor-hidden-frame2-step2: [1024] first4: 3.382702 3.074786 -0.685703 2.231083
+[Debug] predictor-hidden-frame2-step3: [1024] first4: -0.085422 1.135158 -1.120464 0.031677
+[Debug] predictor-hidden-frame2-step4: [1024] first4: 0.702755 2.103176 0.403108 0.801537
+[Debug] predictor-hidden-frame2-step5: [1024] first4: -0.117664 2.306901 0.312133 1.141348
+[Debug] predictor-hidden-frame2-step6: [1024] first4: -0.034302 2.580554 0.387421 1.617497
+[Debug] predictor-hidden-frame2-step7: [1024] first4: 1.113810 0.128322 0.754926 1.956440
+[Debug] predictor-hidden-frame2-step8: [1024] first4: 0.671184 0.845352 0.786304 0.094660
+[Debug] predictor-hidden-frame2-step9: [1024] first4: 0.876311 1.030018 1.840541 -0.383531
+[Debug] predictor-hidden-frame2-step10: [1024] first4: 4.180925 0.439288 0.052814 -0.702950
+[Debug] predictor-hidden-frame2-step11: [1024] first4: 0.902116 0.866087 -0.693502 -0.227808
+[Debug] predictor-hidden-frame2-step12: [1024] first4: 2.149399 1.582666 -0.993914 -0.733435
+[Debug] predictor-hidden-frame2-step13: [1024] first4: 1.808459 0.736097 -1.964310 -1.103563
+[Debug] predictor-hidden-frame2-step14: [1024] first4: 1.155063 0.027880 0.094647 -0.262073
+[Debug] sampler-frame2-step9-scaled-logits: [2048] first4: 16.578920 20.333961 18.589258 22.486351
+[Debug] sampler-frame2-step9-top-order: [2048] first4: 223.000000 249.000000 1131.000000 1567.000000
+[Debug] sampler-frame2-step9-top-k-ids: [50] first4: 223.000000 249.000000 1131.000000 1567.000000
+[Debug] sampler-frame2-step9-top-k-logits: [50] first4: 26.566032 25.574150 25.294712 25.281420
+[Debug] sampler-frame2-step9-masked-logits: [2048] first4: -inf -inf -inf -inf
+[Debug] sampler-frame2-step9-probabilities: [2048] first4: 0.000000 0.000000 0.000000 0.000000
+[Debug] sampler-frame2-step9-cdf: [2048] first4: 0.000000 0.000000 0.000000 0.000000
+[Debug] sampler-frame2-step9-u: [1] first4: 0.791967
+[Debug] sampler-frame2-step9-selected: [1] first4: 1399.000000
+[ARTrace] predictor step=2 codes=845,1756,519,819,705,1685,77,470,1496,1978,1399,1255,1677,1177,661,911
+[Pipeline] Generation done : 3 frames
+[Debug] codes-full: [3, 16] first4: 1445.000000 1408.000000 325.000000 400.000000
+[Debug] output-audio: [5760] first4: 0.000321 0.000200 -0.001024 -0.000682
+[Perf] PromptBuild 97.7 ms
+[Perf] Prefill 1867.5 ms (T_ctx prefill)
+[Perf] TTFA 2099.5 ms (first frame codes)
+[Perf] TalkerDecode 53.3 ms (3 frames, 17.76 ms/frame)
+[Perf] CodePredictor 279.3 ms (93.11 ms/frame)
+[Perf] HostCompose 0.2 ms (c0 sample + next emb)
+[Perf] CodecDecode 801.3 ms
+[Perf] Total 3158.4 ms (3 frames, 110.94 ms/frame AR, audio 0.24 s, RTF 13.160)
+[WAV] Wrote cpp/clone\clone-cpp.wav: 5760 samples, 24000 Hz, mono S16
+[Pipeline] Wrote 5760 samples (0.24 s) -> cpp/clone\clone-cpp.wav
+Traceback (most recent call last):
+  File "C:\tmp\qwentts-clean-716290c\tests\debug-clone-cossim.py", line 824, in <module>
+    main()
+  File "C:\tmp\qwentts-clean-716290c\tests\debug-clone-cossim.py", line 738, in main
+    raise RuntimeError(f"stochastic token mismatch: native={native} python={python}")
+RuntimeError: stochastic token mismatch: native={'subseq': 32, 'u': 0.3574715555, 'idx': 845} python={'subseq': 32, 'u'
+: 0.3574715554714203, 'idx': 1042}

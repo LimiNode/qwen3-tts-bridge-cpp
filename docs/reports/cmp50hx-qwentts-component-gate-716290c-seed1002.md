@@ -26,6 +26,6 @@ input = pre_overlay + overlay
 | 2 | overlay | cosine 1.0, max abs 2.98e-8 |
 | 2 | input | cosine 0.936362445354, max abs 0.0870437622 |
 
-Thus #44 fixed the diagnostic overlay readback: frame 1 is component-exact, and frame 2 overlay remains exact. The frame-2 acoustic/pre-overlay/input difference follows the already observed predictor-code divergence; it is not evidence of a new overlay arithmetic or graph defect. The raw native log is stored next to this report.
+Thus #44 fixed the diagnostic overlay readback: frame 1 codec/acoustic/pre-overlay are exact and overlay/input are near-exact at FP32 dump precision; frame 2 codec is exact and overlay remains near-exact. The frame-2 acoustic/pre-overlay/input difference follows the already observed predictor-code divergence; it is not evidence of a new overlay arithmetic or graph defect. The raw native log is stored next to this report.
 
 The Python side was an isolated `debug-clone-cossim.py` harness with a recorded component hook. Its modified-file hashes are recorded in the JSON; the base checkout is identified as qwentts.cpp `1ebed080b88b8202a910d9d7753faccc8de9f59d`. This is research evidence, not a claim that the harness working tree was clean.
