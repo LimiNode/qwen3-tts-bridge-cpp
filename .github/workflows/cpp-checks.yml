@@ -1,21 +1,9 @@
 name: C++ Checks
 
 on:
+  # Do not add a pull_request path filter here. These jobs are required branch
+  # protection contexts and must be emitted even for docs-only pull requests.
   pull_request:
-    paths:
-      - ".github/workflows/cpp-checks.yml"
-      - ".gitmodules"
-      - "CMakeLists.txt"
-      - "examples/**"
-      - "external/cpp/**"
-      - "scripts/package-python-worker.ps1"
-      - "scripts/setup-python-packaging.ps1"
-      - "scripts/test-portable-python-worker-cpp.ps1"
-      - "scripts/run-native-python-matrix.ps1"
-      - "src/**"
-      - "tests/**"
-      - "worker/**"
-      - "docs/native-qwentts-worker.md"
   push:
     branches:
       - main
