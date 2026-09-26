@@ -43,7 +43,8 @@ StdIoTransportOptions options(
     int max_text_bytes = 0,
     bool precompute_voice_ref = false,
     bool warmup_synthesis = false,
-    const std::filesystem::path& diagnostic_dump_dir = {}) {
+    const std::filesystem::path& diagnostic_dump_dir = {},
+    bool eos_guard = false) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
@@ -68,6 +69,9 @@ StdIoTransportOptions options(
     if (!diagnostic_dump_dir.empty()) {
         result.arguments.push_back("--diagnostic-dump-dir");
         result.arguments.push_back(diagnostic_dump_dir.string());
+    }
+    if (eos_guard) {
+        result.arguments.push_back("--eos-guard");
     }
     result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
         if (stderr_capture != nullptr) {
@@ -507,6 +511,36 @@ int main() {
     }
     CHECK(recovery_probe.errors.empty());
     CHECK(recovery_probe.completed == 1);
+
+    std::string guard_stderr;
+    QwenTtsClient guard_client;
+    QwenTtsClientOptions guard_options;
+    guard_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(guard_client.start(
+        options(8, &guard_stderr, nullptr, 0, false, false, {}, true), guard_options));
+    Probe guard_probe;
+    TtsCallbacks guard_callbacks;
+    guard_callbacks.on_completed = [&guard_probe]() {
+        std::lock_guard<std::mutex> lock(guard_probe.mutex);
+        ++guard_probe.completed;
+        guard_probe.condition.notify_all();
+    };
+    guard_callbacks.on_error = [&guard_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(guard_probe.mutex);
+        guard_probe.errors.push_back(error);
+        guard_probe.condition.notify_all();
+    };
+    CHECK(guard_client.synthesize_async("guard propagation", guard_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(guard_probe.mutex);
+        CHECK(guard_probe.condition.wait_for(lock, std::chrono::seconds(5), [&guard_probe]() {
+            return guard_probe.completed != 0 || !guard_probe.errors.empty();
+        }));
+    }
+    CHECK(guard_probe.errors.empty());
+    CHECK(guard_probe.completed == 1);
+    CHECK(guard_stderr.find("fake eos_guard_enabled=true") != std::string::npos);
+    guard_client.stop();
 
     Probe max_probe;
     TtsCallbacks max_callbacks;

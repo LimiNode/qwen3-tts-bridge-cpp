@@ -12,6 +12,11 @@
 #include <string>
 #include <vector>
 
+#include "../data/protocol_types.hpp"
+#include "../protocol/control/control_messages.hpp"
+#include "../protocol/framing/FrameParser.hpp"
+#include "../transport/ITransport.hpp"
+
 namespace qwen_tts_bridge {
 
 /// \struct WorkerSessionOptions

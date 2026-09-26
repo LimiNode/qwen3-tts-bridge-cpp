@@ -1,4 +1,6 @@
-#include <qwen_tts_bridge/session.hpp>
+#include <qwen_tts_bridge/session/WorkerSession.hpp>
+#include <qwen_tts_bridge/protocol/control/control_codec.hpp>
+#include <qwen_tts_bridge/protocol/framing/frame_codec.hpp>
 
 #include <algorithm>
 #include <type_traits>
