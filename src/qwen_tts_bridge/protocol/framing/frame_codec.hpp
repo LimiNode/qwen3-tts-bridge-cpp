@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file FrameCodec.hpp
+/// \file frame_codec.hpp
 /// \brief Binary frame encoding and frame-type rules for protocol v1.
 
 #include <cstddef>

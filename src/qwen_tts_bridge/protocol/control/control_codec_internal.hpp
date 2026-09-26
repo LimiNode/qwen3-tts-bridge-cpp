@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file ControlCodecInternal.hpp
+/// \file control_codec_internal.hpp
 /// \brief Internal JSON helpers for the protocol control codec.
 
 #include <cstddef>
@@ -11,8 +11,8 @@
 
 #include <nlohmann/json.hpp>
 
-#include "ControlMessages.hpp"
-#include "ControlCodec.hpp"
+#include "control_messages.hpp"
+#include "control_codec.hpp"
 
 namespace qwen_tts_bridge::control_detail {
 

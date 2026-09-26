@@ -1,5 +1,5 @@
 #include "NativeEngine.hpp"
-#include "WavReader.hpp"
+#include "wav_reader.hpp"
 
 #include <nlohmann/json.hpp>
 

@@ -90,16 +90,16 @@ if(WIN32)
 endif()
 
 add_library(qwen_tts_bridge
-    src/qwen_tts_bridge/audio/SaveWavCallbacks.cpp
+    src/qwen_tts_bridge/audio/save_wav_callbacks.cpp
     src/qwen_tts_bridge/audio/WavWriter.cpp
     src/qwen_tts_bridge/client/QwenTtsClient.cpp
-    src/qwen_tts_bridge/protocol/control/ControlCodec.cpp
-    src/qwen_tts_bridge/protocol/control/ControlDecode.cpp
-    src/qwen_tts_bridge/protocol/control/ControlEncode.cpp
-    src/qwen_tts_bridge/protocol/control/ControlJson.cpp
-    src/qwen_tts_bridge/protocol/control/ControlValidation.cpp
-    src/qwen_tts_bridge/protocol/control/ErrorCodec.cpp
-    src/qwen_tts_bridge/protocol/framing/FrameCodec.cpp
+    src/qwen_tts_bridge/protocol/control/control_codec.cpp
+    src/qwen_tts_bridge/protocol/control/control_decode.cpp
+    src/qwen_tts_bridge/protocol/control/control_encode.cpp
+    src/qwen_tts_bridge/protocol/control/control_json.cpp
+    src/qwen_tts_bridge/protocol/control/control_validation.cpp
+    src/qwen_tts_bridge/protocol/control/error_codec.cpp
+    src/qwen_tts_bridge/protocol/framing/frame_codec.cpp
     src/qwen_tts_bridge/protocol/framing/FrameParser.cpp
     src/qwen_tts_bridge/session/WorkerSession.cpp
     src/qwen_tts_bridge/transport/stdio/StdIoTransport.cpp
@@ -129,12 +129,12 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
     endif()
 
     add_executable(qwen_tts_native_worker
-        worker/native/qwentts/Main.cpp
+        worker/native/qwentts/main.cpp
         worker/native/qwentts/NativeEngine.cpp
         worker/native/qwentts/QwenDllLoader.cpp
-        worker/native/qwentts/RuntimeManifest.cpp
+        worker/native/qwentts/runtime_manifest.cpp
         worker/native/qwentts/StdioServer.cpp
-        worker/native/qwentts/WavReader.cpp
+        worker/native/qwentts/wav_reader.cpp
     )
     # Keep the Windows min/max macros out of the native worker.  The worker
     # uses std::numeric_limits<>::max(), which otherwise collides with the
@@ -283,7 +283,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         add_executable(qwen_tts_native_worker_test
             tests/native/qwen_tts_native_worker_test.cpp
-            worker/native/qwentts/WavReader.cpp
+            worker/native/qwentts/wav_reader.cpp
         )
         target_include_directories(qwen_tts_native_worker_test
             PRIVATE

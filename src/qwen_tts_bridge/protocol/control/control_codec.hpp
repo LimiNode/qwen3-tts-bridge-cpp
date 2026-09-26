@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file ControlCodec.hpp
+/// \file control_codec.hpp
 /// \brief JSON codec for protocol v1 control_json and error_json payloads.
 
 #include <cstddef>

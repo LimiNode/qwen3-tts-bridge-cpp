@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file ClientTypes.hpp
+/// \file client_types.hpp
 /// \brief Public request, callback, and error DTOs for QwenTtsClient.
 
 #include <cstddef>
