@@ -89,7 +89,8 @@ void QwenDllLoader::load(
         api_.init_default_params = load_symbol<decltype(api_.init_default_params)>(module_, "qt_init_default_params");
         api_.init = load_symbol<decltype(api_.init)>(module_, "qt_init");
         api_.free = load_symbol<decltype(api_.free)>(module_, "qt_free");
-        api_.tts_default_params = load_symbol<decltype(api_.tts_default_params)>(module_, "qt_tts_default_params");
+        api_.tts_default_params_ex = load_symbol<decltype(api_.tts_default_params_ex)>(
+            module_, "qt_tts_default_params_ex");
         api_.synthesize = load_symbol<decltype(api_.synthesize)>(module_, "qt_synthesize");
         api_.audio_free = load_symbol<decltype(api_.audio_free)>(module_, "qt_audio_free");
         // Voice-reference extraction was added after the initial native ABI.

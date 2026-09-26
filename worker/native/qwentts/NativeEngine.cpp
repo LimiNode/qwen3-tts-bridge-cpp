@@ -368,10 +368,18 @@ SynthesisResult NativeEngine::synthesize(
 
     const QwenApi& api = loader_.api();
     qt_tts_params params{};
-    api.tts_default_params(&params);
-    if (params.abi_version != QT_ABI_VERSION) {
+    if (api.tts_default_params_ex(&params, sizeof(params)) != QT_STATUS_OK ||
+        params.abi_version != QT_ABI_VERSION) {
         return {SynthesisOutcome::Failed, "worker_error", "abi_mismatch", "qwen.dll returned incompatible TTS params"};
     }
+    params.eos_guard_enabled = options_.eos_guard_enabled;
+    params.eos_guard_start_ratio = options_.eos_guard_start_ratio;
+    params.eos_guard_max_ratio = options_.eos_guard_max_ratio;
+    params.eos_guard_force_ratio = options_.eos_guard_force_ratio;
+    params.eos_guard_max_boost = options_.eos_guard_max_boost;
+    params.eos_guard_voice_multiplier = options_.eos_guard_voice_multiplier;
+    params.eos_guard_min_expected_frames = options_.eos_guard_min_expected_frames;
+    params.eos_guard_frames_per_text_token = options_.eos_guard_frames_per_text_token;
 
     const VoiceProfile* voice_profile = nullptr;
     if (!request.voice_id.empty()) {
@@ -536,14 +544,19 @@ SynthesisResult NativeEngine::synthesize(
     };
     if (status == QT_STATUS_OK) {
         const auto finish_reason = api.last_finish_reason();
-        if (finish_reason == QT_FINISH_EOS) {
+        if (finish_reason == QT_FINISH_EOS ||
+            finish_reason == QT_FINISH_EOS_ASSISTED ||
+            finish_reason == QT_FINISH_EOS_FORCED) {
             if (!callbacks.emitted_audio) {
                 return apply_qwen_metrics({SynthesisOutcome::Failed, "model_error", "empty_audio",
-                        "qwentts reported natural EOS without emitting PCM", {}, voice_reference_cache_hit,
+                        "qwentts reported EOS without emitting PCM", {}, voice_reference_cache_hit,
                         voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
                         callbacks.first_chunk_callback_ms});
             }
-            return apply_qwen_metrics({SynthesisOutcome::Completed, {}, {}, {}, "natural_eos", voice_reference_cache_hit,
+            const char* execution_outcome = finish_reason == QT_FINISH_EOS_ASSISTED
+                ? "eos_assisted"
+                : finish_reason == QT_FINISH_EOS_FORCED ? "eos_forced" : "natural_eos";
+            return apply_qwen_metrics({SynthesisOutcome::Completed, {}, {}, {}, execution_outcome, voice_reference_cache_hit,
                     voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
                     callbacks.first_chunk_callback_ms});
         }

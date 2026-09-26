@@ -30,6 +30,15 @@ struct NativeEngineOptions {
     float codec_chunk_seconds = 24.0F;
     int stream_max_chunk_frames = 8;
     int max_new_tokens = 2048;
+    /// Adaptive EOS guard remains opt-in until release listening acceptance.
+    bool eos_guard_enabled = false;
+    float eos_guard_start_ratio = 0.6F;
+    float eos_guard_max_ratio = 1.2F;
+    float eos_guard_force_ratio = 1.5F;
+    float eos_guard_max_boost = 25.0F;
+    float eos_guard_voice_multiplier = 1.5F;
+    int eos_guard_min_expected_frames = 24;
+    int eos_guard_frames_per_text_token = 4;
     int max_text_bytes = 0; ///< Optional preflight bound; 0 disables length routing.
     /// Cache qt_voice_ref values for repeated reference WAV requests.
     /// The option is deliberately opt-in because it must preserve PCM and

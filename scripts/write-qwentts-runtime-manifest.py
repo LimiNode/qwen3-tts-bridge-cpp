@@ -46,7 +46,7 @@ def main() -> int:
         "schema_version": 1,
         "engine": "qwentts.cpp",
         "engine_commit": args.engine_commit,
-        "qt_abi_version": 5,
+        "qt_abi_version": 6,
         "architecture": "x64",
         "backend": args.backend,
         "files": files,

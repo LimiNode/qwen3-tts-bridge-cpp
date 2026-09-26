@@ -72,9 +72,9 @@ QT_API void qt_free(qt_context* context) {
     delete context;
 }
 
-QT_API void qt_tts_default_params(qt_tts_params* params) {
-    if (params == nullptr) {
-        return;
+QT_API qt_status qt_tts_default_params_ex(qt_tts_params* params, size_t size) {
+    if (params == nullptr || size != sizeof(*params)) {
+        return QT_STATUS_INVALID_PARAMS;
     }
     std::memset(params, 0, sizeof(*params));
     params->abi_version = QT_ABI_VERSION;
@@ -89,6 +89,7 @@ QT_API void qt_tts_default_params(qt_tts_params* params) {
     params->subtalker_temperature = 0.9F;
     params->subtalker_top_k = 50;
     params->subtalker_top_p = 1.0F;
+    return QT_STATUS_OK;
 }
 
 QT_API qt_status qt_synthesize(
@@ -111,6 +112,10 @@ QT_API qt_status qt_synthesize(
     }
     if (std::strcmp(params->text, "force max tokens") == 0) {
         g_finish_reason = QT_FINISH_MAX_TOKENS;
+    } else if (std::strcmp(params->text, "force assisted eos") == 0) {
+        g_finish_reason = QT_FINISH_EOS_ASSISTED;
+    } else if (std::strcmp(params->text, "force forced eos") == 0) {
+        g_finish_reason = QT_FINISH_EOS_FORCED;
     } else if (std::strcmp(params->text, "force unknown finish reason") == 0) {
         g_finish_reason = QT_FINISH_UNKNOWN;
     } else {

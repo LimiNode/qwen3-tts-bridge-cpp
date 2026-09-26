@@ -19,6 +19,14 @@ struct NativeQwenBackendOptions {
     bool use_flash_attention = true; ///< Enable GGML fused attention when available.
     bool clamp_fp16 = false; ///< Guard FP16 residuals on older CUDA devices.
     int stream_max_chunk_frames = 0; ///< 0 for native default (8), otherwise 1, 2, 4, or 8.
+    bool eos_guard_enabled = false; ///< Keep adaptive EOS guard opt-in.
+    float eos_guard_start_ratio = 0.6F;
+    float eos_guard_max_ratio = 1.2F;
+    float eos_guard_force_ratio = 1.5F;
+    float eos_guard_max_boost = 25.0F;
+    float eos_guard_voice_multiplier = 1.5F;
+    int eos_guard_min_expected_frames = 24;
+    int eos_guard_frames_per_text_token = 4;
 };
 
 /// \enum NativeQwenFinishReason
@@ -26,6 +34,8 @@ struct NativeQwenBackendOptions {
 enum class NativeQwenFinishReason {
     Unknown, ///< No recognized successful termination reason is available.
     NaturalEos, ///< Generation stopped at the model's natural end of speech.
+    AssistedEos, ///< Generation stopped after the adaptive EOS bias was applied.
+    ForcedEos, ///< Generation stopped at the adaptive EOS hard cutoff.
     MaxTokens, ///< Generation stopped at the configured token limit.
 };
 

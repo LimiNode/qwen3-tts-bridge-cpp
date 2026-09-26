@@ -541,6 +541,40 @@ int main() {
     CHECK(max_probe.completions.size() == 1);
     CHECK(max_probe.completions.front().execution_outcome == "max_tokens");
 
+    const auto check_eos_outcome = [&](const char* text, const char* expected) {
+        Probe probe;
+        TtsCallbacks callbacks;
+        callbacks.on_completion_metadata = [&probe](const TtsCompletion& completion) {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            probe.completions.push_back(completion);
+            probe.condition.notify_all();
+        };
+        callbacks.on_completed = [&probe]() {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            ++probe.completed;
+            probe.condition.notify_all();
+        };
+        callbacks.on_error = [&probe](const TtsError& error) {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            probe.errors.push_back(error);
+            probe.condition.notify_all();
+        };
+        CHECK(client.synthesize_async(text, callbacks) != 0);
+        {
+            std::unique_lock<std::mutex> lock(probe.mutex);
+            CHECK(probe.condition.wait_for(lock, std::chrono::seconds(5), [&probe]() {
+                return probe.completed != 0 || !probe.errors.empty();
+            }));
+        }
+        CHECK(probe.errors.empty());
+        CHECK(probe.completed == 1);
+        CHECK(probe.completions.size() == 1);
+        CHECK(probe.completions.front().execution_outcome == expected);
+        return 0;
+    };
+    CHECK(check_eos_outcome("force assisted eos", "eos_assisted") == 0);
+    CHECK(check_eos_outcome("force forced eos", "eos_forced") == 0);
+
     Probe unknown_probe;
     TtsCallbacks unknown_callbacks;
     unknown_callbacks.on_audio = [&unknown_probe](const PcmChunk& chunk) {
