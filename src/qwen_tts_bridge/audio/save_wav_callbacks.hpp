@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file SaveWavCallbacks.hpp
+/// \file save_wav_callbacks.hpp
 /// \brief Callback helpers for streaming PCM into a WAV writer.
 
 #include <chrono>

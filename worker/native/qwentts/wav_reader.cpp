@@ -1,4 +1,4 @@
-#include "WavReader.hpp"
+#include "wav_reader.hpp"
 
 #include <algorithm>
 #include <array>

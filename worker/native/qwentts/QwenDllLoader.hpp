@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RuntimeManifest.hpp"
+#include "runtime_manifest.hpp"
 
 #include <qwen.h>
 

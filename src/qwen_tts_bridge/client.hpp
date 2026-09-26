@@ -7,5 +7,5 @@
 #include "protocol/control.hpp"
 #include "session.hpp"
 #include "transport.hpp"
-#include "client/ClientTypes.hpp"
+#include "client/client_types.hpp"
 #include "client/QwenTtsClient.hpp"

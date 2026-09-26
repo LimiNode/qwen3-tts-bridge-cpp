@@ -1,4 +1,4 @@
-#include "ControlCodecInternal.hpp"
+#include "control_codec_internal.hpp"
 
 #include <type_traits>
 #include <variant>

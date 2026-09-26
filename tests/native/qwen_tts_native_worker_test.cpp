@@ -1,5 +1,5 @@
 #include <qwen_tts_bridge/client.hpp>
-#include "WavReader.hpp"
+#include "wav_reader.hpp"
 
 #include <array>
 #include <chrono>

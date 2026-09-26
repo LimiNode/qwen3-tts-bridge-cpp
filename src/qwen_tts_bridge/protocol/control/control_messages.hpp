@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file ControlMessages.hpp
+/// \file control_messages.hpp
 /// \brief DTOs for protocol v1 JSON control and error payloads.
 
 #include <cstddef>

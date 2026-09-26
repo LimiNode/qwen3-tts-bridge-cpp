@@ -191,9 +191,18 @@ the reference libraries. Implementation-private headers inside one subdomain
 may still be included directly by that subdomain's `.cpp` files.
 
 Concrete implementations should be named after their responsibility, for
-example `FrameParser`, `FrameCodec`, `StdIoTransport`, or `RequestRegistry`.
-Avoid naming a file or class `Protocol` unless it truly owns the whole protocol
-surface.
+example `FrameParser`, `StdIoTransport`, or `RequestRegistry`. Functional
+codec modules may use names such as `frame_codec.hpp`; avoid naming a file or
+class `Protocol` unless it truly owns the whole protocol surface.
+
+File naming:
+
+- Use `PascalCase.hpp`/`.cpp` when a file is centered on one primary
+  `PascalCase` class, interface, or type and normally shares its name.
+- Use `snake_case.hpp`/`.cpp` for DTO and enum collections, free-function
+  modules, codecs, validation/serialization helpers, internal implementation
+  splits, and entry points.
+- Use `snake_case.hpp` for umbrella headers.
 
 Keep enum classes and basic DTOs in `data/` or in the nearest subdomain
 `data/` file. If several files need the same DTO group, expose them through an
@@ -761,13 +770,13 @@ larger abstraction on top of it:
   should not enforce a closed list until the project deliberately chooses a
   stricter interoperability policy.
 - `protocol/control` implementation files are intentionally split by
-  responsibility, for example `ControlDecode.cpp`, `ControlEncode.cpp`,
-  `ControlValidation.cpp`, `ControlJson.cpp`, and `ErrorCodec.cpp`. Keep this
+  responsibility, for example `control_decode.cpp`, `control_encode.cpp`,
+  `control_validation.cpp`, `control_json.cpp`, and `error_codec.cpp`. Keep this
   split instead of regrowing a monolithic `ControlCodec.cpp`. JSON helper
   functions should remain private to `protocol/control`; do not create a
   generic `utils` or `helpers` dumping ground unless there is real reuse across
   this subdomain.
-- `src/qwen_tts_bridge/protocol/control/ControlCodecInternal.hpp` is internal
+- `src/qwen_tts_bridge/protocol/control/control_codec_internal.hpp` is internal
   even though the current `src/` include layout makes it technically
   includable. When the project introduces a public `include/` or install
   layout, move internal/private headers like this outside the public include
