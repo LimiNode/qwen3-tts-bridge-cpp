@@ -17,6 +17,10 @@ NativeQwenFinishReason map_finish_reason(qt_finish_reason reason) noexcept {
     switch (reason) {
     case QT_FINISH_EOS:
         return NativeQwenFinishReason::NaturalEos;
+    case QT_FINISH_EOS_ASSISTED:
+        return NativeQwenFinishReason::AssistedEos;
+    case QT_FINISH_EOS_FORCED:
+        return NativeQwenFinishReason::ForcedEos;
     case QT_FINISH_MAX_TOKENS:
         return NativeQwenFinishReason::MaxTokens;
     case QT_FINISH_UNKNOWN:
@@ -59,10 +63,12 @@ bool should_cancel(void* user_data) noexcept {
 struct NativeQwenBackend::Impl {
     qt_context* context = nullptr;
     std::string error;
+    NativeQwenBackendOptions options;
 };
 
 NativeQwenBackend::NativeQwenBackend(const NativeQwenBackendOptions& options)
     : impl_(new Impl()) {
+    impl_->options = options;
     qt_init_params params{};
     qt_init_default_params(&params);
     params.talker_path = options.talker_path.c_str();
@@ -119,7 +125,18 @@ bool NativeQwenBackend::synthesize(
     }
 
     qt_tts_params params{};
-    qt_tts_default_params(&params);
+    if (qt_tts_default_params_ex(&params, sizeof(params)) != QT_STATUS_OK) {
+        impl_->error = qwen_error_or("qwentts.cpp rejected ABI-6 TTS params");
+        return false;
+    }
+    params.eos_guard_enabled = impl_->options.eos_guard_enabled;
+    params.eos_guard_start_ratio = impl_->options.eos_guard_start_ratio;
+    params.eos_guard_max_ratio = impl_->options.eos_guard_max_ratio;
+    params.eos_guard_force_ratio = impl_->options.eos_guard_force_ratio;
+    params.eos_guard_max_boost = impl_->options.eos_guard_max_boost;
+    params.eos_guard_voice_multiplier = impl_->options.eos_guard_voice_multiplier;
+    params.eos_guard_min_expected_frames = impl_->options.eos_guard_min_expected_frames;
+    params.eos_guard_frames_per_text_token = impl_->options.eos_guard_frames_per_text_token;
     params.text = request.text.c_str();
     params.lang = request.language.c_str();
     params.instruct = request.instruction.empty() ? nullptr : request.instruction.c_str();

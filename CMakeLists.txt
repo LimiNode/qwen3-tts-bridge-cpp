@@ -328,6 +328,27 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             )
             add_dependencies(native_qwen_backend_abi_test test-sampling-contract)
         endif()
+        # The nested qwentts project registers these contract tests with CTest,
+        # but they are not pulled into the default build graph.  Make the
+        # bridge's native ABI test depend on them so a normal build followed by
+        # CTest cannot report NOT_RUN for a registered native contract.
+        if(TARGET test-sampling-graph-contract)
+            target_include_directories(test-sampling-graph-contract
+                PRIVATE
+                    "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src"
+            )
+            if(NOT MSVC)
+                target_compile_options(test-sampling-graph-contract PRIVATE -Wno-shadow)
+            endif()
+            add_dependencies(native_qwen_backend_abi_test test-sampling-graph-contract)
+        endif()
+        if(TARGET test-eos-guard-contract)
+            target_include_directories(test-eos-guard-contract
+                PRIVATE
+                    "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src"
+            )
+            add_dependencies(native_qwen_backend_abi_test test-eos-guard-contract)
+        endif()
         add_test(NAME native_qwen_backend_abi_test COMMAND native_qwen_backend_abi_test)
 
         add_executable(native_qwen_backend_finish_test

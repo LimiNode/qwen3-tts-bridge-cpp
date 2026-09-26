@@ -51,9 +51,13 @@ void qt_free(qt_context* context) {
     delete context;
 }
 
-void qt_tts_default_params(qt_tts_params* params) {
+qt_status qt_tts_default_params_ex(qt_tts_params* params, size_t size) {
+    if (params == nullptr || size != sizeof(*params)) {
+        return QT_STATUS_INVALID_PARAMS;
+    }
     std::memset(params, 0, sizeof(*params));
     params->abi_version = QT_ABI_VERSION;
+    return QT_STATUS_OK;
 }
 
 qt_status qt_synthesize(qt_context*, const qt_tts_params* params, qt_audio* audio) {
@@ -62,6 +66,10 @@ qt_status qt_synthesize(qt_context*, const qt_tts_params* params, qt_audio* audi
         g_finish_reason = QT_FINISH_UNKNOWN;
     } else if (text == "max") {
         g_finish_reason = QT_FINISH_MAX_TOKENS;
+    } else if (text == "assisted") {
+        g_finish_reason = QT_FINISH_EOS_ASSISTED;
+    } else if (text == "forced") {
+        g_finish_reason = QT_FINISH_EOS_FORCED;
     } else {
         g_finish_reason = QT_FINISH_EOS;
     }
@@ -104,6 +112,14 @@ int main() {
     completion.finish_reason = NativeQwenFinishReason::NaturalEos;
     CHECK(backend.synthesize(request, {}, {}, nullptr, &completion));
     CHECK(completion.finish_reason == NativeQwenFinishReason::MaxTokens);
+
+    request.text = "assisted";
+    CHECK(backend.synthesize(request, {}, {}, nullptr, &completion));
+    CHECK(completion.finish_reason == NativeQwenFinishReason::AssistedEos);
+
+    request.text = "forced";
+    CHECK(backend.synthesize(request, {}, {}, nullptr, &completion));
+    CHECK(completion.finish_reason == NativeQwenFinishReason::ForcedEos);
 
     request.text = "unknown";
     completion.finish_reason = NativeQwenFinishReason::NaturalEos;
