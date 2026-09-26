@@ -10,6 +10,9 @@
 #include <string>
 #include <vector>
 
+#include "../data/protocol_types.hpp"
+#include "../protocol/control/control_messages.hpp"
+
 namespace qwen_tts_bridge {
 
 /// \struct TtsSamplingOptions

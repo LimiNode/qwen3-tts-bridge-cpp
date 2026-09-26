@@ -121,6 +121,9 @@ QT_API qt_status qt_synthesize(
     } else {
         g_finish_reason = QT_FINISH_EOS;
     }
+    if (params->eos_guard_enabled && g_log_callback != nullptr) {
+        g_log_callback(QT_LOG_INFO, "fake eos_guard_enabled=true", g_log_user_data);
+    }
     if (std::strcmp(params->text, "force empty eos") == 0) {
         // Exercise the native worker's fail-closed guard for a successful EOS
         // result that emitted no PCM at all.

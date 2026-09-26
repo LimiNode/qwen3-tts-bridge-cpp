@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <vector>
 
+#include "control_messages.hpp"
+
 namespace qwen_tts_bridge {
 
 /// \brief Decodes a UTF-8 control_json payload.

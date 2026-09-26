@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "enums.hpp"
+
 namespace qwen_tts_bridge {
 
 /// \brief Request identifier used to route frames and callbacks.

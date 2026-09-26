@@ -251,6 +251,45 @@ endif()
 if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     enable_testing()
 
+    # Compile every public leaf/umbrella header as its own translation unit.
+    # This prevents umbrella include order from hiding missing direct
+    # dependencies in installed-facing headers.
+    set(_qwen_tts_public_headers
+        qwen_tts_bridge/audio.hpp
+        qwen_tts_bridge/audio/save_wav_callbacks.hpp
+        qwen_tts_bridge/audio/WavWriter.hpp
+        qwen_tts_bridge/client.hpp
+        qwen_tts_bridge/client/client_types.hpp
+        qwen_tts_bridge/client/QwenTtsClient.hpp
+        qwen_tts_bridge/data.hpp
+        qwen_tts_bridge/data/enums.hpp
+        qwen_tts_bridge/data/protocol_types.hpp
+        qwen_tts_bridge/native.hpp
+        qwen_tts_bridge/protocol/control.hpp
+        qwen_tts_bridge/protocol/control/control_codec.hpp
+        qwen_tts_bridge/protocol/control/control_messages.hpp
+        qwen_tts_bridge/protocol/framing.hpp
+        qwen_tts_bridge/protocol/framing/frame_codec.hpp
+        qwen_tts_bridge/protocol/framing/FrameParser.hpp
+        qwen_tts_bridge/session.hpp
+        qwen_tts_bridge/session/WorkerSession.hpp
+        qwen_tts_bridge/transport.hpp
+        qwen_tts_bridge/transport/ITransport.hpp
+        qwen_tts_bridge/transport/stdio/StdIoTransport.hpp
+    )
+    set(_qwen_tts_header_check_sources)
+    foreach(_header IN LISTS _qwen_tts_public_headers)
+        string(REPLACE "/" "_" _header_stem "${_header}")
+        set(_header_source "${CMAKE_CURRENT_BINARY_DIR}/header-check/${_header_stem}.cpp")
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/header-check")
+        file(WRITE "${_header_source}" "#include <${_header}>\n")
+        list(APPEND _qwen_tts_header_check_sources "${_header_source}")
+    endforeach()
+    add_library(public_header_self_contained OBJECT ${_qwen_tts_header_check_sources})
+    target_include_directories(public_header_self_contained PRIVATE
+        "${QWEN_TTS_BRIDGE_SRC_DIR}"
+        "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src")
+
     if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
         # Keep the test double out of the main configuration output directory.
         # The real qwentts runtime is also named qwen.dll; sharing the default

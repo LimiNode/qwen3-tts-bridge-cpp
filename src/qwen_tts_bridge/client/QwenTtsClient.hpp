@@ -15,6 +15,11 @@
 #include <thread>
 #include <unordered_map>
 
+#include "client_types.hpp"
+#include "../protocol/control/control_messages.hpp"
+#include "../session/WorkerSession.hpp"
+#include "../transport/stdio/StdIoTransport.hpp"
+
 namespace qwen_tts_bridge {
 
 /// \struct QwenTtsClientOptions

@@ -107,6 +107,9 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
             const auto value = require_value(index, argc, argv, L"--max-text-bytes");
             options.max_text_bytes = std::stoi(value.wstring());
         }
+        else if (argument == L"--eos-guard") {
+            options.eos_guard_enabled = true;
+        }
         else if (argument == L"--precompute-voice-ref") {
             options.precompute_voice_refs = true;
         }
@@ -131,6 +134,7 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
                 << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
                 << "  [--max-text-bytes N] [--precompute-voice-ref]\n"
+                << "  [--eos-guard]\n"
                 << "  [--warmup-synthesis] [--warmup-text TEXT] [--warmup-language LANG]\n"
                 << "  [--warmup-voice-id ID]\n";
             std::exit(EXIT_SUCCESS);

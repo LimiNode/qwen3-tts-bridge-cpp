@@ -1,4 +1,5 @@
-#include <qwen_tts_bridge/client.hpp>
+#include <qwen_tts_bridge/client/QwenTtsClient.hpp>
+#include <qwen_tts_bridge/protocol/control/control_codec.hpp>
 
 #include <algorithm>
 #include <chrono>

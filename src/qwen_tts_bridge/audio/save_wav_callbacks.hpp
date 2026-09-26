@@ -10,6 +10,9 @@
 #include <mutex>
 #include <string>
 
+#include "../client/client_types.hpp"
+#include "../protocol/control/control_messages.hpp"
+
 namespace qwen_tts_bridge::audio {
 
 class WavWriter;

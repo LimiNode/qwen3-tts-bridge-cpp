@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "../../data/protocol_types.hpp"
+
 namespace qwen_tts_bridge {
 
 /// \class FrameParser
