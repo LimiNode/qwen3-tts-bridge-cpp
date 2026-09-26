@@ -1,0 +1,22 @@
+{
+  "runtime": {
+    "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+    "binary_sha256": "F6130824C460EEFC855BFAE9D23E78760574A98AF8A4735E5B6A09ED2123726A",
+    "talker_model_sha256": "4B9A33A236908DD9435A42F7A396E38038329D053B704342A6413C08544C4FDA",
+    "codec_model_sha256": "1883BEEED99348FC35E23DD225E9082F93F6F8C109330A33D935BAA8ACDBFD94",
+    "reference_spk_sha256": "283739A8C1F4AFF8D0B5F1EA8E92CDE60D4D50625D3E060E5B131AF7DC5AC950",
+    "reference_rvq_sha256": "FD8C6FDC98C08785CCCEDF710CCE26D9AC23A6F56DF156D41561066470EAFBE1"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "vram_mib": 20479
+  },
+  "artifact_root": "C:\\tmp\\qwentts-semantic-acceptance-130cb99",
+  "artifact_policy": "WAV and raw logs remain outside git; matrix rows and SHA-256 references are committed here.",
+  "notes": [
+    "The supplementary matrix used reference.spk only; reference.rvq is hashed for provenance but was not passed to the command.",
+    "Each row is a fresh CLI process, so TTFA is not a persistent-worker warm benchmark.",
+    "Listening/semantic quality still requires human review of the paired WAV files."
+  ]
+}
