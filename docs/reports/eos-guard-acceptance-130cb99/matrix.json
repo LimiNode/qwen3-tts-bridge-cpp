@@ -1,0 +1,35 @@
+{
+  "experiment": "supplementary semantic EOS matrix",
+  "runtime_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "binary_sha256": "F6130824C460EEFC855BFAE9D23E78760574A98AF8A4735E5B6A09ED2123726A",
+  "gpu": "NVIDIA CMP 50HX",
+  "compute_capability": "7.5",
+  "cuda_architecture": 75,
+  "model_family": "1.7B Base Q8_0",
+  "process_reuse": false,
+  "startup_synthesis_warmup": false,
+  "cuda_graph_warmup": "implicit first-request graph capture; standalone process per run",
+  "voice_conditioning": "reference.spk only",
+  "guard": {
+    "enabled_parameters": {"eos_start": 0.6, "eos_max": 1.2, "eos_force": 1.5, "eos_boost": 25.0},
+    "disabled_mode": "no EOS convergence guard"
+  },
+  "rows": [
+    {"case":"ru_short","seed":1000,"guard":false,"finish_reason":"natural_eos","frames":168,"eos_step":168,"ttfa_ms":276.3,"total_ms":4735.1,"wav_sha256":"0F904B6CA0B8D1A5781285F5DEFFF07DA25EE987A173C3EC8567B9719B985022"},
+    {"case":"ru_short","seed":1000,"guard":true,"finish_reason":"eos_assisted","frames":65,"eos_step":65,"ttfa_ms":276.4,"total_ms":2271.2,"wav_sha256":"D9D940FE06122BD2E2D5E70538D5DD9E2D35ABCBA0F1FDEAE814F132B3BDB1DE"},
+    {"case":"ru_short","seed":1002,"guard":false,"finish_reason":"natural_eos","frames":78,"eos_step":78,"ttfa_ms":308.7,"total_ms":2693.1,"wav_sha256":"E37D75C598953CC9F03CBF953F0B963D859AAA22413B334E5B16AE5C9C255AAC"},
+    {"case":"ru_short","seed":1002,"guard":true,"finish_reason":"eos_assisted","frames":67,"eos_step":67,"ttfa_ms":243.4,"total_ms":2168.5,"wav_sha256":"034ECB2976FB20316AC47DEC9C1776721F697D34EEFE6664606193FE694D434F"},
+    {"case":"ru_long_punct","seed":1000,"guard":false,"finish_reason":"natural_eos","frames":104,"eos_step":104,"ttfa_ms":267.4,"total_ms":3147.1,"wav_sha256":"9B5F478DDAE72A634B2B6DA3334E8BBAE60AA30C00DDAC0A2E4D140F3B687E25"},
+    {"case":"ru_long_punct","seed":1000,"guard":true,"finish_reason":"natural_eos","frames":104,"eos_step":104,"ttfa_ms":266.7,"total_ms":3121.7,"wav_sha256":"9B5F478DDAE72A634B2B6DA3334E8BBAE60AA30C00DDAC0A2E4D140F3B687E25"},
+    {"case":"ru_long_punct","seed":1002,"guard":false,"finish_reason":"natural_eos","frames":79,"eos_step":79,"ttfa_ms":307.1,"total_ms":2723.3,"wav_sha256":"4DB3552D2B2E68EE2C79D6DA6C01613AF90591B9731BE82CF1FB4BD4A2DCA544"},
+    {"case":"ru_long_punct","seed":1002,"guard":true,"finish_reason":"natural_eos","frames":79,"eos_step":79,"ttfa_ms":260.2,"total_ms":2486.2,"wav_sha256":"4DB3552D2B2E68EE2C79D6DA6C01613AF90591B9731BE82CF1FB4BD4A2DCA544"},
+    {"case":"en_short","seed":1000,"guard":false,"finish_reason":"natural_eos","frames":42,"eos_step":42,"ttfa_ms":233.2,"total_ms":1545.8,"wav_sha256":"6F90B4C8A3E70BF2127667F00DFFF9C17A0E460E5D217FBFF48746D1BC4B1CD8"},
+    {"case":"en_short","seed":1000,"guard":true,"finish_reason":"natural_eos","frames":42,"eos_step":42,"ttfa_ms":240.4,"total_ms":1541.6,"wav_sha256":"6F90B4C8A3E70BF2127667F00DFFF9C17A0E460E5D217FBFF48746D1BC4B1CD8"},
+    {"case":"en_short","seed":1002,"guard":false,"finish_reason":"natural_eos","frames":42,"eos_step":42,"ttfa_ms":137.7,"total_ms":1139.6,"wav_sha256":"4FF9F6BC51D4BDDB0881011D46642910ADE6C8DB81C0252222D8D1BF0100F33F"},
+    {"case":"en_short","seed":1002,"guard":true,"finish_reason":"natural_eos","frames":42,"eos_step":42,"ttfa_ms":134.6,"total_ms":1127.3,"wav_sha256":"4FF9F6BC51D4BDDB0881011D46642910ADE6C8DB81C0252222D8D1BF0100F33F"},
+    {"case":"en_long_punct","seed":1000,"guard":false,"finish_reason":"natural_eos","frames":109,"eos_step":109,"ttfa_ms":143.2,"total_ms":2488.9,"wav_sha256":"5DC05B77DC4BADB3F825A731B225B753163E69AC87D5580812983CC4955821EA"},
+    {"case":"en_long_punct","seed":1000,"guard":true,"finish_reason":"eos_assisted","frames":109,"eos_step":109,"ttfa_ms":143.8,"total_ms":2508.6,"wav_sha256":"5DC05B77DC4BADB3F825A731B225B753163E69AC87D5580812983CC4955821EA"},
+    {"case":"en_long_punct","seed":1002,"guard":false,"finish_reason":"natural_eos","frames":111,"eos_step":111,"ttfa_ms":145.5,"total_ms":2547.1,"wav_sha256":"410B978024FA4C1514E7E9650EE7CFD4E96DB1B8ADD7DE613E8BCFA3F4D429FA"},
+    {"case":"en_long_punct","seed":1002,"guard":true,"finish_reason":"eos_assisted","frames":111,"eos_step":111,"ttfa_ms":148.4,"total_ms":2561.7,"wav_sha256":"410B978024FA4C1514E7E9650EE7CFD4E96DB1B8ADD7DE613E8BCFA3F4D429FA"}
+  ]
+}

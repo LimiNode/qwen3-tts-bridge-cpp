@@ -1,0 +1,34 @@
+{
+  "encoding": "UTF-8",
+  "reference_conditioning": "reference.spk only (reference.rvq was not used for this supplementary matrix)",
+  "cases": [
+    {
+      "label": "ru_short",
+      "language": "russian",
+      "text": "Сегодня хороший день, и мы начинаем проверку голоса."
+    },
+    {
+      "label": "ru_long_punct",
+      "language": "russian",
+      "text": "Проверяем длинную фразу: паузы, числа 12,5 и 2026 год, вопрос? Да — именно так!"
+    },
+    {
+      "label": "en_short",
+      "language": "english",
+      "text": "Today is a good day, and we are checking the voice."
+    },
+    {
+      "label": "en_long_punct",
+      "language": "english",
+      "text": "We are checking a longer sentence: pauses, numbers 12.5 and 2026, a question? Yes — exactly."
+    }
+  ],
+  "seeds": [1000, 1002],
+  "guard_modes": ["off", "on"],
+  "text_sha256": {
+    "ru_short": "1F6AF25FF88126E3FFA66425936225713CB1C215A1CD38B585B6837B043A8599",
+    "ru_long_punct": "CB7106B206BBCD6C3C26539F564AAFE7EBCB771C14933F0617AD32D3064636B8",
+    "en_short": "E4A64236319F8671639945099918623BB6B6706FC473ACD2B31788BFA042B3B3",
+    "en_long_punct": "185B0CD2E3F3C3045F7D8918D88B9987B67ABA12F34FAED8701E8CB591D1EEB1"
+  }
+}
