@@ -12,10 +12,11 @@
     "compute_capability": "7.5",
     "vram_mib": 20479
   },
-  "artifact_root": "C:\\tmp\\qwentts-semantic-acceptance-130cb99",
+  "artifact_root": "C:\\tmp\\qwentts-semantic-acceptance-130cb99-bytepipe",
   "artifact_policy": "WAV and raw logs remain outside git; matrix rows and SHA-256 references are committed here.",
   "notes": [
     "The supplementary matrix used reference.spk only; reference.rvq is hashed for provenance but was not passed to the command.",
+    "UTF-8 stdin was supplied through cmd.exe byte-preserving redirection; Windows PowerShell Get-Content piping is not valid for non-ASCII input unless OutputEncoding is explicitly set.",
     "Each row is a fresh CLI process, so TTFA is not a persistent-worker warm benchmark.",
     "Listening/semantic quality still requires human review of the paired WAV files."
   ]

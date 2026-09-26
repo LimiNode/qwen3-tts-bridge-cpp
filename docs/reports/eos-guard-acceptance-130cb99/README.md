@@ -14,6 +14,12 @@ termination occurred for `ru_short` at both seeds and `en_long_punct` at both
 seeds; all other rows reached `natural_eos`. The paired WAV hashes show that
 the guard did not alter these trajectories where it did not need to intervene.
 
+The initial draft used a Windows PowerShell pipeline for stdin. Its default
+`$OutputEncoding` was US-ASCII, corrupting non-ASCII Russian input even though
+the source files were UTF-8. Those Russian WAVs are superseded and must not be
+used as evidence. The rows and artifacts recorded here use `cmd.exe` byte-
+preserving `< file` redirection.
+
 This is evidence that the guard is mechanically bounded on this sample, not a
 claim that assisted termination is always perceptually safe. The paired WAV
 files in the external artifact directory still need human listening review for
