@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "experiment": "cmp50hx-cuda-graphs-paired",
+  "date": "2026-09-27",
+  "bridge_commit": "202e64c82725198a36a165aac0772109d458ca7c",
+  "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "ggml_commit": "c044c6f0",
+  "cuda": "13.3.73",
+  "msvc": "14.44.35207",
+  "gpu": "NVIDIA CMP 50HX",
+  "driver": "581.94",
+  "gpu_memory_mib": 20480,
+  "cuda_architecture": "sm_75",
+  "models": {
+    "talker": {
+      "path": "C:\\tmp\\qwen3-tts-gguf\\qwen-talker-1.7b-base-Q8_0.gguf",
+      "sha256": "4B9A33A236908DD9435A42F7A396E38038329D053B704342A6413C08544C4FDA"
+    },
+    "codec": {
+      "path": "C:\\tmp\\qwen3-tts-gguf\\qwen-tokenizer-12hz-Q8_0.gguf",
+      "sha256": "1883BEEED99348FC35E23DD225E9082F93F6F8C109330A33D935BAA8ACDBFD94"
+    }
+  },
+  "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+  "text": "Сегодня хороший день, и мы начинаем проверку голоса.",
+  "language": "russian",
+  "seed": 1002,
+  "stream_max_chunk_frames": 1,
+  "eos_guard": false,
+  "worker_sha256": "96D2DEBAE13C44FB94685451E6B2959C733696946BE659AFCF64310DCE8FCC94",
+  "runtimes": {
+    "off": {
+      "ggml_cuda_graphs": false,
+      "manifest_sha256": "E7DEDBB8ECA57B40B8BD85E702D0F37514DF0EEAD76E108E48024EB329BA1C15",
+      "qwen_total_ms": 1677.04,
+      "first_pcm_ms": 228.468,
+      "qwen_prefill_ms": 153.133,
+      "qwen_ttfa_ms": 212.946,
+      "qwen_talker_ms": 270.170,
+      "qwen_predictor_ms": 973.750,
+      "qwen_codec_ms": 272.543,
+      "frames": 18,
+      "median_gap_ms": 83.924,
+      "max_gap_ms": 90.551,
+      "starvation": true,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "5F83E313183B6C92BA42913FD02F3DC7F6974F0C78C31EBB882778BE5842A2E3"
+    },
+    "on": {
+      "ggml_cuda_graphs": true,
+      "manifest_sha256": "559D8C63FEC8958801627970E6421725283D1A63E217FA5A636CA0057BA9DD45",
+      "graph_warmup_marker": "ggml_backend_cuda_graph_compute: CUDA graph warmup complete",
+      "qwen_total_ms": 616.391,
+      "first_pcm_ms": 189.629,
+      "qwen_prefill_ms": 161.934,
+      "qwen_ttfa_ms": 180.769,
+      "qwen_talker_ms": 103.678,
+      "qwen_predictor_ms": 195.260,
+      "qwen_codec_ms": 147.045,
+      "frames": 18,
+      "median_gap_ms": 24.744,
+      "max_gap_ms": 25.654,
+      "starvation": false,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "5F83E313183B6C92BA42913FD02F3DC7F6974F0C78C31EBB882778BE5842A2E3"
+    }
+  },
+  "persistent_recovery": {
+    "off": {
+      "ready_warmed_up": true,
+      "cancel_first_pcm_ms": 234.433,
+      "cancel_chunks": 1,
+      "recovery_outcome": "natural_eos",
+      "recovery_ms": 1967.530,
+      "recovery_chunks": 10,
+      "recovery_pcm_bytes": 38400,
+      "worker_exit_code": 0
+    },
+    "on": {
+      "ready_warmed_up": true,
+      "cancel_first_pcm_ms": 184.457,
+      "cancel_chunks": 1,
+      "recovery_outcome": "natural_eos",
+      "recovery_ms": 1302.173,
+      "recovery_chunks": 10,
+      "recovery_pcm_bytes": 38400,
+      "worker_exit_code": 0
+    }
+  }
+}
