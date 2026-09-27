@@ -1,5 +1,11 @@
 # CMP 50HX long-horizon RU/EN EOS matrix (2026-09-27)
 
+> **Superseded:** this run used a non-canonical local registry whose
+> `reference_text` was Latin transliteration while the reference WAV contained
+> Russian speech. It is retained as historical evidence of that invalid
+> conditioning only and must not be used to select EOS guard policy. See
+> `cmp50hx-kraftwerk-warm-long-horizon-2026-09-28.md` for the corrected run.
+
 This follow-up uses the canonical pair from the CUDA-graphs reports:
 Bridge `202e64c8`, qwentts `130cb99`, Q8 models, registered
 `kraftwerk_robot_ru_bootstrap_fidelity`, CUDA graphs ON, one persistent worker,
@@ -41,4 +47,3 @@ CUDA graphs remain the performance/runtime choice: the earlier paired and
 streaming. The long-horizon matrix keeps EOS guard policy open. The next gate
 is listening/semantic review of the four guard OFF/ON pairs, followed by a
 larger text/seed matrix before changing production defaults.
-

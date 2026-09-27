@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "experiment": "cmp50hx-kraftwerk-warm-long-horizon",
+  "date": "2026-09-28",
+  "supersedes": "cmp50hx-long-horizon-eos-matrix-2026-09-27",
+  "bridge_commit": "202e64c82725198a36a165aac0772109d458ca7c",
+  "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "ggml_commit": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+  "runtime": "GGML_CUDA_GRAPHS=ON",
+  "gpu": "NVIDIA CMP 50HX",
+  "driver": "581.94",
+  "voice_id": "kraftwerk_robot_ru_warm",
+  "reference_wav_sha256": "B8285C5925D89D90435AFA2F084A197A9E428DEC41FFF09C74969E6624A4B147",
+  "registry_sha256": "1655686047130DF630643F1863DFD0275B62FC7364EEC9C5CD5EBCF12769D53A",
+  "seed": 1002,
+  "stream_max_chunk_frames": 1,
+  "guard_off_raw_report_sha256": "BBE2A35829BC9DEA2BB34678F0D675F73C45EAAD165D57BC603B525925CD43B7",
+  "guard_on_raw_report_sha256": "F578DE84CDECACD5D69EED39482E629F4FCFDE146E6A4EA85E8E56A9A1AEC988",
+  "guard_off": {
+    "ru_medium": {"outcome": "natural_eos", "frames": 147, "first_pcm_ms": 201.2, "max_gap_ms": 27.6, "pcm_sha256": "03b823ad84d09837867ea89ba697c542b2e3e3c3ee69bc6f0287267caa92c16d"},
+    "ru_long": {"outcome": "natural_eos", "frames": 218, "first_pcm_ms": 184.1, "max_gap_ms": 35.9, "pcm_sha256": "dbc96aa3314c2049fd0d661b51682f4cfe4ea464e0283de72386981ea869e88d"},
+    "en_medium": {"outcome": "natural_eos", "frames": 156, "first_pcm_ms": 183.4, "max_gap_ms": 28.4, "pcm_sha256": "49a9333ba66157e68d1484ee8d52d4d727c87100023af2dcbd2b976c86cc361f"},
+    "en_long": {"outcome": "natural_eos", "frames": 202, "first_pcm_ms": 186.4, "max_gap_ms": 29.9, "pcm_sha256": "bb65260a8d8c250877e647d981775b141a61d0943d94ef8b858c5aea795aebcf"}
+  },
+  "guard_on": {
+    "ru_medium": {"outcome": "natural_eos", "frames": 147, "first_pcm_ms": 197.3, "max_gap_ms": 42.1, "pcm_sha256": "03b823ad84d09837867ea89ba697c542b2e3e3c3ee69bc6f0287267caa92c16d"},
+    "ru_long": {"outcome": "natural_eos", "frames": 218, "first_pcm_ms": 183.5, "max_gap_ms": 28.1, "pcm_sha256": "dbc96aa3314c2049fd0d661b51682f4cfe4ea464e0283de72386981ea869e88d"},
+    "en_medium": {"outcome": "eos_assisted", "frames": 151, "first_pcm_ms": 184.5, "max_gap_ms": 28.6, "pcm_sha256": "60128d6fd9dc548fe3a74898a22b37e0a2c943cfaaff5ec711ca3e69d2b245a6"},
+    "en_long": {"outcome": "eos_assisted", "frames": 198, "first_pcm_ms": 184.1, "max_gap_ms": 29.4, "pcm_sha256": "5b30931ab6c91ca77600fd5a67349ffaec0ac0505d01e4ef74aa2ba149666495"}
+  },
+  "listening": {
+    "phrases_complete": true,
+    "warm_kraftwerk_voice_preserved": true,
+    "guard_on_english_words_lost": false,
+    "tail_quality": "some endings are very tight and may lack smooth decay"
+  },
+  "decision": "keep_eos_guard_opt_in"
+}
