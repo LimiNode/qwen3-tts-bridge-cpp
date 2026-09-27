@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "experiment": "cmp50hx-long-horizon-eos-matrix",
+  "date": "2026-09-27",
+  "bridge_commit": "202e64c82725198a36a165aac0772109d458ca7c",
+  "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "runtime": "GGML_CUDA_GRAPHS=ON",
+  "gpu": "NVIDIA CMP 50HX",
+  "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+  "seed": 1002,
+  "stream_max_chunk_frames": 1,
+  "guard_off": {
+    "ru_medium": {"outcome": "natural_eos", "frames": 228, "first_pcm_ms": 180.600, "wall_ms": 6204.859, "median_gap_ms": 26.215, "max_gap_ms": 38.947, "pcm_sha256": "f11a8abda87a6c34ae126099c77406b1d13c27014cc6857c9cf31d72480bee72"},
+    "ru_long": {"outcome": "natural_eos", "frames": 617, "first_pcm_ms": 196.267, "wall_ms": 17298.289, "median_gap_ms": 27.651, "max_gap_ms": 53.476, "pcm_sha256": "335698387dea13f59e4b1130c20c6e41c340939b0181fafe3f488441b015addc"},
+    "en_medium": {"outcome": "max_tokens", "frames": 2049, "first_pcm_ms": 186.787, "wall_ms": 55663.950, "median_gap_ms": 27.048, "max_gap_ms": 46.386, "pcm_sha256": "fc3b775e71f31540077820afc53870c7b9eeb0c762d65e226d42b423abc60de9"},
+    "en_long": {"outcome": "natural_eos", "frames": 1182, "first_pcm_ms": 182.157, "wall_ms": 47985.082, "median_gap_ms": 27.620, "max_gap_ms": 415.179, "pcm_sha256": "fb81e8a38ff77a447641761d2146930da8529b0680732b10f18f94b14fed4fe4"}
+  },
+  "guard_on": {
+    "ru_medium": {"outcome": "eos_assisted", "frames": 243, "first_pcm_ms": 190.514, "wall_ms": 6304.603, "median_gap_ms": 25.070, "max_gap_ms": 37.295, "pcm_sha256": "c355d48712b6cc3dea3ca6a11db0a310959de91c455d4d5ef3e3b500d578e8e6"},
+    "ru_long": {"outcome": "eos_assisted", "frames": 395, "first_pcm_ms": 179.846, "wall_ms": 10125.722, "median_gap_ms": 25.102, "max_gap_ms": 35.772, "pcm_sha256": "3e72570e60f2a643ba4d23c9d1bea77e731ca49bfdd3efd513f03807ef167f75"},
+    "en_medium": {"outcome": "eos_assisted", "frames": 172, "first_pcm_ms": 179.178, "wall_ms": 4468.057, "median_gap_ms": 24.838, "max_gap_ms": 27.287, "pcm_sha256": "6f14d3e09f30099f847139750048ebafce423441dd8f3d102754980b4e2e785c"},
+    "en_long": {"outcome": "eos_assisted", "frames": 233, "first_pcm_ms": 180.504, "wall_ms": 5967.407, "median_gap_ms": 24.862, "max_gap_ms": 26.340, "pcm_sha256": "6a54dea5f4a999ed440b5c534774b0a98db9baa1f69246f5e06458795557a129"}
+  }
+}
