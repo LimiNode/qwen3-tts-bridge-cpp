@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "experiment": "cmp50hx-cuda-graphs-baseline-100",
+  "date": "2026-09-27",
+  "canary_report": "cmp50hx-cuda-graphs-canary-2026-09-27",
+  "bridge_commit": "202e64c82725198a36a165aac0772109d458ca7c",
+  "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "runtime": "GGML_CUDA_GRAPHS=ON",
+  "gpu": "NVIDIA CMP 50HX",
+  "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+  "text": "Сегодня хороший день, и мы начинаем проверку голоса.",
+  "language": "russian",
+  "seed": 1002,
+  "stream_max_chunk_frames": 1,
+  "request_count": 100,
+  "ready_warmed_up": true,
+  "graph_warmup_marker": true,
+  "worker_exit_code": 0,
+  "all_requests": {
+    "completed": 100,
+    "natural_eos": 100,
+    "chunks": 18,
+    "pcm_bytes": 69120,
+    "unique_pcm_sha256": 1,
+    "pcm_sha256": "E68D8F3630D74A6B88D0D8FB4F9E82E84BB7DDC2BE80EDF0676C26E2A785493B"
+  },
+  "latency_ms": {
+    "first_pcm": {"p50": 179.282, "p95": 181.641, "p99": 189.236, "max": 194.220},
+    "wall": {"p50": 609.090, "p95": 620.897, "p99": 648.249, "max": 654.652},
+    "median_gap": {"p50": 24.815, "p95": 25.326, "p99": 25.875, "max": 25.995},
+    "max_gap": {"p50": 25.644, "p95": 27.939, "p99": 33.936, "max": 42.718}
+  }
+}
