@@ -1,6 +1,9 @@
 {
   "schema_version": 1,
   "experiment": "cmp50hx-long-horizon-eos-matrix",
+  "status": "superseded_invalid_conditioning",
+  "invalid_reason": "local registry reference_text used Latin transliteration while the reference WAV contained Russian speech",
+  "superseded_by": "cmp50hx-kraftwerk-warm-long-horizon-2026-09-28",
   "date": "2026-09-27",
   "bridge_commit": "202e64c82725198a36a165aac0772109d458ca7c",
   "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
