@@ -32,6 +32,7 @@ using qwen_tts_bridge::StdIoTransportOptions;
 using qwen_tts_bridge::TtsRequest;
 using qwen_tts_bridge::TtsCompletion;
 using qwen_tts_bridge::audio::SaveWavState;
+using qwen_tts_bridge::audio::AudioTailOptions;
 using qwen_tts_bridge::audio::WavWriter;
 using qwen_tts_bridge::audio::make_save_wav_callbacks;
 using qwen_tts_bridge::audio::wait_for_save_wav_terminal;
@@ -57,6 +58,7 @@ struct ProgramOptions {
     std::chrono::milliseconds startup_timeout{30000};
     std::chrono::milliseconds request_timeout{60000};
     bool require_natural_eos = false;
+    AudioTailOptions audio_tail;
 };
 
 void print_usage(std::ostream& out, const char* executable_name) {
@@ -81,6 +83,10 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --request-timeout-ms <ms>      Request timeout, 0 disables it.\n"
         << "  --require-natural-eos          Fail unless worker reports natural EOS.\n"
+        << "  --tail                         Fade and pad terminal audio.\n"
+        << "  --tail-fade-ms <ms>            Terminal fade duration, default: 15.\n"
+        << "  --tail-silence-ms <ms>         Completion silence, default: 85.\n"
+        << "  --cancel-tail-silence-ms <ms>  Cancellation silence, default: 0.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
         << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
         << "  --mock-chunk-delay <seconds>   Mock delay between chunks, default: 0.\n";
@@ -253,6 +259,25 @@ ProgramOptions parse_options(int argc, char** argv) {
         else if (arg == "--require-natural-eos") {
             options.require_natural_eos = true;
         }
+        else if (arg == "--tail") {
+            options.audio_tail.enabled = true;
+        }
+        else if (arg == "--tail-fade-ms" || arg.rfind("--tail-fade-ms=", 0) == 0) {
+            options.audio_tail.fade_ms = parse_u32(
+                require_value(index, argc, argv, "--tail-fade-ms"),
+                "--tail-fade-ms");
+        }
+        else if (arg == "--tail-silence-ms" || arg.rfind("--tail-silence-ms=", 0) == 0) {
+            options.audio_tail.completion_silence_ms = parse_u32(
+                require_value(index, argc, argv, "--tail-silence-ms"),
+                "--tail-silence-ms");
+        }
+        else if (arg == "--cancel-tail-silence-ms" ||
+                 arg.rfind("--cancel-tail-silence-ms=", 0) == 0) {
+            options.audio_tail.cancellation_silence_ms = parse_u32(
+                require_value(index, argc, argv, "--cancel-tail-silence-ms"),
+                "--cancel-tail-silence-ms");
+        }
         else if (arg == "--startup-timeout-ms" ||
                  arg.rfind("--startup-timeout-ms=", 0) == 0) {
             options.startup_timeout = std::chrono::milliseconds(parse_u32(
@@ -310,6 +335,12 @@ void validate_options(const ProgramOptions& options) {
     }
     if (options.mock_chunk_delay < 0.0) {
         throw std::runtime_error("--mock-chunk-delay must be non-negative");
+    }
+    constexpr std::uint32_t max_tail_ms = 600000;
+    if (options.audio_tail.fade_ms > max_tail_ms ||
+        options.audio_tail.completion_silence_ms > max_tail_ms ||
+        options.audio_tail.cancellation_silence_ms > max_tail_ms) {
+        throw std::runtime_error("audio tail durations must not exceed 600000 ms");
     }
 }
 
@@ -398,7 +429,11 @@ int main(int argc, char** argv) {
 
         TtsCompletion completion;
         bool completion_metadata_received = false;
-        auto callbacks = make_save_wav_callbacks(state, writer, audio_format);
+        auto callbacks = make_save_wav_callbacks(
+            state,
+            writer,
+            audio_format,
+            options.audio_tail);
         callbacks.on_completion_metadata = [&](const TtsCompletion& value) {
             completion = value;
             completion_metadata_received = true;

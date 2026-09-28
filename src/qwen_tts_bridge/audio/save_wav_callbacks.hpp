@@ -17,6 +17,21 @@ namespace qwen_tts_bridge::audio {
 
 class WavWriter;
 
+/// \struct AudioTailOptions
+/// \brief Optional terminal PCM shaping for saved or played audio.
+///
+/// The bridge keeps the final fade window buffered until a terminal callback
+/// arrives.  This makes it possible to smooth both normal completion and an
+/// intentionally cancelled request without changing the model's PCM output.
+/// The option is disabled by default so callers that need model-faithful PCM
+/// retain the existing behaviour.
+struct AudioTailOptions {
+    bool enabled = false; ///< Whether terminal shaping is enabled.
+    std::uint32_t fade_ms = 15; ///< Duration of the terminal fade in milliseconds.
+    std::uint32_t completion_silence_ms = 85; ///< Silence appended after completion.
+    std::uint32_t cancellation_silence_ms = 0; ///< Silence appended after cancellation.
+};
+
 /// \struct SaveWavState
 /// \brief Shared completion state for asynchronous WAV output.
 struct SaveWavState {
@@ -45,6 +60,7 @@ bool wait_for_save_wav_terminal(
 TtsCallbacks make_save_wav_callbacks(
     SaveWavState& state,
     WavWriter& writer,
-    const AudioFormat& expected_format);
+    const AudioFormat& expected_format,
+    AudioTailOptions tail_options = {});
 
 } // namespace qwen_tts_bridge::audio
