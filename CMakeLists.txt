@@ -90,7 +90,9 @@ if(WIN32)
 endif()
 
 add_library(qwen_tts_bridge
+    src/qwen_tts_bridge/audio/post_processor.cpp
     src/qwen_tts_bridge/audio/save_wav_callbacks.cpp
+    src/qwen_tts_bridge/audio/terminal_fade_post_processor.cpp
     src/qwen_tts_bridge/audio/WavWriter.cpp
     src/qwen_tts_bridge/client/QwenTtsClient.cpp
     src/qwen_tts_bridge/protocol/control/control_codec.cpp
@@ -256,7 +258,9 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     # dependencies in installed-facing headers.
     set(_qwen_tts_public_headers
         qwen_tts_bridge/audio.hpp
+        qwen_tts_bridge/audio/post_processor.hpp
         qwen_tts_bridge/audio/save_wav_callbacks.hpp
+        qwen_tts_bridge/audio/terminal_fade_post_processor.hpp
         qwen_tts_bridge/audio/WavWriter.hpp
         qwen_tts_bridge/client.hpp
         qwen_tts_bridge/client/client_types.hpp
@@ -435,6 +439,17 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     )
 
     add_test(NAME control_codec_test COMMAND control_codec_test)
+
+    add_executable(audio_post_processor_test
+        tests/audio_post_processor_test.cpp
+    )
+
+    target_link_libraries(audio_post_processor_test
+        PRIVATE
+            QwenTTSBridge::qwen_tts_bridge
+    )
+
+    add_test(NAME audio_post_processor_test COMMAND audio_post_processor_test)
 
     add_executable(qwen_tts_save_wav_callbacks_test
         tests/qwen_tts_save_wav_callbacks_test.cpp

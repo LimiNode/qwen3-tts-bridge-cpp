@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -31,8 +32,10 @@ using qwen_tts_bridge::RequestId;
 using qwen_tts_bridge::StdIoTransportOptions;
 using qwen_tts_bridge::TtsRequest;
 using qwen_tts_bridge::TtsCompletion;
+using qwen_tts_bridge::audio::AudioPostProcessorChain;
 using qwen_tts_bridge::audio::SaveWavState;
-using qwen_tts_bridge::audio::AudioTailOptions;
+using qwen_tts_bridge::audio::TerminalFadeOptions;
+using qwen_tts_bridge::audio::TerminalFadePostProcessor;
 using qwen_tts_bridge::audio::WavWriter;
 using qwen_tts_bridge::audio::make_save_wav_callbacks;
 using qwen_tts_bridge::audio::wait_for_save_wav_terminal;
@@ -58,7 +61,8 @@ struct ProgramOptions {
     std::chrono::milliseconds startup_timeout{30000};
     std::chrono::milliseconds request_timeout{60000};
     bool require_natural_eos = false;
-    AudioTailOptions audio_tail;
+    bool terminal_fade_enabled = false;
+    TerminalFadeOptions terminal_fade;
 };
 
 void print_usage(std::ostream& out, const char* executable_name) {
@@ -260,21 +264,21 @@ ProgramOptions parse_options(int argc, char** argv) {
             options.require_natural_eos = true;
         }
         else if (arg == "--tail") {
-            options.audio_tail.enabled = true;
+            options.terminal_fade_enabled = true;
         }
         else if (arg == "--tail-fade-ms" || arg.rfind("--tail-fade-ms=", 0) == 0) {
-            options.audio_tail.fade_ms = parse_u32(
+            options.terminal_fade.fade_ms = parse_u32(
                 require_value(index, argc, argv, "--tail-fade-ms"),
                 "--tail-fade-ms");
         }
         else if (arg == "--tail-silence-ms" || arg.rfind("--tail-silence-ms=", 0) == 0) {
-            options.audio_tail.completion_silence_ms = parse_u32(
+            options.terminal_fade.completion_silence_ms = parse_u32(
                 require_value(index, argc, argv, "--tail-silence-ms"),
                 "--tail-silence-ms");
         }
         else if (arg == "--cancel-tail-silence-ms" ||
                  arg.rfind("--cancel-tail-silence-ms=", 0) == 0) {
-            options.audio_tail.cancellation_silence_ms = parse_u32(
+            options.terminal_fade.cancellation_silence_ms = parse_u32(
                 require_value(index, argc, argv, "--cancel-tail-silence-ms"),
                 "--cancel-tail-silence-ms");
         }
@@ -337,9 +341,9 @@ void validate_options(const ProgramOptions& options) {
         throw std::runtime_error("--mock-chunk-delay must be non-negative");
     }
     constexpr std::uint32_t max_tail_ms = 600000;
-    if (options.audio_tail.fade_ms > max_tail_ms ||
-        options.audio_tail.completion_silence_ms > max_tail_ms ||
-        options.audio_tail.cancellation_silence_ms > max_tail_ms) {
+    if (options.terminal_fade.fade_ms > max_tail_ms ||
+        options.terminal_fade.completion_silence_ms > max_tail_ms ||
+        options.terminal_fade.cancellation_silence_ms > max_tail_ms) {
         throw std::runtime_error("audio tail durations must not exceed 600000 ms");
     }
 }
@@ -429,11 +433,17 @@ int main(int argc, char** argv) {
 
         TtsCompletion completion;
         bool completion_metadata_received = false;
+        std::shared_ptr<AudioPostProcessorChain> processors;
+        if (options.terminal_fade_enabled) {
+            processors = std::make_shared<AudioPostProcessorChain>();
+            processors->add(std::make_unique<TerminalFadePostProcessor>(
+                options.terminal_fade));
+        }
         auto callbacks = make_save_wav_callbacks(
             state,
             writer,
             audio_format,
-            options.audio_tail);
+            std::move(processors));
         callbacks.on_completion_metadata = [&](const TtsCompletion& value) {
             completion = value;
             completion_metadata_received = true;

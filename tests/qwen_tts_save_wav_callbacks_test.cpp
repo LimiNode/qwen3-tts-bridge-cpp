@@ -7,6 +7,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -28,8 +29,10 @@ namespace {
 
 using qwen_tts_bridge::AudioFormat;
 using qwen_tts_bridge::PcmChunk;
+using qwen_tts_bridge::audio::AudioPostProcessorChain;
 using qwen_tts_bridge::audio::SaveWavState;
-using qwen_tts_bridge::audio::AudioTailOptions;
+using qwen_tts_bridge::audio::TerminalFadeOptions;
+using qwen_tts_bridge::audio::TerminalFadePostProcessor;
 using qwen_tts_bridge::audio::WavWriter;
 using qwen_tts_bridge::audio::make_save_wav_callbacks;
 using qwen_tts_bridge::audio::wait_for_save_wav_terminal;
@@ -55,6 +58,13 @@ std::vector<std::int16_t> read_wav_samples(const std::string& path) {
 
 void remove_file(const std::string& path) {
     std::remove(path.c_str());
+}
+
+std::shared_ptr<AudioPostProcessorChain> make_terminal_fade(
+    TerminalFadeOptions options) {
+    auto processors = std::make_shared<AudioPostProcessorChain>();
+    processors->add(std::make_unique<TerminalFadePostProcessor>(options));
+    return processors;
 }
 
 void test_audio_format_mismatch_marks_terminal_error() {
@@ -127,11 +137,14 @@ void test_optional_tail_fades_completion_and_appends_silence() {
     AudioFormat expected;
     expected.sample_rate = 1000;
     WavWriter writer(path, expected.sample_rate, 1, 16);
-    AudioTailOptions options;
-    options.enabled = true;
+    TerminalFadeOptions options;
     options.fade_ms = 10;
     options.completion_silence_ms = 20;
-    auto callbacks = make_save_wav_callbacks(state, writer, expected, options);
+    auto callbacks = make_save_wav_callbacks(
+        state,
+        writer,
+        expected,
+        make_terminal_fade(options));
 
     PcmChunk chunk;
     chunk.format = expected;
@@ -165,10 +178,13 @@ void test_optional_tail_fades_cancellation_without_default_pause() {
     AudioFormat expected;
     expected.sample_rate = 1000;
     WavWriter writer(path, expected.sample_rate, 1, 16);
-    AudioTailOptions options;
-    options.enabled = true;
+    TerminalFadeOptions options;
     options.fade_ms = 10;
-    auto callbacks = make_save_wav_callbacks(state, writer, expected, options);
+    auto callbacks = make_save_wav_callbacks(
+        state,
+        writer,
+        expected,
+        make_terminal_fade(options));
 
     PcmChunk chunk;
     chunk.format = expected;

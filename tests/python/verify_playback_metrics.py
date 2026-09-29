@@ -22,6 +22,9 @@ def main() -> int:
     prebuffer_output = args.output.with_stem(f"{args.output.stem}-prebuffer")
     if prebuffer_output.exists():
         prebuffer_output.unlink()
+    tail_output = args.output.with_stem(f"{args.output.stem}-tail")
+    if tail_output.exists():
+        tail_output.unlink()
 
     command = [
         str(args.player),
@@ -76,6 +79,17 @@ def main() -> int:
         prebuffer_result["first_waveout_submission_ms"]
         > prebuffer_result["chunks"][0]["arrival_ms"]
     )
+
+    tail_command = [*command, "--tail"]
+    output_index = tail_command.index(str(args.output))
+    tail_command[output_index] = str(tail_output)
+    subprocess.run(tail_command, check=True, timeout=30)
+
+    tail_result = json.loads(tail_output.read_text(encoding="utf-8"))
+    assert tail_result["audio_chunk_count"] == 5
+    assert tail_result["total_audio_duration_ms"] == 685.0
+    assert tail_result["chunks"][0]["audio_duration_ms"] == 135.0
+    assert tail_result["chunks"][-1]["audio_duration_ms"] == 100.0
 
     missing_metrics = subprocess.run(
         [str(args.player), "--mock", "--etw-playback-markers"],
