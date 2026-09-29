@@ -25,6 +25,11 @@ enum class AudioTerminalReason {
 /// One processor instance belongs to one synthesis stream. Implementations may
 /// buffer audio between calls. They must release any buffered data from
 /// finish(), choosing terminal-specific behaviour where appropriate.
+///
+/// Calls are synchronous on the client's callback/dispatcher path. A stage
+/// must be bounded and non-blocking: it must not perform long I/O, wait on an
+/// unrelated queue, or re-enter the same chain. Expensive DSP such as a neural
+/// denoiser or vocoder belongs in a separate queued/async audio layer.
 class IAudioPostProcessor {
 public:
     virtual ~IAudioPostProcessor() = default;
@@ -46,7 +51,8 @@ public:
 ///
 /// Calls are serialized so an application may finish a stream from a control
 /// thread while PCM arrives on the callback thread. A terminal call is
-/// idempotent; late PCM is discarded until reset().
+/// idempotent; late PCM is discarded until reset(). Processor calls remain
+/// synchronous and execute while the chain's serialization lock is held.
 class AudioPostProcessorChain final {
 public:
     AudioPostProcessorChain() = default;
@@ -86,6 +92,11 @@ private:
 ///
 /// Audio emitted while finalizing is delivered before the corresponding
 /// terminal callback. Completion metadata passes through unchanged.
+///
+/// If a processor throws, the adapter converts it to one local
+/// ``client_error/audio_post_processing_failed`` terminal error, suppresses
+/// all later audio and terminal callbacks, and keeps the exception out of the
+/// client dispatcher thread.
 TtsCallbacks with_audio_post_processing(
     std::shared_ptr<AudioPostProcessorChain> processors,
     TtsCallbacks downstream);

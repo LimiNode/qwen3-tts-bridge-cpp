@@ -92,7 +92,7 @@ endif()
 add_library(qwen_tts_bridge
     src/qwen_tts_bridge/audio/post_processor.cpp
     src/qwen_tts_bridge/audio/save_wav_callbacks.cpp
-    src/qwen_tts_bridge/audio/terminal_fade_post_processor.cpp
+    src/qwen_tts_bridge/audio/TerminalFadePostProcessor.cpp
     src/qwen_tts_bridge/audio/WavWriter.cpp
     src/qwen_tts_bridge/client/QwenTtsClient.cpp
     src/qwen_tts_bridge/protocol/control/control_codec.cpp
@@ -260,7 +260,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         qwen_tts_bridge/audio.hpp
         qwen_tts_bridge/audio/post_processor.hpp
         qwen_tts_bridge/audio/save_wav_callbacks.hpp
-        qwen_tts_bridge/audio/terminal_fade_post_processor.hpp
+        qwen_tts_bridge/audio/TerminalFadePostProcessor.hpp
         qwen_tts_bridge/audio/WavWriter.hpp
         qwen_tts_bridge/client.hpp
         qwen_tts_bridge/client/client_types.hpp

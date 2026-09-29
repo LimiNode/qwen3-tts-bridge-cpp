@@ -70,8 +70,17 @@ The interactive player enables this path with:
 
 On an explicit interruption, the player finalizes the processor as cancelled,
 resets queued device audio, and queues the short faded tail before the next
-utterance. The DSP stage remains independent of WaveOut and can be reused by a
-different sink.
+utterance. This is a producer-side terminal transform; a sink that can run
+ahead of the physical playback cursor must provide a bounded playout queue
+before cancellation fade can be described as cursor-accurate. The DSP stage
+itself remains independent of WaveOut and can be reused by a different sink.
+
+The current WaveOut example is suitable for normal completion and bounded
+tests, but its interruption path is not a general playout-cursor abstraction:
+it must not be used as evidence that cancellation always fades the samples
+currently audible on a device. A future realtime sink should keep queued PCM
+in a bounded software ring and apply interruption shaping at the playout
+boundary.
 
 ## Optional Native Playback Module
 

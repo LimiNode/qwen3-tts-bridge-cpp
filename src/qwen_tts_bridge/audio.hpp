@@ -7,4 +7,4 @@
 #include "audio/WavWriter.hpp"
 #include "audio/post_processor.hpp"
 #include "audio/save_wav_callbacks.hpp"
-#include "audio/terminal_fade_post_processor.hpp"
+#include "audio/TerminalFadePostProcessor.hpp"

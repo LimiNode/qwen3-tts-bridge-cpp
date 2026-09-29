@@ -1,6 +1,8 @@
 #include <qwen_tts_bridge/audio/post_processor.hpp>
 
 #include <iterator>
+#include <exception>
+#include <string>
 #include <stdexcept>
 #include <utility>
 
@@ -13,6 +15,50 @@ void emit_chunks(TtsCallbacks& callbacks, std::vector<PcmChunk> chunks) {
     }
     for (const PcmChunk& chunk : chunks) {
         callbacks.on_audio(chunk);
+    }
+}
+
+struct AdapterState {
+    std::mutex mutex;
+    bool terminal = false;
+    RequestId request_id = 0;
+};
+
+std::string exception_message(std::exception_ptr exception) noexcept {
+    try {
+        if (exception) {
+            std::rethrow_exception(exception);
+        }
+    }
+    catch (const std::exception& error) {
+        return error.what();
+    }
+    catch (...) {
+        return "unknown exception";
+    }
+    return "unknown exception";
+}
+
+TtsError make_post_processing_error(
+    const AdapterState& state,
+    std::exception_ptr exception,
+    RequestId fallback_request_id) {
+    TtsError error;
+    error.request_id = state.request_id != 0
+        ? state.request_id
+        : fallback_request_id;
+    error.category = "client_error";
+    error.code = "audio_post_processing_failed";
+    error.message = "audio post-processing failed: " +
+        exception_message(std::move(exception));
+    return error;
+}
+
+void emit_post_processing_error(
+    TtsCallbacks& callbacks,
+    TtsError error) {
+    if (callbacks.on_error) {
+        callbacks.on_error(error);
     }
 }
 
@@ -104,33 +150,115 @@ TtsCallbacks with_audio_post_processing(
     }
 
     auto callbacks = std::make_shared<TtsCallbacks>(std::move(downstream));
+    auto state = std::make_shared<AdapterState>();
     TtsCallbacks wrapped;
-    wrapped.on_audio = [processors, callbacks](const PcmChunk& chunk) {
-        emit_chunks(*callbacks, processors->process(chunk));
+    wrapped.on_audio = [processors, callbacks, state](const PcmChunk& chunk) {
+        std::unique_lock<std::mutex> lock(state->mutex);
+        if (state->terminal) {
+            return;
+        }
+        if (state->request_id == 0) {
+            state->request_id = chunk.request_id;
+        }
+        std::vector<PcmChunk> output;
+        try {
+            output = processors->process(chunk);
+        }
+        catch (...) {
+            const TtsError error = make_post_processing_error(
+                *state,
+                std::current_exception(),
+                chunk.request_id);
+            state->terminal = true;
+            lock.unlock();
+            emit_post_processing_error(*callbacks, error);
+            return;
+        }
+        emit_chunks(*callbacks, std::move(output));
     };
-    wrapped.on_completed = [processors, callbacks]() {
-        emit_chunks(
-            *callbacks,
-            processors->finish(AudioTerminalReason::Completed));
+    wrapped.on_completed = [processors, callbacks, state]() {
+        std::unique_lock<std::mutex> lock(state->mutex);
+        if (state->terminal) {
+            return;
+        }
+        std::vector<PcmChunk> output;
+        try {
+            output = processors->finish(AudioTerminalReason::Completed);
+        }
+        catch (...) {
+            const TtsError error = make_post_processing_error(
+                *state,
+                std::current_exception(),
+                state->request_id);
+            state->terminal = true;
+            lock.unlock();
+            emit_post_processing_error(*callbacks, error);
+            return;
+        }
+        state->terminal = true;
+        emit_chunks(*callbacks, std::move(output));
         if (callbacks->on_completed) {
             callbacks->on_completed();
         }
     };
-    wrapped.on_completion_metadata = [callbacks](const TtsCompletion& completion) {
+    wrapped.on_completion_metadata = [callbacks, state](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(state->mutex);
+        if (state->terminal) {
+            return;
+        }
         if (callbacks->on_completion_metadata) {
             callbacks->on_completion_metadata(completion);
         }
     };
-    wrapped.on_cancelled = [processors, callbacks]() {
-        emit_chunks(
-            *callbacks,
-            processors->finish(AudioTerminalReason::Cancelled));
+    wrapped.on_cancelled = [processors, callbacks, state]() {
+        std::unique_lock<std::mutex> lock(state->mutex);
+        if (state->terminal) {
+            return;
+        }
+        std::vector<PcmChunk> output;
+        try {
+            output = processors->finish(AudioTerminalReason::Cancelled);
+        }
+        catch (...) {
+            const TtsError error = make_post_processing_error(
+                *state,
+                std::current_exception(),
+                state->request_id);
+            state->terminal = true;
+            lock.unlock();
+            emit_post_processing_error(*callbacks, error);
+            return;
+        }
+        state->terminal = true;
+        emit_chunks(*callbacks, std::move(output));
         if (callbacks->on_cancelled) {
             callbacks->on_cancelled();
         }
     };
-    wrapped.on_error = [processors, callbacks](const TtsError& error) {
-        emit_chunks(*callbacks, processors->finish(AudioTerminalReason::Error));
+    wrapped.on_error = [processors, callbacks, state](const TtsError& error) {
+        std::unique_lock<std::mutex> lock(state->mutex);
+        if (state->terminal) {
+            return;
+        }
+        if (state->request_id == 0) {
+            state->request_id = error.request_id;
+        }
+        std::vector<PcmChunk> output;
+        try {
+            output = processors->finish(AudioTerminalReason::Error);
+        }
+        catch (...) {
+            const TtsError post_processing_error = make_post_processing_error(
+                *state,
+                std::current_exception(),
+                error.request_id);
+            state->terminal = true;
+            lock.unlock();
+            emit_post_processing_error(*callbacks, post_processing_error);
+            return;
+        }
+        state->terminal = true;
+        emit_chunks(*callbacks, std::move(output));
         if (callbacks->on_error) {
             callbacks->on_error(error);
         }
