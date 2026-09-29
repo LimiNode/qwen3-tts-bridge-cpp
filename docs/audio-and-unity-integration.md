@@ -1,7 +1,7 @@
 # Audio Playback and Unity Integration Notes
 
-This document captures design notes for future audio playback helpers and Unity
-integration. It is not part of the first implementation scope.
+This document describes the bridge's client-side PCM post-processing boundary
+and design notes for playback helpers and Unity integration.
 
 ## Core Responsibility
 
@@ -30,6 +30,48 @@ drive an avatar integration
 Keeping playback outside the core avoids turning the bridge into an audio-device
 framework with device selection, device loss, underruns, volume, pause/resume,
 and platform-specific playback behavior.
+
+## Streaming Post-Processing
+
+PCM transformation belongs between synthesis and the selected output sink:
+
+```text
+worker PCM
+    -> AudioPostProcessorChain
+        -> WAV, WaveOut, Unity, network, or application callback
+```
+
+`IAudioPostProcessor` is the client-side extension point. A stateful processor
+may consume one chunk and emit zero, one, or multiple chunks. At the end of a
+request it receives `Completed`, `Cancelled`, or `Error`, allowing buffered DSP
+to apply terminal-specific behaviour. `AudioPostProcessorChain` serializes PCM
+and terminal calls so a control thread may interrupt playback safely while the
+callback thread is delivering audio.
+
+This is deliberately not a worker protocol capability. Noise suppression,
+automatic gain control, filters, vocoders, recording effects, and terminal
+fades are properties of the consuming application and do not require the TTS
+worker to advertise or implement them.
+
+The built-in `TerminalFadePostProcessor` retains only its configured fade
+window. Defaults are a 15 ms fade followed by 85 ms of silence on successful
+completion, and the same 15 ms fade with no silence on cancellation. Errors
+release retained PCM unchanged. Applications that require model-faithful PCM
+simply omit this processor.
+
+The interactive player enables this path with:
+
+```text
+--tail
+--tail-fade-ms 15
+--tail-silence-ms 85
+--cancel-tail-silence-ms 0
+```
+
+On an explicit interruption, the player finalizes the processor as cancelled,
+resets queued device audio, and queues the short faded tail before the next
+utterance. The DSP stage remains independent of WaveOut and can be reused by a
+different sink.
 
 ## Optional Native Playback Module
 

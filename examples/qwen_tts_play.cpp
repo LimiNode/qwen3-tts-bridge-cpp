@@ -1,3 +1,4 @@
+#include <qwen_tts_bridge/audio.hpp>
 #include <qwen_tts_bridge/client.hpp>
 #include <qwen_tts_bridge/transport.hpp>
 
@@ -50,6 +51,10 @@ using qwen_tts_bridge::StdIoTransportOptions;
 using qwen_tts_bridge::TtsCallbacks;
 using qwen_tts_bridge::TtsError;
 using qwen_tts_bridge::TtsRequest;
+using qwen_tts_bridge::audio::AudioPostProcessorChain;
+using qwen_tts_bridge::audio::AudioTerminalReason;
+using qwen_tts_bridge::audio::TerminalFadeOptions;
+using qwen_tts_bridge::audio::TerminalFadePostProcessor;
 
 struct ProgramOptions {
     bool help = false;
@@ -90,6 +95,8 @@ struct ProgramOptions {
     bool etw_playback_markers = false;
     bool auto_profile = false;
     std::size_t auto_fast_max_chars = 240;
+    bool terminal_fade_enabled = false;
+    TerminalFadeOptions terminal_fade;
 };
 
 class ConsoleCodePageGuard final {
@@ -875,6 +882,7 @@ struct ActiveRequestState {
     RequestId active_request_id = 0;
     RequestId next_request_id = 1;
     QwenTtsClient* active_client = nullptr;
+    std::shared_ptr<AudioPostProcessorChain> processors;
 };
 
 struct OneShotState {
@@ -884,6 +892,23 @@ struct OneShotState {
     bool success = false;
     std::string message;
 };
+
+void mark_one_shot_terminal(
+    OneShotState* state,
+    bool success,
+    std::string message = {}) {
+    if (state == nullptr) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(state->mutex);
+    if (state->terminal) {
+        return;
+    }
+    state->terminal = true;
+    state->success = success;
+    state->message = std::move(message);
+    state->condition.notify_all();
+}
 
 std::string utf8_from_wide(const std::wstring& value);
 
@@ -940,6 +965,10 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --pcm-capture-file <path>      Write opt-in one-shot raw s16le PCM plus JSON metadata.\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
+        << "  --tail                         Fade and pad terminal audio.\n"
+        << "  --tail-fade-ms <ms>            Terminal fade duration, default: 15.\n"
+        << "  --tail-silence-ms <ms>         Completion silence, default: 85.\n"
+        << "  --cancel-tail-silence-ms <ms>  Cancellation silence, default: 0.\n"
         << "  --mock-chunks <count>          Mock worker chunk count, default: 3.\n"
         << "  --mock-chunk-ms <ms>           Mock chunk duration, default: 100.\n"
         << "  --mock-chunk-delay <seconds>   Mock delay between chunks, default: 0.\n";
@@ -1118,6 +1147,25 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
                 require_value(index, argc, argv, "--playback-prebuffer-chunks"),
                 "--playback-prebuffer-chunks");
         }
+        else if (arg == "--tail") {
+            options.terminal_fade_enabled = true;
+        }
+        else if (arg == "--tail-fade-ms" || arg.rfind("--tail-fade-ms=", 0) == 0) {
+            options.terminal_fade.fade_ms = parse_u32(
+                require_value(index, argc, argv, "--tail-fade-ms"),
+                "--tail-fade-ms");
+        }
+        else if (arg == "--tail-silence-ms" || arg.rfind("--tail-silence-ms=", 0) == 0) {
+            options.terminal_fade.completion_silence_ms = parse_u32(
+                require_value(index, argc, argv, "--tail-silence-ms"),
+                "--tail-silence-ms");
+        }
+        else if (arg == "--cancel-tail-silence-ms" ||
+                 arg.rfind("--cancel-tail-silence-ms=", 0) == 0) {
+            options.terminal_fade.cancellation_silence_ms = parse_u32(
+                require_value(index, argc, argv, "--cancel-tail-silence-ms"),
+                "--cancel-tail-silence-ms");
+        }
         else if (arg == "--etw-playback-markers") {
             options.etw_playback_markers = true;
         }
@@ -1168,6 +1216,12 @@ void validate_options(const ProgramOptions& options) {
     }
     if (options.playback_prebuffer_chunks == 0) {
         throw std::runtime_error("--playback-prebuffer-chunks must be greater than zero");
+    }
+    constexpr std::uint32_t max_terminal_duration_ms = 600000;
+    if (options.terminal_fade.fade_ms > max_terminal_duration_ms ||
+        options.terminal_fade.completion_silence_ms > max_terminal_duration_ms ||
+        options.terminal_fade.cancellation_silence_ms > max_terminal_duration_ms) {
+        throw std::runtime_error("audio terminal durations must not exceed 600000 ms");
     }
     if (options.use_mock_playback_sink && !options.use_mock_worker) {
         throw std::runtime_error("--mock-playback-sink requires --mock");
@@ -1312,7 +1366,18 @@ void clear_active_request(ActiveRequestState& state, RequestId request_id) {
     if (state.active_request_id == request_id) {
         state.active_request_id = 0;
         state.active_client = nullptr;
+        state.processors.reset();
     }
+}
+
+std::shared_ptr<AudioPostProcessorChain> make_audio_processors(
+    const ProgramOptions& options) {
+    auto processors = std::make_shared<AudioPostProcessorChain>();
+    if (options.terminal_fade_enabled) {
+        processors->add(std::make_unique<TerminalFadePostProcessor>(
+            options.terminal_fade));
+    }
+    return processors;
 }
 
 std::uint64_t cancel_active_request(
@@ -1321,17 +1386,27 @@ std::uint64_t cancel_active_request(
     ActiveRequestState& state) {
     RequestId request_id = 0;
     QwenTtsClient* active_client = nullptr;
+    std::shared_ptr<AudioPostProcessorChain> processors;
     {
         std::lock_guard<std::mutex> lock(state.mutex);
         request_id = state.active_request_id;
         active_client = state.active_client;
+        processors = std::move(state.processors);
         state.active_request_id = 0;
         state.active_client = nullptr;
     }
     if (request_id != 0) {
         (active_client != nullptr ? *active_client : client).cancel(request_id);
     }
-    return player.reset();
+    std::vector<PcmChunk> terminal_audio;
+    if (processors != nullptr) {
+        terminal_audio = processors->finish(AudioTerminalReason::Cancelled);
+    }
+    const std::uint64_t playback_epoch = player.reset();
+    for (const PcmChunk& chunk : terminal_audio) {
+        player.enqueue(playback_epoch, chunk);
+    }
+    return playback_epoch;
 }
 
 RequestId submit_request(
@@ -1364,6 +1439,7 @@ RequestId submit_request(
         request.seed = options.seed.value();
     }
     request.output = requested_audio_format(options);
+    auto processors = make_audio_processors(options);
     {
         std::lock_guard<std::mutex> lock(active_state.mutex);
         request.id = active_state.next_request_id++;
@@ -1372,11 +1448,12 @@ RequestId submit_request(
         }
         active_state.active_request_id = request.id;
         active_state.active_client = &client;
+        active_state.processors = processors;
     }
 
     const RequestId request_id = request.id;
     TtsCallbacks callbacks;
-    callbacks.on_audio = [&player, &active_state, playback_epoch, request_id, pcm_capture](const PcmChunk& chunk) {
+    callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id, pcm_capture](const PcmChunk& chunk) {
         if (!is_active_request(active_state, request_id)) {
             return;
         }
@@ -1384,48 +1461,66 @@ RequestId submit_request(
             if (pcm_capture != nullptr) {
                 pcm_capture->append(chunk);
             }
-            player.enqueue(playback_epoch, chunk);
+            for (const PcmChunk& processed : processors->process(chunk)) {
+                player.enqueue(playback_epoch, processed);
+            }
         }
         catch (const std::exception& exc) {
             std::cerr << "playback error: " << exc.what() << '\n';
         }
     };
-    callbacks.on_completed = [&active_state, one_shot_state, request_id] {
+    callbacks.on_completed = [&player, &active_state, processors, playback_epoch, one_shot_state, request_id] {
+        try {
+            for (const PcmChunk& processed :
+                 processors->finish(AudioTerminalReason::Completed)) {
+                player.enqueue(playback_epoch, processed);
+            }
+        }
+        catch (const std::exception& exc) {
+            clear_active_request(active_state, request_id);
+            mark_one_shot_terminal(one_shot_state, false, exc.what());
+            std::cerr << "audio post-processing error: " << exc.what() << '\n';
+            return;
+        }
         clear_active_request(active_state, request_id);
         if (one_shot_state != nullptr) {
-            std::lock_guard<std::mutex> lock(one_shot_state->mutex);
-            one_shot_state->terminal = true;
-            one_shot_state->success = true;
-            one_shot_state->condition.notify_all();
+            mark_one_shot_terminal(one_shot_state, true);
         }
         else {
             std::cout << "completed request " << request_id << '\n';
         }
     };
-    callbacks.on_cancelled = [&player, &active_state, one_shot_state, request_id] {
+    callbacks.on_cancelled = [&player, &active_state, processors, playback_epoch, one_shot_state, request_id] {
         if (is_active_request(active_state, request_id)) {
-            static_cast<void>(player.reset());
+            try {
+                for (const PcmChunk& processed :
+                     processors->finish(AudioTerminalReason::Cancelled)) {
+                    player.enqueue(playback_epoch, processed);
+                }
+            }
+            catch (const std::exception& exc) {
+                std::cerr << "audio post-processing error: " << exc.what() << '\n';
+            }
             clear_active_request(active_state, request_id);
         }
-        if (one_shot_state != nullptr) {
-            std::lock_guard<std::mutex> lock(one_shot_state->mutex);
-            one_shot_state->terminal = true;
-            one_shot_state->message = "request cancelled";
-            one_shot_state->condition.notify_all();
-        }
+        mark_one_shot_terminal(one_shot_state, false, "request cancelled");
     };
-    callbacks.on_error = [&player, &active_state, one_shot_state, request_id](const TtsError& error) {
+    callbacks.on_error = [&player, &active_state, processors, one_shot_state, request_id](const TtsError& error) {
         if (is_active_request(active_state, request_id)) {
+            try {
+                static_cast<void>(processors->finish(AudioTerminalReason::Error));
+            }
+            catch (const std::exception& exc) {
+                std::cerr << "audio post-processing error: " << exc.what() << '\n';
+            }
             static_cast<void>(player.reset());
             clear_active_request(active_state, request_id);
         }
-        if (one_shot_state != nullptr) {
-            std::lock_guard<std::mutex> lock(one_shot_state->mutex);
-            one_shot_state->terminal = true;
-            one_shot_state->message = error.category + "/" + error.code + ": " + error.message;
-            one_shot_state->condition.notify_all();
-        }
-        else {
+        mark_one_shot_terminal(
+            one_shot_state,
+            false,
+            error.category + "/" + error.code + ": " + error.message);
+        if (one_shot_state == nullptr) {
             std::cerr << "request " << request_id << " failed: " << error.category
                       << '/' << error.code << ": " << error.message << '\n';
         }
