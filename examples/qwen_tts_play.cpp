@@ -135,6 +135,8 @@ private:
 struct PlaybackChunkMetric {
     double arrival_ms = 0.0;
     std::optional<double> inter_arrival_ms;
+    double admission_ms = 0.0;
+    double backpressure_wait_ms = 0.0;
     double audio_duration_ms = 0.0;
     double queued_audio_before_ms = 0.0;
     double queued_audio_after_ms = 0.0;
@@ -155,10 +157,13 @@ struct PlaybackInterruptionDiagnostic {
     std::uint64_t selected_local_offset_frames = 0;
     std::uint64_t queued_buffer_count = 0;
     double queued_audio_ms = 0.0;
+    std::uint64_t submitted_head_frame = 0;
+    std::uint64_t producer_ahead_frames = 0;
     std::uint64_t fade_frame_count = 0;
     bool waveout_reset_called = false;
     std::optional<double> waveout_reset_started_ms;
     std::optional<double> waveout_reset_completed_ms;
+    std::optional<double> interruption_completed_ms;
 };
 
 class WprPlaybackMarkers final {
@@ -253,6 +258,8 @@ public:
     }
 
     [[nodiscard]] std::optional<std::size_t> record_chunk(
+        std::chrono::steady_clock::time_point callback_arrival,
+        std::chrono::steady_clock::time_point admission,
         double audio_duration_ms,
         double queued_audio_before_ms,
         double queued_audio_after_ms,
@@ -262,10 +269,14 @@ public:
             return std::nullopt;
         }
 
-        const auto now = std::chrono::steady_clock::now();
-        const double arrival_ms = elapsed_ms(started_at_.value(), now);
+        const double arrival_ms =
+            elapsed_ms(started_at_.value(), callback_arrival);
+        const double admission_ms =
+            elapsed_ms(started_at_.value(), admission);
         PlaybackChunkMetric metric;
         metric.arrival_ms = arrival_ms;
+        metric.admission_ms = admission_ms;
+        metric.backpressure_wait_ms = admission_ms - arrival_ms;
         metric.audio_duration_ms = audio_duration_ms;
         metric.queued_audio_before_ms = queued_audio_before_ms;
         metric.queued_audio_after_ms = queued_audio_after_ms;
@@ -321,7 +332,7 @@ public:
         std::ostringstream json;
         json << std::fixed << std::setprecision(3);
         json << "{\n"
-             << "  \"schema_version\": 1,\n"
+             << "  \"schema_version\": 2,\n"
              << "  \"measurement\": \"waveout_queue_starvation_proxy\",\n"
              << "  \"first_waveout_submission_ms\": ";
         if (first_waveout_submission_ms.has_value()) {
@@ -349,7 +360,9 @@ public:
             else {
                 json << "null";
             }
-            json << ", \"audio_duration_ms\": " << chunk.audio_duration_ms
+            json << ", \"admission_ms\": " << chunk.admission_ms
+                 << ", \"backpressure_wait_ms\": " << chunk.backpressure_wait_ms
+                 << ", \"audio_duration_ms\": " << chunk.audio_duration_ms
                  << ", \"queued_audio_before_ms\": " << chunk.queued_audio_before_ms
                  << ", \"queued_audio_after_ms\": " << chunk.queued_audio_after_ms
                  << ", \"queue_empty_before_later_chunk\": "
@@ -581,6 +594,7 @@ public:
     WaveOutPlayer& operator=(const WaveOutPlayer&) = delete;
 
     void enqueue(std::uint64_t playback_epoch, const PcmChunk& chunk) {
+        const auto callback_arrival = std::chrono::steady_clock::now();
         if (sink_mode_ == PlaybackSinkMode::Disabled) {
             return;
         }
@@ -602,23 +616,25 @@ public:
             return;
         }
         while (playback_started_ &&
-               queued_audio_duration_ms_locked() >= kMaxQueuedAudioMs) {
+               queued_audio_ahead_ms_locked() >= kMaxQueuedAudioMs) {
             reap_finished_locked();
-            if (queued_audio_duration_ms_locked() < kMaxQueuedAudioMs) {
+            if (queued_audio_ahead_ms_locked() < kMaxQueuedAudioMs) {
                 break;
             }
             lock.unlock();
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
             lock.lock();
             if (playback_epoch != playback_epoch_) {
+                ++late_audio_after_terminal_count_;
                 return;
             }
         }
         reap_finished_locked();
         validate_pending_format_locked(chunk.format);
-        const double queued_audio_before_ms = queued_audio_duration_ms_locked();
+        const double queued_audio_before_ms = queued_audio_ahead_ms_locked();
         const bool queue_empty_before_later_chunk =
             playback_started_ && buffers_.empty();
+        const auto admission = std::chrono::steady_clock::now();
 
         auto buffer = std::make_unique<Buffer>();
         buffer->bytes = chunk.bytes;
@@ -632,9 +648,11 @@ public:
         std::optional<std::size_t> queue_empty_marker_index;
         if (metrics_ != nullptr) {
             queue_empty_marker_index = metrics_->record_chunk(
+                callback_arrival,
+                admission,
                 pcm_duration_ms(chunk.format, chunk.bytes.size()),
                 queued_audio_before_ms,
-                queued_audio_duration_ms_locked(),
+                queued_audio_ahead_ms_locked(),
                 queue_empty_before_later_chunk);
         }
         if (playback_started_ || pending_buffers_.size() >= prebuffer_chunks_) {
@@ -660,26 +678,24 @@ public:
         RequestId old_request_id = 0) {
         std::unique_lock<std::mutex> lock(mutex_);
         const bool record_diagnostic = old_request_id != 0;
+        if (sink_mode_ != PlaybackSinkMode::Disabled) {
+            reap_finished_locked();
+        }
         PlaybackInterruptionDiagnostic diagnostic;
         diagnostic.event_index = interruption_diagnostics_.size();
         diagnostic.requested_fade_ms = fade_ms;
         diagnostic.old_request_id = old_request_id;
         diagnostic.queued_buffer_count = buffers_.size();
-        diagnostic.queued_audio_ms = queued_audio_duration_ms_locked();
-        const auto reset_started = std::chrono::steady_clock::now();
-        diagnostic.waveout_reset_called =
-            sink_mode_ == PlaybackSinkMode::WaveOut && m_handle != nullptr;
-        if (record_diagnostic && diagnostic.waveout_reset_called) {
-            diagnostic.waveout_reset_started_ms = elapsed_since_start_ms(reset_started);
-        }
+        diagnostic.queued_audio_ms = queued_audio_ahead_ms_locked();
+        diagnostic.submitted_head_frame = next_stream_frame_;
         std::optional<PcmChunk> tail;
         if (fade_ms != 0 && sink_mode_ != PlaybackSinkMode::Disabled) {
-            reap_finished_locked();
             tail = interruption_tail_locked(fade_ms, diagnostic);
         }
-        const std::uint64_t playback_epoch = reset_locked(lock);
-        if (record_diagnostic && diagnostic.waveout_reset_called) {
-            diagnostic.waveout_reset_completed_ms =
+        const std::uint64_t playback_epoch =
+            reset_locked(lock, record_diagnostic ? &diagnostic : nullptr);
+        if (record_diagnostic) {
+            diagnostic.interruption_completed_ms =
                 elapsed_since_start_ms(std::chrono::steady_clock::now());
         }
         if (record_diagnostic && tail.has_value()) {
@@ -750,6 +766,8 @@ public:
                  << event.selected_local_offset_frames
                  << ", \"queued_buffer_count\": " << event.queued_buffer_count
                  << ", \"queued_audio_ms\": " << event.queued_audio_ms
+                 << ", \"submitted_head_frame\": " << event.submitted_head_frame
+                 << ", \"producer_ahead_frames\": " << event.producer_ahead_frames
                  << ", \"fade_frame_count\": " << event.fade_frame_count
                  << ", \"waveout_reset_called\": "
                  << (event.waveout_reset_called ? "true" : "false")
@@ -763,6 +781,13 @@ public:
             json << ", \"waveout_reset_completed_ms\": ";
             if (event.waveout_reset_completed_ms.has_value()) {
                 json << event.waveout_reset_completed_ms.value();
+            }
+            else {
+                json << "null";
+            }
+            json << ", \"interruption_completed_ms\": ";
+            if (event.interruption_completed_ms.has_value()) {
+                json << event.interruption_completed_ms.value();
             }
             else {
                 json << "null";
@@ -805,7 +830,9 @@ public:
     }
 
 private:
-    std::uint64_t reset_locked(std::unique_lock<std::mutex>& lock) {
+    std::uint64_t reset_locked(
+        std::unique_lock<std::mutex>& lock,
+        PlaybackInterruptionDiagnostic* diagnostic = nullptr) {
         ++playback_epoch_;
         if (playback_epoch_ == 0) {
             ++playback_epoch_;
@@ -828,7 +855,16 @@ private:
             return playback_epoch_;
         }
 
+        if (diagnostic != nullptr) {
+            diagnostic->waveout_reset_called = true;
+            diagnostic->waveout_reset_started_ms =
+                elapsed_since_start_ms(std::chrono::steady_clock::now());
+        }
         check_mmresult(waveOutReset(m_handle), "waveOutReset");
+        if (diagnostic != nullptr) {
+            diagnostic->waveout_reset_completed_ms =
+                elapsed_since_start_ms(std::chrono::steady_clock::now());
+        }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
         while (!buffers_.empty()) {
             reap_finished_locked();
@@ -965,45 +1001,18 @@ private:
         if (buffers_.empty()) {
             return std::nullopt;
         }
-        std::optional<std::uint64_t> cursor_frame;
-        if (sink_mode_ == PlaybackSinkMode::Mock) {
-            const auto now = std::chrono::steady_clock::now();
-            for (std::size_t index = 0; index < buffers_.size(); ++index) {
-                const Buffer& buffer = *buffers_[index];
-                if (!buffer.mock_completion.has_value() ||
-                    buffer.mock_completion.value() <= now) {
-                    continue;
-                }
-                cursor_frame = buffer.start_frame;
-                if (buffer.mock_start.has_value() &&
-                    now > buffer.mock_start.value()) {
-                    const double elapsed_ms =
-                        std::chrono::duration<double, std::milli>(
-                            now - buffer.mock_start.value()).count();
-                    cursor_frame = cursor_frame.value() + static_cast<std::uint64_t>(
-                        elapsed_ms * m_format.sample_rate / 1000.0);
-                    if (cursor_frame.value() > buffer.start_frame + buffer.frame_count) {
-                        cursor_frame = buffer.start_frame + buffer.frame_count;
-                    }
-                }
-                break;
-            }
-        }
-        else {
-            const auto position = device_position_locked();
-            if (!position.has_value()) {
-                return std::nullopt;
-            }
-            const std::uint64_t played =
-                device_position_base_valid_ &&
-                        position.value() >= device_position_base_
-                    ? position.value() - device_position_base_
-                    : 0;
-            cursor_frame = played;
+        const std::optional<std::uint64_t> cursor_frame =
+            current_playout_cursor_frame_locked();
+        if (!cursor_frame.has_value()) {
+            return std::nullopt;
         }
         diagnostic.cursor_available = cursor_frame.has_value();
         if (cursor_frame.has_value()) {
             diagnostic.cursor_frame = cursor_frame.value();
+            diagnostic.producer_ahead_frames =
+                next_stream_frame_ > cursor_frame.value()
+                    ? next_stream_frame_ - cursor_frame.value()
+                    : 0;
         }
         std::vector<PlayoutBuffer> snapshot;
         snapshot.reserve(buffers_.size());
@@ -1045,6 +1054,70 @@ private:
             duration_ms += buffer->duration_ms;
         }
         return duration_ms;
+    }
+
+    std::optional<std::uint64_t> current_playout_cursor_frame_locked() const {
+        if (!playback_started_ || buffers_.empty()) {
+            return std::nullopt;
+        }
+        if (sink_mode_ == PlaybackSinkMode::Mock) {
+            const auto now = std::chrono::steady_clock::now();
+            for (const std::unique_ptr<Buffer>& item : buffers_) {
+                const Buffer& buffer = *item;
+                if (!buffer.mock_completion.has_value() ||
+                    buffer.mock_completion.value() <= now) {
+                    continue;
+                }
+                std::uint64_t cursor = buffer.start_frame;
+                if (buffer.mock_start.has_value() && now > buffer.mock_start.value()) {
+                    const double elapsed =
+                        std::chrono::duration<double, std::milli>(
+                            now - buffer.mock_start.value()).count();
+                    cursor += static_cast<std::uint64_t>(
+                        elapsed * m_format.sample_rate / 1000.0);
+                    cursor = std::min(
+                        cursor,
+                        buffer.start_frame + buffer.frame_count);
+                }
+                return cursor;
+            }
+            return next_stream_frame_;
+        }
+        if (sink_mode_ != PlaybackSinkMode::WaveOut) {
+            return std::nullopt;
+        }
+        const auto position = device_position_locked();
+        if (!position.has_value()) {
+            return std::nullopt;
+        }
+        if (device_position_base_valid_ &&
+            position.value() >= device_position_base_) {
+            return position.value() - device_position_base_;
+        }
+        return 0;
+    }
+
+    double queued_audio_ahead_ms_locked() const {
+        if (!playback_started_) {
+            return queued_audio_duration_ms_locked();
+        }
+        const auto cursor = current_playout_cursor_frame_locked();
+        if (!cursor.has_value() || m_format.sample_rate == 0) {
+            return queued_audio_duration_ms_locked();
+        }
+        std::uint64_t frames =
+            next_stream_frame_ > cursor.value()
+                ? next_stream_frame_ - cursor.value()
+                : 0;
+        for (const std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+            if (buffer->frame_count >
+                std::numeric_limits<std::uint64_t>::max() - frames) {
+                return queued_audio_duration_ms_locked();
+            }
+            frames += buffer->frame_count;
+        }
+        return static_cast<double>(frames) * 1000.0 /
+            static_cast<double>(m_format.sample_rate);
     }
 
     void validate_pending_format_locked(const AudioFormat& format) {

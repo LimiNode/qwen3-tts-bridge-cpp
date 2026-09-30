@@ -68,16 +68,21 @@ The interactive player enables this path with:
 --cancel-tail-silence-ms 0
 ```
 
-On an explicit interruption, the player finalizes the processor as cancelled,
-resets queued device audio, and queues the short faded tail before the next
-utterance. This is a producer-side terminal transform; a sink that can run
-ahead of the physical playback cursor must provide a bounded playout queue
-before cancellation fade can be described as cursor-accurate. The DSP stage
+On an explicit interactive interruption, the player does not flush the
+producer-side terminal-fade buffer: those newest samples may be ahead of what
+the device is currently playing. It resets/discards producer-side buffered
+terminal audio, measures the sink playout cursor, retains only the short fade
+window starting at that cursor, resets queued device audio, and queues that
+cursor-relative faded tail before the next utterance. Normal successful
+completion still uses the producer-side terminal processor. The DSP stage
 itself remains independent of WaveOut and can be reused by a different sink.
 
-The WaveOut example applies a 250 ms submitted-queue backpressure threshold
-(the configured prebuffer may exceed it before playback starts, and an
-individual incoming chunk larger than it is allowed) and uses the
+The WaveOut example applies a 250 ms remaining-playout-ahead backpressure
+threshold. The configured prebuffer may exceed it before playback starts, and
+an individual incoming chunk larger than the threshold is allowed. Once
+playback has started, the threshold is evaluated against audio remaining ahead
+of the measured playout cursor rather than the full nominal duration of buffers
+that are already partly played. The player uses the
 device/mock playout cursor when an interruption is requested. It
 discards producer-ahead PCM and shapes only the short region nearest the
 cursor. A future Unity or custom sink should provide the same bounded software
@@ -92,11 +97,23 @@ diagnostic file:
 ```
 
 The JSON records the measured cursor frame, the selected queued buffer and
-local offset, queued duration, fade frame count, `waveOutReset` timestamps,
-request terminal-state linkage, and the number of stale PCM submissions
-discarded after the terminal boundary. The option is disabled by default and
-does not add normal playback logging. The file is written once when the
-interactive player exits and is never overwritten.
+local offset, post-reap queued-buffer duration, submitted producer head and
+producer-ahead frames, fade frame count, exact `waveOutReset` call
+start/return timestamps, interruption completion, request terminal-state
+linkage, and the number of stale PCM submissions discarded after the terminal
+boundary.
+
+The regular playback-metrics `arrival_ms` field is captured at entry to the
+application playback callback, before sink backpressure; `admission_ms` is
+captured after that wait and `backpressure_wait_ms` is their difference.
+Because application callbacks are synchronous, even `arrival_ms` is not a
+raw worker-emission timestamp when a previous callback was blocked. Diagnose
+native producer cadence with a no-playback/transport-level probe, not with
+WaveOut admission timing. Diagnostic schema version 2 contains these semantics; earlier
+schema-version-1 captures predate the exact reset/producers-ahead telemetry and
+must be interpreted according to their hardware report. The option is disabled
+by default and does not add normal playback logging. The file is written once
+when the interactive player exits and is never overwritten.
 
 ## Optional Native Playback Module
 

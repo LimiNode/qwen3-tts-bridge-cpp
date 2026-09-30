@@ -25,6 +25,9 @@ def main() -> int:
     tail_output = args.output.with_stem(f"{args.output.stem}-tail")
     if tail_output.exists():
         tail_output.unlink()
+    oversize_output = args.output.with_stem(f"{args.output.stem}-oversize")
+    if oversize_output.exists():
+        oversize_output.unlink()
 
     command = [
         str(args.player),
@@ -44,7 +47,7 @@ def main() -> int:
     subprocess.run(command, check=True, timeout=30)
 
     result = json.loads(args.output.read_text(encoding="utf-8"))
-    assert result["schema_version"] == 1
+    assert result["schema_version"] == 2
     assert result["measurement"] == "waveout_queue_starvation_proxy"
     assert (
         result["first_waveout_submission_ms"] is None
@@ -61,6 +64,11 @@ def main() -> int:
     assert any(
         chunk["queue_empty_before_later_chunk"] for chunk in result["chunks"][1:]
     )
+    assert all(
+        chunk["admission_ms"] >= chunk["arrival_ms"]
+        for chunk in result["chunks"]
+    )
+    assert all(chunk["backpressure_wait_ms"] >= 0 for chunk in result["chunks"])
 
     prebuffer_command = [
         *command,
@@ -90,6 +98,32 @@ def main() -> int:
     assert tail_result["total_audio_duration_ms"] == 685.0
     assert tail_result["chunks"][0]["audio_duration_ms"] == 135.0
     assert tail_result["chunks"][-1]["audio_duration_ms"] == 100.0
+
+    # A chunk larger than the 250 ms backpressure threshold must not force the
+    # sink to wait until that whole chunk completes. Backpressure is based on
+    # remaining playout-ahead audio, so the next chunk is admitted while the
+    # current one still has audio left.
+    oversize_command = [
+        str(args.player),
+        "--mock",
+        "--mock-playback-sink",
+        "--text",
+        "Oversized playback chunk smoke.",
+        "--mock-chunks",
+        "3",
+        "--mock-chunk-ms",
+        "640",
+        "--mock-chunk-delay",
+        "0.05",
+        "--playback-metrics-file",
+        str(oversize_output),
+    ]
+    subprocess.run(oversize_command, check=True, timeout=30)
+    oversize_result = json.loads(oversize_output.read_text(encoding="utf-8"))
+    assert oversize_result["schema_version"] == 2
+    assert oversize_result["audio_chunk_count"] == 3
+    assert oversize_result["queue_empty_before_later_chunk_count"] == 0
+    assert oversize_result["chunks"][1]["backpressure_wait_ms"] > 100.0
 
     missing_metrics = subprocess.run(
         [str(args.player), "--mock", "--etw-playback-markers"],
