@@ -801,7 +801,7 @@ private:
         if (buffers_.empty()) {
             return std::nullopt;
         }
-        std::uint64_t cursor_frame = 0;
+        std::optional<std::uint64_t> cursor_frame;
         if (sink_mode_ == PlaybackSinkMode::Mock) {
             const auto now = std::chrono::steady_clock::now();
             for (std::size_t index = 0; index < buffers_.size(); ++index) {
@@ -816,17 +816,20 @@ private:
                     const double elapsed_ms =
                         std::chrono::duration<double, std::milli>(
                             now - buffer.mock_start.value()).count();
-                    cursor_frame += static_cast<std::uint64_t>(
+                    cursor_frame = cursor_frame.value() + static_cast<std::uint64_t>(
                         elapsed_ms * m_format.sample_rate / 1000.0);
-                    if (cursor_frame > buffer.start_frame + buffer.frame_count) {
+                    if (cursor_frame.value() > buffer.start_frame + buffer.frame_count) {
                         cursor_frame = buffer.start_frame + buffer.frame_count;
                     }
                 }
                 break;
             }
         }
-        else if (const auto position = device_position_locked();
-                 position.has_value()) {
+        else {
+            const auto position = device_position_locked();
+            if (!position.has_value()) {
+                return std::nullopt;
+            }
             const std::uint64_t played =
                 device_position_base_valid_ &&
                         position.value() >= device_position_base_
@@ -843,7 +846,10 @@ private:
             chunk.bytes = buffer->bytes;
             snapshot.push_back(PlayoutBuffer{std::move(chunk), buffer->start_frame});
         }
-        return make_playout_cursor_fade(snapshot, cursor_frame, fade_ms);
+        if (!cursor_frame.has_value()) {
+            return std::nullopt;
+        }
+        return make_playout_cursor_fade(snapshot, cursor_frame.value(), fade_ms);
     }
 
     double queued_audio_duration_ms_locked() const {

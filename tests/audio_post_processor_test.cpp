@@ -370,6 +370,35 @@ void test_callback_adapter_allows_reentrant_terminal_request() {
     CHECK(events[2] == "completed");
 }
 
+void test_callback_adapter_drains_reentrant_event_before_rethrowing() {
+    auto chain = std::make_shared<AudioPostProcessorChain>();
+    chain->add(fade(0, 0, 0));
+    std::vector<std::string> events;
+    TtsCallbacks callbacks;
+    TtsCallbacks downstream;
+    downstream.on_audio = [&events, &callbacks](const PcmChunk&) {
+        events.push_back("audio");
+        callbacks.on_completed();
+        throw std::runtime_error("downstream exploded");
+    };
+    downstream.on_completed = [&events]() {
+        events.push_back("completed");
+    };
+    callbacks = with_audio_post_processing(chain, std::move(downstream));
+
+    bool threw = false;
+    try {
+        callbacks.on_audio(constant_chunk(1));
+    }
+    catch (const std::runtime_error& error) {
+        threw = std::string(error.what()) == "downstream exploded";
+    }
+    CHECK(threw);
+    CHECK(events.size() == 2);
+    CHECK(events[0] == "audio");
+    CHECK(events[1] == "completed");
+}
+
 void test_callback_adapter_converts_process_exception_to_one_error() {
     auto chain = std::make_shared<AudioPostProcessorChain>();
     chain->add(std::make_unique<ThrowingProcessor>(false));
@@ -465,6 +494,7 @@ int main() {
     test_format_and_request_id_mismatch_fail_closed();
     test_callback_adapter_emits_tail_before_terminal_callback();
     test_callback_adapter_allows_reentrant_terminal_request();
+    test_callback_adapter_drains_reentrant_event_before_rethrowing();
     test_callback_adapter_converts_process_exception_to_one_error();
     test_callback_adapter_converts_finish_exception_to_one_error();
     test_callback_adapter_reports_format_mismatch();

@@ -40,13 +40,14 @@ void dispatch_event(
         state->dispatching = true;
     }
 
+    std::exception_ptr first_exception;
     for (;;) {
         std::function<void()> next;
         {
             std::lock_guard<std::mutex> lock(state->mutex);
             if (state->events.empty()) {
                 state->dispatching = false;
-                return;
+                break;
             }
             next = std::move(state->events.front());
             state->events.pop_front();
@@ -55,10 +56,13 @@ void dispatch_event(
             next();
         }
         catch (...) {
-            std::lock_guard<std::mutex> lock(state->mutex);
-            state->dispatching = false;
-            throw;
+            if (!first_exception) {
+                first_exception = std::current_exception();
+            }
         }
+    }
+    if (first_exception) {
+        std::rethrow_exception(first_exception);
     }
 }
 

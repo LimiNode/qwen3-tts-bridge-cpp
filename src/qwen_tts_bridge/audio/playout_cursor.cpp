@@ -56,6 +56,25 @@ std::optional<PcmChunk> make_playout_cursor_fade(
         }
     }
 
+    std::uint64_t previous_end = 0;
+    bool have_previous = false;
+    for (const PlayoutBuffer& buffer : buffers) {
+        const std::uint64_t count = static_cast<std::uint64_t>(
+            buffer.chunk.bytes.size() / bytes_per_frame);
+        if (count > std::numeric_limits<std::uint64_t>::max() -
+                        buffer.start_frame) {
+            throw std::invalid_argument(
+                "playout cursor buffer frame range overflows");
+        }
+        const std::uint64_t end = buffer.start_frame + count;
+        if (have_previous && buffer.start_frame < previous_end) {
+            throw std::invalid_argument(
+                "playout cursor buffers must be ordered and non-overlapping");
+        }
+        previous_end = end;
+        have_previous = true;
+    }
+
     std::size_t first_index = buffers.size();
     std::uint64_t first_offset = 0;
     for (std::size_t index = 0; index < buffers.size(); ++index) {
