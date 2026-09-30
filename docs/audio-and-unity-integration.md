@@ -84,6 +84,20 @@ cursor. A future Unity or custom sink should provide the same bounded software
 ring and cursor-aware interruption boundary rather than applying cancellation
 fade to the newest producer chunk.
 
+For physical cancellation acceptance, the example also has an opt-in
+diagnostic file:
+
+```text
+--playback-interruption-diagnostics-file <path>
+```
+
+The JSON records the measured cursor frame, the selected queued buffer and
+local offset, queued duration, fade frame count, `waveOutReset` timestamps,
+request terminal-state linkage, and the number of stale PCM submissions
+discarded after the terminal boundary. The option is disabled by default and
+does not add normal playback logging. The file is written once when the
+interactive player exits and is never overwritten.
+
 ## Optional Native Playback Module
 
 A native playback helper can be added later as an optional module or example,
