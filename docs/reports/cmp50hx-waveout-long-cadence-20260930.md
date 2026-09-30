@@ -40,3 +40,25 @@ recorded no starvation for its bounded short request and a maximum inter-chunk
 gap of 42.718 ms across a 100-request single-text baseline. That does not prove
 long-text continuity on ABI 6, but it is enough to require a paired ABI-6
 long-WaveOut rerun before changing chunk scheduling or adding more buffering.
+
+## Measurement correction
+
+The playback result above must not be used to diagnose native producer cadence.
+At capture time the WaveOut example applied its 250 ms backpressure threshold
+to the sum of each submitted buffer's full duration rather than the remaining
+audio ahead of the physical playout cursor. With
+`stream-max-chunk-frames=8`, one chunk represents about 640 ms of audio and is
+therefore already larger than the threshold. The following enqueue could stay
+blocked until the current WaveOut buffer became `WHDR_DONE`, which can
+self-induce an empty queue before the next submission.
+
+The recorded `inter-arrival` timestamps were also taken after that sink-side
+backpressure wait. They therefore measure application/sink admission timing,
+not raw worker or transport emission cadence.
+
+A corrected player uses remaining cursor-relative playout-ahead duration for
+backpressure and records callback arrival separately from post-backpressure
+admission. Re-run the long physical playback test with that code before opening
+a native chunk-scheduling investigation. If cadence still needs analysis,
+measure it in the no-playback/native probe path so sink backpressure cannot
+contaminate producer timing.
