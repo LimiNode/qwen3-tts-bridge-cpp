@@ -498,7 +498,7 @@ public:
 
         std::ostringstream metadata;
         metadata << "{\n"
-                 << "  \"schema_version\": 2,\n"
+                 << "  \"schema_version\": 1,\n"
                  << "  \"measurement\": \"raw_s16le_pcm_capture\",\n"
                  << "  \"completed\": true,\n"
                  << "  \"audio_chunk_count\": " << chunk_count_ << ",\n"
