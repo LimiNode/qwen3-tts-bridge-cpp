@@ -155,10 +155,13 @@ struct PlaybackInterruptionDiagnostic {
     std::uint64_t selected_local_offset_frames = 0;
     std::uint64_t queued_buffer_count = 0;
     double queued_audio_ms = 0.0;
+    std::uint64_t submitted_head_frame = 0;
+    std::uint64_t producer_ahead_frames = 0;
     std::uint64_t fade_frame_count = 0;
     bool waveout_reset_called = false;
     std::optional<double> waveout_reset_started_ms;
     std::optional<double> waveout_reset_completed_ms;
+    std::optional<double> interruption_completed_ms;
 };
 
 class WprPlaybackMarkers final {
@@ -321,7 +324,7 @@ public:
         std::ostringstream json;
         json << std::fixed << std::setprecision(3);
         json << "{\n"
-             << "  \"schema_version\": 1,\n"
+             << "  \"schema_version\": 2,\n"
              << "  \"measurement\": \"waveout_queue_starvation_proxy\",\n"
              << "  \"first_waveout_submission_ms\": ";
         if (first_waveout_submission_ms.has_value()) {
@@ -611,6 +614,7 @@ public:
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
             lock.lock();
             if (playback_epoch != playback_epoch_) {
+                ++late_audio_after_terminal_count_;
                 return;
             }
         }
@@ -660,26 +664,24 @@ public:
         RequestId old_request_id = 0) {
         std::unique_lock<std::mutex> lock(mutex_);
         const bool record_diagnostic = old_request_id != 0;
+        if (sink_mode_ != PlaybackSinkMode::Disabled) {
+            reap_finished_locked();
+        }
         PlaybackInterruptionDiagnostic diagnostic;
         diagnostic.event_index = interruption_diagnostics_.size();
         diagnostic.requested_fade_ms = fade_ms;
         diagnostic.old_request_id = old_request_id;
         diagnostic.queued_buffer_count = buffers_.size();
         diagnostic.queued_audio_ms = queued_audio_duration_ms_locked();
-        const auto reset_started = std::chrono::steady_clock::now();
-        diagnostic.waveout_reset_called =
-            sink_mode_ == PlaybackSinkMode::WaveOut && m_handle != nullptr;
-        if (record_diagnostic && diagnostic.waveout_reset_called) {
-            diagnostic.waveout_reset_started_ms = elapsed_since_start_ms(reset_started);
-        }
+        diagnostic.submitted_head_frame = next_stream_frame_;
         std::optional<PcmChunk> tail;
         if (fade_ms != 0 && sink_mode_ != PlaybackSinkMode::Disabled) {
-            reap_finished_locked();
             tail = interruption_tail_locked(fade_ms, diagnostic);
         }
-        const std::uint64_t playback_epoch = reset_locked(lock);
-        if (record_diagnostic && diagnostic.waveout_reset_called) {
-            diagnostic.waveout_reset_completed_ms =
+        const std::uint64_t playback_epoch =
+            reset_locked(lock, record_diagnostic ? &diagnostic : nullptr);
+        if (record_diagnostic) {
+            diagnostic.interruption_completed_ms =
                 elapsed_since_start_ms(std::chrono::steady_clock::now());
         }
         if (record_diagnostic && tail.has_value()) {
@@ -750,6 +752,8 @@ public:
                  << event.selected_local_offset_frames
                  << ", \"queued_buffer_count\": " << event.queued_buffer_count
                  << ", \"queued_audio_ms\": " << event.queued_audio_ms
+                 << ", \"submitted_head_frame\": " << event.submitted_head_frame
+                 << ", \"producer_ahead_frames\": " << event.producer_ahead_frames
                  << ", \"fade_frame_count\": " << event.fade_frame_count
                  << ", \"waveout_reset_called\": "
                  << (event.waveout_reset_called ? "true" : "false")
@@ -763,6 +767,13 @@ public:
             json << ", \"waveout_reset_completed_ms\": ";
             if (event.waveout_reset_completed_ms.has_value()) {
                 json << event.waveout_reset_completed_ms.value();
+            }
+            else {
+                json << "null";
+            }
+            json << ", \"interruption_completed_ms\": ";
+            if (event.interruption_completed_ms.has_value()) {
+                json << event.interruption_completed_ms.value();
             }
             else {
                 json << "null";
@@ -805,7 +816,9 @@ public:
     }
 
 private:
-    std::uint64_t reset_locked(std::unique_lock<std::mutex>& lock) {
+    std::uint64_t reset_locked(
+        std::unique_lock<std::mutex>& lock,
+        PlaybackInterruptionDiagnostic* diagnostic = nullptr) {
         ++playback_epoch_;
         if (playback_epoch_ == 0) {
             ++playback_epoch_;
@@ -828,7 +841,16 @@ private:
             return playback_epoch_;
         }
 
+        if (diagnostic != nullptr) {
+            diagnostic->waveout_reset_called = true;
+            diagnostic->waveout_reset_started_ms =
+                elapsed_since_start_ms(std::chrono::steady_clock::now());
+        }
         check_mmresult(waveOutReset(m_handle), "waveOutReset");
+        if (diagnostic != nullptr) {
+            diagnostic->waveout_reset_completed_ms =
+                elapsed_since_start_ms(std::chrono::steady_clock::now());
+        }
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
         while (!buffers_.empty()) {
             reap_finished_locked();
@@ -1004,6 +1026,10 @@ private:
         diagnostic.cursor_available = cursor_frame.has_value();
         if (cursor_frame.has_value()) {
             diagnostic.cursor_frame = cursor_frame.value();
+            diagnostic.producer_ahead_frames =
+                next_stream_frame_ > cursor_frame.value()
+                    ? next_stream_frame_ - cursor_frame.value()
+                    : 0;
         }
         std::vector<PlayoutBuffer> snapshot;
         snapshot.reserve(buffers_.size());
