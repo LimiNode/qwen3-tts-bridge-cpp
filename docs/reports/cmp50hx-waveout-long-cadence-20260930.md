@@ -1,11 +1,13 @@
 # CMP 50HX long WaveOut cadence check
 
-The cancellation cursor contract passes for bounded interruptions, but a
-longer physical playback request exposes a separate cadence limitation.
+The cancellation cursor contract passes for bounded interruptions on the
+tested package, but a longer physical playback request exposes a cadence
+limitation on that same legacy runtime.
 
 ## Setup
 
-- qwentts `40ab5eb`, Q8_0 Talker/codec, registered `canonical_fidelity`;
+- qwentts `40ab5eb` ABI 5 (legacy hardware package; current Bridge source
+  pins `130cb99` ABI 6), Q8_0 Talker/codec, registered `canonical_fidelity`;
 - native worker on NVIDIA CMP 50HX;
 - `stream-max-chunk-frames=8` (640 ms PCM chunks);
 - warmup enabled;
@@ -29,6 +31,12 @@ the average producer rate is near realtime, but its chunk cadence is not yet a
 continuous-playback acceptance result. Increasing the existing prebuffer from
 one to two chunks is therefore insufficient on this hardware/runtime pair.
 
-This finding is independent of cancellation correctness: the cursor/reset
-evidence remains valid, but long-horizon streaming needs a separate cadence
-change or an explicitly selected runtime/profile before release acceptance.
+This finding is independent of cancellation correctness, but it is also
+runtime-specific. It must not be treated as a cadence blocker for the current
+source-pinned ABI-6 runtime until reproduced there.
+
+Earlier qwentts `130cb99` CUDA-graphs-ON evidence on the same CMP 50HX
+recorded no starvation for its bounded short request and a maximum inter-chunk
+gap of 42.718 ms across a 100-request single-text baseline. That does not prove
+long-text continuity on ABI 6, but it is enough to require a paired ABI-6
+long-WaveOut rerun before changing chunk scheduling or adding more buffering.
