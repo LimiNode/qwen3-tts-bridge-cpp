@@ -75,12 +75,12 @@ ahead of the physical playback cursor must provide a bounded playout queue
 before cancellation fade can be described as cursor-accurate. The DSP stage
 itself remains independent of WaveOut and can be reused by a different sink.
 
-The current WaveOut example is suitable for normal completion and bounded
-tests, but its interruption path is not a general playout-cursor abstraction:
-it must not be used as evidence that cancellation always fades the samples
-currently audible on a device. A future realtime sink should keep queued PCM
-in a bounded software ring and apply interruption shaping at the playout
-boundary.
+The WaveOut example keeps its submitted queue bounded (250 ms by default) and
+uses the device/mock playout cursor when an interruption is requested. It
+discards producer-ahead PCM and shapes only the short region nearest the
+cursor. A future Unity or custom sink should provide the same bounded software
+ring and cursor-aware interruption boundary rather than applying cancellation
+fade to the newest producer chunk.
 
 ## Optional Native Playback Module
 
