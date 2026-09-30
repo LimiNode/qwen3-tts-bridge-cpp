@@ -6,6 +6,9 @@ project(QwenTTSBridge
     LANGUAGES CXX
 )
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
 option(QWEN_TTS_BRIDGE_BUILD_EXAMPLES "Build QwenTTSBridge examples" ON)
 option(QWEN_TTS_BRIDGE_BUILD_TESTS "Build QwenTTSBridge tests" ON)
 option(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER "Build the optional qwentts.cpp process worker" OFF)
@@ -113,7 +116,8 @@ target_compile_features(qwen_tts_bridge PUBLIC cxx_std_17)
 
 target_include_directories(qwen_tts_bridge
     PUBLIC
-        "${QWEN_TTS_BRIDGE_SRC_DIR}"
+        $<BUILD_INTERFACE:${QWEN_TTS_BRIDGE_SRC_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_link_libraries(qwen_tts_bridge
@@ -171,7 +175,8 @@ if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
     target_compile_features(qwen_tts_bridge_native PUBLIC cxx_std_17)
     target_include_directories(qwen_tts_bridge_native
         PUBLIC
-            "${QWEN_TTS_BRIDGE_SRC_DIR}"
+            $<BUILD_INTERFACE:${QWEN_TTS_BRIDGE_SRC_DIR}>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE
             "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src"
     )
@@ -180,6 +185,68 @@ if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
             qwen
     )
 endif()
+
+# Keep the library consumable from a normal CMake install.  The worker and
+# model files are deliberately not installed here: they are runtime assets
+# selected by the application or release bundle.
+set(QWEN_TTS_BRIDGE_INSTALL_CMAKEDIR
+    "${CMAKE_INSTALL_LIBDIR}/cmake/QwenTTSBridge")
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/QwenTTSBridgeConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/QwenTTSBridgeConfig.cmake"
+    INSTALL_DESTINATION "${QWEN_TTS_BRIDGE_INSTALL_CMAKEDIR}"
+)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/QwenTTSBridgeConfigVersion.cmake"
+    COMPATIBILITY SameMajorVersion
+)
+
+install(
+    TARGETS qwen_tts_bridge
+    EXPORT QwenTTSBridgeTargets
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+)
+# Export the small private implementation dependencies as well.  They remain
+# outside the public headers, but static-library consumers need their targets
+# to resolve the generated link interface from an installed package.
+install(
+    TARGETS tiny-process-library nlohmann_json
+    EXPORT QwenTTSBridgeTargets
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+)
+install(
+    DIRECTORY "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/nlohmann-json/include/"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+)
+install(
+    DIRECTORY "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tiny-process-library/"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/tiny-process-library"
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+# The direct qwen.dll adapter is experimental and intentionally remains a
+# build-tree target.  Its qwentts/ggml dependency is a separately pinned
+# runtime and is not part of the stable installed package.
+install(
+    DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    FILES_MATCHING PATTERN "*.hpp"
+)
+install(
+    EXPORT QwenTTSBridgeTargets
+    FILE QwenTTSBridgeTargets.cmake
+    NAMESPACE QwenTTSBridge::
+    DESTINATION "${QWEN_TTS_BRIDGE_INSTALL_CMAKEDIR}"
+)
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/QwenTTSBridgeConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/QwenTTSBridgeConfigVersion.cmake"
+    DESTINATION "${QWEN_TTS_BRIDGE_INSTALL_CMAKEDIR}"
+)
 
 if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     set(QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE "")
@@ -202,6 +269,10 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         examples/qwen_tts_latency_benchmark.cpp
     )
 
+    add_executable(basic_synthesis examples/basic_synthesis.cpp)
+    add_executable(async_cancel examples/async_cancel.cpp)
+    add_executable(post_processing examples/post_processing.cpp)
+
     if(WIN32)
         add_executable(qwen_tts_play
             examples/qwen_tts_play.cpp
@@ -218,6 +289,9 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
             QwenTTSBridge::qwen_tts_bridge
             nlohmann_json::nlohmann_json
     )
+    target_link_libraries(basic_synthesis PRIVATE QwenTTSBridge::qwen_tts_bridge)
+    target_link_libraries(async_cancel PRIVATE QwenTTSBridge::qwen_tts_bridge)
+    target_link_libraries(post_processing PRIVATE QwenTTSBridge::qwen_tts_bridge)
 
     if(WIN32)
         target_link_libraries(qwen_tts_play

@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.16)
+project(QwenTTSBridgeInstallConsumer LANGUAGES CXX)
+find_package(QwenTTSBridge CONFIG REQUIRED)
+add_executable(qwen_tts_bridge_install_consumer main.cpp)
+target_link_libraries(qwen_tts_bridge_install_consumer PRIVATE QwenTTSBridge::qwen_tts_bridge)

@@ -8,7 +8,42 @@ worker process while exposing a stable native C++ API to applications. The
 worker is started once, keeps the model loaded, and streams PCM audio chunks
 back to the C++ side for every synthesis request.
 
-Status: early architecture and repository bootstrap.
+Status: release candidate preparation for the v0.2 async API. The supported
+runtime is the persistent process worker; the direct qwen.dll adapter remains
+experimental and opt-in.
+
+## Quick start
+
+Build the library and examples with CMake, then run the interactive Windows
+player with a configured native worker:
+
+```powershell
+qwen_tts_play.exe --worker qwen_tts_native_worker.exe --text "Hello"
+```
+
+For a bundle-local configuration, copy
+`config/native-worker.example.json` to `config/native-worker.local.json`, edit
+the model/runtime paths, and use the bootstrap launcher:
+
+```powershell
+.\scripts\start-native-play.ps1 -Text "Hello"
+```
+
+The native worker still needs its runtime directory, GGUF model files, and
+voice registry. Keep those files outside the repository (for example under
+`runtime/`, `models/`, and `config/`) and pass them with `--worker-arg` or a
+release-bundle launcher. `scripts/ensure-native-models.ps1` validates or
+downloads explicitly configured model URLs without overwriting valid files.
+
+For an installed CMake package:
+
+```cmake
+find_package(QwenTTSBridge CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE QwenTTSBridge::qwen_tts_bridge)
+```
+
+See [examples/README.md](examples/README.md) for the progression from a
+minimal async request to cancellation and streaming post-processing.
 
 ## Goals
 
@@ -50,6 +85,11 @@ Python + PyTorch + CUDA
         v
 Qwen3-TTS streaming engine
 ```
+
+The direct in-process `NativeQwenBackend`/`qwen.dll` path is deliberately not
+the default release route. Enable it only with
+`QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND=ON` after validating the pinned qwentts
+ABI and its target GPU runtime.
 
 The C++ application starts and supervises the worker process. The first
 transport uses the worker stdin/stdout streams. This does not make the public

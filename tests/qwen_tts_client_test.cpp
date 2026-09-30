@@ -101,6 +101,10 @@ public:
         }
 
         const int current_send = ++send_count_;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            last_send_.assign(data, data + size);
+        }
         if (current_send == 1) {
             receive_handler_(ready_frame_bytes());
             return SendResult::Accepted;
@@ -153,6 +157,15 @@ public:
         condition_.notify_all();
     }
 
+    std::vector<std::byte> last_send() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return last_send_;
+    }
+
+    int send_count() const noexcept {
+        return send_count_.load();
+    }
+
 private:
     ReceiveHandler receive_handler_;
     ErrorHandler error_handler_;
@@ -163,6 +176,7 @@ private:
     std::atomic<bool> running_{false};
     bool blocked_ = false;
     bool release_block_ = false;
+    std::vector<std::byte> last_send_;
 };
 
 StdIoTransportOptions make_worker_options(
@@ -593,6 +607,56 @@ void test_invalid_request_is_rejected_before_id_assignment() {
     client.stop();
 }
 
+void test_text_preprocessor_changes_spoken_text_only() {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    raw_transport->block_after_hello = true;
+    QwenTtsClientOptions options = make_client_options();
+    options.text_preprocessor = [](const TtsRequest& request) {
+        CHECK(request.reference_text == "reference stays byte-identical");
+        return std::string("processed text");
+    };
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), options));
+    TtsRequest request = make_request("original text");
+    request.reference_audio_path = "reference.wav";
+    request.reference_text = "reference stays byte-identical";
+    RequestProbe probe;
+    CHECK(client.synthesize_async(std::move(request), make_callbacks(probe)) != 0);
+    CHECK(raw_transport->wait_until_blocked());
+    const auto sent = raw_transport->last_send();
+    std::string wire;
+    wire.reserve(sent.size());
+    for (const auto byte : sent) {
+        wire.push_back(static_cast<char>(std::to_integer<unsigned char>(byte)));
+    }
+    CHECK(wire.find("processed text") != std::string::npos);
+    CHECK(wire.find("reference stays byte-identical") != std::string::npos);
+    raw_transport->release();
+    client.stop();
+}
+
+void test_text_preprocessor_failure_is_local() {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    QwenTtsClientOptions options = make_client_options();
+    options.text_preprocessor = [](const TtsRequest&) -> std::string {
+        throw std::runtime_error("normalizer unavailable");
+    };
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), options));
+    RequestProbe probe;
+    CHECK(client.synthesize_async(
+        make_request("must not reach worker"), make_callbacks(probe)) == 0);
+    {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        CHECK(probe.errors.size() == 1);
+        CHECK(probe.errors.front().code == "text_preprocessing_failed");
+    }
+    CHECK(raw_transport->send_count() == 1);
+    client.stop();
+}
+
 void test_duplicate_explicit_request_id_is_rejected() {
     auto transport = std::make_unique<BlockingTransport>();
     auto* raw_transport = transport.get();
@@ -660,6 +724,8 @@ int main() {
     test_outbound_count_overflow_is_rejected();
     test_outbound_byte_overflow_is_rejected();
     test_invalid_request_is_rejected_before_id_assignment();
+    test_text_preprocessor_changes_spoken_text_only();
+    test_text_preprocessor_failure_is_local();
     test_duplicate_explicit_request_id_is_rejected();
     test_transport_send_failure_fails_request_once();
     return 0;
