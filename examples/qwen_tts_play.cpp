@@ -135,6 +135,8 @@ private:
 struct PlaybackChunkMetric {
     double arrival_ms = 0.0;
     std::optional<double> inter_arrival_ms;
+    double admission_ms = 0.0;
+    double backpressure_wait_ms = 0.0;
     double audio_duration_ms = 0.0;
     double queued_audio_before_ms = 0.0;
     double queued_audio_after_ms = 0.0;
@@ -256,6 +258,8 @@ public:
     }
 
     [[nodiscard]] std::optional<std::size_t> record_chunk(
+        std::chrono::steady_clock::time_point callback_arrival,
+        std::chrono::steady_clock::time_point admission,
         double audio_duration_ms,
         double queued_audio_before_ms,
         double queued_audio_after_ms,
@@ -265,10 +269,14 @@ public:
             return std::nullopt;
         }
 
-        const auto now = std::chrono::steady_clock::now();
-        const double arrival_ms = elapsed_ms(started_at_.value(), now);
+        const double arrival_ms =
+            elapsed_ms(started_at_.value(), callback_arrival);
+        const double admission_ms =
+            elapsed_ms(started_at_.value(), admission);
         PlaybackChunkMetric metric;
         metric.arrival_ms = arrival_ms;
+        metric.admission_ms = admission_ms;
+        metric.backpressure_wait_ms = admission_ms - arrival_ms;
         metric.audio_duration_ms = audio_duration_ms;
         metric.queued_audio_before_ms = queued_audio_before_ms;
         metric.queued_audio_after_ms = queued_audio_after_ms;
@@ -352,7 +360,9 @@ public:
             else {
                 json << "null";
             }
-            json << ", \"audio_duration_ms\": " << chunk.audio_duration_ms
+            json << ", \"admission_ms\": " << chunk.admission_ms
+                 << ", \"backpressure_wait_ms\": " << chunk.backpressure_wait_ms
+                 << ", \"audio_duration_ms\": " << chunk.audio_duration_ms
                  << ", \"queued_audio_before_ms\": " << chunk.queued_audio_before_ms
                  << ", \"queued_audio_after_ms\": " << chunk.queued_audio_after_ms
                  << ", \"queue_empty_before_later_chunk\": "
@@ -584,6 +594,7 @@ public:
     WaveOutPlayer& operator=(const WaveOutPlayer&) = delete;
 
     void enqueue(std::uint64_t playback_epoch, const PcmChunk& chunk) {
+        const auto callback_arrival = std::chrono::steady_clock::now();
         if (sink_mode_ == PlaybackSinkMode::Disabled) {
             return;
         }
@@ -605,9 +616,9 @@ public:
             return;
         }
         while (playback_started_ &&
-               queued_audio_duration_ms_locked() >= kMaxQueuedAudioMs) {
+               queued_audio_ahead_ms_locked() >= kMaxQueuedAudioMs) {
             reap_finished_locked();
-            if (queued_audio_duration_ms_locked() < kMaxQueuedAudioMs) {
+            if (queued_audio_ahead_ms_locked() < kMaxQueuedAudioMs) {
                 break;
             }
             lock.unlock();
@@ -620,9 +631,10 @@ public:
         }
         reap_finished_locked();
         validate_pending_format_locked(chunk.format);
-        const double queued_audio_before_ms = queued_audio_duration_ms_locked();
+        const double queued_audio_before_ms = queued_audio_ahead_ms_locked();
         const bool queue_empty_before_later_chunk =
             playback_started_ && buffers_.empty();
+        const auto admission = std::chrono::steady_clock::now();
 
         auto buffer = std::make_unique<Buffer>();
         buffer->bytes = chunk.bytes;
@@ -636,9 +648,11 @@ public:
         std::optional<std::size_t> queue_empty_marker_index;
         if (metrics_ != nullptr) {
             queue_empty_marker_index = metrics_->record_chunk(
+                callback_arrival,
+                admission,
                 pcm_duration_ms(chunk.format, chunk.bytes.size()),
                 queued_audio_before_ms,
-                queued_audio_duration_ms_locked(),
+                queued_audio_ahead_ms_locked(),
                 queue_empty_before_later_chunk);
         }
         if (playback_started_ || pending_buffers_.size() >= prebuffer_chunks_) {
@@ -672,7 +686,7 @@ public:
         diagnostic.requested_fade_ms = fade_ms;
         diagnostic.old_request_id = old_request_id;
         diagnostic.queued_buffer_count = buffers_.size();
-        diagnostic.queued_audio_ms = queued_audio_duration_ms_locked();
+        diagnostic.queued_audio_ms = queued_audio_ahead_ms_locked();
         diagnostic.submitted_head_frame = next_stream_frame_;
         std::optional<PcmChunk> tail;
         if (fade_ms != 0 && sink_mode_ != PlaybackSinkMode::Disabled) {
@@ -987,41 +1001,10 @@ private:
         if (buffers_.empty()) {
             return std::nullopt;
         }
-        std::optional<std::uint64_t> cursor_frame;
-        if (sink_mode_ == PlaybackSinkMode::Mock) {
-            const auto now = std::chrono::steady_clock::now();
-            for (std::size_t index = 0; index < buffers_.size(); ++index) {
-                const Buffer& buffer = *buffers_[index];
-                if (!buffer.mock_completion.has_value() ||
-                    buffer.mock_completion.value() <= now) {
-                    continue;
-                }
-                cursor_frame = buffer.start_frame;
-                if (buffer.mock_start.has_value() &&
-                    now > buffer.mock_start.value()) {
-                    const double elapsed_ms =
-                        std::chrono::duration<double, std::milli>(
-                            now - buffer.mock_start.value()).count();
-                    cursor_frame = cursor_frame.value() + static_cast<std::uint64_t>(
-                        elapsed_ms * m_format.sample_rate / 1000.0);
-                    if (cursor_frame.value() > buffer.start_frame + buffer.frame_count) {
-                        cursor_frame = buffer.start_frame + buffer.frame_count;
-                    }
-                }
-                break;
-            }
-        }
-        else {
-            const auto position = device_position_locked();
-            if (!position.has_value()) {
-                return std::nullopt;
-            }
-            const std::uint64_t played =
-                device_position_base_valid_ &&
-                        position.value() >= device_position_base_
-                    ? position.value() - device_position_base_
-                    : 0;
-            cursor_frame = played;
+        const std::optional<std::uint64_t> cursor_frame =
+            current_playout_cursor_frame_locked();
+        if (!cursor_frame.has_value()) {
+            return std::nullopt;
         }
         diagnostic.cursor_available = cursor_frame.has_value();
         if (cursor_frame.has_value()) {
@@ -1071,6 +1054,70 @@ private:
             duration_ms += buffer->duration_ms;
         }
         return duration_ms;
+    }
+
+    std::optional<std::uint64_t> current_playout_cursor_frame_locked() const {
+        if (!playback_started_ || buffers_.empty()) {
+            return std::nullopt;
+        }
+        if (sink_mode_ == PlaybackSinkMode::Mock) {
+            const auto now = std::chrono::steady_clock::now();
+            for (const std::unique_ptr<Buffer>& item : buffers_) {
+                const Buffer& buffer = *item;
+                if (!buffer.mock_completion.has_value() ||
+                    buffer.mock_completion.value() <= now) {
+                    continue;
+                }
+                std::uint64_t cursor = buffer.start_frame;
+                if (buffer.mock_start.has_value() && now > buffer.mock_start.value()) {
+                    const double elapsed =
+                        std::chrono::duration<double, std::milli>(
+                            now - buffer.mock_start.value()).count();
+                    cursor += static_cast<std::uint64_t>(
+                        elapsed * m_format.sample_rate / 1000.0);
+                    cursor = std::min(
+                        cursor,
+                        buffer.start_frame + buffer.frame_count);
+                }
+                return cursor;
+            }
+            return next_stream_frame_;
+        }
+        if (sink_mode_ != PlaybackSinkMode::WaveOut) {
+            return std::nullopt;
+        }
+        const auto position = device_position_locked();
+        if (!position.has_value()) {
+            return std::nullopt;
+        }
+        if (device_position_base_valid_ &&
+            position.value() >= device_position_base_) {
+            return position.value() - device_position_base_;
+        }
+        return 0;
+    }
+
+    double queued_audio_ahead_ms_locked() const {
+        if (!playback_started_) {
+            return queued_audio_duration_ms_locked();
+        }
+        const auto cursor = current_playout_cursor_frame_locked();
+        if (!cursor.has_value() || m_format.sample_rate == 0) {
+            return queued_audio_duration_ms_locked();
+        }
+        std::uint64_t frames =
+            next_stream_frame_ > cursor.value()
+                ? next_stream_frame_ - cursor.value()
+                : 0;
+        for (const std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+            if (buffer->frame_count >
+                std::numeric_limits<std::uint64_t>::max() - frames) {
+                return queued_audio_duration_ms_locked();
+            }
+            frames += buffer->frame_count;
+        }
+        return static_cast<double>(frames) * 1000.0 /
+            static_cast<double>(m_format.sample_rate);
     }
 
     void validate_pending_format_locked(const AudioFormat& format) {
