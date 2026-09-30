@@ -92,6 +92,7 @@ struct ProgramOptions {
     double mock_chunk_delay = 0.0;
     std::chrono::milliseconds startup_timeout{30000};
     std::string playback_metrics_file;
+    std::string playback_interruption_diagnostics_file;
     std::string pcm_capture_file;
     std::size_t playback_prebuffer_chunks = 1;
     bool etw_playback_markers = false;
@@ -138,6 +139,26 @@ struct PlaybackChunkMetric {
     double queued_audio_before_ms = 0.0;
     double queued_audio_after_ms = 0.0;
     bool queue_empty_before_later_chunk = false;
+};
+
+struct PlaybackInterruptionDiagnostic {
+    std::size_t event_index = 0;
+    std::uint32_t requested_fade_ms = 0;
+    std::uint64_t old_request_id = 0;
+    std::uint64_t new_request_id = 0;
+    std::string old_terminal_state;
+    std::string new_terminal_state;
+    bool cursor_available = false;
+    std::uint64_t cursor_frame = 0;
+    std::uint64_t selected_buffer_start_frame = 0;
+    std::uint64_t selected_buffer_frame_count = 0;
+    std::uint64_t selected_local_offset_frames = 0;
+    std::uint64_t queued_buffer_count = 0;
+    double queued_audio_ms = 0.0;
+    std::uint64_t fade_frame_count = 0;
+    bool waveout_reset_called = false;
+    std::optional<double> waveout_reset_started_ms;
+    std::optional<double> waveout_reset_completed_ms;
 };
 
 class WprPlaybackMarkers final {
@@ -577,6 +598,7 @@ public:
 
         std::unique_lock<std::mutex> lock(mutex_);
         if (playback_epoch != playback_epoch_) {
+            ++late_audio_after_terminal_count_;
             return;
         }
         while (playback_started_ &&
@@ -634,15 +656,155 @@ public:
     /// the sink's current playout cursor. Buffered producer-side PCM that has
     /// not reached the device is discarded.
     std::pair<std::uint64_t, std::optional<PcmChunk>> interrupt_with_fade(
-        std::uint32_t fade_ms) {
+        std::uint32_t fade_ms,
+        RequestId old_request_id = 0) {
         std::unique_lock<std::mutex> lock(mutex_);
+        const bool record_diagnostic = old_request_id != 0;
+        PlaybackInterruptionDiagnostic diagnostic;
+        diagnostic.event_index = interruption_diagnostics_.size();
+        diagnostic.requested_fade_ms = fade_ms;
+        diagnostic.old_request_id = old_request_id;
+        diagnostic.queued_buffer_count = buffers_.size();
+        diagnostic.queued_audio_ms = queued_audio_duration_ms_locked();
+        const auto reset_started = std::chrono::steady_clock::now();
+        diagnostic.waveout_reset_called =
+            sink_mode_ == PlaybackSinkMode::WaveOut && m_handle != nullptr;
+        if (record_diagnostic && diagnostic.waveout_reset_called) {
+            diagnostic.waveout_reset_started_ms = elapsed_since_start_ms(reset_started);
+        }
         std::optional<PcmChunk> tail;
         if (fade_ms != 0 && sink_mode_ != PlaybackSinkMode::Disabled) {
             reap_finished_locked();
-            tail = interruption_tail_locked(fade_ms);
+            tail = interruption_tail_locked(fade_ms, diagnostic);
         }
         const std::uint64_t playback_epoch = reset_locked(lock);
+        if (record_diagnostic && diagnostic.waveout_reset_called) {
+            diagnostic.waveout_reset_completed_ms =
+                elapsed_since_start_ms(std::chrono::steady_clock::now());
+        }
+        if (record_diagnostic && tail.has_value()) {
+            diagnostic.fade_frame_count = pcm_frame_count(
+                tail->format,
+                tail->bytes.size());
+        }
+        if (record_diagnostic) {
+            interruption_diagnostics_.push_back(std::move(diagnostic));
+            last_interruption_diagnostic_index_ = interruption_diagnostics_.size() - 1;
+        }
+        else {
+            last_interruption_diagnostic_index_.reset();
+        }
         return {playback_epoch, std::move(tail)};
+    }
+
+    void note_request_started(RequestId request_id) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (last_interruption_diagnostic_index_.has_value()) {
+            interruption_diagnostics_[last_interruption_diagnostic_index_.value()].new_request_id =
+                request_id;
+            last_interruption_diagnostic_index_.reset();
+        }
+    }
+
+    void note_request_terminal(RequestId request_id, const char* terminal_state) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (auto& event : interruption_diagnostics_) {
+            if (event.old_request_id == request_id && event.old_terminal_state.empty()) {
+                event.old_terminal_state = terminal_state;
+            }
+            if (event.new_request_id == request_id && event.new_terminal_state.empty()) {
+                event.new_terminal_state = terminal_state;
+            }
+        }
+    }
+
+    void write_interruption_diagnostics_file(const std::string& file_name) const {
+        std::vector<PlaybackInterruptionDiagnostic> diagnostics;
+        std::uint64_t late_audio_after_terminal_count = 0;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            diagnostics = interruption_diagnostics_;
+            late_audio_after_terminal_count = late_audio_after_terminal_count_;
+        }
+        std::ostringstream json;
+        json << std::fixed << std::setprecision(3);
+        json << "{\n"
+             << "  \"schema_version\": 1,\n"
+             << "  \"measurement\": \"waveout_interruption_cursor\",\n"
+             << "  \"late_audio_after_terminal_count\": "
+             << late_audio_after_terminal_count << ",\n"
+             << "  \"events\": [\n";
+        for (std::size_t index = 0; index < diagnostics.size(); ++index) {
+            const auto& event = diagnostics[index];
+            json << "    {\"event_index\": " << event.event_index
+                 << ", \"requested_fade_ms\": " << event.requested_fade_ms
+                 << ", \"old_request_id\": " << event.old_request_id
+                 << ", \"new_request_id\": " << event.new_request_id
+                 << ", \"old_terminal_state\": \"" << event.old_terminal_state
+                 << "\", \"new_terminal_state\": \"" << event.new_terminal_state
+                 << "\", \"cursor_available\": "
+                 << (event.cursor_available ? "true" : "false")
+                 << ", \"cursor_frame\": " << event.cursor_frame
+                 << ", \"selected_buffer_start_frame\": "
+                 << event.selected_buffer_start_frame
+                 << ", \"selected_buffer_frame_count\": "
+                 << event.selected_buffer_frame_count
+                 << ", \"selected_local_offset_frames\": "
+                 << event.selected_local_offset_frames
+                 << ", \"queued_buffer_count\": " << event.queued_buffer_count
+                 << ", \"queued_audio_ms\": " << event.queued_audio_ms
+                 << ", \"fade_frame_count\": " << event.fade_frame_count
+                 << ", \"waveout_reset_called\": "
+                 << (event.waveout_reset_called ? "true" : "false")
+                 << ", \"waveout_reset_started_ms\": ";
+            if (event.waveout_reset_started_ms.has_value()) {
+                json << event.waveout_reset_started_ms.value();
+            }
+            else {
+                json << "null";
+            }
+            json << ", \"waveout_reset_completed_ms\": ";
+            if (event.waveout_reset_completed_ms.has_value()) {
+                json << event.waveout_reset_completed_ms.value();
+            }
+            else {
+                json << "null";
+            }
+            json << "}";
+            if (index + 1 != diagnostics.size()) {
+                json << ',';
+            }
+            json << '\n';
+        }
+        json << "  ]\n}\n";
+        const std::filesystem::path target = std::filesystem::u8path(file_name);
+        if (std::filesystem::exists(target)) {
+            throw std::runtime_error(
+                "refusing to overwrite existing interruption diagnostics file: " +
+                file_name);
+        }
+        const std::filesystem::path temporary =
+            std::filesystem::path(
+                target.native() + L".tmp." + std::to_wstring(GetCurrentProcessId()));
+        try {
+            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+            if (!output) {
+                throw std::runtime_error(
+                    "failed to open interruption diagnostics file: " + file_name);
+            }
+            output << json.str();
+            output.close();
+            if (!output) {
+                throw std::runtime_error(
+                    "failed to write interruption diagnostics file: " + file_name);
+            }
+            std::filesystem::rename(temporary, target);
+        }
+        catch (...) {
+            std::error_code ignored;
+            std::filesystem::remove(temporary, ignored);
+            throw;
+        }
     }
 
 private:
@@ -796,8 +958,13 @@ private:
         }
     }
 
+    double elapsed_since_start_ms(std::chrono::steady_clock::time_point value) const {
+        return std::chrono::duration<double, std::milli>(value - started_at_).count();
+    }
+
     std::optional<PcmChunk> interruption_tail_locked(
-        std::uint32_t fade_ms) {
+        std::uint32_t fade_ms,
+        PlaybackInterruptionDiagnostic& diagnostic) {
         if (buffers_.empty()) {
             return std::nullopt;
         }
@@ -837,6 +1004,10 @@ private:
                     : 0;
             cursor_frame = played;
         }
+        diagnostic.cursor_available = cursor_frame.has_value();
+        if (cursor_frame.has_value()) {
+            diagnostic.cursor_frame = cursor_frame.value();
+        }
         std::vector<PlayoutBuffer> snapshot;
         snapshot.reserve(buffers_.size());
         for (const std::unique_ptr<Buffer>& buffer : buffers_) {
@@ -848,6 +1019,22 @@ private:
         }
         if (!cursor_frame.has_value()) {
             return std::nullopt;
+        }
+        for (const std::unique_ptr<Buffer>& buffer : buffers_) {
+            const std::uint64_t end = buffer->start_frame + buffer->frame_count;
+            if (cursor_frame.value() < buffer->start_frame) {
+                diagnostic.selected_buffer_start_frame = buffer->start_frame;
+                diagnostic.selected_buffer_frame_count = buffer->frame_count;
+                diagnostic.selected_local_offset_frames = 0;
+                break;
+            }
+            if (cursor_frame.value() < end) {
+                diagnostic.selected_buffer_start_frame = buffer->start_frame;
+                diagnostic.selected_buffer_frame_count = buffer->frame_count;
+                diagnostic.selected_local_offset_frames =
+                    cursor_frame.value() - buffer->start_frame;
+                break;
+            }
         }
         return make_playout_cursor_fade(snapshot, cursor_frame.value(), fade_ms);
     }
@@ -1025,7 +1212,7 @@ private:
         }
     }
 
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     HWAVEOUT m_handle = nullptr;
     AudioFormat m_format;
     std::vector<std::unique_ptr<Buffer>> buffers_;
@@ -1039,6 +1226,11 @@ private:
     std::uint64_t next_stream_frame_ = 0;
     std::uint64_t device_position_base_ = 0;
     bool device_position_base_valid_ = false;
+    const std::chrono::steady_clock::time_point started_at_ =
+        std::chrono::steady_clock::now();
+    std::vector<PlaybackInterruptionDiagnostic> interruption_diagnostics_;
+    std::optional<std::size_t> last_interruption_diagnostic_index_;
+    std::uint64_t late_audio_after_terminal_count_ = 0;
 };
 
 struct ActiveRequestState {
@@ -1127,6 +1319,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
         << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
+        << "  --playback-interruption-diagnostics-file <path> Write opt-in cursor/reset cancellation diagnostics JSON.\n"
         << "  --pcm-capture-file <path>      Write opt-in one-shot raw s16le PCM plus JSON metadata.\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
         << "  --tail                         Fade and pad terminal audio.\n"
@@ -1300,6 +1493,14 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
                  arg.rfind("--playback-metrics-file=", 0) == 0) {
             options.playback_metrics_file = require_value(
                 index, argc, argv, "--playback-metrics-file");
+        }
+        else if (arg == "--playback-interruption-diagnostics-file" ||
+                 arg.rfind("--playback-interruption-diagnostics-file=", 0) == 0) {
+            options.playback_interruption_diagnostics_file = require_value(
+                index,
+                argc,
+                argv,
+                "--playback-interruption-diagnostics-file");
         }
         else if (arg == "--pcm-capture-file" ||
                  arg.rfind("--pcm-capture-file=", 0) == 0) {
@@ -1569,7 +1770,7 @@ std::uint64_t cancel_active_request(
     if (processors != nullptr) {
         processors->reset();
     }
-    auto interruption = player.interrupt_with_fade(interruption_fade_ms);
+    auto interruption = player.interrupt_with_fade(interruption_fade_ms, request_id);
     const std::uint64_t playback_epoch = interruption.first;
     if (interruption.second.has_value()) {
         player.enqueue(playback_epoch, interruption.second.value());
@@ -1624,6 +1825,7 @@ RequestId submit_request(
     }
 
     const RequestId request_id = request.id;
+    player.note_request_started(request_id);
     TtsCallbacks callbacks;
     callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id, pcm_capture](const PcmChunk& chunk) {
         if (!is_active_request(active_state, request_id)) {
@@ -1654,6 +1856,7 @@ RequestId submit_request(
             std::cerr << "audio post-processing error: " << exc.what() << '\n';
             return;
         }
+        player.note_request_terminal(request_id, "completed");
         clear_active_request(active_state, request_id);
         if (one_shot_state != nullptr) {
             mark_one_shot_terminal(one_shot_state, true);
@@ -1674,7 +1877,7 @@ RequestId submit_request(
         if (is_active_request(active_state, request_id)) {
             try {
                 processors->reset();
-                auto interruption = player.interrupt_with_fade(interruption_fade_ms);
+                auto interruption = player.interrupt_with_fade(interruption_fade_ms, request_id);
                 if (interruption.second.has_value()) {
                     player.enqueue(interruption.first, interruption.second.value());
                 }
@@ -1684,6 +1887,7 @@ RequestId submit_request(
             }
             clear_active_request(active_state, request_id);
         }
+        player.note_request_terminal(request_id, "cancelled");
         mark_one_shot_terminal(one_shot_state, false, "request cancelled");
     };
     callbacks.on_error = [&player, &active_state, processors, one_shot_state, request_id](const TtsError& error) {
@@ -1697,6 +1901,7 @@ RequestId submit_request(
             static_cast<void>(player.reset());
             clear_active_request(active_state, request_id);
         }
+        player.note_request_terminal(request_id, "failed");
         mark_one_shot_terminal(
             one_shot_state,
             false,
@@ -2169,6 +2374,10 @@ int wmain(int argc, wchar_t** argv) {
             if (safe_client != nullptr) {
                 safe_client->stop();
             }
+            if (!options.playback_interruption_diagnostics_file.empty()) {
+                player.write_interruption_diagnostics_file(
+                    options.playback_interruption_diagnostics_file);
+            }
             return 0;
         }
 
@@ -2221,6 +2430,10 @@ int wmain(int argc, wchar_t** argv) {
         client.stop();
         if (safe_client != nullptr) {
             safe_client->stop();
+        }
+        if (!options.playback_interruption_diagnostics_file.empty()) {
+            player.write_interruption_diagnostics_file(
+                options.playback_interruption_diagnostics_file);
         }
         return 0;
     }
