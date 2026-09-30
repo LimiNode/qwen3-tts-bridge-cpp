@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "bridge_merge": "3e877763569bcb18d110b7546363a7f55b4ce696",
+  "tested_player_source": "025f816f4c267a19250678e452f4af60309593f0",
+  "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "ggml_commit": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+  "qwentts_abi": 6,
+  "cuda_graphs": true,
+  "gpu": "NVIDIA CMP 50HX",
+  "driver": "581.94",
+  "compute_capability": "7.5",
+  "voice_id": "kraftwerk_robot_ru_warm",
+  "language": "russian",
+  "request_text": "Это расширенный русский тест для длительной последовательности. Система должна последовательно произнести весь текст без пропусков, повторов, преждевременного завершения или заметных пауз между аудиочанками, сохраняя тот же зарегистрированный голос.",
+  "request_text_utf8_sha256": "aa2ab4b14f99d4c8c820633374616168ee53fcbcb3ceab26f4896e8a4172dfb7",
+  "reference_text_utf8_sha256": "5fb32e67201fe80201d3328a2062ad190bab86094b856bb65c06d782866e0a8b",
+  "hashes": {
+    "player": "40b26a916328a8903b97c22dfe0276cccce0bba6ea3e49b4df53b9c4b3d65152",
+    "worker": "f799f021ac2e85879cbc322277cab56213208ae105459e6ae8c8ac448cb65a4b",
+    "runtime_manifest": "559d8c63fec8958801627970e6421725283d1a63e217fa5a636ca0057ba9dd45",
+    "qwen_dll": "e8a85cc62377494e19d40e5c808f88c186c495f4358aacbd8f60e5e22a8b0304",
+    "talker_model": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+    "codec_model": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "voice_registry": "1655686047130df630643f1863dfd0275b62fc7364eec9c5cd5ebcf12769d53a",
+    "reference_wav": "b8285c5925d89d90435afa2f084a197a9e428dec41fff09c74969e6624a4b147"
+  },
+  "long_waveout": {
+    "seed": 1002,
+    "stream_max_chunk_frames": 8,
+    "tail_fade_ms": 15,
+    "tail_silence_ms": 85,
+    "native_frames": 218,
+    "native_execution_outcome": "natural_eos",
+    "native_qwen_total_ms": 4920.63,
+    "native_rtf": 0.282,
+    "sink_chunk_count_including_tail": 32,
+    "sink_audio_duration_ms": 17525.0,
+    "queue_empty_before_later_chunk_count": 0,
+    "median_backpressure_wait_ms": 634.451,
+    "max_backpressure_wait_ms": 650.765
+  },
+  "cancellation": [
+    {
+      "scenario": "early",
+      "stream_max_chunk_frames": 1,
+      "cursor_frame": 3743,
+      "selected_buffer_start_frame": 3480,
+      "selected_buffer_frame_count": 1920,
+      "selected_local_offset_frames": 263,
+      "submitted_head_frame": 11160,
+      "producer_ahead_frames": 7417,
+      "fade_frame_count": 360,
+      "waveout_reset_ms": 4.983,
+      "discarded_stale_callbacks": 1,
+      "next_request_outcome": "natural_eos"
+    },
+    {
+      "scenario": "middle",
+      "stream_max_chunk_frames": 1,
+      "cursor_frame": 53321,
+      "selected_buffer_start_frame": 51480,
+      "selected_buffer_frame_count": 1920,
+      "selected_local_offset_frames": 1841,
+      "submitted_head_frame": 61080,
+      "producer_ahead_frames": 7759,
+      "fade_frame_count": 360,
+      "waveout_reset_ms": 8.915,
+      "discarded_stale_callbacks": 1,
+      "next_request_outcome": "natural_eos"
+    },
+    {
+      "scenario": "backlog",
+      "stream_max_chunk_frames": 8,
+      "cursor_frame": 12913,
+      "selected_buffer_start_frame": 5400,
+      "selected_buffer_frame_count": 7680,
+      "selected_local_offset_frames": 7513,
+      "submitted_head_frame": 28440,
+      "producer_ahead_frames": 15527,
+      "fade_frame_count": 360,
+      "waveout_reset_ms": 2.603,
+      "discarded_stale_callbacks": 2,
+      "next_request_outcome": "natural_eos"
+    }
+  ],
+  "natural_eos_matrix": [
+    {
+      "seed": 1000,
+      "first_pcm_ms": 196.111,
+      "frames": 217,
+      "qwen_total_ms": 4879.95,
+      "execution_outcome": "natural_eos",
+      "starvation_detected": false,
+      "wav_sha256": "129549dacd4199c29eac6ae71bb1e841edb14b85fe1a2442317605d2359e5b44"
+    },
+    {
+      "seed": 1002,
+      "first_pcm_ms": 197.487,
+      "frames": 218,
+      "qwen_total_ms": 4914.35,
+      "execution_outcome": "natural_eos",
+      "starvation_detected": false,
+      "wav_sha256": "78a5b5852d17d4de876b439344d5e488857e5c0c901d040362c9b9df44628121"
+    },
+    {
+      "seed": 1006,
+      "first_pcm_ms": 196.378,
+      "frames": 224,
+      "qwen_total_ms": 5060.08,
+      "execution_outcome": "natural_eos",
+      "starvation_detected": false,
+      "wav_sha256": "9cf05f9c54761db45988606e74d17bdbc79fc7beeed8a883399ea72eaea52f70"
+    },
+    {
+      "seed": 1008,
+      "first_pcm_ms": 197.525,
+      "frames": 218,
+      "qwen_total_ms": 4906.81,
+      "execution_outcome": "natural_eos",
+      "starvation_detected": false,
+      "wav_sha256": "be83000fb7354f5611b17652c7fd9086b52f7f798aa38bf7be1d73b21d67ca49"
+    }
+  ]
+}
