@@ -9,6 +9,7 @@
 #include <windows.h>
 #include <mmsystem.h>
 
+#include <algorithm>
 #include <chrono>
 #include <array>
 #include <cmath>
@@ -536,6 +537,8 @@ private:
 
 class WaveOutPlayer final {
 public:
+    static constexpr double kMaxQueuedAudioMs = 250.0;
+
     explicit WaveOutPlayer(
         PlaybackSinkMode sink_mode,
         PlaybackMetrics* metrics = nullptr,
@@ -571,9 +574,22 @@ public:
             return;
         }
 
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock<std::mutex> lock(mutex_);
         if (playback_epoch != playback_epoch_) {
             return;
+        }
+        while (playback_started_ &&
+               queued_audio_duration_ms_locked() >= kMaxQueuedAudioMs) {
+            reap_finished_locked();
+            if (queued_audio_duration_ms_locked() < kMaxQueuedAudioMs) {
+                break;
+            }
+            lock.unlock();
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            lock.lock();
+            if (playback_epoch != playback_epoch_) {
+                return;
+            }
         }
         reap_finished_locked();
         validate_pending_format_locked(chunk.format);
@@ -583,6 +599,8 @@ public:
 
         auto buffer = std::make_unique<Buffer>();
         buffer->bytes = chunk.bytes;
+        buffer->request_id = chunk.request_id;
+        buffer->frame_count = pcm_frame_count(chunk.format, buffer->bytes.size());
         buffer->header.lpData = reinterpret_cast<LPSTR>(buffer->bytes.data());
         buffer->header.dwBufferLength = static_cast<DWORD>(buffer->bytes.size());
         buffer->duration_ms = pcm_duration_ms(chunk.format, buffer->bytes.size());
@@ -608,22 +626,45 @@ public:
     /// It never cancels worker inference.
     [[nodiscard]] std::uint64_t reset() {
         std::unique_lock<std::mutex> lock(mutex_);
+        return reset_locked(lock);
+    }
+
+    /// Stops playback and returns a short fade built from the samples nearest
+    /// the sink's current playout cursor. Buffered producer-side PCM that has
+    /// not reached the device is discarded.
+    std::pair<std::uint64_t, std::optional<PcmChunk>> interrupt_with_fade(
+        std::uint32_t fade_ms) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        std::optional<PcmChunk> tail;
+        if (fade_ms != 0 && sink_mode_ != PlaybackSinkMode::Disabled) {
+            reap_finished_locked();
+            tail = interruption_tail_locked(fade_ms);
+        }
+        const std::uint64_t playback_epoch = reset_locked(lock);
+        return {playback_epoch, std::move(tail)};
+    }
+
+private:
+    std::uint64_t reset_locked(std::unique_lock<std::mutex>& lock) {
         ++playback_epoch_;
         if (playback_epoch_ == 0) {
             ++playback_epoch_;
         }
         if (sink_mode_ == PlaybackSinkMode::Disabled) {
+            reset_stream_position_locked();
             return playback_epoch_;
         }
         if (sink_mode_ == PlaybackSinkMode::Mock) {
             buffers_.clear();
             clear_pending_locked();
             playback_started_ = false;
+            reset_stream_position_locked();
             return playback_epoch_;
         }
         if (m_handle == nullptr) {
             clear_pending_locked();
             playback_started_ = false;
+            reset_stream_position_locked();
             return playback_epoch_;
         }
 
@@ -643,9 +684,11 @@ public:
         }
         clear_pending_locked();
         playback_started_ = false;
+        reset_stream_position_locked();
         return playback_epoch_;
     }
 
+public:
     void wait_until_idle(std::chrono::milliseconds timeout) {
         if (sink_mode_ == PlaybackSinkMode::Disabled) {
             return;
@@ -673,6 +716,10 @@ private:
         WAVEHDR header{};
         bool prepared = false;
         double duration_ms = 0.0;
+        RequestId request_id = 0;
+        std::uint64_t start_frame = 0;
+        std::uint64_t frame_count = 0;
+        std::optional<std::chrono::steady_clock::time_point> mock_start;
         std::optional<std::chrono::steady_clock::time_point> mock_completion;
     };
 
@@ -699,6 +746,173 @@ private:
         }
         return static_cast<double>(byte_count) * 1000.0 /
             static_cast<double>(bytes_per_second);
+    }
+
+    static std::size_t pcm_frame_bytes(const AudioFormat& format) {
+        const std::uint64_t bytes =
+            static_cast<std::uint64_t>(format.channels) * sizeof(std::int16_t);
+        if (bytes == 0 || bytes > std::numeric_limits<std::size_t>::max()) {
+            throw std::runtime_error("invalid PCM frame size");
+        }
+        return static_cast<std::size_t>(bytes);
+    }
+
+    static std::uint64_t pcm_frame_count(
+        const AudioFormat& format,
+        std::size_t byte_count) {
+        const std::size_t frame_bytes = pcm_frame_bytes(format);
+        if (byte_count % frame_bytes != 0) {
+            throw std::runtime_error("PCM buffer does not contain complete frames");
+        }
+        return static_cast<std::uint64_t>(byte_count / frame_bytes);
+    }
+
+    std::optional<std::uint64_t> device_position_locked() const {
+        if (m_handle == nullptr) {
+            return std::nullopt;
+        }
+        MMTIME position{};
+        position.wType = TIME_SAMPLES;
+        if (waveOutGetPosition(
+                m_handle,
+                &position,
+                sizeof(position)) != MMSYSERR_NOERROR ||
+            position.wType != TIME_SAMPLES) {
+            return std::nullopt;
+        }
+        return static_cast<std::uint64_t>(position.u.sample);
+    }
+
+    void reset_stream_position_locked() {
+        next_stream_frame_ = 0;
+        if (const auto position = device_position_locked(); position.has_value()) {
+            device_position_base_ = position.value();
+            device_position_base_valid_ = true;
+        }
+        else {
+            device_position_base_ = 0;
+            device_position_base_valid_ = false;
+        }
+    }
+
+    std::optional<PcmChunk> interruption_tail_locked(
+        std::uint32_t fade_ms) {
+        if (buffers_.empty()) {
+            return std::nullopt;
+        }
+        const AudioFormat format = m_format;
+        const std::size_t frame_bytes = pcm_frame_bytes(format);
+        const std::uint64_t fade_frames =
+            (static_cast<std::uint64_t>(format.sample_rate) * fade_ms + 999u) /
+            1000u;
+        if (fade_frames == 0) {
+            return std::nullopt;
+        }
+
+        std::size_t first_index = buffers_.size();
+        std::uint64_t offset = 0;
+        if (sink_mode_ == PlaybackSinkMode::Mock) {
+            const auto now = std::chrono::steady_clock::now();
+            for (std::size_t index = 0; index < buffers_.size(); ++index) {
+                const Buffer& buffer = *buffers_[index];
+                if (!buffer.mock_completion.has_value() ||
+                    buffer.mock_completion.value() <= now) {
+                    continue;
+                }
+                first_index = index;
+                if (buffer.mock_start.has_value() &&
+                    now > buffer.mock_start.value()) {
+                    const double elapsed_ms =
+                        std::chrono::duration<double, std::milli>(
+                            now - buffer.mock_start.value()).count();
+                    offset = static_cast<std::uint64_t>(
+                        elapsed_ms * format.sample_rate / 1000.0);
+                    if (offset > buffer.frame_count) {
+                        offset = buffer.frame_count;
+                    }
+                }
+                break;
+            }
+        }
+        else if (const auto position = device_position_locked();
+                 position.has_value()) {
+            const std::uint64_t played =
+                device_position_base_valid_ &&
+                        position.value() >= device_position_base_
+                    ? position.value() - device_position_base_
+                    : 0;
+            for (std::size_t index = 0; index < buffers_.size(); ++index) {
+                const Buffer& buffer = *buffers_[index];
+                if (played >= buffer.start_frame + buffer.frame_count) {
+                    continue;
+                }
+                first_index = index;
+                offset = played > buffer.start_frame
+                    ? played - buffer.start_frame
+                    : 0;
+                break;
+            }
+        }
+
+        if (first_index == buffers_.size()) {
+            return std::nullopt;
+        }
+
+        std::vector<std::byte> bytes;
+        std::uint64_t remaining_frames = fade_frames;
+        RequestId request_id = buffers_[first_index]->request_id;
+        for (std::size_t index = first_index;
+             index < buffers_.size() && remaining_frames != 0;
+             ++index) {
+            const Buffer& buffer = *buffers_[index];
+            const std::uint64_t begin = index == first_index ? offset : 0;
+            if (begin >= buffer.frame_count) {
+                continue;
+            }
+            const std::uint64_t count =
+                std::min(remaining_frames, buffer.frame_count - begin);
+            const std::size_t begin_bytes =
+                static_cast<std::size_t>(begin) * frame_bytes;
+            const std::size_t count_bytes =
+                static_cast<std::size_t>(count) * frame_bytes;
+            bytes.insert(
+                bytes.end(),
+                buffer.bytes.begin() + begin_bytes,
+                buffer.bytes.begin() + begin_bytes + count_bytes);
+            remaining_frames -= count;
+        }
+        if (bytes.empty()) {
+            return std::nullopt;
+        }
+
+        const std::size_t frames = bytes.size() / frame_bytes;
+        for (std::size_t frame = 0; frame < frames; ++frame) {
+            const double gain = frames == 1
+                ? 0.0
+                : static_cast<double>(frames - 1 - frame) /
+                      static_cast<double>(frames - 1);
+            for (std::uint32_t channel = 0; channel < format.channels; ++channel) {
+                const std::size_t byte_offset =
+                    frame * frame_bytes + channel * sizeof(std::int16_t);
+                std::int16_t sample = 0;
+                std::memcpy(&sample, bytes.data() + byte_offset, sizeof(sample));
+                const long shaped = static_cast<long>(std::lround(
+                    static_cast<double>(sample) * gain));
+                const long clamped = shaped < std::numeric_limits<std::int16_t>::min()
+                    ? std::numeric_limits<std::int16_t>::min()
+                    : shaped > std::numeric_limits<std::int16_t>::max()
+                        ? std::numeric_limits<std::int16_t>::max()
+                        : shaped;
+                sample = static_cast<std::int16_t>(clamped);
+                std::memcpy(bytes.data() + byte_offset, &sample, sizeof(sample));
+            }
+        }
+
+        PcmChunk tail;
+        tail.request_id = request_id;
+        tail.format = format;
+        tail.bytes = std::move(bytes);
+        return tail;
     }
 
     double queued_audio_duration_ms_locked() const {
@@ -752,6 +966,9 @@ private:
             m_format = pending_format_.value();
             buffers_.reserve(buffers_.size() + pending_buffers_.size());
             for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+                buffer->start_frame = next_stream_frame_;
+                next_stream_frame_ += buffer->frame_count;
+                buffer->mock_start = completion;
                 completion += std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                     std::chrono::duration<double, std::milli>(buffer->duration_ms));
                 buffer->mock_completion = completion;
@@ -767,8 +984,15 @@ private:
 
         open_or_validate_locked(
             m_handle != nullptr ? m_format : pending_format_.value());
+        if (!device_position_base_valid_) {
+            const auto position = device_position_locked();
+            device_position_base_ = position.value_or(0);
+            device_position_base_valid_ = position.has_value();
+        }
         buffers_.reserve(buffers_.size() + pending_buffers_.size());
         for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+            buffer->start_frame = next_stream_frame_;
+            next_stream_frame_ += buffer->frame_count;
             check_mmresult(
                 waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
                 "waveOutPrepareHeader");
@@ -875,6 +1099,9 @@ private:
     std::size_t prebuffer_chunks_ = 1;
     bool playback_started_ = false;
     PlaybackMetrics* metrics_ = nullptr;
+    std::uint64_t next_stream_frame_ = 0;
+    std::uint64_t device_position_base_ = 0;
+    bool device_position_base_valid_ = false;
 };
 
 struct ActiveRequestState {
@@ -1383,7 +1610,8 @@ std::shared_ptr<AudioPostProcessorChain> make_audio_processors(
 std::uint64_t cancel_active_request(
     QwenTtsClient& client,
     WaveOutPlayer& player,
-    ActiveRequestState& state) {
+    ActiveRequestState& state,
+    std::uint32_t interruption_fade_ms) {
     RequestId request_id = 0;
     QwenTtsClient* active_client = nullptr;
     std::shared_ptr<AudioPostProcessorChain> processors;
@@ -1398,13 +1626,16 @@ std::uint64_t cancel_active_request(
     if (request_id != 0) {
         (active_client != nullptr ? *active_client : client).cancel(request_id);
     }
-    std::vector<PcmChunk> terminal_audio;
+    // Producer-side processors must not release their newest buffered samples
+    // here: those samples may already be far ahead of the physical sink.
+    // The sink derives its interruption tail from the actual playout cursor.
     if (processors != nullptr) {
-        terminal_audio = processors->finish(AudioTerminalReason::Cancelled);
+        processors->reset();
     }
-    const std::uint64_t playback_epoch = player.reset();
-    for (const PcmChunk& chunk : terminal_audio) {
-        player.enqueue(playback_epoch, chunk);
+    auto interruption = player.interrupt_with_fade(interruption_fade_ms);
+    const std::uint64_t playback_epoch = interruption.first;
+    if (interruption.second.has_value()) {
+        player.enqueue(playback_epoch, interruption.second.value());
     }
     return playback_epoch;
 }
@@ -1418,7 +1649,11 @@ RequestId submit_request(
     OneShotState* one_shot_state = nullptr,
     PcmCapture* pcm_capture = nullptr) {
     const std::uint64_t playback_epoch =
-        cancel_active_request(client, player, active_state);
+        cancel_active_request(
+            client,
+            player,
+            active_state,
+            options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
 
     TtsRequest request;
     request.text = text;
@@ -1490,12 +1725,21 @@ RequestId submit_request(
             std::cout << "completed request " << request_id << '\n';
         }
     };
-    callbacks.on_cancelled = [&player, &active_state, processors, playback_epoch, one_shot_state, request_id] {
+    const std::uint32_t interruption_fade_ms =
+        options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0;
+    callbacks.on_cancelled = [
+        &player,
+        &active_state,
+        processors,
+        one_shot_state,
+        request_id,
+        interruption_fade_ms] {
         if (is_active_request(active_state, request_id)) {
             try {
-                for (const PcmChunk& processed :
-                     processors->finish(AudioTerminalReason::Cancelled)) {
-                    player.enqueue(playback_epoch, processed);
+                processors->reset();
+                auto interruption = player.interrupt_with_fade(interruption_fade_ms);
+                if (interruption.second.has_value()) {
+                    player.enqueue(interruption.first, interruption.second.value());
                 }
             }
             catch (const std::exception& exc) {
@@ -1508,7 +1752,7 @@ RequestId submit_request(
     callbacks.on_error = [&player, &active_state, processors, one_shot_state, request_id](const TtsError& error) {
         if (is_active_request(active_state, request_id)) {
             try {
-                static_cast<void>(processors->finish(AudioTerminalReason::Error));
+                processors->reset();
             }
             catch (const std::exception& exc) {
                 std::cerr << "audio post-processing error: " << exc.what() << '\n';
@@ -1958,7 +2202,11 @@ int wmain(int argc, wchar_t** argv) {
                 &state,
                 pcm_capture.get());
             if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
-                cancel_active_request(client, player, active_state);
+                cancel_active_request(
+                    client,
+                    player,
+                    active_state,
+                    options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
                 if (safe_client != nullptr) {
                     safe_client->stop();
                 }
@@ -2001,7 +2249,11 @@ int wmain(int argc, wchar_t** argv) {
                 continue;
             }
             if (line == "/cancel") {
-                cancel_active_request(client, player, active_state);
+                cancel_active_request(
+                    client,
+                    player,
+                    active_state,
+                    options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
                 std::cout << "cancelled active request\n";
                 continue;
             }
@@ -2024,7 +2276,11 @@ int wmain(int argc, wchar_t** argv) {
                 line);
         }
 
-        cancel_active_request(client, player, active_state);
+        cancel_active_request(
+            client,
+            player,
+            active_state,
+            options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
         client.stop();
         if (safe_client != nullptr) {
             safe_client->stop();
