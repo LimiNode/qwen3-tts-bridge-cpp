@@ -92,11 +92,15 @@ diagnostic file:
 ```
 
 The JSON records the measured cursor frame, the selected queued buffer and
-local offset, queued duration, fade frame count, `waveOutReset` timestamps,
-request terminal-state linkage, and the number of stale PCM submissions
-discarded after the terminal boundary. The option is disabled by default and
-does not add normal playback logging. The file is written once when the
-interactive player exits and is never overwritten.
+local offset, post-reap queued-buffer duration, submitted producer head and
+producer-ahead frames, fade frame count, exact `waveOutReset` call
+start/return timestamps, interruption completion, request terminal-state
+linkage, and the number of stale PCM submissions discarded after the terminal
+boundary. Diagnostic schema version 2 contains these semantics; earlier
+schema-version-1 captures predate the exact reset/producers-ahead telemetry and
+must be interpreted according to their hardware report. The option is disabled
+by default and does not add normal playback logging. The file is written once
+when the interactive player exits and is never overwritten.
 
 ## Optional Native Playback Module
 
