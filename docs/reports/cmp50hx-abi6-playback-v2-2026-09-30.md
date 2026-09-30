@@ -1,10 +1,16 @@
 # CMP 50HX ABI-6 playback telemetry v2 acceptance
 
 This pass supersedes the runtime attribution and WaveOut cadence conclusion in
-the earlier ABI-5 reports. It uses the Bridge source merged by PR #175,
-qwentts `130cb99` ABI 6, GGML `c044c6f`, CUDA graphs enabled, Q8 Talker and
-codec models, and the registered `kraftwerk_robot_ru_warm` profile with its
-matching Cyrillic reference text.
+the earlier ABI-5 reports. The hardware binary was built from Bridge PR #175
+head `025f816f`; its canonical code merge is `3e877763`. The evidence report
+was merged later in PR #176, so the current documentation merge is
+`eed26e4b`. It uses qwentts `130cb99` ABI 6, GGML `c044c6f`, CUDA graphs
+enabled, Q8 Talker and codec models, and the registered
+`kraftwerk_robot_ru_warm` profile with its matching Cyrillic reference text.
+
+The companion JSON records the exact request text and the complete registry
+entry, including the literal reference text. The hashes remain included as an
+additional integrity check.
 
 The exact source, input text, reference conditioning, binaries, models, and
 output hashes are recorded in the companion JSON. The player emitted the CUDA

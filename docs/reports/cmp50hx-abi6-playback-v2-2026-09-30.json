@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "bridge_merge": "3e877763569bcb18d110b7546363a7f55b4ce696",
+  "current_main_merge": "eed26e4b22216caf00642db5ca009456f4ad8059",
   "tested_player_source": "025f816f4c267a19250678e452f4af60309593f0",
   "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
   "ggml_commit": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
@@ -13,7 +14,14 @@
   "language": "russian",
   "request_text": "Это расширенный русский тест для длительной последовательности. Система должна последовательно произнести весь текст без пропусков, повторов, преждевременного завершения или заметных пауз между аудиочанками, сохраняя тот же зарегистрированный голос.",
   "request_text_utf8_sha256": "aa2ab4b14f99d4c8c820633374616168ee53fcbcb3ceab26f4896e8a4172dfb7",
-  "reference_text_utf8_sha256": "5fb32e67201fe80201d3328a2062ad190bab86094b856bb65c06d782866e0a8b",
+  "voice_registry_entry": {
+    "voice_id": "kraftwerk_robot_ru_warm",
+    "reference_audio_path": "C:/tmp/qwen3-tts-review-followup/examples/assets/voice-profiles/kraftwerk_robot_ru_warm.wav",
+    "reference_text": "Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду.",
+    "reference_text_utf8_sha256": "e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4",
+    "preserve_reference_text_whitespace": true,
+    "x_vector_only": false
+  },
   "hashes": {
     "player": "40b26a916328a8903b97c22dfe0276cccce0bba6ea3e49b4df53b9c4b3d65152",
     "worker": "f799f021ac2e85879cbc322277cab56213208ae105459e6ae8c8ac448cb65a4b",
@@ -40,85 +48,14 @@
     "max_backpressure_wait_ms": 650.765
   },
   "cancellation": [
-    {
-      "scenario": "early",
-      "stream_max_chunk_frames": 1,
-      "cursor_frame": 3743,
-      "selected_buffer_start_frame": 3480,
-      "selected_buffer_frame_count": 1920,
-      "selected_local_offset_frames": 263,
-      "submitted_head_frame": 11160,
-      "producer_ahead_frames": 7417,
-      "fade_frame_count": 360,
-      "waveout_reset_ms": 4.983,
-      "discarded_stale_callbacks": 1,
-      "next_request_outcome": "natural_eos"
-    },
-    {
-      "scenario": "middle",
-      "stream_max_chunk_frames": 1,
-      "cursor_frame": 53321,
-      "selected_buffer_start_frame": 51480,
-      "selected_buffer_frame_count": 1920,
-      "selected_local_offset_frames": 1841,
-      "submitted_head_frame": 61080,
-      "producer_ahead_frames": 7759,
-      "fade_frame_count": 360,
-      "waveout_reset_ms": 8.915,
-      "discarded_stale_callbacks": 1,
-      "next_request_outcome": "natural_eos"
-    },
-    {
-      "scenario": "backlog",
-      "stream_max_chunk_frames": 8,
-      "cursor_frame": 12913,
-      "selected_buffer_start_frame": 5400,
-      "selected_buffer_frame_count": 7680,
-      "selected_local_offset_frames": 7513,
-      "submitted_head_frame": 28440,
-      "producer_ahead_frames": 15527,
-      "fade_frame_count": 360,
-      "waveout_reset_ms": 2.603,
-      "discarded_stale_callbacks": 2,
-      "next_request_outcome": "natural_eos"
-    }
+    {"scenario":"early","stream_max_chunk_frames":1,"cursor_frame":3743,"selected_buffer_start_frame":3480,"selected_buffer_frame_count":1920,"selected_local_offset_frames":263,"submitted_head_frame":11160,"producer_ahead_frames":7417,"fade_frame_count":360,"waveout_reset_ms":4.983,"discarded_stale_callbacks":1,"next_request_outcome":"natural_eos"},
+    {"scenario":"middle","stream_max_chunk_frames":1,"cursor_frame":53321,"selected_buffer_start_frame":51480,"selected_buffer_frame_count":1920,"selected_local_offset_frames":1841,"submitted_head_frame":61080,"producer_ahead_frames":7759,"fade_frame_count":360,"waveout_reset_ms":8.915,"discarded_stale_callbacks":1,"next_request_outcome":"natural_eos"},
+    {"scenario":"backlog","stream_max_chunk_frames":8,"cursor_frame":12913,"selected_buffer_start_frame":5400,"selected_buffer_frame_count":7680,"selected_local_offset_frames":7513,"submitted_head_frame":28440,"producer_ahead_frames":15527,"fade_frame_count":360,"waveout_reset_ms":2.603,"discarded_stale_callbacks":2,"next_request_outcome":"natural_eos"}
   ],
   "natural_eos_matrix": [
-    {
-      "seed": 1000,
-      "first_pcm_ms": 196.111,
-      "frames": 217,
-      "qwen_total_ms": 4879.95,
-      "execution_outcome": "natural_eos",
-      "starvation_detected": false,
-      "wav_sha256": "129549dacd4199c29eac6ae71bb1e841edb14b85fe1a2442317605d2359e5b44"
-    },
-    {
-      "seed": 1002,
-      "first_pcm_ms": 197.487,
-      "frames": 218,
-      "qwen_total_ms": 4914.35,
-      "execution_outcome": "natural_eos",
-      "starvation_detected": false,
-      "wav_sha256": "78a5b5852d17d4de876b439344d5e488857e5c0c901d040362c9b9df44628121"
-    },
-    {
-      "seed": 1006,
-      "first_pcm_ms": 196.378,
-      "frames": 224,
-      "qwen_total_ms": 5060.08,
-      "execution_outcome": "natural_eos",
-      "starvation_detected": false,
-      "wav_sha256": "9cf05f9c54761db45988606e74d17bdbc79fc7beeed8a883399ea72eaea52f70"
-    },
-    {
-      "seed": 1008,
-      "first_pcm_ms": 197.525,
-      "frames": 218,
-      "qwen_total_ms": 4906.81,
-      "execution_outcome": "natural_eos",
-      "starvation_detected": false,
-      "wav_sha256": "be83000fb7354f5611b17652c7fd9086b52f7f798aa38bf7be1d73b21d67ca49"
-    }
+    {"seed":1000,"first_pcm_ms":196.111,"frames":217,"qwen_total_ms":4879.95,"execution_outcome":"natural_eos","starvation_detected":false,"wav_sha256":"129549dacd4199c29eac6ae71bb1e841edb14b85fe1a2442317605d2359e5b44"},
+    {"seed":1002,"first_pcm_ms":197.487,"frames":218,"qwen_total_ms":4914.35,"execution_outcome":"natural_eos","starvation_detected":false,"wav_sha256":"78a5b5852d17d4de876b439344d5e488857e5c0c901d040362c9b9df44628121"},
+    {"seed":1006,"first_pcm_ms":196.378,"frames":224,"qwen_total_ms":5060.08,"execution_outcome":"natural_eos","starvation_detected":false,"wav_sha256":"9cf05f9c54761db45988606e74d17bdbc79fc7beeed8a883399ea72eaea52f70"},
+    {"seed":1008,"first_pcm_ms":197.525,"frames":218,"qwen_total_ms":4906.81,"execution_outcome":"natural_eos","starvation_detected":false,"wav_sha256":"be83000fb7354f5611b17652c7fd9086b52f7f798aa38bf7be1d73b21d67ca49"}
   ]
 }
