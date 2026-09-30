@@ -54,6 +54,7 @@ using qwen_tts_bridge::TtsError;
 using qwen_tts_bridge::TtsRequest;
 using qwen_tts_bridge::audio::AudioPostProcessorChain;
 using qwen_tts_bridge::audio::AudioTerminalReason;
+using qwen_tts_bridge::audio::PlayoutBuffer;
 using qwen_tts_bridge::audio::TerminalFadeOptions;
 using qwen_tts_bridge::audio::TerminalFadePostProcessor;
 
@@ -800,17 +801,7 @@ private:
         if (buffers_.empty()) {
             return std::nullopt;
         }
-        const AudioFormat format = m_format;
-        const std::size_t frame_bytes = pcm_frame_bytes(format);
-        const std::uint64_t fade_frames =
-            (static_cast<std::uint64_t>(format.sample_rate) * fade_ms + 999u) /
-            1000u;
-        if (fade_frames == 0) {
-            return std::nullopt;
-        }
-
-        std::size_t first_index = buffers_.size();
-        std::uint64_t offset = 0;
+        std::uint64_t cursor_frame = 0;
         if (sink_mode_ == PlaybackSinkMode::Mock) {
             const auto now = std::chrono::steady_clock::now();
             for (std::size_t index = 0; index < buffers_.size(); ++index) {
@@ -819,16 +810,16 @@ private:
                     buffer.mock_completion.value() <= now) {
                     continue;
                 }
-                first_index = index;
+                cursor_frame = buffer.start_frame;
                 if (buffer.mock_start.has_value() &&
                     now > buffer.mock_start.value()) {
                     const double elapsed_ms =
                         std::chrono::duration<double, std::milli>(
                             now - buffer.mock_start.value()).count();
-                    offset = static_cast<std::uint64_t>(
-                        elapsed_ms * format.sample_rate / 1000.0);
-                    if (offset > buffer.frame_count) {
-                        offset = buffer.frame_count;
+                    cursor_frame += static_cast<std::uint64_t>(
+                        elapsed_ms * m_format.sample_rate / 1000.0);
+                    if (cursor_frame > buffer.start_frame + buffer.frame_count) {
+                        cursor_frame = buffer.start_frame + buffer.frame_count;
                     }
                 }
                 break;
@@ -841,78 +832,18 @@ private:
                         position.value() >= device_position_base_
                     ? position.value() - device_position_base_
                     : 0;
-            for (std::size_t index = 0; index < buffers_.size(); ++index) {
-                const Buffer& buffer = *buffers_[index];
-                if (played >= buffer.start_frame + buffer.frame_count) {
-                    continue;
-                }
-                first_index = index;
-                offset = played > buffer.start_frame
-                    ? played - buffer.start_frame
-                    : 0;
-                break;
-            }
+            cursor_frame = played;
         }
-
-        if (first_index == buffers_.size()) {
-            return std::nullopt;
+        std::vector<PlayoutBuffer> snapshot;
+        snapshot.reserve(buffers_.size());
+        for (const std::unique_ptr<Buffer>& buffer : buffers_) {
+            PcmChunk chunk;
+            chunk.request_id = buffer->request_id;
+            chunk.format = m_format;
+            chunk.bytes = buffer->bytes;
+            snapshot.push_back(PlayoutBuffer{std::move(chunk), buffer->start_frame});
         }
-
-        std::vector<std::byte> bytes;
-        std::uint64_t remaining_frames = fade_frames;
-        RequestId request_id = buffers_[first_index]->request_id;
-        for (std::size_t index = first_index;
-             index < buffers_.size() && remaining_frames != 0;
-             ++index) {
-            const Buffer& buffer = *buffers_[index];
-            const std::uint64_t begin = index == first_index ? offset : 0;
-            if (begin >= buffer.frame_count) {
-                continue;
-            }
-            const std::uint64_t count =
-                std::min(remaining_frames, buffer.frame_count - begin);
-            const std::size_t begin_bytes =
-                static_cast<std::size_t>(begin) * frame_bytes;
-            const std::size_t count_bytes =
-                static_cast<std::size_t>(count) * frame_bytes;
-            bytes.insert(
-                bytes.end(),
-                buffer.bytes.begin() + begin_bytes,
-                buffer.bytes.begin() + begin_bytes + count_bytes);
-            remaining_frames -= count;
-        }
-        if (bytes.empty()) {
-            return std::nullopt;
-        }
-
-        const std::size_t frames = bytes.size() / frame_bytes;
-        for (std::size_t frame = 0; frame < frames; ++frame) {
-            const double gain = frames == 1
-                ? 0.0
-                : static_cast<double>(frames - 1 - frame) /
-                      static_cast<double>(frames - 1);
-            for (std::uint32_t channel = 0; channel < format.channels; ++channel) {
-                const std::size_t byte_offset =
-                    frame * frame_bytes + channel * sizeof(std::int16_t);
-                std::int16_t sample = 0;
-                std::memcpy(&sample, bytes.data() + byte_offset, sizeof(sample));
-                const long shaped = static_cast<long>(std::lround(
-                    static_cast<double>(sample) * gain));
-                const long clamped = shaped < std::numeric_limits<std::int16_t>::min()
-                    ? std::numeric_limits<std::int16_t>::min()
-                    : shaped > std::numeric_limits<std::int16_t>::max()
-                        ? std::numeric_limits<std::int16_t>::max()
-                        : shaped;
-                sample = static_cast<std::int16_t>(clamped);
-                std::memcpy(bytes.data() + byte_offset, &sample, sizeof(sample));
-            }
-        }
-
-        PcmChunk tail;
-        tail.request_id = request_id;
-        tail.format = format;
-        tail.bytes = std::move(bytes);
-        return tail;
+        return make_playout_cursor_fade(snapshot, cursor_frame, fade_ms);
     }
 
     double queued_audio_duration_ms_locked() const {
