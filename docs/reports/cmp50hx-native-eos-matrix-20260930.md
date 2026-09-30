@@ -1,7 +1,9 @@
 # CMP 50HX native natural-EOS matrix
 
-This is a fresh no-playback matrix on the canonical native pair after the
-WaveOut cancellation work. The input was passed as escaped Unicode and decoded
+This is a fresh no-playback matrix captured after the WaveOut cancellation
+work, but it uses the older qwentts `40ab5eb` ABI-5 hardware package. The
+current Bridge source tree pins qwentts `130cb99` ABI 6, so these rows are
+historical runtime evidence rather than canonical-runtime acceptance. The input was passed as escaped Unicode and decoded
 to UTF-8 before the worker request; the earlier PowerShell-piped attempt that
 produced `????` is discarded.
 
@@ -10,7 +12,7 @@ produced `????` is discarded.
 | Item | Value |
 | --- | --- |
 | Bridge main | `ad095a3e` |
-| qwentts | `40ab5eb` |
+| qwentts | `40ab5eb` (legacy ABI-5 hardware package; current source pin: `130cb99` ABI 6) |
 | Talker / codec | Q8_0 Talker and 12 Hz Q8_0 codec |
 | Voice | registered `canonical_fidelity` |
 | Language | `russian` |
@@ -38,3 +40,12 @@ finding, not an EOS failure, and it remains a separate acceptance item for
 long utterances. The bounded WaveOut cancellation scenarios use a larger
 producer chunk (`stream-max-chunk-frames=8`) and passed their physical reset
 and next-request checks.
+
+## Scope
+
+This matrix establishes natural-EOS behaviour only for the recorded
+`40ab5eb` package, one Russian utterance, and the four listed seeds. ABI 5
+does not contain the ABI-6 EOS-guard controls, so this matrix cannot validate
+the current guard implementation or decide its production default. Re-run the
+same exact UTF-8 text/seeds on the source-pinned `130cb99` ABI-6 CUDA-graphs
+runtime before using the result as current release evidence.
