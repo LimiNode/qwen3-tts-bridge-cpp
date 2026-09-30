@@ -691,9 +691,6 @@ public:
             interruption_diagnostics_.push_back(std::move(diagnostic));
             last_interruption_diagnostic_index_ = interruption_diagnostics_.size() - 1;
         }
-        else {
-            last_interruption_diagnostic_index_.reset();
-        }
         return {playback_epoch, std::move(tail)};
     }
 
