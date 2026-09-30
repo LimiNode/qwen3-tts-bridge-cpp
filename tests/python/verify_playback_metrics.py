@@ -64,7 +64,10 @@ def main() -> int:
     assert any(
         chunk["queue_empty_before_later_chunk"] for chunk in result["chunks"][1:]
     )
-    assert all(chunk["admission_ms"] >= chunk["arrival_ms"] for chunk in result["chunks"])
+    assert all(
+        chunk["admission_ms"] >= chunk["arrival_ms"]
+        for chunk in result["chunks"]
+    )
     assert all(chunk["backpressure_wait_ms"] >= 0 for chunk in result["chunks"])
 
     prebuffer_command = [
