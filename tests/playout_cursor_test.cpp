@@ -96,11 +96,38 @@ void test_cursor_rejects_incompatible_buffers() {
     CHECK(threw);
 }
 
+void test_cursor_rejects_unsorted_or_overlapping_buffers() {
+    std::vector<PlayoutBuffer> unsorted;
+    unsorted.push_back({constant_chunk(10, 100), 20});
+    unsorted.push_back({constant_chunk(10, 200), 0});
+    bool threw = false;
+    try {
+        static_cast<void>(make_playout_cursor_fade(unsorted, 0, 15));
+    }
+    catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    CHECK(threw);
+
+    std::vector<PlayoutBuffer> overlapping;
+    overlapping.push_back({constant_chunk(10, 100), 0});
+    overlapping.push_back({constant_chunk(10, 200), 5});
+    threw = false;
+    try {
+        static_cast<void>(make_playout_cursor_fade(overlapping, 0, 15));
+    }
+    catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    CHECK(threw);
+}
+
 } // namespace
 
 int main() {
     test_cursor_uses_audible_buffer_not_producer_tail();
     test_cursor_can_cross_buffer_boundary();
     test_cursor_rejects_incompatible_buffers();
+    test_cursor_rejects_unsorted_or_overlapping_buffers();
     return EXIT_SUCCESS;
 }

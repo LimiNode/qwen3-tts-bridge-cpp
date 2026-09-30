@@ -20,6 +20,8 @@ struct PlayoutBuffer {
 
 /// \brief Copies and fades the samples nearest a playback cursor.
 ///
+/// `buffers` must be sorted by non-decreasing `start_frame` and must not
+/// overlap. Gaps are allowed; the first buffer at or after a gap is used.
 /// The returned chunk starts at `cursor_frame` (or the first available frame)
 /// and contains at most `fade_ms` of audio. Producer-ahead buffers after that
 /// window are not included. This function is deterministic and does not know
