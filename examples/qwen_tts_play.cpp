@@ -742,7 +742,7 @@ public:
         std::ostringstream json;
         json << std::fixed << std::setprecision(3);
         json << "{\n"
-             << "  \"schema_version\": 1,\n"
+             << "  \"schema_version\": 2,\n"
              << "  \"measurement\": \"waveout_interruption_cursor\",\n"
              << "  \"late_audio_after_terminal_count\": "
              << late_audio_after_terminal_count << ",\n"
