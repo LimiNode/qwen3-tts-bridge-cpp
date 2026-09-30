@@ -21,6 +21,13 @@ a Russian reference WAV. This run uses the registered
 - both persistent workers reported `ready.warmed_up=true` and exited with code
   zero
 
+The original run recorded case labels and output hashes, but did not preserve
+the exact request utterance bytes or the effective registry entry fields. This
+report therefore marks text provenance as `not_recorded` in the JSON and does
+not reconstruct those values from memory. A future acceptance rerun must store
+the UTF-8 request text, its SHA-256, the exact effective `reference_text`, and
+the registry entry before its output is treated as text-addressable evidence.
+
 ## Mechanical results
 
 | case | guard OFF | frames | guard ON | frames | OFF/ON PCM |
@@ -50,4 +57,3 @@ English endings and introduces the small tail-quality concern above. Therefore
 this evidence supports keeping the guard opt-in rather than enabling it by
 default. Tail padding/fade policy, if desired, is an audio-output concern and
 must not be represented as model/EOS correctness.
-
