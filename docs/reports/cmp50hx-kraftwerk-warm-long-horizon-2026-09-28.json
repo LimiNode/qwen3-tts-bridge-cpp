@@ -12,6 +12,12 @@
   "voice_id": "kraftwerk_robot_ru_warm",
   "reference_wav_sha256": "B8285C5925D89D90435AFA2F084A197A9E428DEC41FFF09C74969E6624A4B147",
   "registry_sha256": "1655686047130DF630643F1863DFD0275B62FC7364EEC9C5CD5EBCF12769D53A",
+  "text_provenance": {
+    "status": "not_recorded",
+    "exact_utterances": null,
+    "reference_text": null,
+    "note": "The original run recorded case labels and output hashes but not the exact request or reference-text bytes; this report does not reconstruct them."
+  },
   "seed": 1002,
   "stream_max_chunk_frames": 1,
   "guard_off_raw_report_sha256": "BBE2A35829BC9DEA2BB34678F0D675F73C45EAAD165D57BC603B525925CD43B7",
