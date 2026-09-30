@@ -38,6 +38,16 @@ struct QwenTtsClientOptions {
     ///
     /// Exceptions thrown by this handler are ignored.
     std::function<void(std::exception_ptr)> on_callback_exception; ///< Optional callback-exception diagnostic hook.
+
+    /// \brief Optional request text transformation performed before encoding.
+    ///
+    /// The callback receives the complete request and returns spoken UTF-8
+    /// text.  It may be called concurrently for different requests and must
+    /// not mutate the request or any shared state without its own
+    /// synchronization.  Voice-clone reference_text is never passed through
+    /// this hook.  Exceptions are reported to the request's on_error callback
+    /// and the request is not submitted to the worker.
+    std::function<std::string(const TtsRequest&)> text_preprocessor; ///< Optional backend-neutral text hook.
 };
 
 /// \class QwenTtsClient

@@ -135,7 +135,58 @@ bool QwenTtsClient::start(const std::string& worker_executable) {
 RequestId QwenTtsClient::synthesize_async(
     TtsRequest request,
     TtsCallbacks callbacks) {
+    std::function<std::string(const TtsRequest&)> text_preprocessor;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        text_preprocessor = options_.text_preprocessor;
+    }
+    std::string processed_text;
+    try {
+        processed_text = text_preprocessor
+            ? text_preprocessor(request)
+            : request.text;
+    }
+    catch (const std::exception& error) {
+        try {
+            if (callbacks.on_error) {
+                callbacks.on_error(make_local_error(
+                    request.id,
+                    "client_error",
+                    "text_preprocessing_failed",
+                    std::string("text preprocessing failed: ") + error.what()));
+            }
+        }
+        catch (...) {
+        }
+        return 0;
+    }
+    catch (...) {
+        try {
+            if (callbacks.on_error) {
+                callbacks.on_error(make_local_error(
+                    request.id,
+                    "client_error",
+                    "text_preprocessing_failed",
+                    "text preprocessing failed: unknown exception"));
+            }
+        }
+        catch (...) {
+        }
+        return 0;
+    }
+    request.text = std::move(processed_text);
     if (request.text.empty()) {
+        try {
+            if (callbacks.on_error) {
+                callbacks.on_error(make_local_error(
+                    request.id,
+                    "request_error",
+                    "empty_text",
+                    "synthesis text is empty after preprocessing"));
+            }
+        }
+        catch (...) {
+        }
         return 0;
     }
 
