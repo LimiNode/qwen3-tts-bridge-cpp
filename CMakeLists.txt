@@ -91,6 +91,7 @@ endif()
 
 add_library(qwen_tts_bridge
     src/qwen_tts_bridge/audio/post_processor.cpp
+    src/qwen_tts_bridge/audio/playout_cursor.cpp
     src/qwen_tts_bridge/audio/save_wav_callbacks.cpp
     src/qwen_tts_bridge/audio/TerminalFadePostProcessor.cpp
     src/qwen_tts_bridge/audio/WavWriter.cpp
@@ -259,6 +260,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     set(_qwen_tts_public_headers
         qwen_tts_bridge/audio.hpp
         qwen_tts_bridge/audio/post_processor.hpp
+        qwen_tts_bridge/audio/playout_cursor.hpp
         qwen_tts_bridge/audio/save_wav_callbacks.hpp
         qwen_tts_bridge/audio/TerminalFadePostProcessor.hpp
         qwen_tts_bridge/audio/WavWriter.hpp
@@ -450,6 +452,17 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     )
 
     add_test(NAME audio_post_processor_test COMMAND audio_post_processor_test)
+
+    add_executable(playout_cursor_test
+        tests/playout_cursor_test.cpp
+    )
+
+    target_link_libraries(playout_cursor_test
+        PRIVATE
+            QwenTTSBridge::qwen_tts_bridge
+    )
+
+    add_test(NAME playout_cursor_test COMMAND playout_cursor_test)
 
     add_executable(qwen_tts_save_wav_callbacks_test
         tests/qwen_tts_save_wav_callbacks_test.cpp

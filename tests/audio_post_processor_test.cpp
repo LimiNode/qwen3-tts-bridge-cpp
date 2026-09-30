@@ -343,6 +343,33 @@ void test_callback_adapter_emits_tail_before_terminal_callback() {
     CHECK(events[2] == "cancelled");
 }
 
+void test_callback_adapter_allows_reentrant_terminal_request() {
+    auto chain = std::make_shared<AudioPostProcessorChain>();
+    chain->add(fade());
+    std::vector<std::string> events;
+    TtsCallbacks callbacks;
+    bool requested_completion = false;
+    TtsCallbacks downstream;
+    downstream.on_audio = [&events, &callbacks, &requested_completion](
+                              const PcmChunk&) {
+        events.push_back("audio");
+        if (!requested_completion) {
+            requested_completion = true;
+            callbacks.on_completed();
+        }
+    };
+    downstream.on_completed = [&events]() {
+        events.push_back("completed");
+    };
+    callbacks = with_audio_post_processing(chain, std::move(downstream));
+
+    callbacks.on_audio(constant_chunk(20));
+    CHECK(events.size() == 3);
+    CHECK(events[0] == "audio");
+    CHECK(events[1] == "audio");
+    CHECK(events[2] == "completed");
+}
+
 void test_callback_adapter_converts_process_exception_to_one_error() {
     auto chain = std::make_shared<AudioPostProcessorChain>();
     chain->add(std::make_unique<ThrowingProcessor>(false));
@@ -437,6 +464,7 @@ int main() {
     test_finish_flushes_two_buffering_processors_in_order();
     test_format_and_request_id_mismatch_fail_closed();
     test_callback_adapter_emits_tail_before_terminal_callback();
+    test_callback_adapter_allows_reentrant_terminal_request();
     test_callback_adapter_converts_process_exception_to_one_error();
     test_callback_adapter_converts_finish_exception_to_one_error();
     test_callback_adapter_reports_format_mismatch();

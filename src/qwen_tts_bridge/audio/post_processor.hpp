@@ -96,7 +96,9 @@ private:
 /// If a processor throws, the adapter converts it to one local
 /// ``client_error/audio_post_processing_failed`` terminal error, suppresses
 /// all later audio and terminal callbacks, and keeps the exception out of the
-/// client dispatcher thread.
+/// client dispatcher thread. This local adapter error does not implicitly
+/// cancel upstream synthesis; applications that own the client may use the
+/// error's request ID to request best-effort cancellation.
 TtsCallbacks with_audio_post_processing(
     std::shared_ptr<AudioPostProcessorChain> processors,
     TtsCallbacks downstream);
