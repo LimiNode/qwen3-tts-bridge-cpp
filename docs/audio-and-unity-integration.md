@@ -68,11 +68,13 @@ The interactive player enables this path with:
 --cancel-tail-silence-ms 0
 ```
 
-On an explicit interruption, the player finalizes the processor as cancelled,
-resets queued device audio, and queues the short faded tail before the next
-utterance. This is a producer-side terminal transform; a sink that can run
-ahead of the physical playback cursor must provide a bounded playout queue
-before cancellation fade can be described as cursor-accurate. The DSP stage
+On an explicit interactive interruption, the player does not flush the
+producer-side terminal-fade buffer: those newest samples may be ahead of what
+the device is currently playing. It resets/discards producer-side buffered
+terminal audio, measures the sink playout cursor, retains only the short fade
+window starting at that cursor, resets queued device audio, and queues that
+cursor-relative faded tail before the next utterance. Normal successful
+completion still uses the producer-side terminal processor. The DSP stage
 itself remains independent of WaveOut and can be reused by a different sink.
 
 The WaveOut example applies a 250 ms submitted-queue backpressure threshold
