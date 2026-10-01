@@ -7,7 +7,8 @@ param(
     [string]$TalkerSha256,
     [string]$CodecSha256,
     [switch]$Download,
-    [switch]$Offline
+    [switch]$Offline,
+    [switch]$RequireHash
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,10 +19,14 @@ function Get-ResolvedFile([string]$Path) {
 
 function Ensure-Artifact([string]$Path, [string]$Url, [string]$Sha256, [string]$Name) {
     $resolved = Get-ResolvedFile $Path
+    $expected = if ($Sha256) { $Sha256.Trim().ToUpperInvariant() } else { '' }
     if (Test-Path -LiteralPath $resolved -PathType Leaf) {
-        if ($Sha256) {
+        if ($RequireHash -and -not $expected) {
+            throw "$Name exists but no SHA-256 was supplied"
+        }
+        if ($expected) {
             $actual = (Get-FileHash -LiteralPath $resolved -Algorithm SHA256).Hash
-            if ($actual -ne $Sha256.ToUpperInvariant()) {
+            if ($actual -ne $expected) {
                 throw "$Name exists but SHA-256 does not match the requested value"
             }
         }
@@ -33,14 +38,25 @@ function Ensure-Artifact([string]$Path, [string]$Url, [string]$Sha256, [string]$
     if (-not $Url) {
         throw "$Name is missing and no download URL was supplied"
     }
+    if ($RequireHash -and -not $expected) {
+        throw "$Name download requires an explicit SHA-256"
+    }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $resolved) | Out-Null
-    Invoke-WebRequest -Uri $Url -OutFile $resolved
-    if ($Sha256) {
-        $actual = (Get-FileHash -LiteralPath $resolved -Algorithm SHA256).Hash
-        if ($actual -ne $Sha256.ToUpperInvariant()) {
-            Remove-Item -LiteralPath $resolved -Force
+    $partial = "$resolved.partial"
+    if (Test-Path -LiteralPath $partial -PathType Leaf) {
+        Remove-Item -LiteralPath $partial -Force
+    }
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $partial
+        $actual = (Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash
+        if ($expected -and $actual -ne $expected) {
             throw "$Name download failed SHA-256 validation"
         }
+        [System.IO.File]::Move($partial, $resolved)
+    }
+    catch {
+        Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
+        throw
     }
     return [pscustomobject]@{ name = $Name; path = $resolved; action = 'downloaded' }
 }

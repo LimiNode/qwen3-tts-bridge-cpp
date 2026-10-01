@@ -27,6 +27,52 @@ TtsError make_local_error(
     return error;
 }
 
+bool is_valid_utf8(const std::string& value) {
+    const auto* bytes = reinterpret_cast<const unsigned char*>(value.data());
+    std::size_t index = 0;
+    while (index < value.size()) {
+        const unsigned char lead = bytes[index++];
+        std::uint32_t code_point = 0;
+        std::size_t continuation_count = 0;
+        if (lead <= 0x7Fu) {
+            continue;
+        }
+        if (lead >= 0xC2u && lead <= 0xDFu) {
+            code_point = lead & 0x1Fu;
+            continuation_count = 1;
+        }
+        else if (lead >= 0xE0u && lead <= 0xEFu) {
+            code_point = lead & 0x0Fu;
+            continuation_count = 2;
+        }
+        else if (lead >= 0xF0u && lead <= 0xF4u) {
+            code_point = lead & 0x07u;
+            continuation_count = 3;
+        }
+        else {
+            return false;
+        }
+
+        if (index + continuation_count > value.size()) {
+            return false;
+        }
+        for (std::size_t offset = 0; offset < continuation_count; ++offset) {
+            const unsigned char continuation = bytes[index++];
+            if ((continuation & 0xC0u) != 0x80u) {
+                return false;
+            }
+            code_point = (code_point << 6u) | (continuation & 0x3Fu);
+        }
+        if ((continuation_count == 2 && code_point < 0x800u) ||
+            (continuation_count == 3 && code_point < 0x10000u) ||
+            code_point > 0x10FFFFu ||
+            (code_point >= 0xD800u && code_point <= 0xDFFFu)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 SynthesizeMessage to_control_message(const TtsRequest& request) {
     SynthesizeMessage message;
     message.text = request.text;
@@ -168,6 +214,20 @@ RequestId QwenTtsClient::synthesize_async(
                     "client_error",
                     "text_preprocessing_failed",
                     "text preprocessing failed: unknown exception"));
+            }
+        }
+        catch (...) {
+        }
+        return 0;
+    }
+    if (!is_valid_utf8(processed_text)) {
+        try {
+            if (callbacks.on_error) {
+                callbacks.on_error(make_local_error(
+                    request.id,
+                    "client_error",
+                    "invalid_utf8_text",
+                    "text preprocessing returned invalid UTF-8"));
             }
         }
         catch (...) {

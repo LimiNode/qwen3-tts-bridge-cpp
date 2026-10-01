@@ -3,16 +3,31 @@
 
 #include <chrono>
 #include <iostream>
+#include <string>
 #include <thread>
+#include <vector>
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cerr << "usage: async_cancel <worker-executable>\n";
+        std::cerr << "usage: async_cancel <worker-executable> [--worker-arg <arg>]...\n";
         return 2;
+    }
+    std::vector<std::string> worker_arguments;
+    for (int index = 2; index < argc; ++index) {
+        const std::string argument = argv[index];
+        if (argument == "--worker-arg" && index + 1 < argc) {
+            worker_arguments.emplace_back(argv[++index]);
+        }
+        else {
+            std::cerr << "unknown or incomplete option: " << argument << "\n";
+            return 2;
+        }
     }
     qwen_tts_bridge::QwenTtsClient client;
     qwen_tts_bridge::StdIoTransportOptions transport;
     transport.arguments.emplace_back(argv[1]);
+    transport.arguments.insert(
+        transport.arguments.end(), worker_arguments.begin(), worker_arguments.end());
     if (!client.start(transport)) {
         return 1;
     }

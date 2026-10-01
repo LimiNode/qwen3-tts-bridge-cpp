@@ -636,6 +636,98 @@ void test_text_preprocessor_changes_spoken_text_only() {
     client.stop();
 }
 
+void test_text_preprocessor_preserves_utf8_and_reference_text() {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    raw_transport->block_after_hello = true;
+    QwenTtsClientOptions options = make_client_options();
+    const std::string russian_text =
+        "\xD0\xA1\xD0\xB5\xD0\xB3\xD0\xBE\xD0\xB4\xD0\xBD\xD1\x8F";
+    const std::string russian_reference =
+        "\xD0\xAD\xD1\x82\xD0\xB0\xD0\xBB\xD0\xBE\xD0\xBD\xD0\xBD\xD0\xB0\xD1\x8F "
+        "\xD1\x84\xD1\x80\xD0\xB0\xD0\xB7\xD0\xB0";
+    const std::string processed_russian =
+        russian_text + ", \xD0\xBF\xD1\x80\xD0\xBE\xD0\xB2\xD0\xB5\xD1\x80\xD0\xBA\xD0\xB0 UTF-8";
+    options.text_preprocessor = [
+        &russian_text,
+        &russian_reference,
+        &processed_russian](const TtsRequest& request) {
+        CHECK(request.text == russian_text || request.text == "Today");
+        CHECK(request.reference_text == russian_reference);
+        return request.text == russian_text
+            ? processed_russian
+            : std::string("Today, UTF-8 check");
+    };
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), options));
+    TtsRequest russian = make_request(russian_text);
+    russian.reference_audio_path = "reference.wav";
+    russian.reference_text = russian_reference;
+    RequestProbe russian_probe;
+    CHECK(client.synthesize_async(std::move(russian), make_callbacks(russian_probe)) != 0);
+    CHECK(raw_transport->wait_until_blocked());
+    const auto sent = raw_transport->last_send();
+    std::string wire;
+    wire.reserve(sent.size());
+    for (const auto byte : sent) {
+        wire.push_back(static_cast<char>(std::to_integer<unsigned char>(byte)));
+    }
+    CHECK(wire.find(processed_russian) != std::string::npos);
+    CHECK(wire.find(russian_reference) != std::string::npos);
+    raw_transport->release();
+    client.stop();
+
+    auto english_transport = std::make_unique<BlockingTransport>();
+    auto* raw_english_transport = english_transport.get();
+    raw_english_transport->block_after_hello = true;
+    QwenTtsClientOptions english_options = make_client_options();
+    english_options.text_preprocessor = [](const TtsRequest& request) {
+        CHECK(request.text == "Today");
+        CHECK(request.reference_text == "Reference sentence");
+        return std::string("Today, UTF-8 check");
+    };
+    QwenTtsClient english_client;
+    CHECK(english_client.start(std::move(english_transport), english_options));
+    TtsRequest english = make_request("Today");
+    english.reference_audio_path = "reference.wav";
+    english.reference_text = "Reference sentence";
+    RequestProbe english_probe;
+    CHECK(english_client.synthesize_async(
+        std::move(english), make_callbacks(english_probe)) != 0);
+    CHECK(raw_english_transport->wait_until_blocked());
+    const auto english_sent = raw_english_transport->last_send();
+    std::string english_wire;
+    english_wire.reserve(english_sent.size());
+    for (const auto byte : english_sent) {
+        english_wire.push_back(static_cast<char>(std::to_integer<unsigned char>(byte)));
+    }
+    CHECK(english_wire.find("Today, UTF-8 check") != std::string::npos);
+    CHECK(english_wire.find("Reference sentence") != std::string::npos);
+    raw_english_transport->release();
+    english_client.stop();
+}
+
+void test_text_preprocessor_rejects_invalid_utf8() {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    QwenTtsClientOptions options = make_client_options();
+    options.text_preprocessor = [](const TtsRequest&) {
+        return std::string("bad\xC3\x28", 5);
+    };
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), options));
+    RequestProbe probe;
+    CHECK(client.synthesize_async(make_request("valid"), make_callbacks(probe)) == 0);
+    {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        CHECK(probe.errors.size() == 1);
+        CHECK(probe.errors.front().category == "client_error");
+        CHECK(probe.errors.front().code == "invalid_utf8_text");
+    }
+    CHECK(raw_transport->send_count() == 1);
+    client.stop();
+}
+
 void test_text_preprocessor_failure_is_local() {
     auto transport = std::make_unique<BlockingTransport>();
     auto* raw_transport = transport.get();
@@ -725,6 +817,8 @@ int main() {
     test_outbound_byte_overflow_is_rejected();
     test_invalid_request_is_rejected_before_id_assignment();
     test_text_preprocessor_changes_spoken_text_only();
+    test_text_preprocessor_preserves_utf8_and_reference_text();
+    test_text_preprocessor_rejects_invalid_utf8();
     test_text_preprocessor_failure_is_local();
     test_duplicate_explicit_request_id_is_rejected();
     test_transport_send_failure_fails_request_once();
