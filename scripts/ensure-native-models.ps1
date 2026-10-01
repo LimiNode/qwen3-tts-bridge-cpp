@@ -20,8 +20,9 @@ function Get-ResolvedFile([string]$Path) {
 function Ensure-Artifact([string]$Path, [string]$Url, [string]$Sha256, [string]$Name) {
     $resolved = Get-ResolvedFile $Path
     $expected = if ($Sha256) { $Sha256.Trim().ToUpperInvariant() } else { '' }
+    $hash_required = $RequireHash -or $Download
     if (Test-Path -LiteralPath $resolved -PathType Leaf) {
-        if ($RequireHash -and -not $expected) {
+        if ($hash_required -and -not $expected) {
             throw "$Name exists but no SHA-256 was supplied"
         }
         if ($expected) {
@@ -38,7 +39,7 @@ function Ensure-Artifact([string]$Path, [string]$Url, [string]$Sha256, [string]$
     if (-not $Url) {
         throw "$Name is missing and no download URL was supplied"
     }
-    if ($RequireHash -and -not $expected) {
+    if ($hash_required -and -not $expected) {
         throw "$Name download requires an explicit SHA-256"
     }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $resolved) | Out-Null
