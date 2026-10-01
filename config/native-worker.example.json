@@ -4,10 +4,11 @@
   "runtime_dir": "runtime/qwentts-sm75",
   "talker_model": "models/qwen-talker-1.7b-base-Q8_0.gguf",
   "codec_model": "models/qwen-tokenizer-12hz-Q8_0.gguf",
-  "voice_registry_path": "config/voice-profiles.json",
-  "stream_max_chunk_frames": 8,
-  "warmup_synthesis": true,
-  "warmup_text": "Warmup.",
-  "warmup_language": "russian",
-  "warmup_voice_id": "kraftwerk_robot_ru_warm"
+  "warmup_synthesis": false,
+  "model_download": {
+    "talker_url": "",
+    "talker_sha256": "",
+    "codec_url": "",
+    "codec_sha256": ""
+  }
 }

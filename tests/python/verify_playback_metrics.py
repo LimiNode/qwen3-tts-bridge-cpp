@@ -41,6 +41,7 @@ def main() -> int:
         "150",
         "--mock-chunk-delay",
         "0.2",
+        "--no-tail",
         "--playback-metrics-file",
         str(args.output),
     ]
@@ -115,6 +116,7 @@ def main() -> int:
         "640",
         "--mock-chunk-delay",
         "0.05",
+        "--no-tail",
         "--playback-metrics-file",
         str(oversize_output),
     ]

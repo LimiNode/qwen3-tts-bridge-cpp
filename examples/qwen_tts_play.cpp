@@ -98,7 +98,7 @@ struct ProgramOptions {
     bool etw_playback_markers = false;
     bool auto_profile = false;
     std::size_t auto_fast_max_chars = 240;
-    bool terminal_fade_enabled = false;
+    bool terminal_fade_enabled = true;
     TerminalFadeOptions terminal_fade;
 };
 
@@ -1392,7 +1392,8 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --playback-interruption-diagnostics-file <path> Write opt-in cursor/reset cancellation diagnostics JSON.\n"
         << "  --pcm-capture-file <path>      Write opt-in one-shot raw s16le PCM plus JSON metadata.\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
-        << "  --tail                         Fade and pad terminal audio.\n"
+        << "  --tail                         Enable terminal fade and padding (default).\n"
+        << "  --no-tail                      Disable terminal fade and padding.\n"
         << "  --tail-fade-ms <ms>            Terminal fade duration, default: 15.\n"
         << "  --tail-silence-ms <ms>         Completion silence, default: 85.\n"
         << "  --cancel-tail-silence-ms <ms>  Cancellation silence, default: 0.\n"
@@ -1584,6 +1585,9 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         }
         else if (arg == "--tail") {
             options.terminal_fade_enabled = true;
+        }
+        else if (arg == "--no-tail") {
+            options.terminal_fade_enabled = false;
         }
         else if (arg == "--tail-fade-ms" || arg.rfind("--tail-fade-ms=", 0) == 0) {
             options.terminal_fade.fade_ms = parse_u32(

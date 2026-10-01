@@ -3,10 +3,12 @@
 QwenTTSBridge is a Windows-oriented C++17 client library for local streaming
 speech synthesis with Qwen3-TTS.
 
-The project keeps Python, PyTorch, CUDA, and Qwen3-TTS inside a standalone
-worker process while exposing a stable native C++ API to applications. The
-worker is started once, keeps the model loaded, and streams PCM audio chunks
-back to the C++ side for every synthesis request.
+The project exposes a stable native C++ API to a persistent local worker
+process. The canonical release route uses `qwen_tts_native_worker.exe` and the
+pinned `qwentts.cpp`/GGML runtime; the Python/PyTorch worker remains a supported
+alternative backend for development and packaging experiments. The worker is
+started once, keeps the model loaded, and streams PCM audio chunks back to the
+C++ side for every synthesis request.
 
 Status: release candidate preparation for the v0.2 async API. The supported
 runtime is the persistent process worker; the direct qwen.dll adapter remains
@@ -14,26 +16,23 @@ experimental and opt-in.
 
 ## Quick start
 
-Build the library and examples with CMake, then run the interactive Windows
-player with a configured native worker:
-
-```powershell
-qwen_tts_play.exe --worker qwen_tts_native_worker.exe --text "Hello"
-```
-
-For a bundle-local configuration, copy
+Build the library and examples with CMake. For a native release bundle, copy
 `config/native-worker.example.json` to `config/native-worker.local.json`, edit
-the model/runtime paths, and use the bootstrap launcher:
+the model/runtime paths, and use the bundle launcher. It validates existing
+models before starting and can download missing models only when the local
+configuration supplies a pinned URL and SHA-256 for each artifact:
 
 ```powershell
 .\scripts\start-native-play.ps1 -Text "Hello"
 ```
 
-The native worker still needs its runtime directory, GGUF model files, and
-voice registry. Keep those files outside the repository (for example under
-`runtime/`, `models/`, and `config/`) and pass them with `--worker-arg` or a
-release-bundle launcher. `scripts/ensure-native-models.ps1` validates or
-downloads explicitly configured model URLs without overwriting valid files.
+The native worker still needs its runtime directory and GGUF model files. Keep
+those files outside the repository (for example under `runtime/` and
+`models/`). `scripts/ensure-native-models.ps1` downloads into a temporary file,
+verifies SHA-256, and promotes it atomically; use `-Offline` or `-NoDownload`
+when the bundle must not access the network. The repository does not claim a
+canonical public model URL for the split Q8 artifacts, so the URLs and hashes
+must be supplied by the release bundle owner.
 
 For an installed CMake package:
 
@@ -49,7 +48,7 @@ minimal async request to cancellation and streaming post-processing.
 
 - provide a simple C++17 API for Qwen3-TTS;
 - make the C++ API async-first from the first usable implementation;
-- isolate Python, PyTorch, CUDA, and model code in a separate worker process;
+- isolate model/runtime code in a separate worker process;
 - keep the worker and model alive between requests;
 - support low-latency streaming PCM output;
 - package the worker as a standalone Windows application with Nuitka;
@@ -77,13 +76,19 @@ C++ bridge library
         |
         | stdin/stdout framed protocol
         v
-Qwen TTS worker executable
+qwen_tts_native_worker.exe (canonical)
         |
         v
-Python + PyTorch + CUDA
+qwentts.cpp / GGML / CUDA
         |
         v
-Qwen3-TTS streaming engine
+Qwen3-TTS model runtime
+```
+
+The alternative Python route keeps the same QTB process boundary:
+
+```text
+QwenTtsClient -> qwen_tts_worker -> Python + PyTorch + CUDA -> Qwen3-TTS
 ```
 
 The direct in-process `NativeQwenBackend`/`qwen.dll` path is deliberately not
@@ -97,14 +102,16 @@ API synchronous: request submission can return immediately while reader, writer,
 and dispatcher threads handle streaming frames. Later, the same protocol should
 be usable through a WebSocket transport.
 
-The worker:
+The native worker:
 
-1. initializes Python and PyTorch;
-2. loads the configured Qwen3-TTS model;
-3. warms up CUDA execution when enabled;
-4. waits for synthesis requests;
-5. streams PCM chunks to the client;
-6. remains alive for subsequent requests.
+1. loads the configured GGUF models and runtime DLLs;
+2. warms up CUDA execution when enabled;
+3. waits for synthesis requests;
+4. streams PCM chunks to the client;
+5. remains alive for subsequent requests.
+
+The Python worker follows the same lifecycle with Python/PyTorch model loading
+and is kept as an alternative route.
 
 ## C++ API Direction
 
@@ -437,10 +444,10 @@ external/cpp/qwentts.cpp/
 https://github.com/LimiNode/qwentts.cpp
 ```
 
-The native fork is an opt-in shared-library backend and is pinned to a
-reviewed commit. See [native qwentts.cpp backend](docs/native-qwentts-backend.md)
-for the build command and promotion gates. It does not replace the Python
-worker until those gates pass on the target hardware.
+The native fork is pinned to a reviewed commit and powers the canonical native
+process worker. See [native qwentts.cpp backend](docs/native-qwentts-backend.md)
+for the build command and promotion gates. The separate in-process shared
+library adapter remains experimental and opt-in.
 
 Future WebSocket dependencies:
 
@@ -462,15 +469,17 @@ Model weights are stored locally under `models/` and are excluded from Git.
 The repository will produce two primary artifacts:
 
 ```text
-qwen_tts_client.exe
-qwen_tts_worker.exe
+qwen_tts_play.exe
+qwen_tts_native_worker.exe
 ```
 
 The C++ component is built with CMake and a C++17 compiler.
 
-The accepted runtime is the persistent Python worker. To build the experimental
-native qwentts.cpp/GGML adapter and its shared `qwen.dll`, configure with
-`-DQWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND=ON`; normal builds leave this path out.
+The canonical release runtime is the persistent native process worker. To build
+the experimental in-process qwentts.cpp/GGML adapter and its shared `qwen.dll`,
+configure with `-DQWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND=ON`; normal builds leave
+that path out. The Python worker remains available as an alternative process
+worker and packaging baseline.
 
 The Python worker is packaged using Nuitka in standalone directory mode.
 Onefile packaging is not the initial target because PyTorch and CUDA

@@ -2,12 +2,13 @@
 
 ## Supported release route
 
-- [ ] Build `qwen_tts_bridge` and the persistent process worker with the pinned
-  qwentts runtime for the target Windows GPU.
+- [ ] Build `qwen_tts_bridge` and the canonical persistent native process worker
+  with the pinned qwentts runtime for the target Windows GPU.
 - [ ] Package `qwen_tts_play.exe`, `qwen_tts_native_worker.exe`, the CUDA DLL
   runtime, and a separately provisioned `models/` directory.
-- [ ] Validate model files with `scripts/ensure-native-models.ps1`; do not put
-  weights or local voice recordings in Git.
+- [ ] Validate model files with `scripts/ensure-native-models.ps1`; when a
+  bundle enables download, provide a pinned URL and SHA-256 for every model.
+  Do not put weights or local voice recordings in Git.
 - [ ] Keep the qwen.dll in-process adapter disabled unless its ABI and target
   hardware evidence are explicitly accepted.
 
