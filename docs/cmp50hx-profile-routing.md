@@ -5,11 +5,16 @@ configured fast worker and a derived `cmp50hx-safe` worker. Each request is sent
 to one worker before synthesis starts; CUDA graphs are never changed while a
 request is running.
 
-The default policy counts non-space UTF-8 bytes as a conservative text-length
-proxy. Texts up to 240 bytes use the fast worker; longer texts use the safe
-worker. The threshold can be changed with `--auto-fast-max-chars` or the
-launcher's `-AutoFastMaxChars`. The name is kept for CLI compatibility, but the
-value is a byte budget rather than a word or language-specific token count.
+The default policy counts non-space UTF-8 bytes in the prepared effective text
+as a conservative text-length proxy. Texts up to 240 bytes use the fast worker;
+longer texts use the safe worker. The threshold can be changed with
+`--auto-fast-max-bytes` or the launcher's `-AutoFastMaxChars`.
+`--auto-fast-max-chars` remains a backward-compatible CLI alias. The value is a
+byte budget rather than a word or language-specific token count.
+
+Text preparation runs once before routing. The selected worker receives that
+exact prepared text, so a normalizer or text frontend cannot make the routing
+measurement differ from the synthesis payload.
 
 Automatic mode requires the worker arguments to contain a `--runtime-profile`
 option. The second worker is derived by replacing its profile and static

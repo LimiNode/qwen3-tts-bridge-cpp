@@ -119,7 +119,7 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
     def test_launcher_forwards_the_automatic_route_threshold(self) -> None:
         self.assertIn("[int]$AutoFastMaxChars = 240", self.launcher)
         self.assertIn(
-            '$arguments += @("--auto-profile", "--auto-fast-max-chars", '
+            '$arguments += @("--auto-profile", "--auto-fast-max-bytes", '
             '"$AutoFastMaxChars")',
             self.launcher,
         )

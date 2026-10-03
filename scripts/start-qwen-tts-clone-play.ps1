@@ -251,7 +251,7 @@ if ($XVectorOnly) {
 # different sink in applications.
 $arguments += @("--playback-prebuffer-chunks", "1")
 if ($AutoProfile) {
-    $arguments += @("--auto-profile", "--auto-fast-max-chars", "$AutoFastMaxChars")
+    $arguments += @("--auto-profile", "--auto-fast-max-bytes", "$AutoFastMaxChars")
 }
 
 $previousPythonNoUserSite = [Environment]::GetEnvironmentVariable("PYTHONNOUSERSITE", "Process")
