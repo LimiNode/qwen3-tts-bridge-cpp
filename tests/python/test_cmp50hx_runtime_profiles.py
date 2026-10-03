@@ -7,12 +7,14 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
 _LAUNCHER = _ROOT / "scripts" / "start-qwen-tts-clone-play.ps1"
+_NATIVE_LAUNCHER = _ROOT / "scripts" / "start-native-play.ps1"
 _DOC = _ROOT / "docs" / "voice-clone.md"
 
 
 class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
     def setUp(self) -> None:
         self.launcher = _LAUNCHER.read_text(encoding="utf-8")
+        self.native_launcher = _NATIVE_LAUNCHER.read_text(encoding="utf-8")
         self.documentation = _DOC.read_text(encoding="utf-8")
 
     def test_profiles_are_explicit_and_default_is_preserved(self) -> None:
@@ -122,6 +124,22 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
             '$arguments += @("--auto-profile", "--auto-fast-max-bytes", '
             '"$AutoFastMaxChars")',
             self.launcher,
+        )
+
+    def test_voice_registry_defaults_are_bundle_relative(self) -> None:
+        self.assertIn(
+            '$defaultVoiceRegistryPath = Join-Path $repoRoot "config\\voice-profiles.json"',
+            self.launcher,
+        )
+        self.assertIn(
+            'Test-Path -LiteralPath $defaultVoiceRegistryPath -PathType Leaf',
+            self.launcher,
+        )
+        self.assertIn("[string]$VoiceRegistryPath = ''", self.native_launcher)
+        self.assertIn("Join-Path $root 'config\\voice-profiles.json'", self.native_launcher)
+        self.assertIn(
+            "voice registry was explicitly configured but not found",
+            self.native_launcher,
         )
 
     def test_documentation_describes_request_boundary_switching(self) -> None:
