@@ -44,6 +44,8 @@ namespace {
 
 using qwen_tts_bridge::AudioFormat;
 using qwen_tts_bridge::PcmChunk;
+using qwen_tts_bridge::PreparedText;
+using qwen_tts_bridge::PreparedTtsRequest;
 using qwen_tts_bridge::QwenTtsClient;
 using qwen_tts_bridge::QwenTtsClientOptions;
 using qwen_tts_bridge::ReadyMessage;
@@ -97,7 +99,7 @@ struct ProgramOptions {
     std::size_t playback_prebuffer_chunks = 1;
     bool etw_playback_markers = false;
     bool auto_profile = false;
-    std::size_t auto_fast_max_chars = 240;
+    std::size_t auto_fast_max_bytes = 240;
     bool terminal_fade_enabled = true;
     TerminalFadeOptions terminal_fade;
 };
@@ -1366,7 +1368,8 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --worker <path>                Worker executable path.\n"
         << "  --worker-arg <arg>             Extra worker argument; may be repeated.\n"
         << "  --auto-profile                 Keep fast and safe workers warm and route by text length.\n"
-        << "  --auto-fast-max-chars <n>      Use the fast worker up to n non-space UTF-8 bytes, default: 240.\n"
+        << "  --auto-fast-max-bytes <n>      Use the fast worker up to n non-space UTF-8 bytes, default: 240.\n"
+        << "  --auto-fast-max-chars <n>      Backward-compatible alias for --auto-fast-max-bytes.\n"
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --text <utf8>                  One-shot playback instead of interactive mode.\n"
         << "  --language <name>              Request language, default: auto.\n"
@@ -1485,11 +1488,18 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         else if (arg == "--auto-profile") {
             options.auto_profile = true;
         }
-        else if (arg == "--auto-fast-max-chars" ||
+        else if (arg == "--auto-fast-max-bytes" ||
+                 arg.rfind("--auto-fast-max-bytes=", 0) == 0 ||
+                 arg == "--auto-fast-max-chars" ||
                  arg.rfind("--auto-fast-max-chars=", 0) == 0) {
-            options.auto_fast_max_chars = parse_u32(
-                require_value(index, argc, argv, "--auto-fast-max-chars"),
-                "--auto-fast-max-chars");
+            options.auto_fast_max_bytes = parse_u32(
+                require_value(index, argc, argv,
+                    arg.find("chars") != std::string::npos
+                        ? "--auto-fast-max-chars"
+                        : "--auto-fast-max-bytes"),
+                arg.find("chars") != std::string::npos
+                    ? "--auto-fast-max-chars"
+                    : "--auto-fast-max-bytes");
         }
         else if (arg == "--cwd" || arg.rfind("--cwd=", 0) == 0) {
             options.working_directory = require_value(index, argc, argv, "--cwd");
@@ -1639,8 +1649,8 @@ void validate_options(const ProgramOptions& options) {
     if (options.auto_profile && options.use_mock_worker) {
         throw std::runtime_error("--auto-profile requires a real Qwen worker");
     }
-    if (options.auto_profile && options.auto_fast_max_chars == 0) {
-        throw std::runtime_error("--auto-fast-max-chars must be greater than zero");
+    if (options.auto_profile && options.auto_fast_max_bytes == 0) {
+        throw std::runtime_error("--auto-fast-max-bytes must be greater than zero");
     }
     if (options.sample_rate == 0 || options.channels == 0 ||
         options.channels > (std::numeric_limits<WORD>::max)()) {
@@ -1852,12 +1862,53 @@ std::uint64_t cancel_active_request(
     return playback_epoch;
 }
 
+PreparedTtsRequest prepare_request(
+    QwenTtsClient& preparation_client,
+    const ProgramOptions& options,
+    const std::string& text) {
+    PreparedTtsRequest prepared_request;
+    prepared_request.request.text = text;
+    prepared_request.request.language = options.language;
+    prepared_request.request.speaker = options.speaker;
+    prepared_request.request.instruction = options.instruction;
+    prepared_request.request.voice_id = options.voice_id;
+    prepared_request.request.reference_audio_path = options.reference_audio_path;
+    prepared_request.request.reference_text = options.reference_text;
+    prepared_request.request.x_vector_only = options.x_vector_only;
+    prepared_request.request.sampling.temperature = options.temperature;
+    prepared_request.request.sampling.top_k = options.top_k;
+    prepared_request.request.sampling.top_p = options.top_p;
+    prepared_request.request.sampling.repetition_penalty = options.repetition_penalty;
+    prepared_request.request.sampling.do_sample = options.do_sample;
+    if (options.seed.has_value()) {
+        prepared_request.request.has_seed = true;
+        prepared_request.request.seed = options.seed.value();
+    }
+    prepared_request.request.output = requested_audio_format(options);
+
+    TtsError error;
+    if (!preparation_client.prepare_text(
+            prepared_request.request,
+            prepared_request.text,
+            error)) {
+        throw std::runtime_error(
+            error.category + "/" + error.code + ": " + error.message);
+    }
+    std::cout << "prepared text: utf8_bytes=" << prepared_request.text.utf8_bytes
+              << ", non_space_utf8_bytes="
+              << prepared_request.text.non_space_utf8_bytes
+              << ", modified="
+              << (prepared_request.text.was_modified ? "true" : "false")
+              << '\n';
+    return prepared_request;
+}
+
 RequestId submit_request(
     QwenTtsClient& client,
     WaveOutPlayer& player,
     ActiveRequestState& active_state,
     const ProgramOptions& options,
-    const std::string& text,
+    PreparedTtsRequest prepared_request,
     OneShotState* one_shot_state = nullptr,
     PcmCapture* pcm_capture = nullptr) {
     const std::uint64_t playback_epoch =
@@ -1867,25 +1918,7 @@ RequestId submit_request(
             active_state,
             options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
 
-    TtsRequest request;
-    request.text = text;
-    request.language = options.language;
-    request.speaker = options.speaker;
-    request.instruction = options.instruction;
-    request.voice_id = options.voice_id;
-    request.reference_audio_path = options.reference_audio_path;
-    request.reference_text = options.reference_text;
-    request.x_vector_only = options.x_vector_only;
-    request.sampling.temperature = options.temperature;
-    request.sampling.top_k = options.top_k;
-    request.sampling.top_p = options.top_p;
-    request.sampling.repetition_penalty = options.repetition_penalty;
-    request.sampling.do_sample = options.do_sample;
-    if (options.seed.has_value()) {
-        request.has_seed = true;
-        request.seed = options.seed.value();
-    }
-    request.output = requested_audio_format(options);
+    TtsRequest request = std::move(prepared_request.request);
     auto processors = make_audio_processors(options);
     {
         std::lock_guard<std::mutex> lock(active_state.mutex);
@@ -1986,26 +2019,18 @@ RequestId submit_request(
         }
     };
 
-    if (client.synthesize_async(std::move(request), std::move(callbacks)) != request_id) {
+    prepared_request.request = std::move(request);
+    if (client.synthesize_async(
+            std::move(prepared_request), std::move(callbacks)) != request_id) {
         clear_active_request(active_state, request_id);
         throw std::runtime_error("failed to enqueue synthesis request");
     }
     return request_id;
 }
 
-std::size_t estimated_text_bytes(const std::string& text) {
-    std::size_t count = 0;
-    for (const unsigned char value : text) {
-        if (value > 0x20u) {
-            ++count;
-        }
-    }
-    return count;
-}
-
 QwenTtsClient& client_for_text(
     const ProgramOptions& options,
-    const std::string& text,
+    const PreparedText& prepared_text,
     QwenTtsClient& fast_client,
     QwenTtsClient* safe_client) {
     if (!options.auto_profile) {
@@ -2014,8 +2039,8 @@ QwenTtsClient& client_for_text(
     if (safe_client == nullptr) {
         throw std::runtime_error("automatic profile routing has no safe worker");
     }
-    const std::size_t estimated_bytes = estimated_text_bytes(text);
-    const bool use_fast = estimated_bytes <= options.auto_fast_max_chars;
+    const std::size_t estimated_bytes = prepared_text.non_space_utf8_bytes;
+    const bool use_fast = estimated_bytes <= options.auto_fast_max_bytes;
     std::cout << "auto profile: " << (use_fast ? "cmp50hx-fastest" : "cmp50hx-safe")
               << " (non-space UTF-8 bytes=" << estimated_bytes << ")\n";
     return use_fast ? fast_client : *safe_client;
@@ -2028,7 +2053,7 @@ bool wait_for_one_shot(OneShotState& state, std::chrono::milliseconds timeout) {
 
 void print_interactive_status(const ProgramOptions& options) {
     if (options.auto_profile) {
-        std::cout << "profile=auto (fast <= " << options.auto_fast_max_chars
+        std::cout << "profile=auto (fast <= " << options.auto_fast_max_bytes
                   << " non-space UTF-8 bytes, safe above)\n";
     }
     std::cout << "speaker=" << (options.speaker.empty() ? "<worker default>" : options.speaker)
@@ -2409,12 +2434,17 @@ int wmain(int argc, wchar_t** argv) {
             if (playback_metrics != nullptr) {
                 playback_metrics->begin_request();
             }
+            auto prepared_request = prepare_request(client, options, options.text);
             submit_request(
-                client_for_text(options, options.text, client, safe_client.get()),
+                client_for_text(
+                    options,
+                    prepared_request.text,
+                    client,
+                    safe_client.get()),
                 player,
                 active_state,
                 options,
-                options.text,
+                std::move(prepared_request),
                 &state,
                 pcm_capture.get());
             if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
@@ -2488,12 +2518,17 @@ int wmain(int argc, wchar_t** argv) {
                 }
                 continue;
             }
+            auto prepared_request = prepare_request(client, options, line);
             submit_request(
-                client_for_text(options, line, client, safe_client.get()),
+                client_for_text(
+                    options,
+                    prepared_request.text,
+                    client,
+                    safe_client.get()),
                 player,
                 active_state,
                 options,
-                line);
+                std::move(prepared_request));
         }
 
         cancel_active_request(
