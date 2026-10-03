@@ -1910,13 +1910,14 @@ RequestId submit_request(
     const ProgramOptions& options,
     PreparedTtsRequest prepared_request,
     OneShotState* one_shot_state = nullptr,
-    PcmCapture* pcm_capture = nullptr) {
-    const std::uint64_t playback_epoch =
+    PcmCapture* pcm_capture = nullptr,
+    std::optional<std::uint64_t> playback_epoch_override = std::nullopt) {
+    const std::uint64_t playback_epoch = playback_epoch_override.value_or(
         cancel_active_request(
             client,
             player,
             active_state,
-            options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
+            options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0));
 
     TtsRequest request = std::move(prepared_request.request);
     auto processors = make_audio_processors(options);
@@ -2518,7 +2519,19 @@ int wmain(int argc, wchar_t** argv) {
                 }
                 continue;
             }
-            auto prepared_request = prepare_request(client, options, line);
+            const std::uint64_t playback_epoch = cancel_active_request(
+                client,
+                player,
+                active_state,
+                options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
+            PreparedTtsRequest prepared_request;
+            try {
+                prepared_request = prepare_request(client, options, line);
+            }
+            catch (const std::exception& exc) {
+                std::cerr << "text preparation failed: " << exc.what() << '\n';
+                continue;
+            }
             submit_request(
                 client_for_text(
                     options,
@@ -2528,7 +2541,10 @@ int wmain(int argc, wchar_t** argv) {
                 player,
                 active_state,
                 options,
-                std::move(prepared_request));
+                std::move(prepared_request),
+                nullptr,
+                nullptr,
+                playback_epoch);
         }
 
         cancel_active_request(
