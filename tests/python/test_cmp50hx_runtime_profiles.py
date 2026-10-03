@@ -128,7 +128,8 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
 
     def test_voice_registry_defaults_are_bundle_relative(self) -> None:
         self.assertIn(
-            '$defaultVoiceRegistryPath = Join-Path $repoRoot "config\\voice-profiles.json"',
+            '$defaultVoiceRegistryPath = Join-Path $repoRoot '
+            '"config\\voice-profiles.json"',
             self.launcher,
         )
         self.assertIn(
@@ -136,7 +137,10 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
             self.launcher,
         )
         self.assertIn("[string]$VoiceRegistryPath = ''", self.native_launcher)
-        self.assertIn("Join-Path $root 'config\\voice-profiles.json'", self.native_launcher)
+        self.assertIn(
+            "Join-Path $root 'config\\voice-profiles.json'",
+            self.native_launcher,
+        )
         self.assertIn(
             "voice registry was explicitly configured but not found",
             self.native_launcher,
