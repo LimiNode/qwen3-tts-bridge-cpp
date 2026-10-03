@@ -75,8 +75,9 @@ std::vector<std::byte> ready_frame_bytes() {
         "\"streaming\":true,"
         "\"cancellation\":true,"
         "\"instructions\":true,"
-        "\"voice_clone\":false"
-        "}}");
+        "\"voice_clone\":false},"
+        "\"voice_ids\":[\"ephi\",\"kraftwerk\"]"
+        "}");
 }
 
 class BlockingTransport final : public ITransport {
@@ -285,6 +286,20 @@ void test_synthesize_async_delivers_audio_and_completed() {
 
     client.stop();
     CHECK(!client.is_running());
+}
+
+void test_available_voice_ids_snapshot() {
+    QwenTtsClient client;
+    CHECK(client.available_voice_ids().empty());
+    CHECK(client.start(
+        std::make_unique<BlockingTransport>(),
+        make_client_options()));
+    const auto voice_ids = client.available_voice_ids();
+    CHECK(voice_ids.size() == 2);
+    CHECK(voice_ids[0] == "ephi");
+    CHECK(voice_ids[1] == "kraftwerk");
+    client.stop();
+    CHECK(client.available_voice_ids().empty());
 }
 
 void test_multiple_async_requests_complete() {
@@ -899,6 +914,7 @@ void test_transport_send_failure_fails_request_once() {
 
 int main() {
     test_synthesize_async_delivers_audio_and_completed();
+    test_available_voice_ids_snapshot();
     test_multiple_async_requests_complete();
     test_cancel_queued_request();
     test_request_error_routes_to_callback();
