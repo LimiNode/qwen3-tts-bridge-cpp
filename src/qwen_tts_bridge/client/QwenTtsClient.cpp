@@ -432,6 +432,16 @@ bool QwenTtsClient::ready_message(ReadyMessage& ready) const {
     return running_ && !stopping_ && session_ != nullptr && session_->ready_message(ready);
 }
 
+std::vector<std::string> QwenTtsClient::available_voice_ids() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    ReadyMessage ready;
+    if (!running_ || stopping_ || session_ == nullptr ||
+        !session_->ready_message(ready)) {
+        return {};
+    }
+    return ready.voice_ids;
+}
+
 void QwenTtsClient::stop() {
     WorkerSession* session = nullptr;
     {

@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "client_types.hpp"
 #include "../protocol/control/control_messages.hpp"
@@ -140,6 +141,13 @@ public:
     /// \param ready Output readiness data, including advertised capabilities.
     /// \return True when the worker is running and has sent ready.
     bool ready_message(ReadyMessage& ready) const;
+
+    /// \brief Returns voice identifiers advertised by the ready worker.
+    ///
+    /// The result is a snapshot and is empty while the client is stopped or
+    /// before the worker has published readiness. Voice metadata remains a
+    /// worker/configuration concern; this method only exposes advertised IDs.
+    std::vector<std::string> available_voice_ids() const;
 
     /// \brief Returns the number of audio frames discarded after request termination.
     std::uint64_t late_audio_after_terminal_count() const;
