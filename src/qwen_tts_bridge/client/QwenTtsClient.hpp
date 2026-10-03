@@ -99,6 +99,27 @@ public:
     /// \return Non-zero request ID on enqueue success, or zero on local failure.
     RequestId synthesize_async(TtsRequest request, TtsCallbacks callbacks);
 
+    /// \brief Applies the configured text preparation hook once.
+    /// \param request Request whose spoken text should be prepared.
+    /// \param prepared Receives the effective text and routing measurements.
+    /// \param error Receives a client-side error when preparation fails.
+    /// \return True when `prepared` is valid and non-empty.
+    bool prepare_text(
+        const TtsRequest& request,
+        PreparedText& prepared,
+        TtsError& error) const;
+
+    /// \brief Enqueues a request whose text was already prepared.
+    ///
+    /// This overload never invokes `text_preprocessor`; it sends
+    /// `prepared_request.text.effective_text` exactly as supplied.
+    /// \param prepared_request Request and one-time preparation result.
+    /// \param callbacks Request callback set.
+    /// \return Non-zero request ID on enqueue success, or zero on failure.
+    RequestId synthesize_async(
+        PreparedTtsRequest prepared_request,
+        TtsCallbacks callbacks);
+
     /// \brief Enqueues an async synthesis request with default options.
     /// \param text Spoken UTF-8 text.
     /// \param callbacks Request callback set.

@@ -85,6 +85,30 @@ struct TtsRequest {
     AudioFormat output; ///< Requested PCM output format.
 };
 
+/// \struct PreparedText
+/// \brief Deterministic result of request-text preparation.
+///
+/// The effective text is the exact UTF-8 payload that will be sent to the
+/// worker.  The byte measurements are intentionally backend-neutral and are
+/// suitable for routing policies; model-token counts remain backend-specific.
+struct PreparedText {
+    std::string original_text; ///< Source text before preprocessing.
+    std::string effective_text; ///< Exact text that synthesis will send.
+    std::size_t utf8_bytes = 0; ///< Total UTF-8 bytes in effective_text.
+    std::size_t non_space_utf8_bytes = 0; ///< UTF-8 bytes belonging to non-space code points.
+    bool was_modified = false; ///< Whether effective_text differs from original_text.
+};
+
+/// \struct PreparedTtsRequest
+/// \brief Request paired with text prepared exactly once.
+///
+/// Passing this object to the prepared overload of `synthesize_async()` skips
+/// the configured text preprocessor and sends `text.effective_text` verbatim.
+struct PreparedTtsRequest {
+    TtsRequest request; ///< Original request metadata and options.
+    PreparedText text; ///< Prepared spoken text and routing measurements.
+};
+
 /// \struct PcmChunk
 /// \brief User-facing PCM audio chunk routed to a request callback.
 struct PcmChunk {
