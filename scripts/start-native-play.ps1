@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\native-worker.local.json'),
+    [string]$VoiceRegistryPath = '',
     [string]$Text,
     [switch]$NoPlayback,
     [switch]$NoDownload,
@@ -59,7 +60,24 @@ $workerArgs = @(
     '--talker-model', $talkerModel,
     '--codec-model', $codecModel
 )
-if ($config.voice_registry_path) { $workerArgs += @('--voice-registry-path', (Resolve-BundlePath $config.voice_registry_path)) }
+$voiceRegistryValue = if ($VoiceRegistryPath) {
+    $VoiceRegistryPath
+}
+elseif ($config.voice_registry_path) {
+    [string]$config.voice_registry_path
+}
+else {
+    Join-Path $root 'config\voice-profiles.json'
+}
+if (-not [IO.Path]::IsPathRooted($voiceRegistryValue)) {
+    $voiceRegistryValue = Join-Path $root $voiceRegistryValue
+}
+if (Test-Path -LiteralPath $voiceRegistryValue -PathType Leaf) {
+    $workerArgs += @('--voice-registry-path', (Resolve-Path -LiteralPath $voiceRegistryValue).Path)
+}
+elseif ($VoiceRegistryPath -or $config.voice_registry_path) {
+    throw "voice registry was explicitly configured but not found: $voiceRegistryValue"
+}
 if ($config.stream_max_chunk_frames) { $workerArgs += @('--stream-max-chunk-frames', [string]$config.stream_max_chunk_frames) }
 if ($config.warmup_synthesis) {
     $workerArgs += '--warmup-synthesis'

@@ -31,6 +31,12 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $localConfigPath = Join-Path $repoRoot "config\playback-runtime.local.json"
 $cliPath = Join-Path (Join-Path $repoRoot $BuildDirectory) "qwen_tts_play.exe"
+$defaultVoiceRegistryPath = Join-Path $repoRoot "config\voice-profiles.json"
+
+if ([string]::IsNullOrWhiteSpace($VoiceRegistryPath) -and
+    (Test-Path -LiteralPath $defaultVoiceRegistryPath -PathType Leaf)) {
+    $VoiceRegistryPath = $defaultVoiceRegistryPath
+}
 
 function Resolve-ExistingPath([string]$PathValue, [string]$Name) {
     if ([string]::IsNullOrWhiteSpace($PathValue) -or -not (Test-Path -LiteralPath $PathValue)) {
