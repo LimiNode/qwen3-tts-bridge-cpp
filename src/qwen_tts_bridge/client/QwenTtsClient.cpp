@@ -73,6 +73,55 @@ bool is_valid_utf8(const std::string& value) {
     return true;
 }
 
+bool is_unicode_space(std::uint32_t code_point) {
+    return code_point == 0x0009u ||
+        code_point == 0x000Au ||
+        code_point == 0x000Bu ||
+        code_point == 0x000Cu ||
+        code_point == 0x000Du ||
+        code_point == 0x0020u ||
+        code_point == 0x00A0u ||
+        code_point == 0x1680u ||
+        (code_point >= 0x2000u && code_point <= 0x200Au) ||
+        code_point == 0x2028u ||
+        code_point == 0x2029u ||
+        code_point == 0x202Fu ||
+        code_point == 0x205Fu ||
+        code_point == 0x3000u;
+}
+
+std::size_t count_non_space_utf8_bytes(const std::string& value) {
+    std::size_t result = 0;
+    std::size_t index = 0;
+    while (index < value.size()) {
+        const unsigned char lead =
+            static_cast<unsigned char>(value[index]);
+        std::size_t width = 1;
+        std::uint32_t code_point = lead;
+        if (lead >= 0xC2u && lead <= 0xDFu) {
+            width = 2;
+            code_point = lead & 0x1Fu;
+        }
+        else if (lead >= 0xE0u && lead <= 0xEFu) {
+            width = 3;
+            code_point = lead & 0x0Fu;
+        }
+        else if (lead >= 0xF0u && lead <= 0xF4u) {
+            width = 4;
+            code_point = lead & 0x07u;
+        }
+        for (std::size_t offset = 1; offset < width; ++offset) {
+            code_point = (code_point << 6u) |
+                (static_cast<unsigned char>(value[index + offset]) & 0x3Fu);
+        }
+        if (!is_unicode_space(code_point)) {
+            result += width;
+        }
+        index += width;
+    }
+    return result;
+}
+
 SynthesizeMessage to_control_message(const TtsRequest& request) {
     SynthesizeMessage message;
     message.text = request.text;
@@ -178,9 +227,10 @@ bool QwenTtsClient::start(const std::string& worker_executable) {
     return start(transport_options);
 }
 
-RequestId QwenTtsClient::synthesize_async(
-    TtsRequest request,
-    TtsCallbacks callbacks) {
+bool QwenTtsClient::prepare_text(
+    const TtsRequest& request,
+    PreparedText& prepared,
+    TtsError& error) const {
     std::function<std::string(const TtsRequest&)> text_preprocessor;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -192,63 +242,104 @@ RequestId QwenTtsClient::synthesize_async(
             ? text_preprocessor(request)
             : request.text;
     }
-    catch (const std::exception& error) {
-        try {
-            if (callbacks.on_error) {
-                callbacks.on_error(make_local_error(
-                    request.id,
-                    "client_error",
-                    "text_preprocessing_failed",
-                    std::string("text preprocessing failed: ") + error.what()));
-            }
-        }
-        catch (...) {
-        }
-        return 0;
+    catch (const std::exception& exception) {
+        error = make_local_error(
+            request.id,
+            "client_error",
+            "text_preprocessing_failed",
+            std::string("text preprocessing failed: ") + exception.what());
+        return false;
     }
     catch (...) {
-        try {
-            if (callbacks.on_error) {
-                callbacks.on_error(make_local_error(
-                    request.id,
-                    "client_error",
-                    "text_preprocessing_failed",
-                    "text preprocessing failed: unknown exception"));
-            }
-        }
-        catch (...) {
-        }
-        return 0;
+        error = make_local_error(
+            request.id,
+            "client_error",
+            "text_preprocessing_failed",
+            "text preprocessing failed: unknown exception");
+        return false;
     }
     if (!is_valid_utf8(processed_text)) {
+        error = make_local_error(
+            request.id,
+            "client_error",
+            "invalid_utf8_text",
+            "text preprocessing returned invalid UTF-8");
+        return false;
+    }
+    if (processed_text.empty()) {
+        error = make_local_error(
+            request.id,
+            "request_error",
+            "empty_text",
+            "synthesis text is empty after preprocessing");
+        return false;
+    }
+    prepared.original_text = request.text;
+    prepared.effective_text = std::move(processed_text);
+    prepared.utf8_bytes = prepared.effective_text.size();
+    prepared.non_space_utf8_bytes =
+        count_non_space_utf8_bytes(prepared.effective_text);
+    prepared.was_modified = prepared.original_text != prepared.effective_text;
+    return true;
+}
+
+RequestId QwenTtsClient::synthesize_async(
+    TtsRequest request,
+    TtsCallbacks callbacks) {
+    PreparedText prepared;
+    TtsError error;
+    if (!prepare_text(request, prepared, error)) {
+        try {
+            if (callbacks.on_error) {
+                callbacks.on_error(error);
+            }
+        }
+        catch (...) {
+        }
+        return 0;
+    }
+
+    PreparedTtsRequest prepared_request;
+    prepared_request.request = std::move(request);
+    prepared_request.text = std::move(prepared);
+    return synthesize_async(std::move(prepared_request), std::move(callbacks));
+}
+
+RequestId QwenTtsClient::synthesize_async(
+    PreparedTtsRequest prepared_request,
+    TtsCallbacks callbacks) {
+    TtsRequest request = std::move(prepared_request.request);
+    PreparedText prepared = std::move(prepared_request.text);
+    if (prepared.original_text != request.text) {
         try {
             if (callbacks.on_error) {
                 callbacks.on_error(make_local_error(
                     request.id,
                     "client_error",
-                    "invalid_utf8_text",
-                    "text preprocessing returned invalid UTF-8"));
+                    "prepared_text_mismatch",
+                    "prepared text does not match the request source text"));
             }
         }
         catch (...) {
         }
         return 0;
     }
-    request.text = std::move(processed_text);
-    if (request.text.empty()) {
+    if (prepared.effective_text.empty() ||
+        !is_valid_utf8(prepared.effective_text)) {
         try {
             if (callbacks.on_error) {
                 callbacks.on_error(make_local_error(
                     request.id,
-                    "request_error",
-                    "empty_text",
-                    "synthesis text is empty after preprocessing"));
+                    "client_error",
+                    "invalid_prepared_text",
+                    "prepared text must be non-empty valid UTF-8"));
             }
         }
         catch (...) {
         }
         return 0;
     }
+    request.text = std::move(prepared.effective_text);
 
     SynthesizeMessage message = to_control_message(request);
     ControlMessage control_message{message};

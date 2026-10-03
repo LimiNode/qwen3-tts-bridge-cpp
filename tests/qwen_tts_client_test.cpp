@@ -749,6 +749,99 @@ void test_text_preprocessor_failure_is_local() {
     client.stop();
 }
 
+void test_prepare_text_reports_effective_utf8_metrics() {
+    auto transport = std::make_unique<BlockingTransport>();
+    QwenTtsClientOptions options = make_client_options();
+    options.text_preprocessor = [](const TtsRequest&) {
+        return std::string("ООО ВК 2042 г.");
+    };
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), options));
+
+    TtsRequest request = make_request("ООО ВК 2042 г.");
+    PreparedText prepared;
+    TtsError error;
+    CHECK(client.prepare_text(request, prepared, error));
+    CHECK(error.code.empty());
+    CHECK(prepared.original_text == request.text);
+    CHECK(prepared.effective_text == request.text);
+    CHECK(prepared.utf8_bytes == prepared.effective_text.size());
+    CHECK(prepared.non_space_utf8_bytes < prepared.utf8_bytes);
+    CHECK(!prepared.was_modified);
+
+    options.text_preprocessor = [](const TtsRequest&) {
+        return std::string("о о о вэ ка в две тысячи сорок втором году");
+    };
+    client.stop();
+    CHECK(client.start(std::make_unique<BlockingTransport>(), options));
+    prepared = PreparedText{};
+    error = TtsError{};
+    CHECK(client.prepare_text(request, prepared, error));
+    CHECK(prepared.was_modified);
+    CHECK(prepared.original_text == request.text);
+    CHECK(prepared.effective_text != request.text);
+    CHECK(prepared.non_space_utf8_bytes <= prepared.utf8_bytes);
+    client.stop();
+}
+
+void test_prepared_request_bypasses_preprocessor_once() {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    raw_transport->block_after_hello = true;
+    int preprocessing_calls = 0;
+    QwenTtsClientOptions options = make_client_options();
+    options.text_preprocessor = [&preprocessing_calls](const TtsRequest&) {
+        ++preprocessing_calls;
+        return std::string("effective text");
+    };
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), options));
+
+    TtsRequest request = make_request("source text");
+    PreparedText prepared;
+    TtsError error;
+    CHECK(client.prepare_text(request, prepared, error));
+    CHECK(preprocessing_calls == 1);
+
+    RequestProbe probe;
+    PreparedTtsRequest prepared_request;
+    prepared_request.request = request;
+    prepared_request.text = prepared;
+    CHECK(client.synthesize_async(
+        std::move(prepared_request), make_callbacks(probe)) != 0);
+    CHECK(preprocessing_calls == 1);
+    CHECK(raw_transport->wait_until_blocked());
+    const auto sent = raw_transport->last_send();
+    std::string wire;
+    for (const auto byte : sent) {
+        wire.push_back(static_cast<char>(std::to_integer<unsigned char>(byte)));
+    }
+    CHECK(wire.find("effective text") != std::string::npos);
+    CHECK(wire.find("source text") == std::string::npos);
+    raw_transport->release();
+    client.stop();
+}
+
+void test_prepared_request_rejects_source_mismatch() {
+    auto transport = std::make_unique<BlockingTransport>();
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), make_client_options()));
+
+    PreparedTtsRequest prepared_request;
+    prepared_request.request = make_request("source text");
+    prepared_request.text.original_text = "different source";
+    prepared_request.text.effective_text = "effective text";
+    RequestProbe probe;
+    CHECK(client.synthesize_async(
+        std::move(prepared_request), make_callbacks(probe)) == 0);
+    {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        CHECK(probe.errors.size() == 1);
+        CHECK(probe.errors.front().code == "prepared_text_mismatch");
+    }
+    client.stop();
+}
+
 void test_duplicate_explicit_request_id_is_rejected() {
     auto transport = std::make_unique<BlockingTransport>();
     auto* raw_transport = transport.get();
@@ -820,6 +913,9 @@ int main() {
     test_text_preprocessor_preserves_utf8_and_reference_text();
     test_text_preprocessor_rejects_invalid_utf8();
     test_text_preprocessor_failure_is_local();
+    test_prepare_text_reports_effective_utf8_metrics();
+    test_prepared_request_bypasses_preprocessor_once();
+    test_prepared_request_rejects_source_mismatch();
     test_duplicate_explicit_request_id_is_rejected();
     test_transport_send_failure_fails_request_once();
     return 0;
