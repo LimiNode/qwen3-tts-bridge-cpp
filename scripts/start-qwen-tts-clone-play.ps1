@@ -22,6 +22,7 @@ param(
     [switch]$StyleExperiment,
     [string]$Python = "",
     [string]$ModelPath = "",
+    [string]$ModelRoot = "",
     [string]$FasterSourcePath = "",
     [string]$QwenSourcePath = "",
     [string]$BuildDirectory = "build"
@@ -96,6 +97,25 @@ if ([string]::IsNullOrWhiteSpace($Python)) {
 }
 $pythonPath = Resolve-ExistingPath $Python "Python"
 
+if ([string]::IsNullOrWhiteSpace($ModelPath) -and $runtimeConfig -and $runtimeConfig.model_path) {
+    $ModelPath = [string]$runtimeConfig.model_path
+}
+if ([string]::IsNullOrWhiteSpace($ModelRoot)) {
+    if ($runtimeConfig -and $runtimeConfig.model_root) {
+        $ModelRoot = [string]$runtimeConfig.model_root
+    }
+    elseif ($env:QWEN_TTS_MODEL_ROOT) {
+        $ModelRoot = $env:QWEN_TTS_MODEL_ROOT
+    }
+}
+if (-not [string]::IsNullOrWhiteSpace($ModelPath) -and
+    -not [System.IO.Path]::IsPathRooted($ModelPath)) {
+    $modelBase = if ($ModelRoot) { $ModelRoot } else { $repoRoot }
+    if (-not [System.IO.Path]::IsPathRooted($modelBase)) {
+        $modelBase = Join-Path $repoRoot $modelBase
+    }
+    $ModelPath = Join-Path $modelBase $ModelPath
+}
 if ([string]::IsNullOrWhiteSpace($ModelPath)) {
     $cacheRoot = Join-Path $env:USERPROFILE ".cache\huggingface\hub\models--Qwen--Qwen3-TTS-12Hz-1.7B-Base"
     $mainRef = Join-Path $cacheRoot "refs\main"
