@@ -7,16 +7,14 @@
   "model_profiles": {
     "base": {
       "talker_model": "models/qwen-talker-1.7b-base-Q8_0.gguf",
-      "codec_model": "models/qwen-tokenizer-12hz-Q8_0.gguf"
+      "codec_model": "models/qwen-tokenizer-12hz-Q8_0.gguf",
+      "model_download": {
+        "talker_url": "",
+        "talker_sha256": "",
+        "codec_url": "",
+        "codec_sha256": ""
+      }
     }
   },
-  "talker_model": "models/qwen-talker-1.7b-base-Q8_0.gguf",
-  "codec_model": "models/qwen-tokenizer-12hz-Q8_0.gguf",
-  "warmup_synthesis": false,
-  "model_download": {
-    "talker_url": "",
-    "talker_sha256": "",
-    "codec_url": "",
-    "codec_sha256": ""
-  }
+  "warmup_synthesis": false
 }

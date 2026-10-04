@@ -82,7 +82,10 @@ function Resolve-ModelPath([string]$value, [string]$name) {
 $talkerModelValue = if ($TalkerModel) {
     $TalkerModel
 }
-elseif ($profile -and $profile.talker_model) {
+elseif ($profile) {
+    if (-not $profile.talker_model) {
+        throw "native model profile '$selectedProfile' must define talker_model or use -TalkerModel"
+    }
     [string]$profile.talker_model
 }
 else {
@@ -91,7 +94,10 @@ else {
 $codecModelValue = if ($CodecModel) {
     $CodecModel
 }
-elseif ($profile -and $profile.codec_model) {
+elseif ($profile) {
+    if (-not $profile.codec_model) {
+        throw "native model profile '$selectedProfile' must define codec_model or use -CodecModel"
+    }
     [string]$profile.codec_model
 }
 else {
@@ -99,29 +105,30 @@ else {
 }
 $talkerModel = Resolve-ModelPath $talkerModelValue 'talker model'
 $codecModel = Resolve-ModelPath $codecModelValue 'codec model'
-$download = $config.model_download
+$download = if ($profile) { $profile.model_download } else { $config.model_download }
 $ensureScript = Join-Path $PSScriptRoot 'ensure-native-models.ps1'
-$ensureArgs = @(
-    '-TalkerModel', $talkerModel,
-    '-CodecModel', $codecModel
-)
+$ensureParams = @{
+    TalkerModel = $talkerModel
+    CodecModel = $codecModel
+}
 if ($download) {
-    if ($download.talker_url) { $ensureArgs += @('-TalkerUrl', [string]$download.talker_url) }
-    if ($download.codec_url) { $ensureArgs += @('-CodecUrl', [string]$download.codec_url) }
-    if ($download.talker_sha256) { $ensureArgs += @('-TalkerSha256', [string]$download.talker_sha256) }
-    if ($download.codec_sha256) { $ensureArgs += @('-CodecSha256', [string]$download.codec_sha256) }
+    if ($download.talker_url) { $ensureParams.TalkerUrl = [string]$download.talker_url }
+    if ($download.codec_url) { $ensureParams.CodecUrl = [string]$download.codec_url }
+    if ($download.talker_sha256) { $ensureParams.TalkerSha256 = [string]$download.talker_sha256 }
+    if ($download.codec_sha256) { $ensureParams.CodecSha256 = [string]$download.codec_sha256 }
 }
 $model_missing =
     -not (Test-Path -LiteralPath $talkerModel -PathType Leaf) -or
     -not (Test-Path -LiteralPath $codecModel -PathType Leaf)
 if (-not $NoDownload) {
     if ($Offline) {
-        $ensureArgs += '-Offline'
+        $ensureParams.Offline = $true
     }
     elseif ($model_missing) {
-        $ensureArgs += @('-Download', '-RequireHash')
+        $ensureParams.Download = $true
+        $ensureParams.RequireHash = $true
     }
-    & $ensureScript @ensureArgs | Out-Host
+    & $ensureScript @ensureParams | Out-Host
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
