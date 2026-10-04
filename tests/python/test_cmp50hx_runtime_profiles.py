@@ -158,6 +158,10 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
         self.assertIn('$env:QWEN_TTS_MODEL_ROOT', self.native_launcher)
         self.assertIn('[string]$ModelProfile = \'\'', self.native_launcher)
         self.assertIn('config.model_profiles.PSObject.Properties', self.native_launcher)
+        self.assertIn(
+            '$download = if ($profile) { $profile.model_download }',
+            self.native_launcher,
+        )
         native_config = (_ROOT / "config" / "native-worker.example.json").read_text(
             encoding="utf-8"
         )

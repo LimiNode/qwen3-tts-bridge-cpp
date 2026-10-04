@@ -123,6 +123,9 @@ if ($runtimeConfig -and $runtimeConfig.model_profiles) {
         if ([string]::IsNullOrWhiteSpace($ModelRoot) -and $modelProfile.model_root) {
             $ModelRoot = [string]$modelProfile.model_root
         }
+        if ([string]::IsNullOrWhiteSpace($ModelPath)) {
+            throw "Python model profile '$selectedProfile' must define model_path or use -ModelPath"
+        }
     }
 }
 if ([string]::IsNullOrWhiteSpace($ModelPath) -and $runtimeConfig -and $runtimeConfig.model_path) {
