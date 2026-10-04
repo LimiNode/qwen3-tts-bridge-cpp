@@ -122,6 +122,13 @@ std::size_t count_non_space_utf8_bytes(const std::string& value) {
     return result;
 }
 
+void refresh_prepared_text_metrics(PreparedText& prepared) {
+    prepared.utf8_bytes = prepared.effective_text.size();
+    prepared.non_space_utf8_bytes =
+        count_non_space_utf8_bytes(prepared.effective_text);
+    prepared.was_modified = prepared.original_text != prepared.effective_text;
+}
+
 SynthesizeMessage to_control_message(const TtsRequest& request) {
     SynthesizeMessage message;
     message.text = request.text;
@@ -276,10 +283,7 @@ bool QwenTtsClient::prepare_text(
     }
     prepared.original_text = request.text;
     prepared.effective_text = std::move(processed_text);
-    prepared.utf8_bytes = prepared.effective_text.size();
-    prepared.non_space_utf8_bytes =
-        count_non_space_utf8_bytes(prepared.effective_text);
-    prepared.was_modified = prepared.original_text != prepared.effective_text;
+    refresh_prepared_text_metrics(prepared);
     return true;
 }
 
@@ -339,6 +343,10 @@ RequestId QwenTtsClient::synthesize_async(
         }
         return 0;
     }
+    // PreparedText is a public value type. Callers may have edited the
+    // effective text after routing, so never trust cached measurements when
+    // accepting the request for synthesis.
+    refresh_prepared_text_metrics(prepared);
     request.text = std::move(prepared.effective_text);
 
     SynthesizeMessage message = to_control_message(request);

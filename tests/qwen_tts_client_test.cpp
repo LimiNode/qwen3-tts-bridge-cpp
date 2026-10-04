@@ -817,6 +817,9 @@ void test_prepared_request_bypasses_preprocessor_once() {
     TtsError error;
     CHECK(client.prepare_text(request, prepared, error));
     CHECK(preprocessing_calls == 1);
+    prepared.utf8_bytes = 1;
+    prepared.non_space_utf8_bytes = 1;
+    prepared.was_modified = false;
 
     RequestProbe probe;
     PreparedTtsRequest prepared_request;
