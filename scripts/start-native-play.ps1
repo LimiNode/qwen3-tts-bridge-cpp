@@ -3,6 +3,7 @@ param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\native-worker.local.json'),
     [string]$VoiceRegistryPath = '',
     [string]$ModelRoot = '',
+    [string]$ModelProfile = '',
     [string]$TalkerModel = '',
     [string]$CodecModel = '',
     [string]$Text,
@@ -30,8 +31,31 @@ function Resolve-BundlePath([string]$value) {
     return Join-Path $root $value
 }
 
+$selectedProfile = if ($ModelProfile) {
+    $ModelProfile
+}
+elseif ($config.default_model_profile) {
+    [string]$config.default_model_profile
+}
+else {
+    ''
+}
+$profile = $null
+if ($selectedProfile) {
+    if (-not $config.model_profiles) {
+        throw "model profile '$selectedProfile' was requested but model_profiles is not configured"
+    }
+    $profileProperty = $config.model_profiles.PSObject.Properties[$selectedProfile]
+    if ($null -eq $profileProperty) {
+        throw "native model profile was not found: $selectedProfile"
+    }
+    $profile = $profileProperty.Value
+}
 $configuredModelRoot = if ($ModelRoot) {
     $ModelRoot
+}
+elseif ($profile -and $profile.model_root) {
+    [string]$profile.model_root
 }
 elseif ($config.model_root) {
     [string]$config.model_root
@@ -55,8 +79,24 @@ function Resolve-ModelPath([string]$value, [string]$name) {
     return Join-Path $configuredModelRoot $value
 }
 
-$talkerModelValue = if ($TalkerModel) { $TalkerModel } else { [string]$config.talker_model }
-$codecModelValue = if ($CodecModel) { $CodecModel } else { [string]$config.codec_model }
+$talkerModelValue = if ($TalkerModel) {
+    $TalkerModel
+}
+elseif ($profile -and $profile.talker_model) {
+    [string]$profile.talker_model
+}
+else {
+    [string]$config.talker_model
+}
+$codecModelValue = if ($CodecModel) {
+    $CodecModel
+}
+elseif ($profile -and $profile.codec_model) {
+    [string]$profile.codec_model
+}
+else {
+    [string]$config.codec_model
+}
 $talkerModel = Resolve-ModelPath $talkerModelValue 'talker model'
 $codecModel = Resolve-ModelPath $codecModelValue 'codec model'
 $download = $config.model_download

@@ -156,10 +156,19 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
         self.assertIn('[string]$TalkerModel = \'\'', self.native_launcher)
         self.assertIn('[string]$CodecModel = \'\'', self.native_launcher)
         self.assertIn('$env:QWEN_TTS_MODEL_ROOT', self.native_launcher)
+        self.assertIn('[string]$ModelProfile = \'\'', self.native_launcher)
+        self.assertIn('config.model_profiles.PSObject.Properties', self.native_launcher)
         native_config = (_ROOT / "config" / "native-worker.example.json").read_text(
             encoding="utf-8"
         )
         self.assertIn('"model_root": ""', native_config)
+        self.assertIn('"default_model_profile": "base"', native_config)
+        self.assertIn('"model_profiles"', native_config)
+
+    def test_python_launcher_supports_named_model_profiles(self) -> None:
+        self.assertIn('[string]$ModelProfile = ""', self.launcher)
+        self.assertIn('runtimeConfig.model_profiles', self.launcher)
+        self.assertIn('Python model profile was not found', self.launcher)
 
     def test_documentation_describes_request_boundary_switching(self) -> None:
         self.assertIn("cmp50hx-low-latency", self.documentation)

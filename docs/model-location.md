@@ -35,3 +35,29 @@ scripts\start-native-play.ps1 `
 No model is downloaded by this location contract. Native download remains
 controlled by the existing explicit URL and SHA-256 configuration in
 `model_download`.
+
+## Named model profiles
+
+The native config can select a named split-model pair, while the Python
+launcher accepts the same shape with a directory in `model_path`:
+
+```json
+{
+  "default_model_profile": "base",
+  "model_profiles": {
+    "base": {
+      "talker_model": "base/talker-Q8_0.gguf",
+      "codec_model": "common/tokenizer-Q8_0.gguf"
+    },
+    "ru-stress": {
+      "model_root": "D:/AI/Models/QwenTTS",
+      "model_path": "ru-stress"
+    }
+  }
+}
+```
+
+Select a profile explicitly with `-ModelProfile ru-stress`. An explicit model
+path still wins over the profile, and an unknown explicitly requested profile
+fails closed. The example config keeps `base` as the default, so existing
+launches retain their behavior.
