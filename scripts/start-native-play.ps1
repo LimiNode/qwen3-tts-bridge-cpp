@@ -2,6 +2,9 @@
 param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\native-worker.local.json'),
     [string]$VoiceRegistryPath = '',
+    [string]$ModelRoot = '',
+    [string]$TalkerModel = '',
+    [string]$CodecModel = '',
     [string]$Text,
     [switch]$NoPlayback,
     [switch]$NoDownload,
@@ -16,7 +19,7 @@ if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
     throw "native worker config was not found: $ConfigPath (copy config/native-worker.example.json to native-worker.local.json)"
 }
 $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
-$required = 'player', 'worker', 'runtime_dir', 'talker_model', 'codec_model'
+$required = 'player', 'worker', 'runtime_dir'
 foreach ($name in $required) {
     if (-not $config.$name) { throw "native worker config field '$name' is required" }
 }
@@ -27,8 +30,35 @@ function Resolve-BundlePath([string]$value) {
     return Join-Path $root $value
 }
 
-$talkerModel = Resolve-BundlePath $config.talker_model
-$codecModel = Resolve-BundlePath $config.codec_model
+$configuredModelRoot = if ($ModelRoot) {
+    $ModelRoot
+}
+elseif ($config.model_root) {
+    [string]$config.model_root
+}
+elseif ($env:QWEN_TTS_MODEL_ROOT) {
+    $env:QWEN_TTS_MODEL_ROOT
+}
+else {
+    $root
+}
+if (-not [IO.Path]::IsPathRooted($configuredModelRoot)) {
+    $configuredModelRoot = Join-Path $root $configuredModelRoot
+}
+function Resolve-ModelPath([string]$value, [string]$name) {
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        throw "$name was not configured"
+    }
+    if ([IO.Path]::IsPathRooted($value)) {
+        return $value
+    }
+    return Join-Path $configuredModelRoot $value
+}
+
+$talkerModelValue = if ($TalkerModel) { $TalkerModel } else { [string]$config.talker_model }
+$codecModelValue = if ($CodecModel) { $CodecModel } else { [string]$config.codec_model }
+$talkerModel = Resolve-ModelPath $talkerModelValue 'talker model'
+$codecModel = Resolve-ModelPath $codecModelValue 'codec model'
 $download = $config.model_download
 $ensureScript = Join-Path $PSScriptRoot 'ensure-native-models.ps1'
 $ensureArgs = @(

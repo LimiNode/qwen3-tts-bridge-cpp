@@ -146,6 +146,21 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
             self.native_launcher,
         )
 
+    def test_model_location_contract_supports_explicit_and_environment_root(
+        self,
+    ) -> None:
+        self.assertIn('[string]$ModelRoot = ""', self.launcher)
+        self.assertIn('$env:QWEN_TTS_MODEL_ROOT', self.launcher)
+        self.assertIn('runtimeConfig.model_root', self.launcher)
+        self.assertIn('[string]$ModelRoot = \'\'', self.native_launcher)
+        self.assertIn('[string]$TalkerModel = \'\'', self.native_launcher)
+        self.assertIn('[string]$CodecModel = \'\'', self.native_launcher)
+        self.assertIn('$env:QWEN_TTS_MODEL_ROOT', self.native_launcher)
+        native_config = (_ROOT / "config" / "native-worker.example.json").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"model_root": ""', native_config)
+
     def test_documentation_describes_request_boundary_switching(self) -> None:
         self.assertIn("cmp50hx-low-latency", self.documentation)
         self.assertIn("cmp50hx-fastest-experimental", self.documentation)
