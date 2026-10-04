@@ -23,6 +23,7 @@ param(
     [string]$Python = "",
     [string]$ModelPath = "",
     [string]$ModelRoot = "",
+    [string]$ModelProfile = "",
     [string]$FasterSourcePath = "",
     [string]$QwenSourcePath = "",
     [string]$BuildDirectory = "build"
@@ -97,6 +98,33 @@ if ([string]::IsNullOrWhiteSpace($Python)) {
 }
 $pythonPath = Resolve-ExistingPath $Python "Python"
 
+if ($ModelProfile -and (-not $runtimeConfig -or -not $runtimeConfig.model_profiles)) {
+    throw "Python model profile '$ModelProfile' was requested but model_profiles is not configured"
+}
+if ($runtimeConfig -and $runtimeConfig.model_profiles) {
+    $selectedProfile = if ($ModelProfile) {
+        $ModelProfile
+    }
+    elseif ($runtimeConfig.default_model_profile) {
+        [string]$runtimeConfig.default_model_profile
+    }
+    else {
+        ""
+    }
+    if ($selectedProfile) {
+        $profileProperty = $runtimeConfig.model_profiles.PSObject.Properties[$selectedProfile]
+        if ($null -eq $profileProperty) {
+            throw "Python model profile was not found: $selectedProfile"
+        }
+        $modelProfile = $profileProperty.Value
+        if ([string]::IsNullOrWhiteSpace($ModelPath) -and $modelProfile.model_path) {
+            $ModelPath = [string]$modelProfile.model_path
+        }
+        if ([string]::IsNullOrWhiteSpace($ModelRoot) -and $modelProfile.model_root) {
+            $ModelRoot = [string]$modelProfile.model_root
+        }
+    }
+}
 if ([string]::IsNullOrWhiteSpace($ModelPath) -and $runtimeConfig -and $runtimeConfig.model_path) {
     $ModelPath = [string]$runtimeConfig.model_path
 }
