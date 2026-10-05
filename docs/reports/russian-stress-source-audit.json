@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "audit": "russian_stress_source",
+  "source": {
+    "repo_id": "sknyazev/qwen3-tts-12hz-1.7b-ru-stress-gguf",
+    "revision": "e644ae00257fdd4db0e51b11057370dff6be8bc2",
+    "last_modified": "2026-09-24T17:29:16Z",
+    "license": "Apache-2.0",
+    "base_model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "language": "ru",
+    "library_tags": ["voicy", "llama.cpp", "onnxruntime"],
+    "stress_marker": "U+0301 after the stressed vowel",
+    "yo_marker": "U+0451 is not marked"
+  },
+  "artifacts": {
+    "talker_gguf": [
+      "qwen3_tts_talker.q5_k.gguf",
+      "qwen3_tts_talker.q8_0.gguf",
+      "qwen3_tts_talker.f16.gguf"
+    ],
+    "predictor_gguf": ["qwen3_tts_predictor.q8_0.gguf"],
+    "codec_onnx": [
+      "qwen3_tts_decoder.fp16.onnx",
+      "qwen3_tts_codec_encoder.fp32.onnx",
+      "qwen3_tts_speaker_encoder.fp32.onnx"
+    ],
+    "other": ["tokenizer.json", "stress.json", "lora/adapter.safetensors"]
+  },
+  "native_loader_contract": {
+    "requires_talker_gguf": true,
+    "requires_codec_gguf": true,
+    "accepts_standalone_predictor_gguf": false,
+    "accepts_onnx_codec": false
+  },
+  "native_split_gguf_compatible": false,
+  "blockers": [
+    "codec decoder and encoders are ONNX, not the GGUF codec model required by qwentts.cpp",
+    "standalone predictor GGUF cannot be passed as --codec-model",
+    "no native load smoke or synthesis receipt was run"
+  ],
+  "production_default_changed": false
+}
