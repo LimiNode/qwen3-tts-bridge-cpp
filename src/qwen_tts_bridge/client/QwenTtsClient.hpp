@@ -26,6 +26,11 @@ namespace qwen_tts_bridge {
 /// \struct QwenTtsClientOptions
 /// \brief Runtime options for the public async client facade.
 struct QwenTtsClientOptions {
+    using TextPreparer = std::function<bool(
+        const TtsRequest&,
+        PreparedText&,
+        TtsError&)>;
+
     /// \brief Options passed to the underlying worker session.
     WorkerSessionOptions session; ///< Options passed to the underlying worker session.
 
@@ -49,6 +54,15 @@ struct QwenTtsClientOptions {
     /// this hook.  Exceptions are reported to the request's on_error callback
     /// and the request is not submitted to the worker.
     std::function<std::string(const TtsRequest&)> text_preprocessor; ///< Optional backend-neutral text hook.
+
+    /// \brief Optional structured text preparation hook.
+    ///
+    /// This hook has precedence over `text_preprocessor`. It may retain
+    /// frontend diagnostics and semantic metadata in `PreparedText`. The
+    /// callback must set `PreparedText::original_text` to `request.text` and
+    /// return false with a populated error when preparation cannot proceed.
+    /// It may be called concurrently for different requests.
+    TextPreparer text_preparer; ///< Optional structured frontend hook.
 };
 
 /// \class QwenTtsClient

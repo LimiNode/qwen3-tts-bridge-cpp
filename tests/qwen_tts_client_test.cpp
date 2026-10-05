@@ -840,6 +840,52 @@ void test_prepared_request_bypasses_preprocessor_once() {
     client.stop();
 }
 
+void test_structured_text_preparer_runs_once_and_preserves_metadata() {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    raw_transport->block_after_hello = true;
+    int preparation_calls = 0;
+    int legacy_preprocessor_calls = 0;
+    QwenTtsClientOptions options = make_client_options();
+    options.text_preprocessor = [&](const TtsRequest&) {
+        ++legacy_preprocessor_calls;
+        return std::string("legacy path");
+    };
+    options.text_preparer = [&](const TtsRequest& request,
+                                PreparedText& prepared,
+                                TtsError& error) {
+        ++preparation_calls;
+        prepared.original_text = request.text;
+        prepared.frontend_normalized_text = "frontend normalized";
+        prepared.frontend_pronunciation_text = "frontend pronunciation";
+        prepared.effective_text = "frontend pronunciation";
+        prepared.frontend_warnings.push_back({
+            "test_warning", "preserved diagnostic", 0, 0});
+        prepared.frontend_has_uncertainty = true;
+        error = TtsError{};
+        return true;
+    };
+
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), options));
+    RequestProbe probe;
+    CHECK(client.synthesize_async(
+        make_request("raw source"), make_callbacks(probe)) != 0);
+    CHECK(preparation_calls == 1);
+    CHECK(legacy_preprocessor_calls == 0);
+    CHECK(raw_transport->wait_until_blocked());
+
+    const auto sent = raw_transport->last_send();
+    std::string wire;
+    for (const auto byte : sent) {
+        wire.push_back(static_cast<char>(std::to_integer<unsigned char>(byte)));
+    }
+    CHECK(wire.find("frontend pronunciation") != std::string::npos);
+    CHECK(wire.find("raw source") == std::string::npos);
+    raw_transport->release();
+    client.stop();
+}
+
 void test_prepared_request_rejects_source_mismatch() {
     auto transport = std::make_unique<BlockingTransport>();
     QwenTtsClient client;
@@ -934,6 +980,7 @@ int main() {
     test_text_preprocessor_failure_is_local();
     test_prepare_text_reports_effective_utf8_metrics();
     test_prepared_request_bypasses_preprocessor_once();
+    test_structured_text_preparer_runs_once_and_preserves_metadata();
     test_prepared_request_rejects_source_mismatch();
     test_duplicate_explicit_request_id_is_rejected();
     test_transport_send_failure_fails_request_once();

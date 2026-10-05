@@ -15,6 +15,24 @@
 
 namespace qwen_tts_bridge {
 
+/// \struct TextPreparationWarning
+/// \brief Warning preserved from an optional text frontend.
+struct TextPreparationWarning {
+    std::string code; ///< Stable frontend warning code.
+    std::string message; ///< Human-readable warning text.
+    std::size_t offset = 0; ///< UTF-8 byte offset in the source text.
+    std::size_t length = 0; ///< UTF-8 byte length of the source span.
+};
+
+/// \struct TextStressDecision
+/// \brief Semantic stress decision preserved from an optional text frontend.
+struct TextStressDecision {
+    std::string word; ///< Token or phrase associated with the decision.
+    std::optional<std::size_t> stressed_vowel; ///< Zero-based vowel ordinal.
+    bool from_dictionary = false; ///< Whether the decision came from a dictionary.
+    std::string reason; ///< Stable or human-readable decision source.
+};
+
 /// \struct TtsSamplingOptions
 /// \brief Optional per-request decoding controls.
 ///
@@ -97,6 +115,13 @@ struct PreparedText {
     std::size_t utf8_bytes = 0; ///< Total UTF-8 bytes in effective_text.
     std::size_t non_space_utf8_bytes = 0; ///< UTF-8 bytes belonging to non-space code points.
     bool was_modified = false; ///< Whether effective_text differs from original_text.
+
+    /// \brief Text stages produced by a model-agnostic frontend, when present.
+    std::string frontend_normalized_text;
+    std::string frontend_pronunciation_text;
+    std::vector<TextPreparationWarning> frontend_warnings;
+    std::vector<TextStressDecision> frontend_stress_decisions;
+    bool frontend_has_uncertainty = false;
 };
 
 /// \struct PreparedTtsRequest
