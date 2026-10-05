@@ -13,3 +13,6 @@
 [submodule "external/cpp/qwentts.cpp"]
 	path = external/cpp/qwentts.cpp
 	url = https://github.com/LimiNode/qwentts.cpp.git
+[submodule "external/cpp/tts-front-cpp"]
+	path = external/cpp/tts-front-cpp
+	url = https://github.com/LimiNode/tts-front-cpp.git

@@ -238,11 +238,72 @@ bool QwenTtsClient::prepare_text(
     const TtsRequest& request,
     PreparedText& prepared,
     TtsError& error) const {
+    QwenTtsClientOptions::TextPreparer text_preparer;
     std::function<std::string(const TtsRequest&)> text_preprocessor;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        text_preparer = options_.text_preparer;
         text_preprocessor = options_.text_preprocessor;
     }
+
+    if (text_preparer) {
+        try {
+            if (!text_preparer(request, prepared, error)) {
+                if (error.code.empty()) {
+                    error = make_local_error(
+                        request.id,
+                        "client_error",
+                        "text_preprocessing_failed",
+                        "structured text preparation failed");
+                }
+                return false;
+            }
+        }
+        catch (const std::exception& exception) {
+            error = make_local_error(
+                request.id,
+                "client_error",
+                "text_preprocessing_failed",
+                std::string("text preprocessing failed: ") + exception.what());
+            return false;
+        }
+        catch (...) {
+            error = make_local_error(
+                request.id,
+                "client_error",
+                "text_preprocessing_failed",
+                "text preprocessing failed: unknown exception");
+            return false;
+        }
+
+        if (prepared.original_text != request.text) {
+            error = make_local_error(
+                request.id,
+                "client_error",
+                "prepared_text_mismatch",
+                "structured text preparation returned a mismatched source text");
+            return false;
+        }
+        if (!is_valid_utf8(prepared.effective_text)) {
+            error = make_local_error(
+                request.id,
+                "client_error",
+                "invalid_utf8_text",
+                "text preparation returned invalid UTF-8");
+            return false;
+        }
+        if (prepared.effective_text.empty()) {
+            error = make_local_error(
+                request.id,
+                "request_error",
+                "empty_text",
+                "synthesis text is empty after preprocessing");
+            return false;
+        }
+        refresh_prepared_text_metrics(prepared);
+        return true;
+    }
+
     std::string processed_text;
     try {
         processed_text = text_preprocessor
