@@ -10,7 +10,7 @@ the native production defaults.
 The repository was inspected at revision
 `e644ae00257fdd4db0e51b11057370dff6be8bc2` (2026-09-24). Its `stress.json`
 describes the contract as a combining acute accent, U+0301, placed after the
-stressed vowel. The model does not mark `ё` separately. The intended renderer
+stressed vowel. The model does not mark U+0451 (`ё`) separately. The intended renderer
 input therefore contains real UTF-8 combining marks, not transliteration or a
 PowerShell code-page approximation.
 
@@ -33,6 +33,23 @@ native split-GGUF-compatible model package:
 native_split_gguf_compatible = false
 ```
 
+The source package also publishes a standalone predictor GGUF and tokenizer
+JSON, but the current bridge loader does not accept a standalone predictor
+argument. It requires a talker GGUF plus a codec/tokenizer GGUF. The audit
+records this loader contract explicitly rather than inferring compatibility from
+the presence of any individual GGUF file.
+
+The source metadata currently identifies the base family as
+`Qwen/Qwen3-TTS-12Hz-1.7B-Base`; filenames expose Q5/Q8/F16 variants. The
+12-Hz naming and U+0301 convention are provenance facts, not proof that this
+ONNX codec stack can be loaded by qwentts.cpp.
+
+The source declares Apache-2.0 licensing and tags the package for
+`voicy`, llama.cpp, and ONNX Runtime. The exact source file inventory and
+provenance are recorded in
+[`docs/reports/russian-stress-source-audit.json`](reports/russian-stress-source-audit.json).
+That report intentionally contains no model weights or downloaded artifacts.
+
 Do not rename or substitute the ONNX decoder as a `.gguf`, and do not replace
 the production codec model. Supporting this format requires a separate engine
 integration and its own quality, latency, EOS, and voice-identity gates.
@@ -49,7 +66,8 @@ python scripts/audit-russian-stress-model.py `
 ```
 
 The command never downloads files. It reports GGUF magic/version, filename
-roles, optional SHA-256 hashes, stress metadata, and explicit blockers. An
+roles, selected GGUF metadata, tokenizer vocabulary information, optional
+SHA-256 hashes, stress metadata, provenance, and explicit blockers. An
 incompatible result is a completed audit, not a reason to run an emulated A/B
 through the current Base model.
 
