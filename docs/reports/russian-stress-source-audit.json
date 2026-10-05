@@ -36,7 +36,7 @@
   "blockers": [
     "codec decoder and encoders are ONNX, not the GGUF codec model required by qwentts.cpp",
     "standalone predictor GGUF cannot be passed as --codec-model",
-    "no native load smoke or synthesis receipt was run"
+    "published artifacts require the exact-Base LoRA merge and qwentts conversion documented in russian-stress-native-conversion.json"
   ],
   "production_default_changed": false
 }

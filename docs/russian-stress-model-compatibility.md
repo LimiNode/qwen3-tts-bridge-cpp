@@ -26,11 +26,43 @@ The current native worker accepts two explicit files:
 The stress repository contains talker/predictor GGUF artifacts, but its codec
 side is published as ONNX (`qwen3_tts_decoder.fp16.onnx` and encoder files).
 A standalone predictor GGUF is not a replacement for the codec GGUF expected by
-the qwentts split runtime. Consequently this repository is currently **not** a
-native split-GGUF-compatible model package:
+the qwentts split runtime. The published package is not directly consumable by
+the native split loader. The supported research path is to merge the published
+LoRA into the exact Base talker checkpoint and run the pinned qwentts converter
+with the official Base 12-Hz tokenizer.
+
+The conversion proof is recorded in
+[`docs/reports/russian-stress-native-conversion.json`](reports/russian-stress-native-conversion.json).
+It produced a native talker/codec pair outside the repository and a CPU load
+and synthesis receipt. The pair is experimentally load-compatible, but it is
+not yet a supported model profile: target-hardware latency, voice identity,
+EOS, and listening gates remain open.
+
+The merge step is intentionally an explicit research command and requires
+PyTorch plus `safetensors` in the research environment:
+
+```powershell
+python scripts/merge-russian-stress-lora.py `
+  --base-dir E:\models\qwen3-tts-base `
+  --adapter-dir E:\models\qwen3-tts-ru-stress\lora `
+  --output-dir E:\tmp\qwen3-tts-ru-stress-merged `
+  --expected-base-revision fd4b254389122332181a7c3db7f27e918eec64e3 `
+  --receipt E:\tmp\qwen3-tts-ru-stress-merge-receipt.json
+```
+
+It fails closed on the pinned Base/adapter SHA-256, Base revision, exact 196
+LoRA-pair contract, target root, LoRA shapes, and non-zero deltas. The output
+directory is converter-ready: alongside the merged `model.safetensors`, the
+script copies and hashes `config.json`, `generation_config.json`, `merges.txt`,
+`tokenizer_config.json`, and `vocab.json` from that same exact Base directory.
+It writes no files under the repository's `models/` directory and does not
+alter a bridge profile.
+
+The published package itself remains **not directly split-GGUF-compatible**:
 
 ```text
-native_split_gguf_compatible = false
+published_package_native_split_gguf_compatible = false
+converted_experimental_pair_native_load = true
 ```
 
 The source package also publishes a standalone predictor GGUF and tokenizer
@@ -51,8 +83,11 @@ provenance are recorded in
 That report intentionally contains no model weights or downloaded artifacts.
 
 Do not rename or substitute the ONNX decoder as a `.gguf`, and do not replace
-the production codec model. Supporting this format requires a separate engine
-integration and its own quality, latency, EOS, and voice-identity gates.
+the production codec model. The conversion script merges only the talker LoRA;
+predictor and speaker-encoder tensors are proven unchanged, and the codec is
+the official Base tokenizer converted by the pinned qwentts tool. This keeps
+the native path free of ONNX runtime dependencies while retaining the source
+model's explicit U+0301 stress contract.
 
 Run the offline audit against a locally downloaded directory with:
 
@@ -73,7 +108,7 @@ through the current Base model.
 
 ## Deferred A/B plan
 
-If a compatible native split pair becomes available, compare it with the
+The experimental pair must next be compared with the
 current Base Q8/Q8 runtime using the same registered voice/reference, seed,
 CUDA/runtime build, and text. Keep the exact hashes for both model files and
 the runtime manifest. The corpus is:
