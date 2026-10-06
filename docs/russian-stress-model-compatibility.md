@@ -135,8 +135,16 @@ unchanged until those gates pass.
 
 The first CMP 50HX native A/B is recorded in
 [`docs/reports/russian-stress-cmp50hx-ab.json`](reports/russian-stress-cmp50hx-ab.json).
-It used the correct separately converted vanilla Base Q8 checkpoint. On the
-plain `Сегодня` control, Base reached `max_tokens` while RU-stress reached
-`natural_eos` in seven frames. This is a promising mechanical result, not yet
-a listening/production acceptance: the Base runaway and the RU-stress output
-still need semantic listening and a warmed multi-request run.
+That manifest is retained as historical mechanical evidence only: its
+serialized text was mojibake and its greedy/short bounded run produced only a
+few frames. It must not be used as semantic listening evidence.
+
+The corrected listening control is recorded in
+[`docs/reports/russian-stress-listening-correction.json`](reports/russian-stress-listening-correction.json).
+With the short registered Kraftwerk ICL profile and stochastic sampling, both
+vanilla Base and the converted RU-stress Q8 model produce a non-empty 21-frame
+control utterance. The PCM is byte-identical for the plain `Сегодня` control.
+The explicit combining-acute cases are also byte-identical between the two
+models, so the RU-stress candidate currently fails the stress-aware semantic
+gate. It remains an experimental load-compatible artifact, not a supported
+model profile; no production default was changed.

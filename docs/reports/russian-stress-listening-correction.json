@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "audit": "russian_stress_listening_correction",
+  "status": "quality_gate_failed",
+  "runtime": {
+    "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01",
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "sampling": "stochastic, seed=1000",
+    "language": "russian",
+    "reference_audio": "examples/assets/kraftwerk_robot_3_ru.wav",
+    "reference_text": "Я твой слуга, я твой работник",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94"
+  },
+  "controls": {
+    "plain_text": "Сегодня",
+    "base": {
+      "frames": 21,
+      "audio_seconds": 1.68,
+      "pcm_sha256": "a6340dfd715b52bbeb2571062444e8ee8e5ae042bcc9e4195ea43e43184b2af4",
+      "pcm_peak_s16": 14735,
+      "pcm_rms_s16": 3469.67
+    },
+    "ru_stress": {
+      "frames": 21,
+      "audio_seconds": 1.68,
+      "pcm_sha256": "a6340dfd715b52bbeb2571062444e8ee8e5ae042bcc9e4195ea43e43184b2af4",
+      "pcm_peak_s16": 14735,
+      "pcm_rms_s16": 3469.67
+    },
+    "interpretation": "Both paths produce non-empty, byte-identical control audio. This is a valid control receipt, not evidence that RU-stress changes prosody."
+  },
+  "explicit_stress": {
+    "cases": [
+      "Это ста́рый замок на высокой горе.",
+      "На двери слома́лся замо́к."
+    ],
+    "base_and_ru_stress_pcm_identical": true,
+    "interpretation": "The converted RU-stress Q8 path did not produce a measurable trajectory difference for these combining-acute inputs. Do not promote it as stress-aware until the source inference path and merge/conversion are revalidated."
+  },
+  "invalid_prior_artifact": {
+    "reference_audio": "examples/assets/voice-profiles/kraftwerk_robot_ru_fidelity.wav",
+    "sampling": "greedy",
+    "max_new": 7,
+    "observed": "2-7 frames and an unintelligible hum-like fragment",
+    "reason": "The run was a bounded greedy diagnostic with a long ICL reference; it is not a semantic listening acceptance. The historical manifest also contained mojibake text in its serialized report."
+  },
+  "production_default_changed": false,
+  "supported_profile_added": false
+}
