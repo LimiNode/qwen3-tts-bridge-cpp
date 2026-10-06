@@ -132,3 +132,11 @@ abbreviations после tts-front-cpp
 Record first PCM, RTF, natural EOS, short/middle/long utterance behavior,
 voice identity/timbre, and PCM/WAV hashes. The production default remains
 unchanged until those gates pass.
+
+The first CMP 50HX native A/B is recorded in
+[`docs/reports/russian-stress-cmp50hx-ab.json`](reports/russian-stress-cmp50hx-ab.json).
+It used the correct separately converted vanilla Base Q8 checkpoint. On the
+plain `Сегодня` control, Base reached `max_tokens` while RU-stress reached
+`natural_eos` in seven frames. This is a promising mechanical result, not yet
+a listening/production acceptance: the Base runaway and the RU-stress output
+still need semantic listening and a warmed multi-request run.

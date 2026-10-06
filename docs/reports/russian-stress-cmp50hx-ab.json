@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "audit": "russian_stress_cmp50hx_ab",
+  "runtime": {
+    "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01",
+    "ggml_revision": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "cuda_graphs": true,
+    "device_selection": "CUDA_VISIBLE_DEVICES=0",
+    "executable_sha256": "a128dc222a1fc6a4473f961fa97b0bb34aa29057bf3fcba413320c24797fd917",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "voice_reference": "examples/assets/voice-profiles/kraftwerk_robot_ru_warm.wav",
+    "language": "russian",
+    "sampling": "greedy, seed=1000",
+    "guard": false
+  },
+  "models": {
+    "base_talker": {
+      "file": "qwen-talker-1.7b-base-Q8_0.gguf",
+      "sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda"
+    },
+    "ru_stress_talker": {
+      "file": "qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+      "sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427"
+    }
+  },
+  "plain_text": {
+    "text": "Сегодня",
+    "base": {
+      "finish_reason": "max_tokens",
+      "frames": 2048,
+      "audio_seconds": 163.84,
+      "ttfa_ms": 139.1,
+      "total_ms": 47242.3,
+      "rtf": 0.288,
+      "interpretation": "runaway_generation_at_default_max_new"
+    },
+    "ru_stress": {
+      "finish_reason": "natural_eos",
+      "frames": 7,
+      "audio_seconds": 0.56,
+      "ttfa_ms": 115.7,
+      "total_ms": 380.7,
+      "rtf": 0.680
+    }
+  },
+  "explicit_stress_smoke": {
+    "text": "за́мок\\nзамо́к\\nму́ка\\nмука́",
+    "ru_stress": {
+      "finish_reason": "natural_eos",
+      "frames": 150,
+      "audio_seconds": 12.0,
+      "ttfa_ms": 117.8,
+      "total_ms": 3252.2,
+      "rtf": 0.271
+    }
+  },
+  "result": "ru_stress_native_load_and_eos_passed; base_control_hit_max_tokens",
+  "production_default_changed": false,
+  "human_listening_gate": "pending"
+}
