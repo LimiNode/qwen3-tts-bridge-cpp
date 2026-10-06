@@ -38,6 +38,12 @@ and synthesis receipt. The pair is experimentally load-compatible, but it is
 not yet a supported model profile: target-hardware latency, voice identity,
 EOS, and listening gates remain open.
 
+The generated talker was also compared with the published RU-stress Q8 oracle.
+After the documented name mapping, 310 of 311 talker tensor payloads are byte
+identical. The only mismatch is the text embedding payload; after
+dequantization its relative L2 difference is `1.36e-6`. Details and hashes are
+in [`docs/reports/russian-stress-oracle-parity.json`](reports/russian-stress-oracle-parity.json).
+
 The merge step is intentionally an explicit research command and requires
 PyTorch plus `safetensors` in the research environment:
 
