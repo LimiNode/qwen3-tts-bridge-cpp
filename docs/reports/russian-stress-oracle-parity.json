@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "audit": "russian_stress_oracle_parity",
+  "source": {
+    "repo_id": "sknyazev/qwen3-tts-12hz-1.7b-ru-stress-gguf",
+    "revision": "e644ae00257fdd4db0e51b11057370dff6be8bc2",
+    "oracle_file": "qwen3_tts_talker.q8_0.gguf",
+    "oracle_sha256": "fb7fbe0d0b009575bcc02349f9391623d4a92851c76794f974081ed31233fc1a"
+  },
+  "generated": {
+    "file": "qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+    "sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+    "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01"
+  },
+  "mapping": {
+    "oracle_tensor_count": 311,
+    "generated_tensor_count": 480,
+    "mapped_talker_tensor_count": 311,
+    "mapping": "output.weight -> talker.codec_head.weight; token_embd.weight -> talker.codec_embd.weight; remaining oracle names -> talker.<name>"
+  },
+  "raw_tensor_parity": {
+    "exact_equal": 310,
+    "mismatch": 1,
+    "mismatch_tensor": "token_embd.weight",
+    "interpretation": "All mapped quantized/F32 tensor payloads except the embedding payload are byte-identical."
+  },
+  "embedding_dequantized_difference": {
+    "max_abs": 0.00001138448715209961,
+    "mean_abs": 0.00000000003837878279067119,
+    "relative_l2": 0.0000013583703548647463,
+    "note": "The sole raw mismatch is numerically negligible after dequantization; this is not claimed as bit-identical oracle parity."
+  },
+  "result": "converter_output_matches_published_oracle_on_310_of_311_mapped_tensors",
+  "production_default_changed": false
+}
