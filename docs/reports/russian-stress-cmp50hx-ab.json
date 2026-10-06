@@ -56,6 +56,23 @@
       "rtf": 0.271
     }
   },
+  "base_guard_diagnostic": {
+    "guard": true,
+    "guard_parameters": {
+      "expected": 36,
+      "soft": 22,
+      "max": 43,
+      "force": 54,
+      "boost": 25
+    },
+    "finish_reason": "eos_assisted",
+    "frames": 28,
+    "audio_seconds": 2.24,
+    "ttfa_ms": 115.8,
+    "total_ms": 780.9,
+    "rtf": 0.349,
+    "interpretation": "mechanical_runaway_bound_only;_not_semantic_acceptance"
+  },
   "result": "ru_stress_native_load_and_eos_passed; base_control_hit_max_tokens",
   "production_default_changed": false,
   "human_listening_gate": "pending"
