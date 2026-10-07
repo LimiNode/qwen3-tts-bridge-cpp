@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "audit": "russian_stress_kraftwerk_profile_ab",
-  "status": "human_listening_pending",
+  "status": "targeted_human_listening_pass",
   "runtime": {
     "bridge_worker": "0.2.0-native-qwentts/130cb99",
     "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01",
@@ -39,6 +39,12 @@
     }
   },
   "interpretation": "This is the first paired receipt using the registered warm Kraftwerk profile and distinct model hashes. Both requests reached natural_eos and produced non-empty WAVs. Voice identity, semantic completeness, and stress quality remain a human listening gate.",
+  "human_listening": {
+    "status": "pass_for_recorded_sentence",
+    "observer": "user",
+    "result": "The RU-stress track retained the warm Kraftwerk voice and placed the explicitly marked stresses correctly, including за́мок, горе́, and замо́к.",
+    "scope_limit": "This is a targeted sentence-level pass, not full Russian-model or production-profile acceptance."
+  },
   "production_default_changed": false,
   "supported_profile_added": false
 }
