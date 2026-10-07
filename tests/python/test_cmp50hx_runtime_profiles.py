@@ -174,7 +174,10 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
             native_config,
         )
         self.assertIn(
-            '"talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427"',
+            (
+                '"talker_sha256": '
+                '"f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427"'
+            ),
             native_config,
         )
 
