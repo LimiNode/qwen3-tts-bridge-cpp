@@ -65,6 +65,13 @@ std::vector<PcmChunk> TerminalFadePostProcessor::process(PcmChunk chunk) {
     }
 
     received_audio_ = true;
+    if (pending_.empty()) {
+        pending_first_sample_ = chunk.first_sample;
+    }
+    const std::uint64_t chunk_samples = chunk.sample_count != 0
+        ? chunk.sample_count
+        : static_cast<std::uint64_t>(chunk.bytes.size() / frame_bytes_);
+    pending_sample_count_ += chunk_samples;
     pending_.insert(
         pending_.end(),
         std::make_move_iterator(chunk.bytes.begin()),
@@ -77,11 +84,17 @@ std::vector<PcmChunk> TerminalFadePostProcessor::process(PcmChunk chunk) {
     PcmChunk output;
     output.request_id = request_id_;
     output.format = format_.value();
+    output.first_sample = pending_first_sample_;
+    output.sample_count = static_cast<std::uint32_t>(
+        emitted_bytes / frame_bytes_);
     output.bytes.insert(
         output.bytes.end(),
         std::make_move_iterator(pending_.begin()),
         std::make_move_iterator(pending_.begin() + emitted_bytes));
     pending_.erase(pending_.begin(), pending_.begin() + emitted_bytes);
+    pending_first_sample_ += output.sample_count;
+    pending_sample_count_ -= std::min<std::uint64_t>(
+        pending_sample_count_, output.sample_count);
     return {std::move(output)};
 }
 
@@ -109,6 +122,9 @@ std::vector<PcmChunk> TerminalFadePostProcessor::finish(
     PcmChunk output;
     output.request_id = request_id_;
     output.format = format_.value();
+    output.first_sample = pending_first_sample_;
+    output.sample_count = static_cast<std::uint32_t>(
+        pending_.size() / frame_bytes_);
     output.bytes = std::move(pending_);
     return output.bytes.empty()
         ? std::vector<PcmChunk>{}
@@ -120,6 +136,8 @@ void TerminalFadePostProcessor::reset() noexcept {
     request_id_ = 0;
     frame_bytes_ = 0;
     hold_bytes_ = 0;
+    pending_first_sample_ = 0;
+    pending_sample_count_ = 0;
     received_audio_ = false;
     finished_ = false;
     pending_.clear();
@@ -161,6 +179,18 @@ void TerminalFadePostProcessor::validate_chunk(const PcmChunk& chunk) const {
     if (chunk.bytes.size() % frame_bytes_ != 0) {
         throw std::runtime_error(
             "PCM chunk does not contain complete sample frames");
+    }
+    const auto expected_samples = static_cast<std::uint64_t>(
+        chunk.bytes.size() / frame_bytes_);
+    if (chunk.sample_count != 0 &&
+        chunk.sample_count != expected_samples) {
+        throw std::runtime_error(
+            "PCM chunk sample_count does not match its payload");
+    }
+    if (received_audio_ && chunk.sample_count != 0 &&
+        chunk.first_sample != pending_first_sample_ + pending_sample_count_) {
+        throw std::runtime_error(
+            "PCM chunk sample timeline is not contiguous");
     }
 }
 

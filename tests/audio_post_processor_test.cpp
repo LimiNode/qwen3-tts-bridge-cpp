@@ -24,6 +24,7 @@ namespace {
 
 using qwen_tts_bridge::AudioFormat;
 using qwen_tts_bridge::PcmChunk;
+using qwen_tts_bridge::SpeechTimingChunk;
 using qwen_tts_bridge::TtsCallbacks;
 using qwen_tts_bridge::audio::AudioPostProcessorChain;
 using qwen_tts_bridge::audio::AudioTerminalReason;
@@ -103,9 +104,15 @@ void test_completion_fades_retained_tail_and_appends_silence() {
 
     auto output = chain.process(constant_chunk(20));
     CHECK(samples_from(output).size() == 10);
+    CHECK(output.size() == 1);
+    CHECK(output.front().first_sample == 0);
+    CHECK(output.front().sample_count == 10);
     auto final = chain.finish(AudioTerminalReason::Completed);
     const auto tail = samples_from(final);
     CHECK(tail.size() == 30);
+    CHECK(final.size() == 1);
+    CHECK(final.front().first_sample == 10);
+    CHECK(final.front().sample_count == 30);
     CHECK(tail.front() == 1000);
     CHECK(tail[9] == 0);
     CHECK(tail[10] == 0);
@@ -326,9 +333,13 @@ void test_callback_adapter_emits_tail_before_terminal_callback() {
     auto chain = std::make_shared<AudioPostProcessorChain>();
     chain->add(fade());
     std::vector<std::string> events;
+    std::vector<SpeechTimingChunk> timing;
     TtsCallbacks downstream;
     downstream.on_audio = [&events](const PcmChunk&) {
         events.push_back("audio");
+    };
+    downstream.on_timing = [&timing](const SpeechTimingChunk& chunk) {
+        timing.push_back(chunk);
     };
     downstream.on_cancelled = [&events]() {
         events.push_back("cancelled");
@@ -341,6 +352,13 @@ void test_callback_adapter_emits_tail_before_terminal_callback() {
     CHECK(events[0] == "audio");
     CHECK(events[1] == "audio");
     CHECK(events[2] == "cancelled");
+    CHECK(timing.size() == 2);
+    CHECK(timing[0].request_id == 7);
+    CHECK(timing[0].first_sample == 0);
+    CHECK(timing[0].sample_count == 10);
+    CHECK(timing[0].sample_rate == 1000);
+    CHECK(timing[1].first_sample == 10);
+    CHECK(timing[1].sample_count == 10);
 }
 
 void test_callback_adapter_allows_reentrant_terminal_request() {

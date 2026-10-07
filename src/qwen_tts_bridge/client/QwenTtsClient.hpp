@@ -11,6 +11,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -180,6 +181,9 @@ private:
     struct ActiveRequest {
         TtsCallbacks callbacks;
         AudioFormat audio_format;
+        std::optional<PreparedText> prepared_text;
+        std::uint64_t next_sample = 0;
+        bool text_context_delivered = false;
     };
 
     struct OutboundCommand {
