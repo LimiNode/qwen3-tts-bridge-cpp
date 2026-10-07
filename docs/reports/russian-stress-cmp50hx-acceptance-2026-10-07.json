@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "audit": "russian_stress_cmp50hx_acceptance",
+  "status": "mechanical_pass_listening_pending",
+  "scope": "12 Russian utterances on the canonical native worker with the opt-in ru-stress talker and the registered warm Kraftwerk profile",
+  "runtime": {
+    "bridge_main_merge_commit": "aa7460036d52d099b1b128e297e1d00ebcff0212",
+    "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01",
+    "qwentts_abi": 6,
+    "cuda_graphs": true,
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "worker_sha256": "5ee54c12f5536083bd354c03823ee3e2a0d635752ba43e69d68eb4676446bbab",
+    "talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "runtime_manifest_sha256": "559d8c63fec8958801627970e6421725283d1a63e217fa5a636ca0057ba9dd45",
+    "voice_id": "kraftwerk_robot_ru_warm",
+    "voice_registry_sha256": "07e471ab1631bb87150f6a75d4e7568fc9fa4b65bbf74a201b6c0b037be7f5f0",
+    "seed": 1002,
+    "stream_max_chunk_frames": 2,
+    "warmup_synthesis": true
+  },
+  "cases": [
+    {"id": "zamok_a", "text": "Ста́рый за́мок стоит на горе́.", "first_pcm_ms": 191.99, "audio_bytes": 103680, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "zamok_o", "text": "Новый замо́к закрывает дверь.", "first_pcm_ms": 196.57, "audio_bytes": 80640, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "muka_a", "text": "Эта му́ка нужна для теста.", "first_pcm_ms": 195.84, "audio_bytes": 88320, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "muka_o", "text": "Его мука́ была сильной.", "first_pcm_ms": 188.91, "audio_bytes": 111360, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "atlas_a", "text": "На столе лежит а́тлас.", "first_pcm_ms": 188.75, "audio_bytes": 96000, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "atlas_o", "text": "Рядом новый атла́с тканей.", "first_pcm_ms": 187.42, "audio_bytes": 126720, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "numbers", "text": "В две тысячи двадцать шестом году робот проверит сто двадцать три команды и сорок пять голосов.", "first_pcm_ms": 188.82, "audio_bytes": 334080, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "abbr", "text": "Система ЦПУ и ОЗУ готова к запуску, версия три точка один.", "first_pcm_ms": 188.60, "audio_bytes": 234240, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "plain_short", "text": "Сегодня тёплый роботизированный голос говорит спокойно.", "first_pcm_ms": 179.47, "audio_bytes": 172800, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "plain_medium", "text": "Сегодня тёплый роботизированный голос проверяет новую русскую фразу без явных знаков ударения.", "first_pcm_ms": 188.66, "audio_bytes": 326400, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "long_ops", "text": "Сначала проверь питание, затем связь и датчики, после этого запусти диагностику и сообщи результат оператору.", "first_pcm_ms": 194.29, "audio_bytes": 449280, "execution_outcome": "natural_eos", "starvation_detected": false},
+    {"id": "stress_sentence", "text": "Сего́дня тёплый голос проверяет за́мок на горе́, а на двери слома́лся замо́к.", "first_pcm_ms": 180.14, "audio_bytes": 264960, "execution_outcome": "natural_eos", "starvation_detected": false}
+  ],
+  "summary": {
+    "case_count": 12,
+    "non_empty_pcm_cases": 12,
+    "natural_eos_cases": 12,
+    "starvation_free_cases": 12,
+    "first_pcm_ms_min": 179.47,
+    "first_pcm_ms_max": 196.57,
+    "human_listening": "pending",
+    "production_default_changed": false,
+    "ru_stress_profile": "opt_in_experimental"
+  },
+  "artifacts": {
+    "local_wav_directory": "C:/tmp/ru-stress-acceptance-20261007",
+    "not_committed": true
+  }
+}
