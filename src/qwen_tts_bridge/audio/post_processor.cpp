@@ -13,10 +13,22 @@ namespace {
 
 void emit_chunks(TtsCallbacks& callbacks, std::vector<PcmChunk> chunks) {
     if (!callbacks.on_audio) {
-        return;
+        if (!callbacks.on_timing) {
+            return;
+        }
     }
     for (const PcmChunk& chunk : chunks) {
-        callbacks.on_audio(chunk);
+        if (callbacks.on_audio) {
+            callbacks.on_audio(chunk);
+        }
+        if (callbacks.on_timing && chunk.sample_count != 0) {
+            SpeechTimingChunk timing;
+            timing.request_id = chunk.request_id;
+            timing.first_sample = chunk.first_sample;
+            timing.sample_count = chunk.sample_count;
+            timing.sample_rate = chunk.format.sample_rate;
+            callbacks.on_timing(timing);
+        }
     }
 }
 
@@ -194,6 +206,13 @@ TtsCallbacks with_audio_post_processing(
     auto callbacks = std::make_shared<TtsCallbacks>(std::move(downstream));
     auto state = std::make_shared<AdapterState>();
     TtsCallbacks wrapped;
+    wrapped.on_text_prepared = [callbacks, state](const PreparedText& prepared) {
+        dispatch_event(state, [callbacks, prepared]() {
+            if (callbacks->on_text_prepared) {
+                callbacks->on_text_prepared(prepared);
+            }
+        });
+    };
     wrapped.on_audio = [processors, callbacks, state](const PcmChunk& chunk) {
         dispatch_event(state, [processors, callbacks, state, chunk]() {
             if (state->terminal) {

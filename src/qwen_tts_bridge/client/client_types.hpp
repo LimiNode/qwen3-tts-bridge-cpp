@@ -145,6 +145,29 @@ struct PcmChunk {
 
     /// \brief Raw PCM bytes.
     std::vector<std::byte> bytes; ///< Raw PCM bytes.
+
+    /// \brief Zero-based position of the first interleaved sample frame.
+    ///
+    /// This is the canonical media-clock position for the utterance. It is
+    /// derived from PCM accounting and is independent of callback arrival
+    /// time or worker scheduling.
+    std::uint64_t first_sample = 0; ///< First sample-frame position in the utterance.
+
+    /// \brief Number of interleaved sample frames in `bytes`.
+    std::uint32_t sample_count = 0; ///< Number of sample frames in this chunk.
+};
+
+/// \struct SpeechTimingChunk
+/// \brief Sample-addressed sideband event for downstream speech analysis.
+///
+/// The timing stream deliberately contains no viseme or phoneme decision. It
+/// is a lightweight, canonical media-clock feed that can be consumed by an
+/// optional speech-animation layer without delaying PCM delivery.
+struct SpeechTimingChunk {
+    RequestId request_id = 0; ///< Utterance/request that produced this timing.
+    std::uint64_t first_sample = 0; ///< First sample-frame position in the utterance.
+    std::uint32_t sample_count = 0; ///< Number of sample frames in the chunk.
+    std::uint32_t sample_rate = 0; ///< Samples per second for the timeline.
 };
 
 /// \struct TtsError
@@ -181,8 +204,21 @@ struct TtsCompletion {
 /// \struct TtsCallbacks
 /// \brief Callback set for one synthesis request.
 struct TtsCallbacks {
+    /// \brief Called once before audio when prepared frontend context exists.
+    ///
+    /// The callback receives the exact original, normalized, pronunciation,
+    /// and stress metadata produced by the preparation stage. The bridge does
+    /// not run normalization or G2P a second time downstream.
+    std::function<void(const PreparedText&)> on_text_prepared;
+
     /// \brief Called for each PCM chunk.
     std::function<void(const PcmChunk&)> on_audio; ///< Called for each PCM chunk.
+
+    /// \brief Called for each emitted audio chunk with sample-clock metadata.
+    ///
+    /// This callback is informational and must not block PCM delivery. It is
+    /// intentionally generic; viseme and animation policy belong downstream.
+    std::function<void(const SpeechTimingChunk&)> on_timing;
 
     /// \brief Called exactly once when synthesis completes successfully.
     std::function<void()> on_completed; ///< Called exactly once after completion.

@@ -44,6 +44,8 @@ private:
     RequestId request_id_ = 0;
     std::size_t frame_bytes_ = 0;
     std::size_t hold_bytes_ = 0;
+    std::uint64_t pending_first_sample_ = 0;
+    std::uint64_t pending_sample_count_ = 0;
     bool received_audio_ = false;
     bool finished_ = false;
     std::vector<std::byte> pending_;

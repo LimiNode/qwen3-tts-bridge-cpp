@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <chrono>
 #include <exception>
+#include <limits>
+#include <optional>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -13,6 +15,42 @@ namespace qwen_tts_bridge {
 namespace {
 
 constexpr std::size_t outbound_command_fixed_overhead = 64u;
+
+std::optional<std::size_t> bytes_per_sample(const AudioFormat& format) {
+    if (format.sample_format == "u8") {
+        return 1u;
+    }
+    if (format.sample_format == "s16le") {
+        return 2u;
+    }
+    if (format.sample_format == "s24le") {
+        return 3u;
+    }
+    if (format.sample_format == "s32le" ||
+        format.sample_format == "f32le") {
+        return 4u;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::uint32_t> sample_count_for_audio(
+    const AudioFormat& format,
+    std::size_t byte_count) {
+    const auto sample_bytes = bytes_per_sample(format);
+    if (!sample_bytes.has_value() || format.channels == 0) {
+        return std::nullopt;
+    }
+    const std::size_t frame_bytes =
+        sample_bytes.value() * static_cast<std::size_t>(format.channels);
+    if (frame_bytes == 0 || byte_count % frame_bytes != 0) {
+        return std::nullopt;
+    }
+    const std::size_t frames = byte_count / frame_bytes;
+    if (frames > std::numeric_limits<std::uint32_t>::max()) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint32_t>(frames);
+}
 
 TtsError make_local_error(
     RequestId request_id,
@@ -408,7 +446,9 @@ RequestId QwenTtsClient::synthesize_async(
     // effective text after routing, so never trust cached measurements when
     // accepting the request for synthesis.
     refresh_prepared_text_metrics(prepared);
-    request.text = std::move(prepared.effective_text);
+    // Keep the complete preparation receipt for downstream sideband
+    // consumers while sending the exact effective text to the worker.
+    request.text = prepared.effective_text;
 
     SynthesizeMessage message = to_control_message(request);
     ControlMessage control_message{message};
@@ -419,6 +459,7 @@ RequestId QwenTtsClient::synthesize_async(
     ActiveRequest active_request;
     active_request.callbacks = std::move(callbacks);
     active_request.audio_format = request.output;
+    active_request.prepared_text = std::move(prepared);
 
     RequestId request_id = 0;
     {
@@ -738,10 +779,25 @@ void QwenTtsClient::handle_control_event(const WorkerSessionEvent& event) {
     switch (control_message_type(event.control)) {
     case ControlMessageType::Started: {
         const auto& started = std::get<StartedMessage>(event.control);
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto it = active_requests_.find(event.request_id);
-        if (it != active_requests_.end()) {
-            it->second.audio_format = started.audio_format;
+        TtsCallbacks callbacks;
+        std::optional<PreparedText> prepared_text;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            auto it = active_requests_.find(event.request_id);
+            if (it != active_requests_.end()) {
+                it->second.audio_format = started.audio_format;
+                if (it->second.prepared_text.has_value() &&
+                    !it->second.text_context_delivered) {
+                    callbacks = it->second.callbacks;
+                    prepared_text = it->second.prepared_text;
+                    it->second.text_context_delivered = true;
+                }
+            }
+        }
+        if (prepared_text.has_value() && callbacks.on_text_prepared) {
+            invoke_user_callback([&callbacks, &prepared_text]() {
+                callbacks.on_text_prepared(prepared_text.value());
+            });
         }
         break;
     }
@@ -767,6 +823,9 @@ void QwenTtsClient::handle_control_event(const WorkerSessionEvent& event) {
 void QwenTtsClient::handle_audio_event(WorkerSessionEvent event) {
     TtsCallbacks callbacks;
     AudioFormat format;
+    std::optional<PreparedText> prepared_text;
+    std::uint64_t first_sample = 0;
+    std::uint32_t sample_count = 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = active_requests_.find(event.request_id);
@@ -776,16 +835,48 @@ void QwenTtsClient::handle_audio_event(WorkerSessionEvent event) {
         }
         callbacks = it->second.callbacks;
         format = it->second.audio_format;
+        if (it->second.prepared_text.has_value() &&
+            !it->second.text_context_delivered) {
+            prepared_text = it->second.prepared_text;
+            it->second.text_context_delivered = true;
+        }
+        first_sample = it->second.next_sample;
+        if (const auto count = sample_count_for_audio(format, event.audio.size());
+            count.has_value()) {
+            sample_count = count.value();
+            it->second.next_sample += sample_count;
+        }
     }
 
-    if (callbacks.on_audio) {
-        PcmChunk chunk;
-        chunk.request_id = event.request_id;
-        chunk.format = std::move(format);
-        chunk.bytes = std::move(event.audio);
-        invoke_user_callback([&callbacks, &chunk]() {
-            callbacks.on_audio(chunk);
+    if (prepared_text.has_value() && callbacks.on_text_prepared) {
+        invoke_user_callback([&callbacks, &prepared_text]() {
+            callbacks.on_text_prepared(prepared_text.value());
         });
+    }
+
+    PcmChunk chunk;
+    chunk.request_id = event.request_id;
+    chunk.format = format;
+    chunk.first_sample = first_sample;
+    chunk.sample_count = sample_count;
+    chunk.bytes = std::move(event.audio);
+
+    if (!chunk.bytes.empty()) {
+        if (callbacks.on_audio) {
+            invoke_user_callback([&callbacks, &chunk]() {
+                callbacks.on_audio(chunk);
+            });
+        }
+        if (callbacks.on_timing && chunk.sample_count != 0) {
+            SpeechTimingChunk timing;
+            timing.request_id = chunk.request_id;
+            timing.first_sample = chunk.first_sample;
+            timing.sample_count = chunk.sample_count;
+            timing.sample_rate = chunk.format.sample_rate;
+            invoke_user_callback([&callbacks, &timing]() {
+                callbacks.on_timing(timing);
+            });
+        }
     }
 }
 

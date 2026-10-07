@@ -38,6 +38,10 @@ struct RequestProbe {
     bool cancelled = false;
     std::vector<TtsError> errors;
     std::vector<RequestId> audio_request_ids;
+    std::vector<std::uint64_t> audio_first_samples;
+    std::vector<std::uint32_t> audio_sample_counts;
+    std::vector<SpeechTimingChunk> timing_chunks;
+    std::vector<PreparedText> prepared_texts;
 };
 
 std::vector<std::byte> bytes_from_string(const std::string& value) {
@@ -214,6 +218,18 @@ TtsCallbacks make_callbacks(RequestProbe& probe) {
         ++probe.audio_chunks;
         probe.audio_bytes += chunk.bytes.size();
         probe.audio_request_ids.push_back(chunk.request_id);
+        probe.audio_first_samples.push_back(chunk.first_sample);
+        probe.audio_sample_counts.push_back(chunk.sample_count);
+        probe.condition.notify_all();
+    };
+    callbacks.on_timing = [&probe](const SpeechTimingChunk& timing) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.timing_chunks.push_back(timing);
+        probe.condition.notify_all();
+    };
+    callbacks.on_text_prepared = [&probe](const PreparedText& prepared) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.prepared_texts.push_back(prepared);
         probe.condition.notify_all();
     };
     callbacks.on_completed = [&probe]() {
@@ -279,6 +295,18 @@ void test_synthesize_async_delivers_audio_and_completed() {
         CHECK(probe.cancelled_count == 0);
         CHECK(probe.audio_chunks > 0);
         CHECK(probe.audio_bytes > 0);
+        CHECK(probe.audio_first_samples.size() == probe.audio_chunks);
+        CHECK(probe.audio_sample_counts.size() == probe.audio_chunks);
+        CHECK(probe.timing_chunks.size() == probe.audio_chunks);
+        std::uint64_t expected_first_sample = 0;
+        for (std::size_t index = 0; index < probe.audio_chunks; ++index) {
+            CHECK(probe.audio_first_samples[index] == expected_first_sample);
+            CHECK(probe.audio_sample_counts[index] > 0);
+            CHECK(probe.timing_chunks[index].first_sample == expected_first_sample);
+            CHECK(probe.timing_chunks[index].sample_count == probe.audio_sample_counts[index]);
+            CHECK(probe.timing_chunks[index].sample_rate == 24000);
+            expected_first_sample += probe.audio_sample_counts[index];
+        }
         for (const RequestId audio_request_id : probe.audio_request_ids) {
             CHECK(audio_request_id == request_id);
         }
@@ -886,6 +914,46 @@ void test_structured_text_preparer_runs_once_and_preserves_metadata() {
     client.stop();
 }
 
+void test_prepared_text_context_precedes_audio() {
+    QwenTtsClientOptions options = make_client_options();
+    options.text_preparer = [](const TtsRequest& request,
+                               PreparedText& prepared,
+                               TtsError& error) {
+        prepared.original_text = request.text;
+        prepared.frontend_normalized_text = "normalized source";
+        prepared.frontend_pronunciation_text = "pronunciation source";
+        prepared.effective_text = "pronunciation source";
+        prepared.frontend_stress_decisions.push_back({
+            "source", 1u, true, "test dictionary"});
+        error = TtsError{};
+        return true;
+    };
+
+    QwenTtsClient client;
+    CHECK(client.start(make_worker_options(1), options));
+    RequestProbe probe;
+    CHECK(client.synthesize_async(
+        make_request("raw source"), make_callbacks(probe)) != 0);
+    CHECK(wait_for_probe(probe, [](const RequestProbe& state) {
+        return state.completed || !state.errors.empty();
+    }));
+
+    {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        CHECK(probe.errors.empty());
+        CHECK(probe.completed);
+        CHECK(probe.prepared_texts.size() == 1);
+        CHECK(probe.prepared_texts.front().original_text == "raw source");
+        CHECK(probe.prepared_texts.front().frontend_normalized_text ==
+              "normalized source");
+        CHECK(probe.prepared_texts.front().frontend_pronunciation_text ==
+              "pronunciation source");
+        CHECK(probe.prepared_texts.front().frontend_stress_decisions.size() == 1);
+        CHECK(probe.audio_chunks > 0);
+    }
+    client.stop();
+}
+
 void test_prepared_request_rejects_source_mismatch() {
     auto transport = std::make_unique<BlockingTransport>();
     QwenTtsClient client;
@@ -981,6 +1049,7 @@ int main() {
     test_prepare_text_reports_effective_utf8_metrics();
     test_prepared_request_bypasses_preprocessor_once();
     test_structured_text_preparer_runs_once_and_preserves_metadata();
+    test_prepared_text_context_precedes_audio();
     test_prepared_request_rejects_source_mismatch();
     test_duplicate_explicit_request_id_is_rejected();
     test_transport_send_failure_fails_request_once();
