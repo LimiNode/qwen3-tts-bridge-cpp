@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "audit": "russian_stress_matrix",
+  "status": "mechanical_pass_semantic_listening_pending",
+  "runtime": {
+    "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01",
+    "qwentts_abi": 6,
+    "voice_id": "kraftwerk_robot_ru_warm",
+    "talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "seed": 1002,
+    "stream_max_chunk_frames": 2
+  },
+  "cases": [
+    {
+      "id": "zamok",
+      "text": "Старый за́мок стоит на горе́, а новый замо́к открывается ключом.",
+      "frames": 18,
+      "audio_seconds": 1.52,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "10917f2799e3d9fb868af82fb80859cd66b91c33b76c18a0390ed14b0581c98a",
+      "listening_status": "pending"
+    },
+    {
+      "id": "muka",
+      "text": "Эта му́ка нужна для теста, а его мука́ от потери была сильной.",
+      "frames": 13,
+      "audio_seconds": 1.04,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "6d7f680fd680d1bd341e290e38891d7aef9f82bf59af02e9398c654ce2df0cf7",
+      "listening_status": "likely_truncated"
+    },
+    {
+      "id": "atlas",
+      "text": "На столе лежит а́тлас, а рядом новый атла́с тканей.",
+      "frames": 45,
+      "audio_seconds": 3.6,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "83e1a0f7c3d3b1fba736939fff39dc5807436eb39951b518cfb8b1f92cd88715",
+      "listening_status": "pending"
+    },
+    {
+      "id": "numbers",
+      "text": "В две тысячи двадцать шестом году робот проверит сто двадцать три команды и сорок пять голосов.",
+      "frames": 73,
+      "audio_seconds": 5.84,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "4110efb0c270db1bea0d48565d729a07e6120580d25f269f8e62775832b5063d",
+      "listening_status": "pending"
+    },
+    {
+      "id": "plain",
+      "text": "Сегодня тёплый роботизированный голос спокойно произносит длинную русскую фразу без явных знаков ударения.",
+      "frames": 8,
+      "audio_seconds": 0.72,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "6f84ee0bf0a7b33dbfd1fa96d59862abe2d0971703b673cb5cc59b67350abed8",
+      "listening_status": "likely_truncated"
+    }
+  ],
+  "interpretation": "All requests produced non-empty PCM and natural_eos. Explicitly stressed and numeric cases are suitable for listening. The unstressed plain case and the long muka sentence ended too early and remain a quality blocker."
+}
