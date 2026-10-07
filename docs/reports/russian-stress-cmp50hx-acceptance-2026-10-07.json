@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "audit": "russian_stress_cmp50hx_acceptance",
-  "status": "mechanical_pass_listening_pending",
+  "status": "human_listening_pass",
   "scope": "12 Russian utterances on the canonical native worker with the opt-in ru-stress talker and the registered warm Kraftwerk profile",
   "runtime": {
     "bridge_main_merge_commit": "aa7460036d52d099b1b128e297e1d00ebcff0212",
@@ -41,7 +41,12 @@
     "starvation_free_cases": 12,
     "first_pcm_ms_min": 179.47,
     "first_pcm_ms_max": 196.57,
-    "human_listening": "pending",
+    "human_listening": {
+      "status": "pass",
+      "observer": "user",
+      "result": "All 12 WAVs were listened to and sounded correct: Russian text was intelligible, explicit stresses were placed as intended, and the warm Kraftwerk voice identity was preserved.",
+      "scope": "The expanded homograph, number, abbreviation, plain-text, and long-utterance matrix"
+    },
     "production_default_changed": false,
     "ru_stress_profile": "opt_in_experimental"
   },
