@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "audit": "russian_stress_listening_correction",
-  "status": "quality_gate_failed",
+  "status": "diagnostic_setup_invalid_for_voice_identity",
   "runtime": {
     "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01",
     "gpu": "NVIDIA CMP 50HX",
@@ -28,7 +28,7 @@
       "pcm_peak_s16": 14735,
       "pcm_rms_s16": 3469.67
     },
-    "interpretation": "Both paths produce non-empty, byte-identical control audio. This is a valid control receipt, not evidence that RU-stress changes prosody."
+    "interpretation": "Both paths produce non-empty, byte-identical audio under the short reference diagnostic. This setup is not the registered warm Kraftwerk profile and must not be used for voice-identity acceptance."
   },
   "explicit_stress": {
     "cases": [
@@ -36,7 +36,7 @@
       "На двери слома́лся замо́к."
     ],
     "base_and_ru_stress_pcm_identical": true,
-    "interpretation": "The converted RU-stress Q8 path did not produce a measurable trajectory difference for these combining-acute inputs. Do not promote it as stress-aware until the source inference path and merge/conversion are revalidated."
+    "interpretation": "This short-reference diagnostic is invalid for voice-identity acceptance. A separate registered warm-profile paired receipt is required before interpreting stress behavior."
   },
   "invalid_prior_artifact": {
     "reference_audio": "examples/assets/voice-profiles/kraftwerk_robot_ru_fidelity.wav",

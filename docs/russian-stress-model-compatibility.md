@@ -139,12 +139,13 @@ That manifest is retained as historical mechanical evidence only: its
 serialized text was mojibake and its greedy/short bounded run produced only a
 few frames. It must not be used as semantic listening evidence.
 
-The corrected listening control is recorded in
+The short-reference diagnostic is recorded in
 [`docs/reports/russian-stress-listening-correction.json`](reports/russian-stress-listening-correction.json).
-With the short registered Kraftwerk ICL profile and stochastic sampling, both
-vanilla Base and the converted RU-stress Q8 model produce a non-empty 21-frame
-control utterance. The PCM is byte-identical for the plain `Сегодня` control.
-The explicit combining-acute cases are also byte-identical between the two
-models, so the RU-stress candidate currently fails the stress-aware semantic
-gate. It remains an experimental load-compatible artifact, not a supported
-model profile; no production default was changed.
+That short reference was not the accepted warm Kraftwerk profile and is not
+voice-identity evidence. The first paired receipt using the actual registered
+`kraftwerk_robot_ru_warm` profile is recorded in
+[`docs/reports/russian-stress-kraftwerk-profile-ab.json`](reports/russian-stress-kraftwerk-profile-ab.json).
+Both distinct model hashes produced non-empty natural-EOS audio; human
+listening must decide whether the warm Kraftwerk identity and stress behavior
+are retained. The RU-stress model remains experimental and no production
+default was changed.
