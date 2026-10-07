@@ -14,6 +14,25 @@
         "codec_url": "",
         "codec_sha256": ""
       }
+    },
+    "ru-stress": {
+      "experimental": true,
+      "talker_model": "models/ru-stress/qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+      "codec_model": "models/common/qwen-tokenizer-12hz-Q8_0.gguf",
+      "text_render_capability": "explicit_combining_stress",
+      "model_provenance": {
+        "source_repo": "sknyazev/qwen3-tts-12hz-1.7b-ru-stress-gguf",
+        "source_revision": "e644ae00257fdd4db0e51b11057370dff6be8bc2",
+        "talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+        "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+        "stress_marker": "U+0301 combining acute after stressed vowel"
+      },
+      "model_download": {
+        "talker_url": "",
+        "talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+        "codec_url": "",
+        "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94"
+      }
     }
   },
   "warmup_synthesis": false

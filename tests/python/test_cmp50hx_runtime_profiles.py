@@ -168,6 +168,15 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
         self.assertIn('"model_root": ""', native_config)
         self.assertIn('"default_model_profile": "base"', native_config)
         self.assertIn('"model_profiles"', native_config)
+        self.assertIn('"ru-stress"', native_config)
+        self.assertIn(
+            '"text_render_capability": "explicit_combining_stress"',
+            native_config,
+        )
+        self.assertIn(
+            '"talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427"',
+            native_config,
+        )
 
     def test_python_launcher_supports_named_model_profiles(self) -> None:
         self.assertIn('[string]$ModelProfile = ""', self.launcher)

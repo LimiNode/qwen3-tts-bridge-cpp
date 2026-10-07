@@ -41,7 +41,14 @@ The adapter is built by default with
 is required. The adapter target is `QwenTTSBridge::qwen_tts_bridge_tts_front`;
 the core target remains independent from the frontend implementation.
 
-The Russian stress-tuned GGUF candidate is not enabled by this integration.
-Its ONNX codec/predictor layout is incompatible with the current native split
-GGUF loader; see `docs/russian-stress-model-compatibility.md` before selecting
-`ExplicitCombiningStress` for a production model.
+The experimental native `ru-stress` model profile is now load-compatible with
+the split GGUF runtime and advertises
+`text_render_capability: "explicit_combining_stress"`. Applications may select
+`TextRenderCapability::ExplicitCombiningStress` only when that profile is
+explicitly selected. The launcher still does not rewrite text automatically;
+the application composition layer must make the capability choice. The Base
+profile remains the default and stays model-neutral.
+
+This is not a general production-default promotion. Keep listening,
+long-horizon, and cancellation acceptance evidence alongside the model
+provenance in `docs/russian-stress-model-compatibility.md`.
