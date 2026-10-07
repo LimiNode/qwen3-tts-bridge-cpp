@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "audit": "russian_stress_kraftwerk_profile_ab",
+  "status": "targeted_human_listening_pass",
+  "runtime": {
+    "bridge_worker": "0.2.0-native-qwentts/130cb99",
+    "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01",
+    "qwentts_abi": 6,
+    "runtime_manifest_sha256": "559d8c63fec8958801627970e6421725283d1a63e217fa5a636ca0057ba9dd45",
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "cuda_graphs": true,
+    "voice_id": "kraftwerk_robot_ru_warm",
+    "reference_audio_sha256": "b8285c5925d89d90435afa2f084a197a9e428dec41fff09c74969e6624a4b147",
+    "reference_text": "Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду."
+  },
+  "request": {
+    "text": "Сегодня система проверяет тёплый роботизированный голос. Это ста́рый за́мок на высокой горе́, а на двери слома́лся замо́к.",
+    "language": "russian",
+    "seed": 1002,
+    "stream_max_chunk_frames": 2
+  },
+  "models": {
+    "base": {
+      "talker_sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+      "frames": 121,
+      "audio_seconds": 9.68,
+      "first_pcm_ms": 1375.72,
+      "qwen_total_ms": 4441.55,
+      "wav_sha256": "16a964de9911b42f20fce39e6d2dd0f7e2c400f646addf18512e7d328a4be41a"
+    },
+    "ru_stress": {
+      "talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+      "frames": 121,
+      "audio_seconds": 9.68,
+      "first_pcm_ms": 1384.86,
+      "qwen_total_ms": 4477.55,
+      "wav_sha256": "29a820fbd8644dfdc4a24c7cb1962b9002f90483e743b73ce0874aba893764ce"
+    }
+  },
+  "interpretation": "This is the first paired receipt using the registered warm Kraftwerk profile and distinct model hashes. Both requests reached natural_eos and produced non-empty WAVs. Voice identity, semantic completeness, and stress quality remain a human listening gate.",
+  "human_listening": {
+    "status": "pass_for_recorded_sentence",
+    "observer": "user",
+    "result": "The RU-stress track retained the warm Kraftwerk voice and placed the explicitly marked stresses correctly, including за́мок, горе́, and замо́к.",
+    "scope_limit": "This is a targeted sentence-level pass, not full Russian-model or production-profile acceptance."
+  },
+  "production_default_changed": false,
+  "supported_profile_added": false
+}

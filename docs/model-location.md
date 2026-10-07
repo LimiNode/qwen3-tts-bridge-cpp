@@ -59,7 +59,11 @@ launcher accepts the same shape with a directory in `model_path`:
     },
     "ru-stress": {
       "model_root": "D:/AI/Models/QwenTTS",
-      "model_path": "ru-stress"
+      "model_path": "ru-stress",
+      "talker_model": "ru-stress/qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+      "codec_model": "common/qwen-tokenizer-12hz-Q8_0.gguf",
+      "experimental": true,
+      "text_render_capability": "explicit_combining_stress"
     }
   }
 }
@@ -76,3 +80,10 @@ Download metadata is profile-owned as well. A selected native profile uses only
 its own `model_download`; top-level `model_download` is used only when no named
 profile is selected. A missing profile artifact without profile-owned URL and
 SHA-256 fails closed instead of borrowing another profile's identity.
+
+The `ru-stress` profile is opt-in. Its `text_render_capability` is metadata for
+the application composition layer: when that profile is selected, construct
+`TtsFrontTextPreparer` with
+`TextRenderCapability::ExplicitCombiningStress`. The native launcher does not
+silently rewrite text or inject combining marks; Base remains model-neutral by
+default.

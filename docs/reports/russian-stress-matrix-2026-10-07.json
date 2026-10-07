@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "audit": "russian_stress_matrix",
+  "status": "mechanical_pass_semantic_listening_pending",
+  "runtime": {
+    "qwentts_revision": "130cb99af9ae12d554962fd0920e08fb4268af01",
+    "qwentts_abi": 6,
+    "voice_id": "kraftwerk_robot_ru_warm",
+    "talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "seed": 1002,
+    "stream_max_chunk_frames": 2
+  },
+  "cases": [
+    {
+      "id": "zamok",
+      "text": "Старый за́мок стоит на горе́, а новый замо́к открывается ключом.",
+      "frames": 58,
+      "audio_seconds": 4.72,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "4fdef60848aa4ef43fc14e7789943e154f92f15dca83a60f8045df29749f118f",
+      "listening_status": "pending"
+    },
+    {
+      "id": "muka",
+      "text": "Эта му́ка нужна для теста, а его мука́ от потери была сильной.",
+      "frames": 62,
+      "audio_seconds": 5.04,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "af1017a6b48bbf93b54c4ad29a7ccd5059c1ecb6b8c3f10479345fb876439c9f",
+      "listening_status": "pending"
+    },
+    {
+      "id": "atlas",
+      "text": "На столе лежит а́тлас, а рядом новый атла́с тканей.",
+      "frames": 54,
+      "audio_seconds": 4.4,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "ff9b05edbef538015e618cb79d04ed2f3e64cbcd6a4054100cebe061bf36315d",
+      "listening_status": "pending"
+    },
+    {
+      "id": "numbers",
+      "text": "В две тысячи двадцать шестом году робот проверит сто двадцать три команды и сорок пять голосов.",
+      "frames": 87,
+      "audio_seconds": 6.96,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "f050b85def5cf5ad3dd0df12b533312370090eefc33cac086096573ea63755d0",
+      "listening_status": "pending"
+    },
+    {
+      "id": "plain",
+      "text": "Сегодня тёплый роботизированный голос спокойно произносит длинную русскую фразу без явных знаков ударения.",
+      "frames": 87,
+      "audio_seconds": 6.96,
+      "execution_outcome": "natural_eos",
+      "wav_sha256": "ee093df1b601fa7d991d959b718f7d7df1c9bb50b8a158d44514f876d75f18dc",
+      "listening_status": "pending"
+    }
+  ],
+  "interpretation": "The first matrix attempt was invalid because PowerShell-to-Python stdin encoding replaced Cyrillic with question marks. This corrected matrix was passed directly as Unicode PowerShell arguments; all five requests produced full non-empty PCM and natural_eos."
+}

@@ -135,8 +135,17 @@ unchanged until those gates pass.
 
 The first CMP 50HX native A/B is recorded in
 [`docs/reports/russian-stress-cmp50hx-ab.json`](reports/russian-stress-cmp50hx-ab.json).
-It used the correct separately converted vanilla Base Q8 checkpoint. On the
-plain `Сегодня` control, Base reached `max_tokens` while RU-stress reached
-`natural_eos` in seven frames. This is a promising mechanical result, not yet
-a listening/production acceptance: the Base runaway and the RU-stress output
-still need semantic listening and a warmed multi-request run.
+That manifest is retained as historical mechanical evidence only: its
+serialized text was mojibake and its greedy/short bounded run produced only a
+few frames. It must not be used as semantic listening evidence.
+
+The short-reference diagnostic is recorded in
+[`docs/reports/russian-stress-listening-correction.json`](reports/russian-stress-listening-correction.json).
+That short reference was not the accepted warm Kraftwerk profile and is not
+voice-identity evidence. The first paired receipt using the actual registered
+`kraftwerk_robot_ru_warm` profile is recorded in
+[`docs/reports/russian-stress-kraftwerk-profile-ab.json`](reports/russian-stress-kraftwerk-profile-ab.json).
+Both distinct model hashes produced non-empty natural-EOS audio; human
+listening must decide whether the warm Kraftwerk identity and stress behavior
+are retained. The RU-stress model remains experimental and no production
+default was changed.
