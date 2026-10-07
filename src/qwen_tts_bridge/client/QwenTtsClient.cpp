@@ -826,6 +826,7 @@ void QwenTtsClient::handle_audio_event(WorkerSessionEvent event) {
     std::optional<PreparedText> prepared_text;
     std::uint64_t first_sample = 0;
     std::uint32_t sample_count = 0;
+    bool invalid_timeline = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = active_requests_.find(event.request_id);
@@ -835,17 +836,29 @@ void QwenTtsClient::handle_audio_event(WorkerSessionEvent event) {
         }
         callbacks = it->second.callbacks;
         format = it->second.audio_format;
-        if (it->second.prepared_text.has_value() &&
-            !it->second.text_context_delivered) {
-            prepared_text = it->second.prepared_text;
-            it->second.text_context_delivered = true;
+        const auto count = sample_count_for_audio(format, event.audio.size());
+        invalid_timeline = !event.audio.empty() && !count.has_value();
+        if (!invalid_timeline) {
+            if (it->second.prepared_text.has_value() &&
+                !it->second.text_context_delivered) {
+                prepared_text = it->second.prepared_text;
+                it->second.text_context_delivered = true;
+            }
+            first_sample = it->second.next_sample;
+            if (count.has_value()) {
+                sample_count = count.value();
+                it->second.next_sample += sample_count;
+            }
         }
-        first_sample = it->second.next_sample;
-        if (const auto count = sample_count_for_audio(format, event.audio.size());
-            count.has_value()) {
-            sample_count = count.value();
-            it->second.next_sample += sample_count;
-        }
+    }
+
+    if (invalid_timeline) {
+        fail_request(event.request_id, make_local_error(
+            event.request_id,
+            "protocol_error",
+            "invalid_audio_timeline",
+            "worker audio payload has an unsupported format or incomplete sample frame"));
+        return;
     }
 
     if (prepared_text.has_value() && callbacks.on_text_prepared) {

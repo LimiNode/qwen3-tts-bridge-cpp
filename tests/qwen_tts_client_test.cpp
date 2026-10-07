@@ -42,6 +42,7 @@ struct RequestProbe {
     std::vector<std::uint32_t> audio_sample_counts;
     std::vector<SpeechTimingChunk> timing_chunks;
     std::vector<PreparedText> prepared_texts;
+    std::vector<std::string> callback_events;
 };
 
 std::vector<std::byte> bytes_from_string(const std::string& value) {
@@ -171,6 +172,10 @@ public:
         return send_count_.load();
     }
 
+    void emit(Bytes bytes) {
+        receive_handler_(std::move(bytes));
+    }
+
 private:
     ReceiveHandler receive_handler_;
     ErrorHandler error_handler_;
@@ -183,6 +188,16 @@ private:
     bool release_block_ = false;
     std::vector<std::byte> last_send_;
 };
+
+std::vector<std::byte> started_frame_bytes(
+    RequestId request_id,
+    const std::string& sample_format) {
+    return control_frame_bytes(
+        request_id,
+        "{\"message_type\":\"started\","
+        "\"audio_format\":{\"sample_format\":\"" + sample_format +
+        "\",\"sample_rate\":24000,\"channels\":1}}");
+}
 
 StdIoTransportOptions make_worker_options(
     int mock_chunks,
@@ -215,6 +230,7 @@ TtsCallbacks make_callbacks(RequestProbe& probe) {
     TtsCallbacks callbacks;
     callbacks.on_audio = [&probe](const PcmChunk& chunk) {
         std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.callback_events.push_back("audio");
         ++probe.audio_chunks;
         probe.audio_bytes += chunk.bytes.size();
         probe.audio_request_ids.push_back(chunk.request_id);
@@ -224,28 +240,33 @@ TtsCallbacks make_callbacks(RequestProbe& probe) {
     };
     callbacks.on_timing = [&probe](const SpeechTimingChunk& timing) {
         std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.callback_events.push_back("timing");
         probe.timing_chunks.push_back(timing);
         probe.condition.notify_all();
     };
     callbacks.on_text_prepared = [&probe](const PreparedText& prepared) {
         std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.callback_events.push_back("prepared");
         probe.prepared_texts.push_back(prepared);
         probe.condition.notify_all();
     };
     callbacks.on_completed = [&probe]() {
         std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.callback_events.push_back("completed");
         ++probe.completed_count;
         probe.completed = true;
         probe.condition.notify_all();
     };
     callbacks.on_cancelled = [&probe]() {
         std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.callback_events.push_back("cancelled");
         ++probe.cancelled_count;
         probe.cancelled = true;
         probe.condition.notify_all();
     };
     callbacks.on_error = [&probe](const TtsError& error) {
         std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.callback_events.push_back("error");
         probe.errors.push_back(error);
         probe.condition.notify_all();
     };
@@ -950,8 +971,65 @@ void test_prepared_text_context_precedes_audio() {
               "pronunciation source");
         CHECK(probe.prepared_texts.front().frontend_stress_decisions.size() == 1);
         CHECK(probe.audio_chunks > 0);
+        CHECK(probe.callback_events.size() >= 4);
+        CHECK(probe.callback_events[0] == "prepared");
+        CHECK(probe.callback_events[1] == "audio");
+        CHECK(probe.callback_events[2] == "timing");
+        CHECK(probe.callback_events.back() == "completed");
     }
     client.stop();
+}
+
+void test_malformed_audio_fails_closed(
+    const std::string& sample_format,
+    const std::vector<std::byte>& payload) {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), make_client_options()));
+
+    RequestProbe probe;
+    const RequestId request_id = client.synthesize_async(
+        make_request("Malformed audio test."),
+        make_callbacks(probe));
+    CHECK(request_id != 0);
+
+    raw_transport->emit(started_frame_bytes(request_id, sample_format));
+    raw_transport->emit(frame_bytes(
+        FrameType::AudioPcm,
+        request_id,
+        payload));
+
+    CHECK(wait_for_probe(probe, [](const RequestProbe& state) {
+        return !state.errors.empty();
+    }));
+    {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        CHECK(probe.errors.size() == 1);
+        CHECK(probe.errors.front().category == "protocol_error");
+        CHECK(probe.errors.front().code == "invalid_audio_timeline");
+        CHECK(probe.audio_chunks == 0);
+        CHECK(probe.timing_chunks.empty());
+        CHECK(!probe.callback_events.empty());
+        CHECK(probe.callback_events.back() == "error");
+        for (const std::string& event : probe.callback_events) {
+            CHECK(event != "audio");
+            CHECK(event != "timing");
+        }
+    }
+    client.stop();
+}
+
+void test_unsupported_audio_format_fails_closed() {
+    test_malformed_audio_fails_closed(
+        "pcm-unknown",
+        std::vector<std::byte>{std::byte{0x01}});
+}
+
+void test_incomplete_audio_frame_fails_closed() {
+    test_malformed_audio_fails_closed(
+        "s16le",
+        std::vector<std::byte>{std::byte{0x01}});
 }
 
 void test_prepared_request_rejects_source_mismatch() {
@@ -1050,6 +1128,8 @@ int main() {
     test_prepared_request_bypasses_preprocessor_once();
     test_structured_text_preparer_runs_once_and_preserves_metadata();
     test_prepared_text_context_precedes_audio();
+    test_unsupported_audio_format_fails_closed();
+    test_incomplete_audio_frame_fails_closed();
     test_prepared_request_rejects_source_mismatch();
     test_duplicate_explicit_request_id_is_rejected();
     test_transport_send_failure_fails_request_once();

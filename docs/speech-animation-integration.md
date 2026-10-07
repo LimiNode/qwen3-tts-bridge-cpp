@@ -44,7 +44,17 @@ playback and avatar scheduling remain outside the core client.
 
 ## Dependency direction
 
-The bridge may expose a future optional integration target, but the core build
-must not depend on a generic lipsync, Unity, Godot, VRM, SALSA, or viseme
-library. A downstream animation package may depend on the bridge's public
-client/data headers; the bridge must not know that package's policy or model.
+The bridge may expose a future optional adapter target, but the core build must
+not depend on a generic lipsync, Unity, Godot, VRM, SALSA, or viseme library.
+The generic speech-animation core must not import Qwen bridge headers. Mapping
+from `PcmChunk`/`SpeechTimingChunk` into animation-neutral DTOs belongs in an
+optional bridge adapter or in the application integration layer:
+
+```text
+application / optional adapter
+    ├── qwen3-tts-bridge-cpp
+    └── speech-animation core
+```
+
+The bridge must not know the animation package's policy or model, and the
+animation core must remain usable with other TTS backends.
