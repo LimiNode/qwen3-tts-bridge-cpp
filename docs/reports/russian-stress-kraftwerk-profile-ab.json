@@ -15,7 +15,7 @@
     "reference_text": "Я твой слуга, я твой работник. Жёлтый луч мягко лёг на шестерёнки; внизу щёлкнуло реле, сверху загудел вентилятор. Быстро проверь связь, цифры, шум и каждую новую команду."
   },
   "request": {
-    "text": "Сегодня система проверяет тёплый роботизированный голос. Это ста́рый замок на высокой горе, а на двери слома́лся замо́к.",
+    "text": "Сегодня система проверяет тёплый роботизированный голос. Это ста́рый за́мок на высокой горе́, а на двери слома́лся замо́к.",
     "language": "russian",
     "seed": 1002,
     "stream_max_chunk_frames": 2
@@ -31,11 +31,11 @@
     },
     "ru_stress": {
       "talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
-      "frames": 117,
-      "audio_seconds": 9.36,
-      "first_pcm_ms": 1366.61,
-      "qwen_total_ms": 4330.13,
-      "wav_sha256": "99351468a51aeb1ddc88cee8c58f4a1b6e4bd14511f4a765bb52866be5c5b056"
+      "frames": 121,
+      "audio_seconds": 9.68,
+      "first_pcm_ms": 1384.86,
+      "qwen_total_ms": 4477.55,
+      "wav_sha256": "29a820fbd8644dfdc4a24c7cb1962b9002f90483e743b73ce0874aba893764ce"
     }
   },
   "interpretation": "This is the first paired receipt using the registered warm Kraftwerk profile and distinct model hashes. Both requests reached natural_eos and produced non-empty WAVs. Voice identity, semantic completeness, and stress quality remain a human listening gate.",
