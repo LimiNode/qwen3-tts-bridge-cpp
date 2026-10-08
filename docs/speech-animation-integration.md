@@ -58,3 +58,18 @@ application / optional adapter
 
 The bridge must not know the animation package's policy or model, and the
 animation core must remain usable with other TTS backends.
+
+## Qwen-side optional adapter
+
+When `QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION=ON`, the bridge builds the
+`QwenTTSBridge::qwen_tts_bridge_speech_animation` adapter against the pinned
+`external/cpp/speech-animation` submodule. The adapter:
+
+1. preserves the original bridge `on_audio`/playback callback;
+2. converts mono `s16le` chunks into the neutral float `SpeechTimingChunk`;
+3. maps lifecycle to `begin()`, `push()`, `complete()`, and `cancel()`;
+4. exposes `process_available()` for the consumer thread.
+
+Analyzer work is never performed in the bridge audio callback. The optional
+adapter is intentionally not part of the default core install; applications
+that enable it must provide the speech-animation dependency and target.

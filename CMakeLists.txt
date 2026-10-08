@@ -16,6 +16,8 @@ option(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND
     "Build the opt-in qwentts.cpp/GGML native backend adapter" OFF)
 option(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT
     "Build the released tts-front-cpp text preparation adapter" ON)
+option(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION
+    "Build the optional speech-animation integration adapter" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +28,9 @@ set(QWEN_TTS_BRIDGE_WORKER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/worker/src")
 set(QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/cpp" CACHE PATH "C++ dependency directory")
 set(QWEN_TTS_BRIDGE_EXTERNAL_PYTHON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/python" CACHE PATH "Python dependency directory")
 set(QWEN_TTS_BRIDGE_QWENTTS_DIR "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp" CACHE PATH "qwentts.cpp reference directory")
+set(QWEN_TTS_BRIDGE_SPEECH_ANIMATION_DIR
+    "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/speech-animation"
+    CACHE PATH "speech-animation reference directory")
 
 set(_qwen_tts_bridge_build_shared_libs_defined FALSE)
 if(DEFINED BUILD_SHARED_LIBS)
@@ -96,6 +101,22 @@ if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
     add_subdirectory(
         "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tts-front-cpp"
         "${CMAKE_CURRENT_BINARY_DIR}/tts-front-cpp"
+        EXCLUDE_FROM_ALL
+    )
+endif()
+
+if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+    if(NOT EXISTS "${QWEN_TTS_BRIDGE_SPEECH_ANIMATION_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR
+            "Initialize external/cpp/speech-animation before building the integration adapter")
+    endif()
+    set(SPEECH_ANIMATION_BUILD_TESTS OFF CACHE BOOL
+        "Build speech-animation tests" FORCE)
+    set(SPEECH_ANIMATION_BUILD_BENCHMARKS OFF CACHE BOOL
+        "Build speech-animation benchmarks" FORCE)
+    add_subdirectory(
+        "${QWEN_TTS_BRIDGE_SPEECH_ANIMATION_DIR}"
+        "${CMAKE_CURRENT_BINARY_DIR}/speech-animation"
         EXCLUDE_FROM_ALL
     )
 endif()
@@ -224,6 +245,25 @@ if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
     )
 endif()
 
+if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+    add_library(qwen_tts_bridge_speech_animation STATIC
+        src/qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.cpp
+    )
+    add_library(QwenTTSBridge::qwen_tts_bridge_speech_animation ALIAS
+        qwen_tts_bridge_speech_animation)
+    target_compile_features(qwen_tts_bridge_speech_animation PUBLIC cxx_std_17)
+    target_include_directories(qwen_tts_bridge_speech_animation
+        PUBLIC
+            $<BUILD_INTERFACE:${QWEN_TTS_BRIDGE_SRC_DIR}>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+    target_link_libraries(qwen_tts_bridge_speech_animation
+        PUBLIC
+            QwenTTSBridge::qwen_tts_bridge
+            speech_animation::integration
+    )
+endif()
+
 # Keep the library consumable from a normal CMake install.  The worker and
 # model files are deliberately not installed here: they are runtime assets
 # selected by the application or release bundle.
@@ -284,7 +324,9 @@ install(
 install(
     DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-    FILES_MATCHING PATTERN "*.hpp"
+    FILES_MATCHING
+        PATTERN "*.hpp"
+        PATTERN "integration" EXCLUDE
 )
 install(
     EXPORT QwenTTSBridgeTargets
@@ -414,6 +456,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             qwen_tts_bridge/text/TtsFrontTextPreparer.hpp
         )
     endif()
+    if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+        list(APPEND _qwen_tts_public_headers
+            qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.hpp
+        )
+    endif()
     set(_qwen_tts_header_check_sources)
     foreach(_header IN LISTS _qwen_tts_public_headers)
         string(REPLACE "/" "_" _header_stem "${_header}")
@@ -430,6 +477,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_include_directories(public_header_self_contained PRIVATE
             "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/tts-front-cpp/src")
     endif()
+    if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+        target_include_directories(public_header_self_contained PRIVATE
+            "${QWEN_TTS_BRIDGE_SPEECH_ANIMATION_DIR}/core/include"
+            "${QWEN_TTS_BRIDGE_SPEECH_ANIMATION_DIR}/integration/include")
+    endif()
 
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         add_executable(tts_front_bridge_adapter_test
@@ -440,6 +492,17 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 QwenTTSBridge::qwen_tts_bridge_tts_front
         )
         add_test(NAME tts_front_bridge_adapter_test COMMAND tts_front_bridge_adapter_test)
+    endif()
+
+    if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+        add_executable(speech_animation_adapter_test
+            tests/speech_animation_adapter_test.cpp
+        )
+        target_link_libraries(speech_animation_adapter_test
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge_speech_animation
+        )
+        add_test(NAME speech_animation_adapter_test COMMAND speech_animation_adapter_test)
     endif()
 
     if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)

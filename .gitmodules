@@ -16,3 +16,6 @@
 [submodule "external/cpp/tts-front-cpp"]
 	path = external/cpp/tts-front-cpp
 	url = https://github.com/LimiNode/tts-front-cpp.git
+[submodule "external/cpp/speech-animation"]
+	path = external/cpp/speech-animation
+	url = https://github.com/LimiNode/speech-animation.git
