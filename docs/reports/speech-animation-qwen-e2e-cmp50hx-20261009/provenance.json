@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "bridge_commit": "3bbf6ae8c405e248c9dc762980ae1360b5930ad5",
+  "speech_animation_commit": "d1b99abf74cd7e88e906f3f6cdea198d16b24827",
+  "tts_front_commit": "77a0c04138b367342f375dcf7050ce4e193e2bef",
+  "qwentts_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "ggml_commit": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+  "qwentts_abi": 6,
+  "cuda_graphs": true,
+  "gpu": {
+    "name": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "memory_mib": 20480,
+    "driver": "581.94"
+  },
+  "request": {
+    "language": "russian",
+    "voice_id": "kraftwerk_robot_ru_warm",
+    "seed": 1002,
+    "sample_rate": 24000,
+    "channels": 1,
+    "sample_format": "s16le",
+    "stream_max_chunk_frames": 2,
+    "animation_queue_capacity": 64,
+    "animation_consumer_poll_ms": 2
+  },
+  "sha256": {
+    "native_worker": "bcd3a255db4f52096c933ffac4f514b9d86657df7700b020be8c94a27f437151",
+    "speech_animation_probe": "2461e90f40c5d56bb991880203fa32c4658d5ecc9aa96684bd760ceb44c0da27",
+    "qwen_dll": "e8a85cc62377494e19d40e5c808f88c186c495f4358aacbd8f60e5e22a8b0304",
+    "runtime_manifest": "559d8c63fec8958801627970e6421725283d1a63e217fa5a636ca0057ba9dd45",
+    "talker_model": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+    "codec_model": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "voice_registry": "07e471ab1631bb87150f6a75d4e7568fc9fa4b65bbf74a201b6c0b037be7f5f0",
+    "reference_audio": "b8285c5925d89d90435afa2f084a197a9e428dec41fff09c74969e6624a4b147"
+  }
+}

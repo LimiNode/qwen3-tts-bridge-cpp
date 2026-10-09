@@ -341,6 +341,19 @@ install(
     DESTINATION "${QWEN_TTS_BRIDGE_INSTALL_CMAKEDIR}"
 )
 
+if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION AND
+   (QWEN_TTS_BRIDGE_BUILD_EXAMPLES OR QWEN_TTS_BRIDGE_BUILD_TESTS))
+    # Build-tree-only acceptance harness; it is intentionally not installed.
+    add_executable(qwen_tts_speech_animation_probe
+        examples/qwen_tts_speech_animation_probe.cpp
+    )
+    target_link_libraries(qwen_tts_speech_animation_probe
+        PRIVATE
+            QwenTTSBridge::qwen_tts_bridge_speech_animation
+            nlohmann_json::nlohmann_json
+    )
+endif()
+
 if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     set(QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE "")
     if(Python3_Interpreter_FOUND)
@@ -752,6 +765,19 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
 
         add_test(NAME qwen_tts_client_test COMMAND qwen_tts_client_test)
+
+        if(TARGET qwen_tts_speech_animation_probe)
+            add_test(
+                NAME qwen_tts_speech_animation_probe_mock
+                COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_speech_animation_probe.py"
+                    --probe "$<TARGET_FILE:qwen_tts_speech_animation_probe>"
+                    --python "${Python3_EXECUTABLE}"
+                    --worker-dir "${QWEN_TTS_BRIDGE_WORKER_DIR}"
+            )
+            set_tests_properties(qwen_tts_speech_animation_probe_mock
+                PROPERTIES TIMEOUT 60)
+        endif()
 
         if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
             add_test(

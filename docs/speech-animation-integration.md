@@ -81,3 +81,48 @@ queue backpressure cancels/deactivates only the animation pipeline and is
 reported through the adapter diagnostic handler; the original bridge
 `on_audio`, `on_completed`, `on_cancelled`, and `on_error` callbacks continue to
 be forwarded unchanged.
+
+## Real Qwen acceptance probe
+
+The build-tree-only `qwen_tts_speech_animation_probe` is the first runtime
+receipt harness. It launches the worker supplied with `--worker`, submits one
+real request, and records PCM ranges, animation receipts, terminal fade,
+first-PCM/first-span latency, callback occupancy, queue high-water, and adapter
+diagnostics. It does not play audio and does not change the production client.
+
+Build it with `QWEN_TTS_BRIDGE_BUILD_EXAMPLES=ON` and
+`QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION=ON`, then run paired requests with the
+same worker/model/profile and text:
+
+```powershell
+qwen_tts_speech_animation_probe.exe --adapter off `
+  --worker C:\path\to\qwen-worker.exe `
+  --worker-arg ... --text-file C:\path\to\russian-utterance.txt `
+  --output-json C:\tmp\speech-animation-off.json
+
+qwen_tts_speech_animation_probe.exe --adapter on `
+  --worker C:\path\to\qwen-worker.exe `
+  --worker-arg ... --text-file C:\path\to\russian-utterance.txt `
+  --output-json C:\tmp\speech-animation-on.json
+```
+
+For a repeatable paired run, `scripts/run-speech-animation-qwen-e2e.ps1`
+launches the same worker configuration once with the adapter OFF and once with
+it ON, then writes `ab-summary.json` plus both full receipts. Pass the worker
+arguments as one PowerShell array, for example
+`-WorkerArgument @('--runtime-dir', 'C:\runtime', ...)`. For Russian acceptance,
+prefer a known UTF-8 file via `-TextFile`; the probe reads its bytes directly
+and records `text_source=utf8_file`, avoiding PowerShell/console transcoding
+ambiguity.
+
+The ON receipt is accepted only when PCM and animation sample ranges are
+contiguous, the last audio span ends at the real PCM end, terminal fade is
+anchored there, and `queue_full_count` is zero. Compare
+`first_pcm_ms`/`first_downstream_pcm_ms` between OFF and ON; the downstream
+timestamp is the delivery point where an application playback callback would
+run, not a physical WaveOut measurement. `adapter_mean_ms` and `adapter_max_ms`
+report the callback-side conversion/copy cost. Human listening of the same
+captured request remains a separate quality gate.
+
+The first three-utterance native-Qwen CMP 50HX receipt is archived in
+[`reports/speech-animation-qwen-e2e-cmp50hx-20261009/`](reports/speech-animation-qwen-e2e-cmp50hx-20261009/README.md).

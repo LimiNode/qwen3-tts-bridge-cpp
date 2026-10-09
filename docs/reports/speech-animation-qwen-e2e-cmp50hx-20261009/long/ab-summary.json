@@ -1,0 +1,37 @@
+﻿{
+    "schema_version":  1,
+    "experiment":  "qwen_speech_animation_ab",
+    "text":  "РЎРµРіРѕРґРЅСЏ С‚С‘РїР»С‹Р№ СЂРѕР±РѕС‚РёР·РёСЂРѕРІР°РЅРЅС‹Р№ РіРѕР»РѕСЃ РїСЂРѕРІРµСЂСЏРµС‚ СЃРёРЅС…СЂРѕРЅРЅРѕСЃС‚СЊ СЂРµС‡Рё Рё РґРІРёР¶РµРЅРёСЏ, Р·Р°С‚РµРј РґРµР»Р°РµС‚ РєРѕСЂРѕС‚РєСѓСЋ РїР°СѓР·Сѓ Рё РїСЂРѕРґРѕР»Р¶Р°РµС‚ РіРѕРІРѕСЂРёС‚СЊ СЂРѕРІРЅРѕ Рё СЃРїРѕРєРѕР№РЅРѕ РґРѕ РєРѕРЅС†Р° РїСЂРµРґР»РѕР¶РµРЅРёСЏ.\n",
+    "text_source":  "utf8_file",
+    "text_file":  "C:\\tmp\\speech-animation-qwen-e2e-long-20261009.txt",
+    "adapter_off":  {
+                        "receipt_json":  "C:\\tmp\\speech-animation-qwen-e2e-real-20261009-exact-long\\adapter-off.json",
+                        "first_pcm_ms":  189.7818,
+                        "first_downstream_pcm_ms":  189.7819,
+                        "success":  true
+                    },
+    "adapter_on":  {
+                       "receipt_json":  "C:\\tmp\\speech-animation-qwen-e2e-real-20261009-exact-long\\adapter-on.json",
+                       "first_pcm_ms":  189.3125,
+                       "first_downstream_pcm_ms":  189.3128,
+                       "first_animation_span_ms":  195.6124,
+                       "adapter_mean_ms":  0.016885294117647054,
+                       "adapter_max_ms":  0.0327,
+                       "queue_high_water":  1,
+                       "queue_full_count":  0,
+                       "pcm_timeline_contiguous":  true,
+                       "animation_timeline_contiguous":  true,
+                       "last_audio_span_matches_pcm_end":  true,
+                       "terminal_fade_anchored_at_pcm_end":  true,
+                       "active_span_count":  1078,
+                       "silence_span_count":  2,
+                       "mouth_open_min":  0.0,
+                       "mouth_open_max":  0.9999942779541016,
+                       "mouth_open_mean":  0.7712002133277969,
+                       "success":  true
+                   },
+    "deltas":  {
+                   "first_pcm_ms":  -0.46930000000000405,
+                   "first_downstream_pcm_ms":  -0.46909999999999741
+               }
+}
