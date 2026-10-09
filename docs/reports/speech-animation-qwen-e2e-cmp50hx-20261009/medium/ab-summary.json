@@ -1,0 +1,37 @@
+﻿{
+    "schema_version":  1,
+    "experiment":  "qwen_speech_animation_ab",
+    "text":  "РЎРµРіРѕРґРЅСЏ С‚С‘РїР»С‹Р№ СЂРѕР±РѕС‚РёР·РёСЂРѕРІР°РЅРЅС‹Р№ РіРѕР»РѕСЃ РїСЂРѕРІРµСЂСЏРµС‚ СЃРёРЅС…СЂРѕРЅРЅРѕСЃС‚СЊ СЂРµС‡Рё Рё РґРІРёР¶РµРЅРёСЏ.\n",
+    "text_source":  "utf8_file",
+    "text_file":  "C:\\tmp\\speech-animation-qwen-e2e-text-20261009.txt",
+    "adapter_off":  {
+                        "receipt_json":  "C:\\tmp\\speech-animation-qwen-e2e-real-20261009-exact-medium\\adapter-off.json",
+                        "first_pcm_ms":  188.9544,
+                        "first_downstream_pcm_ms":  188.9544,
+                        "success":  true
+                    },
+    "adapter_on":  {
+                       "receipt_json":  "C:\\tmp\\speech-animation-qwen-e2e-real-20261009-exact-medium\\adapter-on.json",
+                       "first_pcm_ms":  187.9992,
+                       "first_downstream_pcm_ms":  187.9997,
+                       "first_animation_span_ms":  198.116,
+                       "adapter_mean_ms":  0.017928125000000003,
+                       "adapter_max_ms":  0.0312,
+                       "queue_high_water":  1,
+                       "queue_full_count":  0,
+                       "pcm_timeline_contiguous":  true,
+                       "animation_timeline_contiguous":  true,
+                       "last_audio_span_matches_pcm_end":  true,
+                       "terminal_fade_anchored_at_pcm_end":  true,
+                       "active_span_count":  495,
+                       "silence_span_count":  1,
+                       "mouth_open_min":  0.0,
+                       "mouth_open_max":  0.9999942779541016,
+                       "mouth_open_mean":  0.8087339579998967,
+                       "success":  true
+                   },
+    "deltas":  {
+                   "first_pcm_ms":  -0.95519999999999072,
+                   "first_downstream_pcm_ms":  -0.95470000000000255
+               }
+}

@@ -123,3 +123,6 @@ timestamp is the delivery point where an application playback callback would
 run, not a physical WaveOut measurement. `adapter_mean_ms` and `adapter_max_ms`
 report the callback-side conversion/copy cost. Human listening of the same
 captured request remains a separate quality gate.
+
+The first three-utterance native-Qwen CMP 50HX receipt is archived in
+[`reports/speech-animation-qwen-e2e-cmp50hx-20261009/`](reports/speech-animation-qwen-e2e-cmp50hx-20261009/README.md).
