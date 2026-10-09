@@ -71,5 +71,13 @@ When `QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION=ON`, the bridge builds the
 4. exposes `process_available()` for the consumer thread.
 
 Analyzer work is never performed in the bridge audio callback. The optional
-adapter is intentionally not part of the default core install; applications
-that enable it must provide the speech-animation dependency and target.
+adapter is intentionally build-tree-only, even when
+`QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION=ON`; it is not part of the default core
+install. Applications that enable it must provide the speech-animation
+dependency and target.
+
+Animation integration failures are isolated from synthesis. Unsupported PCM or
+queue backpressure cancels/deactivates only the animation pipeline and is
+reported through the adapter diagnostic handler; the original bridge
+`on_audio`, `on_completed`, `on_cancelled`, and `on_error` callbacks continue to
+be forwarded unchanged.

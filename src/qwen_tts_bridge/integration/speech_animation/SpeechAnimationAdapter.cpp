@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cstring>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -12,18 +11,6 @@ namespace qwen_tts_bridge::speech_animation {
 namespace {
 
 using IntegrationChunk = ::speech_animation::integration::SpeechTimingChunk;
-
-TtsError make_adapter_error(
-    RequestId request_id,
-    std::string code,
-    std::string message) {
-    TtsError error;
-    error.request_id = request_id;
-    error.category = "integration_error";
-    error.code = std::move(code);
-    error.message = std::move(message);
-    return error;
-}
 
 bool convert_pcm(
     const PcmChunk& source,
@@ -48,11 +35,10 @@ bool convert_pcm(
     target.sample_count = source.sample_count;
     target.pcm.resize(source.sample_count);
     for (std::size_t index = 0; index < target.pcm.size(); ++index) {
-        std::int16_t sample = 0;
-        std::memcpy(
-            &sample,
-            source.bytes.data() + index * sizeof(sample),
-            sizeof(sample));
+        const auto offset = index * sizeof(std::int16_t);
+        const auto bits = static_cast<std::uint16_t>(source.bytes[offset]) |
+            (static_cast<std::uint16_t>(source.bytes[offset + 1]) << 8u);
+        const auto sample = static_cast<std::int16_t>(bits);
         target.pcm[index] = std::max(
             -1.0F,
             std::min(1.0F, static_cast<float>(sample) / 32768.0F));
@@ -65,18 +51,21 @@ bool convert_pcm(
 struct SpeechAnimationAdapter::State {
     std::shared_ptr<Pipeline> pipeline;
     ReceiptHandler on_receipt;
-    std::atomic<bool> terminal_forwarded{false};
+    AdapterDiagnosticHandler on_diagnostic;
+    std::atomic<bool> animation_degraded{false};
 };
 
 SpeechAnimationAdapter::SpeechAnimationAdapter(
     std::shared_ptr<Pipeline> pipeline,
-    ReceiptHandler on_receipt)
+    ReceiptHandler on_receipt,
+    AdapterDiagnosticHandler on_diagnostic)
     : state_(std::make_shared<State>()) {
     if (!pipeline) {
         throw std::invalid_argument("speech-animation pipeline is null");
     }
     state_->pipeline = std::move(pipeline);
     state_->on_receipt = std::move(on_receipt);
+    state_->on_diagnostic = std::move(on_diagnostic);
 }
 
 SpeechAnimationAdapter::QueuePushResult SpeechAnimationAdapter::begin(
@@ -98,21 +87,23 @@ TtsCallbacks SpeechAnimationAdapter::make_callbacks(
         if (callbacks->on_audio) {
             callbacks->on_audio(chunk);
         }
-        if (state->terminal_forwarded.load(std::memory_order_acquire)) {
+        if (state->animation_degraded.load(std::memory_order_acquire)) {
             return;
         }
 
         IntegrationChunk input;
         std::string diagnostic;
         if (!convert_pcm(chunk, input, diagnostic)) {
-            state->pipeline->cancel();
-            if (!state->terminal_forwarded.exchange(
+            if (!state->animation_degraded.exchange(
                     true,
-                    std::memory_order_acq_rel) && callbacks->on_error) {
-                callbacks->on_error(make_adapter_error(
-                    chunk.request_id,
-                    "unsupported_pcm",
-                    std::move(diagnostic)));
+                    std::memory_order_acq_rel)) {
+                state->pipeline->cancel();
+                if (state->on_diagnostic) {
+                    state->on_diagnostic(AdapterDiagnostic{
+                        chunk.request_id,
+                        "unsupported_pcm",
+                        std::move(diagnostic)});
+                }
             }
             return;
         }
@@ -122,40 +113,42 @@ TtsCallbacks SpeechAnimationAdapter::make_callbacks(
             return;
         }
 
-        state->pipeline->cancel();
-        if (!state->terminal_forwarded.exchange(
+        if (!state->animation_degraded.exchange(
                 true,
-                std::memory_order_acq_rel) && callbacks->on_error) {
+                std::memory_order_acq_rel)) {
+            state->pipeline->cancel();
             const char* code = result == QueuePushResult::Full
                 ? "speech_animation_queue_full"
                 : "speech_animation_input_rejected";
-            callbacks->on_error(make_adapter_error(
-                chunk.request_id,
-                code,
-                "speech-animation rejected a bridge PCM chunk"));
+            if (state->on_diagnostic) {
+                state->on_diagnostic(AdapterDiagnostic{
+                    chunk.request_id,
+                    code,
+                    "speech-animation rejected a bridge PCM chunk"});
+            }
         }
     };
     wrapped.on_completed = [state, callbacks]() {
-        state->pipeline->complete();
-        if (!state->terminal_forwarded.exchange(
-                true,
-                std::memory_order_acq_rel) && callbacks->on_completed) {
+        if (!state->animation_degraded.load(std::memory_order_acquire)) {
+            state->pipeline->complete();
+        }
+        if (callbacks->on_completed) {
             callbacks->on_completed();
         }
     };
     wrapped.on_cancelled = [state, callbacks]() {
-        state->pipeline->cancel();
-        if (!state->terminal_forwarded.exchange(
-                true,
-                std::memory_order_acq_rel) && callbacks->on_cancelled) {
+        if (!state->animation_degraded.load(std::memory_order_acquire)) {
+            state->pipeline->cancel();
+        }
+        if (callbacks->on_cancelled) {
             callbacks->on_cancelled();
         }
     };
     wrapped.on_error = [state, callbacks](const TtsError& error) {
-        state->pipeline->cancel();
-        if (!state->terminal_forwarded.exchange(
-                true,
-                std::memory_order_acq_rel) && callbacks->on_error) {
+        if (!state->animation_degraded.load(std::memory_order_acquire)) {
+            state->pipeline->cancel();
+        }
+        if (callbacks->on_error) {
             callbacks->on_error(error);
         }
     };

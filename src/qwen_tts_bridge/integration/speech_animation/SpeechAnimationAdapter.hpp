@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <speech_animation/integration.hpp>
@@ -26,12 +27,27 @@ public:
     using QueuePushResult = ::speech_animation::integration::QueuePushResult;
     using ReceiptHandler = std::function<void(const Receipt&)>;
 
+    /// \brief Describes a degradation isolated to the optional animation path.
+    ///
+    /// This is deliberately separate from TtsError: an animation queue or
+    /// format problem must not turn a successful bridge synthesis into a TTS
+    /// failure.
+    struct AdapterDiagnostic {
+        RequestId request_id = 0;
+        std::string code;
+        std::string message;
+    };
+    using AdapterDiagnosticHandler = std::function<void(const AdapterDiagnostic&)>;
+
     /// \brief Creates an adapter for an already configured pipeline.
     /// \param pipeline Shared pipeline owned by the integration/application layer.
     /// \param on_receipt Optional consumer callback invoked by process_available().
+    /// \param on_diagnostic Optional callback for one-time animation-only
+    /// degradation diagnostics. It never replaces a bridge TtsError callback.
     explicit SpeechAnimationAdapter(
         std::shared_ptr<Pipeline> pipeline,
-        ReceiptHandler on_receipt = {});
+        ReceiptHandler on_receipt = {},
+        AdapterDiagnosticHandler on_diagnostic = {});
 
     /// \brief Establishes request metadata before synthesis begins.
     ///

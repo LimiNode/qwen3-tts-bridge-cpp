@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <vector>
 
 #define CHECK(expr)                                                            \
@@ -20,6 +21,7 @@ namespace {
 
 using qwen_tts_bridge::AudioFormat;
 using qwen_tts_bridge::PcmChunk;
+using qwen_tts_bridge::TtsError;
 using qwen_tts_bridge::TtsCallbacks;
 using qwen_tts_bridge::speech_animation::SpeechAnimationAdapter;
 using speech_animation::integration::PipelineConfig;
@@ -104,10 +106,129 @@ void test_cancel_without_audio_maps_to_terminal_receipt() {
     CHECK(receipts.front().output_first_sample == 100);
 }
 
+void test_queue_full_degrades_animation_without_rewriting_completion() {
+    PipelineConfig config;
+    config.queue_capacity = 1;
+    auto pipeline = std::make_shared<SpeechAnimationAdapter::Pipeline>(config);
+    std::vector<std::string> events;
+    std::vector<SpeechAnimationAdapter::AdapterDiagnostic> diagnostics;
+    SpeechAnimationAdapter adapter(
+        pipeline,
+        {},
+        [&diagnostics, &events](const SpeechAnimationAdapter::AdapterDiagnostic& diagnostic) {
+            diagnostics.push_back(diagnostic);
+            events.emplace_back("diagnostic");
+        });
+    CHECK(adapter.begin(11, 0, 24000) == QueuePushResult::Accepted);
+
+    std::size_t completed = 0;
+    std::size_t errors = 0;
+    TtsCallbacks downstream;
+    downstream.on_audio = [&events](const PcmChunk&) { events.emplace_back("audio"); };
+    downstream.on_completed = [&events, &completed]() {
+        events.emplace_back("completed");
+        ++completed;
+    };
+    downstream.on_error = [&errors](const TtsError&) { ++errors; };
+    auto callbacks = adapter.make_callbacks(std::move(downstream));
+
+    callbacks.on_audio(pcm_chunk(11, 0));
+    callbacks.on_audio(pcm_chunk(11, 8));
+    callbacks.on_completed();
+
+    CHECK(events.size() == 4);
+    CHECK(events[0] == "audio");
+    CHECK(events[1] == "audio");
+    CHECK(events[2] == "diagnostic");
+    CHECK(events[3] == "completed");
+    CHECK(completed == 1);
+    CHECK(errors == 0);
+    CHECK(diagnostics.size() == 1);
+    CHECK(diagnostics.front().request_id == 11);
+    CHECK(diagnostics.front().code == "speech_animation_queue_full");
+
+    // Once degraded, later audio is still delivered to playback and does not
+    // generate another integration diagnostic.
+    callbacks.on_audio(pcm_chunk(11, 16));
+    CHECK(events.size() == 5);
+    CHECK(events[4] == "audio");
+    CHECK(diagnostics.size() == 1);
+}
+
+void test_unsupported_pcm_preserves_completion_and_reports_once() {
+    auto pipeline = std::make_shared<SpeechAnimationAdapter::Pipeline>();
+    std::vector<SpeechAnimationAdapter::AdapterDiagnostic> diagnostics;
+    SpeechAnimationAdapter adapter(
+        pipeline,
+        {},
+        [&diagnostics](const SpeechAnimationAdapter::AdapterDiagnostic& diagnostic) {
+            diagnostics.push_back(diagnostic);
+        });
+    CHECK(adapter.begin(12, 0, 24000) == QueuePushResult::Accepted);
+
+    std::size_t audio = 0;
+    std::size_t completed = 0;
+    std::size_t errors = 0;
+    TtsCallbacks downstream;
+    downstream.on_audio = [&audio](const PcmChunk&) { ++audio; };
+    downstream.on_completed = [&completed]() { ++completed; };
+    downstream.on_error = [&errors](const TtsError&) { ++errors; };
+    auto callbacks = adapter.make_callbacks(std::move(downstream));
+
+    auto invalid = pcm_chunk(12, 0);
+    invalid.format.channels = 2;
+    callbacks.on_audio(invalid);
+    callbacks.on_completed();
+    callbacks.on_audio(invalid);
+
+    CHECK(audio == 2);
+    CHECK(completed == 1);
+    CHECK(errors == 0);
+    CHECK(diagnostics.size() == 1);
+    CHECK(diagnostics.front().code == "unsupported_pcm");
+}
+
+void test_downstream_error_is_forwarded_unchanged() {
+    auto pipeline = std::make_shared<SpeechAnimationAdapter::Pipeline>();
+    std::vector<SpeechAnimationAdapter::AdapterDiagnostic> diagnostics;
+    SpeechAnimationAdapter adapter(
+        pipeline,
+        {},
+        [&diagnostics](const SpeechAnimationAdapter::AdapterDiagnostic& diagnostic) {
+            diagnostics.push_back(diagnostic);
+        });
+    CHECK(adapter.begin(13, 0, 24000) == QueuePushResult::Accepted);
+
+    TtsError expected;
+    expected.request_id = 13;
+    expected.category = "worker_error";
+    expected.code = "engine_failed";
+    expected.message = "preserve this error";
+    TtsError observed;
+    std::size_t error_count = 0;
+    TtsCallbacks downstream;
+    downstream.on_error = [&observed, &error_count](const TtsError& error) {
+        observed = error;
+        ++error_count;
+    };
+    auto callbacks = adapter.make_callbacks(std::move(downstream));
+    callbacks.on_error(expected);
+
+    CHECK(error_count == 1);
+    CHECK(observed.request_id == expected.request_id);
+    CHECK(observed.category == expected.category);
+    CHECK(observed.code == expected.code);
+    CHECK(observed.message == expected.message);
+    CHECK(diagnostics.empty());
+}
+
 } // namespace
 
 int main() {
     test_audio_and_completion_mapping();
     test_cancel_without_audio_maps_to_terminal_receipt();
+    test_queue_full_degrades_animation_without_rewriting_completion();
+    test_unsupported_pcm_preserves_completion_and_reports_once();
+    test_downstream_error_is_forwarded_unchanged();
     return EXIT_SUCCESS;
 }
