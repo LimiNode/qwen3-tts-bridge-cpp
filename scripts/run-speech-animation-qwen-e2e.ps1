@@ -121,7 +121,7 @@ if ($off.text -cne $on.text) {
 if ($TextFile) {
     $expectedText = Get-Content -LiteralPath $TextFile -Raw -Encoding UTF8
     if ($off.text -cne $expectedText) {
-        throw 'Probe receipt text does not match the UTF-8 text file byte-for-byte.'
+        throw 'Probe receipt text does not match the decoded UTF-8 source text.'
     }
 }
 
