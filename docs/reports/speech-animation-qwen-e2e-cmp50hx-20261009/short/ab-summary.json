@@ -1,7 +1,7 @@
 ﻿{
     "schema_version":  1,
     "experiment":  "qwen_speech_animation_ab",
-    "text":  "РЎРµРіРѕРґРЅСЏ РіРѕР»РѕСЃ РіРѕРІРѕСЂРёС‚ СЃРїРѕРєРѕР№РЅРѕ.\n",
+    "text":  "Сегодня голос говорит спокойно.\n",
     "text_source":  "utf8_file",
     "text_file":  "C:\\tmp\\speech-animation-qwen-e2e-short-20261009.txt",
     "adapter_off":  {
