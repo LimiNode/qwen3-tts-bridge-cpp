@@ -52,8 +52,8 @@ optional bridge adapter or in the application integration layer:
 
 ```text
 application / optional adapter
-    ├── qwen3-tts-bridge-cpp
-    └── speech-animation core
+    |-- qwen3-tts-bridge-cpp
+    `-- speech-animation core
 ```
 
 The bridge must not know the animation package's policy or model, and the
@@ -81,6 +81,37 @@ queue backpressure cancels/deactivates only the animation pipeline and is
 reported through the adapter diagnostic handler; the original bridge
 `on_audio`, `on_completed`, `on_cancelled`, and `on_error` callbacks continue to
 be forwarded unchanged.
+
+## Predictive viseme contract
+
+The pinned `speech-animation` dependency exposes the engine-neutral
+`SpeechContext`, `PredictedVisemeSpec`, `PredictedVisemeCue`, and
+`PredictiveVisemePlanner` contract. This is an optional downstream stage; the
+Qwen adapter does not invoke it automatically and does not infer phonemes or
+visemes from text.
+
+An application or pronunciation provider may map `PreparedText` pronunciation
+evidence to an ordered viseme sequence. Once an utterance sample count is known,
+the planner allocates provider-supplied duration weights over that canonical
+sample clock and can annotate analyzer spans with
+`PredictedPronunciation` evidence. The result is deterministic and independent
+of PCM callback arrival times.
+
+Backend-specific pronunciation mapping remains outside both the bridge core and
+the generic speech-animation core:
+
+```text
+tts-front-cpp / pronunciation provider
+    -> ordered predicted visemes
+    -> speech-animation predictive planner
+    -> sample-addressed cues + causal PCM evidence
+    -> presentation adapter (future)
+```
+
+The current pin establishes the contract and deterministic planner only. It
+does not add a Russian phonemizer, forced alignment, playback look-ahead,
+Qwen-specific codec mapping, or Unity/Godot/VRM integration. PCM-assisted
+prediction correction remains a later stage.
 
 ## Real Qwen acceptance probe
 
