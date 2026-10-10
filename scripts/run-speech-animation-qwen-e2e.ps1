@@ -81,7 +81,7 @@ function Invoke-Probe {
         }
         throw "speech-animation probe ($Adapter) failed with exit code $LASTEXITCODE."
     }
-    $report = Get-Content -LiteralPath $OutputPath -Raw | ConvertFrom-Json
+    $report = Get-Content -LiteralPath $OutputPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if (-not $report.success) {
         throw "speech-animation probe ($Adapter) produced a non-accepted receipt: $OutputPath"
     }
@@ -114,6 +114,16 @@ foreach ($path in @($offPath, $onPath, $summaryPath)) {
 
 $off = Invoke-Probe -Adapter off -OutputPath $offPath
 $on = Invoke-Probe -Adapter on -OutputPath $onPath
+
+if ($off.text -cne $on.text) {
+    throw 'Adapter OFF and ON receipts contain different spoken text.'
+}
+if ($TextFile) {
+    $expectedText = Get-Content -LiteralPath $TextFile -Raw -Encoding UTF8
+    if ($off.text -cne $expectedText) {
+        throw 'Probe receipt text does not match the UTF-8 text file byte-for-byte.'
+    }
+}
 
 $firstPcmDelta = $null
 $firstDownstreamDelta = $null
