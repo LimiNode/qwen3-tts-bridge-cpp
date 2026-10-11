@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -16,6 +17,8 @@ RUNNER = REPOSITORY_ROOT / "scripts" / "run-speech-animation-qwen-e2e.ps1"
 class SpeechAnimationE2eRunnerTests(unittest.TestCase):
     def test_utf8_text_file_round_trip(self) -> None:
         """The runner must preserve Cyrillic text in its generated summary."""
+        if os.name != "nt":
+            self.skipTest("The PowerShell runner regression is Windows-specific")
         powershell = shutil.which("pwsh") or shutil.which("powershell")
         if powershell is None:
             self.skipTest("PowerShell is required for the runner integration check")
