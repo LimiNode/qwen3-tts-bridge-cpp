@@ -16,3 +16,18 @@ native worker's runtime arguments. The production release bundle should put
 `qwen_tts_play.exe`, `qwen_tts_native_worker.exe`, the CUDA runtime, and a
 user-managed `models/` directory beside one another; model weights are never
 part of this repository.
+
+When configured with `-DQWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION=ON`, the player
+can also emit playback-locked presentation selections without changing the
+audio path:
+
+```text
+qwen_tts_play.exe --worker ... \
+  --playback-animation-receipts-file animation.jsonl \
+  --playback-animation-fps 60
+```
+
+The JSONL records are driven by the physical WaveOut cursor (or the deterministic
+mock sink), translated to the utterance sample clock, and are intended for a
+presentation consumer. They do not claim display latency or replace the audio
+callback/playback sink.

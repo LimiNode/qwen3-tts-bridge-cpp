@@ -248,6 +248,7 @@ endif()
 if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
     add_library(qwen_tts_bridge_speech_animation STATIC
         src/qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.cpp
+        src/qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_speech_animation ALIAS
         qwen_tts_bridge_speech_animation)
@@ -405,6 +406,14 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
                 QwenTTSBridge::qwen_tts_bridge
                 winmm
         )
+        if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+            target_link_libraries(qwen_tts_play
+                PRIVATE
+                    QwenTTSBridge::qwen_tts_bridge_speech_animation
+            )
+            target_compile_definitions(qwen_tts_play
+                PRIVATE QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION=1)
+        endif()
         if(MINGW)
             target_link_options(qwen_tts_play PRIVATE -municode)
         endif()
@@ -472,6 +481,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
         list(APPEND _qwen_tts_public_headers
             qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.hpp
+            qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp
         )
     endif()
     set(_qwen_tts_header_check_sources)
@@ -516,6 +526,15 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 QwenTTSBridge::qwen_tts_bridge_speech_animation
         )
         add_test(NAME speech_animation_adapter_test COMMAND speech_animation_adapter_test)
+
+        add_executable(playback_animation_runtime_test
+            tests/playback_animation_runtime_test.cpp
+        )
+        target_link_libraries(playback_animation_runtime_test
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge_speech_animation
+        )
+        add_test(NAME playback_animation_runtime_test COMMAND playback_animation_runtime_test)
     endif()
 
     if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)

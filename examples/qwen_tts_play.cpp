@@ -2,6 +2,10 @@
 #include <qwen_tts_bridge/client.hpp>
 #include <qwen_tts_bridge/transport.hpp>
 
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+#include <qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp>
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -10,6 +14,7 @@
 #include <mmsystem.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <array>
 #include <cmath>
@@ -19,6 +24,7 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -60,6 +66,11 @@ using qwen_tts_bridge::audio::PlayoutBuffer;
 using qwen_tts_bridge::audio::TerminalFadeOptions;
 using qwen_tts_bridge::audio::TerminalFadePostProcessor;
 
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+using PlaybackCursorSnapshot =
+    speech_animation::integration::PlaybackCursorSnapshot;
+#endif
+
 struct ProgramOptions {
     bool help = false;
     bool use_mock_worker = false;
@@ -95,6 +106,8 @@ struct ProgramOptions {
     std::chrono::milliseconds startup_timeout{30000};
     std::string playback_metrics_file;
     std::string playback_interruption_diagnostics_file;
+    std::string playback_animation_receipts_file;
+    std::uint32_t playback_animation_fps = 60;
     std::string pcm_capture_file;
     std::size_t playback_prebuffer_chunks = 1;
     bool etw_playback_markers = false;
@@ -641,6 +654,7 @@ public:
         auto buffer = std::make_unique<Buffer>();
         buffer->bytes = chunk.bytes;
         buffer->request_id = chunk.request_id;
+        buffer->utterance_first_sample = chunk.first_sample;
         buffer->frame_count = pcm_frame_count(chunk.format, buffer->bytes.size());
         buffer->header.lpData = reinterpret_cast<LPSTR>(buffer->bytes.data());
         buffer->header.dwBufferLength = static_cast<DWORD>(buffer->bytes.size());
@@ -732,6 +746,50 @@ public:
             }
         }
     }
+
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+    PlaybackCursorSnapshot playback_cursor_snapshot(
+        std::uint64_t playback_epoch,
+        RequestId request_id) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        PlaybackCursorSnapshot snapshot;
+        snapshot.playback_epoch = playback_epoch;
+        snapshot.request_id = request_id;
+        if (playback_epoch != playback_epoch_ || request_id == 0 ||
+            !playback_started_ || buffers_.empty()) {
+            return snapshot;
+        }
+        const auto cursor_frame = current_playout_cursor_frame_locked();
+        if (!cursor_frame.has_value()) {
+            return snapshot;
+        }
+        const Buffer* selected = nullptr;
+        std::uint64_t local_offset = 0;
+        for (const auto& item : buffers_) {
+            const Buffer& buffer = *item;
+            const auto end = buffer.start_frame + buffer.frame_count;
+            if (cursor_frame.value() < buffer.start_frame) {
+                selected = &buffer;
+                break;
+            }
+            if (cursor_frame.value() < end) {
+                selected = &buffer;
+                local_offset = cursor_frame.value() - buffer.start_frame;
+                break;
+            }
+        }
+        if (selected == nullptr || selected->request_id != request_id ||
+            selected->utterance_first_sample >
+                std::numeric_limits<std::uint64_t>::max() - local_offset) {
+            return snapshot;
+        }
+        snapshot.utterance_sample =
+            selected->utterance_first_sample + local_offset;
+        snapshot.sample_rate = m_format.sample_rate;
+        snapshot.position_available = snapshot.sample_rate != 0;
+        return snapshot;
+    }
+#endif
 
     void write_interruption_diagnostics_file(const std::string& file_name) const {
         std::vector<PlaybackInterruptionDiagnostic> diagnostics;
@@ -915,6 +973,7 @@ private:
         bool prepared = false;
         double duration_ms = 0.0;
         RequestId request_id = 0;
+        std::uint64_t utterance_first_sample = 0;
         std::uint64_t start_frame = 0;
         std::uint64_t frame_count = 0;
         std::optional<std::chrono::steady_clock::time_point> mock_start;
@@ -1313,6 +1372,52 @@ struct ActiveRequestState {
     std::shared_ptr<AudioPostProcessorChain> processors;
 };
 
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+struct PlaybackAnimationContext {
+    std::mutex mutex;
+    std::uint64_t playback_epoch = 0;
+    RequestId request_id = 0;
+};
+
+class PlaybackAnimationLoop final {
+public:
+    PlaybackAnimationLoop() = default;
+    PlaybackAnimationLoop(const PlaybackAnimationLoop&) = delete;
+    PlaybackAnimationLoop& operator=(const PlaybackAnimationLoop&) = delete;
+
+    void start(std::function<void()> tick, std::uint32_t fps) {
+        if (thread_.joinable()) {
+            throw std::logic_error("playback animation loop already started");
+        }
+        stop_.store(false, std::memory_order_release);
+        thread_ = std::thread([
+            this,
+            tick = std::move(tick),
+            interval = std::chrono::milliseconds(1000 / fps)] {
+            while (!stop_.load(std::memory_order_acquire)) {
+                tick();
+                std::this_thread::sleep_for(interval);
+            }
+        });
+    }
+
+    ~PlaybackAnimationLoop() {
+        stop();
+    }
+
+    void stop() noexcept {
+        stop_.store(true, std::memory_order_release);
+        if (thread_.joinable()) {
+            thread_.join();
+        }
+    }
+
+private:
+    std::atomic<bool> stop_{false};
+    std::thread thread_;
+};
+#endif
+
 struct OneShotState {
     std::mutex mutex;
     std::condition_variable condition;
@@ -1393,6 +1498,8 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --playback-interruption-diagnostics-file <path> Write opt-in cursor/reset cancellation diagnostics JSON.\n"
+        << "  --playback-animation-receipts-file <path> Write playback-locked animation selections as JSONL.\n"
+        << "  --playback-animation-fps <n> Presentation tick rate for animation receipts, default: 60.\n"
         << "  --pcm-capture-file <path>      Write opt-in one-shot raw s16le PCM plus JSON metadata.\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
         << "  --tail                         Enable terminal fade and padding (default).\n"
@@ -1583,6 +1690,17 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
                 argv,
                 "--playback-interruption-diagnostics-file");
         }
+        else if (arg == "--playback-animation-receipts-file" ||
+                 arg.rfind("--playback-animation-receipts-file=", 0) == 0) {
+            options.playback_animation_receipts_file = require_value(
+                index, argc, argv, "--playback-animation-receipts-file");
+        }
+        else if (arg == "--playback-animation-fps" ||
+                 arg.rfind("--playback-animation-fps=", 0) == 0) {
+            options.playback_animation_fps = parse_u32(
+                require_value(index, argc, argv, "--playback-animation-fps"),
+                "--playback-animation-fps");
+        }
         else if (arg == "--pcm-capture-file" ||
                  arg.rfind("--pcm-capture-file=", 0) == 0) {
             options.pcm_capture_file = require_value(index, argc, argv, "--pcm-capture-file");
@@ -1666,6 +1784,16 @@ void validate_options(const ProgramOptions& options) {
     if (options.playback_prebuffer_chunks == 0) {
         throw std::runtime_error("--playback-prebuffer-chunks must be greater than zero");
     }
+    if (options.playback_animation_fps == 0 ||
+        options.playback_animation_fps > 1000) {
+        throw std::runtime_error("--playback-animation-fps must be between 1 and 1000");
+    }
+#ifndef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+    if (!options.playback_animation_receipts_file.empty()) {
+        throw std::runtime_error(
+            "playback animation receipts require QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION=ON");
+    }
+#endif
     constexpr std::uint32_t max_terminal_duration_ms = 600000;
     if (options.terminal_fade.fade_ms > max_terminal_duration_ms ||
         options.terminal_fade.completion_silence_ms > max_terminal_duration_ms ||
@@ -1833,7 +1961,12 @@ std::uint64_t cancel_active_request(
     QwenTtsClient& client,
     WaveOutPlayer& player,
     ActiveRequestState& state,
-    std::uint32_t interruption_fade_ms) {
+    std::uint32_t interruption_fade_ms
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+    , qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime* animation_runtime = nullptr
+    , PlaybackAnimationContext* animation_context = nullptr
+#endif
+    ) {
     RequestId request_id = 0;
     QwenTtsClient* active_client = nullptr;
     std::shared_ptr<AudioPostProcessorChain> processors;
@@ -1859,6 +1992,16 @@ std::uint64_t cancel_active_request(
     if (interruption.second.has_value()) {
         player.enqueue(playback_epoch, interruption.second.value());
     }
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+    if (animation_runtime != nullptr) {
+        animation_runtime->invalidate(playback_epoch);
+        if (animation_context != nullptr) {
+            std::lock_guard<std::mutex> lock(animation_context->mutex);
+            animation_context->playback_epoch = playback_epoch;
+            animation_context->request_id = 0;
+        }
+    }
+#endif
     return playback_epoch;
 }
 
@@ -1911,13 +2054,22 @@ RequestId submit_request(
     PreparedTtsRequest prepared_request,
     OneShotState* one_shot_state = nullptr,
     PcmCapture* pcm_capture = nullptr,
-    std::optional<std::uint64_t> playback_epoch_override = std::nullopt) {
+    std::optional<std::uint64_t> playback_epoch_override = std::nullopt
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+    , qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime* animation_runtime = nullptr
+    , PlaybackAnimationContext* animation_context = nullptr
+#endif
+    ) {
     const std::uint64_t playback_epoch = playback_epoch_override.value_or(
         cancel_active_request(
             client,
             player,
             active_state,
-            options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0));
+            options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+            , animation_runtime, animation_context
+#endif
+        ));
 
     TtsRequest request = std::move(prepared_request.request);
     auto processors = make_audio_processors(options);
@@ -1934,6 +2086,16 @@ RequestId submit_request(
 
     const RequestId request_id = request.id;
     player.note_request_started(request_id);
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+    if (animation_runtime != nullptr) {
+        if (animation_context != nullptr) {
+            std::lock_guard<std::mutex> lock(animation_context->mutex);
+            animation_context->playback_epoch = playback_epoch;
+            animation_context->request_id = request_id;
+        }
+        animation_runtime->begin(playback_epoch, request_id, options.sample_rate);
+    }
+#endif
     TtsCallbacks callbacks;
     callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id, pcm_capture](const PcmChunk& chunk) {
         if (!is_active_request(active_state, request_id)) {
@@ -2019,6 +2181,12 @@ RequestId submit_request(
                       << '/' << error.code << ": " << error.message << '\n';
         }
     };
+
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+    if (animation_runtime != nullptr) {
+        callbacks = animation_runtime->make_callbacks(std::move(callbacks));
+    }
+#endif
 
     prepared_request.request = std::move(request);
     if (client.synthesize_async(
@@ -2430,6 +2598,53 @@ int wmain(int argc, wchar_t** argv) {
             options.playback_prebuffer_chunks);
         ActiveRequestState active_state;
 
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+        std::shared_ptr<PlaybackAnimationContext> animation_context;
+        std::shared_ptr<std::mutex> animation_receipt_mutex;
+        std::shared_ptr<std::ofstream> animation_receipt_output;
+        std::unique_ptr<qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime>
+            animation_runtime;
+        PlaybackAnimationLoop animation_loop;
+        if (!options.playback_animation_receipts_file.empty()) {
+            const auto receipt_path = std::filesystem::u8path(
+                options.playback_animation_receipts_file);
+            if (std::filesystem::exists(receipt_path)) {
+                throw std::runtime_error(
+                    "refusing to overwrite existing playback animation receipts file: " +
+                    options.playback_animation_receipts_file);
+            }
+            animation_receipt_output = std::make_shared<std::ofstream>(
+                receipt_path,
+                std::ios::binary | std::ios::trunc);
+            if (!*animation_receipt_output) {
+                throw std::runtime_error(
+                    "failed to open playback animation receipts file: " +
+                    options.playback_animation_receipts_file);
+            }
+            animation_context = std::make_shared<PlaybackAnimationContext>();
+            animation_receipt_mutex = std::make_shared<std::mutex>();
+            animation_runtime = std::make_unique<
+                qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime>(
+                [&player, animation_context] {
+                    std::lock_guard<std::mutex> lock(animation_context->mutex);
+                    return player.playback_cursor_snapshot(
+                        animation_context->playback_epoch,
+                        animation_context->request_id);
+                },
+                [animation_receipt_output, animation_receipt_mutex](
+                    const auto& selection) {
+                    std::lock_guard<std::mutex> lock(*animation_receipt_mutex);
+                    *animation_receipt_output << selection.to_json() << '\n';
+                    animation_receipt_output->flush();
+                });
+            animation_loop.start(
+                [&animation_runtime] {
+                    static_cast<void>(animation_runtime->tick());
+                },
+                options.playback_animation_fps);
+        }
+#endif
+
         if (!options.text.empty()) {
             OneShotState state;
             if (playback_metrics != nullptr) {
@@ -2447,13 +2662,22 @@ int wmain(int argc, wchar_t** argv) {
                 options,
                 std::move(prepared_request),
                 &state,
-                pcm_capture.get());
+                pcm_capture.get(),
+                std::nullopt
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+                , animation_runtime.get(), animation_context.get()
+#endif
+            );
             if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
                 cancel_active_request(
                     client,
                     player,
                     active_state,
-                    options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
+                    options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+                    , animation_runtime.get(), animation_context.get()
+#endif
+                );
                 if (safe_client != nullptr) {
                     safe_client->stop();
                 }
@@ -2504,7 +2728,11 @@ int wmain(int argc, wchar_t** argv) {
                     client,
                     player,
                     active_state,
-                    options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
+                    options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+                    , animation_runtime.get(), animation_context.get()
+#endif
+                );
                 std::cout << "cancelled active request\n";
                 continue;
             }
@@ -2523,7 +2751,11 @@ int wmain(int argc, wchar_t** argv) {
                 client,
                 player,
                 active_state,
-                options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
+                options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+                , animation_runtime.get(), animation_context.get()
+#endif
+            );
             PreparedTtsRequest prepared_request;
             try {
                 prepared_request = prepare_request(client, options, line);
@@ -2544,14 +2776,22 @@ int wmain(int argc, wchar_t** argv) {
                 std::move(prepared_request),
                 nullptr,
                 nullptr,
-                playback_epoch);
+                playback_epoch
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+                , animation_runtime.get(), animation_context.get()
+#endif
+            );
         }
 
         cancel_active_request(
             client,
             player,
             active_state,
-            options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0);
+            options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+            , animation_runtime.get(), animation_context.get()
+#endif
+        );
         client.stop();
         if (safe_client != nullptr) {
             safe_client->stop();
