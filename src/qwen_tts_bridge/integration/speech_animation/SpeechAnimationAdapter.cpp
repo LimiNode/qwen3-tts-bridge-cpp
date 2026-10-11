@@ -55,6 +55,51 @@ struct SpeechAnimationAdapter::State {
     std::atomic<bool> animation_degraded{false};
 };
 
+void SpeechAnimationAdapter::push_audio_to_state(
+    const std::shared_ptr<SpeechAnimationAdapter::State>& state,
+    const PcmChunk& chunk) {
+    if (state->animation_degraded.load(std::memory_order_acquire)) {
+        return;
+    }
+
+    IntegrationChunk input;
+    std::string diagnostic;
+    if (!convert_pcm(chunk, input, diagnostic)) {
+        if (!state->animation_degraded.exchange(
+                true,
+                std::memory_order_acq_rel)) {
+            state->pipeline->cancel();
+            if (state->on_diagnostic) {
+                state->on_diagnostic(AdapterDiagnostic{
+                    chunk.request_id,
+                    "unsupported_pcm",
+                    std::move(diagnostic)});
+            }
+        }
+        return;
+    }
+
+    const auto result = state->pipeline->push(std::move(input));
+    if (result == QueuePushResult::Accepted) {
+        return;
+    }
+
+    if (!state->animation_degraded.exchange(
+            true,
+            std::memory_order_acq_rel)) {
+        state->pipeline->cancel();
+        const char* code = result == QueuePushResult::Full
+            ? "speech_animation_queue_full"
+            : "speech_animation_input_rejected";
+        if (state->on_diagnostic) {
+            state->on_diagnostic(AdapterDiagnostic{
+                chunk.request_id,
+                code,
+                "speech-animation rejected a bridge PCM chunk"});
+        }
+    }
+}
+
 SpeechAnimationAdapter::SpeechAnimationAdapter(
     std::shared_ptr<Pipeline> pipeline,
     ReceiptHandler on_receipt,
@@ -76,56 +121,20 @@ SpeechAnimationAdapter::QueuePushResult SpeechAnimationAdapter::begin(
 }
 
 TtsCallbacks SpeechAnimationAdapter::make_callbacks(
-    TtsCallbacks downstream) const {
+    TtsCallbacks downstream,
+    bool observe_audio) const {
     auto state = state_;
     auto callbacks = std::make_shared<TtsCallbacks>(std::move(downstream));
     TtsCallbacks wrapped;
     wrapped.on_text_prepared = callbacks->on_text_prepared;
     wrapped.on_timing = callbacks->on_timing;
     wrapped.on_completion_metadata = callbacks->on_completion_metadata;
-    wrapped.on_audio = [state, callbacks](const PcmChunk& chunk) {
+    wrapped.on_audio = [state, callbacks, observe_audio](const PcmChunk& chunk) {
         if (callbacks->on_audio) {
             callbacks->on_audio(chunk);
         }
-        if (state->animation_degraded.load(std::memory_order_acquire)) {
-            return;
-        }
-
-        IntegrationChunk input;
-        std::string diagnostic;
-        if (!convert_pcm(chunk, input, diagnostic)) {
-            if (!state->animation_degraded.exchange(
-                    true,
-                    std::memory_order_acq_rel)) {
-                state->pipeline->cancel();
-                if (state->on_diagnostic) {
-                    state->on_diagnostic(AdapterDiagnostic{
-                        chunk.request_id,
-                        "unsupported_pcm",
-                        std::move(diagnostic)});
-                }
-            }
-            return;
-        }
-
-        const auto result = state->pipeline->push(std::move(input));
-        if (result == QueuePushResult::Accepted) {
-            return;
-        }
-
-        if (!state->animation_degraded.exchange(
-                true,
-                std::memory_order_acq_rel)) {
-            state->pipeline->cancel();
-            const char* code = result == QueuePushResult::Full
-                ? "speech_animation_queue_full"
-                : "speech_animation_input_rejected";
-            if (state->on_diagnostic) {
-                state->on_diagnostic(AdapterDiagnostic{
-                    chunk.request_id,
-                    code,
-                    "speech-animation rejected a bridge PCM chunk"});
-            }
+        if (observe_audio) {
+            push_audio_to_state(state, chunk);
         }
     };
     wrapped.on_completed = [state, callbacks]() {
@@ -153,6 +162,10 @@ TtsCallbacks SpeechAnimationAdapter::make_callbacks(
         }
     };
     return wrapped;
+}
+
+void SpeechAnimationAdapter::push_audio(const PcmChunk& chunk) const {
+    push_audio_to_state(state_, chunk);
 }
 
 std::vector<SpeechAnimationAdapter::Receipt>

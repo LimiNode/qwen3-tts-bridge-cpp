@@ -62,7 +62,16 @@ public:
     ///
     /// The returned callbacks forward on_audio/on_timing/text/terminal events
     /// to `downstream`. PCM is also copied into the speech-animation queue.
-    TtsCallbacks make_callbacks(TtsCallbacks downstream = {}) const;
+    TtsCallbacks make_callbacks(
+        TtsCallbacks downstream = {},
+        bool observe_audio = true) const;
+
+    /// \\brief Pushes a post-processed PCM chunk into the animation queue.
+    ///
+    /// This is useful when the playback sink receives PCM after an application
+    /// post-processing chain. The chunk must describe the exact PCM sent to
+    /// that sink; the operation never invokes downstream TTS callbacks.
+    void push_audio(const PcmChunk& chunk) const;
 
     /// \brief Runs analyzer work on the consumer side and returns receipts.
     ///
@@ -75,6 +84,9 @@ public:
 
 private:
     struct State;
+    static void push_audio_to_state(
+        const std::shared_ptr<State>& state,
+        const PcmChunk& chunk);
     std::shared_ptr<State> state_;
 };
 

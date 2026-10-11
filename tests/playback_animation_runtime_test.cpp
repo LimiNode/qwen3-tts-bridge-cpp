@@ -23,6 +23,7 @@ using qwen_tts_bridge::TtsCallbacks;
 using qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime;
 using speech_animation::integration::PlaybackCursorSnapshot;
 using speech_animation::integration::PlaybackSelectionStatus;
+using speech_animation::integration::PipelineConfig;
 
 PcmChunk pcm_chunk(std::uint64_t request_id, std::uint64_t first_sample) {
     PcmChunk chunk;
@@ -51,8 +52,9 @@ void test_selection_uses_sample_cursor_and_resets_stale_epoch() {
     PlaybackAnimationRuntime runtime([&snapshot] { return snapshot; });
     runtime.begin(3, 17, 24000);
 
-    auto callbacks = runtime.make_callbacks();
+    auto callbacks = runtime.make_callbacks({}, false);
     callbacks.on_audio(pcm_chunk(17, 0));
+    runtime.push_audio(pcm_chunk(17, 0));
     const auto first = runtime.tick();
     CHECK(first.status == PlaybackSelectionStatus::Selected);
     CHECK(first.request_id == 17);
@@ -65,6 +67,29 @@ void test_selection_uses_sample_cursor_and_resets_stale_epoch() {
     CHECK(later.cursor_sample == snapshot.utterance_sample);
 
     callbacks.on_completed();
+}
+
+void test_degradation_is_reported_without_rewriting_playback() {
+    PlaybackCursorSnapshot snapshot;
+    snapshot.playback_epoch = 4;
+    snapshot.request_id = 31;
+    snapshot.sample_rate = 24000;
+    snapshot.position_available = true;
+    std::vector<std::string> diagnostics;
+    PipelineConfig config;
+    config.queue_capacity = 1;
+    PlaybackAnimationRuntime runtime(
+        [&snapshot] { return snapshot; },
+        {},
+        [&diagnostics](const PlaybackAnimationRuntime::AdapterDiagnostic& diagnostic) {
+            diagnostics.push_back(diagnostic.code);
+        },
+        config);
+    runtime.begin(4, 31, 24000);
+    runtime.push_audio(pcm_chunk(31, 0));
+    runtime.push_audio(pcm_chunk(31, 2400));
+    CHECK(diagnostics.size() == 1);
+    CHECK(diagnostics.front() == "speech_animation_queue_full");
 }
 
 void test_unavailable_and_stale_snapshots_are_neutral() {
@@ -95,6 +120,7 @@ void test_unavailable_and_stale_snapshots_are_neutral() {
 
 int main() {
     test_selection_uses_sample_cursor_and_resets_stale_epoch();
+    test_degradation_is_reported_without_rewriting_playback();
     test_unavailable_and_stale_snapshots_are_neutral();
     return EXIT_SUCCESS;
 }

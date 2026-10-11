@@ -17,19 +17,27 @@ struct PlaybackAnimationRuntime::State {
     mutable std::mutex mutex;
     SnapshotProvider snapshot_provider;
     SelectionHandler on_selection;
+    DiagnosticHandler on_diagnostic;
+    PipelineConfig pipeline_config;
     std::shared_ptr<SpeechAnimationAdapter::Pipeline> pipeline;
     std::shared_ptr<SpeechAnimationAdapter> adapter;
     ::speech_animation::integration::PlaybackLockedCueSelector selector;
     std::uint64_t playback_epoch = 0;
     RequestId request_id = 0;
+    std::uint64_t generation = 0;
 };
 
 PlaybackAnimationRuntime::PlaybackAnimationRuntime(
     SnapshotProvider snapshot_provider,
-    SelectionHandler on_selection)
+    SelectionHandler on_selection,
+    DiagnosticHandler on_diagnostic,
+    PipelineConfig pipeline_config)
     : state_(std::make_shared<State>(
           std::move(snapshot_provider),
-          std::move(on_selection))) {}
+          std::move(on_selection))) {
+    state_->on_diagnostic = std::move(on_diagnostic);
+    state_->pipeline_config = std::move(pipeline_config);
+}
 
 PlaybackAnimationRuntime::~PlaybackAnimationRuntime() = default;
 
@@ -37,17 +45,44 @@ void PlaybackAnimationRuntime::begin(
     std::uint64_t playback_epoch,
     RequestId request_id,
     std::uint32_t sample_rate) {
-    auto pipeline = std::make_shared<SpeechAnimationAdapter::Pipeline>();
+    auto pipeline = std::make_shared<SpeechAnimationAdapter::Pipeline>(
+        state_->pipeline_config);
     if (pipeline->begin(request_id, 0, sample_rate) !=
         SpeechAnimationAdapter::QueuePushResult::Accepted) {
         throw std::runtime_error("failed to begin playback animation pipeline");
     }
     auto state = state_;
+    std::uint64_t generation = 0;
+    {
+        std::lock_guard<std::mutex> lock(state_->mutex);
+        generation = ++state_->generation;
+    }
     auto adapter = std::make_shared<SpeechAnimationAdapter>(
         pipeline,
-        [state](const SpeechAnimationAdapter::Receipt& receipt) {
+        [state, generation, playback_epoch, request_id](
+            const SpeechAnimationAdapter::Receipt& receipt) {
             std::lock_guard<std::mutex> lock(state->mutex);
+            if (generation != state->generation ||
+                state->playback_epoch != playback_epoch ||
+                state->request_id != request_id) {
+                return;
+            }
             static_cast<void>(state->selector.append(receipt));
+        },
+        [state, generation, playback_epoch](
+            const SpeechAnimationAdapter::AdapterDiagnostic& diagnostic) {
+            DiagnosticHandler handler;
+            {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                if (generation != state->generation ||
+                    state->playback_epoch != playback_epoch) {
+                    return;
+                }
+                handler = state->on_diagnostic;
+            }
+            if (handler) {
+                handler(diagnostic);
+            }
         });
     std::lock_guard<std::mutex> lock(state_->mutex);
     state_->playback_epoch = playback_epoch;
@@ -57,13 +92,17 @@ void PlaybackAnimationRuntime::begin(
     state_->adapter = std::move(adapter);
 }
 
-TtsCallbacks PlaybackAnimationRuntime::make_callbacks(TtsCallbacks downstream) const {
+TtsCallbacks PlaybackAnimationRuntime::make_callbacks(
+    TtsCallbacks downstream,
+    bool observe_audio) const {
     std::shared_ptr<SpeechAnimationAdapter> adapter;
     {
         std::lock_guard<std::mutex> lock(state_->mutex);
         adapter = state_->adapter;
     }
-    return adapter ? adapter->make_callbacks(std::move(downstream)) : std::move(downstream);
+    return adapter
+        ? adapter->make_callbacks(std::move(downstream), observe_audio)
+        : std::move(downstream);
 }
 
 PlaybackAnimationRuntime::Selection PlaybackAnimationRuntime::tick() {
@@ -89,8 +128,20 @@ PlaybackAnimationRuntime::Selection PlaybackAnimationRuntime::tick() {
     return selection;
 }
 
+void PlaybackAnimationRuntime::push_audio(const PcmChunk& chunk) const {
+    std::shared_ptr<SpeechAnimationAdapter> adapter;
+    {
+        std::lock_guard<std::mutex> lock(state_->mutex);
+        adapter = state_->adapter;
+    }
+    if (adapter) {
+        adapter->push_audio(chunk);
+    }
+}
+
 void PlaybackAnimationRuntime::invalidate(std::uint64_t playback_epoch) {
     std::lock_guard<std::mutex> lock(state_->mutex);
+    ++state_->generation;
     state_->playback_epoch = playback_epoch;
     state_->request_id = 0;
     state_->pipeline.reset();

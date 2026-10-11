@@ -1393,10 +1393,17 @@ public:
         thread_ = std::thread([
             this,
             tick = std::move(tick),
-            interval = std::chrono::milliseconds(1000 / fps)] {
+            interval = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                std::chrono::duration<double>(1.0 / static_cast<double>(fps)))] {
+            auto deadline = std::chrono::steady_clock::now();
             while (!stop_.load(std::memory_order_acquire)) {
                 tick();
-                std::this_thread::sleep_for(interval);
+                deadline += interval;
+                const auto now = std::chrono::steady_clock::now();
+                if (deadline < now) {
+                    deadline = now;
+                }
+                std::this_thread::sleep_until(deadline);
             }
         });
     }
@@ -1416,6 +1423,18 @@ private:
     std::atomic<bool> stop_{false};
     std::thread thread_;
 };
+
+std::string json_escape(const std::string& value) {
+    std::string escaped;
+    escaped.reserve(value.size());
+    for (const char character : value) {
+        if (character == '\\' || character == '"') {
+            escaped.push_back('\\');
+        }
+        escaped.push_back(character);
+    }
+    return escaped;
+}
 #endif
 
 struct OneShotState {
@@ -2097,7 +2116,11 @@ RequestId submit_request(
     }
 #endif
     TtsCallbacks callbacks;
-    callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id, pcm_capture](const PcmChunk& chunk) {
+    callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id, pcm_capture
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+        , animation_runtime
+#endif
+        ](const PcmChunk& chunk) {
         if (!is_active_request(active_state, request_id)) {
             return;
         }
@@ -2107,17 +2130,31 @@ RequestId submit_request(
             }
             for (const PcmChunk& processed : processors->process(chunk)) {
                 player.enqueue(playback_epoch, processed);
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+                if (animation_runtime != nullptr) {
+                    animation_runtime->push_audio(processed);
+                }
+#endif
             }
         }
         catch (const std::exception& exc) {
             std::cerr << "playback error: " << exc.what() << '\n';
         }
     };
-    callbacks.on_completed = [&player, &active_state, processors, playback_epoch, one_shot_state, request_id] {
+    callbacks.on_completed = [&player, &active_state, processors, playback_epoch, one_shot_state, request_id
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+        , animation_runtime
+#endif
+        ] {
         try {
             for (const PcmChunk& processed :
                  processors->finish(AudioTerminalReason::Completed)) {
                 player.enqueue(playback_epoch, processed);
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+                if (animation_runtime != nullptr) {
+                    animation_runtime->push_audio(processed);
+                }
+#endif
             }
         }
         catch (const std::exception& exc) {
@@ -2184,7 +2221,7 @@ RequestId submit_request(
 
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
     if (animation_runtime != nullptr) {
-        callbacks = animation_runtime->make_callbacks(std::move(callbacks));
+        callbacks = animation_runtime->make_callbacks(std::move(callbacks), false);
     }
 #endif
 
@@ -2635,6 +2672,16 @@ int wmain(int argc, wchar_t** argv) {
                     const auto& selection) {
                     std::lock_guard<std::mutex> lock(*animation_receipt_mutex);
                     *animation_receipt_output << selection.to_json() << '\n';
+                    animation_receipt_output->flush();
+                },
+                [animation_receipt_output, animation_receipt_mutex](const auto& diagnostic) {
+                    std::lock_guard<std::mutex> lock(*animation_receipt_mutex);
+                    *animation_receipt_output
+                        << "{\"type\":\"diagnostic\",\"request_id\":"
+                        << diagnostic.request_id
+                        << ",\"code\":\"" << json_escape(diagnostic.code)
+                        << "\",\"message\":\""
+                        << json_escape(diagnostic.message) << "\"}\n";
                     animation_receipt_output->flush();
                 });
             animation_loop.start(
