@@ -18,12 +18,17 @@ class PlaybackAnimationRuntime final {
 public:
     using Snapshot = ::speech_animation::integration::PlaybackCursorSnapshot;
     using Selection = ::speech_animation::integration::PlaybackAnimationSelection;
+    using PipelineConfig = ::speech_animation::integration::PipelineConfig;
+    using AdapterDiagnostic = SpeechAnimationAdapter::AdapterDiagnostic;
     using SnapshotProvider = std::function<Snapshot()>;
     using SelectionHandler = std::function<void(const Selection&)>;
+    using DiagnosticHandler = std::function<void(const AdapterDiagnostic&)>;
 
     PlaybackAnimationRuntime(
         SnapshotProvider snapshot_provider,
-        SelectionHandler on_selection = {});
+        SelectionHandler on_selection = {},
+        DiagnosticHandler on_diagnostic = {},
+        PipelineConfig pipeline_config = {});
     ~PlaybackAnimationRuntime();
 
     PlaybackAnimationRuntime(const PlaybackAnimationRuntime&) = delete;
@@ -36,11 +41,16 @@ public:
         std::uint32_t sample_rate);
 
     /// Wraps bridge callbacks with the current optional animation pipeline.
-    TtsCallbacks make_callbacks(TtsCallbacks downstream = {}) const;
+    TtsCallbacks make_callbacks(
+        TtsCallbacks downstream = {},
+        bool observe_audio = true) const;
 
     /// Drains adapter receipts and selects the cue at the current sink cursor.
     /// Call this from one presentation/animation consumer thread.
     Selection tick();
+
+    /// Pushes the exact PCM submitted to the playback sink.
+    void push_audio(const PcmChunk& chunk) const;
 
     /// Invalidates the current request after interruption/reset.
     void invalidate(std::uint64_t playback_epoch);

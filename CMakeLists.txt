@@ -880,12 +880,27 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                         --player "$<TARGET_FILE:qwen_tts_play>"
                         --output "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_play_mock_capture.pcm"
                 )
+                if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+                    add_test(
+                        NAME qwen_tts_play_mock_animation_receipts
+                        COMMAND "${Python3_EXECUTABLE}"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_playback_animation_receipts.py"
+                            --player "$<TARGET_FILE:qwen_tts_play>"
+                            --output "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_play_mock_animation.jsonl"
+                    )
+                endif()
                 set_tests_properties(
                     qwen_tts_play_mock_utf8_example
                     qwen_tts_play_mock_playback_metrics
                     qwen_tts_play_mock_pcm_capture
                     PROPERTIES RESOURCE_LOCK default_audio_playback
                 )
+                if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+                    set_tests_properties(
+                        qwen_tts_play_mock_animation_receipts
+                        PROPERTIES RESOURCE_LOCK default_audio_playback
+                    )
+                endif()
             endif()
         endif()
     else()

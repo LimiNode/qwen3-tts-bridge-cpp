@@ -59,6 +59,11 @@ jobs:
             build-examples: "OFF"
             build-native: "OFF"
             build-speech-animation: "ON"
+          - name: speech-animation-player
+            build-dir: build/speech-animation-player
+            build-examples: "ON"
+            build-native: "OFF"
+            build-speech-animation: "ON"
 
     steps:
       - name: Check out repository

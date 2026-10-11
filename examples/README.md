@@ -29,5 +29,7 @@ qwen_tts_play.exe --worker ... \
 
 The JSONL records are driven by the physical WaveOut cursor (or the deterministic
 mock sink), translated to the utterance sample clock, and are intended for a
-presentation consumer. They do not claim display latency or replace the audio
-callback/playback sink.
+presentation consumer. Animation observes the exact post-processed PCM submitted
+to the sink. Diagnostics such as animation queue overflow are emitted as separate
+JSONL records and never rewrite the TTS lifecycle. The receipts do not claim
+display latency or replace the audio callback/playback sink.
