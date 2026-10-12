@@ -54,7 +54,7 @@ void test_selection_uses_sample_cursor_and_resets_stale_epoch() {
 
     auto callbacks = runtime.make_callbacks({}, false);
     callbacks.on_audio(pcm_chunk(17, 0));
-    runtime.push_audio(pcm_chunk(17, 0));
+    CHECK(runtime.push_audio(3, pcm_chunk(17, 0)));
     const auto first = runtime.tick();
     CHECK(first.status == PlaybackSelectionStatus::Selected);
     CHECK(first.request_id == 17);
@@ -86,10 +86,32 @@ void test_degradation_is_reported_without_rewriting_playback() {
         },
         config);
     runtime.begin(4, 31, 24000);
-    runtime.push_audio(pcm_chunk(31, 0));
-    runtime.push_audio(pcm_chunk(31, 2400));
+    CHECK(runtime.push_audio(4, pcm_chunk(31, 0)));
+    CHECK(runtime.push_audio(4, pcm_chunk(31, 2400)));
     CHECK(diagnostics.size() == 1);
     CHECK(diagnostics.front() == "speech_animation_queue_full");
+}
+
+void test_stale_audio_is_rejected_after_epoch_change() {
+    PlaybackCursorSnapshot snapshot;
+    snapshot.playback_epoch = 10;
+    snapshot.request_id = 42;
+    snapshot.sample_rate = 24000;
+    snapshot.position_available = true;
+    std::vector<std::string> diagnostics;
+    PlaybackAnimationRuntime runtime(
+        [&snapshot] { return snapshot; },
+        {},
+        [&diagnostics](const PlaybackAnimationRuntime::AdapterDiagnostic& diagnostic) {
+            diagnostics.push_back(diagnostic.code);
+        });
+    runtime.begin(10, 42, 24000);
+    CHECK(runtime.push_audio(10, pcm_chunk(42, 0)));
+    runtime.invalidate(11);
+    runtime.begin(11, 43, 24000);
+    CHECK(!runtime.push_audio(10, pcm_chunk(42, 8)));
+    CHECK(runtime.push_audio(11, pcm_chunk(43, 0)));
+    CHECK(diagnostics.empty());
 }
 
 void test_unavailable_and_stale_snapshots_are_neutral() {
@@ -121,6 +143,7 @@ void test_unavailable_and_stale_snapshots_are_neutral() {
 int main() {
     test_selection_uses_sample_cursor_and_resets_stale_epoch();
     test_degradation_is_reported_without_rewriting_playback();
+    test_stale_audio_is_rejected_after_epoch_change();
     test_unavailable_and_stale_snapshots_are_neutral();
     return EXIT_SUCCESS;
 }

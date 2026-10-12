@@ -138,11 +138,11 @@ TtsCallbacks SpeechAnimationAdapter::make_callbacks(
         }
     };
     wrapped.on_completed = [state, callbacks]() {
-        if (!state->animation_degraded.load(std::memory_order_acquire)) {
-            state->pipeline->complete();
-        }
         if (callbacks->on_completed) {
             callbacks->on_completed();
+        }
+        if (!state->animation_degraded.load(std::memory_order_acquire)) {
+            state->pipeline->complete();
         }
     };
     wrapped.on_cancelled = [state, callbacks]() {

@@ -69,6 +69,9 @@ void test_audio_and_completion_mapping() {
     downstream.on_audio = [&downstream_audio](const PcmChunk&) {
         ++downstream_audio;
     };
+    downstream.on_completed = [&adapter]() {
+        adapter.push_audio(pcm_chunk(7, 8));
+    };
     auto callbacks = adapter.make_callbacks(std::move(downstream));
     const auto input = pcm_chunk(7, 0);
     callbacks.on_audio(input);
@@ -85,10 +88,12 @@ void test_audio_and_completion_mapping() {
 
     callbacks.on_completed();
     const auto terminal_receipts = adapter.process_available();
-    CHECK(terminal_receipts.size() == 1);
-    CHECK(terminal_receipts.front().terminal);
+    CHECK(terminal_receipts.size() == 2);
     CHECK(terminal_receipts.front().output_first_sample == 8);
-    CHECK(observed.size() == 2);
+    CHECK(!terminal_receipts.front().terminal);
+    CHECK(terminal_receipts.back().terminal);
+    CHECK(terminal_receipts.back().input_first_sample == 16);
+    CHECK(observed.size() == 3);
 }
 
 void test_cancel_without_audio_maps_to_terminal_receipt() {

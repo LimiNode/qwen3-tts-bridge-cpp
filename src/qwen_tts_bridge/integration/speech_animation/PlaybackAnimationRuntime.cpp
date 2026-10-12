@@ -128,15 +128,23 @@ PlaybackAnimationRuntime::Selection PlaybackAnimationRuntime::tick() {
     return selection;
 }
 
-void PlaybackAnimationRuntime::push_audio(const PcmChunk& chunk) const {
+bool PlaybackAnimationRuntime::push_audio(
+    std::uint64_t playback_epoch,
+    const PcmChunk& chunk) const {
     std::shared_ptr<SpeechAnimationAdapter> adapter;
     {
         std::lock_guard<std::mutex> lock(state_->mutex);
+        if (state_->playback_epoch != playback_epoch ||
+            state_->request_id != chunk.request_id) {
+            return false;
+        }
         adapter = state_->adapter;
     }
     if (adapter) {
         adapter->push_audio(chunk);
+        return true;
     }
+    return false;
 }
 
 void PlaybackAnimationRuntime::invalidate(std::uint64_t playback_epoch) {
