@@ -21,6 +21,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -1379,6 +1380,14 @@ struct PlaybackAnimationContext {
     RequestId request_id = 0;
 };
 
+using PlaybackAnimationDiagnostic =
+    qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime::AdapterDiagnostic;
+
+struct PlaybackAnimationDiagnosticQueue {
+    std::mutex mutex;
+    std::deque<PlaybackAnimationDiagnostic> records;
+};
+
 class PlaybackAnimationLoop final {
 public:
     PlaybackAnimationLoop() = default;
@@ -2132,7 +2141,7 @@ RequestId submit_request(
                 player.enqueue(playback_epoch, processed);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                 if (animation_runtime != nullptr) {
-                    animation_runtime->push_audio(processed);
+                    animation_runtime->push_audio(playback_epoch, processed);
                 }
 #endif
             }
@@ -2152,7 +2161,7 @@ RequestId submit_request(
                 player.enqueue(playback_epoch, processed);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                 if (animation_runtime != nullptr) {
-                    animation_runtime->push_audio(processed);
+                    animation_runtime->push_audio(playback_epoch, processed);
                 }
 #endif
             }
@@ -2639,6 +2648,7 @@ int wmain(int argc, wchar_t** argv) {
         std::shared_ptr<PlaybackAnimationContext> animation_context;
         std::shared_ptr<std::mutex> animation_receipt_mutex;
         std::shared_ptr<std::ofstream> animation_receipt_output;
+        std::shared_ptr<PlaybackAnimationDiagnosticQueue> animation_diagnostics;
         std::unique_ptr<qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime>
             animation_runtime;
         PlaybackAnimationLoop animation_loop;
@@ -2660,6 +2670,8 @@ int wmain(int argc, wchar_t** argv) {
             }
             animation_context = std::make_shared<PlaybackAnimationContext>();
             animation_receipt_mutex = std::make_shared<std::mutex>();
+            animation_diagnostics =
+                std::make_shared<PlaybackAnimationDiagnosticQueue>();
             animation_runtime = std::make_unique<
                 qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime>(
                 [&player, animation_context] {
@@ -2674,19 +2686,34 @@ int wmain(int argc, wchar_t** argv) {
                     *animation_receipt_output << selection.to_json() << '\n';
                     animation_receipt_output->flush();
                 },
-                [animation_receipt_output, animation_receipt_mutex](const auto& diagnostic) {
-                    std::lock_guard<std::mutex> lock(*animation_receipt_mutex);
-                    *animation_receipt_output
-                        << "{\"type\":\"diagnostic\",\"request_id\":"
-                        << diagnostic.request_id
-                        << ",\"code\":\"" << json_escape(diagnostic.code)
-                        << "\",\"message\":\""
-                        << json_escape(diagnostic.message) << "\"}\n";
-                    animation_receipt_output->flush();
+                [animation_diagnostics](const auto& diagnostic) {
+                    std::lock_guard<std::mutex> lock(animation_diagnostics->mutex);
+                    animation_diagnostics->records.push_back(diagnostic);
                 });
             animation_loop.start(
-                [&animation_runtime] {
+                [&animation_runtime,
+                 animation_diagnostics,
+                 animation_receipt_output,
+                 animation_receipt_mutex] {
                     static_cast<void>(animation_runtime->tick());
+                    std::deque<PlaybackAnimationDiagnostic> diagnostics;
+                    {
+                        std::lock_guard<std::mutex> lock(animation_diagnostics->mutex);
+                        diagnostics.swap(animation_diagnostics->records);
+                    }
+                    if (!diagnostics.empty()) {
+                        std::lock_guard<std::mutex> lock(*animation_receipt_mutex);
+                        for (const auto& diagnostic : diagnostics) {
+                            *animation_receipt_output
+                                << "{\"type\":\"diagnostic\",\"request_id\":"
+                                << diagnostic.request_id
+                                << ",\"code\":\""
+                                << json_escape(diagnostic.code)
+                                << "\",\"message\":\""
+                                << json_escape(diagnostic.message) << "\"}\n";
+                        }
+                        animation_receipt_output->flush();
+                    }
                 },
                 options.playback_animation_fps);
         }

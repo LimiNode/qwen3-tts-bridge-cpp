@@ -49,8 +49,14 @@ public:
     /// Call this from one presentation/animation consumer thread.
     Selection tick();
 
-    /// Pushes the exact PCM submitted to the playback sink.
-    void push_audio(const PcmChunk& chunk) const;
+    /// Pushes the exact PCM submitted to the playback sink when it belongs to
+    /// the active playback epoch and request.
+    ///
+    /// Returns false when the chunk is stale and was discarded before reaching
+    /// the animation pipeline.
+    bool push_audio(
+        std::uint64_t playback_epoch,
+        const PcmChunk& chunk) const;
 
     /// Invalidates the current request after interruption/reset.
     void invalidate(std::uint64_t playback_epoch);

@@ -48,6 +48,9 @@ def main() -> int:
         json.loads(line)
         for line in output.read_text(encoding="utf-8").splitlines()
     ]
+    diagnostics = [record for record in records if record.get("type") == "diagnostic"]
+    if diagnostics:
+        raise AssertionError(f"unexpected animation diagnostics: {diagnostics}")
     selections = [record for record in records if record.get("type") != "diagnostic"]
     if not selections:
         raise AssertionError("playback animation receipt file is empty")
