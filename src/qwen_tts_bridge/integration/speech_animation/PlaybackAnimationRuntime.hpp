@@ -35,7 +35,8 @@ public:
     PlaybackAnimationRuntime& operator=(const PlaybackAnimationRuntime&) = delete;
 
     /// Starts a new request/epoch and invalidates all previous cues.
-    void begin(
+    /// Returns the generation token assigned to this playback request.
+    std::uint64_t begin(
         std::uint64_t playback_epoch,
         RequestId request_id,
         std::uint32_t sample_rate);
@@ -56,6 +57,7 @@ public:
     /// the animation pipeline.
     bool push_audio(
         std::uint64_t playback_epoch,
+        std::uint64_t generation,
         const PcmChunk& chunk) const;
 
     /// Invalidates the current request after interruption/reset.

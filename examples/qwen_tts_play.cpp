@@ -2100,6 +2100,7 @@ RequestId submit_request(
         ));
 
     TtsRequest request = std::move(prepared_request.request);
+    std::uint64_t animation_generation = 0;
     auto processors = make_audio_processors(options);
     {
         std::lock_guard<std::mutex> lock(active_state.mutex);
@@ -2121,13 +2122,16 @@ RequestId submit_request(
             animation_context->playback_epoch = playback_epoch;
             animation_context->request_id = request_id;
         }
-        animation_runtime->begin(playback_epoch, request_id, options.sample_rate);
+        animation_generation = animation_runtime->begin(
+            playback_epoch,
+            request_id,
+            options.sample_rate);
     }
 #endif
     TtsCallbacks callbacks;
     callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id, pcm_capture
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
-        , animation_runtime
+        , animation_runtime, animation_generation
 #endif
         ](const PcmChunk& chunk) {
         if (!is_active_request(active_state, request_id)) {
@@ -2141,7 +2145,10 @@ RequestId submit_request(
                 player.enqueue(playback_epoch, processed);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                 if (animation_runtime != nullptr) {
-                    animation_runtime->push_audio(playback_epoch, processed);
+                    animation_runtime->push_audio(
+                        playback_epoch,
+                        animation_generation,
+                        processed);
                 }
 #endif
             }
@@ -2152,7 +2159,7 @@ RequestId submit_request(
     };
     callbacks.on_completed = [&player, &active_state, processors, playback_epoch, one_shot_state, request_id
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
-        , animation_runtime
+        , animation_runtime, animation_generation
 #endif
         ] {
         try {
@@ -2161,7 +2168,10 @@ RequestId submit_request(
                 player.enqueue(playback_epoch, processed);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                 if (animation_runtime != nullptr) {
-                    animation_runtime->push_audio(playback_epoch, processed);
+                    animation_runtime->push_audio(
+                        playback_epoch,
+                        animation_generation,
+                        processed);
                 }
 #endif
             }

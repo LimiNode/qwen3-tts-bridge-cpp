@@ -41,7 +41,7 @@ PlaybackAnimationRuntime::PlaybackAnimationRuntime(
 
 PlaybackAnimationRuntime::~PlaybackAnimationRuntime() = default;
 
-void PlaybackAnimationRuntime::begin(
+std::uint64_t PlaybackAnimationRuntime::begin(
     std::uint64_t playback_epoch,
     RequestId request_id,
     std::uint32_t sample_rate) {
@@ -52,11 +52,8 @@ void PlaybackAnimationRuntime::begin(
         throw std::runtime_error("failed to begin playback animation pipeline");
     }
     auto state = state_;
-    std::uint64_t generation = 0;
-    {
-        std::lock_guard<std::mutex> lock(state_->mutex);
-        generation = ++state_->generation;
-    }
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    const std::uint64_t generation = ++state_->generation;
     auto adapter = std::make_shared<SpeechAnimationAdapter>(
         pipeline,
         [state, generation, playback_epoch, request_id](
@@ -84,12 +81,12 @@ void PlaybackAnimationRuntime::begin(
                 handler(diagnostic);
             }
         });
-    std::lock_guard<std::mutex> lock(state_->mutex);
     state_->playback_epoch = playback_epoch;
     state_->request_id = request_id;
     state_->selector.reset(playback_epoch, request_id);
     state_->pipeline = std::move(pipeline);
     state_->adapter = std::move(adapter);
+    return generation;
 }
 
 TtsCallbacks PlaybackAnimationRuntime::make_callbacks(
@@ -130,11 +127,13 @@ PlaybackAnimationRuntime::Selection PlaybackAnimationRuntime::tick() {
 
 bool PlaybackAnimationRuntime::push_audio(
     std::uint64_t playback_epoch,
+    std::uint64_t generation,
     const PcmChunk& chunk) const {
     std::shared_ptr<SpeechAnimationAdapter> adapter;
     {
         std::lock_guard<std::mutex> lock(state_->mutex);
-        if (state_->playback_epoch != playback_epoch ||
+        if (state_->generation != generation ||
+            state_->playback_epoch != playback_epoch ||
             state_->request_id != chunk.request_id) {
             return false;
         }
