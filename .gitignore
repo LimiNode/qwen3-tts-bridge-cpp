@@ -4,6 +4,9 @@
 /out/
 /cmake-build-*/
 
+# Local Git worktrees
+/.worktrees/
+
 # Generated release artifacts
 /dist/*
 !/dist/.gitkeep

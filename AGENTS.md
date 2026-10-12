@@ -45,6 +45,23 @@ possible without redesigning the public API or protocol layer.
 - Do not commit model weights, virtual environments, generated build outputs, or
   packaged release artifacts.
 
+## Git Worktree Policy
+
+Keep all task-specific Git worktrees inside the repository's `.worktrees/`
+directory. Do not create sibling worktrees beside the repository, and do not
+use the primary checkout for concurrent agent or PR work.
+
+Use descriptive names that identify the task or PR:
+
+```powershell
+git worktree add .worktrees/<task-name> -b <branch-name> origin/main
+git -C .worktrees/<task-name> submodule update --init --recursive
+```
+
+The primary checkout remains the stable repository view; task worktrees are
+disposable and must be removed with `git worktree remove` after their branches
+are merged. Keep `.worktrees/` ignored and never commit its contents.
+
 ## Codebase Discovery
 
 This repository uses codebase-memory-mcp for codebase discovery when an index is
