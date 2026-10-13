@@ -113,11 +113,11 @@ the default release route. Enable it only with
 `QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND=ON` after validating the pinned qwentts
 ABI and its target GPU runtime.
 
-The C++ application starts and supervises the worker process. The first
+The C++ application starts and supervises the worker process. The current
 transport uses the worker stdin/stdout streams. This does not make the public
-API synchronous: request submission can return immediately while reader, writer,
-and dispatcher threads handle streaming frames. Later, the same protocol should
-be usable through a WebSocket transport.
+API synchronous: request submission returns immediately while reader, writer,
+and dispatcher threads handle streaming frames. A WebSocket transport remains
+a later transport option, without changing the client API.
 
 The native worker (when selected):
 
@@ -132,26 +132,57 @@ and is the accepted production/packaging baseline. See
 [docs/native-qwentts-backend.md](docs/native-qwentts-backend.md) for the native
 promotion gates.
 
-## C++ API Direction
+## C++ API
 
-The public API should feel like a normal C++ library, not like a command-line
-wrapper around Python. The core API should be async-first; any synchronous API
-should be a thin helper built on top of the async callbacks.
+The public API is a normal asynchronous C++ library, not a command-line wrapper
+around Python. `QwenTtsClient::synthesize_async()` accepts a request and
+delivers PCM and one terminal callback through `TtsCallbacks`. The public
+declarations live in [`src/qwen_tts_bridge/client/QwenTtsClient.hpp`](src/qwen_tts_bridge/client/QwenTtsClient.hpp);
+[`examples/basic_synthesis.cpp`](examples/basic_synthesis.cpp) is the smallest
+complete executable example.
 
 ```cpp
 QwenTtsClient tts;
+StdIoTransportOptions transport;
+transport.arguments = {"qwen_tts_worker.exe"};
+if (!tts.start(transport, {})) {
+    return 1;
+}
 
-tts.start("qwen_tts_worker.exe");
-const auto first_id = tts.synthesize_async("First phrase", first_callbacks);
-const auto second_id = tts.synthesize_async("Second phrase", second_callbacks);
-const auto third_id = tts.synthesize_async("Third phrase", third_callbacks);
+TtsRequest request;
+request.text = "First phrase";
+std::mutex mutex;
+std::condition_variable done;
+bool terminal = false;
+TtsCallbacks callbacks;
+callbacks.on_audio = [](const PcmChunk& chunk) { /* consume PCM */ };
+callbacks.on_completed = [&] {
+    std::lock_guard lock(mutex);
+    terminal = true;
+    done.notify_one();
+};
+callbacks.on_error = [&](const TtsError& error) {
+    std::lock_guard lock(mutex);
+    terminal = true;
+    done.notify_one();
+};
+callbacks.on_cancelled = [&] {
+    std::lock_guard lock(mutex);
+    terminal = true;
+    done.notify_one();
+};
 
-tts.cancel(second_id);
-
+const auto request_id = tts.synthesize_async(std::move(request), callbacks);
+if (request_id == 0) {
+    tts.stop();
+    return 1;
+}
+std::unique_lock lock(mutex);
+done.wait(lock, [&] { return terminal; });
 tts.stop();
 ```
 
-The explicit request form should stay extensible:
+The explicit request form is extensible:
 
 ```cpp
 struct TtsRequest {
@@ -169,7 +200,7 @@ struct PcmChunk {
 };
 ```
 
-One possible callback shape:
+The callback contract is:
 
 ```cpp
 using RequestId = std::uint64_t;
@@ -208,12 +239,12 @@ Parallel model inference can be evaluated later because it may increase VRAM
 usage, conflict with static KV-cache or CUDA Graphs, and hurt per-request
 latency.
 
-Emotional speech, whispering, speaking rate, prosody, and similar controls
-should be passed to the worker as UTF-8 text or a natural-language style
-instruction. The C++ API should not start with a closed emotion enum because
-Qwen3-TTS exposes much of this control through natural-language instructions.
-Singing should be treated as an engine capability to validate before the C++ API
-promises any singing-specific behavior.
+Emotional speech, whispering, speaking rate, prosody, and similar controls are
+passed to the worker as UTF-8 text or a natural-language style instruction. The
+primary C++ API intentionally keeps this field open-ended because Qwen3-TTS
+exposes much of this control through natural-language instructions. Singing is
+an engine capability and is not promised by the bridge without a backend
+acceptance result.
 
 The protocol should keep spoken text and style instruction separate:
 
@@ -245,13 +276,12 @@ VoiceDesign    text + language + instruction as voice/style description
 Base/clone     text + language + reference audio or prompt data
 ```
 
-Optional C++ helpers may map simple presets such as `Emotion::Happy` or
-`Emotion::Sad` into instruction strings, but the main API should remain
-open-ended through `request.instruction`.
+Optional C++ helpers can map simple presets into instruction strings, but the
+main API remains open-ended through `request.instruction`.
 
-## Transport Plan
+## Transport
 
-The first implementation uses a persistent worker process and framed binary
+The current implementation uses a persistent worker process and framed binary
 messages over stdin/stdout:
 
 ```text
@@ -293,7 +323,7 @@ stdout -> reader thread -> frame parser -> event queue -> dispatcher thread
 user callbacks
 ```
 
-The transport layer should remain byte-oriented:
+The transport layer is byte-oriented:
 
 ```cpp
 enum class SendResult {
@@ -317,9 +347,10 @@ public:
 };
 ```
 
-The exact interface may evolve, but `ITransport` should not know anything about
-Qwen, synthesis requests, JSON payloads, or PCM meaning. Protocol parsing and
-request state live above the transport.
+`ITransport` does not know anything about Qwen, synthesis requests, JSON
+payloads, or PCM meaning. Protocol parsing and request state live above the
+transport. The installed bridge currently provides `StdIoTransport`; WebSocket
+support is intentionally deferred.
 
 ## Audio And Unity Notes
 

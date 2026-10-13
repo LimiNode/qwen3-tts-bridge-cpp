@@ -73,6 +73,11 @@ Wrapper проверяет terminal result JSON и PCM16 WAV: sample rate, чи�
 
 ## C++ API
 
+Публичный API уже реализован как асинхронный клиент. Объявления находятся в
+[`src/qwen_tts_bridge/client/QwenTtsClient.hpp`](src/qwen_tts_bridge/client/QwenTtsClient.hpp),
+а полный минимальный исполняемый пример — в
+[`examples/basic_synthesis.cpp`](examples/basic_synthesis.cpp).
+
 ```cpp
 QwenTtsClient tts;
 tts.start("qwen_tts_worker.exe");
@@ -83,7 +88,12 @@ request.language = "Russian";
 request.instruction = "Спокойный тёплый голос.";
 
 const auto id = tts.synthesize_async(std::move(request), callbacks);
-tts.cancel(id);
+if (id == 0) {
+    tts.stop();
+    return 1;
+}
+// Условное ожидание: реальный пример использует condition_variable.
+wait_until_terminal();
 tts.stop();
 ```
 
