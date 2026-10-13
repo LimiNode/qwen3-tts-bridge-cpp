@@ -20,7 +20,9 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run_powershell(arguments: list[str], env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def run_powershell(
+    arguments: list[str], env: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
             "powershell",
