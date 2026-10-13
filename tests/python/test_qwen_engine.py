@@ -1953,6 +1953,54 @@ class QwenEngineTests(unittest.TestCase):
         ):
             engine.validate_request(SynthesisRequest(request_id=1, text="Hello"))
 
+    def test_voice_design_rejects_speaker(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(model_path="models/qwen-voice-design"),
+            model_loader=lambda _config: _VoiceDesignModel(),
+        )
+        engine.load()
+
+        with self.assertRaisesRegex(
+            EngineRequestValidationError,
+            "voice design requests do not accept speaker",
+        ):
+            engine.validate_request(
+                SynthesisRequest(
+                    request_id=1,
+                    text="Hello",
+                    speaker="Alice",
+                    instruction="A calm voice.",
+                )
+            )
+
+    def test_voice_design_rejects_base_voice_clone_fields(self) -> None:
+        engine = QwenTtsEngine(
+            QwenEngineConfig(model_path="models/qwen-voice-design"),
+            model_loader=lambda _config: _VoiceDesignModel(),
+        )
+        engine.load()
+
+        for field in (
+            {"voice_id": "robot"},
+            {"reference_audio_path": "reference.wav"},
+            {"reference_text": "Reference text."},
+            {"x_vector_only": True},
+        ):
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(
+                    EngineRequestValidationError,
+                    "voice cloning and registered voice profiles are "
+                    "supported only by qwen base models",
+                ):
+                    engine.validate_request(
+                        SynthesisRequest(
+                            request_id=1,
+                            text="Hello",
+                            instruction="A calm voice.",
+                            **field,
+                        )
+                    )
+
     def test_base_voice_clone_requires_reference_audio(self) -> None:
         engine = QwenTtsEngine(
             QwenEngineConfig(model_path="models/qwen-base"),
