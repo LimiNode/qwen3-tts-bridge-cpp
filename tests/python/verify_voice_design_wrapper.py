@@ -97,7 +97,6 @@ def main() -> int:
                 "-Worker",
                 str(args.python),
                 "-WorkerArgument",
-                "-B",
                 str(args.capture_worker),
                 "-Text",
                 text,
