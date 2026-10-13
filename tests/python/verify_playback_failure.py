@@ -13,6 +13,21 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def run_failure_case(command: list[str]) -> None:
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=30,
+    )
+    output = result.stdout + result.stderr
+    assert result.returncode != 0, output
+    assert "playback failed" in output, output
+    assert "completed request" not in output, output
+
+
 def main() -> int:
     args = parse_args()
     command = [
@@ -29,18 +44,22 @@ def main() -> int:
         "--text",
         "Playback failure smoke.",
     ]
-    result = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=30,
-    )
-    output = result.stdout + result.stderr
-    assert result.returncode != 0, output
-    assert "playback failed" in output, output
-    assert "completed request" not in output, output
+    run_failure_case(command)
+
+    terminal_tail_command = [
+        str(args.player),
+        "--mock",
+        "--mock-playback-sink",
+        "--mock-playback-fail-after",
+        "3",
+        "--mock-chunks",
+        "3",
+        "--mock-chunk-ms",
+        "20",
+        "--text",
+        "Playback terminal-tail failure.",
+    ]
+    run_failure_case(terminal_tail_command)
     return 0
 
 
