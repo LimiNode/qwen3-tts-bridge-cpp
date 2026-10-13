@@ -1980,12 +1980,13 @@ class QwenEngineTests(unittest.TestCase):
         )
         engine.load()
 
-        for field in (
+        fields: tuple[dict[str, Any], ...] = (
             {"voice_id": "robot"},
             {"reference_audio_path": "reference.wav"},
             {"reference_text": "Reference text."},
             {"x_vector_only": True},
-        ):
+        )
+        for field in fields:
             with self.subTest(field=field):
                 with self.assertRaisesRegex(
                     EngineRequestValidationError,
