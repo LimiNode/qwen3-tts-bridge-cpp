@@ -46,6 +46,24 @@ def main() -> int:
     ]
     run_failure_case(command)
 
+    prepare_command = [
+        str(args.player),
+        "--mock",
+        "--mock-playback-sink",
+        "--mock-playback-fail-after",
+        "0",
+        "--mock-playback-fail-stage",
+        "prepare",
+        "--mock-chunks",
+        "2",
+        "--mock-chunk-ms",
+        "20",
+        "--no-tail",
+        "--text",
+        "Playback prepare failure smoke.",
+    ]
+    run_failure_case(prepare_command)
+
     terminal_tail_command = [
         str(args.player),
         "--mock",

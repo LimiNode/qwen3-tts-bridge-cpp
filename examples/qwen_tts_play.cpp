@@ -106,6 +106,7 @@ struct ProgramOptions {
     int mock_chunk_ms = 100;
     double mock_chunk_delay = 0.0;
     std::optional<std::size_t> mock_playback_fail_after_submissions;
+    std::optional<std::string> mock_playback_fail_stage;
     std::chrono::milliseconds startup_timeout{30000};
     std::string playback_metrics_file;
     std::string playback_interruption_diagnostics_file;
@@ -118,6 +119,11 @@ struct ProgramOptions {
     std::size_t auto_fast_max_bytes = 240;
     bool terminal_fade_enabled = true;
     TerminalFadeOptions terminal_fade;
+};
+
+enum class MockPlaybackFailureStage {
+    Prepare,
+    Write,
 };
 
 class ConsoleCodePageGuard final {
@@ -596,11 +602,13 @@ public:
         PlaybackSinkMode sink_mode,
         PlaybackMetrics* metrics = nullptr,
         std::size_t prebuffer_chunks = 1,
-        std::optional<std::size_t> mock_fail_after_submissions = std::nullopt)
+        std::optional<std::size_t> mock_fail_after_submissions = std::nullopt,
+        std::optional<MockPlaybackFailureStage> mock_failure_stage = std::nullopt)
         : sink_mode_(sink_mode),
           prebuffer_chunks_(prebuffer_chunks),
           metrics_(metrics),
-          mock_fail_after_submissions_(mock_fail_after_submissions) {
+          mock_fail_after_submissions_(mock_fail_after_submissions),
+          mock_failure_stage_(mock_failure_stage.value_or(MockPlaybackFailureStage::Write)) {
         if (prebuffer_chunks_ == 0) {
             throw std::runtime_error("playback prebuffer must contain at least one chunk");
         }
@@ -717,6 +725,11 @@ public:
     [[nodiscard]] std::size_t buffered_chunk_count_for_test() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return buffers_.size() + pending_buffers_.size();
+    }
+
+    [[nodiscard]] std::uint64_t next_stream_frame_for_test() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return next_stream_frame_;
     }
 
     /// Stops playback and returns a short fade built from the samples nearest
@@ -1292,27 +1305,36 @@ private:
             }
             m_format = pending_format_.value();
             buffers_.reserve(buffers_.size() + pending_buffers_.size());
-            for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
-                if (mock_fail_after_submissions_.has_value() &&
-                    !mock_failure_injected_ &&
-                    mock_submission_count_ >= mock_fail_after_submissions_.value()) {
-                    mock_failure_injected_ = true;
-                    throw std::runtime_error("injected mock playback failure");
+            while (!pending_buffers_.empty()) {
+                std::unique_ptr<Buffer> buffer = std::move(pending_buffers_.front());
+                pending_buffers_.erase(pending_buffers_.begin());
+                if (should_inject_mock_failure(MockPlaybackFailureStage::Prepare)) {
+                    pending_buffers_.insert(
+                        pending_buffers_.begin(), std::move(buffer));
+                    throw std::runtime_error("injected mock waveOutPrepareHeader failure");
                 }
-                buffer->start_frame = next_stream_frame_;
-                next_stream_frame_ += buffer->frame_count;
+                if (should_inject_mock_failure(MockPlaybackFailureStage::Write)) {
+                    pending_buffers_.insert(
+                        pending_buffers_.begin(), std::move(buffer));
+                    throw std::runtime_error("injected mock waveOutWrite failure");
+                }
+                const std::uint64_t start_frame = next_stream_frame_;
+                buffer->start_frame = start_frame;
                 buffer->mock_start = completion;
                 completion += std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                     std::chrono::duration<double, std::milli>(buffer->duration_ms));
                 buffer->mock_completion = completion;
                 buffers_.push_back(std::move(buffer));
+                next_stream_frame_ = start_frame + buffers_.back()->frame_count;
                 ++mock_submission_count_;
+                if (!playback_started_) {
+                    playback_started_ = true;
+                    if (metrics_ != nullptr) {
+                        metrics_->mark_first_waveout_submission();
+                    }
+                }
             }
-            clear_pending_locked();
-            playback_started_ = true;
-            if (metrics_ != nullptr) {
-                metrics_->mark_first_waveout_submission();
-            }
+            pending_format_.reset();
             return;
         }
 
@@ -1324,12 +1346,19 @@ private:
             device_position_base_valid_ = position.has_value();
         }
         buffers_.reserve(buffers_.size() + pending_buffers_.size());
-        for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
-            buffer->start_frame = next_stream_frame_;
-            next_stream_frame_ += buffer->frame_count;
-            check_mmresult(
-                waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
-                "waveOutPrepareHeader");
+        while (!pending_buffers_.empty()) {
+            std::unique_ptr<Buffer> buffer = std::move(pending_buffers_.front());
+            pending_buffers_.erase(pending_buffers_.begin());
+            try {
+                check_mmresult(
+                    waveOutPrepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR)),
+                    "waveOutPrepareHeader");
+            }
+            catch (...) {
+                pending_buffers_.insert(
+                    pending_buffers_.begin(), std::move(buffer));
+                throw;
+            }
             buffer->prepared = true;
             try {
                 check_mmresult(
@@ -1339,15 +1368,33 @@ private:
             catch (...) {
                 waveOutUnprepareHeader(m_handle, &buffer->header, sizeof(WAVEHDR));
                 buffer->prepared = false;
+                pending_buffers_.insert(
+                    pending_buffers_.begin(), std::move(buffer));
                 throw;
             }
+            const std::uint64_t start_frame = next_stream_frame_;
+            buffer->start_frame = start_frame;
+            next_stream_frame_ = start_frame + buffer->frame_count;
             buffers_.push_back(std::move(buffer));
+            if (!playback_started_) {
+                playback_started_ = true;
+                if (metrics_ != nullptr) {
+                    metrics_->mark_first_waveout_submission();
+                }
+            }
         }
-        clear_pending_locked();
-        playback_started_ = true;
-        if (metrics_ != nullptr) {
-            metrics_->mark_first_waveout_submission();
+        pending_format_.reset();
+    }
+
+    bool should_inject_mock_failure(MockPlaybackFailureStage stage) {
+        if (!mock_fail_after_submissions_.has_value() ||
+            mock_failure_injected_ ||
+            mock_failure_stage_ != stage ||
+            mock_submission_count_ < mock_fail_after_submissions_.value()) {
+            return false;
         }
+        mock_failure_injected_ = true;
+        return true;
     }
 
     void clear_pending_locked() {
@@ -1442,6 +1489,7 @@ private:
     std::optional<std::size_t> last_interruption_diagnostic_index_;
     std::uint64_t late_audio_after_terminal_count_ = 0;
     std::optional<std::size_t> mock_fail_after_submissions_;
+    MockPlaybackFailureStage mock_failure_stage_ = MockPlaybackFailureStage::Write;
     std::size_t mock_submission_count_ = 0;
     bool mock_failure_injected_ = false;
     std::function<void()> reset_wait_hook_for_test_;
@@ -1608,6 +1656,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
         << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
         << "  --mock-playback-fail-after <n> Inject a mock sink failure after n submissions (test only).\n"
+        << "  --mock-playback-fail-stage <prepare|write>  Select the injected submission stage (test only).\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --playback-interruption-diagnostics-file <path> Write opt-in cursor/reset cancellation diagnostics JSON.\n"
         << "  --playback-animation-receipts-file <path> Write playback-locked animation selections as JSONL.\n"
@@ -1705,6 +1754,11 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
             options.mock_playback_fail_after_submissions = parse_u32(
                 require_value(index, argc, argv, "--mock-playback-fail-after"),
                 "--mock-playback-fail-after");
+        }
+        else if (arg == "--mock-playback-fail-stage" ||
+                 arg.rfind("--mock-playback-fail-stage=", 0) == 0) {
+            options.mock_playback_fail_stage = require_value(
+                index, argc, argv, "--mock-playback-fail-stage");
         }
         else if (arg == "--worker" || arg.rfind("--worker=", 0) == 0) {
             options.worker_executable = require_value(index, argc, argv, "--worker");
@@ -1931,6 +1985,19 @@ void validate_options(const ProgramOptions& options) {
         !options.use_mock_playback_sink) {
         throw std::runtime_error(
             "--mock-playback-fail-after requires --mock-playback-sink");
+    }
+    if (options.mock_playback_fail_stage.has_value()) {
+        if (!options.mock_playback_fail_after_submissions.has_value() ||
+            !options.use_mock_playback_sink) {
+            throw std::runtime_error(
+                "--mock-playback-fail-stage requires --mock-playback-fail-after and "
+                "--mock-playback-sink");
+        }
+        if (options.mock_playback_fail_stage.value() != "prepare" &&
+            options.mock_playback_fail_stage.value() != "write") {
+            throw std::runtime_error(
+                "--mock-playback-fail-stage must be prepare or write");
+        }
     }
     if (options.temperature.has_value() &&
         (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0)) {
@@ -2219,6 +2286,74 @@ int run_playback_lifecycle_self_test() {
     if (!complete_active_request(state, 43) ||
         complete_active_request(state, 43)) {
         throw std::runtime_error("active completion transition is not exactly once");
+    }
+
+    const auto assert_injected_submission_failure = [](
+        MockPlaybackFailureStage stage,
+        const char* expected_operation) {
+        WaveOutPlayer failure_player(
+            PlaybackSinkMode::Mock,
+            nullptr,
+            1,
+            0,
+            stage);
+        PcmChunk chunk;
+        chunk.request_id = 44;
+        chunk.format.sample_format = "s16le";
+        chunk.format.sample_rate = 24000;
+        chunk.format.channels = 1;
+        chunk.bytes = {std::byte{0}, std::byte{0}};
+        chunk.sample_count = 1;
+        bool failed = false;
+        try {
+            failure_player.enqueue(failure_player.playback_epoch(), chunk);
+        }
+        catch (const std::runtime_error& error) {
+            failed = std::string(error.what()).find(expected_operation) != std::string::npos;
+        }
+        if (!failed || failure_player.next_stream_frame_for_test() != 0 ||
+            failure_player.buffered_chunk_count_for_test() != 1) {
+            throw std::runtime_error("submission failure changed the committed playback frontier");
+        }
+        const auto retry_epoch = failure_player.reset();
+        failure_player.enqueue(retry_epoch, chunk);
+        if (failure_player.next_stream_frame_for_test() != 1 ||
+            failure_player.buffered_chunk_count_for_test() != 1) {
+            throw std::runtime_error("submission retry did not recover a clean playback queue");
+        }
+    };
+    assert_injected_submission_failure(
+        MockPlaybackFailureStage::Prepare,
+        "waveOutPrepareHeader");
+    assert_injected_submission_failure(
+        MockPlaybackFailureStage::Write,
+        "waveOutWrite");
+
+    WaveOutPlayer partial_player(
+        PlaybackSinkMode::Mock,
+        nullptr,
+        2,
+        1,
+        MockPlaybackFailureStage::Write);
+    const auto partial_epoch = partial_player.playback_epoch();
+    partial_player.enqueue(partial_epoch, replacement_chunk);
+    bool partial_failed = false;
+    try {
+        partial_player.enqueue(partial_epoch, replacement_chunk);
+    }
+    catch (const std::runtime_error& error) {
+        partial_failed = std::string(error.what()).find("waveOutWrite") != std::string::npos;
+    }
+    if (!partial_failed || partial_player.next_stream_frame_for_test() != 1 ||
+        partial_player.buffered_chunk_count_for_test() != 2) {
+        throw std::runtime_error("partial submission did not preserve committed buffers");
+    }
+    const auto partial_retry_epoch = partial_player.reset();
+    partial_player.enqueue(partial_retry_epoch, replacement_chunk);
+    partial_player.enqueue(partial_retry_epoch, replacement_chunk);
+    if (partial_player.next_stream_frame_for_test() != 2 ||
+        partial_player.buffered_chunk_count_for_test() != 2) {
+        throw std::runtime_error("partial submission cleanup left stale buffer ownership");
     }
     return 0;
 }
@@ -2924,11 +3059,18 @@ int wmain(int argc, wchar_t** argv) {
         if (!options.pcm_capture_file.empty()) {
             pcm_capture = std::make_unique<PcmCapture>(options.pcm_capture_file);
         }
+        std::optional<MockPlaybackFailureStage> mock_failure_stage;
+        if (options.mock_playback_fail_stage.has_value()) {
+            mock_failure_stage = options.mock_playback_fail_stage.value() == "prepare"
+                ? MockPlaybackFailureStage::Prepare
+                : MockPlaybackFailureStage::Write;
+        }
         WaveOutPlayer player(
             playback_sink_mode,
             playback_metrics.get(),
             options.playback_prebuffer_chunks,
-            options.mock_playback_fail_after_submissions);
+            options.mock_playback_fail_after_submissions,
+            mock_failure_stage);
         ActiveRequestState active_state;
 
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
