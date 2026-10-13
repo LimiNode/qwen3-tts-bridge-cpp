@@ -282,6 +282,11 @@ class QwenTtsEngine:
             return
 
         if model_type == "voice_design":
+            if request.speaker:
+                raise EngineRequestValidationError(
+                    "unsupported_feature",
+                    "qwen voice design requests do not accept speaker",
+                )
             _reject_voice_clone_fields_for_non_base_model(request)
             if not request.instruction.strip():
                 raise EngineRequestValidationError(
