@@ -104,6 +104,7 @@ struct ProgramOptions {
     int mock_chunks = 3;
     int mock_chunk_ms = 100;
     double mock_chunk_delay = 0.0;
+    std::optional<std::size_t> mock_playback_fail_after_submissions;
     std::chrono::milliseconds startup_timeout{30000};
     std::string playback_metrics_file;
     std::string playback_interruption_diagnostics_file;
@@ -593,10 +594,12 @@ public:
     explicit WaveOutPlayer(
         PlaybackSinkMode sink_mode,
         PlaybackMetrics* metrics = nullptr,
-        std::size_t prebuffer_chunks = 1)
+        std::size_t prebuffer_chunks = 1,
+        std::optional<std::size_t> mock_fail_after_submissions = std::nullopt)
         : sink_mode_(sink_mode),
           prebuffer_chunks_(prebuffer_chunks),
-          metrics_(metrics) {
+          metrics_(metrics),
+          mock_fail_after_submissions_(mock_fail_after_submissions) {
         if (prebuffer_chunks_ == 0) {
             throw std::runtime_error("playback prebuffer must contain at least one chunk");
         }
@@ -1222,6 +1225,10 @@ private:
             m_format = pending_format_.value();
             buffers_.reserve(buffers_.size() + pending_buffers_.size());
             for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+                if (mock_fail_after_submissions_.has_value() &&
+                    mock_submission_count_ >= mock_fail_after_submissions_.value()) {
+                    throw std::runtime_error("injected mock playback failure");
+                }
                 buffer->start_frame = next_stream_frame_;
                 next_stream_frame_ += buffer->frame_count;
                 buffer->mock_start = completion;
@@ -1229,6 +1236,7 @@ private:
                     std::chrono::duration<double, std::milli>(buffer->duration_ms));
                 buffer->mock_completion = completion;
                 buffers_.push_back(std::move(buffer));
+                ++mock_submission_count_;
             }
             clear_pending_locked();
             playback_started_ = true;
@@ -1363,6 +1371,8 @@ private:
     std::vector<PlaybackInterruptionDiagnostic> interruption_diagnostics_;
     std::optional<std::size_t> last_interruption_diagnostic_index_;
     std::uint64_t late_audio_after_terminal_count_ = 0;
+    std::optional<std::size_t> mock_fail_after_submissions_;
+    std::size_t mock_submission_count_ = 0;
 };
 
 struct ActiveRequestState {
@@ -1524,6 +1534,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
         << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
+        << "  --mock-playback-fail-after <n> Inject a mock sink failure after n submissions (test only).\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --playback-interruption-diagnostics-file <path> Write opt-in cursor/reset cancellation diagnostics JSON.\n"
         << "  --playback-animation-receipts-file <path> Write playback-locked animation selections as JSONL.\n"
@@ -1612,6 +1623,12 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         }
         else if (arg == "--mock-playback-sink") {
             options.use_mock_playback_sink = true;
+        }
+        else if (arg == "--mock-playback-fail-after" ||
+                 arg.rfind("--mock-playback-fail-after=", 0) == 0) {
+            options.mock_playback_fail_after_submissions = parse_u32(
+                require_value(index, argc, argv, "--mock-playback-fail-after"),
+                "--mock-playback-fail-after");
         }
         else if (arg == "--worker" || arg.rfind("--worker=", 0) == 0) {
             options.worker_executable = require_value(index, argc, argv, "--worker");
@@ -1834,6 +1851,11 @@ void validate_options(const ProgramOptions& options) {
     if (options.use_mock_playback_sink && !options.playback_enabled) {
         throw std::runtime_error("--mock-playback-sink cannot be combined with --no-playback");
     }
+    if (options.mock_playback_fail_after_submissions.has_value() &&
+        !options.use_mock_playback_sink) {
+        throw std::runtime_error(
+            "--mock-playback-fail-after requires --mock-playback-sink");
+    }
     if (options.temperature.has_value() &&
         (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0)) {
         throw std::runtime_error("--temperature must be in the interval (0, 2]");
@@ -1972,6 +1994,42 @@ void clear_active_request(ActiveRequestState& state, RequestId request_id) {
         state.active_request_id = 0;
         state.active_client = nullptr;
         state.processors.reset();
+    }
+}
+
+void fail_playback_request(
+    WaveOutPlayer& player,
+    ActiveRequestState& active_state,
+    RequestId request_id,
+    OneShotState* one_shot_state,
+    std::string message) {
+    QwenTtsClient* request_client = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(active_state.mutex);
+        if (active_state.active_request_id != request_id) {
+            return;
+        }
+        request_client = active_state.active_client;
+        active_state.active_request_id = 0;
+        active_state.active_client = nullptr;
+        active_state.processors.reset();
+    }
+
+    if (request_client != nullptr) {
+        static_cast<void>(request_client->cancel(request_id));
+    }
+    try {
+        static_cast<void>(player.reset());
+    }
+    catch (const std::exception& reset_error) {
+        message += "; playback reset failed: ";
+        message += reset_error.what();
+    }
+    player.note_request_terminal(request_id, "failed");
+    mark_one_shot_terminal(one_shot_state, false, "playback failed: " + message);
+    if (one_shot_state == nullptr) {
+        std::cerr << "request " << request_id << " playback failed: "
+                  << message << '\n';
     }
 }
 
@@ -2129,7 +2187,8 @@ RequestId submit_request(
     }
 #endif
     TtsCallbacks callbacks;
-    callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id, pcm_capture
+    callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id,
+        one_shot_state, pcm_capture
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
         , animation_runtime, animation_generation
 #endif
@@ -2154,7 +2213,12 @@ RequestId submit_request(
             }
         }
         catch (const std::exception& exc) {
-            std::cerr << "playback error: " << exc.what() << '\n';
+            fail_playback_request(
+                player,
+                active_state,
+                request_id,
+                one_shot_state,
+                exc.what());
         }
     };
     callbacks.on_completed = [&player, &active_state, processors, playback_epoch, one_shot_state, request_id
@@ -2162,6 +2226,9 @@ RequestId submit_request(
         , animation_runtime, animation_generation
 #endif
         ] {
+        if (!is_active_request(active_state, request_id)) {
+            return;
+        }
         try {
             for (const PcmChunk& processed :
                  processors->finish(AudioTerminalReason::Completed)) {
@@ -2177,9 +2244,12 @@ RequestId submit_request(
             }
         }
         catch (const std::exception& exc) {
-            clear_active_request(active_state, request_id);
-            mark_one_shot_terminal(one_shot_state, false, exc.what());
-            std::cerr << "audio post-processing error: " << exc.what() << '\n';
+            fail_playback_request(
+                player,
+                active_state,
+                request_id,
+                one_shot_state,
+                exc.what());
             return;
         }
         player.note_request_terminal(request_id, "completed");
@@ -2651,7 +2721,8 @@ int wmain(int argc, wchar_t** argv) {
         WaveOutPlayer player(
             playback_sink_mode,
             playback_metrics.get(),
-            options.playback_prebuffer_chunks);
+            options.playback_prebuffer_chunks,
+            options.mock_playback_fail_after_submissions);
         ActiveRequestState active_state;
 
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION

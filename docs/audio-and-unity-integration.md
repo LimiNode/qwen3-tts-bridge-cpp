@@ -77,6 +77,23 @@ cursor-relative faded tail before the next utterance. Normal successful
 completion still uses the producer-side terminal processor. The DSP stage
 itself remains independent of WaveOut and can be reused by a different sink.
 
+### Managed and external playback
+
+Cancellation of a TTS request is not the same as stopping audio that an
+external application has already queued. The bridge can stop generation and
+emit a cancellation-tail PCM chunk, but it cannot remove samples that have
+already been submitted to Unity, OBS, a game engine, or a remote audio
+service. Such an integration must own the playback queue and implement the
+interruption boundary itself: identify the active request/epoch, use its own
+playback cursor or mixer position, fade or replace the audible region, discard
+older queued buffers, and reject late PCM from the previous epoch.
+
+The built-in WaveOut example is a managed sink and can perform that operation
+because it owns the device queue and cursor. An external sink should report
+playback completion and playback failures separately from synthesis
+completion; receiving `on_completed` only means that the bridge finished
+delivering the request's PCM.
+
 The WaveOut example applies a 250 ms remaining-playout-ahead backpressure
 threshold. The configured prebuffer may exceed it before playback starts, and
 an individual incoming chunk larger than the threshold is allowed. Once
