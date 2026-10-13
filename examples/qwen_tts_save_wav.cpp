@@ -15,6 +15,13 @@
 #include <utility>
 #include <vector>
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 #ifndef QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE
 #define QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE ""
 #endif
@@ -397,7 +404,7 @@ AudioFormat requested_audio_format(const ProgramOptions& options) {
 
 } // namespace
 
-int main(int argc, char** argv) {
+int run_program(int argc, char** argv) {
     try {
         ProgramOptions options = parse_options(argc, argv);
         validate_options(options);
@@ -502,3 +509,63 @@ int main(int argc, char** argv) {
         return 1;
     }
 }
+
+#ifdef _WIN32
+std::string utf8_from_wide(const std::wstring& value) {
+    if (value.empty()) {
+        return {};
+    }
+
+    const int byte_count = WideCharToMultiByte(
+        CP_UTF8,
+        WC_ERR_INVALID_CHARS,
+        value.data(),
+        static_cast<int>(value.size()),
+        nullptr,
+        0,
+        nullptr,
+        nullptr);
+    if (byte_count <= 0) {
+        throw std::runtime_error("failed to convert Windows argument to UTF-8");
+    }
+
+    std::string utf8(static_cast<std::size_t>(byte_count), '\0');
+    if (WideCharToMultiByte(
+            CP_UTF8,
+            WC_ERR_INVALID_CHARS,
+            value.data(),
+            static_cast<int>(value.size()),
+            utf8.data(),
+            byte_count,
+            nullptr,
+            nullptr) <= 0) {
+        throw std::runtime_error("failed to convert Windows argument to UTF-8");
+    }
+    return utf8;
+}
+
+int wmain(int argc, wchar_t** argv) {
+    try {
+        std::vector<std::string> utf8_arguments;
+        utf8_arguments.reserve(static_cast<std::size_t>(argc));
+        for (int index = 0; index < argc; ++index) {
+            utf8_arguments.push_back(utf8_from_wide(argv[index]));
+        }
+
+        std::vector<char*> argument_pointers;
+        argument_pointers.reserve(utf8_arguments.size());
+        for (std::string& argument : utf8_arguments) {
+            argument_pointers.push_back(argument.data());
+        }
+        return run_program(argc, argument_pointers.data());
+    }
+    catch (const std::exception& exc) {
+        std::cerr << "qwen_tts_save_wav: " << exc.what() << '\n';
+        return 1;
+    }
+}
+#else
+int main(int argc, char** argv) {
+    return run_program(argc, argv);
+}
+#endif

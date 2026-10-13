@@ -424,6 +424,9 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
             QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_EXAMPLE_PYTHON_EXECUTABLE}"
             QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR="${QWEN_TTS_BRIDGE_EXAMPLE_WORKER_DIR}"
     )
+    if(MINGW)
+        target_link_options(qwen_tts_save_wav PRIVATE -municode)
+    endif()
 
     target_compile_definitions(qwen_tts_latency_benchmark
         PRIVATE
@@ -822,6 +825,25 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 PROPERTIES
                     DEPENDS qwen_tts_save_wav_mock_example
             )
+            if(WIN32)
+                add_test(
+                    NAME qwen_tts_voice_design_wrapper_mock
+                    COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_voice_design_wrapper.py"
+                        --wrapper
+                        "${CMAKE_CURRENT_SOURCE_DIR}/scripts/start-voice-design-save-wav.ps1"
+                        --save-wav
+                        "$<TARGET_FILE:qwen_tts_save_wav>"
+                        --python
+                        "${Python3_EXECUTABLE}"
+                        --worker-dir
+                        "${QWEN_TTS_BRIDGE_WORKER_DIR}"
+                        --capture-worker
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/acceptance/utf8_capture_worker.py"
+                )
+                set_tests_properties(qwen_tts_voice_design_wrapper_mock
+                    PROPERTIES TIMEOUT 60)
+            endif()
             add_test(
                 NAME qwen_tts_latency_benchmark_mock_example
                 COMMAND qwen_tts_latency_benchmark
