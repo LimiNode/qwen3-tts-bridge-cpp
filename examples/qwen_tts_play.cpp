@@ -74,6 +74,7 @@ using PlaybackCursorSnapshot =
 
 struct ProgramOptions {
     bool help = false;
+    bool self_test_playback_lifecycle = false;
     bool use_mock_worker = false;
     bool playback_enabled = true;
     bool use_mock_playback_sink = false;
@@ -104,6 +105,7 @@ struct ProgramOptions {
     int mock_chunks = 3;
     int mock_chunk_ms = 100;
     double mock_chunk_delay = 0.0;
+    std::optional<std::size_t> mock_playback_fail_after_submissions;
     std::chrono::milliseconds startup_timeout{30000};
     std::string playback_metrics_file;
     std::string playback_interruption_diagnostics_file;
@@ -593,10 +595,12 @@ public:
     explicit WaveOutPlayer(
         PlaybackSinkMode sink_mode,
         PlaybackMetrics* metrics = nullptr,
-        std::size_t prebuffer_chunks = 1)
+        std::size_t prebuffer_chunks = 1,
+        std::optional<std::size_t> mock_fail_after_submissions = std::nullopt)
         : sink_mode_(sink_mode),
           prebuffer_chunks_(prebuffer_chunks),
-          metrics_(metrics) {
+          metrics_(metrics),
+          mock_fail_after_submissions_(mock_fail_after_submissions) {
         if (prebuffer_chunks_ == 0) {
             throw std::runtime_error("playback prebuffer must contain at least one chunk");
         }
@@ -687,6 +691,34 @@ public:
         return reset_locked(lock);
     }
 
+    /// Resets playback only when the caller still owns the expected epoch.
+    ///
+    /// A stale callback may finish after a replacement request has already
+    /// started. In that case it must not reset the newer playback session.
+    [[nodiscard]] bool reset_if_epoch(std::uint64_t expected_epoch) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (playback_epoch_ != expected_epoch) {
+            return false;
+        }
+        static_cast<void>(reset_locked(lock));
+        return true;
+    }
+
+    [[nodiscard]] std::uint64_t playback_epoch() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return playback_epoch_;
+    }
+
+    void set_reset_wait_hook_for_test(std::function<void()> hook) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        reset_wait_hook_for_test_ = std::move(hook);
+    }
+
+    [[nodiscard]] std::size_t buffered_chunk_count_for_test() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return buffers_.size() + pending_buffers_.size();
+    }
+
     /// Stops playback and returns a short fade built from the samples nearest
     /// the sink's current playout cursor. Buffered producer-side PCM that has
     /// not reached the device is discarded.
@@ -694,6 +726,26 @@ public:
         std::uint32_t fade_ms,
         RequestId old_request_id = 0) {
         std::unique_lock<std::mutex> lock(mutex_);
+        return interrupt_with_fade_locked(lock, fade_ms, old_request_id);
+    }
+
+    std::optional<std::pair<std::uint64_t, std::optional<PcmChunk>>>
+    interrupt_with_fade_if_epoch(
+        std::uint64_t expected_epoch,
+        std::uint32_t fade_ms,
+        RequestId old_request_id = 0) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (playback_epoch_ != expected_epoch) {
+            return std::nullopt;
+        }
+        return interrupt_with_fade_locked(lock, fade_ms, old_request_id);
+    }
+
+private:
+    std::pair<std::uint64_t, std::optional<PcmChunk>> interrupt_with_fade_locked(
+        std::unique_lock<std::mutex>& lock,
+        std::uint32_t fade_ms,
+        RequestId old_request_id) {
         const bool record_diagnostic = old_request_id != 0;
         if (sink_mode_ != PlaybackSinkMode::Disabled) {
             reap_finished_locked();
@@ -726,6 +778,8 @@ public:
         }
         return {playback_epoch, std::move(tail)};
     }
+
+public:
 
     void note_request_started(RequestId request_id) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -898,22 +952,36 @@ private:
         if (playback_epoch_ == 0) {
             ++playback_epoch_;
         }
+        const std::uint64_t reset_epoch = playback_epoch_;
+        if (reset_wait_hook_for_test_) {
+            auto hook = std::move(reset_wait_hook_for_test_);
+            reset_wait_hook_for_test_ = {};
+            lock.unlock();
+            hook();
+            lock.lock();
+            if (playback_epoch_ != reset_epoch) {
+                return reset_epoch;
+            }
+        }
+        if (sink_mode_ == PlaybackSinkMode::Mock) {
+            mock_submission_count_ = 0;
+        }
         if (sink_mode_ == PlaybackSinkMode::Disabled) {
             reset_stream_position_locked();
-            return playback_epoch_;
+            return reset_epoch;
         }
         if (sink_mode_ == PlaybackSinkMode::Mock) {
             buffers_.clear();
             clear_pending_locked();
             playback_started_ = false;
             reset_stream_position_locked();
-            return playback_epoch_;
+            return reset_epoch;
         }
         if (m_handle == nullptr) {
             clear_pending_locked();
             playback_started_ = false;
             reset_stream_position_locked();
-            return playback_epoch_;
+            return reset_epoch;
         }
 
         if (diagnostic != nullptr) {
@@ -938,11 +1006,14 @@ private:
             lock.unlock();
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             lock.lock();
+            if (playback_epoch_ != reset_epoch) {
+                return reset_epoch;
+            }
         }
         clear_pending_locked();
         playback_started_ = false;
         reset_stream_position_locked();
-        return playback_epoch_;
+        return reset_epoch;
     }
 
 public:
@@ -1222,6 +1293,12 @@ private:
             m_format = pending_format_.value();
             buffers_.reserve(buffers_.size() + pending_buffers_.size());
             for (std::unique_ptr<Buffer>& buffer : pending_buffers_) {
+                if (mock_fail_after_submissions_.has_value() &&
+                    !mock_failure_injected_ &&
+                    mock_submission_count_ >= mock_fail_after_submissions_.value()) {
+                    mock_failure_injected_ = true;
+                    throw std::runtime_error("injected mock playback failure");
+                }
                 buffer->start_frame = next_stream_frame_;
                 next_stream_frame_ += buffer->frame_count;
                 buffer->mock_start = completion;
@@ -1229,6 +1306,7 @@ private:
                     std::chrono::duration<double, std::milli>(buffer->duration_ms));
                 buffer->mock_completion = completion;
                 buffers_.push_back(std::move(buffer));
+                ++mock_submission_count_;
             }
             clear_pending_locked();
             playback_started_ = true;
@@ -1363,6 +1441,10 @@ private:
     std::vector<PlaybackInterruptionDiagnostic> interruption_diagnostics_;
     std::optional<std::size_t> last_interruption_diagnostic_index_;
     std::uint64_t late_audio_after_terminal_count_ = 0;
+    std::optional<std::size_t> mock_fail_after_submissions_;
+    std::size_t mock_submission_count_ = 0;
+    bool mock_failure_injected_ = false;
+    std::function<void()> reset_wait_hook_for_test_;
 };
 
 struct ActiveRequestState {
@@ -1475,6 +1557,7 @@ std::string utf8_from_wide(const std::wstring& value);
 
 void print_usage(std::ostream& out, const std::string& executable_name) {
     out << "Usage:\n"
+        << "  " << executable_name << " --self-test-playback-lifecycle\n"
         << "  " << executable_name << " --mock [--speaker name]\n"
         << "  " << executable_name << " --worker qwen_tts_worker.exe [--speaker name]\n"
         << "  " << executable_name << " --worker qwen_tts_worker.exe --text \"Hello\"\n\n"
@@ -1524,6 +1607,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
         << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
+        << "  --mock-playback-fail-after <n> Inject a mock sink failure after n submissions (test only).\n"
         << "  --playback-metrics-file <path> Write opt-in one-shot WaveOut queue metrics JSON.\n"
         << "  --playback-interruption-diagnostics-file <path> Write opt-in cursor/reset cancellation diagnostics JSON.\n"
         << "  --playback-animation-receipts-file <path> Write playback-locked animation selections as JSONL.\n"
@@ -1604,6 +1688,9 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         if (arg == "--help" || arg == "-h") {
             options.help = true;
         }
+        else if (arg == "--self-test-playback-lifecycle") {
+            options.self_test_playback_lifecycle = true;
+        }
         else if (arg == "--mock") {
             options.use_mock_worker = true;
         }
@@ -1612,6 +1699,12 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         }
         else if (arg == "--mock-playback-sink") {
             options.use_mock_playback_sink = true;
+        }
+        else if (arg == "--mock-playback-fail-after" ||
+                 arg.rfind("--mock-playback-fail-after=", 0) == 0) {
+            options.mock_playback_fail_after_submissions = parse_u32(
+                require_value(index, argc, argv, "--mock-playback-fail-after"),
+                "--mock-playback-fail-after");
         }
         else if (arg == "--worker" || arg.rfind("--worker=", 0) == 0) {
             options.worker_executable = require_value(index, argc, argv, "--worker");
@@ -1786,7 +1879,7 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
 }
 
 void validate_options(const ProgramOptions& options) {
-    if (options.help) {
+    if (options.help || options.self_test_playback_lifecycle) {
         return;
     }
     if (!options.use_mock_worker && options.worker_executable.empty()) {
@@ -1833,6 +1926,11 @@ void validate_options(const ProgramOptions& options) {
     }
     if (options.use_mock_playback_sink && !options.playback_enabled) {
         throw std::runtime_error("--mock-playback-sink cannot be combined with --no-playback");
+    }
+    if (options.mock_playback_fail_after_submissions.has_value() &&
+        !options.use_mock_playback_sink) {
+        throw std::runtime_error(
+            "--mock-playback-fail-after requires --mock-playback-sink");
     }
     if (options.temperature.has_value() &&
         (options.temperature.value() <= 0.0 || options.temperature.value() > 2.0)) {
@@ -1966,13 +2064,163 @@ bool is_active_request(ActiveRequestState& state, RequestId request_id) {
     return state.active_request_id == request_id;
 }
 
-void clear_active_request(ActiveRequestState& state, RequestId request_id) {
+bool clear_active_request(ActiveRequestState& state, RequestId request_id) {
     std::lock_guard<std::mutex> lock(state.mutex);
-    if (state.active_request_id == request_id) {
-        state.active_request_id = 0;
-        state.active_client = nullptr;
-        state.processors.reset();
+    if (state.active_request_id != request_id) {
+        return false;
     }
+    state.active_request_id = 0;
+    state.active_client = nullptr;
+    state.processors.reset();
+    return true;
+}
+
+bool complete_active_request(ActiveRequestState& state, RequestId request_id) {
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if (state.active_request_id != request_id) {
+        return false;
+    }
+    state.active_request_id = 0;
+    state.active_client = nullptr;
+    state.processors.reset();
+    return true;
+}
+
+void fail_playback_request(
+    WaveOutPlayer& player,
+    ActiveRequestState& active_state,
+    RequestId request_id,
+    std::uint64_t playback_epoch,
+    OneShotState* one_shot_state,
+    std::string message) {
+    QwenTtsClient* request_client = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(active_state.mutex);
+        if (active_state.active_request_id != request_id) {
+            return;
+        }
+        request_client = active_state.active_client;
+        active_state.active_request_id = 0;
+        active_state.active_client = nullptr;
+        active_state.processors.reset();
+    }
+
+    if (request_client != nullptr) {
+        static_cast<void>(request_client->cancel(request_id));
+    }
+    try {
+        static_cast<void>(player.reset_if_epoch(playback_epoch));
+    }
+    catch (const std::exception& reset_error) {
+        message += "; playback reset failed: ";
+        message += reset_error.what();
+    }
+    player.note_request_terminal(request_id, "failed");
+    mark_one_shot_terminal(one_shot_state, false, "playback failed: " + message);
+    if (one_shot_state == nullptr) {
+        std::cerr << "request " << request_id << " playback failed: "
+                  << message << '\n';
+    }
+}
+
+int run_playback_lifecycle_self_test() {
+    WaveOutPlayer player(PlaybackSinkMode::Mock);
+    const auto initial_epoch = player.playback_epoch();
+
+    std::mutex reset_gate_mutex;
+    std::condition_variable reset_gate_condition;
+    bool reset_started = false;
+    bool release_reset = false;
+    player.set_reset_wait_hook_for_test([&] {
+        std::unique_lock<std::mutex> lock(reset_gate_mutex);
+        reset_started = true;
+        reset_gate_condition.notify_all();
+        reset_gate_condition.wait(lock, [&] { return release_reset; });
+    });
+
+    bool stale_reset_started = false;
+    std::thread stale_reset([&] {
+        stale_reset_started = player.reset_if_epoch(initial_epoch);
+    });
+    {
+        std::unique_lock<std::mutex> lock(reset_gate_mutex);
+        reset_gate_condition.wait(lock, [&] { return reset_started; });
+    }
+
+    const auto replacement_epoch = player.reset();
+    PcmChunk replacement_chunk;
+    replacement_chunk.request_id = 43;
+    replacement_chunk.format.sample_format = "s16le";
+    replacement_chunk.format.sample_rate = 24000;
+    replacement_chunk.format.channels = 1;
+    replacement_chunk.bytes = {std::byte{0}, std::byte{0}};
+    replacement_chunk.sample_count = 1;
+    player.enqueue(replacement_epoch, replacement_chunk);
+
+    {
+        std::lock_guard<std::mutex> lock(reset_gate_mutex);
+        release_reset = true;
+    }
+    reset_gate_condition.notify_all();
+    stale_reset.join();
+    if (!stale_reset_started ||
+        player.playback_epoch() != replacement_epoch ||
+        player.buffered_chunk_count_for_test() != 1) {
+        throw std::runtime_error("stale playback reset destroyed replacement playback");
+    }
+
+    WaveOutPlayer terminal_player(PlaybackSinkMode::Mock);
+    ActiveRequestState terminal_state;
+    {
+        std::lock_guard<std::mutex> lock(terminal_state.mutex);
+        terminal_state.active_request_id = 41;
+    }
+    const auto terminal_epoch = terminal_player.playback_epoch();
+    if (!clear_active_request(terminal_state, 41)) {
+        throw std::runtime_error("failed to claim terminal request in self-test");
+    }
+    const auto terminal_replacement_epoch = terminal_player.reset();
+    terminal_player.enqueue(terminal_replacement_epoch, replacement_chunk);
+    if (terminal_player.reset_if_epoch(terminal_epoch) ||
+        terminal_player.interrupt_with_fade_if_epoch(terminal_epoch, 0, 41).has_value() ||
+        terminal_player.buffered_chunk_count_for_test() != 1) {
+        throw std::runtime_error("stale error/cancel path destroyed replacement playback");
+    }
+
+    ActiveRequestState state;
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        state.active_request_id = 42;
+    }
+    std::mutex gate_mutex;
+    std::condition_variable gate_condition;
+    bool completion_released = false;
+    bool completion_won = false;
+    std::thread completion([&] {
+        std::unique_lock<std::mutex> lock(gate_mutex);
+        gate_condition.wait(lock, [&] { return completion_released; });
+        completion_won = complete_active_request(state, 42);
+    });
+    clear_active_request(state, 42);
+    {
+        std::lock_guard<std::mutex> lock(gate_mutex);
+        completion_released = true;
+    }
+    gate_condition.notify_all();
+    completion.join();
+    if (completion_won) {
+        throw std::runtime_error("stale completion claimed success after cancellation");
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        state.active_request_id = 43;
+    }
+    if (!complete_active_request(state, 43) ||
+        complete_active_request(state, 43)) {
+        throw std::runtime_error("active completion transition is not exactly once");
+    }
+    return 0;
 }
 
 std::shared_ptr<AudioPostProcessorChain> make_audio_processors(
@@ -2129,7 +2377,8 @@ RequestId submit_request(
     }
 #endif
     TtsCallbacks callbacks;
-    callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id, pcm_capture
+    callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id,
+        one_shot_state, pcm_capture
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
         , animation_runtime, animation_generation
 #endif
@@ -2154,14 +2403,24 @@ RequestId submit_request(
             }
         }
         catch (const std::exception& exc) {
-            std::cerr << "playback error: " << exc.what() << '\n';
+            fail_playback_request(
+                player,
+                active_state,
+                request_id,
+                playback_epoch,
+                one_shot_state,
+                exc.what());
         }
     };
-    callbacks.on_completed = [&player, &active_state, processors, playback_epoch, one_shot_state, request_id
+    callbacks.on_completed = [&player, &active_state, processors, playback_epoch,
+        one_shot_state, request_id
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
         , animation_runtime, animation_generation
 #endif
         ] {
+        if (!is_active_request(active_state, request_id)) {
+            return;
+        }
         try {
             for (const PcmChunk& processed :
                  processors->finish(AudioTerminalReason::Completed)) {
@@ -2177,13 +2436,19 @@ RequestId submit_request(
             }
         }
         catch (const std::exception& exc) {
-            clear_active_request(active_state, request_id);
-            mark_one_shot_terminal(one_shot_state, false, exc.what());
-            std::cerr << "audio post-processing error: " << exc.what() << '\n';
+            fail_playback_request(
+                player,
+                active_state,
+                request_id,
+                playback_epoch,
+                one_shot_state,
+                exc.what());
+            return;
+        }
+        if (!complete_active_request(active_state, request_id)) {
             return;
         }
         player.note_request_terminal(request_id, "completed");
-        clear_active_request(active_state, request_id);
         if (one_shot_state != nullptr) {
             mark_one_shot_terminal(one_shot_state, true);
         }
@@ -2197,35 +2462,43 @@ RequestId submit_request(
         &player,
         &active_state,
         processors,
+        playback_epoch,
         one_shot_state,
         request_id,
         interruption_fade_ms] {
-        if (is_active_request(active_state, request_id)) {
+        if (clear_active_request(active_state, request_id)) {
             try {
                 processors->reset();
-                auto interruption = player.interrupt_with_fade(interruption_fade_ms, request_id);
-                if (interruption.second.has_value()) {
-                    player.enqueue(interruption.first, interruption.second.value());
+                const auto interruption = player.interrupt_with_fade_if_epoch(
+                    playback_epoch,
+                    interruption_fade_ms,
+                    request_id);
+                if (interruption.has_value() && interruption->second.has_value()) {
+                    player.enqueue(interruption->first, interruption->second.value());
                 }
             }
             catch (const std::exception& exc) {
                 std::cerr << "audio post-processing error: " << exc.what() << '\n';
             }
-            clear_active_request(active_state, request_id);
         }
         player.note_request_terminal(request_id, "cancelled");
         mark_one_shot_terminal(one_shot_state, false, "request cancelled");
     };
-    callbacks.on_error = [&player, &active_state, processors, one_shot_state, request_id](const TtsError& error) {
-        if (is_active_request(active_state, request_id)) {
+    callbacks.on_error = [
+        &player,
+        &active_state,
+        processors,
+        playback_epoch,
+        one_shot_state,
+        request_id](const TtsError& error) {
+        if (clear_active_request(active_state, request_id)) {
             try {
                 processors->reset();
+                static_cast<void>(player.reset_if_epoch(playback_epoch));
             }
             catch (const std::exception& exc) {
                 std::cerr << "audio post-processing error: " << exc.what() << '\n';
             }
-            static_cast<void>(player.reset());
-            clear_active_request(active_state, request_id);
         }
         player.note_request_terminal(request_id, "failed");
         mark_one_shot_terminal(
@@ -2564,6 +2837,9 @@ int wmain(int argc, wchar_t** argv) {
             print_usage(std::cout, utf8_from_wide(argv[0]));
             return 0;
         }
+        if (options.self_test_playback_lifecycle) {
+            return run_playback_lifecycle_self_test();
+        }
 
         QwenTtsClientOptions client_options;
         client_options.session.startup_timeout = options.startup_timeout;
@@ -2651,7 +2927,8 @@ int wmain(int argc, wchar_t** argv) {
         WaveOutPlayer player(
             playback_sink_mode,
             playback_metrics.get(),
-            options.playback_prebuffer_chunks);
+            options.playback_prebuffer_chunks,
+            options.mock_playback_fail_after_submissions);
         ActiveRequestState active_state;
 
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
