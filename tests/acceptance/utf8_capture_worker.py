@@ -9,6 +9,11 @@ import threading
 from collections.abc import Iterable
 from pathlib import Path
 
+# The C++ transport intentionally inherits the parent environment. Resolve the
+# source checkout explicitly as a fallback so this standalone test worker does
+# not depend on an editable Python install or a launcher-specific PYTHONPATH.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "worker" / "src"))
+
 from qwen_tts_bridge_worker.engine.mock_engine import MockTtsEngine
 from qwen_tts_bridge_worker.engine.types import SynthesisRequest
 from qwen_tts_bridge_worker.server.stdio_server import StdioWorkerServer
