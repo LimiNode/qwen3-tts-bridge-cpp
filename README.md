@@ -177,8 +177,10 @@ if (request_id == 0) {
     tts.stop();
     return 1;
 }
-std::unique_lock lock(mutex);
-done.wait(lock, [&] { return terminal; });
+{
+    std::unique_lock lock(mutex);
+    done.wait(lock, [&] { return terminal; });
+}
 tts.stop();
 ```
 
