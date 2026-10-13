@@ -4,15 +4,15 @@ QwenTTSBridge is a Windows-oriented C++17 client library for local streaming
 speech synthesis with Qwen3-TTS.
 
 The project exposes a stable native C++ API to a persistent local worker
-process. The canonical release route uses `qwen_tts_native_worker.exe` and the
-pinned `qwentts.cpp`/GGML runtime; the Python/PyTorch worker remains a supported
-alternative backend for development and packaging experiments. The worker is
-started once, keeps the model loaded, and streams PCM audio chunks back to the
-C++ side for every synthesis request.
+process. The Python/PyTorch worker is the currently accepted production and
+packaging route. The native `qwen_tts_native_worker.exe` and pinned
+`qwentts.cpp`/GGML runtime are available as an opt-in backend while their model,
+quality, cancellation, and target-hardware gates continue to be validated. Both
+workers keep the model loaded and stream PCM audio chunks through the same
+protocol.
 
-Status: release candidate preparation for the v0.2 async API. The supported
-runtime is the persistent process worker; the direct qwen.dll adapter remains
-experimental and opt-in.
+Status: the persistent-worker async API is the supported surface. The direct
+in-process `qwen.dll` adapter remains experimental and opt-in.
 
 ## Quick start
 
@@ -44,6 +44,11 @@ target_link_libraries(my_app PRIVATE QwenTTSBridge::qwen_tts_bridge)
 See [examples/README.md](examples/README.md) for the progression from a
 minimal async request to cancellation and streaming post-processing.
 
+For a Python worker, install the worker package and pass its model path to the
+same bridge API. VoiceDesign uses a natural-language `instruction` rather than
+a preset speaker; the reproducible WAV smoke path is documented in
+[docs/voice-design-acceptance.md](docs/voice-design-acceptance.md).
+
 ## Goals
 
 - provide a simple C++17 API for Qwen3-TTS;
@@ -54,6 +59,18 @@ minimal async request to cancellation and streaming post-processing.
 - package the worker as a standalone Windows application with Nuitka;
 - avoid requiring Python to be installed on the target machine;
 - keep the transport architecture open for a future WebSocket transport.
+
+## Supported model capabilities
+
+| Model family | Request inputs | Backend status |
+| --- | --- | --- |
+| 0.6B/1.7B CustomVoice | text, language, speaker, optional instruction | Supported through the worker path; validate the selected runtime/model pair |
+| 1.7B VoiceDesign | text, language, non-empty voice instruction | API and worker path implemented; real-model acceptance is an environment-specific gate |
+| 0.6B/1.7B Base | text, language, reference audio or registered voice profile | Implemented voice-clone path; verify the selected profile and reference provenance |
+
+Streaming availability and performance are backend/model dependent. A full-
+audio fallback must not be presented as realtime streaming. Model weights and
+native GGUF artifacts are external and are never committed to this repository.
 
 ## Non-Goals
 
@@ -76,7 +93,7 @@ C++ bridge library
         |
         | stdin/stdout framed protocol
         v
-qwen_tts_native_worker.exe (canonical)
+qwen_tts_native_worker.exe (optional native backend)
         |
         v
 qwentts.cpp / GGML / CUDA
@@ -102,7 +119,7 @@ API synchronous: request submission can return immediately while reader, writer,
 and dispatcher threads handle streaming frames. Later, the same protocol should
 be usable through a WebSocket transport.
 
-The native worker:
+The native worker (when selected):
 
 1. loads the configured GGUF models and runtime DLLs;
 2. warms up CUDA execution when enabled;
@@ -111,7 +128,9 @@ The native worker:
 5. remains alive for subsequent requests.
 
 The Python worker follows the same lifecycle with Python/PyTorch model loading
-and is kept as an alternative route.
+and is the accepted production/packaging baseline. See
+[docs/native-qwentts-backend.md](docs/native-qwentts-backend.md) for the native
+promotion gates.
 
 ## C++ API Direction
 
@@ -413,7 +432,10 @@ python -m qwen_tts_bridge_worker qwen --model-path <model-or-repo>
 The `qwen` backend lazily loads the vendored or installed Qwen3-TTS streaming
 package only when selected. CustomVoice and VoiceDesign requests use the fork's
 incremental PCM streaming path when the loaded wrapper exposes it. Base
-voice-clone requests and reference audio remain planned follow-ups.
+voice-clone requests, reference audio, and registered voice profiles are
+implemented. VoiceDesign requires a non-empty instruction and rejects Base-only
+clone fields; see [docs/voice-design-acceptance.md](docs/voice-design-acceptance.md)
+for the manual real-model gate.
 
 CustomVoice models require an explicit per-request speaker name. Set
 `TtsRequest::speaker` in C++ or pass `--speaker <name>` to the WAV example.
@@ -444,7 +466,7 @@ external/cpp/qwentts.cpp/
 https://github.com/LimiNode/qwentts.cpp
 ```
 
-The native fork is pinned to a reviewed commit and powers the canonical native
+The native fork is pinned to a reviewed commit and powers the optional native
 process worker. See [native qwentts.cpp backend](docs/native-qwentts-backend.md)
 for the build command and promotion gates. The separate in-process shared
 library adapter remains experimental and opt-in.
@@ -475,11 +497,13 @@ qwen_tts_native_worker.exe
 
 The C++ component is built with CMake and a C++17 compiler.
 
-The canonical release runtime is the persistent native process worker. To build
-the experimental in-process qwentts.cpp/GGML adapter and its shared `qwen.dll`,
+The accepted release baseline is the persistent process worker. The Python
+worker is the current production and packaging baseline; the native process
+worker is an opt-in route gated by the checks in
+[docs/native-qwentts-backend.md](docs/native-qwentts-backend.md). To build the
+experimental in-process qwentts.cpp/GGML adapter and its shared `qwen.dll`,
 configure with `-DQWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND=ON`; normal builds leave
-that path out. The Python worker remains available as an alternative process
-worker and packaging baseline.
+that path out.
 
 The Python worker is packaged using Nuitka in standalone directory mode.
 Onefile packaging is not the initial target because PyTorch and CUDA
@@ -736,52 +760,33 @@ Python version, package metadata, environment isolation, and source-path leaks.
 It does not load model weights or run inference, so real audio validation still
 belongs on a machine with the target GPU and local model files.
 
-## Planned Milestones
+## Current status and roadmap
 
-### Milestone 1: Protocol Prototype
+Implemented and covered by the normal test matrix:
 
-- define versioned frames and control messages;
-- implement a mock Python worker;
-- start the worker from C++;
-- exchange health-check messages;
-- stream deterministic test PCM data.
+- versioned QTB framing and control messages;
+- persistent async C++ client with request IDs, cancellation, and terminal
+  callbacks;
+- mock and Qwen Python worker paths with structured diagnostics;
+- CustomVoice, VoiceDesign, and Base voice-clone request routing;
+- streamed PCM delivery, WAV saving, terminal fade processing, and optional
+  playback/animation integrations;
+- portable/Nuitka packaging scaffolding with external model storage;
+- optional native qwentts worker and ABI smoke checks.
 
-### Milestone 2: Async Persistent Client
+The next work is acceptance and packaging evidence rather than a replacement
+of the bridge architecture:
 
-- add `QwenTtsClient`;
-- keep the worker alive across multiple requests;
-- add `synthesize_async()`;
-- add request IDs, active request tracking, callbacks, cancellation, and
-  terminal events;
-- add outgoing and incoming queues;
-- save streamed PCM into a WAV file from a C++ example.
+- run VoiceDesign acceptance on the exact Python/native model and hardware
+  combinations available to a release;
+- keep the native backend behind its documented quality and performance gates;
+- add the optional WebSocket transport only when a local byte-transport use case
+  requires it;
+- continue predictive-viseme and presentation work outside the core PCM API.
 
-### Milestone 3: Qwen3-TTS Integration
+## API shape and future transport
 
-- integrate `external/python/Qwen3-TTS-streaming/`;
-- load Qwen3-TTS in the Python worker;
-- synthesize complete audio;
-- pass natural-language style instructions to the engine;
-- add structured model and worker errors.
-
-### Milestone 4: Streaming and Packaging
-
-- expose incremental PCM streaming from the Qwen engine;
-- measure first-audio latency and real-time factor;
-- package the worker with Nuitka;
-- verify the packaged worker runs without system Python.
-
-### Milestone 5: Production Transport
-
-- add heartbeat, startup timeout, and graceful shutdown;
-- capture stderr diagnostics;
-- add forced termination fallback;
-- evaluate WebSocket transport with Simple-WebSocket-Server and asio.
-
-## Roadmap Shape
-
-The project should skip a sync-only public API and aim directly at the async
-`0.2` shape:
+The supported API follows the async `0.2` shape:
 
 ```text
 0.2:
