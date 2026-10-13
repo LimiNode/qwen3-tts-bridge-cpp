@@ -35,11 +35,17 @@ function Read-WavMetadata {
     $stream = [IO.File]::OpenRead($Path)
     $reader = [IO.BinaryReader]::new($stream)
     try {
+        if ($stream.Length -lt 12) {
+            throw "output WAV is smaller than a RIFF header"
+        }
         $riff = [Text.Encoding]::ASCII.GetString($reader.ReadBytes(4))
-        [void]$reader.ReadUInt32()
+        [UInt32]$riffSize = $reader.ReadUInt32()
         $wave = [Text.Encoding]::ASCII.GetString($reader.ReadBytes(4))
         if ($riff -ne "RIFF" -or $wave -ne "WAVE") {
             throw "output is not a RIFF/WAVE file"
+        }
+        if ([UInt64]$riffSize + 8 -ne [UInt64]$stream.Length) {
+            throw "RIFF declared size does not match file size"
         }
 
         $format = $null
@@ -48,21 +54,32 @@ function Read-WavMetadata {
             $chunkId = [Text.Encoding]::ASCII.GetString($reader.ReadBytes(4))
             $chunkSize = [UInt32]$reader.ReadUInt32()
             $chunkStart = $stream.Position
+            $chunkEnd = [UInt64]$chunkStart + [UInt64]$chunkSize
+            if ($chunkEnd -gt [UInt64]$stream.Length) {
+                throw "WAV chunk '$chunkId' extends beyond the physical file"
+            }
             if ($chunkId -eq "fmt ") {
+                if ($chunkSize -lt 16) {
+                    throw "WAV fmt chunk is shorter than PCM format metadata"
+                }
                 $format = [pscustomobject]@{
                     AudioFormat = [UInt16]$reader.ReadUInt16()
                     Channels = [UInt16]$reader.ReadUInt16()
                     SampleRate = [UInt32]$reader.ReadUInt32()
+                    ByteRate = [UInt32]$reader.ReadUInt32()
+                    BlockAlign = [UInt16]$reader.ReadUInt16()
                     BitsPerSample = [UInt16]0
                 }
-                [void]$reader.ReadUInt32()
-                [void]$reader.ReadUInt16()
                 $format.BitsPerSample = [UInt16]$reader.ReadUInt16()
             }
             elseif ($chunkId -eq "data") {
-                $dataBytes += $chunkSize
+                $dataBytes += [UInt64]$chunkSize
             }
-            $stream.Position = $chunkStart + $chunkSize + ($chunkSize % 2)
+            $paddedEnd = $chunkEnd + ($chunkSize % 2)
+            if ($paddedEnd -gt [UInt64]$stream.Length) {
+                throw "WAV chunk '$chunkId' has no complete padding byte"
+            }
+            $stream.Position = [Int64]$paddedEnd
         }
 
         if ($null -eq $format -or $dataBytes -eq 0) {
@@ -72,6 +89,8 @@ function Read-WavMetadata {
             AudioFormat = $format.AudioFormat
             Channels = $format.Channels
             SampleRate = $format.SampleRate
+            ByteRate = $format.ByteRate
+            BlockAlign = $format.BlockAlign
             BitsPerSample = $format.BitsPerSample
             DataBytes = $dataBytes
         }
@@ -142,13 +161,18 @@ $wav = Read-WavMetadata $outputPath
 if ($wav.AudioFormat -ne 1 -or
     $wav.Channels -ne $Channels -or
     $wav.SampleRate -ne $SampleRate -or
-    $wav.BitsPerSample -ne 16) {
-    throw "unexpected WAV format: PCM=$($wav.AudioFormat), channels=$($wav.Channels), sample_rate=$($wav.SampleRate), bits=$($wav.BitsPerSample)"
+    $wav.BitsPerSample -ne 16 -or
+    $wav.BlockAlign -ne ($Channels * 2) -or
+    $wav.ByteRate -ne ($SampleRate * $Channels * 2)) {
+    throw "unexpected WAV format: PCM=$($wav.AudioFormat), channels=$($wav.Channels), sample_rate=$($wav.SampleRate), bits=$($wav.BitsPerSample), block_align=$($wav.BlockAlign), byte_rate=$($wav.ByteRate)"
 }
 
 $result = Get-Content -LiteralPath $resultJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($result.terminal_state -ne "completed" -or [UInt64]$result.audio_bytes -eq 0) {
     throw "VoiceDesign result JSON does not report completed non-empty audio"
+}
+if ([UInt64]$result.audio_bytes -ne $wav.DataBytes) {
+    throw "WAV data bytes ($($wav.DataBytes)) do not match result audio_bytes ($($result.audio_bytes))"
 }
 
 Write-Output ("VoiceDesign WAV accepted: {0} Hz, {1} channel(s), {2} PCM bytes; result={3}" -f `
