@@ -18,6 +18,8 @@ option(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT
     "Build the released tts-front-cpp text preparation adapter" ON)
 option(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION
     "Build the optional speech-animation integration adapter" OFF)
+option(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK
+    "Build the optional Windows WinMM playback module" ${WIN32})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -166,6 +168,29 @@ target_link_libraries(qwen_tts_bridge
         nlohmann_json::nlohmann_json
         tiny-process-library::tiny-process-library
 )
+
+if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
+    if(NOT WIN32)
+        message(FATAL_ERROR
+            "QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK requires Windows")
+    endif()
+    add_library(qwen_tts_bridge_winmm_playback STATIC
+        src/qwen_tts_bridge/playback/winmm_playback.cpp
+    )
+    add_library(QwenTTSBridge::qwen_tts_bridge_winmm_playback ALIAS
+        qwen_tts_bridge_winmm_playback)
+    target_compile_features(qwen_tts_bridge_winmm_playback PUBLIC cxx_std_17)
+    target_include_directories(qwen_tts_bridge_winmm_playback
+        PUBLIC
+            $<BUILD_INTERFACE:${QWEN_TTS_BRIDGE_SRC_DIR}>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+    target_link_libraries(qwen_tts_bridge_winmm_playback
+        PUBLIC
+            QwenTTSBridge::qwen_tts_bridge
+            winmm
+    )
+endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
     if(NOT WIN32)
@@ -325,10 +350,11 @@ install(
 install(
     DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-    FILES_MATCHING
-        PATTERN "*.hpp"
-        PATTERN "integration" EXCLUDE
-)
+        FILES_MATCHING
+            PATTERN "*.hpp"
+            PATTERN "integration" EXCLUDE
+            PATTERN "playback" EXCLUDE
+    )
 install(
     EXPORT QwenTTSBridgeTargets
     FILE QwenTTSBridgeTargets.cmake
@@ -404,8 +430,14 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         target_link_libraries(qwen_tts_play
             PRIVATE
                 QwenTTSBridge::qwen_tts_bridge
-                winmm
         )
+        if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
+            target_link_libraries(qwen_tts_play
+                PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
+        else()
+            message(FATAL_ERROR
+                "qwen_tts_play requires QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK")
+        endif()
         if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
             target_link_libraries(qwen_tts_play
                 PRIVATE
@@ -487,6 +519,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp
         )
     endif()
+    if(WIN32 AND QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
+        list(APPEND _qwen_tts_public_headers
+            qwen_tts_bridge/playback/winmm_playback.hpp
+        )
+    endif()
     set(_qwen_tts_header_check_sources)
     foreach(_header IN LISTS _qwen_tts_public_headers)
         string(REPLACE "/" "_" _header_stem "${_header}")
@@ -507,6 +544,15 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_include_directories(public_header_self_contained PRIVATE
             "${QWEN_TTS_BRIDGE_SPEECH_ANIMATION_DIR}/core/include"
             "${QWEN_TTS_BRIDGE_SPEECH_ANIMATION_DIR}/integration/include")
+    endif()
+
+    if(WIN32 AND QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
+        add_executable(winmm_playback_test
+            tests/winmm_playback_test.cpp
+        )
+        target_link_libraries(winmm_playback_test
+            PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
+        add_test(NAME winmm_playback_test COMMAND winmm_playback_test)
     endif()
 
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
