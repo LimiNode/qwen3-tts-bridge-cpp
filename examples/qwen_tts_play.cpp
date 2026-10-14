@@ -69,14 +69,10 @@ using qwen_tts_bridge::audio::TerminalFadePostProcessor;
 using qwen_tts_bridge::playback::MockPlaybackFailureStage;
 using qwen_tts_bridge::playback::PlaybackInterruptionDiagnostic;
 using qwen_tts_bridge::playback::PlaybackMetrics;
+using qwen_tts_bridge::playback::PlaybackCursorSnapshot;
 using qwen_tts_bridge::playback::PlaybackSinkMode;
 using qwen_tts_bridge::playback::WaveOutPlayer;
 using qwen_tts_bridge::playback::WprPlaybackMarkers;
-
-#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
-using PlaybackCursorSnapshot =
-    speech_animation::integration::PlaybackCursorSnapshot;
-#endif
 
 struct ProgramOptions {
     bool help = false;
@@ -1917,9 +1913,15 @@ int wmain(int argc, wchar_t** argv) {
                 qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime>(
                 [&player, animation_context] {
                     std::lock_guard<std::mutex> lock(animation_context->mutex);
-                    return player.playback_cursor_snapshot(
+                    const auto snapshot = player.playback_cursor_snapshot(
                         animation_context->playback_epoch,
                         animation_context->request_id);
+                    return ::speech_animation::integration::PlaybackCursorSnapshot{
+                        snapshot.playback_epoch,
+                        snapshot.request_id,
+                        snapshot.utterance_sample,
+                        snapshot.sample_rate,
+                        snapshot.position_available};
                 },
                 [animation_receipt_output, animation_receipt_mutex](
                     const auto& selection) {

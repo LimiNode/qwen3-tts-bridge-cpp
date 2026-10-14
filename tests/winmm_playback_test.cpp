@@ -88,6 +88,38 @@ int main() {
                    "write failure lost pending buffer ownership")) {
             return 1;
         }
+
+        WaveOutPlayer reset_failure(
+            PlaybackSinkMode::Mock,
+            nullptr,
+            1,
+            0,
+            MockPlaybackFailureStage::Reset);
+        bool reset_threw = false;
+        try {
+            static_cast<void>(reset_failure.reset());
+        }
+        catch (const std::exception&) {
+            reset_threw = true;
+        }
+        if (!check(reset_threw, "reset fault injection did not fail") ||
+            !check(reset_failure.unhealthy_for_test(),
+                   "reset failure did not mark playback unhealthy")) {
+            return 1;
+        }
+
+        WaveOutPlayer close_failure(
+            PlaybackSinkMode::Mock,
+            nullptr,
+            1,
+            0,
+            MockPlaybackFailureStage::Close);
+        close_failure.enqueue(close_failure.playback_epoch(), make_chunk(4, 120));
+        close_failure.close_for_test();
+        if (!check(close_failure.unhealthy_for_test(),
+                   "close failure did not mark playback unhealthy")) {
+            return 1;
+        }
     }
     catch (const std::exception& error) {
         std::cerr << "unexpected playback test failure: " << error.what() << '\n';
