@@ -25,6 +25,7 @@ struct PlaybackAnimationRuntime::State {
     std::uint64_t playback_epoch = 0;
     RequestId request_id = 0;
     std::uint64_t generation = 0;
+    bool cue_history_degraded = false;
 };
 
 PlaybackAnimationRuntime::PlaybackAnimationRuntime(
@@ -58,13 +59,32 @@ std::uint64_t PlaybackAnimationRuntime::begin(
         pipeline,
         [state, generation, playback_epoch, request_id](
             const SpeechAnimationAdapter::Receipt& receipt) {
-            std::lock_guard<std::mutex> lock(state->mutex);
-            if (generation != state->generation ||
-                state->playback_epoch != playback_epoch ||
-                state->request_id != request_id) {
-                return;
+            DiagnosticHandler handler;
+            SpeechAnimationAdapter::AdapterDiagnostic diagnostic;
+            {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                if (generation != state->generation ||
+                    state->playback_epoch != playback_epoch ||
+                    state->request_id != request_id ||
+                    state->cue_history_degraded) {
+                    return;
+                }
+                if (state->selector.append(receipt)) {
+                    return;
+                }
+                state->cue_history_degraded = true;
+                // Keep presentation neutral and prevent later receipts from
+                // being interpreted against a partial bounded history.
+                state->selector.reset(playback_epoch, 0);
+                handler = state->on_diagnostic;
+                diagnostic.request_id = request_id;
+                diagnostic.code = "speech_animation_cue_history_overflow";
+                diagnostic.message =
+                    "playback cue history rejected a receipt; presentation degraded to neutral";
             }
-            static_cast<void>(state->selector.append(receipt));
+            if (handler) {
+                handler(diagnostic);
+            }
         },
         [state, generation, playback_epoch](
             const SpeechAnimationAdapter::AdapterDiagnostic& diagnostic) {
@@ -83,6 +103,7 @@ std::uint64_t PlaybackAnimationRuntime::begin(
         });
     state_->playback_epoch = playback_epoch;
     state_->request_id = request_id;
+    state_->cue_history_degraded = false;
     state_->selector.reset(playback_epoch, request_id);
     state_->pipeline = std::move(pipeline);
     state_->adapter = std::move(adapter);

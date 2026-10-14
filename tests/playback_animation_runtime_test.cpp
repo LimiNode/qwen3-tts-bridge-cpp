@@ -92,6 +92,30 @@ void test_degradation_is_reported_without_rewriting_playback() {
     CHECK(diagnostics.front() == "speech_animation_queue_full");
 }
 
+void test_bounded_cue_overflow_degrades_to_neutral_once() {
+    PlaybackCursorSnapshot snapshot;
+    snapshot.playback_epoch = 5;
+    snapshot.request_id = 32;
+    snapshot.sample_rate = 24000;
+    snapshot.position_available = false;
+    std::vector<std::string> diagnostics;
+    PlaybackAnimationRuntime runtime(
+        [&snapshot] { return snapshot; },
+        {},
+        [&diagnostics](const PlaybackAnimationRuntime::AdapterDiagnostic& diagnostic) {
+            diagnostics.push_back(diagnostic.code);
+        });
+    const auto generation = runtime.begin(5, 32, 24000);
+    for (std::uint64_t index = 0; index < 4097; ++index) {
+        CHECK(runtime.push_audio(5, generation, pcm_chunk(32, index * 2400)));
+        static_cast<void>(runtime.tick());
+    }
+    CHECK(diagnostics.size() == 1);
+    CHECK(diagnostics.front() == "speech_animation_cue_history_overflow");
+    snapshot.position_available = true;
+    CHECK(runtime.tick().status == PlaybackSelectionStatus::StaleRequest);
+}
+
 void test_stale_audio_is_rejected_after_epoch_change() {
     PlaybackCursorSnapshot snapshot;
     snapshot.playback_epoch = 10;
@@ -144,6 +168,7 @@ void test_unavailable_and_stale_snapshots_are_neutral() {
 int main() {
     test_selection_uses_sample_cursor_and_resets_stale_epoch();
     test_degradation_is_reported_without_rewriting_playback();
+    test_bounded_cue_overflow_degrades_to_neutral_once();
     test_stale_audio_is_rejected_after_epoch_change();
     test_unavailable_and_stale_snapshots_are_neutral();
     return EXIT_SUCCESS;
