@@ -28,6 +28,7 @@
 
 #include <qwen_tts_bridge/audio.hpp>
 #include <qwen_tts_bridge/data.hpp>
+#include "playback_cursor.hpp"
 
 namespace qwen_tts_bridge::playback {
 
@@ -35,19 +36,6 @@ using qwen_tts_bridge::AudioFormat;
 using qwen_tts_bridge::PcmChunk;
 using qwen_tts_bridge::RequestId;
 using qwen_tts_bridge::audio::PlayoutBuffer;
-/// \brief Physical playback position on the player-owned sample clock.
-///
-/// The optional speech-animation adapter may convert this neutral DTO to its
-/// own integration type. The WinMM module deliberately does not depend on
-/// that optional subsystem.
-struct PlaybackCursorSnapshot {
-    std::uint64_t playback_epoch = 0;
-    RequestId request_id = 0;
-    std::uint64_t utterance_sample = 0;
-    std::uint32_t sample_rate = 0;
-    bool position_available = false;
-};
-
 enum class MockPlaybackFailureStage {
     Prepare,
     Write,

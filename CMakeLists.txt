@@ -142,6 +142,7 @@ add_library(qwen_tts_bridge
     src/qwen_tts_bridge/audio/TerminalFadePostProcessor.cpp
     src/qwen_tts_bridge/audio/WavWriter.cpp
     src/qwen_tts_bridge/client/QwenTtsClient.cpp
+    src/qwen_tts_bridge/playback/playback_receipt.cpp
     src/qwen_tts_bridge/protocol/control/control_codec.cpp
     src/qwen_tts_bridge/protocol/control/control_decode.cpp
     src/qwen_tts_bridge/protocol/control/control_encode.cpp
@@ -364,11 +365,20 @@ install(
             PATTERN "integration" EXCLUDE
             PATTERN "playback" EXCLUDE
     )
+install(
+    FILES "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback.hpp"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge"
+)
+install(
+    FILES
+        "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback/playback_cursor.hpp"
+        "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback/playback_receipt.hpp"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge/playback"
+)
 if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
     install(
-        DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge"
-        FILES_MATCHING PATTERN "*.hpp"
+        FILES "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback/winmm_playback.hpp"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge/playback"
     )
 endif()
 install(
@@ -511,6 +521,9 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         qwen_tts_bridge/data/enums.hpp
         qwen_tts_bridge/data/protocol_types.hpp
         qwen_tts_bridge/native.hpp
+        qwen_tts_bridge/playback.hpp
+        qwen_tts_bridge/playback/playback_cursor.hpp
+        qwen_tts_bridge/playback/playback_receipt.hpp
         qwen_tts_bridge/protocol/control.hpp
         qwen_tts_bridge/protocol/control/control_codec.hpp
         qwen_tts_bridge/protocol/control/control_messages.hpp
@@ -570,6 +583,13 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
         add_test(NAME winmm_playback_test COMMAND winmm_playback_test)
     endif()
+
+    add_executable(playback_receipt_probe_test
+        tests/playback_receipt_probe_test.cpp
+    )
+    target_link_libraries(playback_receipt_probe_test
+        PRIVATE QwenTTSBridge::qwen_tts_bridge)
+    add_test(NAME playback_receipt_probe_test COMMAND playback_receipt_probe_test)
 
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         add_executable(tts_front_bridge_adapter_test
