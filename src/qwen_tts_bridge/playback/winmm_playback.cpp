@@ -722,6 +722,7 @@ void WaveOutPlayer::flush_pending_locked() {
             completion += std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                 std::chrono::duration<double, std::milli>(buffer->duration_ms));
             buffer->mock_completion = completion;
+            buffer->prepared = true;
             buffers_.push_back(std::move(buffer));
             next_stream_frame_ = start_frame + buffers_.back()->frame_count;
             ++mock_submission_count_;
@@ -834,6 +835,15 @@ void WaveOutPlayer::throw_if_unhealthy_locked() const {
 }
 
 void WaveOutPlayer::unprepare_header_or_fail_locked(Buffer& buffer) {
+    if (sink_mode_ == PlaybackSinkMode::Mock) {
+        if (should_inject_mock_failure(MockPlaybackFailureStage::Unprepare)) {
+            unhealthy_ = true;
+            unhealthy_reason_ = "injected mock waveOutUnprepareHeader failure";
+            throw std::runtime_error(unhealthy_reason_);
+        }
+        buffer.prepared = false;
+        return;
+    }
     const MMRESULT result =
         waveOutUnprepareHeader(m_handle, &buffer.header, sizeof(WAVEHDR));
     if (result != MMSYSERR_NOERROR) {
@@ -878,6 +888,9 @@ void WaveOutPlayer::reap_finished_locked() {
                 (*it)->mock_completion.value() > now) {
                 ++it;
                 continue;
+            }
+            if ((*it)->prepared) {
+                unprepare_header_or_fail_locked(**it);
             }
             it = buffers_.erase(it);
         }
