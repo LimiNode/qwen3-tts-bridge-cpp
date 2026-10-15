@@ -489,7 +489,7 @@ Qwen streaming fork:
 
 ```text
 external/python/Qwen3-TTS-streaming/
-https://github.com/NewYaroslav/Qwen3-TTS-streaming
+https://github.com/LimiNode/Qwen3-TTS-streaming
 ```
 
 Selected native engine fork:
@@ -852,6 +852,6 @@ CMP 50HX Base-profile latency and cadence evidence is maintained separately:
 ## References
 
 - Qwen3-TTS upstream: https://github.com/QwenLM/Qwen3-TTS
-- Qwen3-TTS streaming fork: https://github.com/NewYaroslav/Qwen3-TTS-streaming
+- Qwen3-TTS streaming fork: https://github.com/LimiNode/Qwen3-TTS-streaming
 - Qwen3-TTS streaming documentation: https://qwenlm-qwen3-tts.mintlify.app/guides/streaming
 - Nuitka user manual: https://nuitka.net/user-documentation/user-manual.html
