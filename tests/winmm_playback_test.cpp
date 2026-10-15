@@ -120,6 +120,31 @@ int main() {
                    "close failure did not mark playback unhealthy")) {
             return 1;
         }
+
+        WaveOutPlayer unprepare_failure(
+            PlaybackSinkMode::Mock,
+            nullptr,
+            1,
+            0,
+            MockPlaybackFailureStage::Unprepare);
+        unprepare_failure.enqueue(
+            unprepare_failure.playback_epoch(),
+            make_chunk(5, 120));
+        bool unprepare_threw = false;
+        try {
+            unprepare_failure.wait_until_idle(std::chrono::milliseconds(1000));
+        }
+        catch (const std::exception&) {
+            unprepare_threw = true;
+        }
+        if (!check(unprepare_threw,
+                   "unprepare fault injection did not fail") ||
+            !check(unprepare_failure.unhealthy_for_test(),
+                   "unprepare failure did not mark playback unhealthy") ||
+            !check(unprepare_failure.buffered_chunk_count_for_test() == 1,
+                   "unprepare failure did not retain driver-owned buffer")) {
+            return 1;
+        }
     }
     catch (const std::exception& error) {
         std::cerr << "unexpected playback test failure: " << error.what() << '\n';

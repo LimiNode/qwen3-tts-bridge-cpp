@@ -51,6 +51,7 @@ struct PlaybackCursorSnapshot {
 enum class MockPlaybackFailureStage {
     Prepare,
     Write,
+    Unprepare,
     Reset,
     Close,
 };
