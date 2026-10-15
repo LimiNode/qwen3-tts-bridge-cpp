@@ -102,7 +102,8 @@ jobs:
           cmake --install build/default --config Release --prefix $prefix
           .\scripts\test-installed-package.ps1 `
             -InstallPrefix $prefix `
-            -BuildDirectory (Join-Path $env:RUNNER_TEMP 'qwen-tts-bridge-install-consumer')
+            -BuildDirectory (Join-Path $env:RUNNER_TEMP 'qwen-tts-bridge-install-consumer') `
+            -RequireWinmmPlayback
 
       - name: Parse native/Python matrix runner
         if: ${{ matrix.name == 'default' }}

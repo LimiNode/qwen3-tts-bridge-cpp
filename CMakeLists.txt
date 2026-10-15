@@ -312,6 +312,15 @@ install(
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
 )
+if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
+    install(
+        TARGETS qwen_tts_bridge_winmm_playback
+        EXPORT QwenTTSBridgeTargets
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    )
+endif()
 if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
     install(
         TARGETS qwen_tts_bridge_tts_front tts_front
@@ -355,6 +364,13 @@ install(
             PATTERN "integration" EXCLUDE
             PATTERN "playback" EXCLUDE
     )
+if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
+    install(
+        DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge"
+        FILES_MATCHING PATTERN "*.hpp"
+    )
+endif()
 install(
     EXPORT QwenTTSBridgeTargets
     FILE QwenTTSBridgeTargets.cmake
