@@ -96,8 +96,8 @@ See [`tts-front-integration.md`](tts-front-integration.md),
 
 ```text
 Application
-    |                                      optional
-    +--> tts-front-cpp v0.2.2
+    |
+    +--> optional tts-front-cpp v0.2.2
     |        |
     |        v
     |     PreparedText / pronunciation evidence
@@ -106,20 +106,21 @@ Application
                  |
                  v
               QTB stdin/stdout
-                 |-----------------------> selected persistent Python worker
-                 |                            Python/PyTorch/Qwen runtime
-                 `-----------------------> selected optional native worker
-                                              qwen.dll
-                                              qwentts.cpp / GGML / CUDA
                  |
                  v
-              PCM + canonical sample clock
-                 |
-                 +--> application-owned sink / optional WinMM playback
-                 |
-                 `--> optional speech-animation adapter
-                          sample-addressed animation timeline
-                          physical playback-cursor acceptance pending
+            selected worker
+              |             |
+              |             `--> optional native -> qwen.dll -> qwentts.cpp / GGML / CUDA
+              `-----------------> persistent Python -> PyTorch / Qwen runtime
+                               |
+                               v
+                         PCM + canonical sample clock
+                               |
+                               +--> application-owned sink / optional WinMM playback
+                               |
+                               `--> optional speech-animation adapter
+                                        sample-addressed animation timeline
+                                        physical playback-cursor acceptance pending
 ```
 
 The dependency direction is deliberate:

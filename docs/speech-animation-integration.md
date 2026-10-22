@@ -1,18 +1,23 @@
 # Speech-animation integration boundary
 
-`qwen3-tts-bridge-cpp` is the speech backend. It owns text preparation,
-Qwen inference, streaming PCM, and the canonical sample timeline. A future
-`speech-animation` component consumes that output; it is not implemented in
-this repository.
+`qwen3-tts-bridge-cpp` owns the public client boundary, worker supervision,
+streaming PCM, and the canonical sample timeline. Text preparation is optional
+and may be supplied by `tts-front-cpp` or another pronunciation provider.
+Inference belongs to the selected backend: the persistent Python worker or the
+opt-in native `qwen.dll`/qwentts.cpp path. The optional speech-animation adapter
+already consumes the resulting PCM/timing stream; physical playback and avatar
+presentation remain downstream concerns.
 
 ```text
-tts-front-cpp
+Application
+    -> optional tts-front-cpp / pronunciation provider
     -> PreparedText / pronunciation context
-    -> qwen3-tts-bridge-cpp
-       -> PCM + sample-addressed timing
-       -> optional Qwen terminal diagnostics
-    -> speech-animation
-       -> audio analysis / visemes / avatar policy
+    -> QwenTtsClient
+    -> QTB
+    -> selected Python or native engine
+    -> PCM + sample-addressed timing
+    -> optional speech-animation adapter
+    -> physical playback / avatar presentation (downstream)
 ```
 
 ## Downstream inputs

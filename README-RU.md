@@ -130,24 +130,30 @@ events (`completed`, `cancelled`, `error`).
 
 ```text
 Application
-    |                                      optional
-    +--> tts-front-cpp v0.2.2
+    |
+    +--> optional tts-front-cpp v0.2.2
     |        |
     |        v
     |     PreparedText / pronunciation evidence
     |        |
-    `------> QwenTtsClient → QTB stdin/stdout
-                              |-----------------> selected Python worker
-                              `-----------------> selected optional native worker
-                                                    qwen.dll + qwentts.cpp/GGML/CUDA
-                              |
-                              v
-                           PCM + canonical sample clock
-                              |                         |
-                              v                         v
-                     application-owned sink       optional speech-animation adapter
-                                                   sample-addressed timeline;
-                                                   physical playback cursor pending
+    `------> QwenTtsClient
+                 |
+                 v
+              QTB stdin/stdout
+                 |
+                 v
+            selected worker
+              |             |
+              |             `--> optional native -> qwen.dll + qwentts.cpp/GGML/CUDA
+              `-----------------> persistent Python/PyTorch/Qwen worker
+                               |
+                               v
+                         PCM + canonical sample clock
+                               |                         |
+                               v                         v
+                    application-owned sink       optional speech-animation adapter
+                                                  sample-addressed timeline;
+                                                  physical playback cursor pending
 ```
 
 Core bridge не владеет физическим audio sink. WaveOut, Unity, OBS и игровые
