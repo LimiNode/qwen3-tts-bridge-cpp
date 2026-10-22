@@ -91,6 +91,15 @@ void test_discontinuity_and_bounded_history_are_fail_closed() {
     CHECK(!probe.receipt().pcm_contiguous);
 }
 
+void test_cue_contiguity_is_observation_continuity() {
+    PlaybackReceiptProbe probe;
+    probe.begin(5, 33);
+    CHECK(probe.append_cue(cue(5, 33, 600)) == PlaybackReceiptStatus::Accepted);
+    CHECK(probe.append_cue(cue(5, 33, 1800)) == PlaybackReceiptStatus::Accepted);
+    CHECK(probe.receipt().cue_contiguous);
+    CHECK(probe.receipt().cue_sample_count == 3000);
+}
+
 void test_stale_epoch_is_never_selected() {
     PlaybackReceiptProbe probe;
     probe.begin(10, 42);
@@ -110,10 +119,10 @@ void test_stale_epoch_is_never_selected() {
     CHECK(stale_audio == PlaybackReceiptStatus::StaleEpoch);
     CHECK(probe.select(old_snapshot).status == PlaybackCueSelection::Status::StaleEpoch);
 
-    probe.begin(12, 43);
-    CHECK(probe.observe_pcm(12, pcm_chunk(43, 0)) == PlaybackReceiptStatus::Accepted);
-    CHECK(probe.append_cue(cue(12, 43, 0)) == PlaybackReceiptStatus::Accepted);
-    old_snapshot.playback_epoch = 12;
+    probe.begin(11, 43);
+    CHECK(probe.observe_pcm(11, pcm_chunk(43, 0)) == PlaybackReceiptStatus::Accepted);
+    CHECK(probe.append_cue(cue(11, 43, 0)) == PlaybackReceiptStatus::Accepted);
+    old_snapshot.playback_epoch = 11;
     old_snapshot.request_id = 42;
     CHECK(probe.select(old_snapshot).status == PlaybackCueSelection::Status::StaleRequest);
     old_snapshot.request_id = 43;
@@ -178,11 +187,16 @@ void test_epoch_is_monotonic() {
     } catch (const std::invalid_argument&) {
     }
     probe.invalidate(41);
+    probe.begin(41, 101);
     try {
-        probe.begin(41, 101);
+        probe.begin(41, 102);
         CHECK(false);
     } catch (const std::invalid_argument&) {
     }
+    CHECK(probe.observe_pcm(40, pcm_chunk(99, 0)) == PlaybackReceiptStatus::StaleEpoch);
+    CHECK(!probe.mark_terminal(40, 99));
+    CHECK(!probe.mark_terminal(41, 99));
+    CHECK(!probe.receipt().terminal);
 }
 
 } // namespace
@@ -190,6 +204,7 @@ void test_epoch_is_monotonic() {
 int main() {
     test_contiguous_timeline_and_cursor_selection();
     test_discontinuity_and_bounded_history_are_fail_closed();
+    test_cue_contiguity_is_observation_continuity();
     test_stale_epoch_is_never_selected();
     test_terminal_identity_fences_late_callbacks();
     test_sample_rate_identity_and_invalid_ranges();

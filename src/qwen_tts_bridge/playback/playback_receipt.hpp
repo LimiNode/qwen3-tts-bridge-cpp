@@ -84,6 +84,9 @@ struct PlaybackReceipt {
     std::uint64_t cue_sample_count = 0;
     std::uint32_t sample_rate = 0;
     bool pcm_contiguous = true;
+    // True when accepted cue ranges have no gaps between one another. The
+    // first observed cue may start after sample zero; this is bounded
+    // observation continuity, not proof that the cue timeline covers zero.
     bool cue_contiguous = true;
     bool cue_history_overflow = false;
     bool terminal = false;
@@ -106,12 +109,14 @@ public:
 
     /// Starts a new request timeline and discards all prior ranges.
     ///
-    /// `playback_epoch` must be non-zero and strictly greater than every
-    /// previously accepted epoch.
+    /// `playback_epoch` must be non-zero. It must increase monotonically,
+    /// except that one begin at the epoch most recently supplied to
+    /// invalidate() is allowed to claim the replacement request.
     void begin(std::uint64_t playback_epoch, RequestId request_id);
 
     /// Invalidates the current request while retaining the replacement epoch.
-    /// The replacement epoch must be strictly greater than the current epoch.
+    /// The replacement epoch must be strictly greater than the current epoch;
+    /// one subsequent begin() may claim that same replacement epoch.
     void invalidate(std::uint64_t playback_epoch);
 
     /// Publishes one PCM callback range. The callback's request id must match
@@ -144,6 +149,13 @@ private:
         std::uint64_t& end_sample) noexcept;
 
     std::size_t max_cues_;
+    enum class LifecycleState {
+        Uninitialized,
+        Active,
+        Invalidated,
+    };
+
+    LifecycleState lifecycle_state_ = LifecycleState::Uninitialized;
     std::uint64_t playback_epoch_ = 0;
     RequestId request_id_ = 0;
     std::uint64_t next_pcm_sample_ = 0;

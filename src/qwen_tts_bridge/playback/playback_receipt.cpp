@@ -107,8 +107,14 @@ void PlaybackReceiptProbe::begin(
     if (playback_epoch == 0 || request_id == 0) {
         throw std::invalid_argument("playback receipt requires non-zero epoch and request id");
     }
-    if (playback_epoch <= playback_epoch_) {
+    const bool replacement_epoch_claim =
+        lifecycle_state_ == LifecycleState::Invalidated &&
+        playback_epoch == playback_epoch_;
+    if (!replacement_epoch_claim && playback_epoch <= playback_epoch_) {
         throw std::invalid_argument("playback receipt epoch must increase monotonically");
+    }
+    if (replacement_epoch_claim || playback_epoch > playback_epoch_) {
+        lifecycle_state_ = LifecycleState::Active;
     }
     playback_epoch_ = playback_epoch;
     request_id_ = request_id;
@@ -130,6 +136,7 @@ void PlaybackReceiptProbe::invalidate(std::uint64_t playback_epoch) {
         throw std::invalid_argument("playback receipt epoch must increase monotonically");
     }
     playback_epoch_ = playback_epoch;
+    lifecycle_state_ = LifecycleState::Invalidated;
     request_id_ = 0;
     next_pcm_sample_ = 0;
     next_cue_sample_ = 0;
