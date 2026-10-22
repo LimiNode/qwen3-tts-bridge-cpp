@@ -1,7 +1,9 @@
 #include "playback_receipt.hpp"
 
 #include <cmath>
+#include <iomanip>
 #include <limits>
+#include <locale>
 #include <sstream>
 #include <stdexcept>
 
@@ -19,6 +21,8 @@ const char* selection_status_name(PlaybackCueSelection::Status status) noexcept 
         return "stale_epoch";
     case PlaybackCueSelection::Status::StaleRequest:
         return "stale_request";
+    case PlaybackCueSelection::Status::SampleRateMismatch:
+        return "sample_rate_mismatch";
     case PlaybackCueSelection::Status::OutsideCueTimeline:
         return "outside_cue_timeline";
     }
@@ -37,18 +41,26 @@ const char* playback_receipt_status_name(PlaybackReceiptStatus status) noexcept 
         return "stale_request";
     case PlaybackReceiptStatus::InvalidRange:
         return "invalid_range";
+    case PlaybackReceiptStatus::InvalidSampleRate:
+        return "invalid_sample_rate";
+    case PlaybackReceiptStatus::SampleRateMismatch:
+        return "sample_rate_mismatch";
     case PlaybackReceiptStatus::DiscontinuousPcm:
         return "discontinuous_pcm";
     case PlaybackReceiptStatus::DiscontinuousCue:
         return "discontinuous_cue";
     case PlaybackReceiptStatus::CueHistoryFull:
         return "cue_history_full";
+    case PlaybackReceiptStatus::AlreadyTerminal:
+        return "already_terminal";
     }
     return "unknown";
 }
 
 std::string PlaybackCueSelection::to_json() const {
     std::ostringstream output;
+    output.imbue(std::locale::classic());
+    output << std::setprecision(std::numeric_limits<float>::max_digits10);
     output << "{\"status\":\"" << selection_status_name(status)
            << "\",\"playback_epoch\":" << playback_epoch
            << ",\"request_id\":" << request_id
@@ -65,12 +77,14 @@ std::string PlaybackCueSelection::to_json() const {
 
 std::string PlaybackReceipt::to_json() const {
     std::ostringstream output;
+    output.imbue(std::locale::classic());
     output << "{\"playback_epoch\":" << playback_epoch
            << ",\"request_id\":" << request_id
            << ",\"pcm_chunk_count\":" << pcm_chunk_count
            << ",\"pcm_sample_count\":" << pcm_sample_count
            << ",\"cue_count\":" << cue_count
            << ",\"cue_sample_count\":" << cue_sample_count
+           << ",\"sample_rate\":" << sample_rate
            << ",\"pcm_contiguous\":" << (pcm_contiguous ? "true" : "false")
            << ",\"cue_contiguous\":" << (cue_contiguous ? "true" : "false")
            << ",\"cue_history_overflow\":"
@@ -93,6 +107,9 @@ void PlaybackReceiptProbe::begin(
     if (playback_epoch == 0 || request_id == 0) {
         throw std::invalid_argument("playback receipt requires non-zero epoch and request id");
     }
+    if (playback_epoch <= playback_epoch_) {
+        throw std::invalid_argument("playback receipt epoch must increase monotonically");
+    }
     playback_epoch_ = playback_epoch;
     request_id_ = request_id;
     next_pcm_sample_ = 0;
@@ -108,6 +125,9 @@ void PlaybackReceiptProbe::begin(
 void PlaybackReceiptProbe::invalidate(std::uint64_t playback_epoch) {
     if (playback_epoch == 0) {
         throw std::invalid_argument("playback receipt epoch must be non-zero");
+    }
+    if (playback_epoch <= playback_epoch_) {
+        throw std::invalid_argument("playback receipt epoch must increase monotonically");
     }
     playback_epoch_ = playback_epoch;
     request_id_ = 0;
@@ -129,12 +149,25 @@ PlaybackReceiptStatus PlaybackReceiptProbe::observe_pcm(
     if (request_id_ == 0 || chunk.request_id != request_id_) {
         return PlaybackReceiptStatus::StaleRequest;
     }
+    if (receipt_.terminal) {
+        return PlaybackReceiptStatus::AlreadyTerminal;
+    }
     if (chunk.sample_count == 0) {
         return PlaybackReceiptStatus::InvalidRange;
+    }
+    if (chunk.format.sample_rate == 0) {
+        return PlaybackReceiptStatus::InvalidSampleRate;
+    }
+    if (receipt_.sample_rate != 0 &&
+        receipt_.sample_rate != chunk.format.sample_rate) {
+        return PlaybackReceiptStatus::SampleRateMismatch;
     }
     std::uint64_t end_sample = 0;
     if (!range_end(chunk.first_sample, chunk.sample_count, end_sample)) {
         return PlaybackReceiptStatus::InvalidRange;
+    }
+    if (receipt_.sample_rate == 0) {
+        receipt_.sample_rate = chunk.format.sample_rate;
     }
     if (pcm_started_ && chunk.first_sample != next_pcm_sample_) {
         receipt_.pcm_contiguous = false;
@@ -157,6 +190,9 @@ PlaybackReceiptStatus PlaybackReceiptProbe::append_cue(const PlaybackCue& cue) {
     }
     if (request_id_ == 0 || cue.request_id != request_id_) {
         return PlaybackReceiptStatus::StaleRequest;
+    }
+    if (receipt_.terminal) {
+        return PlaybackReceiptStatus::AlreadyTerminal;
     }
     if (cue.sample_count == 0) {
         return PlaybackReceiptStatus::InvalidRange;
@@ -202,6 +238,11 @@ PlaybackCueSelection PlaybackReceiptProbe::select(
         selection.status = PlaybackCueSelection::Status::CursorUnavailable;
         return selection;
     }
+    if (receipt_.sample_rate == 0 ||
+        snapshot.sample_rate != receipt_.sample_rate) {
+        selection.status = PlaybackCueSelection::Status::SampleRateMismatch;
+        return selection;
+    }
     for (const auto& cue : cues_) {
         std::uint64_t end_sample = 0;
         if (!range_end(cue.first_sample, cue.sample_count, end_sample)) {
@@ -218,8 +259,17 @@ PlaybackCueSelection PlaybackReceiptProbe::select(
     return selection;
 }
 
-void PlaybackReceiptProbe::mark_terminal() noexcept {
+bool PlaybackReceiptProbe::mark_terminal(
+    std::uint64_t playback_epoch,
+    RequestId request_id) noexcept {
+    if (playback_epoch != playback_epoch_ ||
+        request_id_ == 0 ||
+        request_id != request_id_ ||
+        receipt_.terminal) {
+        return false;
+    }
     receipt_.terminal = true;
+    return true;
 }
 
 PlaybackReceipt PlaybackReceiptProbe::receipt() const noexcept {

@@ -24,9 +24,12 @@ enum class PlaybackReceiptStatus {
     StaleEpoch,
     StaleRequest,
     InvalidRange,
+    InvalidSampleRate,
+    SampleRateMismatch,
     DiscontinuousPcm,
     DiscontinuousCue,
     CueHistoryFull,
+    AlreadyTerminal,
 };
 
 /// \brief Returns a stable machine-readable name for a probe status.
@@ -56,6 +59,7 @@ struct PlaybackCueSelection {
         CursorUnavailable,
         StaleEpoch,
         StaleRequest,
+        SampleRateMismatch,
         OutsideCueTimeline,
     };
 
@@ -78,6 +82,7 @@ struct PlaybackReceipt {
     std::uint64_t pcm_sample_count = 0;
     std::size_t cue_count = 0;
     std::uint64_t cue_sample_count = 0;
+    std::uint32_t sample_rate = 0;
     bool pcm_contiguous = true;
     bool cue_contiguous = true;
     bool cue_history_overflow = false;
@@ -112,13 +117,19 @@ public:
         const PcmChunk& chunk);
 
     /// Publishes one bounded synthetic/downstream cue range.
+    ///
+    /// Once `max_cues` is reached the probe fails closed and rejects all later
+    /// cues for this timeline; it does not silently turn into a rolling buffer.
     PlaybackReceiptStatus append_cue(const PlaybackCue& cue);
 
     /// Selects the cue containing the measured cursor position.
     PlaybackCueSelection select(const PlaybackCursorSnapshot& snapshot) const;
 
-    /// Marks the active request terminal without changing its sample clock.
-    void mark_terminal() noexcept;
+    /// Marks the matching active request terminal without changing its sample clock.
+    /// Returns false for a stale identity or an already terminal request.
+    bool mark_terminal(
+        std::uint64_t playback_epoch,
+        RequestId request_id) noexcept;
 
     [[nodiscard]] PlaybackReceipt receipt() const noexcept;
 
