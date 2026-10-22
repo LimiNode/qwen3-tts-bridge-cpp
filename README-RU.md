@@ -16,6 +16,31 @@ worker. Native worker на `qwentts.cpp`/GGML доступен как opt-in bac
 In-process адаптер `qwen.dll` остаётся экспериментальным. Модели и runtime не
 хранятся в репозитории.
 
+Краткая доказательная сводка текущей архитектуры и уже достигнутых этапов
+находится в [docs/project-status.md](docs/project-status.md). В частности, в
+репозитории уже зафиксированы успешная opt-in сборка native
+`qwen.dll`/qwentts.cpp и аппаратно проверенный экспериментальный русский
+профиль с ударениями; ни один из них не стал production default.
+
+## Что уже работает и проверено
+
+- Persistent Python worker остаётся принятым production- и packaging-маршрутом.
+- Opt-in native path собирает общий `qwen.dll`, загружает split talker/codec
+  runtime и выдаёт потоковый PCM на проверенной конфигурации CMP 50HX.
+- Экспериментальный `ru-stress` профиль проверен с голосом
+  `kraftwerk_robot_ru_warm`. Расширенный корпус из 12 русских фраз прошёл
+  прослушивание: текст понятен, явные ударения слышны в заданных местах,
+  естественное завершение и непустой PCM получены во всех случаях.
+- `tts-front-cpp` v0.2.2 передаёт model-neutral `PreparedText` с данными о
+  произношении и семантических ударениях.
+- Опциональный speech-animation adapter проверен на реальном Qwen receipt:
+  PCM и animation timeline непрерывны, terminal fade привязан к концу PCM,
+  playback вызывается первым, а сбой анимации не меняет lifecycle TTS. Это
+  закрывает audio-reactive v0 data path, но не готовую интеграцию аватара.
+
+Русский профиль и native path остаются экспериментальными и opt-in. Полные
+provenance и receipts перечислены в [docs/project-status.md](docs/project-status.md).
+
 ## Возможности и семейства моделей
 
 | Семейство | Поля запроса | Статус |
@@ -104,12 +129,27 @@ events (`completed`, `cancelled`, `error`).
 ## Архитектура и границы
 
 ```text
-C++ application
-        |
-        v
-QwenTtsClient → persistent worker → QTB stdin/stdout → PCM callbacks
-                         |
-              Python/PyTorch или optional native qwentts.cpp
+Application
+    |
+    v
+tts-front-cpp v0.2.2 → PreparedText / pronunciation evidence
+    |
+    v
+QwenTtsClient
+    |
+    v
+QTB stdin/stdout
+    |---------------------> persistent Python worker
+    |                         Python/PyTorch/Qwen runtime
+    `---------------------> optional native worker
+                              qwen.dll + qwentts.cpp/GGML/CUDA
+    |
+    v
+PCM + canonical sample clock
+    |                         |
+    v                         v
+application-owned sink       optional speech-animation adapter
+                              playback-cursor-locked cues
 ```
 
 Core bridge не владеет физическим audio sink. WaveOut, Unity, OBS и игровые
@@ -120,6 +160,11 @@ Core bridge не владеет физическим audio sink. WaveOut, Unity,
 Опциональный `tts-front-cpp` готовит текст и произношение, но не переносит
 Qwen-специфическую логику в bridge. `speech-animation` получает PCM/timing
 sideband отдельно от playback.
+
+Подробная схема границ и evidence собрана в
+[docs/project-status.md](docs/project-status.md). Python worker остаётся
+production-маршрутом; native DLL, русский stress-профиль и speech-animation
+являются отдельными opt-in/experimental слоями и не меняют PCM-контракт.
 
 ## Сборка и тесты
 
@@ -148,6 +193,10 @@ Python-проверки используют worker из `worker/src` и locked 
 - [Основной README на английском](README.md)
 - [VoiceDesign acceptance](docs/voice-design-acceptance.md)
 - [Native qwentts backend](docs/native-qwentts-backend.md)
+- [Текущий статус и подтверждённая архитектура](docs/project-status.md)
+- [tts-front-cpp integration](docs/tts-front-integration.md)
+- [Russian stress model compatibility](docs/russian-stress-model-compatibility.md)
+- [Speech-animation integration](docs/speech-animation-integration.md)
 - [Протокол QTB v1](docs/protocol-v1.md)
 - [Audio и Unity integration](docs/audio-and-unity-integration.md)
 - [Примеры](examples/README.md)
