@@ -105,9 +105,13 @@ public:
     explicit PlaybackReceiptProbe(std::size_t max_cues = 4096);
 
     /// Starts a new request timeline and discards all prior ranges.
+    ///
+    /// `playback_epoch` must be non-zero and strictly greater than every
+    /// previously accepted epoch.
     void begin(std::uint64_t playback_epoch, RequestId request_id);
 
     /// Invalidates the current request while retaining the replacement epoch.
+    /// The replacement epoch must be strictly greater than the current epoch.
     void invalidate(std::uint64_t playback_epoch);
 
     /// Publishes one PCM callback range. The callback's request id must match
