@@ -1,6 +1,12 @@
 # v0.2.0 release-readiness checklist
 
-## Supported release route
+> Historical document. This checklist is retained as evidence of the v0.2.0
+> planning state and is not the active beta/release plan. The current accepted
+> production route is the persistent Python worker; see
+> [`docs/project-status.md`](project-status.md) and
+> [`docs/real-model-release-acceptance.md`](real-model-release-acceptance.md).
+
+## Historical supported-route snapshot
 
 - [ ] Build `qwen_tts_bridge` and the canonical persistent native process worker
   with the pinned qwentts runtime for the target Windows GPU.

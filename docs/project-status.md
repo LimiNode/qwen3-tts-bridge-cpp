@@ -96,33 +96,30 @@ See [`tts-front-integration.md`](tts-front-integration.md),
 
 ```text
 Application
-    |
-    v
-tts-front-cpp v0.2.2
-    |
-    v
-PreparedText / pronunciation evidence
-    |
-    v
-QwenTtsClient
-    |
-    v
-QTB stdin/stdout
-    |-------------------------------> persistent Python worker
-    |                                      Python/PyTorch/Qwen runtime
-    |
-    `-------------------------------> optional native worker
-                                           qwen.dll
-                                           qwentts.cpp / GGML / CUDA
-    |
-    v
-PCM + canonical sample clock
-    |
-    +--> application-owned sink / optional WinMM playback
-    |
-    `--> optional speech-animation adapter
-             playback-cursor-locked cues
-             future avatar presentation
+    |                                      optional
+    +--> tts-front-cpp v0.2.2
+    |        |
+    |        v
+    |     PreparedText / pronunciation evidence
+    |        |
+    `------> QwenTtsClient
+                 |
+                 v
+              QTB stdin/stdout
+                 |-----------------------> selected persistent Python worker
+                 |                            Python/PyTorch/Qwen runtime
+                 `-----------------------> selected optional native worker
+                                              qwen.dll
+                                              qwentts.cpp / GGML / CUDA
+                 |
+                 v
+              PCM + canonical sample clock
+                 |
+                 +--> application-owned sink / optional WinMM playback
+                 |
+                 `--> optional speech-animation adapter
+                          sample-addressed animation timeline
+                          physical playback-cursor acceptance pending
 ```
 
 The dependency direction is deliberate:
@@ -136,7 +133,11 @@ The dependency direction is deliberate:
 * Playback and animation are downstream consumers. Animation must not delay,
   rewrite, or turn a successful PCM request into a TTS error.
 * `speech-animation` remains generic and optional; avatar presentation adapters
-  (VRM, Unity, Godot, and similar) are not claimed complete.
+  (VRM, Unity, Godot, and similar) are not claimed complete. The receipt proves
+  a sample-addressed animation timeline, not physical playback-cursor
+  synchronization.
+* `tts-front-cpp` is optional; callers may provide already prepared requests or
+  use another pronunciation provider.
 
 ## Status boundaries and next gates
 

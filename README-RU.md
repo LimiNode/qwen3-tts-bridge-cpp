@@ -130,26 +130,24 @@ events (`completed`, `cancelled`, `error`).
 
 ```text
 Application
-    |
-    v
-tts-front-cpp v0.2.2 → PreparedText / pronunciation evidence
-    |
-    v
-QwenTtsClient
-    |
-    v
-QTB stdin/stdout
-    |---------------------> persistent Python worker
-    |                         Python/PyTorch/Qwen runtime
-    `---------------------> optional native worker
-                              qwen.dll + qwentts.cpp/GGML/CUDA
-    |
-    v
-PCM + canonical sample clock
-    |                         |
-    v                         v
-application-owned sink       optional speech-animation adapter
-                              playback-cursor-locked cues
+    |                                      optional
+    +--> tts-front-cpp v0.2.2
+    |        |
+    |        v
+    |     PreparedText / pronunciation evidence
+    |        |
+    `------> QwenTtsClient → QTB stdin/stdout
+                              |-----------------> selected Python worker
+                              `-----------------> selected optional native worker
+                                                    qwen.dll + qwentts.cpp/GGML/CUDA
+                              |
+                              v
+                           PCM + canonical sample clock
+                              |                         |
+                              v                         v
+                     application-owned sink       optional speech-animation adapter
+                                                   sample-addressed timeline;
+                                                   physical playback cursor pending
 ```
 
 Core bridge не владеет физическим audio sink. WaveOut, Unity, OBS и игровые
@@ -165,6 +163,10 @@ sideband отдельно от playback.
 [docs/project-status.md](docs/project-status.md). Python worker остаётся
 production-маршрутом; native DLL, русский stress-профиль и speech-animation
 являются отдельными opt-in/experimental слоями и не меняют PCM-контракт.
+`tts-front-cpp` является опциональным: приложение может передавать уже
+подготовленный запрос или использовать другой pronunciation provider. Receipt
+speech-animation подтверждает sample-addressed timeline, но не физическую
+синхронизацию с playback cursor.
 
 ## Сборка и тесты
 

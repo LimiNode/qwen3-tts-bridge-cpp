@@ -112,26 +112,24 @@ The first version does not attempt to:
 
 ```text
 Application
-    |
-    v
-tts-front-cpp v0.2.2 -> PreparedText / pronunciation evidence
-    |
-    v
-QwenTtsClient
-    |
-    v
-QTB stdin/stdout
-    |-----------------------> persistent Python worker
-    |                            Python/PyTorch/Qwen runtime
-    `-----------------------> optional native worker
-                                 qwen.dll + qwentts.cpp/GGML/CUDA
-    |
-    v
-PCM + canonical sample clock
-    |                         |
-    v                         v
-application-owned sink       optional speech-animation adapter
-                              playback-cursor-locked cues
+    |                                      optional
+    +--> tts-front-cpp v0.2.2
+    |        |
+    |        v
+    |     PreparedText / pronunciation evidence
+    |        |
+    `------> QwenTtsClient -> QTB stdin/stdout
+                              |-----------------> selected Python worker
+                              `-----------------> selected optional native worker
+                                                    qwen.dll + qwentts.cpp/GGML/CUDA
+                              |
+                              v
+                           PCM + canonical sample clock
+                              |                         |
+                              v                         v
+                     application-owned sink       optional speech-animation adapter
+                                                   sample-addressed timeline;
+                                                   physical playback cursor pending
 ```
 
 The alternative Python route keeps the same QTB process boundary:
@@ -168,6 +166,11 @@ The complete boundary decision, including why Python remains the release path
 while native and animation remain opt-in, is documented in
 [docs/project-status.md](docs/project-status.md) and
 [docs/architecture/adr-native-engine-boundaries.md](docs/architecture/adr-native-engine-boundaries.md).
+
+`tts-front-cpp` is optional: callers may submit already prepared requests or
+use another pronunciation provider. The speech-animation receipt proves
+sample-addressed timing only; physical playback-cursor acceptance is still
+pending.
 
 ## C++ API
 
