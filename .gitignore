@@ -7,6 +7,9 @@
 # Local Git worktrees
 /.worktrees/
 
+# Local task-specific temporary files and diagnostics
+/.tmp/
+
 # Generated release artifacts
 /dist/*
 !/dist/.gitkeep
