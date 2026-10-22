@@ -109,18 +109,15 @@ Application
                  |
                  v
             selected worker
-              |             |
-              |             `--> optional native -> qwen.dll -> qwentts.cpp / GGML / CUDA
-              `-----------------> persistent Python -> PyTorch / Qwen runtime
-                               |
-                               v
-                         PCM + canonical sample clock
-                               |
-                               +--> application-owned sink / optional WinMM playback
-                               |
-                               `--> optional speech-animation adapter
-                                        sample-addressed animation timeline
-                                        physical playback-cursor acceptance pending
+              |-- persistent Python -> PyTorch / Qwen runtime --+
+              `-- optional native -> qwen.dll -> qwentts.cpp / GGML / CUDA --+
+                                                                       v
+                                                             PCM + canonical sample clock
+                                                                       |             |
+                                                                       v             v
+                                                             application-owned sink  optional speech-animation adapter
+                                                                                   sample-addressed animation timeline
+                                                                                   physical playback-cursor acceptance pending
 ```
 
 The dependency direction is deliberate:

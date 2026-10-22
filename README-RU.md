@@ -143,17 +143,15 @@ Application
                  |
                  v
             selected worker
-              |             |
-              |             `--> optional native -> qwen.dll + qwentts.cpp/GGML/CUDA
-              `-----------------> persistent Python/PyTorch/Qwen worker
-                               |
-                               v
-                         PCM + canonical sample clock
-                               |                         |
-                               v                         v
-                    application-owned sink       optional speech-animation adapter
-                                                  sample-addressed timeline;
-                                                  physical playback cursor pending
+              |-- persistent Python/PyTorch/Qwen worker --+
+              `-- optional native -> qwen.dll + qwentts.cpp/GGML/CUDA --+
+                                                                  v
+                                                        PCM + canonical sample clock
+                                                                  |             |
+                                                                  v             v
+                                                        application-owned sink  optional speech-animation adapter
+                                                                               sample-addressed timeline;
+                                                                               physical playback cursor pending
 ```
 
 Core bridge не владеет физическим audio sink. WaveOut, Unity, OBS и игровые

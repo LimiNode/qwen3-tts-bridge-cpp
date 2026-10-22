@@ -16,8 +16,9 @@ Application
     -> QTB
     -> selected Python or native engine
     -> PCM + sample-addressed timing
-    -> optional speech-animation adapter
-    -> physical playback / avatar presentation (downstream)
+       +--> physical playback / application-owned sink (downstream)
+       `--> optional speech-animation adapter
+              -> avatar presentation (downstream)
 ```
 
 ## Downstream inputs
