@@ -97,7 +97,7 @@ void test_cue_contiguity_is_observation_continuity() {
     CHECK(probe.append_cue(cue(5, 33, 600)) == PlaybackReceiptStatus::Accepted);
     CHECK(probe.append_cue(cue(5, 33, 1800)) == PlaybackReceiptStatus::Accepted);
     CHECK(probe.receipt().cue_contiguous);
-    CHECK(probe.receipt().cue_sample_count == 3000);
+    CHECK(probe.receipt().cue_sample_count == 2400);
 }
 
 void test_stale_epoch_is_never_selected() {

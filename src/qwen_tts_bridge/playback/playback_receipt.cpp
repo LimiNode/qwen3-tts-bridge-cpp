@@ -219,11 +219,15 @@ PlaybackReceiptStatus PlaybackReceiptProbe::append_cue(const PlaybackCue& cue) {
         receipt_.cue_history_overflow = true;
         return PlaybackReceiptStatus::CueHistoryFull;
     }
+    if (receipt_.cue_sample_count >
+        std::numeric_limits<std::uint64_t>::max() - cue.sample_count) {
+        return PlaybackReceiptStatus::InvalidRange;
+    }
     cue_started_ = true;
     next_cue_sample_ = end_sample;
     cues_.push_back(cue);
     ++receipt_.cue_count;
-    receipt_.cue_sample_count = next_cue_sample_;
+    receipt_.cue_sample_count += cue.sample_count;
     return PlaybackReceiptStatus::Accepted;
 }
 

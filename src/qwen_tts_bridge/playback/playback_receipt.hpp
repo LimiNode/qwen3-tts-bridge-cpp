@@ -81,6 +81,8 @@ struct PlaybackReceipt {
     std::size_t pcm_chunk_count = 0;
     std::uint64_t pcm_sample_count = 0;
     std::size_t cue_count = 0;
+    // Total sample frames covered by accepted cues. This is independent of
+    // the first cue's absolute sample position; it is not the final cue end.
     std::uint64_t cue_sample_count = 0;
     std::uint32_t sample_rate = 0;
     bool pcm_contiguous = true;
