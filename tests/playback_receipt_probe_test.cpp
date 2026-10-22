@@ -140,6 +140,8 @@ void test_terminal_identity_fences_late_callbacks() {
 void test_sample_rate_identity_and_invalid_ranges() {
     PlaybackReceiptProbe probe;
     probe.begin(30, 88);
+    CHECK(probe.observe_pcm(30, pcm_chunk(88, 0, 0)) ==
+          PlaybackReceiptStatus::InvalidSampleRate);
     CHECK(probe.observe_pcm(30, pcm_chunk(88, 0, 24000)) == PlaybackReceiptStatus::Accepted);
     CHECK(probe.observe_pcm(30, pcm_chunk(88, 2400, 48000)) ==
           PlaybackReceiptStatus::SampleRateMismatch);
