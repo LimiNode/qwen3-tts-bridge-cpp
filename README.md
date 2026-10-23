@@ -14,6 +14,32 @@ protocol.
 Status: the persistent-worker async API is the supported surface. The direct
 in-process `qwen.dll` adapter remains experimental and opt-in.
 
+For a concise, evidence-backed summary of the current system and completed
+milestones, see [docs/project-status.md](docs/project-status.md). In
+particular, the repository already contains a successful opt-in native
+`qwen.dll`/qwentts.cpp build and a hardware/listening-validated experimental
+Russian stress profile; neither is the production default.
+
+## Verified milestones
+
+- The persistent Python worker remains the accepted production and packaging
+  route.
+- The opt-in native qwentts.cpp path builds the shared `qwen.dll`, loads the
+  split talker/codec runtime, and streams PCM on the validated CMP 50HX setup.
+- The converted `ru-stress` profile has been tested with the
+  `kraftwerk_robot_ru_warm` voice. A 12-utterance Russian corpus passed human
+  listening with intended explicit stresses, natural EOS, non-empty PCM, and no
+  starvation. The profile is still experimental and opt-in.
+- `tts-front-cpp` v0.2.2 supplies model-neutral `PreparedText`, including
+  pronunciation evidence and semantic stress decisions.
+- The optional speech-animation adapter has a real-Qwen receipt with contiguous
+  sample-addressed PCM/animation timelines and playback-first failure
+  isolation. This is an audio-reactive data-path milestone, not a completed
+  avatar presentation integration.
+
+The receipts and architecture boundaries are collected in
+[docs/project-status.md](docs/project-status.md).
+
 ## Quick start
 
 Build the library and examples with CMake. For a native release bundle, copy
@@ -85,21 +111,29 @@ The first version does not attempt to:
 ## Architecture
 
 ```text
-C++17 application
-        |
-        | QwenTtsClient public API
-        v
-C++ bridge library
-        |
-        | stdin/stdout framed protocol
-        v
-qwen_tts_native_worker.exe (optional native backend)
-        |
-        v
-qwentts.cpp / GGML / CUDA
-        |
-        v
-Qwen3-TTS model runtime
+Application
+    |
+    +--> optional tts-front-cpp v0.2.2
+    |        |
+    |        v
+    |     PreparedText / pronunciation evidence
+    |        |
+    `------> QwenTtsClient
+                 |
+                 v
+              QTB stdin/stdout
+                 |
+                 v
+            selected worker
+              |-- persistent Python/PyTorch/Qwen worker --+
+              `-- optional native -> qwen.dll + qwentts.cpp/GGML/CUDA --+
+                                                                  v
+                                                        PCM + canonical sample clock
+                                                                  |             |
+                                                                  v             v
+                                                        application-owned sink  optional speech-animation adapter
+                                                                               sample-addressed timeline;
+                                                                               physical playback cursor pending
 ```
 
 The alternative Python route keeps the same QTB process boundary:
@@ -131,6 +165,16 @@ The Python worker follows the same lifecycle with Python/PyTorch model loading
 and is the accepted production/packaging baseline. See
 [docs/native-qwentts-backend.md](docs/native-qwentts-backend.md) for the native
 promotion gates.
+
+The complete boundary decision, including why Python remains the release path
+while native and animation remain opt-in, is documented in
+[docs/project-status.md](docs/project-status.md) and
+[docs/architecture/adr-native-engine-boundaries.md](docs/architecture/adr-native-engine-boundaries.md).
+
+`tts-front-cpp` is optional: callers may submit already prepared requests or
+use another pronunciation provider. The speech-animation receipt proves
+sample-addressed timing only; physical playback-cursor acceptance is still
+pending.
 
 ## C++ API
 
@@ -807,6 +851,12 @@ Implemented and covered by the normal test matrix:
 - portable/Nuitka packaging scaffolding with external model storage;
 - optional native qwentts worker and ABI smoke checks.
 
+Verified hardware milestones are recorded separately from the normal test
+matrix: the native shared-DLL path has a successful CMP 50HX runtime check, and
+the converted Russian stress profile has a 12-utterance human-listening pass
+with the `kraftwerk_robot_ru_warm` voice. These results are experimental and do
+not change the production default.
+
 The next work is acceptance and packaging evidence rather than a replacement
 of the bridge architecture:
 
@@ -850,6 +900,11 @@ CMP 50HX Base-profile latency and cadence evidence is maintained separately:
 - [E4 throughput optimization matrix](docs/cmp50hx-e4-throughput-research.md)
 
 ## References
+
+- [Current project status and verified architecture](docs/project-status.md)
+- [tts-front-cpp integration](docs/tts-front-integration.md)
+- [Russian stress model compatibility](docs/russian-stress-model-compatibility.md)
+- [Speech-animation integration and real-Qwen receipt](docs/speech-animation-integration.md)
 
 - Qwen3-TTS upstream: https://github.com/QwenLM/Qwen3-TTS
 - Qwen3-TTS streaming fork: https://github.com/LimiNode/Qwen3-TTS-streaming
