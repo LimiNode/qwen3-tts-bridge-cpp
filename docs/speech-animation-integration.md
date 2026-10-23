@@ -119,6 +119,27 @@ does not add a Russian phonemizer, forced alignment, playback look-ahead,
 Qwen-specific codec mapping, or Unity/Godot/VRM integration. PCM-assisted
 prediction correction remains a later stage.
 
+## Bridge-only playback receipt probe
+
+The bridge can validate the playback side of this contract without building
+the optional `speech-animation` dependency. Include
+`qwen_tts_bridge/playback.hpp` and use `PlaybackReceiptProbe` from the
+playback/capture consumer thread. It accepts the canonical `PcmChunk` ranges,
+bounded sample-addressed synthetic cues, and neutral
+`PlaybackCursorSnapshot` values supplied by a sink.
+
+The probe rejects stale playback epochs and request IDs, detects discontinuous
+PCM or cue ranges, bounds cue history, and selects a cue only from the measured
+cursor position. `PlaybackReceipt` and `PlaybackCueSelection` provide small
+dependency-free JSON summaries for machine-readable receipts. This is a clock
+and lifecycle check, not a viseme generator: cue values are opaque test or
+downstream evidence until `speech-animation` supplies predictive planning.
+
+The focused `playback_receipt_probe_test` covers contiguous PCM/cue ranges,
+cursor selection, bounded history, cancellation/restart invalidation, and stale
+epoch/request rejection. It builds with the normal bridge target and does not
+enable `QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION`.
+
 ## Real Qwen acceptance probe
 
 The build-tree-only `qwen_tts_speech_animation_probe` is the first runtime
