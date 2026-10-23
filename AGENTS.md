@@ -307,7 +307,7 @@ Python Qwen source dependency:
 
 ```text
 external/python/Qwen3-TTS-streaming/
-    https://github.com/NewYaroslav/Qwen3-TTS-streaming
+    https://github.com/LimiNode/Qwen3-TTS-streaming
 ```
 
 Future Rust Qwen engine candidate:
