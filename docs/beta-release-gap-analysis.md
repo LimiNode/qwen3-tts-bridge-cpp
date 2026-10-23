@@ -34,16 +34,21 @@ their code exists.
 
 The portable runtime, doctor, runtime-tree manifest, model manifest and C++
 smoke scripts exist. CI proves a mock package and a no-GPU Qwen import probe;
-the repository does not contain a clean-machine real-Qwen package, model-load,
-physical-playback and listening receipt with final hashes.
+the repository does not contain a clean-environment CMP 50HX real-Qwen package,
+model-load, physical-playback and listening receipt with final hashes. This is
+the packaging verification gate on the development machine, not an implicit
+requirement for a third computer.
 
 * Owner: `scripts/package-python-worker.ps1`, `scripts/test-portable-python-qwen-worker.ps1`,
   `worker/.../doctor.py`.
 * Smallest corrective: run the existing scripts on a clean Windows machine with
   one selected model, preserve the generated manifest/provenance and WAV/report.
-* Acceptance: doctor passes offline; one persistent worker produces non-empty
-  PCM and natural completion through the installed C++ example; a human hears
-  intelligible, complete audio; no model weights are committed.
+* Acceptance: on CMP 50HX, in an isolated clean build/install environment,
+  doctor passes offline; one persistent worker produces non-empty PCM and
+  natural completion through the installed C++ example; a human hears
+  intelligible, complete audio; no model weights are committed. The independent
+  RTX 4090 run happens only after candidate freeze and is described in the
+  handoff plan.
 
 ### B2. Exact model-family matrix (P1)
 
@@ -68,9 +73,14 @@ fixes.
 
 * Owner: `external/cpp/tts-front-cpp` and the bridge adapter.
 * Smallest corrective: update the pin in a separate dependency PR, run the
-  prepared-text and adapter tests, and rerun the Russian stress corpus.
-* Acceptance: exact v0.2.3 tag/provenance is recorded and all existing frontend
-  regressions remain green. Do not mix this with worker hardening.
+  prepared-text and adapter tests, and compare effective UTF-8 text on a fixed
+  corpus before/after the update. Do not automatically repeat every listening
+  case: listen again for changed or affected stress, number, currency and
+  agreement cases.
+* Acceptance: exact v0.2.3 tag/provenance is recorded; unchanged effective
+  text remains unchanged; changed cases have a recorded expected result and
+  targeted listening evidence; all existing frontend regressions remain green.
+  Do not mix this with worker hardening.
 
 ### B4. Native promotion boundary (P1/P2)
 
@@ -91,46 +101,53 @@ This is a verified resource/lifecycle defect, not a documentation preference.
 Python `StdioWorkerServer._terminalize_locked()` adds every completed,
 cancelled or failed ID to `_terminal_request_ids`; native
 `StdioServer::terminalize()` does the same in `terminal_ids_`. Neither set is
-pruned. The duplicate check also rejects IDs that are no longer active, while
-the protocol requires rejecting duplicate *active* IDs and only recommends
-monotonic IDs during a session.
+pruned. The protocol requires rejecting duplicate *active* IDs and recommends
+not reusing IDs during a session. Whether a bounded tombstone window, a
+monotonic high-water policy, or another history policy is correct is a separate
+protocol decision; this audit does not prescribe active-only reuse.
 
 * Impact: a long-lived service accumulates one set entry per request and cannot
-  reclaim the associated tombstone memory.
+  reclaim the associated tombstone memory. Changing reuse behavior also affects
+  late-cancel diagnostics and must not be bundled into a memory fix implicitly.
 * Owner: Python worker and `worker/native/qwentts`.
-* Smallest corrective: define one bounded policy (for example, active-only
-  duplicate rejection plus a bounded recent tombstone window, or an explicit
-  monotonic high-water rule), implement it symmetrically, and document it.
+* Smallest corrective: first decide the terminal-ID, late-cancel and reuse
+  contract; then define one bounded policy and implement it symmetrically.
 * Acceptance: a large sequential-request test keeps tombstone memory/count
   bounded; duplicate active IDs still return `request_error/duplicate_request_id`;
-  terminal-ID reuse and late cancel have deterministic, documented results.
+  terminal-ID reuse and late cancel have deterministic, documented results;
+  tests cover both the chosen history policy and shutdown cancellation.
 * Dependencies: settle the protocol policy before changing either worker.
 
-### C2. Bound pending request admission (P1, scope confirmation required)
+### C2. Bound pending request admission (P1)
 
 Both workers append accepted work to an unbounded pending deque:
 Python `StdioWorkerServer._pending` and native `StdioServer::pending_`. Output
-and client callback queues are bounded, but a direct or misbehaving QTB client
-can enqueue requests indefinitely before the engine drains them.
+and client callback queues are bounded, but normal trusted application traffic,
+an integration bug, or a direct QTB client can enqueue requests indefinitely
+before the engine drains them. This is not dependent on an “untrusted client”
+threat model.
 
 * Impact: memory growth and poor failure behavior under load; this is distinct
   from the already bounded output queues.
 * Owner: both worker implementations and protocol tests.
-* Smallest corrective: add a configurable pending-request cap, reject excess
-  work with `resource_error/resource_exhausted`, and expose the effective cap in
-  diagnostics. Keep cancellation of queued requests deterministic.
+* Smallest corrective: define an admission cap covering queued **and running**
+  request accounting, reject excess work with `resource_error/resource_exhausted`,
+  and expose the effective limit in diagnostics. Keep cancellation of queued
+  requests deterministic.
 * Acceptance: fill the queue to the cap, observe exact rejection and no growth
-  beyond the cap, cancel queued work, and verify both Python and native paths.
-* Dependency: confirm the beta threat model and default cap before API freeze.
+  beyond the cap, cancel queued work, admit a replacement after cancellation or
+  completion, and verify both Python and native paths.
+* Dependency: choose the cap and reporting shape in the B2 contract before
+  implementation; this audit intentionally does not invent a numeric value.
 
 ## D — optional or deferred
 
 | Item | Why it is deferred |
 |---|---|
-| `tts-front` v0.2.3 update if beta text normalization is frozen elsewhere | It is a focused dependency update, not a reason to redesign the bridge; still P1 when Russian normalization is in advertised scope. |
+| `tts-front` v0.2.3 update if beta text normalization is frozen elsewhere | It is a focused dependency update, not a reason to redesign the bridge. Compare effective UTF-8 on a fixed corpus first, then target listening only at changed/affected cases. |
 | Shared CLI parsing helpers | Four examples duplicate parsing/JSON helpers, but no correctness drift was demonstrated. Extract only after a concrete option bug or during a small P2 cleanup. |
-| Save-WAV direct reference-audio/seed/sampling options | Registered Base `voice_id` is the release-facing clone path. Add fields only if direct reference input is a beta requirement. |
-| Full audio effects rack (EQ, compressor, limiter, denoise, reverb, pitch, speed) | Only terminal fade/padding and the generic postprocessor chain exist. Do not add effects before a product requirement. |
+| Save-WAV direct reference-audio/seed/sampling options | Registered Base `voice_id` is the release-facing clone path. Keep this an explicit B2-0 scope decision; add fields only if direct reference input is a beta requirement. |
+| Full audio effects rack (EQ, compressor, limiter, denoise, reverb, pitch, speed) | Only terminal fade/padding and the generic postprocessor chain exist. Keep the minimum DSP surface as an explicit B2-0 scope decision; do not add presets before a product requirement. |
 | Automatic Python model downloader | Native has a validated URL/hash downloader; Python can use explicit external paths and doctor manifests. A unified downloader is optional if offline provisioning remains the contract. |
 | Predictive visemes, Unity/Godot/VRM presentation and display-latency claims | Audio-reactive v0 is accepted; presentation must follow a separate playback-cursor and avatar contract. |
 | Native in-process adapter promotion | It is a separate high-risk boundary and not needed for the Python beta. |
@@ -172,14 +189,18 @@ historical; they must not be rewritten as current failures or current passes.
 
 ## Recommended B2 order
 
-1. Decide the advertised model matrix and update the release-facing changelog
-   to match it.
-2. Update `tts-front-cpp` to v0.2.3 in an isolated dependency PR and rerun
+1. B2-0: decide the advertised model matrix, backend policy, required CLI
+   commands and minimum DSP surface; update the release-facing changelog to
+   match it.
+2. Update `tts-front-cpp` to v0.2.3 in an isolated dependency PR, compare
+   effective text on a fixed corpus, and rerun
    adapter/Russian stress regressions.
-3. Fix and test bounded terminal history in Python and native workers.
-4. Confirm the threat model and add bounded pending-request admission in both
-   workers if beta accepts untrusted/direct QTB clients.
-5. Execute the existing clean-machine portable real-Qwen package and selected
+3. Decide the terminal-ID/late-cancel contract, then fix and test bounded
+   terminal history in Python and native workers.
+4. Define and implement bounded pending-request admission covering queued and
+   running requests, with cancellation and recovery tests.
+5. Execute the existing isolated clean-environment CMP portable real-Qwen
+   package and selected
    model-family acceptance gates; do not create parallel runners.
 6. Freeze CMP artifacts and run the handoff plan before any RTX 4090 work.
 

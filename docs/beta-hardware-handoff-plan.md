@@ -29,6 +29,18 @@ Before handoff, create a clean worktree and freeze:
 Models and reference audio remain external artifacts. The handoff bundle should
 contain manifests, hashes, scripts and reports, never model weights.
 
+### External-model transfer procedure
+
+For each model or reference artifact, export a manifest containing relative
+path, byte length, SHA-256, model family, revision and license/provenance. Copy
+the artifact tree to the RTX 4090 machine using an integrity-preserving file
+transfer (for example, an archive plus its detached SHA-256 manifest). Verify
+the archive hash before extraction, verify every extracted file against the
+manifest, and run the portable/native doctor before the first synthesis. Record
+the destination path only as configuration; the content hash is the identity.
+Never regenerate, quantize or silently redownload a missing file during the
+first A/B run. A changed model tree starts a new acceptance record.
+
 The selected CMP Base profile must be explicit. The accepted evidence currently
 uses the prepared Base 1.7B profile, reference-context bootstrap where enabled,
 the documented right-padded codec configuration, and the WaveOut cursor/receipt
@@ -70,7 +82,10 @@ it does not prove physical avatar presentation or display latency.
 
 ## 3. RTX 4090 first run
 
-On the RTX 4090, reproduce the frozen CMP workload before changing anything:
+After the CMP candidate has passed the isolated clean-environment packaging
+gate and its artifact bundle is frozen, reproduce that workload independently
+on the RTX 4090 before changing anything. This is a separate validation
+machine, not an unspecified third clean machine:
 
 1. Fresh checkout/worktree at the frozen bridge and submodule SHAs.
 2. Same Python/native binaries where ABI and driver compatibility permit; if a
