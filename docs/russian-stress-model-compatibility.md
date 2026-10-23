@@ -34,9 +34,17 @@ with the official Base 12-Hz tokenizer.
 The conversion proof is recorded in
 [`docs/reports/russian-stress-native-conversion.json`](reports/russian-stress-native-conversion.json).
 It produced a native talker/codec pair outside the repository and a CPU load
-and synthesis receipt. The pair is experimentally load-compatible, but it is
-not yet a supported model profile: target-hardware latency, voice identity,
-EOS, and listening gates remain open.
+and synthesis receipt. The pair is experimentally load-compatible and remains
+an opt-in model profile; it is not a production default.
+
+The previously open target-hardware and listening gate was completed on 7
+October 2026 on the CMP 50HX. The canonical 12-case receipt records non-empty
+PCM, natural EOS, no starvation, and a human-listening PASS for intelligible
+Russian, intended explicit stresses, and preserved `kraftwerk_robot_ru_warm`
+voice identity. The acceptance is hardware- and provenance-specific; it does
+not promote the profile to the production default.
+
+See [`docs/reports/russian-stress-cmp50hx-acceptance-2026-10-07.json`](reports/russian-stress-cmp50hx-acceptance-2026-10-07.json).
 
 The generated talker was also compared with the published RU-stress Q8 oracle.
 After the documented name mapping, 310 of 311 talker tensor payloads are byte
@@ -112,12 +120,11 @@ SHA-256 hashes, stress metadata, provenance, and explicit blockers. An
 incompatible result is a completed audit, not a reason to run an emulated A/B
 through the current Base model.
 
-## Deferred A/B plan
+## Historical A/B evidence and superseding acceptance
 
-The experimental pair must next be compared with the
-current Base Q8/Q8 runtime using the same registered voice/reference, seed,
-CUDA/runtime build, and text. Keep the exact hashes for both model files and
-the runtime manifest. The corpus is:
+The following corpus was the planned comparison matrix. Earlier manifests are
+retained as historical mechanical evidence and are not the current acceptance
+state:
 
 ```text
 за́мок / замо́к
@@ -129,9 +136,10 @@ the runtime manifest. The corpus is:
 abbreviations после tts-front-cpp
 ```
 
-Record first PCM, RTF, natural EOS, short/middle/long utterance behavior,
-voice identity/timbre, and PCM/WAV hashes. The production default remains
-unchanged until those gates pass.
+The superseding 7 October acceptance records first PCM, natural EOS, short,
+medium, long, homograph, number, abbreviation, plain-text, and explicit-stress
+cases together with fixed model/runtime provenance. The production default
+remains unchanged even though this experimental gate passed.
 
 The first CMP 50HX native A/B is recorded in
 [`docs/reports/russian-stress-cmp50hx-ab.json`](reports/russian-stress-cmp50hx-ab.json).
@@ -146,6 +154,6 @@ voice-identity evidence. The first paired receipt using the actual registered
 `kraftwerk_robot_ru_warm` profile is recorded in
 [`docs/reports/russian-stress-kraftwerk-profile-ab.json`](reports/russian-stress-kraftwerk-profile-ab.json).
 Both distinct model hashes produced non-empty natural-EOS audio; human
-listening must decide whether the warm Kraftwerk identity and stress behavior
-are retained. The RU-stress model remains experimental and no production
-default was changed.
+listening was subsequently completed by the canonical 12-case receipt linked
+above. The RU-stress model remains experimental and no production default was
+changed.

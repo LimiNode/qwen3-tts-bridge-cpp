@@ -62,6 +62,46 @@ The primary checkout remains the stable repository view; task worktrees are
 disposable and must be removed with `git worktree remove` after their branches
 are merged. Keep `.worktrees/` ignored and never commit its contents.
 
+## Local Temporary Files
+
+Keep task-specific temporary files inside the repository-root-relative ignored
+`.tmp/` directory, rather than in `C:\tmp`, the system temp directory, or an
+unrelated drive. For example, when the repository root is
+`E:\_repoz\qwen3-tts-bridge-cpp`:
+
+```text
+E:\_repoz\qwen3-tts-bridge-cpp\.tmp\bridge-ci-trace-pin\
+```
+
+Use `.tmp/<task-name>/` for disposable logs, CI traces, probe output, generated
+receipts, downloaded diagnostics, and other short-lived artifacts. Use
+`.worktrees/<task-name>/` instead when the directory is a real Git worktree
+with its own branch, index, and checkout; do not confuse a worktree with a
+temporary output directory. Both locations are local-only and must remain
+ignored and uncommitted.
+Large model weights, CUDA/runtime bundles, and hardware-test artifacts may be
+stored outside the repository when a procedure requires it; document their
+location and provenance, and never commit them.
+
+## Architecture Preflight
+
+Before changing a cross-cutting subsystem, read the nearest applicable ADR and
+its current acceptance/status documents. At minimum, native-engine, worker,
+release-acceptance, frontend, and model-specific work must be checked against
+the relevant files under `docs/architecture/`, `docs/*acceptance*`,
+`docs/*compatibility*`, and `docs/project-status.md`. Treat accepted ADRs as
+binding boundaries: do not introduce a second SDK DLL, move CUDA/GGML into the
+normal SDK, or silently promote an experimental backend/profile.
+
+## Acceptance State Updates
+
+When an experiment or hardware run changes an acceptance gate, update the
+canonical receipt/status document in the same change. Preserve earlier failed,
+invalid, or superseded runs as historical evidence, but label which receipt is
+current and state its exact hardware, software, model, and listening scope.
+Never leave a completed gate described as pending, and never convert a partial
+or build-only check into a production-support claim.
+
 ## Codebase Discovery
 
 This repository uses codebase-memory-mcp for codebase discovery when an index is
