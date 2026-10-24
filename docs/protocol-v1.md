@@ -719,9 +719,14 @@ when appropriate.
 
 ## Version Freeze Policy
 
-Protocol v1 is frozen for implementation.
+This repository is still pre-beta. The strict accepted-ID ordering policy
+recorded above is an explicitly approved pre-beta revision of the QTB v1
+lifecycle contract and is coordinated across the first-party C++ client and
+Python/native workers. No legacy mode or capability negotiation is required
+before the first public beta.
 
-After protocol v1 is implemented, semantic changes must be introduced as
-compatible v1 extensions or as protocol v2. Do not silently change existing v1
-field meanings, required fields, request lifecycle semantics, or error-category
-semantics under the same protocol version.
+The compatibility commitment for QTB v1 starts at that first public beta. After
+that point, semantic changes must be introduced as compatible v1 extensions or
+as protocol v2. Do not silently change existing v1 field meanings, required
+fields, request lifecycle semantics, or error-category semantics under the same
+protocol version.
