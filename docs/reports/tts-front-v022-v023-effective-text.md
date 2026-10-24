@@ -5,26 +5,60 @@ bridge sends to Qwen through `PreparedText::effective_text`.
 
 ## Revisions and method
 
+The comparison uses bridge revision `26b28be34738805ac18acc8e163513d677c664ab`
+(the PR #231 base before this corrective). Each version is configured in its
+own independent checkout so the frontend submodule pin cannot leak between
+runs.
+
 | Version | Git revision |
 | --- | --- |
 | v0.2.2 | `f828893b46728544041ab577215640338756a9d4` |
 | v0.2.3 | `52383911290aabe6e2963ec434d195fdeaac0aad` |
 
-The same bridge commit, compiler, Release configuration, corpus source, and
-options were used for both runs. The corpus executable is
-`tts_front_effective_text_corpus`; it emits the input, normalized text,
-pronunciation text, effective text, and warning count as UTF-8 JSON. The
-comparison was run with:
+The reproducible setup below is for Windows x64, Visual Studio 17 2022, and
+Release configuration. It creates two independent source/build pairs under
+`.tmp/`; replace `$repoUrl` with the bridge remote when reproducing outside the
+repository checkout:
 
 ```powershell
-cmake --build .tmp/b2-1-build-v022 --config Release --target tts_front_effective_text_corpus
-.\.tmp\b2-1-build-v022\Release\tts_front_effective_text_corpus.exe --stdout > .tmp\b2-1-v022.json
+$bridgeRevision = "26b28be34738805ac18acc8e163513d677c664ab"
+$repoUrl = "https://github.com/LimiNode/qwen3-tts-bridge-cpp.git"
+$root = Join-Path (git rev-parse --show-toplevel) ".tmp\b2-1-repro"
 
-cmake --build .tmp/b2-1-build-v023 --config Release --target tts_front_effective_text_corpus
-.\.tmp\b2-1-build-v023\Release\tts_front_effective_text_corpus.exe --stdout > .tmp\b2-1-v023.json
+git clone --no-checkout $repoUrl "$root\v022\src"
+git clone --no-checkout $repoUrl "$root\v023\src"
+foreach ($version in @("v022", "v023")) {
+    git -C "$root\$version\src" checkout $bridgeRevision
+    git -C "$root\$version\src" submodule update --init external/cpp/tts-front-cpp
+}
+git -C "$root\v022\src\external\cpp\tts-front-cpp" checkout f828893b46728544041ab577215640338756a9d4
+git -C "$root\v023\src\external\cpp\tts-front-cpp" checkout 52383911290aabe6e2963ec434d195fdeaac0aad
+
+cmake -S "$root\v022\src" -B "$root\v022\build" -G "Visual Studio 17 2022" -A x64 `
+    -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON -DQWEN_TTS_BRIDGE_BUILD_TTS_FRONT=ON
+cmake -S "$root\v023\src" -B "$root\v023\build" -G "Visual Studio 17 2022" -A x64 `
+    -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON -DQWEN_TTS_BRIDGE_BUILD_TTS_FRONT=ON
 ```
 
-All temporary output stays under the repository worktree's `.tmp/` directory.
+The corpus executable is `tts_front_effective_text_corpus`; it emits the input,
+normalized text, pronunciation text, effective text, warning count, uncertainty
+state, and warning diagnostics as UTF-8 JSON. Build and run both independent
+trees with:
+
+```powershell
+cmake --build "$root\v022\build" --config Release --target tts_front_effective_text_corpus
+& "$root\v022\build\Release\tts_front_effective_text_corpus.exe" --stdout --emit-only > "$root\v022.json"
+
+cmake --build "$root\v023\build" --config Release --target tts_front_effective_text_corpus
+& "$root\v023\build\Release\tts_front_effective_text_corpus.exe" --stdout > "$root\v023.json"
+```
+
+The v0.2.2 invocation uses `--emit-only` because the executable's default
+oracle asserts the v0.2.3 contract; both invocations still emit the same JSON
+schema for differential comparison. All temporary source, build, and receipt output stays under the repository
+worktree's `.tmp/` directory. The expected bridge flags are
+`QWEN_TTS_BRIDGE_BUILD_TESTS=ON` and `QWEN_TTS_BRIDGE_BUILD_TTS_FRONT=ON` in
+both configurations.
 
 ## Corpus result
 
@@ -48,6 +82,7 @@ controls, and an unchanged plain-text control.
 | `currency_continuations` | `$1,23% 456 and €1,234/five hundred sixty seven.` | `$1,23% 456 and €1,234/five hundred sixty seven.` | 2 → 2 | unchanged control |
 | `technical_protected` | `https://example.com/$1,234%25 RTX-4090/123 C++17,234%25` | `https://example.com/$1,234%25 RTX-4090/123 C++17,234%25` | 3 → 3 | unchanged control |
 | `mixed_segment_candidates` | `Цена twelve dollars fifty cents и три килограмма; API v2.3.` | `Цена twelve dollars fifty cents и три килограмма; API v2.3.` | 1 → 1 | unchanged control |
+| `ru_supported_decimal` | `В отчёте одна целая пять десятых метра.` | `В отчёте одна целая пять десятых метра.` | 0 → 0 | supported decimal control |
 | `ru_genitive_decimal` | `После одна целая пять десятых попыток и две целых двадцать пять сотых часа.` | `После 1,5 попыток и две целых двадцать пять сотых часа.` | 0 → 1 | intended behavior change |
 
 The only effective-text change is `ru_genitive_decimal`. v0.2.3 keeps the
@@ -56,12 +91,56 @@ unsupported genitive decimal surface `1,5` intact and emits one
 This is consistent with the v0.2.3 fail-closed currency/continuation boundary
 policy and requires targeted listening acceptance before beta inclusion.
 
+The v0.2.3 diagnostic evidence for the changed and neighboring decimal cases
+is fixed by the corpus oracle:
+
+```json
+[
+  {
+    "id": "ru_supported_decimal",
+    "effective_text": "В отчёте одна целая пять десятых метра.",
+    "warning_count": 0,
+    "uncertain": false,
+    "warnings": []
+  },
+  {
+    "id": "ru_genitive_decimal",
+    "effective_text": "После 1,5 попыток и две целых двадцать пять сотых часа.",
+    "warning_count": 1,
+    "uncertain": true,
+    "warnings": [
+      {"code": "unresolved_number", "offset": 11, "length": 3}
+    ]
+  }
+]
+```
+
+The serialized adapter code `unresolved_number` corresponds to the frontend
+enum `WarningCode::UnresolvedNumber`. The warning span is measured in UTF-8
+bytes in the original source text.
+
+## Targeted audio acceptance gate
+
+The required listening comparison for `ru_genitive_decimal` was not run in
+this repository checkout. `models/` contains only `.gitkeep`; no external Base
+1.7B model snapshot, registered voice registry/reference asset, worker runtime,
+or CUDA profile is available here. Consequently there is no honest PCM/EOS or
+human-listening receipt to attach to this dependency comparison.
+
+The pending gate is deliberately narrow: run the v0.2.3 effective text above
+and a directly comparable unchanged control on the accepted CMP 50HX Python/Base
+1.7B profile, recording model revision, voice ID and registry/reference hash,
+runtime/device, seed when supported, PCM non-empty/EOS evidence, and a human
+listening verdict. The fail-closed text-preservation result is accepted
+independently of pronunciation quality. PR #231 remains Draft until this gate
+is completed or an external receipt is supplied.
+
 ## Classification
 
 - Intended: 1 (`ru_genitive_decimal`), pending targeted listening acceptance.
 - Regression: none observed in this corpus.
 - Unresolved: none observed in this corpus.
-- Unchanged controls: 13, including stress, ordinary numbers, currency,
+- Unchanged controls: 14, including stress, ordinary numbers, currency,
   agreement, abbreviations, dates/time, technical identifiers, mixed-language
   segmentation, and English controls.
 

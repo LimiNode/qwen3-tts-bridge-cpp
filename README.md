@@ -30,7 +30,7 @@ Russian stress profile; neither is the production default.
   `kraftwerk_robot_ru_warm` voice. A 12-utterance Russian corpus passed human
   listening with intended explicit stresses, natural EOS, non-empty PCM, and no
   starvation. The profile is still experimental and opt-in.
-- `tts-front-cpp` v0.2.2 supplies model-neutral `PreparedText`, including
+- `tts-front-cpp` v0.2.3 supplies model-neutral `PreparedText`, including
   pronunciation evidence and semantic stress decisions.
 - The optional speech-animation adapter has a real-Qwen receipt with contiguous
   sample-addressed PCM/animation timelines and playback-first failure
@@ -168,7 +168,7 @@ The first version does not attempt to:
 ```text
 Application
     |
-    +--> optional tts-front-cpp v0.2.2
+    +--> optional tts-front-cpp v0.2.3
     |        |
     |        v
     |     PreparedText / pronunciation evidence
