@@ -31,7 +31,7 @@ In-process адаптер `qwen.dll` остаётся экспериментал
   `kraftwerk_robot_ru_warm`. Расширенный корпус из 12 русских фраз прошёл
   прослушивание: текст понятен, явные ударения слышны в заданных местах,
   естественное завершение и непустой PCM получены во всех случаях.
-- `tts-front-cpp` v0.2.2 передаёт model-neutral `PreparedText` с данными о
+- `tts-front-cpp` v0.2.3 передаёт model-neutral `PreparedText` с данными о
   произношении и семантических ударениях.
 - Опциональный speech-animation adapter проверен на реальном Qwen receipt:
   PCM и animation timeline непрерывны, terminal fade привязан к концу PCM,
@@ -131,7 +131,7 @@ events (`completed`, `cancelled`, `error`).
 ```text
 Application
     |
-    +--> optional tts-front-cpp v0.2.2
+    +--> optional tts-front-cpp v0.2.3
     |        |
     |        v
     |     PreparedText / pronunciation evidence

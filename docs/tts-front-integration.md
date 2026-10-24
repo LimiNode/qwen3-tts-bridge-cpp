@@ -1,8 +1,8 @@
 # tts-front-cpp integration
 
-The bridge can use the released `tts-front-cpp` v0.2.2 component, pinned as the
+The bridge can use the released `tts-front-cpp` v0.2.3 component, pinned as the
 `external/cpp/tts-front-cpp` submodule at commit
-`f828893b46728544041ab577215640338756a9d4` (tag `v0.2.2`).
+`52383911290aabe6e2963ec434d195fdeaac0aad` (tag `v0.2.3`).
 
 The preparation boundary is intentionally one-way:
 
