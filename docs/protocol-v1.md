@@ -60,30 +60,33 @@ must not duplicate them.
 ## Request ID Policy
 
 A client must not reuse a non-zero `request_id` while a request with the same ID
-is active.
+is active. In addition, new request IDs must be strictly increasing by
+acceptance order within one worker session. Each worker session keeps only the
+highest request ID it has accepted. A new synthesis request with an ID at or
+below that accepted-ID high-water mark is rejected with
+`request_error / duplicate_request_id`, even if the lower ID was never seen
+before. This is a constant-memory policy and makes acceptance deterministic
+regardless of whether earlier requests have already terminalized.
 
-Request IDs should be monotonically increasing and must not be reused during a
-single worker session. Each worker session maintains a monotonic terminal-ID
-high-water mark. When request ID `N` reaches a terminal state, the worker
-retires every request ID `<= N` for the rest of that session. This is a constant-
-memory policy: IDs may be submitted out of order while they are above the
-current high-water mark, but a later lower ID is rejected with
-`request_error / duplicate_request_id` rather than being reused. Existing
-active requests below the high-water mark remain valid and are allowed to
-finish or cancel normally.
+Completion order is independent of acceptance order. An active lower ID that
+was accepted before a later higher ID remains valid and may finish or cancel
+normally after the higher ID completes. The accepted-ID high-water mark is not
+advanced by terminal events, and it is reset when a new worker session starts.
 
-The worker must reject an active or retired request ID with:
+The worker must reject an active or previously accepted lower request ID with:
 
 ```text
 category = request_error
 code     = duplicate_request_id
 ```
 
-Cancellation of a request ID at or below the terminal high-water mark is
-idempotently ignored, as allowed for a late cancel after a known terminal
-event. A cancel for an ID above the high-water mark that is not active returns
-`request_error / unknown_request_id`. The high-water mark is reset when a new
-worker session starts; session IDs distinguish those lifetimes.
+Cancellation of a request ID at or below the accepted-ID high-water mark that
+is not active is an idempotent no-op. Constant memory cannot distinguish that
+case from a late cancel for an older terminal request. A cancel for an ID above
+the high-water mark that is not active returns `request_error /
+unknown_request_id`. The maximum non-zero ID may be accepted once; thereafter
+the session's ID space is exhausted and clients must fail closed or start a new
+worker session. IDs must never wrap around.
 
 ## Payload Limits
 

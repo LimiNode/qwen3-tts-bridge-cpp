@@ -99,23 +99,24 @@ broader package/export and multi-family coverage remain promotion gates.
 
 This was a verified resource/lifecycle defect, not a documentation preference.
 It is addressed by the B2-2 terminal-ID policy: Python and native workers keep
-only a monotonic terminal-ID high-water mark for each session. The protocol
-still recommends monotonically increasing IDs; active IDs may arrive out of
-order, but once ID `N` terminalizes, every later ID `<= N` is retired for that
-session. This prevents unsafe reuse and late-cancel races without retaining a
-per-request tombstone set.
+only a monotonic accepted-ID high-water mark for each session. New synthesis
+IDs must be strictly greater than every ID already accepted, while completion
+order remains unconstrained and active lower IDs remain valid. This prevents
+unsafe reuse and late-cancel races without retaining a per-request tombstone
+set.
 
 * Impact: without the corrective, a long-lived service accumulated one set entry
-  per request. The high-water policy keeps constant terminal-history memory and
-  makes late-cancel and reuse behavior deterministic.
+  per request. The accepted-ID high-water policy keeps constant terminal-history
+  memory and makes acceptance, late-cancel and reuse behavior deterministic.
 * Owner: Python worker and `worker/native/qwentts` (B2-2).
-* Smallest corrective: implement the same high-water transition under each
-  worker's existing lifecycle lock.
+* Smallest corrective: advance the accepted-ID high-water mark only when a
+  synthesis request is admitted, under each worker's existing lifecycle lock;
+  terminalization must not advance it.
 * Acceptance: large sequential-request tests keep retained state bounded;
-  duplicate active/retired IDs return `request_error/duplicate_request_id`;
-  retired late cancel is idempotent; unknown future IDs return
-  `request_error/unknown_request_id`; tests cover the policy and shutdown
-  cancellation.
+  duplicate active or lower IDs return `request_error/duplicate_request_id`;
+  late cancel at/below the accepted-ID watermark is idempotent; unknown future
+  IDs return `request_error/unknown_request_id`; tests cover the policy and
+  shutdown cancellation.
 * Dependencies: none for terminal history; bounded pending admission remains a
   separate C2 corrective.
 
@@ -196,8 +197,8 @@ historical; they must not be rewritten as current failures or current passes.
 2. Update `tts-front-cpp` to v0.2.3 in an isolated dependency PR, compare
    effective text on a fixed corpus, and rerun
    adapter/Russian stress regressions.
-3. Decide the terminal-ID/late-cancel contract, then fix and test bounded
-   terminal history in Python and native workers.
+3. Apply the selected strict acceptance-order terminal-ID/late-cancel
+   contract, then verify bounded history in Python and native workers.
 4. Define and implement bounded pending-request admission covering queued and
    running requests, with cancellation and recovery tests.
 5. Execute the existing isolated clean-environment CMP portable real-Qwen

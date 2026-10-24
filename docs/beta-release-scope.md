@@ -143,10 +143,11 @@ are downloadable by the application.
 The following are P1 blockers for a long-lived beta worker and must be resolved
 before unattended service claims:
 
-1. **Terminal history policy and bounded storage.** Decide the semantics of
-   terminal-ID reuse, late cancel and shutdown cancellation first. Then bound
-   Python and native terminal history and test large sequential request counts,
-   duplicate active IDs, the chosen reuse behavior and late-cancel determinism.
+1. **Terminal history policy and bounded storage.** Enforce the selected
+   strict acceptance-order request-ID policy, with idempotent late cancel and
+   deterministic shutdown cancellation. Then verify bounded Python and native
+   state with large sequential request counts, duplicate active IDs, maximum-ID
+   exhaustion and the chosen late-cancel behavior.
 2. **Pending admission.** Define a cap covering queued and running requests,
    reject excess work with `resource_error/resource_exhausted`, report the
    effective limit, and test cancellation followed by replacement admission in
