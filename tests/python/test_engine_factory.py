@@ -376,6 +376,16 @@ class EngineFactoryTests(unittest.TestCase):
         self.assertEqual("0.3.0", config.worker_version)
         self.assertEqual(256, config.output_queue_size)
 
+    def test_admission_limit_is_configurable(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            ["--max-admitted-requests", "3", "mock"]
+        )
+
+        config = build_worker_config(args)
+
+        self.assertEqual(3, config.max_admitted_requests)
+
     def test_server_options_work_after_subcommand(self) -> None:
         parser = build_parser()
         args = parser.parse_args(

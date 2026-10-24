@@ -344,6 +344,89 @@ class _EofAfterEvent:
 
 
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
+    def test_admission_rejects_without_advancing_id_watermark_and_releases_queued_slot(
+        self,
+    ) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+            max_admitted_requests=1,
+        )
+        writer = _RecordingWriter()
+        server._writer = writer  # type: ignore[assignment]
+
+        server._handle_synthesize(10, {"message_type": "synthesize", "text": "one"})
+        server._handle_synthesize(11, {"message_type": "synthesize", "text": "two"})
+
+        error = _parse_frames(b"".join(writer.frames))[-1]
+        self.assertEqual("resource_error", _payload(error)["category"])
+        self.assertEqual("resource_exhausted", _payload(error)["code"])
+        self.assertEqual(10, server._accepted_request_id_high_water)
+        self.assertEqual(1, server._admitted_requests)
+
+        server._handle_cancel(10)
+        self.assertEqual(0, server._admitted_requests)
+        server._handle_synthesize(11, {"message_type": "synthesize", "text": "two"})
+        self.assertIn(11, server._active)
+        self.assertEqual(11, server._accepted_request_id_high_water)
+
+    def test_direct_qtb_frames_enforce_admission_cap(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+            max_admitted_requests=1,
+        )
+        writer = _RecordingWriter()
+        server._writer = writer  # type: ignore[assignment]
+        server._hello_seen = True
+        server._ready_sent = True
+
+        for frame in _parse_frames(
+            _control_frame(1, {"message_type": "synthesize", "text": "one"})
+            + _control_frame(2, {"message_type": "synthesize", "text": "two"})
+        ):
+            self.assertTrue(server._handle_frame(frame))
+
+        frames = _parse_frames(b"".join(writer.frames))
+        error = next(frame for frame in frames if frame.header.request_id == 2)
+        self.assertEqual(FrameType.ERROR_JSON, error.header.frame_type)
+        self.assertEqual("resource_exhausted", _payload(error)["code"])
+
+    def test_running_cancel_holds_admission_until_engine_unwinds(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+            max_admitted_requests=1,
+        )
+        writer = _RecordingWriter()
+        server._writer = writer  # type: ignore[assignment]
+        slot = _RequestSlot(
+            request=SynthesisRequest(request_id=1, text="running"),
+            cancel_event=threading.Event(),
+            state="running",
+        )
+        with server._condition:
+            server._active[1] = slot
+            server._physical[1] = slot
+            server._admitted_requests = 1
+            server._accepted_request_id_high_water = 1
+
+        server._handle_cancel(1)
+        self.assertEqual(1, server._admitted_requests)
+        server._handle_synthesize(2, {"message_type": "synthesize", "text": "blocked"})
+        self.assertEqual("resource_exhausted", _payload(_parse_frames(b"".join(writer.frames))[-1])["code"])
+
+        server._finish_cancelled(slot)
+        self.assertEqual(0, server._admitted_requests)
+        server._handle_synthesize(2, {"message_type": "synthesize", "text": "accepted"})
+        self.assertIn(2, server._active)
+
     def test_direct_qtb_frames_reject_unseen_lower_id_after_acceptance(self) -> None:
         input_stream = io.BytesIO(
             _control_frame(

@@ -52,7 +52,8 @@ StdIoTransportOptions options(
     bool precompute_voice_ref = false,
     bool warmup_synthesis = false,
     const std::filesystem::path& diagnostic_dump_dir = {},
-    bool eos_guard = false) {
+    bool eos_guard = false,
+    std::size_t max_admitted_requests = 16) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
@@ -81,6 +82,8 @@ StdIoTransportOptions options(
     if (eos_guard) {
         result.arguments.push_back("--eos-guard");
     }
+    result.arguments.push_back("--max-admitted-requests");
+    result.arguments.push_back(std::to_string(max_admitted_requests));
     result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
         if (stderr_capture != nullptr) {
             *stderr_capture += message;
@@ -365,6 +368,44 @@ int run_raw_native_request_id_policy_test() {
     return EXIT_SUCCESS;
 }
 
+int run_raw_native_admission_test() {
+    RawNativeWorker worker(options(1, nullptr, nullptr, 0, false, false, {}, false, 1));
+    CHECK(worker.start());
+    CHECK(worker.send(0, ControlMessage{HelloMessage{"admission-test", "0.2.0"}}));
+
+    Frame frame;
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) { return is_control_frame(candidate, 0); }, frame));
+    CHECK(control_message_type(decode_control_message(
+        frame.payload, ControlMessageDirection::WorkerToClient).message) == ControlMessageType::Ready);
+
+    SynthesizeMessage request;
+    request.text = "admission request";
+    CHECK(worker.send(1, ControlMessage{request}));
+    CHECK(worker.send(2, ControlMessage{request}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) { return is_error_frame(candidate, 2); }, frame));
+    CHECK(error_has_code(frame, "resource_exhausted"));
+
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) { return is_control_frame(candidate, 1); }, frame));
+    CHECK(control_message_type(decode_control_message(
+        frame.payload, ControlMessageDirection::WorkerToClient).message) == ControlMessageType::Queued);
+
+    // The rejected request was never admitted, so its ID can be retried after
+    // the queued request releases the only slot.
+    CHECK(worker.send(1, ControlMessage{CancelMessage{}}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) { return is_terminal_control_frame(candidate, 1); }, frame));
+    CHECK(worker.send(2, ControlMessage{request}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) { return is_control_frame(candidate, 2); }, frame));
+    CHECK(control_message_type(decode_control_message(
+        frame.payload, ControlMessageDirection::WorkerToClient).message) == ControlMessageType::Queued);
+    CHECK(worker.send(0, ControlMessage{ShutdownMessage{}}));
+    return EXIT_SUCCESS;
+}
+
 void write_reference_wav(const std::filesystem::path& path) {
     const std::array<std::int16_t, 4> samples{0, 4096, -4096, 0};
     const std::uint32_t data_size = static_cast<std::uint32_t>(samples.size() * sizeof(samples[0]));
@@ -405,6 +446,7 @@ void write_reference_wav(const std::filesystem::path& path) {
 
 int main() {
     CHECK(run_raw_native_request_id_policy_test() == EXIT_SUCCESS);
+    CHECK(run_raw_native_admission_test() == EXIT_SUCCESS);
 
     std::vector<float> reference_samples{0.25F, -0.25F};
     qwen_tts_bridge::native_worker::append_reference_trailing_silence(reference_samples);
