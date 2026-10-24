@@ -420,7 +420,8 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         server._handle_cancel(1)
         self.assertEqual(1, server._admitted_requests)
         server._handle_synthesize(2, {"message_type": "synthesize", "text": "blocked"})
-        self.assertEqual("resource_exhausted", _payload(_parse_frames(b"".join(writer.frames))[-1])["code"])
+        last_frame = _parse_frames(b"".join(writer.frames))[-1]
+        self.assertEqual("resource_exhausted", _payload(last_frame)["code"])
 
         server._finish_cancelled(slot)
         self.assertEqual(0, server._admitted_requests)
