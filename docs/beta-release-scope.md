@@ -37,13 +37,15 @@ but must not be described as the default production backend:
 
 * native `qwentts.cpp` process worker and the optional in-process native path;
 * the RU-stress profile with profile-owned model identity and combining U+0301;
-* optional WinMM playback and the build-tree speech-animation adapter;
-* CustomVoice 0.6B once its exact real-model acceptance runner and listening
-  receipt are captured.
+* the build-tree speech-animation adapter;
 
 The RU-stress profile already has a successful CMP listening/PCM receipt, but
 its deployment status remains experimental. Native has strong ABI-6/CMP
 evidence but still has a separate promotion and packaging gate.
+
+WinMM is a separately classified optional playback module. Its installed target
+and lifecycle/receipt tests are already verified, while device-specific use
+still requires the documented playback acceptance gate.
 
 ### Deferred or conditional model families
 
@@ -66,14 +68,18 @@ The required user-facing commands are intentionally small:
 
 | Command | Required first-beta use | Minimum contract |
 |---|---|---|
-| `qwen_tts_save_wav` | deterministic file generation and automation | worker/runtime selection, model path, text, language, registered `voice_id` (or selected speaker where the accepted model requires it), output path, timeout, and natural-EOS result |
-| `qwen_tts_play` | interactive playback and cancellation | worker/runtime selection, model/profile selection, text, language, cancellation, optional terminal tail, and playback diagnostics |
+| `qwen_tts_save_wav` | scriptable WAV generation and automation | worker/runtime selection, model path, text, language, registered `voice_id` (or selected speaker where the accepted model requires it), output path, timeout, and an explicit `--require-natural-eos` acceptance check when natural EOS is required |
+| `qwen_tts_play` | interactive playback and cancellation | worker/runtime selection, model/profile selection, text, language, cancellation, tail enabled by default with `--no-tail` opt-out, and playback diagnostics |
 
 `qwen_tts_latency_benchmark` and the speech-animation probe remain diagnostic
 tools, not release UX requirements. The first beta does not require unifying
 all example option parsers. Direct reference-audio, seed and sampling options
 in `qwen_tts_save_wav` are an explicit follow-up decision; registered Base
-profiles are the supported clone interface for this scope.
+profiles are the supported clone interface for this scope. A successful
+`qwen_tts_save_wav` invocation does not by itself enforce natural EOS unless
+`--require-natural-eos` is supplied; natural EOS remains mandatory in the
+release acceptance receipt for every supported model run. Bit-identical audio
+is not promised without a fixed-seed, fixed-runtime evidence record.
 
 ## Audio and DSP scope
 
@@ -83,7 +89,9 @@ Required:
 * WAV writing;
 * optional physical playback as a separate sink;
 * terminal fade and completion/cancellation padding through the existing
-  postprocessor chain, with `--no-tail` opt-out;
+  postprocessor chain. `qwen_tts_play` enables the tail by default and accepts
+  `--no-tail`; `qwen_tts_save_wav` leaves it disabled by default and accepts
+  `--tail` to enable it;
 * playback receipts and diagnostics that do not rewrite synthesis lifecycle.
 
 Not required for the first beta:
@@ -93,10 +101,9 @@ Not required for the first beta:
 * a general effects graph or realtime DSP framework;
 * predictive visemes, avatar presentation, or display-latency claims.
 
-The recommendation is to ship the existing fade/padding behavior and postpone
-presets until a concrete product use case supplies expected output, latency and
-quality acceptance. Whether one or more presets are needed remains an explicit
-scope decision, not an implied rejection of future DSP.
+The proposed first beta excludes named presets. Revisit them only through a
+later scope decision with a concrete product use case, expected output,
+latency, and quality acceptance; no effects framework is implied here.
 
 ## Backend and provisioning policy
 
@@ -128,7 +135,7 @@ are downloadable by the application.
 | VoiceDesign 1.7B | Real model/instruction load, non-empty PCM/EOS, restart/cancellation, WAV/playback, and human intelligibility/voice-design quality gate |
 | Native worker | ABI/export/runtime-manifest verification, package/load gate, lifecycle/cancellation/recovery parity with Python, selected model listening, and explicit opt-in documentation |
 | RU-stress | Preserve profile-owned identity and provenance, repeat the stress corpus after any frontend/model change, and keep experimental/default-off status until a product support decision |
-| WinMM | Installed optional target, device/playback failure isolation, cursor/receipt evidence, and a documented single-sink integration contract |
+| WinMM | Installed optional target, device/playback failure isolation, cursor/receipt evidence, and a documented single-sink integration contract; optional supported module, not a default backend |
 | Speech-animation | Existing real-Qwen contiguous PCM/cue receipt remains required; predictive visemes and avatar presentation need a separate acceptance contract |
 
 ## Release blockers and measurable gates
