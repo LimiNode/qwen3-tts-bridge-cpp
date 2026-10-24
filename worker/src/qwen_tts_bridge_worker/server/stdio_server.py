@@ -256,7 +256,11 @@ class StdioWorkerServer:
         self._condition = threading.Condition()
         self._pending: Deque[int] = deque()
         self._active: dict[int, _RequestSlot] = {}
-        self._terminal_request_ids: set[int] = set()
+        # The protocol recommends monotonic request IDs.  Retain only the
+        # highest terminal ID so the worker cannot grow a per-request history
+        # while still preventing reuse (and late-cancel races) for all lower
+        # IDs in this session.
+        self._terminal_request_id_high_water = 0
 
         self._hello_seen = False
         self._warmed_up = False
@@ -479,7 +483,10 @@ class StdioWorkerServer:
             return
 
         with self._condition:
-            if request_id in self._active or request_id in self._terminal_request_ids:
+            if (
+                request_id in self._active
+                or request_id <= self._terminal_request_id_high_water
+            ):
                 duplicate = True
             else:
                 duplicate = False
@@ -496,7 +503,7 @@ class StdioWorkerServer:
                 request_id,
                 "request_error",
                 "duplicate_request_id",
-                "duplicate active request_id",
+                "request_id was already used in this session",
             )
             return
 
@@ -660,7 +667,7 @@ class StdioWorkerServer:
         with self._condition:
             slot = self._active.get(request_id)
             if slot is None:
-                unknown = request_id not in self._terminal_request_ids
+                unknown = request_id > self._terminal_request_id_high_water
             elif slot.state == "queued":
                 try:
                     self._pending.remove(request_id)
@@ -1154,7 +1161,8 @@ class StdioWorkerServer:
 
     def _terminalize_locked(self, request_id: int) -> None:
         self._active.pop(request_id, None)
-        self._terminal_request_ids.add(request_id)
+        if request_id > self._terminal_request_id_high_water:
+            self._terminal_request_id_high_water = request_id
 
     def _send_error(
         self,
