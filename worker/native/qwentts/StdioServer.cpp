@@ -373,6 +373,11 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
 }
 
 void StdioServer::handle_cancel(RequestId request_id) {
+    if (request_id == 0) {
+        send_error(0, "request_error", "unknown_request_id", "cancel requires a non-zero request_id");
+        return;
+    }
+
     std::shared_ptr<RequestSlot> cancelled_slot;
     bool unknown = false;
     {
