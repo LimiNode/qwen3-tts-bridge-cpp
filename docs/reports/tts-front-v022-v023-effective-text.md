@@ -5,8 +5,8 @@ bridge sends to Qwen through `PreparedText::effective_text`.
 
 ## Revisions and method
 
-The comparison uses bridge revision `26b28be34738805ac18acc8e163513d677c664ab`
-(the PR #231 base before this corrective). Each version is configured in its
+The comparison uses bridge revision `c1936f78ac6cdb7938b9a70d4aee50c6f5936c4f`
+(the corrective PR #231 HEAD). Each version is configured in its
 own independent checkout so the frontend submodule pin cannot leak between
 runs.
 
@@ -21,7 +21,7 @@ Release configuration. It creates two independent source/build pairs under
 repository checkout:
 
 ```powershell
-$bridgeRevision = "26b28be34738805ac18acc8e163513d677c664ab"
+$bridgeRevision = "c1936f78ac6cdb7938b9a70d4aee50c6f5936c4f"
 $repoUrl = "https://github.com/LimiNode/qwen3-tts-bridge-cpp.git"
 $root = Join-Path (git rev-parse --show-toplevel) ".tmp\b2-1-repro"
 
@@ -29,7 +29,7 @@ git clone --no-checkout $repoUrl "$root\v022\src"
 git clone --no-checkout $repoUrl "$root\v023\src"
 foreach ($version in @("v022", "v023")) {
     git -C "$root\$version\src" checkout $bridgeRevision
-    git -C "$root\$version\src" submodule update --init external/cpp/tts-front-cpp
+    git -C "$root\$version\src" submodule update --init --recursive
 }
 git -C "$root\v022\src\external\cpp\tts-front-cpp" checkout f828893b46728544041ab577215640338756a9d4
 git -C "$root\v023\src\external\cpp\tts-front-cpp" checkout 52383911290aabe6e2963ec434d195fdeaac0aad
@@ -118,6 +118,31 @@ is fixed by the corpus oracle:
 The serialized adapter code `unresolved_number` corresponds to the frontend
 enum `WarningCode::UnresolvedNumber`. The warning span is measured in UTF-8
 bytes in the original source text.
+
+The comparison was rerun on 2026-10-24 from the common bridge revision above.
+The v0.2.2 and v0.2.3 source trees were pinned only at the frontend submodule,
+then built independently with the documented Visual Studio configuration. Raw
+UTF-8 stdout was captured with `cmd.exe` redirection:
+
+```powershell
+cmd /c "<v022>\Release\tts_front_effective_text_corpus.exe --stdout --emit-only > <v022>.json"
+cmd /c "<v023>\Release\tts_front_effective_text_corpus.exe --stdout > <v023>.json"
+```
+
+Both receipts contain 15 corpus cases. Comparing by stable case ID, with warning
+arrays canonicalized by `(code, offset, length)`, produced:
+
+```text
+unchanged: 14
+intended effective-text change: 1 (ru_genitive_decimal)
+regressions: 0
+unresolved: 0
+```
+
+The `technical_protected` case has the same effective text, warning count,
+uncertainty, and warning spans in both versions; only the order of three
+equivalent `unresolved_number` entries differs. It is therefore not classified
+as a frontend behavior change.
 
 ## Targeted audio acceptance gate
 
