@@ -62,15 +62,28 @@ must not duplicate them.
 A client must not reuse a non-zero `request_id` while a request with the same ID
 is active.
 
-Request IDs should be monotonically increasing and should not be reused during a
-single worker session.
+Request IDs should be monotonically increasing and must not be reused during a
+single worker session. Each worker session maintains a monotonic terminal-ID
+high-water mark. When request ID `N` reaches a terminal state, the worker
+retires every request ID `<= N` for the rest of that session. This is a constant-
+memory policy: IDs may be submitted out of order while they are above the
+current high-water mark, but a later lower ID is rejected with
+`request_error / duplicate_request_id` rather than being reused. Existing
+active requests below the high-water mark remain valid and are allowed to
+finish or cancel normally.
 
-The worker must reject a duplicate active request ID with:
+The worker must reject an active or retired request ID with:
 
 ```text
 category = request_error
 code     = duplicate_request_id
 ```
+
+Cancellation of a request ID at or below the terminal high-water mark is
+idempotently ignored, as allowed for a late cancel after a known terminal
+event. A cancel for an ID above the high-water mark that is not active returns
+`request_error / unknown_request_id`. The high-water mark is reset when a new
+worker session starts; session IDs distinguish those lifetimes.
 
 ## Payload Limits
 

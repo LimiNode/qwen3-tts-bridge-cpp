@@ -97,26 +97,27 @@ broader package/export and multi-family coverage remain promotion gates.
 
 ### C1. Bound persistent-worker terminal history (P1)
 
-This is a verified resource/lifecycle defect, not a documentation preference.
-Python `StdioWorkerServer._terminalize_locked()` adds every completed,
-cancelled or failed ID to `_terminal_request_ids`; native
-`StdioServer::terminalize()` does the same in `terminal_ids_`. Neither set is
-pruned. The protocol requires rejecting duplicate *active* IDs and recommends
-not reusing IDs during a session. Whether a bounded tombstone window, a
-monotonic high-water policy, or another history policy is correct is a separate
-protocol decision; this audit does not prescribe active-only reuse.
+This was a verified resource/lifecycle defect, not a documentation preference.
+It is addressed by the B2-2 terminal-ID policy: Python and native workers keep
+only a monotonic terminal-ID high-water mark for each session. The protocol
+still recommends monotonically increasing IDs; active IDs may arrive out of
+order, but once ID `N` terminalizes, every later ID `<= N` is retired for that
+session. This prevents unsafe reuse and late-cancel races without retaining a
+per-request tombstone set.
 
-* Impact: a long-lived service accumulates one set entry per request and cannot
-  reclaim the associated tombstone memory. Changing reuse behavior also affects
-  late-cancel diagnostics and must not be bundled into a memory fix implicitly.
-* Owner: Python worker and `worker/native/qwentts`.
-* Smallest corrective: first decide the terminal-ID, late-cancel and reuse
-  contract; then define one bounded policy and implement it symmetrically.
-* Acceptance: a large sequential-request test keeps tombstone memory/count
-  bounded; duplicate active IDs still return `request_error/duplicate_request_id`;
-  terminal-ID reuse and late cancel have deterministic, documented results;
-  tests cover both the chosen history policy and shutdown cancellation.
-* Dependencies: settle the protocol policy before changing either worker.
+* Impact: without the corrective, a long-lived service accumulated one set entry
+  per request. The high-water policy keeps constant terminal-history memory and
+  makes late-cancel and reuse behavior deterministic.
+* Owner: Python worker and `worker/native/qwentts` (B2-2).
+* Smallest corrective: implement the same high-water transition under each
+  worker's existing lifecycle lock.
+* Acceptance: large sequential-request tests keep retained state bounded;
+  duplicate active/retired IDs return `request_error/duplicate_request_id`;
+  retired late cancel is idempotent; unknown future IDs return
+  `request_error/unknown_request_id`; tests cover the policy and shutdown
+  cancellation.
+* Dependencies: none for terminal history; bounded pending admission remains a
+  separate C2 corrective.
 
 ### C2. Bound pending request admission (P1)
 
