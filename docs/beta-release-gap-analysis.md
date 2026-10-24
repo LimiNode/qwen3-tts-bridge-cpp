@@ -97,26 +97,28 @@ broader package/export and multi-family coverage remain promotion gates.
 
 ### C1. Bound persistent-worker terminal history (P1)
 
-This is a verified resource/lifecycle defect, not a documentation preference.
-Python `StdioWorkerServer._terminalize_locked()` adds every completed,
-cancelled or failed ID to `_terminal_request_ids`; native
-`StdioServer::terminalize()` does the same in `terminal_ids_`. Neither set is
-pruned. The protocol requires rejecting duplicate *active* IDs and recommends
-not reusing IDs during a session. Whether a bounded tombstone window, a
-monotonic high-water policy, or another history policy is correct is a separate
-protocol decision; this audit does not prescribe active-only reuse.
+This was a verified resource/lifecycle defect, not a documentation preference.
+It is addressed by the B2-2 terminal-ID policy: Python and native workers keep
+only a monotonic accepted-ID high-water mark for each session. New synthesis
+IDs must be strictly greater than every ID already accepted, while completion
+order remains unconstrained and active lower IDs remain valid. This prevents
+unsafe reuse and late-cancel races without retaining a per-request tombstone
+set.
 
-* Impact: a long-lived service accumulates one set entry per request and cannot
-  reclaim the associated tombstone memory. Changing reuse behavior also affects
-  late-cancel diagnostics and must not be bundled into a memory fix implicitly.
-* Owner: Python worker and `worker/native/qwentts`.
-* Smallest corrective: first decide the terminal-ID, late-cancel and reuse
-  contract; then define one bounded policy and implement it symmetrically.
-* Acceptance: a large sequential-request test keeps tombstone memory/count
-  bounded; duplicate active IDs still return `request_error/duplicate_request_id`;
-  terminal-ID reuse and late cancel have deterministic, documented results;
-  tests cover both the chosen history policy and shutdown cancellation.
-* Dependencies: settle the protocol policy before changing either worker.
+* Impact: without the corrective, a long-lived service accumulated one set entry
+  per request. The accepted-ID high-water policy keeps constant terminal-history
+  memory and makes acceptance, late-cancel and reuse behavior deterministic.
+* Owner: Python worker and `worker/native/qwentts` (B2-2).
+* Smallest corrective: advance the accepted-ID high-water mark only when a
+  synthesis request is admitted, under each worker's existing lifecycle lock;
+  terminalization must not advance it.
+* Acceptance: large sequential-request tests keep retained state bounded;
+  duplicate active or lower IDs return `request_error/duplicate_request_id`;
+  late cancel at/below the accepted-ID watermark is idempotent; unknown future
+  IDs return `request_error/unknown_request_id`; tests cover the policy and
+  shutdown cancellation.
+* Dependencies: none for terminal history; bounded pending admission remains a
+  separate C2 corrective.
 
 ### C2. Bound pending request admission (P1)
 
@@ -195,8 +197,8 @@ historical; they must not be rewritten as current failures or current passes.
 2. Update `tts-front-cpp` to v0.2.3 in an isolated dependency PR, compare
    effective text on a fixed corpus, and rerun
    adapter/Russian stress regressions.
-3. Decide the terminal-ID/late-cancel contract, then fix and test bounded
-   terminal history in Python and native workers.
+3. Apply the selected strict acceptance-order terminal-ID/late-cancel
+   contract, then verify bounded history in Python and native workers.
 4. Define and implement bounded pending-request admission covering queued and
    running requests, with cancellation and recovery tests.
 5. Execute the existing isolated clean-environment CMP portable real-Qwen

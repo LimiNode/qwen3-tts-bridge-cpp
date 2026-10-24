@@ -349,8 +349,9 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
     {
         std::lock_guard<std::mutex> lock(mutex_);
         shutting_down = shutdown_requested_;
-        duplicate = active_.count(request_id) != 0 || terminal_ids_.count(request_id) != 0;
+        duplicate = active_.count(request_id) != 0 || request_id <= accepted_id_high_water_;
         if (!shutting_down && !duplicate) {
+            accepted_id_high_water_ = request_id;
             active_.emplace(request_id, slot);
             pending_.push_back(slot);
             position = static_cast<std::uint32_t>(pending_.size());
@@ -372,13 +373,18 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
 }
 
 void StdioServer::handle_cancel(RequestId request_id) {
+    if (request_id == 0) {
+        send_error(0, "request_error", "unknown_request_id", "cancel requires a non-zero request_id");
+        return;
+    }
+
     std::shared_ptr<RequestSlot> cancelled_slot;
     bool unknown = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         const auto it = active_.find(request_id);
         if (it == active_.end()) {
-            unknown = terminal_ids_.count(request_id) == 0;
+            unknown = request_id > accepted_id_high_water_;
         }
         else {
             const auto& slot = it->second;
@@ -387,7 +393,6 @@ void StdioServer::handle_cancel(RequestId request_id) {
                 pending_.erase(std::remove(pending_.begin(), pending_.end(), slot), pending_.end());
                 if (!slot->terminal.exchange(true)) {
                     active_.erase(it);
-                    terminal_ids_.insert(request_id);
                     cancelled_slot = slot;
                 }
             }
@@ -431,7 +436,6 @@ void StdioServer::request_shutdown(bool send_ack) {
             slot->cancelled.store(true, std::memory_order_relaxed);
             if (!slot->terminal.exchange(true)) {
                 active_.erase(slot->id);
-                terminal_ids_.insert(slot->id);
                 queued.push_back(std::move(slot));
             }
         }
@@ -587,7 +591,6 @@ bool StdioServer::terminalize(const std::shared_ptr<RequestSlot>& slot) {
     }
     std::lock_guard<std::mutex> lock(mutex_);
     active_.erase(slot->id);
-    terminal_ids_.insert(slot->id);
     return true;
 }
 

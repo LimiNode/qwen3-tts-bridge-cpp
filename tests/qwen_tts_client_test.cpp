@@ -1079,6 +1079,61 @@ void test_duplicate_explicit_request_id_is_rejected() {
     client.stop();
 }
 
+void test_lower_explicit_request_id_is_rejected_after_higher_acceptance() {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    raw_transport->block_after_hello = true;
+
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), make_client_options()));
+
+    RequestProbe first;
+    RequestProbe lower;
+    TtsRequest first_request = make_request("Higher request ID.");
+    first_request.id = 100;
+    TtsRequest lower_request = make_request("Unseen lower request ID.");
+    lower_request.id = 42;
+
+    CHECK(client.synthesize_async(
+        std::move(first_request), make_callbacks(first)) == 100);
+    CHECK(raw_transport->wait_until_blocked());
+    CHECK(client.synthesize_async(
+        std::move(lower_request), make_callbacks(lower)) == 0);
+
+    raw_transport->release();
+    client.stop();
+}
+
+void test_request_id_space_exhaustion_fails_closed() {
+    auto transport = std::make_unique<BlockingTransport>();
+    auto* raw_transport = transport.get();
+    raw_transport->block_after_hello = true;
+
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), make_client_options()));
+
+    RequestProbe maximum;
+    TtsRequest maximum_request = make_request("Maximum request ID.");
+    maximum_request.id = std::numeric_limits<RequestId>::max();
+    CHECK(client.synthesize_async(
+        std::move(maximum_request), make_callbacks(maximum)) ==
+        std::numeric_limits<RequestId>::max());
+    CHECK(raw_transport->wait_until_blocked());
+
+    RequestProbe automatic;
+    CHECK(client.synthesize_async(
+        make_request("After request ID exhaustion."),
+        make_callbacks(automatic)) == 0);
+
+    TtsRequest lower_request = make_request("Lower after exhaustion.");
+    lower_request.id = 1;
+    CHECK(client.synthesize_async(
+        std::move(lower_request), make_callbacks(automatic)) == 0);
+
+    raw_transport->release();
+    client.stop();
+}
+
 void test_transport_send_failure_fails_request_once() {
     auto transport = std::make_unique<BlockingTransport>();
     transport->send_after_hello_result = SendResult::Failed;
@@ -1132,6 +1187,8 @@ int main() {
     test_incomplete_audio_frame_fails_closed();
     test_prepared_request_rejects_source_mismatch();
     test_duplicate_explicit_request_id_is_rejected();
+    test_lower_explicit_request_id_is_rejected_after_higher_acceptance();
+    test_request_id_space_exhaustion_fails_closed();
     test_transport_send_failure_fails_request_once();
     return 0;
 }

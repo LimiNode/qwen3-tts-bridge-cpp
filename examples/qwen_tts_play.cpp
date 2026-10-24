@@ -1295,9 +1295,16 @@ RequestId submit_request(
     auto processors = make_audio_processors(options);
     {
         std::lock_guard<std::mutex> lock(active_state.mutex);
-        request.id = active_state.next_request_id++;
-        if (request.id == 0) {
-            request.id = active_state.next_request_id++;
+        if (active_state.next_request_id == 0) {
+            throw std::runtime_error(
+                "request ID space exhausted; restart the worker session");
+        }
+        request.id = active_state.next_request_id;
+        if (request.id == std::numeric_limits<RequestId>::max()) {
+            active_state.next_request_id = 0;
+        }
+        else {
+            ++active_state.next_request_id;
         }
         active_state.active_request_id = request.id;
         active_state.active_client = &client;

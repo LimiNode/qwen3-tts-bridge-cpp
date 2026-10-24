@@ -13,7 +13,6 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace qwen_tts_bridge::native_worker {
@@ -69,7 +68,11 @@ private:
     std::condition_variable condition_;
     std::deque<std::shared_ptr<RequestSlot>> pending_;
     std::unordered_map<RequestId, std::shared_ptr<RequestSlot>> active_;
-    std::unordered_set<RequestId> terminal_ids_;
+    // New request IDs must be strictly greater than this value for the
+    // current session.  Keeping an acceptance high-water mark avoids an
+    // unbounded terminal-ID history while making ordering deterministic even
+    // when earlier requests remain active.
+    RequestId accepted_id_high_water_ = 0;
     bool hello_seen_ = false;
     bool ready_sent_ = false;
     bool shutdown_requested_ = false;
