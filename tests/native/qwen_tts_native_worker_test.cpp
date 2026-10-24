@@ -1,19 +1,27 @@
 #include <qwen_tts_bridge/client.hpp>
+#include <qwen_tts_bridge/protocol/control/control_codec.hpp>
+#include <qwen_tts_bridge/protocol/framing/FrameParser.hpp>
+#include <qwen_tts_bridge/transport/stdio/StdIoTransport.hpp>
 #include "wav_reader.hpp"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
 #include <cstdlib>
+#include <deque>
 #include <filesystem>
+#include <functional>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <string>
 #include <fstream>
 #include <iterator>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #define CHECK(expr) do { \
@@ -138,6 +146,225 @@ StdIoTransportOptions voice_registry_options(
     return result;
 }
 
+class RawNativeWorker final {
+public:
+    explicit RawNativeWorker(StdIoTransportOptions options)
+        : transport_(std::make_unique<StdIoTransport>(std::move(options))) {}
+
+    ~RawNativeWorker() {
+        transport_->stop();
+    }
+
+    bool start() {
+        return transport_->start(
+            [this](ITransport::Bytes bytes) {
+                std::lock_guard<std::mutex> lock(mutex_);
+                parser_.append(bytes);
+                for (;;) {
+                    const ParseResult result = parser_.parse_next();
+                    if (result.status == ParseStatus::NeedMoreData) {
+                        break;
+                    }
+                    if (result.status != ParseStatus::FrameReady) {
+                        error_ = result.message;
+                        break;
+                    }
+                    frames_.push_back(result.frame);
+                    condition_.notify_all();
+                }
+            },
+            [this](std::string message) {
+                std::lock_guard<std::mutex> lock(mutex_);
+                error_ = std::move(message);
+                condition_.notify_all();
+            },
+            [this](int) {
+                std::lock_guard<std::mutex> lock(mutex_);
+                exited_ = true;
+                condition_.notify_all();
+            });
+    }
+
+    bool send(RequestId request_id, const ControlMessage& message) {
+        const auto encoded_payload = encode_control_message(message);
+        if (!encoded_payload) {
+            return false;
+        }
+        const auto encoded_frame = encode_frame(
+            FrameType::ControlJson,
+            request_id,
+            encoded_payload.payload);
+        if (!encoded_frame) {
+            return false;
+        }
+        return transport_->send(
+                   encoded_frame.bytes.data(),
+                   encoded_frame.bytes.size()) == SendResult::Accepted;
+    }
+
+    bool wait_for_frame(
+        const std::function<bool(const Frame&)>& predicate,
+        Frame& result,
+        std::chrono::seconds timeout = std::chrono::seconds(10)) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        const bool observed = condition_.wait_for(lock, timeout, [&]() {
+            return !error_.empty() || exited_ || std::any_of(
+                frames_.begin(), frames_.end(), predicate);
+        });
+        if (!observed || !error_.empty()) {
+            return false;
+        }
+        const auto it = std::find_if(frames_.begin(), frames_.end(), predicate);
+        if (it == frames_.end()) {
+            return false;
+        }
+        result = std::move(*it);
+        frames_.erase(it);
+        return true;
+    }
+
+private:
+    std::unique_ptr<StdIoTransport> transport_;
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    FrameParser parser_;
+    std::deque<Frame> frames_;
+    std::string error_;
+    bool exited_ = false;
+};
+
+bool is_control_frame(const Frame& frame, RequestId request_id) {
+    return frame.header.frame_type == FrameType::ControlJson &&
+           frame.header.request_id == request_id;
+}
+
+bool is_error_frame(const Frame& frame, RequestId request_id) {
+    return frame.header.frame_type == FrameType::ErrorJson &&
+           frame.header.request_id == request_id;
+}
+
+bool is_terminal_control_frame(const Frame& frame, RequestId request_id) {
+    if (!is_control_frame(frame, request_id)) {
+        return false;
+    }
+    const auto decoded = decode_control_message(
+        frame.payload,
+        ControlMessageDirection::WorkerToClient);
+    if (!decoded) {
+        return false;
+    }
+    const auto type = control_message_type(decoded.message);
+    return type == ControlMessageType::Completed ||
+           type == ControlMessageType::Cancelled;
+}
+
+bool error_has_code(const Frame& frame, const std::string& expected_code) {
+    const auto decoded = decode_error_message(frame.payload);
+    return decoded && decoded.message.code == expected_code;
+}
+
+int run_raw_native_request_id_policy_test() {
+    RawNativeWorker worker(options(4));
+    CHECK(worker.start());
+    CHECK(worker.send(0, ControlMessage{HelloMessage{"raw-test", "0.2.0"}}));
+
+    Frame frame;
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_control_frame(candidate, 0);
+        },
+        frame));
+    const auto ready = decode_control_message(
+        frame.payload,
+        ControlMessageDirection::WorkerToClient);
+    CHECK(ready);
+    CHECK(control_message_type(ready.message) == ControlMessageType::Ready);
+
+    CHECK(worker.send(0, ControlMessage{CancelMessage{}}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_error_frame(candidate, 0);
+        },
+        frame));
+    CHECK(error_has_code(frame, "unknown_request_id"));
+
+    SynthesizeMessage request;
+    request.text = "raw request";
+    CHECK(worker.send(100, ControlMessage{request}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_control_frame(candidate, 100);
+        },
+        frame));
+    CHECK(control_message_type(decode_control_message(
+        frame.payload,
+        ControlMessageDirection::WorkerToClient).message) == ControlMessageType::Queued);
+
+    CHECK(worker.send(101, ControlMessage{request}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_control_frame(candidate, 101);
+        },
+        frame));
+    CHECK(control_message_type(decode_control_message(
+        frame.payload,
+        ControlMessageDirection::WorkerToClient).message) == ControlMessageType::Queued);
+
+    // A previously accepted lower ID remains valid after a higher ID is
+    // accepted; its completion/cancellation must not become an unknown-ID
+    // error merely because completion order is independent of acceptance.
+    CHECK(worker.send(100, ControlMessage{CancelMessage{}}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_terminal_control_frame(candidate, 100) ||
+                   is_error_frame(candidate, 100);
+        },
+        frame));
+    CHECK(frame.header.frame_type == FrameType::ControlJson);
+
+    CHECK(worker.send(42, ControlMessage{request}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_error_frame(candidate, 42);
+        },
+        frame));
+    CHECK(error_has_code(frame, "duplicate_request_id"));
+
+    request.text = "maximum request";
+    CHECK(worker.send(
+        std::numeric_limits<RequestId>::max(),
+        ControlMessage{request}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_control_frame(
+                candidate,
+                std::numeric_limits<RequestId>::max());
+        },
+        frame));
+    CHECK(control_message_type(decode_control_message(
+        frame.payload,
+        ControlMessageDirection::WorkerToClient).message) == ControlMessageType::Queued);
+
+    CHECK(worker.send(1, ControlMessage{request}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_error_frame(candidate, 1);
+        },
+        frame));
+    CHECK(error_has_code(frame, "duplicate_request_id"));
+
+    CHECK(worker.send(0, ControlMessage{CancelMessage{}}));
+    CHECK(worker.wait_for_frame(
+        [](const Frame& candidate) {
+            return is_error_frame(candidate, 0);
+        },
+        frame));
+    CHECK(error_has_code(frame, "unknown_request_id"));
+
+    CHECK(worker.send(0, ControlMessage{ShutdownMessage{}}));
+    return EXIT_SUCCESS;
+}
+
 void write_reference_wav(const std::filesystem::path& path) {
     const std::array<std::int16_t, 4> samples{0, 4096, -4096, 0};
     const std::uint32_t data_size = static_cast<std::uint32_t>(samples.size() * sizeof(samples[0]));
@@ -177,6 +404,8 @@ void write_reference_wav(const std::filesystem::path& path) {
 }
 
 int main() {
+    CHECK(run_raw_native_request_id_policy_test() == EXIT_SUCCESS);
+
     std::vector<float> reference_samples{0.25F, -0.25F};
     qwen_tts_bridge::native_worker::append_reference_trailing_silence(reference_samples);
     CHECK(reference_samples.size() == 12002);
@@ -283,6 +512,69 @@ int main() {
     CHECK(static_cast<unsigned char>(probe.audio[1]) == 0x80u);
     CHECK(static_cast<unsigned char>(probe.audio[10]) == 0xffu);
     CHECK(static_cast<unsigned char>(probe.audio[11]) == 0x7fu);
+
+    // The native worker keeps constant terminal-ID state.  Exercise a larger
+    // sequential run, then verify that a lower ID cannot be reused.
+    QwenTtsClient history_client;
+    QwenTtsClientOptions history_options;
+    history_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(history_client.start(options(8), history_options));
+    for (RequestId request_id = 1; request_id <= 64; ++request_id) {
+        Probe history_probe;
+        TtsCallbacks history_callbacks;
+        history_callbacks.on_completed = [&history_probe]() {
+            std::lock_guard<std::mutex> lock(history_probe.mutex);
+            ++history_probe.completed;
+            history_probe.condition.notify_all();
+        };
+        history_callbacks.on_error = [&history_probe](const TtsError& error) {
+            std::lock_guard<std::mutex> lock(history_probe.mutex);
+            history_probe.errors.push_back(error);
+            history_probe.condition.notify_all();
+        };
+        TtsRequest history_request;
+        history_request.id = request_id;
+        history_request.text = "terminal history request";
+        CHECK(history_client.synthesize_async(
+            std::move(history_request), history_callbacks) == request_id);
+        {
+            std::unique_lock<std::mutex> lock(history_probe.mutex);
+            CHECK(history_probe.condition.wait_for(
+                lock,
+                std::chrono::seconds(5),
+                [&history_probe]() {
+                    return history_probe.completed != 0 || !history_probe.errors.empty();
+                }));
+        }
+        CHECK(history_probe.completed == 1);
+        CHECK(history_probe.errors.empty());
+    }
+
+    Probe lower_probe;
+    TtsCallbacks lower_callbacks;
+    lower_callbacks.on_completed = [&lower_probe]() {
+        std::lock_guard<std::mutex> lock(lower_probe.mutex);
+        ++lower_probe.completed;
+        lower_probe.condition.notify_all();
+    };
+    lower_callbacks.on_error = [&lower_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(lower_probe.mutex);
+        lower_probe.errors.push_back(error);
+        lower_probe.condition.notify_all();
+    };
+    TtsRequest lower_request;
+    lower_request.id = 1;
+    lower_request.text = "lower request ID";
+    // The client enforces the same acceptance-order policy locally, so this
+    // lower ID is rejected before another frame reaches the worker.
+    CHECK(history_client.synthesize_async(
+        std::move(lower_request), lower_callbacks) == 0);
+    {
+        std::lock_guard<std::mutex> lock(lower_probe.mutex);
+        CHECK(lower_probe.completed == 0);
+        CHECK(lower_probe.errors.empty());
+    }
+    history_client.stop();
 
     const auto reference_wav = runtime / "reference-cache-test.wav";
     const auto diagnostic_dump_dir = runtime / "diagnostic-dump";

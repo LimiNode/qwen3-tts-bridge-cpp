@@ -60,17 +60,33 @@ must not duplicate them.
 ## Request ID Policy
 
 A client must not reuse a non-zero `request_id` while a request with the same ID
-is active.
+is active. In addition, new request IDs must be strictly increasing by
+acceptance order within one worker session. Each worker session keeps only the
+highest request ID it has accepted. A new synthesis request with an ID at or
+below that accepted-ID high-water mark is rejected with
+`request_error / duplicate_request_id`, even if the lower ID was never seen
+before. This is a constant-memory policy and makes acceptance deterministic
+regardless of whether earlier requests have already terminalized.
 
-Request IDs should be monotonically increasing and should not be reused during a
-single worker session.
+Completion order is independent of acceptance order. An active lower ID that
+was accepted before a later higher ID remains valid and may finish or cancel
+normally after the higher ID completes. The accepted-ID high-water mark is not
+advanced by terminal events, and it is reset when a new worker session starts.
 
-The worker must reject a duplicate active request ID with:
+The worker must reject an active or previously accepted lower request ID with:
 
 ```text
 category = request_error
 code     = duplicate_request_id
 ```
+
+Cancellation of a request ID at or below the accepted-ID high-water mark that
+is not active is an idempotent no-op. Constant memory cannot distinguish that
+case from a late cancel for an older terminal request. A cancel for an ID above
+the high-water mark that is not active returns `request_error /
+unknown_request_id`. The maximum non-zero ID may be accepted once; thereafter
+the session's ID space is exhausted and clients must fail closed or start a new
+worker session. IDs must never wrap around.
 
 ## Payload Limits
 
@@ -703,9 +719,14 @@ when appropriate.
 
 ## Version Freeze Policy
 
-Protocol v1 is frozen for implementation.
+This repository is still pre-beta. The strict accepted-ID ordering policy
+recorded above is an explicitly approved pre-beta revision of the QTB v1
+lifecycle contract and is coordinated across the first-party C++ client and
+Python/native workers. No legacy mode or capability negotiation is required
+before the first public beta.
 
-After protocol v1 is implemented, semantic changes must be introduced as
-compatible v1 extensions or as protocol v2. Do not silently change existing v1
-field meanings, required fields, request lifecycle semantics, or error-category
-semantics under the same protocol version.
+The compatibility commitment for QTB v1 starts at that first public beta. After
+that point, semantic changes must be introduced as compatible v1 extensions or
+as protocol v2. Do not silently change existing v1 field meanings, required
+fields, request lifecycle semantics, or error-category semantics under the same
+protocol version.

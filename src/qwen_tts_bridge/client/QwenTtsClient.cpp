@@ -588,32 +588,35 @@ void QwenTtsClient::stop() {
 }
 
 RequestId QwenTtsClient::allocate_request_id_locked(RequestId requested_id) {
+    // Zero is the exhausted sentinel.  Request IDs are strictly increasing
+    // by acceptance order within a client/worker session; do not wrap around
+    // and do not accept an explicitly requested lower ID.
+    if (next_request_id_ == 0) {
+        return 0;
+    }
+
     if (requested_id != 0) {
-        if (active_requests_.find(requested_id) != active_requests_.end()) {
+        if (requested_id < next_request_id_ ||
+            active_requests_.find(requested_id) != active_requests_.end()) {
             return 0;
         }
-        if (requested_id >= next_request_id_) {
+        if (requested_id == std::numeric_limits<RequestId>::max()) {
+            next_request_id_ = 0;
+        }
+        else {
             next_request_id_ = requested_id + 1;
-            if (next_request_id_ == 0) {
-                next_request_id_ = 1;
-            }
         }
         return requested_id;
     }
 
-    const RequestId first_candidate = next_request_id_;
-    do {
-        const RequestId candidate = next_request_id_;
-        ++next_request_id_;
-        if (next_request_id_ == 0) {
-            next_request_id_ = 1;
-        }
-        if (active_requests_.find(candidate) == active_requests_.end()) {
-            return candidate;
-        }
-    } while (next_request_id_ != first_candidate);
-
-    return 0;
+    const RequestId candidate = next_request_id_;
+    if (candidate == std::numeric_limits<RequestId>::max()) {
+        next_request_id_ = 0;
+    }
+    else {
+        next_request_id_ = candidate + 1;
+    }
+    return candidate;
 }
 
 bool QwenTtsClient::enqueue_outbound_locked(OutboundCommand command) {
