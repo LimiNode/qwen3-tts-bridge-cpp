@@ -620,6 +620,15 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 QwenTTSBridge::qwen_tts_bridge_tts_front
         )
         add_test(NAME tts_front_bridge_adapter_test COMMAND tts_front_bridge_adapter_test)
+
+        add_executable(tts_front_effective_text_corpus
+            tests/tts_front_effective_text_corpus.cpp
+        )
+        target_link_libraries(tts_front_effective_text_corpus
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge_tts_front
+        )
+        add_test(NAME tts_front_effective_text_corpus COMMAND tts_front_effective_text_corpus)
     endif()
 
     if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
