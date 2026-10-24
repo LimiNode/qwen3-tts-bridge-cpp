@@ -117,10 +117,10 @@ set.
   late cancel at/below the accepted-ID watermark is idempotent; unknown future
   IDs return `request_error/unknown_request_id`; tests cover the policy and
   shutdown cancellation.
-* Dependencies: none for terminal history; bounded pending admission remains a
-  separate C2 corrective.
+* Dependencies: none for terminal history; bounded pending admission is covered
+  by the separate B2-3 corrective below.
 
-### C2. Bound pending request admission (P1)
+### C2. Bound pending request admission (P1) — B2-3 corrective
 
 Both workers append accepted work to an unbounded pending deque:
 Python `StdioWorkerServer._pending` and native `StdioServer::pending_`. Output
@@ -139,8 +139,10 @@ threat model.
 * Acceptance: fill the queue to the cap, observe exact rejection and no growth
   beyond the cap, cancel queued work, admit a replacement after cancellation or
   completion, and verify both Python and native paths.
-* Dependency: choose the cap and reporting shape in the B2 contract before
-  implementation; this audit intentionally does not invent a numeric value.
+* Implementation status: B2-3 defines a default limit of 16, exposes a
+  runtime override in both workers, and covers queued plus physically running
+  occupancy. Exact-head CI and direct QTB-frame tests remain the acceptance
+  gate for the corrective PR.
 
 ## D — optional or deferred
 

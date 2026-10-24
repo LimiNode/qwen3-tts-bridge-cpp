@@ -148,11 +148,11 @@ before unattended service claims:
    deterministic shutdown cancellation. Then verify bounded Python and native
    state with large sequential request counts, duplicate active IDs, maximum-ID
    exhaustion and the chosen late-cancel behavior.
-2. **Pending admission.** Define a cap covering queued and running requests,
-   reject excess work with `resource_error/resource_exhausted`, report the
-   effective limit, and test cancellation followed by replacement admission in
-   both workers. The cap value is a B2 implementation decision, not a hidden
-   scope assumption here.
+2. **Pending admission.** B2-3 defines a default cap of 16 covering queued and
+   physically running requests, rejects excess work with
+   `resource_error/resource_exhausted`, reports the effective limit, and tests
+   cancellation followed by replacement admission in both workers. Deployment
+   profiles may override the finite limit explicitly.
 3. **Selected-model packaging acceptance.** On CMP 50HX, perform the isolated
    clean-environment portable package/doctor/C++ playback/listening gate for
    every required model row. Freeze binaries, manifests, hashes and request
