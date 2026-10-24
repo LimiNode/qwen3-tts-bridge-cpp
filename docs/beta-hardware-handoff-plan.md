@@ -85,7 +85,7 @@ it does not prove physical avatar presentation or display latency.
 After the CMP candidate has passed the isolated clean-environment packaging
 gate and its artifact bundle is frozen, reproduce that workload independently
 on the RTX 4090 before changing anything. This is a separate validation
-machine, not an unspecified third clean machine:
+machine, not an unspecified third environment:
 
 1. Fresh checkout/worktree at the frozen bridge and submodule SHAs.
 2. Same Python/native binaries where ABI and driver compatibility permit; if a
@@ -129,12 +129,12 @@ Publish only when all of the following are true:
 
 * the advertised model matrix is explicit and every advertised row has an
   exact real-model acceptance receipt or is clearly marked experimental;
-* Python portable package, doctor, model manifests and C++ playback pass on a
-  clean Windows machine;
+* Python portable package, doctor, model manifests and C++ playback pass in an
+  isolated clean environment on CMP 50HX;
 * the selected CMP profile has persistent-worker, EOS, cancellation/recovery,
   playback and listening evidence with frozen hashes;
-* required P1 hardening (terminal history, and pending admission if the threat
-  model requires it) is merged and tested;
+* required P1 hardening (terminal-ID policy/bounded history and bounded pending
+  admission) is merged and tested;
 * release-facing changelog/status text matches the actual Python baseline and
   optional native/RU-stress boundaries;
 * RTX 4090 reproduces the identical workload, or its documented differences
