@@ -19,7 +19,7 @@ namespace qwen_tts_bridge::native_worker {
 
 class StdioServer final {
 public:
-    explicit StdioServer(NativeEngine& engine);
+    explicit StdioServer(NativeEngine& engine, std::size_t max_admitted_requests);
     ~StdioServer();
 
     StdioServer(const StdioServer&) = delete;
@@ -68,6 +68,8 @@ private:
     std::condition_variable condition_;
     std::deque<std::shared_ptr<RequestSlot>> pending_;
     std::unordered_map<RequestId, std::shared_ptr<RequestSlot>> active_;
+    const std::size_t max_admitted_requests_;
+    std::size_t admitted_requests_ = 0;
     // New request IDs must be strictly greater than this value for the
     // current session.  Keeping an acceptance high-water mark avoids an
     // unbounded terminal-ID history while making ordering deterministic even

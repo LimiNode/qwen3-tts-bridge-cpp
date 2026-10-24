@@ -107,6 +107,14 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
             const auto value = require_value(index, argc, argv, L"--max-text-bytes");
             options.max_text_bytes = std::stoi(value.wstring());
         }
+        else if (argument == L"--max-admitted-requests") {
+            const auto value = require_value(index, argc, argv, L"--max-admitted-requests");
+            const auto parsed = std::stoull(value.wstring());
+            if (parsed == 0 || parsed > 65536) {
+                throw std::invalid_argument("--max-admitted-requests must be in [1, 65536]");
+            }
+            options.max_admitted_requests = static_cast<std::size_t>(parsed);
+        }
         else if (argument == L"--eos-guard") {
             options.eos_guard_enabled = true;
         }
@@ -133,7 +141,7 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
                 << "  [--no-flash-attention]\n"
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
                 << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
-                << "  [--max-text-bytes N] [--precompute-voice-ref]\n"
+                << "  [--max-text-bytes N] [--max-admitted-requests N] [--precompute-voice-ref]\n"
                 << "  [--eos-guard]\n"
                 << "  [--warmup-synthesis] [--warmup-text TEXT] [--warmup-language LANG]\n"
                 << "  [--warmup-voice-id ID]\n";
@@ -203,7 +211,7 @@ int wmain(int argc, wchar_t** argv) {
             << " abi=" << manifest.qt_abi_version
             << " backend=" << manifest.backend
             << " version=\"" << engine.engine_version() << "\"\n";
-        qwen_tts_bridge::native_worker::StdioServer server(engine);
+        qwen_tts_bridge::native_worker::StdioServer server(engine, options.max_admitted_requests);
         const int status = server.run();
         engine.close();
         return status;
