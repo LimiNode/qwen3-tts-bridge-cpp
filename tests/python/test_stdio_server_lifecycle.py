@@ -344,6 +344,145 @@ class _EofAfterEvent:
 
 
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
+    def test_terminal_id_high_water_is_constant_memory_and_retires_lower_ids(
+        self,
+    ) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+        )
+        writer = _RecordingWriter()
+        server._writer = writer  # type: ignore[assignment]
+
+        with server._condition:
+            for request_id in range(1, 10_001):
+                server._terminalize_locked(request_id)
+            self.assertEqual(10_000, server._terminal_request_id_high_water)
+            server._terminalize_locked(9_999)
+            self.assertEqual(10_000, server._terminal_request_id_high_water)
+
+        # The old per-request tombstone set is intentionally gone.
+        self.assertFalse(hasattr(server, "_terminal_request_ids"))
+
+        server._handle_synthesize(1, {"message_type": "synthesize", "text": "Hello"})
+        duplicate = _parse_frames(b"".join(writer.frames))[-1]
+        self.assertEqual(FrameType.ERROR_JSON, duplicate.header.frame_type)
+        self.assertEqual("duplicate_request_id", _payload(duplicate)["code"])
+
+        # A late cancel for a retired ID remains idempotent, while a future
+        # unknown ID still reports the protocol error.
+        writer.frames.clear()
+        server._handle_cancel(1)
+        self.assertEqual([], writer.frames)
+        server._handle_cancel(10_001)
+        unknown = _parse_frames(b"".join(writer.frames))[-1]
+        self.assertEqual("unknown_request_id", _payload(unknown)["code"])
+
+    def test_duplicate_active_id_is_rejected_without_retiring_active_slot(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+        )
+        writer = _RecordingWriter()
+        server._writer = writer  # type: ignore[assignment]
+        slot = _RequestSlot(
+            request=SynthesisRequest(request_id=42, text="active"),
+            cancel_event=threading.Event(),
+        )
+        with server._condition:
+            server._active[42] = slot
+
+        server._handle_synthesize(
+            42,
+            {"message_type": "synthesize", "text": "duplicate"},
+        )
+
+        self.assertIs(server._active[42], slot)
+        error = _parse_frames(b"".join(writer.frames))[-1]
+        self.assertEqual("duplicate_request_id", _payload(error)["code"])
+        self.assertEqual(0, server._terminal_request_id_high_water)
+
+    def test_active_lower_id_remains_valid_after_high_water_advances(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=FailingLoadEngine(),
+        )
+        writer = _RecordingWriter()
+        server._writer = writer  # type: ignore[assignment]
+        slot = _RequestSlot(
+            request=SynthesisRequest(request_id=5, text="Hello"),
+            cancel_event=threading.Event(),
+            state="running",
+        )
+        with server._condition:
+            server._active[5] = slot
+            server._terminalize_locked(100)
+        self.assertEqual(100, server._terminal_request_id_high_water)
+
+        server._handle_cancel(5)
+        self.assertTrue(slot.cancel_event.is_set())
+        self.assertNotIn(5, server._active)
+        self.assertEqual(
+            "cancelled",
+            _payload(_parse_frames(b"".join(writer.frames))[0])["message_type"],
+        )
+
+    def test_new_server_session_resets_terminal_id_high_water(self) -> None:
+        first = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=FailingLoadEngine(),
+        )
+        with first._condition:
+            first._terminalize_locked(42)
+        second = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=FailingLoadEngine(),
+        )
+        self.assertEqual(42, first._terminal_request_id_high_water)
+        self.assertEqual(0, second._terminal_request_id_high_water)
+
+    def test_shutdown_cancellation_advances_terminal_high_water(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=FailingLoadEngine(),
+        )
+        writer = _RecordingWriter()
+        server._writer = writer  # type: ignore[assignment]
+        slots = [
+            _RequestSlot(
+                request=SynthesisRequest(request_id=request_id, text="Hello"),
+                cancel_event=threading.Event(),
+            )
+            for request_id in (3, 7)
+        ]
+        with server._condition:
+            for slot in slots:
+                server._active[slot.request.request_id] = slot
+                server._pending.append(slot.request.request_id)
+
+        server._request_shutdown(send_ack=True)
+
+        self.assertEqual(7, server._terminal_request_id_high_water)
+        self.assertEqual({}, server._active)
+        self.assertTrue(all(slot.cancel_event.is_set() for slot in slots))
+        messages = [
+            _payload(frame)["message_type"]
+            for frame in _parse_frames(b"".join(writer.frames))
+        ]
+        self.assertEqual(["cancelled", "cancelled"], messages)
+
     def test_running_cancel_is_terminal_before_engine_returns(self) -> None:
         stderr = io.StringIO()
         server = StdioWorkerServer(

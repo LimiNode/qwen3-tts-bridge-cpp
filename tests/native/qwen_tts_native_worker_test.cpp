@@ -14,6 +14,7 @@
 #include <fstream>
 #include <iterator>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #define CHECK(expr) do { \
@@ -283,6 +284,74 @@ int main() {
     CHECK(static_cast<unsigned char>(probe.audio[1]) == 0x80u);
     CHECK(static_cast<unsigned char>(probe.audio[10]) == 0xffu);
     CHECK(static_cast<unsigned char>(probe.audio[11]) == 0x7fu);
+
+    // The native worker keeps constant terminal-ID state.  Exercise a larger
+    // sequential run, then verify that a lower retired ID cannot be reused.
+    QwenTtsClient history_client;
+    QwenTtsClientOptions history_options;
+    history_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(history_client.start(options(8), history_options));
+    for (RequestId request_id = 1; request_id <= 64; ++request_id) {
+        Probe history_probe;
+        TtsCallbacks history_callbacks;
+        history_callbacks.on_completed = [&history_probe]() {
+            std::lock_guard<std::mutex> lock(history_probe.mutex);
+            ++history_probe.completed;
+            history_probe.condition.notify_all();
+        };
+        history_callbacks.on_error = [&history_probe](const TtsError& error) {
+            std::lock_guard<std::mutex> lock(history_probe.mutex);
+            history_probe.errors.push_back(error);
+            history_probe.condition.notify_all();
+        };
+        TtsRequest history_request;
+        history_request.id = request_id;
+        history_request.text = "terminal history request";
+        CHECK(history_client.synthesize_async(
+            std::move(history_request), history_callbacks) == request_id);
+        {
+            std::unique_lock<std::mutex> lock(history_probe.mutex);
+            CHECK(history_probe.condition.wait_for(
+                lock,
+                std::chrono::seconds(5),
+                [&history_probe]() {
+                    return history_probe.completed != 0 || !history_probe.errors.empty();
+                }));
+        }
+        CHECK(history_probe.completed == 1);
+        CHECK(history_probe.errors.empty());
+    }
+
+    Probe retired_probe;
+    TtsCallbacks retired_callbacks;
+    retired_callbacks.on_completed = [&retired_probe]() {
+        std::lock_guard<std::mutex> lock(retired_probe.mutex);
+        ++retired_probe.completed;
+        retired_probe.condition.notify_all();
+    };
+    retired_callbacks.on_error = [&retired_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(retired_probe.mutex);
+        retired_probe.errors.push_back(error);
+        retired_probe.condition.notify_all();
+    };
+    TtsRequest retired_request;
+    retired_request.id = 1;
+    retired_request.text = "retired terminal history request";
+    CHECK(history_client.synthesize_async(
+        std::move(retired_request), retired_callbacks) == 1);
+    {
+        std::unique_lock<std::mutex> lock(retired_probe.mutex);
+        CHECK(retired_probe.condition.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [&retired_probe]() {
+                return retired_probe.completed != 0 || !retired_probe.errors.empty();
+            }));
+    }
+    CHECK(retired_probe.completed == 0);
+    CHECK(retired_probe.errors.size() == 1);
+    CHECK(retired_probe.errors.front().code == "duplicate_request_id");
+    history_client.stop();
 
     const auto reference_wav = runtime / "reference-cache-test.wav";
     const auto diagnostic_dump_dir = runtime / "diagnostic-dump";
