@@ -68,10 +68,11 @@ private:
     std::condition_variable condition_;
     std::deque<std::shared_ptr<RequestSlot>> pending_;
     std::unordered_map<RequestId, std::shared_ptr<RequestSlot>> active_;
-    // Request IDs at or below this value are retired for the current session.
-    // Keeping a high-water mark prevents unbounded terminal-ID history while
-    // preserving the protocol's no-reuse safety against late cancellation.
-    RequestId terminal_id_high_water_ = 0;
+    // New request IDs must be strictly greater than this value for the
+    // current session.  Keeping an acceptance high-water mark avoids an
+    // unbounded terminal-ID history while making ordering deterministic even
+    // when earlier requests remain active.
+    RequestId accepted_id_high_water_ = 0;
     bool hello_seen_ = false;
     bool ready_sent_ = false;
     bool shutdown_requested_ = false;

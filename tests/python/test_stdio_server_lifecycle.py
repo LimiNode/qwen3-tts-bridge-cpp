@@ -344,7 +344,88 @@ class _EofAfterEvent:
 
 
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
-    def test_terminal_id_high_water_is_constant_memory_and_retires_lower_ids(
+    def test_direct_qtb_frames_reject_unseen_lower_id_after_acceptance(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+            + _control_frame(
+                100,
+                {"message_type": "synthesize", "text": "first"},
+            )
+            + _control_frame(
+                42,
+                {"message_type": "synthesize", "text": "lower"},
+            )
+            + _control_frame(
+                0,
+                {"message_type": "shutdown", "mode": "cancel"},
+            )
+        )
+        output_stream = io.BytesIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=output_stream,
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+        )
+
+        self.assertEqual(0, server.run())
+        frames = _parse_frames(output_stream.getvalue())
+        errors = [
+            frame for frame in frames
+            if frame.header.frame_type == FrameType.ERROR_JSON
+        ]
+        self.assertEqual(1, len(errors))
+        self.assertEqual(42, errors[0].header.request_id)
+        self.assertEqual("duplicate_request_id", _payload(errors[0])["code"])
+
+    def test_direct_qtb_frames_reject_lower_id_after_maximum(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+            + _control_frame(
+                (1 << 64) - 1,
+                {"message_type": "synthesize", "text": "maximum"},
+            )
+            + _control_frame(
+                1,
+                {"message_type": "synthesize", "text": "wrapped"},
+            )
+            + _control_frame(
+                0,
+                {"message_type": "shutdown", "mode": "cancel"},
+            )
+        )
+        output_stream = io.BytesIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=output_stream,
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+        )
+
+        self.assertEqual(0, server.run())
+        errors = [
+            frame for frame in _parse_frames(output_stream.getvalue())
+            if frame.header.frame_type == FrameType.ERROR_JSON
+        ]
+        self.assertEqual(1, len(errors))
+        self.assertEqual(1, errors[0].header.request_id)
+        self.assertEqual("duplicate_request_id", _payload(errors[0])["code"])
+
+    def test_accepted_id_high_water_is_constant_memory_and_rejects_lower_ids(
         self,
     ) -> None:
         server = StdioWorkerServer(
@@ -357,11 +438,8 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         server._writer = writer  # type: ignore[assignment]
 
         with server._condition:
-            for request_id in range(1, 10_001):
-                server._terminalize_locked(request_id)
-            self.assertEqual(10_000, server._terminal_request_id_high_water)
-            server._terminalize_locked(9_999)
-            self.assertEqual(10_000, server._terminal_request_id_high_water)
+            server._accepted_request_id_high_water = 10_000
+            self.assertEqual(10_000, server._accepted_request_id_high_water)
 
         # The old per-request tombstone set is intentionally gone.
         self.assertFalse(hasattr(server, "_terminal_request_ids"))
@@ -371,8 +449,8 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertEqual(FrameType.ERROR_JSON, duplicate.header.frame_type)
         self.assertEqual("duplicate_request_id", _payload(duplicate)["code"])
 
-        # A late cancel for a retired ID remains idempotent, while a future
-        # unknown ID still reports the protocol error.
+        # A late cancel at/below the accepted-ID watermark remains idempotent,
+        # while a future unknown ID still reports the protocol error.
         writer.frames.clear()
         server._handle_cancel(1)
         self.assertEqual([], writer.frames)
@@ -404,9 +482,9 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertIs(server._active[42], slot)
         error = _parse_frames(b"".join(writer.frames))[-1]
         self.assertEqual("duplicate_request_id", _payload(error)["code"])
-        self.assertEqual(0, server._terminal_request_id_high_water)
+        self.assertEqual(0, server._accepted_request_id_high_water)
 
-    def test_active_lower_id_remains_valid_after_high_water_advances(self) -> None:
+    def test_active_lower_id_remains_valid_after_higher_id_is_accepted(self) -> None:
         server = StdioWorkerServer(
             input_stream=io.BytesIO(),
             output_stream=io.BytesIO(),
@@ -422,8 +500,8 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         )
         with server._condition:
             server._active[5] = slot
-            server._terminalize_locked(100)
-        self.assertEqual(100, server._terminal_request_id_high_water)
+            server._accepted_request_id_high_water = 100
+        self.assertEqual(100, server._accepted_request_id_high_water)
 
         server._handle_cancel(5)
         self.assertTrue(slot.cancel_event.is_set())
@@ -433,7 +511,7 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             _payload(_parse_frames(b"".join(writer.frames))[0])["message_type"],
         )
 
-    def test_new_server_session_resets_terminal_id_high_water(self) -> None:
+    def test_new_server_session_resets_accepted_id_high_water(self) -> None:
         first = StdioWorkerServer(
             input_stream=io.BytesIO(),
             output_stream=io.BytesIO(),
@@ -441,17 +519,17 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             engine=FailingLoadEngine(),
         )
         with first._condition:
-            first._terminalize_locked(42)
+            first._accepted_request_id_high_water = 42
         second = StdioWorkerServer(
             input_stream=io.BytesIO(),
             output_stream=io.BytesIO(),
             error_stream=io.StringIO(),
             engine=FailingLoadEngine(),
         )
-        self.assertEqual(42, first._terminal_request_id_high_water)
-        self.assertEqual(0, second._terminal_request_id_high_water)
+        self.assertEqual(42, first._accepted_request_id_high_water)
+        self.assertEqual(0, second._accepted_request_id_high_water)
 
-    def test_shutdown_cancellation_advances_terminal_high_water(self) -> None:
+    def test_shutdown_cancellation_does_not_change_accepted_id_high_water(self) -> None:
         server = StdioWorkerServer(
             input_stream=io.BytesIO(),
             output_stream=io.BytesIO(),
@@ -468,13 +546,14 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             for request_id in (3, 7)
         ]
         with server._condition:
+            server._accepted_request_id_high_water = 7
             for slot in slots:
                 server._active[slot.request.request_id] = slot
                 server._pending.append(slot.request.request_id)
 
         server._request_shutdown(send_ack=True)
 
-        self.assertEqual(7, server._terminal_request_id_high_water)
+        self.assertEqual(7, server._accepted_request_id_high_water)
         self.assertEqual({}, server._active)
         self.assertTrue(all(slot.cancel_event.is_set() for slot in slots))
         messages = [

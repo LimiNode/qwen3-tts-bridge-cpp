@@ -256,11 +256,11 @@ class StdioWorkerServer:
         self._condition = threading.Condition()
         self._pending: Deque[int] = deque()
         self._active: dict[int, _RequestSlot] = {}
-        # The protocol recommends monotonic request IDs.  Retain only the
-        # highest terminal ID so the worker cannot grow a per-request history
-        # while still preventing reuse (and late-cancel races) for all lower
-        # IDs in this session.
-        self._terminal_request_id_high_water = 0
+        # Request IDs are strictly increasing by acceptance order within a
+        # worker session.  This single watermark replaces an unbounded
+        # per-request terminal history while keeping acceptance deterministic
+        # even when earlier requests are still active.
+        self._accepted_request_id_high_water = 0
 
         self._hello_seen = False
         self._warmed_up = False
@@ -485,11 +485,12 @@ class StdioWorkerServer:
         with self._condition:
             if (
                 request_id in self._active
-                or request_id <= self._terminal_request_id_high_water
+                or request_id <= self._accepted_request_id_high_water
             ):
                 duplicate = True
             else:
                 duplicate = False
+                self._accepted_request_id_high_water = request_id
                 self._active[request_id] = _RequestSlot(
                     request=request,
                     cancel_event=threading.Event(),
@@ -667,7 +668,7 @@ class StdioWorkerServer:
         with self._condition:
             slot = self._active.get(request_id)
             if slot is None:
-                unknown = request_id > self._terminal_request_id_high_water
+                unknown = request_id > self._accepted_request_id_high_water
             elif slot.state == "queued":
                 try:
                     self._pending.remove(request_id)
@@ -1161,8 +1162,6 @@ class StdioWorkerServer:
 
     def _terminalize_locked(self, request_id: int) -> None:
         self._active.pop(request_id, None)
-        if request_id > self._terminal_request_id_high_water:
-            self._terminal_request_id_high_water = request_id
 
     def _send_error(
         self,

@@ -286,7 +286,7 @@ int main() {
     CHECK(static_cast<unsigned char>(probe.audio[11]) == 0x7fu);
 
     // The native worker keeps constant terminal-ID state.  Exercise a larger
-    // sequential run, then verify that a lower retired ID cannot be reused.
+    // sequential run, then verify that a lower ID cannot be reused.
     QwenTtsClient history_client;
     QwenTtsClientOptions history_options;
     history_options.session.startup_timeout = std::chrono::seconds(5);
@@ -322,35 +322,30 @@ int main() {
         CHECK(history_probe.errors.empty());
     }
 
-    Probe retired_probe;
-    TtsCallbacks retired_callbacks;
-    retired_callbacks.on_completed = [&retired_probe]() {
-        std::lock_guard<std::mutex> lock(retired_probe.mutex);
-        ++retired_probe.completed;
-        retired_probe.condition.notify_all();
+    Probe lower_probe;
+    TtsCallbacks lower_callbacks;
+    lower_callbacks.on_completed = [&lower_probe]() {
+        std::lock_guard<std::mutex> lock(lower_probe.mutex);
+        ++lower_probe.completed;
+        lower_probe.condition.notify_all();
     };
-    retired_callbacks.on_error = [&retired_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(retired_probe.mutex);
-        retired_probe.errors.push_back(error);
-        retired_probe.condition.notify_all();
+    lower_callbacks.on_error = [&lower_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(lower_probe.mutex);
+        lower_probe.errors.push_back(error);
+        lower_probe.condition.notify_all();
     };
-    TtsRequest retired_request;
-    retired_request.id = 1;
-    retired_request.text = "retired terminal history request";
+    TtsRequest lower_request;
+    lower_request.id = 1;
+    lower_request.text = "lower request ID";
+    // The client enforces the same acceptance-order policy locally, so this
+    // lower ID is rejected before another frame reaches the worker.
     CHECK(history_client.synthesize_async(
-        std::move(retired_request), retired_callbacks) == 1);
+        std::move(lower_request), lower_callbacks) == 0);
     {
-        std::unique_lock<std::mutex> lock(retired_probe.mutex);
-        CHECK(retired_probe.condition.wait_for(
-            lock,
-            std::chrono::seconds(5),
-            [&retired_probe]() {
-                return retired_probe.completed != 0 || !retired_probe.errors.empty();
-            }));
+        std::lock_guard<std::mutex> lock(lower_probe.mutex);
+        CHECK(lower_probe.completed == 0);
+        CHECK(lower_probe.errors.empty());
     }
-    CHECK(retired_probe.completed == 0);
-    CHECK(retired_probe.errors.size() == 1);
-    CHECK(retired_probe.errors.front().code == "duplicate_request_id");
     history_client.stop();
 
     const auto reference_wav = runtime / "reference-cache-test.wav";
