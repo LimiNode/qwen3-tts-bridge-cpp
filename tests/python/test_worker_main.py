@@ -30,6 +30,7 @@ class _CapturingServer:
         engine: object,
         worker_version: str,
         output_queue_size: int,
+        max_admitted_requests: int,
         engine_startup_mode: str,
         canary_runtime_provenance: object | None,
     ) -> None:

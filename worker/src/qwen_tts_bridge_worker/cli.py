@@ -45,6 +45,7 @@ def build_worker_config(args: argparse.Namespace) -> WorkerConfig:
     return WorkerConfig(
         worker_version=_selected_worker_version(args),
         output_queue_size=_selected_output_queue_size(args),
+        max_admitted_requests=_selected_max_admitted_requests(args),
         engine_startup_mode=_selected_engine_startup_mode(args, engine),
         engine=engine,
         canary_runtime_provenance=_build_canary_runtime_provenance(args, engine),
@@ -278,6 +279,12 @@ def _add_root_server_options(parser: argparse.ArgumentParser) -> None:
         type=int,
     )
     server_group.add_argument(
+        "--max-admitted-requests",
+        dest="root_max_admitted_requests",
+        type=int,
+        help="Maximum queued plus physically running requests (default: 16).",
+    )
+    server_group.add_argument(
         "--canary-runtime-profile-manifest",
         dest="root_canary_runtime_profile_manifest",
         type=Path,
@@ -296,6 +303,12 @@ def _server_options_parent_parser() -> argparse.ArgumentParser:
         "--output-queue-size",
         dest="command_output_queue_size",
         type=int,
+    )
+    parser.add_argument(
+        "--max-admitted-requests",
+        dest="command_max_admitted_requests",
+        type=int,
+        help="Maximum queued plus physically running requests (default: 16).",
     )
     parser.add_argument(
         "--canary-runtime-profile-manifest",
@@ -832,6 +845,15 @@ def _selected_output_queue_size(args: argparse.Namespace) -> int:
         getattr(args, "command_output_queue_size", None),
         "output-queue-size",
         128,
+    )
+
+
+def _selected_max_admitted_requests(args: argparse.Namespace) -> int:
+    return _selected_server_option(
+        args.root_max_admitted_requests,
+        getattr(args, "command_max_admitted_requests", None),
+        "max-admitted-requests",
+        16,
     )
 
 

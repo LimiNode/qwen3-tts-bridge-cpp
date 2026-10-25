@@ -88,6 +88,30 @@ unknown_request_id`. The maximum non-zero ID may be accepted once; thereafter
 the session's ID space is exhausted and clients must fail closed or start a new
 worker session. IDs must never wrap around.
 
+## Worker Admission
+
+Each worker instance applies a finite, runtime-configured admission limit to
+synthesis requests. The supported range is `[1, 65536]`, with a default of 16.
+The limit counts both requests waiting in the worker queue
+and the request physically executing in the engine; it is not a protocol
+handshake and does not change the request lifecycle messages.
+
+When the limit is reached, a new synthesis request is rejected with:
+
+```text
+category = resource_error
+code     = resource_exhausted
+```
+
+The rejected request has not been admitted and therefore must not advance the
+accepted-ID high-water mark. Cancelling a queued request releases its slot
+immediately. Cancelling a running request is cooperative: its slot remains
+occupied until the engine call returns and the worker has physically
+terminalized the request. Engine failures, startup failure, and shutdown
+release every slot exactly once. Workers should expose the configured limit
+and current occupancy through bounded diagnostics rather than an unbounded
+history of requests.
+
 ## Payload Limits
 
 The parser must validate `payload_size` before allocating a payload buffer.

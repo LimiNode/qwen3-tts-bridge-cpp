@@ -152,8 +152,14 @@ private:
     bool failed_ = false;
 };
 
-StdioServer::StdioServer(NativeEngine& engine)
-    : engine_(engine), writer_(std::make_unique<OutputWriter>()) {}
+StdioServer::StdioServer(NativeEngine& engine, std::size_t max_admitted_requests)
+    : engine_(engine),
+      writer_(std::make_unique<OutputWriter>()),
+      max_admitted_requests_(max_admitted_requests) {
+    if (max_admitted_requests_ < 1 || max_admitted_requests_ > 65536) {
+        throw std::invalid_argument("max_admitted_requests must be in [1, 65536]");
+    }
+}
 
 StdioServer::~StdioServer() {
     request_shutdown(false);
@@ -166,6 +172,8 @@ StdioServer::~StdioServer() {
 }
 
 int StdioServer::run() {
+    std::cerr << "qtb_metric {\"event\":\"worker_admission_started\",\"admission_limit\":"
+              << max_admitted_requests_ << ",\"admitted_requests\":0}\n" << std::flush;
     writer_->start();
     engine_thread_ = std::thread([this]() { engine_loop(); });
     read_loop();
@@ -346,16 +354,23 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
     std::uint32_t position = 0;
     bool shutting_down = false;
     bool duplicate = false;
+    bool admission_rejected = false;
+    std::size_t admitted_requests = 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         shutting_down = shutdown_requested_;
         duplicate = active_.count(request_id) != 0 || request_id <= accepted_id_high_water_;
-        if (!shutting_down && !duplicate) {
+        if (!shutting_down && !duplicate && admitted_requests_ >= max_admitted_requests_) {
+            admission_rejected = true;
+        }
+        if (!shutting_down && !duplicate && !admission_rejected) {
             accepted_id_high_water_ = request_id;
+            ++admitted_requests_;
             active_.emplace(request_id, slot);
             pending_.push_back(slot);
             position = static_cast<std::uint32_t>(pending_.size());
         }
+        admitted_requests = admitted_requests_;
     }
     if (shutting_down) {
         send_error(request_id, "protocol_error", "shutdown_in_progress", "native worker is shutting down");
@@ -363,6 +378,14 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
     }
     if (duplicate) {
         send_error(request_id, "request_error", "duplicate_request_id", "request_id was already used in this session");
+        return;
+    }
+    if (admission_rejected) {
+        std::cerr << "qtb_metric {\"event\":\"request_admission_rejected\",\"request_id\":"
+                  << request_id << ",\"reason\":\"resource_exhausted\",\"admission_limit\":"
+                  << max_admitted_requests_ << ",\"admitted_requests\":" << admitted_requests
+                  << "}\n" << std::flush;
+        send_error(request_id, "resource_error", "resource_exhausted", "worker admission limit reached");
         return;
     }
     QueuedMessage queued;
@@ -391,9 +414,13 @@ void StdioServer::handle_cancel(RequestId request_id) {
             slot->cancelled.store(true, std::memory_order_relaxed);
             if (slot->state == RequestState::Queued) {
                 pending_.erase(std::remove(pending_.begin(), pending_.end(), slot), pending_.end());
-                if (!slot->terminal.exchange(true)) {
-                    active_.erase(it);
-                    cancelled_slot = slot;
+            if (!slot->terminal.exchange(true)) {
+                active_.erase(it);
+                --admitted_requests_;
+                std::cerr << "qtb_metric {\"event\":\"request_admission_released\",\"request_id\":"
+                          << request_id << ",\"admission_limit\":" << max_admitted_requests_
+                          << ",\"admitted_requests\":" << admitted_requests_ << "}\n" << std::flush;
+                cancelled_slot = slot;
                 }
             }
         }
@@ -436,6 +463,10 @@ void StdioServer::request_shutdown(bool send_ack) {
             slot->cancelled.store(true, std::memory_order_relaxed);
             if (!slot->terminal.exchange(true)) {
                 active_.erase(slot->id);
+                --admitted_requests_;
+                std::cerr << "qtb_metric {\"event\":\"request_admission_released\",\"request_id\":"
+                          << slot->id << ",\"admission_limit\":" << max_admitted_requests_
+                          << ",\"admitted_requests\":" << admitted_requests_ << "}\n" << std::flush;
                 queued.push_back(std::move(slot));
             }
         }
@@ -591,6 +622,12 @@ bool StdioServer::terminalize(const std::shared_ptr<RequestSlot>& slot) {
     }
     std::lock_guard<std::mutex> lock(mutex_);
     active_.erase(slot->id);
+    if (admitted_requests_ > 0) {
+        --admitted_requests_;
+    }
+    std::cerr << "qtb_metric {\"event\":\"request_admission_released\",\"request_id\":"
+              << slot->id << ",\"admission_limit\":" << max_admitted_requests_
+              << ",\"admitted_requests\":" << admitted_requests_ << "}\n" << std::flush;
     return true;
 }
 

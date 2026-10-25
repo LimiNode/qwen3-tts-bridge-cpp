@@ -6,6 +6,7 @@
 #include <cstring>
 #include <string>
 #include <chrono>
+#include <fstream>
 #include <thread>
 
 struct qt_context {
@@ -137,6 +138,18 @@ QT_API qt_status qt_synthesize(
         {0.75F, 1.0F, 0.25F, 0.0F}
     };
     if (params->on_chunk != nullptr) {
+        if (std::strcmp(params->text, "barrier running") == 0) {
+            while (params->cancel == nullptr || !params->cancel(params->cancel_user_data)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            const char* release_path = std::getenv("QTB_FAKE_RELEASE_PATH");
+            while (release_path == nullptr || !std::ifstream(release_path).good()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                release_path = std::getenv("QTB_FAKE_RELEASE_PATH");
+            }
+            g_finish_reason = QT_FINISH_UNKNOWN;
+            return QT_STATUS_CANCELLED;
+        }
         for (const auto& chunk : chunks) {
             if (params->cancel != nullptr && params->cancel(params->cancel_user_data)) {
                 g_finish_reason = QT_FINISH_UNKNOWN;

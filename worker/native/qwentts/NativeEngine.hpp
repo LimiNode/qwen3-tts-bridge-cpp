@@ -5,6 +5,7 @@
 #include <qwen_tts_bridge/protocol/control.hpp>
 
 #include <atomic>
+#include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -40,6 +41,8 @@ struct NativeEngineOptions {
     int eos_guard_min_expected_frames = 24;
     int eos_guard_frames_per_text_token = 4;
     int max_text_bytes = 0; ///< Optional preflight bound; 0 disables length routing.
+    /// Maximum queued plus physically running requests admitted by the worker.
+    std::size_t max_admitted_requests = 16;
     /// Cache qt_voice_ref values for repeated reference WAV requests.
     /// The option is deliberately opt-in because it must preserve PCM and
     /// voice-identity parity with the uncached raw-WAV path first.

@@ -236,6 +236,7 @@ class StdioWorkerServer:
         engine: TtsEngine,
         worker_version: str = "0.2.0",
         output_queue_size: int = 128,
+        max_admitted_requests: int = 16,
         read_chunk_size: int = 4096,
         engine_startup_mode: str = "main",
         canary_runtime_provenance: CanaryRuntimeProvenance | None = None,
@@ -244,6 +245,9 @@ class StdioWorkerServer:
         self._error = error_stream
         self._engine = engine
         self._worker_version = worker_version
+        if max_admitted_requests < 1 or max_admitted_requests > 65536:
+            raise ValueError("max_admitted_requests must be in [1, 65536]")
+        self._max_admitted_requests = max_admitted_requests
         self._read_chunk_size = read_chunk_size
         self._engine_startup_mode = engine_startup_mode
         self._canary_runtime_provenance = canary_runtime_provenance
@@ -256,6 +260,11 @@ class StdioWorkerServer:
         self._condition = threading.Condition()
         self._pending: Deque[int] = deque()
         self._active: dict[int, _RequestSlot] = {}
+        self._physical: dict[int, _RequestSlot] = {}
+        # Admission covers queued requests and the request physically running
+        # in the engine. Running cancellation releases it only after the
+        # engine iterator has unwound.
+        self._admitted_requests = 0
         # Request IDs are strictly increasing by acceptance order within a
         # worker session.  This single watermark replaces an unbounded
         # per-request terminal history while keeping acceptance deterministic
@@ -482,22 +491,27 @@ class StdioWorkerServer:
             self._emit_rejected_request_finished(request_id, received_at)
             return
 
+        admission_rejected = False
+        admitted_requests = 0
         with self._condition:
-            if (
+            duplicate = (
                 request_id in self._active
                 or request_id <= self._accepted_request_id_high_water
-            ):
-                duplicate = True
-            else:
-                duplicate = False
+            )
+            if not duplicate and self._admitted_requests >= self._max_admitted_requests:
+                admission_rejected = True
+            elif not duplicate:
                 self._accepted_request_id_high_water = request_id
+                self._admitted_requests += 1
                 self._active[request_id] = _RequestSlot(
                     request=request,
                     cancel_event=threading.Event(),
                     queued_at=received_at,
                 )
+                self._physical[request_id] = self._active[request_id]
                 self._pending.append(request_id)
                 position = len(self._pending)
+            admitted_requests = self._admitted_requests
 
         if duplicate:
             self._send_error(
@@ -505,6 +519,21 @@ class StdioWorkerServer:
                 "request_error",
                 "duplicate_request_id",
                 "request_id was already used in this session",
+            )
+            return
+        if admission_rejected:
+            self._metrics.emit(
+                "request_admission_rejected",
+                request_id=request_id,
+                reason="resource_exhausted",
+                admission_limit=self._max_admitted_requests,
+                admitted_requests=admitted_requests,
+            )
+            self._send_error(
+                request_id,
+                "resource_error",
+                "resource_exhausted",
+                "worker admission limit reached",
             )
             return
 
@@ -681,7 +710,9 @@ class StdioWorkerServer:
                     cancelled_slot = slot
             elif slot.state == "running":
                 slot.cancel_event.set()
-                self._terminalize_locked(request_id)
+                # The request is logically terminal now, but its physical
+                # admission remains held by the engine thread.
+                self._active.pop(request_id, None)
                 if not slot.terminal_notified:
                     slot.terminal_notified = True
                     send_cancelled = True
@@ -846,6 +877,8 @@ class StdioWorkerServer:
             startup_ms=elapsed_milliseconds(started_at),
             warmed_up=self._warmed_up,
             startup_mode=self._engine_startup_mode,
+            admission_limit=self._max_admitted_requests,
+            admitted_requests=self._admitted_requests,
             **_thread_context_fields(),
             **_runtime_memory_fields(),
         )
@@ -1083,13 +1116,17 @@ class StdioWorkerServer:
 
     def _finish_cancelled(self, slot: _RequestSlot) -> None:
         request_id = slot.request.request_id
+        emit_cancelled = False
         with self._condition:
-            if slot.terminal_notified:
-                return
-            slot.terminal_notified = True
+            if not slot.terminal_notified:
+                slot.terminal_notified = True
+                emit_cancelled = True
+            # This is the physical end of the engine call.  In particular,
+            # running cancellation must retain admission until this point.
             self._terminalize_locked(request_id)
-        self._emit_request_finished(slot, "cancelled")
-        self._writer.send(control_frame(request_id, {"message_type": "cancelled"}))
+        if emit_cancelled:
+            self._emit_request_finished(slot, "cancelled")
+            self._writer.send(control_frame(request_id, {"message_type": "cancelled"}))
 
     def _emit_request_finished(
         self,
@@ -1162,6 +1199,14 @@ class StdioWorkerServer:
 
     def _terminalize_locked(self, request_id: int) -> None:
         self._active.pop(request_id, None)
+        if self._physical.pop(request_id, None) is not None:
+            self._admitted_requests -= 1
+            self._metrics.emit(
+                "request_admission_released",
+                request_id=request_id,
+                admission_limit=self._max_admitted_requests,
+                admitted_requests=self._admitted_requests,
+            )
 
     def _send_error(
         self,
