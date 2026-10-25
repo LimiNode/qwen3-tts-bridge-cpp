@@ -91,15 +91,15 @@ compile: disabled
 CUDA graphs: disabled
 max_seq_len: 768
 emit_every_frames: 8
-elapsed: 121.328 s
+elapsed: 56.248 s
 ```
 
 The run returned exit code `0` and produced five non-empty audio frames
-(`137,100` PCM bytes). The worker reported `completed`, `termination_reason=eos`,
+(`140,940` PCM bytes). The worker reported `completed`, `termination_reason=eos`,
 and `natural_eos=true`; it did not hit `max_new_tokens` or `max_seq_len`.
-The generation trace contained 36 codec frames and the bridge reset completed
-with empty static-cache sequence lengths. The raw receipt is retained outside
-Git at `E:\stage-a-base-evidence\b1-real-base-smoke.json`.
+The generation trace contained 37 codec frames. The authoritative UTF-8 receipt
+is retained outside Git at
+`E:\stage-a-base-evidence\b1-real-base-smoke-utf8.json`.
 
 This smoke proves that the frozen Base checkpoint, registered voice, relocated
 worker, and CUDA runtime can complete one real synthesis and clean EOS. It does

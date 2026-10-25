@@ -44,14 +44,14 @@
     "text": "Сегодня проверяем реальный русский голос.",
     "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
     "audio_frames": 5,
-    "audio_bytes": 137100,
-    "elapsed_seconds": 121.328,
+    "audio_bytes": 140940,
+    "elapsed_seconds": 56.248,
     "natural_eos": true,
     "termination_reason": "eos",
     "hit_max_new_tokens": false,
     "hit_max_seq_len": false,
-    "codec_frame_count": 36,
-    "raw_receipt": "E:/stage-a-base-evidence/b1-real-base-smoke.json",
+    "codec_frame_count": 37,
+    "raw_receipt": "E:/stage-a-base-evidence/b1-real-base-smoke-utf8.json",
     "scope": "initial smoke only; full B1/B2, listening, playback, restart, and cancellation gates remain pending"
   },
   "execution_matrix": {
