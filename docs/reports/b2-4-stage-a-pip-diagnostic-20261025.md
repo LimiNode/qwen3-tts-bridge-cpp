@@ -30,19 +30,26 @@ pip's temporary paths from the system drive to E: changed the behavior.
 The exact locked install was run in a fresh Python 3.11 virtual environment:
 
 ```powershell
-$env:TEMP = '<worktree>/.tmp/pip-diagnostic/temp'
-$env:TMP = '<worktree>/.tmp/pip-diagnostic/temp'
-$env:TMPDIR = '<worktree>/.tmp/pip-diagnostic/temp'
+$venvPython = '.\.tmp\pip-diagnostic\venv-e\Scripts\python.exe'
+$diagnosticTemp = (Resolve-Path '.\.tmp\pip-diagnostic\temp').Path
+$env:TEMP = $diagnosticTemp
+$env:TMP = $diagnosticTemp
+$env:TMPDIR = $diagnosticTemp
 
-<venv>/Scripts/python.exe -m pip --disable-pip-version-check install -vvv \
-  --log .tmp/pip-diagnostic/pip-e.verbose.log \
-  --no-warn-script-location \
-  -r worker/requirements-packaging.lock.txt -e worker
+& $venvPython -m pip --disable-pip-version-check install -vvv `
+  --log '.\.tmp\pip-diagnostic\pip-e.verbose.log' `
+  --no-warn-script-location `
+  -r 'worker\requirements-packaging.lock.txt' `
+  -e '.\worker'
 ```
 
-The pip cache was not relocated. This kept E: temporary staging as the only
-changed variable. The run had a 360-second watchdog budget and was terminated
-by that watchdog; pip did not emit a final exit code.
+The pip cache was intentionally not relocated. The intended controlled change
+was to redirect temporary staging to E:, while the run itself used a fresh venv
+instead of the earlier partially prepared environment. There was no matched
+same-venv C:-staging A/B run, so this experiment does not isolate the
+performance effect of staging relocation from all other factors. The run had a
+360-second watchdog budget and was terminated by that watchdog; pip did not
+emit a final exit code.
 
 At the start of the run, free space was approximately 103.9 GB on C: and
 79.3 GB on E:. The effective pip cache remained
