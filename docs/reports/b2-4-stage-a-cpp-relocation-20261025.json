@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "acceptance": "pass_model_free_cpp_and_relocation",
+  "bridge_main": "3ffa55588b80824e58e58b8ec745f7abdc4b599a",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "msvc": "19.44.35228.0",
+    "architecture": "x64",
+    "configuration": "Release"
+  },
+  "cpp_binary": {
+    "name": "qwen_tts_save_wav.exe",
+    "bytes": 450048,
+    "sha256": "DBD264613E432FEDD3D942B15C7DD40CC032A8A8F0E9D38B6B39373E79242B9D"
+  },
+  "sealed_package": {
+    "files": 35935,
+    "bytes": 5332328507,
+    "build_manifest_sha256": "EEAB721B426813545CC82D6624BBE8D432050366266B67BF68463FE2BD514F88",
+    "runtime_tree_manifest_sha256": "40C9B1431CA5F8903A23C97D89A3CB0CDAB04AF9B12EE646562C5397493E9BBC"
+  },
+  "checks": {
+    "cpp_transport_smoke": "pass",
+    "cpp_transport_mock_chunks": 2,
+    "cpp_transport_wav_bytes": 9600,
+    "cpp_transport_wav_format": "24000 Hz mono s16",
+    "relocation_manifest_hashes": "pass",
+    "relocated_doctor": "pass",
+    "relocated_source_path_inspection": "pass",
+    "relocated_mock_smoke": "pass",
+    "real_model": "not_run",
+    "listening": "not_run",
+    "rtx4090": "not_run"
+  },
+  "base_prerequisite": {
+    "model_path": "E:/_repoz/qwen3-tts-bridge-cpp/tmp/cmp50hx-r3-external-models/Qwen3-TTS-12Hz-1.7B-Base",
+    "checkpoint": "model.safetensors",
+    "checkpoint_bytes": 3857413744,
+    "checkpoint_sha256": "38FC7FC51C5E776E840414B6FD443962E9411B9654888FD7913E4DA643CB857C",
+    "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+    "reference_wav": "examples/assets/voice-profiles/kraftwerk_robot_ru_fidelity.wav",
+    "reference_wav_bytes": 844844,
+    "reference_wav_sha256": "90E5F7576991EA5B9F0A85E9109F7BD31FF667C4A12D58783A06C650796C3CA1",
+    "full_external_model_manifest": "pending",
+    "deployment_local_voice_registry": "pending"
+  }
+}
