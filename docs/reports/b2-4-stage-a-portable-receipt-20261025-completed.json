@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "acceptance": "pass",
+  "scope": "model-free-portable-python",
+  "main": "21c8cf48a0d2e57e6db86af0ae518c699793d93f",
+  "python": "3.11.9",
+  "pip": "24.0",
+  "torch": "2.10.0+cu128",
+  "torchaudio": "2.10.0+cu128",
+  "submodules": {
+    "Qwen3-TTS-streaming": "25cc5886a753035ac3ed9d4000440b2e842e5e56",
+    "faster-qwen3-tts": "90b596d2ffa41eb2da173db92e6f896df11b19cb"
+  },
+  "provisioning": {
+    "started_utc": "2026-10-25T12:52:35.4426806Z",
+    "finished_utc": "2026-10-25T13:01:11.5350904Z",
+    "exit_code": 0,
+    "pip_check": true,
+    "temporary_staging_drive": "E:"
+  },
+  "package": {
+    "root": "dist/QwenTTSBridge/worker-python",
+    "file_count": 35935,
+    "bytes": 5332328507,
+    "build_manifest_sha256": "EEAB721B426813545CC82D6624BBE8D432050366266B67BF68463FE2BD514F88",
+    "runtime_tree_manifest_sha256": "40C9B1431CA5F8903A23C97D89A3CB0CDAB04AF9B12EE646562C5397493E9BBC",
+    "marker": true,
+    "worker_launcher": true,
+    "doctor_launcher": true,
+    "pyc_count": 0
+  },
+  "checks": {
+    "runtime_tree_manifest": true,
+    "portable_doctor": true,
+    "mock_worker_smoke": true,
+    "mock_chunks": 2,
+    "cpp_transport_smoke": "not_run_no_release_binary",
+    "real_model": "not_run",
+    "listening": "not_run"
+  },
+  "gpu_probe": {
+    "name": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda_runtime": "12.8"
+  }
+}
