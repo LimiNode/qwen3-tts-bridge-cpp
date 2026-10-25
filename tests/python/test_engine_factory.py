@@ -386,6 +386,18 @@ class EngineFactoryTests(unittest.TestCase):
 
         self.assertEqual(3, config.max_admitted_requests)
 
+    def test_admission_limit_has_a_finite_shared_range(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"\[1, 65536\]"):
+            WorkerConfig(max_admitted_requests=0)
+        with self.assertRaisesRegex(ValueError, r"\[1, 65536\]"):
+            WorkerConfig(max_admitted_requests=-1)
+        self.assertEqual(
+            65536,
+            WorkerConfig(max_admitted_requests=65536).max_admitted_requests,
+        )
+        with self.assertRaisesRegex(ValueError, r"\[1, 65536\]"):
+            WorkerConfig(max_admitted_requests=65537)
+
     def test_server_options_work_after_subcommand(self) -> None:
         parser = build_parser()
         args = parser.parse_args(
