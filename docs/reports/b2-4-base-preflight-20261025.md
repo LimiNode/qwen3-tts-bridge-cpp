@@ -1,6 +1,6 @@
 # B2-4 Base 1.7B and registered-voice preflight
 
-Status: **PASS for manifest and voice preflight; real synthesis not started**.
+Status: **PASS for manifest and voice preflight; initial bounded real Base smoke PASS**.
 
 This receipt follows merged Stage A C++/relocation evidence and freezes the
 inputs needed for a separate Base acceptance run. It intentionally does not
@@ -75,6 +75,37 @@ sealed portable doctor (`--voice-registry`, `--require-cuda`). Doctor reported
 one registered voice with the expected ID. The profile remains an experimental
 character profile, not a production identity claim.
 
+## Initial real Base synthesis smoke
+
+After the manifest and registry gates passed, one bounded real-model synthesis
+was run against the relocated portable worker. This is an initial B1/B2 smoke,
+not the complete acceptance run.
+
+```text
+worker: E:\stage-a-relocated\QwenTTSBridge\worker-python\qwen_tts_worker.cmd
+model: Qwen3-TTS-12Hz-1.7B-Base
+voice_id: kraftwerk_robot_ru_bootstrap_fidelity
+text: Сегодня проверяем реальный русский голос.
+runtime: faster / CUDA / bfloat16 / SDPA / eager prefill
+compile: disabled
+CUDA graphs: disabled
+max_seq_len: 768
+emit_every_frames: 8
+elapsed: 121.328 s
+```
+
+The run returned exit code `0` and produced five non-empty audio frames
+(`137,100` PCM bytes). The worker reported `completed`, `termination_reason=eos`,
+and `natural_eos=true`; it did not hit `max_new_tokens` or `max_seq_len`.
+The generation trace contained 36 codec frames and the bridge reset completed
+with empty static-cache sequence lengths. The raw receipt is retained outside
+Git at `E:\stage-a-base-evidence\b1-real-base-smoke.json`.
+
+This smoke proves that the frozen Base checkpoint, registered voice, relocated
+worker, and CUDA runtime can complete one real synthesis and clean EOS. It does
+not yet establish listening quality, a persistent multi-request sequence,
+restart, cancellation/recovery, physical playback, or the full B1/B2 gates.
+
 ## Relocated C++ cross-check
 
 The existing Release client (SHA-256
@@ -92,8 +123,9 @@ WAV (24 kHz, mono, 16-bit PCM). Worker termination was `completed` with
 
 | Gate | Artifact/runtime | Model and voice | Required result | Status |
 | --- | --- | --- | --- | --- |
+| B1/B2 initial real smoke | relocated portable worker | external Base manifest + registered voice | one real PCM synthesis and natural EOS | **PASS** (initial smoke only) |
 | B1 functional | sealed portable package + C++ client | external Base manifest + registered voice | real PCM, natural EOS, persistent sequence, restart, cancellation/recovery, playback/listening | **pending** |
-| B2 clean portable | relocated package + same C++ client | same manifest and `voice_id`; no source paths | real PCM and lifecycle from isolated artifact set | **pending** |
+| B2 clean portable | relocated package + same C++ client | same manifest and `voice_id`; no source paths | repeated real PCM and lifecycle from isolated artifact set | **pending** |
 | C++ model-free regression | relocated package + Release client | mock engine | non-empty WAV and clean EOS | **PASS** |
 
 The generic packaged-worker smoke is intentionally not being misclassified as

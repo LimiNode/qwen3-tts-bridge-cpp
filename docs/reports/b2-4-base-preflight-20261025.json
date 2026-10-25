@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "acceptance": "manifest_and_voice_preflight_pass",
+  "acceptance": "manifest_voice_preflight_and_initial_real_base_smoke_pass",
   "bridge_main": "ebe928bf144486ec5debeb5f46910524cb340c81",
   "model": {
     "path": "E:/_repoz/qwen3-tts-bridge-cpp/tmp/cmp50hx-r3-external-models/Qwen3-TTS-12Hz-1.7B-Base",
@@ -38,7 +38,24 @@
     "natural_eos": true,
     "client_sha256": "DBD264613E432FEDD3D942B15C7DD40CC032A8A8F0E9D38B6B39373E79242B9D"
   },
+  "initial_real_base_smoke": {
+    "result": "pass",
+    "worker": "E:/stage-a-relocated/QwenTTSBridge/worker-python/qwen_tts_worker.cmd",
+    "text": "Сегодня проверяем реальный русский голос.",
+    "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+    "audio_frames": 5,
+    "audio_bytes": 137100,
+    "elapsed_seconds": 121.328,
+    "natural_eos": true,
+    "termination_reason": "eos",
+    "hit_max_new_tokens": false,
+    "hit_max_seq_len": false,
+    "codec_frame_count": 36,
+    "raw_receipt": "E:/stage-a-base-evidence/b1-real-base-smoke.json",
+    "scope": "initial smoke only; full B1/B2, listening, playback, restart, and cancellation gates remain pending"
+  },
   "execution_matrix": {
+    "initial_real_base_smoke": "pass",
     "b1_real_base": "pending",
     "b2_clean_portable_base": "pending",
     "rtx4090": "pending",
