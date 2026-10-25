@@ -91,7 +91,8 @@ worker session. IDs must never wrap around.
 ## Worker Admission
 
 Each worker instance applies a finite, runtime-configured admission limit to
-synthesis requests. The limit counts both requests waiting in the worker queue
+synthesis requests. The supported range is `[1, 65536]`, with a default of 16.
+The limit counts both requests waiting in the worker queue
 and the request physically executing in the engine; it is not a protocol
 handshake and does not change the request lifecycle messages.
 
