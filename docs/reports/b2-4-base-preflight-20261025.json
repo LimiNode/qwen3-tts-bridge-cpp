@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "acceptance": "manifest_and_voice_preflight_pass",
+  "bridge_main": "ebe928bf144486ec5debeb5f46910524cb340c81",
+  "model": {
+    "path": "E:/_repoz/qwen3-tts-bridge-cpp/tmp/cmp50hx-r3-external-models/Qwen3-TTS-12Hz-1.7B-Base",
+    "repository": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "revision": null,
+    "manifest_path": "E:/stage-a-base-evidence/qwen3-tts-12hz-1.7b-base-manifest.json",
+    "file_count": 13,
+    "directory_manifest_sha256": "d47209b486d4e6929a554e09f5be87803309be68387ac075c0b1f7e62a1f7d66",
+    "doctor_manifest_validation": true
+  },
+  "voice": {
+    "registry_path": "E:/stage-a-base-evidence/voice-registry/voice-profiles.local.json",
+    "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+    "reference_audio": "kraftwerk_robot_ru_fidelity.wav",
+    "reference_audio_sha256": "90E5F7576991EA5B9F0A85E9109F7BD31FF667C4A12D58783A06C650796C3CA1",
+    "reference_audio_bytes": 844844,
+    "duration_seconds": 17.6,
+    "sample_rate": 24000,
+    "preserve_reference_text_whitespace": true,
+    "registry_validation": true,
+    "doctor_registry_validation": true
+  },
+  "runtime": {
+    "portable_build_manifest_sha256": "EEAB721B426813545CC82D6624BBE8D432050366266B67BF68463FE2BD514F88",
+    "portable_tree_manifest_sha256": "40C9B1431CA5F8903A23C97D89A3CB0CDAB04AF9B12EE646562C5397493E9BBC",
+    "gpu": "NVIDIA CMP 50HX",
+    "cuda": "12.8",
+    "driver": "581.94"
+  },
+  "relocated_cpp_smoke": {
+    "result": "pass",
+    "mock_chunks": 2,
+    "wav_bytes": 9600,
+    "wav_format": "24000 Hz mono s16",
+    "natural_eos": true,
+    "client_sha256": "DBD264613E432FEDD3D942B15C7DD40CC032A8A8F0E9D38B6B39373E79242B9D"
+  },
+  "execution_matrix": {
+    "b1_real_base": "pending",
+    "b2_clean_portable_base": "pending",
+    "rtx4090": "pending",
+    "listening": "pending"
+  }
+}
