@@ -52,6 +52,31 @@
     "hit_max_seq_len": false,
     "codec_frame_count": 37,
     "raw_receipt": "E:/stage-a-base-evidence/b1-real-base-smoke-utf8.json",
+    "reproduction": {
+      "harness": "tests/python/verify_packaged_worker.py:PackagedWorkerHarness",
+      "invocation": "E:/stage-a-relocated/QwenTTSBridge/worker-python/python/python.exe .tmp/base_utf8_smoke.py",
+      "runtime_backend": "faster",
+      "device": "cuda",
+      "dtype": "bfloat16",
+      "attn_implementation": "sdpa",
+      "max_seq_len": 768,
+      "emit_every_frames": 8,
+      "decode_window_frames": 80,
+      "overlap_samples": 0,
+      "compile": false,
+      "cuda_graphs": false,
+      "prefill_backend": "eager",
+      "collect_generation_trace": true,
+      "seed": null,
+      "seed_mode": "request_id",
+      "timeout_seconds": 600,
+      "portable_environment": {
+        "PYTHONHOME": "<worker-root>python",
+        "PYTHONPATH": "<worker-root>python\\Lib\\site-packages",
+        "PYTHONNOUSERSITE": "1",
+        "python_flags": ["-B", "-P", "-s"]
+      }
+    },
     "scope": "initial smoke only; full B1/B2, listening, playback, restart, and cancellation gates remain pending"
   },
   "execution_matrix": {

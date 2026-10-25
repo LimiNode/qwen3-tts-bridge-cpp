@@ -4,7 +4,9 @@ Status: **PASS for manifest and voice preflight; initial bounded real Base smoke
 
 This receipt follows merged Stage A C++/relocation evidence and freezes the
 inputs needed for a separate Base acceptance run. It intentionally does not
-claim model quality, natural EOS, playback stability, or listening acceptance.
+claim model quality, corpus-level EOS reliability, playback stability, or
+listening acceptance. The single initial smoke below did reach natural EOS;
+that result is not a substitute for repeated B1/B2 EOS evidence.
 
 ## Frozen inputs
 
@@ -94,6 +96,21 @@ emit_every_frames: 8
 elapsed: 56.248 s
 ```
 
+Reproduction details for this bounded smoke were:
+
+```text
+harness: PackagedWorkerHarness from tests/python/verify_packaged_worker.py
+invocation: E:\stage-a-relocated\QwenTTSBridge\worker-python\python\python.exe .tmp\base_utf8_smoke.py
+worker command: qwen_tts_worker.cmd qwen --model-path <frozen-model> --runtime-backend faster --device cuda --dtype bfloat16 --attn-implementation sdpa --max-seq-len 768 --emit-every-frames 8 --decode-window-frames 80 --overlap-samples 0 --no-compile --no-cuda-graphs --prefill-backend eager --collect-generation-trace --voice-registry-path <frozen-registry> --engine-startup-mode auto
+request: id=1, language=auto, registered voice_id, s16le/24000 Hz/mono
+seed: not set (worker default request_id seed mode)
+timeout: 600 s
+portable environment: PYTHONHOME=<worker-root>python, PYTHONPATH=<worker-root>python\Lib\site-packages, PYTHONNOUSERSITE=1, `-B -P -s`
+```
+
+The temporary harness was not committed; the raw UTF-8 receipt and sealed
+runtime manifests remain outside Git.
+
 The run returned exit code `0` and produced five non-empty audio frames
 (`140,940` PCM bytes). The worker reported `completed`, `termination_reason=eos`,
 and `natural_eos=true`; it did not hit `max_new_tokens` or `max_seq_len`.
@@ -103,7 +120,7 @@ is retained outside Git at
 
 This smoke proves that the frozen Base checkpoint, registered voice, relocated
 worker, and CUDA runtime can complete one real synthesis and clean EOS. It does
-not yet establish listening quality, a persistent multi-request sequence,
+not establish corpus-level EOS reliability, listening quality, a persistent multi-request sequence,
 restart, cancellation/recovery, physical playback, or the full B1/B2 gates.
 
 ## Relocated C++ cross-check
