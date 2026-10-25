@@ -156,8 +156,8 @@ StdioServer::StdioServer(NativeEngine& engine, std::size_t max_admitted_requests
     : engine_(engine),
       writer_(std::make_unique<OutputWriter>()),
       max_admitted_requests_(max_admitted_requests) {
-    if (max_admitted_requests_ == 0) {
-        throw std::invalid_argument("max_admitted_requests must be greater than zero");
+    if (max_admitted_requests_ < 1 || max_admitted_requests_ > 65536) {
+        throw std::invalid_argument("max_admitted_requests must be in [1, 65536]");
     }
 }
 

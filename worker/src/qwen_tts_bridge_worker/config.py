@@ -571,8 +571,8 @@ class WorkerConfig:
             raise ValueError("worker_version must not be empty")
         if self.output_queue_size <= 0:
             raise ValueError("output_queue_size must be greater than zero")
-        if self.max_admitted_requests <= 0:
-            raise ValueError("max_admitted_requests must be greater than zero")
+        if self.max_admitted_requests < 1 or self.max_admitted_requests > 65536:
+            raise ValueError("max_admitted_requests must be in [1, 65536]")
         if self.engine_startup_mode not in {
             "main",
             "engine_warmup",

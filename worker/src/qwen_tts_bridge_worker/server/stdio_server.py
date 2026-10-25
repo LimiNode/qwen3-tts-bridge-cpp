@@ -245,8 +245,8 @@ class StdioWorkerServer:
         self._error = error_stream
         self._engine = engine
         self._worker_version = worker_version
-        if max_admitted_requests <= 0:
-            raise ValueError("max_admitted_requests must be greater than zero")
+        if max_admitted_requests < 1 or max_admitted_requests > 65536:
+            raise ValueError("max_admitted_requests must be in [1, 65536]")
         self._max_admitted_requests = max_admitted_requests
         self._read_chunk_size = read_chunk_size
         self._engine_startup_mode = engine_startup_mode
