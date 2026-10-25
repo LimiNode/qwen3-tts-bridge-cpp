@@ -1,9 +1,9 @@
 # B2-4 Stage A portable receipt
 
-Date: 2026-10-25  
-Bridge main: `cbc6d76006ab0dbd538015d8697e0b5d6864d4a8`  
-Worktree: `feat/b2-4-stage-a`  
-Target: CMP 50HX  
+Date: 2026-10-25
+Bridge main: `cbc6d76006ab0dbd538015d8697e0b5d6864d4a8`
+Worktree: `feat/b2-4-stage-a`
+Target: CMP 50HX
 Status: **BLOCKED during packaging-environment setup**
 
 This receipt records a model-free attempt only. No model was downloaded or
@@ -31,8 +31,8 @@ the remote branch label.
 
 ## Environment setup
 
-Host Python: `3.11.9`  
-Packaging venv: `.venv-packaging`  
+Host Python: `3.11.9`
+Packaging venv: `.venv-packaging`
 Disk available before setup: approximately 79 GB on `E:`
 
 Canonical command attempted:
