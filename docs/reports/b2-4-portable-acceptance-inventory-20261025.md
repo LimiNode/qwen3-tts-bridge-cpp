@@ -46,16 +46,34 @@ portable package then verifies its marker, build manifest and runtime-tree
 hashes; `inspect-portable-python-worker.ps1` checks for source-path leakage;
 the worker test runs the packaged **mock** engine; and the optional C++ step
 checks transport integration. Paths are quoted so spaces in a checkout do not
-change argument boundaries. All generated output belongs under `dist/` and
-temporary evidence under `.tmp/`.
+change argument boundaries. The package output belongs under `dist/`; the
+packaging environment belongs under `.venv-packaging` when `-UseVenv` is used.
+Acceptance runners have their own defaults (many use `tmp/`), so a run must
+record the actual output arguments instead of assuming one temporary directory.
+For experiments where the runner accepts an output override, `.tmp/` inside the
+repository is preferred.
 
 Stage A must record the package/runtime hashes and the mock/transport receipt,
 but it is not real-model or CUDA acceptance.
 
 ### Stage B — real Base 1.7B acceptance
 
-Stage B remains blocked until the external inputs below are provisioned. The
-generic portable Qwen probe accepts `-ModelPath` and `-ModelManifest` and a
+Stage B remains blocked until the external inputs below are provisioned. It has
+two separate gates:
+
+* **B1 — real-model functionality:** Base voice-profile loading, registered
+  `voice_id`, persistent/restart behavior, PCM and targeted listening evidence.
+* **B2 — clean-portable acceptance:** the sealed portable package is exercised
+  in an isolated environment with a verified model manifest, voice registry,
+  `voice_id`, real PCM, playback and listening evidence.
+
+The release runner described below is a full functional release matrix, not an
+isolated clean-portable B2 test. It requires CustomVoice in addition to the
+optional Base profile, injects repository/Faster-Qwen source paths into
+`PYTHONPATH`, and does not validate a Base model SHA-256 manifest. It is useful
+for B1 functionality, but must not be used alone as proof of B2.
+
+The generic portable Qwen probe accepts `-ModelPath` and `-ModelManifest` and a
 speaker such as `-Speaker serena`; it does **not** accept
 `-VoiceRegistryPath` and does not exercise a registered Base `voice_id`.
 
@@ -75,9 +93,10 @@ all three arguments together:
 
 `-BaseModelPath`, `-VoiceRegistryPath`, and `-VoiceId` are an all-or-nothing
 group. The runner performs the registered-voice persistent/restart checks;
-`-Speaker` in the generic probe is not an equivalent substitute. Keep this
-stage marked **NOT RUN/BLOCKED** until the model, manifest, registry and
-hardware/listening evidence exist.
+`-Speaker` in the generic probe is not an equivalent substitute. In this
+inventory B1 and B2 are both **NOT RUN/BLOCKED**: the model, manifest,
+registry, sealed package and hardware/listening evidence are not present in the
+inspected worktree.
 
 ## Worktree inventory
 
