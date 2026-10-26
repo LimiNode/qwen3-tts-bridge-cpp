@@ -1,0 +1,5 @@
+{"label":"short_success","text":"Сегодня проверяем реальный русский голос.","language":"auto","voice_id":"kraftwerk_robot_ru_bootstrap_fidelity"}
+{"label":"punctuation","text":"Проверка продолжается: голос говорит спокойно, с паузами — и завершает фразу естественно.","language":"auto","voice_id":"kraftwerk_robot_ru_bootstrap_fidelity"}
+{"label":"numbers_dates_abbreviations","text":"В 2026 году, 26 октября, мы проверим 12 заявок и сравним 3,14 с 42%; отчёт подготовит ООО «Лиминод», т. е. команда моста.","language":"auto","voice_id":"kraftwerk_robot_ru_bootstrap_fidelity"}
+{"label":"paragraph","text":"Сначала система загружает модель и принимает запрос. Затем persistent worker последовательно выдаёт PCM, не меняя голосовой профиль. После последней фразы он должен завершить каждый запрос естественно, без обрыва, повторов и лишнего хвоста.","language":"auto","voice_id":"kraftwerk_robot_ru_bootstrap_fidelity"}
+{"label":"repeat_short_success","text":"Сегодня проверяем реальный русский голос.","language":"auto","voice_id":"kraftwerk_robot_ru_bootstrap_fidelity"}
