@@ -23,7 +23,9 @@
     "recovery_audio_bytes": 170656,
     "recovery_natural_eos": true,
     "worker_exit_code": 0,
-    "physical_unwind_duration": "bounded by event ordering; no device-stop timestamp exposed"
+    "logical_cancel_ack_definition": "protocol-boundary acknowledgement; not CUDA/device unwind latency",
+    "physical_unwind_duration": "bounded by event ordering; no device-stop timestamp exposed",
+    "admission_release_definition": "request left admission accounting; does not prove capacity saturation or rejection"
   },
   "playback": {
     "status": "partial_not_accepted",
@@ -37,7 +39,9 @@
     "playback_completed": true,
     "first_waveout_submission_ms": 14358.411,
     "queue_empty_before_later_chunk_count": 4,
+    "queue_empty_interpretation": "starvation proxy from slow generation in this run; not by itself a WinMM defect or real-time acceptance",
     "playback_epoch_receipt": "not_available_from_player_binary",
+    "audio_only_acceptance_boundary": "separate from animation playback-epoch evidence",
     "sox_available": false
   },
   "listening": "not_run",
