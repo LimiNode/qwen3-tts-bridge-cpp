@@ -33,8 +33,14 @@ complete 13-file model manifest and all timing/hash values.
 
 The run used Russian text, a non-empty natural-language VoiceDesign
 instruction, fixed seed `1002`, and mono PCM16/s16le at 24 kHz. The exact
-effective UTF-8 text, instruction, and their SHA-256 values are in the JSON
-receipt.
+effective UTF-8 inputs were:
+
+```text
+text: Привет! Я рада тебя видеть.
+instruction: Мягкий, спокойный женский голос с естественной русской артикуляцией.
+```
+
+Their SHA-256 values are in the JSON receipt.
 
 ## Results
 
@@ -63,6 +69,22 @@ The output is byte-identical to the pre-corrective faster run. Persistent
 two-request repeat, restart subset, valid PCM16 WAV, bounded timeout, and
 finite-memory checks remain PASS. The upstream repeat produced the same PCM
 SHA-256 for both requests under the fixed seed.
+
+The historical evidence is retained in full in the receipt rather than
+replaced by the corrective result. This includes the two persistent-worker
+request timings and PCM hashes, WAV sizes, CUDA allocated/reserved/max-reserved
+measurements, and the original trace failure:
+
+```text
+without trace: completed
+with trace before corrective: failed
+error: model_error/synthesis_failed: faster backend did not produce a generation trace
+```
+
+The corrected trace is explicitly identified as `voice_design_streaming_v1`;
+the safety-limit flags are recorded as false for this EOS run. A codec-token
+SHA was not present in the saved hardware receipt and is intentionally not
+invented.
 
 ## Acceptance decision
 

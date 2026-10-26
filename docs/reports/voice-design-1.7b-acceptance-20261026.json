@@ -45,7 +45,9 @@
   },
   "request": {
     "language": "Russian",
+    "text": "Привет! Я рада тебя видеть.",
     "text_utf8_sha256": "7bf8f4ea17a356bb23b911376a046cf52da892bf69b27f9b446e434cfc2bab96",
+    "instruction": "Мягкий, спокойный женский голос с естественной русской артикуляцией.",
     "instruction_utf8_sha256": "cb9c2d630a872853cfe9274c6137f18e6a10f7a6161d957872eed511e0d5528a",
     "sample_rate": 24000,
     "channels": 1,
@@ -63,14 +65,38 @@
     "real_time_factor": 8.483588,
     "audio_chunks": 1,
     "pcm_bytes": 252330,
+    "wav_bytes": 252374,
     "wav_sha256": "689db88196bf512fa9887e72a2e58c962ed0d43935b5505c4bcfeca00af5f14a",
+    "cuda_memory_allocated_bytes": 4189719552,
+    "cuda_memory_reserved_bytes": 5253365760,
+    "cuda_memory_max_reserved_bytes": 5253365760,
+    "terminal_state": "completed",
+    "execution_outcome": "completed",
     "generation_trace_available": false
   },
   "persistent_repeat": {
     "result": "pass",
     "same_worker": true,
-    "requests": 2,
-    "same_pcm_sha256": "c7cc8ce397910d3d2a4030ed091b558942988504dec79586b3013a0afd060781",
+    "requests": [
+      {
+        "request_id": 1,
+        "first_pcm_ms": 35741.7885,
+        "completed_ms": 35742.4612,
+        "audio_duration_ms": 4216.875,
+        "real_time_factor": 8.476054,
+        "pcm_bytes": 202410,
+        "pcm_sha256": "c7cc8ce397910d3d2a4030ed091b558942988504dec79586b3013a0afd060781"
+      },
+      {
+        "request_id": 2,
+        "first_pcm_ms": 34708.1717,
+        "completed_ms": 34708.8242,
+        "audio_duration_ms": 4216.875,
+        "real_time_factor": 8.230935,
+        "pcm_bytes": 202410,
+        "pcm_sha256": "c7cc8ce397910d3d2a4030ed091b558942988504dec79586b3013a0afd060781"
+      }
+    ],
     "restart_subset": "pass"
   },
   "faster_streaming": {
@@ -83,11 +109,22 @@
     "audio_duration_ms": 2376.875,
     "audio_chunks": 4,
     "pcm_bytes": 114090,
+    "wav_bytes": 114134,
     "wav_sha256": "f481905c64bca5e738c756c262313a4553fc5366bf32cb3af3c6a524789f52ae",
+    "trace_kind": "voice_design_streaming_v1",
     "termination_reason": "eos",
     "hit_eos": true,
+    "hit_max_new_tokens": false,
+    "hit_max_seq_len": false,
     "codec_frame_count": 30,
-    "pre_corrective_wav_identical": true
+    "pre_corrective_wav_identical": true,
+    "pre_corrective_wav_sha256": "f481905c64bca5e738c756c262313a4553fc5366bf32cb3af3c6a524789f52ae",
+    "pre_corrective_observation": {
+      "result": "partial_pass_missing_voice_design_generation_trace",
+      "without_trace_terminal_state": "completed",
+      "with_trace_terminal_state": "failed",
+      "with_trace_error": "model_error/synthesis_failed: faster backend did not produce a generation trace"
+    }
   },
   "acceptance": {
     "model_load": "pass",
