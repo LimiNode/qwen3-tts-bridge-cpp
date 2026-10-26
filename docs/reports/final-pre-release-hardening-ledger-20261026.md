@@ -9,6 +9,7 @@ hardware evidence as merged release capabilities.
 | #242 active cancellation/playback | `c4f3ee980110608befc3a8c8f87d226db8eb9eec` | `ac51dd1746377a5b27184a5e310ebb27f7f4fe41` → merge `b62f88badee963f2ad36fec68394a345c1ac63f1` | **Merged** | 6/6 CI; cancellation bounded PASS; audio-only playback PARTIAL; animation epoch NOT RUN |
 | #243 production code-quality audit | `c4f3ee980110608befc3a8c8f87d226db8eb9eec` | `998f971519bfe291ed69fc4c8611dad78c030a0a` | Draft | evidence-backed inventory only; no refactor started |
 | #244 VoiceDesign 1.7B gate | `c4f3ee980110608befc3a8c8f87d226db8eb9eec` | `a1f00f79cce7efa2a6ff112c6ffb437935f181be` | Draft | real model artifact unavailable; status explicitly NOT RUN |
+| #246 playback animation epoch initialization | `b62f88badee963f2ad36fec68394a345c1ac63f1` | `5c46d7cc51cf5987c6b4bfc3e0da1cbefd41be7b` | Draft | fixes early animation-loop tick publishing epoch zero; exact-head CI pending |
 
 ## Release blockers and next independent work
 
