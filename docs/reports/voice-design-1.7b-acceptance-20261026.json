@@ -35,7 +35,8 @@
     "cuda_runtime": "12.8",
     "transformers": "4.57.3",
     "tokenizers": "0.22.1",
-    "faster_qwen3_tts_commit": "bd28393708c64812a1cf67d14e0c71cd95d01204"
+    "faster_qwen3_tts_commit": "bd28393708c64812a1cf67d14e0c71cd95d01204",
+    "faster_qwen3_tts_release_commit": "4bdcd3f8d57fabbdc605152c7958e095321a4e46"
   },
   "hardware": {
     "gpu": "NVIDIA CMP 50HX",

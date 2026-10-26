@@ -20,7 +20,8 @@ perceptual quality.
 | Speech tokenizer SHA-256 | `836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258` |
 | Tested bridge commit | `713f3a4bdafed86338260f99b4fe49e1ca659433` |
 | Tested bridge tree | `b46acd6551f92de05482b0505e2e03c5fcfcee9d` |
-| Faster runtime pin | `bd28393708c64812a1cf67d14e0c71cd95d01204` |
+| Faster runtime used for the CMP receipt | `bd28393708c64812a1cf67d14e0c71cd95d01204` |
+| Faster runtime release pin after upstream merge | `4bdcd3f8d57fabbdc605152c7958e095321a4e46` |
 | Python runtime | Python 3.11.9, `qwen-tts` 0.0.4, PyTorch 2.8.0+cu128 |
 | GPU | NVIDIA CMP 50HX, 20 GiB, compute capability 7.5 |
 | Driver / CUDA | 581.94 / 12.8 |
