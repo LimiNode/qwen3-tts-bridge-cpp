@@ -34,6 +34,23 @@ paths listed above. The broad example and telemetry findings remain sampled as
 described below. Hardware/model behavior and third-party `qwentts.cpp` internals
 remain explicitly deferred.
 
+## Installed public-header and ownership review
+
+The install surface was checked in `CMakeLists.txt:309-400` and the generated
+self-contained header list in `CMakeLists.txt:509-565`. Stable bridge headers
+are installed without exposing `nlohmann/json` or native-worker implementation
+types. The native adapter, speech-animation integration headers, and WinMM
+implementation details remain opt-in/build-tree or explicitly conditional;
+the installed package exports only the targets and headers selected by the
+corresponding build options. The header self-containment target compiles each
+installed-facing leaf as its own translation unit.
+
+Stable public classes and cross-domain DTOs carry Doxygen-style API comments,
+including ownership/blocking notes where the contract is non-trivial. There is
+no separate Doxygen build gate in this baseline, so documentation completeness
+is a P3 follow-up rather than a release-blocking defect. No public ownership or
+dependency violation was promoted from this pass.
+
 ## Findings
 
 ### P2 — telemetry normalization is coupled to the Qwen engine
