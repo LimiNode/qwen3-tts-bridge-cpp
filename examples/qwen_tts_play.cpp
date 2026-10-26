@@ -1947,6 +1947,7 @@ int wmain(int argc, wchar_t** argv) {
                     std::lock_guard<std::mutex> lock(animation_diagnostics->mutex);
                     animation_diagnostics->records.push_back(diagnostic);
                 });
+            animation_runtime->initialize_epoch(player.playback_epoch());
             animation_loop.start(
                 [&animation_runtime,
                  animation_diagnostics,

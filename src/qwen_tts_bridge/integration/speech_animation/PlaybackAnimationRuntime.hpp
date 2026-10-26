@@ -34,6 +34,13 @@ public:
     PlaybackAnimationRuntime(const PlaybackAnimationRuntime&) = delete;
     PlaybackAnimationRuntime& operator=(const PlaybackAnimationRuntime&) = delete;
 
+    /// Initializes the playback epoch before the presentation loop starts.
+    ///
+    /// This is required when the presentation loop may tick before the first
+    /// request is submitted. The epoch must be non-zero and initialization
+    /// must happen before the first call to begin().
+    void initialize_epoch(std::uint64_t playback_epoch);
+
     /// Starts a new request/epoch and invalidates all previous cues.
     /// Returns the generation token assigned to this playback request.
     std::uint64_t begin(

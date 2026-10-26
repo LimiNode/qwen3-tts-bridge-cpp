@@ -42,6 +42,21 @@ PlaybackAnimationRuntime::PlaybackAnimationRuntime(
 
 PlaybackAnimationRuntime::~PlaybackAnimationRuntime() = default;
 
+void PlaybackAnimationRuntime::initialize_epoch(std::uint64_t playback_epoch) {
+    if (playback_epoch == 0) {
+        throw std::invalid_argument(
+            "playback animation epoch must be non-zero");
+    }
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    if (state_->generation != 0) {
+        throw std::logic_error(
+            "playback animation epoch must be initialized before begin()");
+    }
+    state_->playback_epoch = playback_epoch;
+    state_->request_id = 0;
+    state_->selector.reset(playback_epoch, 0);
+}
+
 std::uint64_t PlaybackAnimationRuntime::begin(
     std::uint64_t playback_epoch,
     RequestId request_id,
