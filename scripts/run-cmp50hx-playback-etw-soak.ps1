@@ -128,7 +128,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $CodecRightPaddedHistoryFrames = 25
-$FasterCmp50hxSubmoduleCommit = '90b596d2ffa41eb2da173db92e6f896df11b19cb'
+$FasterCmp50hxSubmoduleCommit = '4bdcd3f8d57fabbdc605152c7958e095321a4e46'
 
 $repo = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $PSScriptRoot 'Cmp50hxEtwEvidence.psm1') -Force
