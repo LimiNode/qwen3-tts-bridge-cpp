@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "status": "b1_a_b_pass_b1_c_b2_pending",
+  "bridge_main": "3ad3527aa063298159e40bc6362d060548688369",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "12.8"
+  },
+  "model": {
+    "repository": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "manifest_sha256": "d47209b486d4e6929a554e09f5be87803309be68387ac075c0b1f7e62a1f7d66"
+  },
+  "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+  "runtime": {
+    "backend": "faster",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "attn_implementation": "sdpa",
+    "prefill_backend": "eager",
+    "compile": false,
+    "cuda_graphs": false,
+    "max_seq_len": 768,
+    "emit_every_frames": 8,
+    "decode_window_frames": 80,
+    "seed": null,
+    "seed_mode": "request_id",
+    "timeout_seconds": 900
+  },
+  "corpus": {
+    "request_count": 5,
+    "utf8_jsonl_sha256": "708bafd3c9299e24d2ec924e8b3bf9dfb9828e845cc2270606cfae5550dfcdbf"
+  },
+  "b1_a": {
+    "status": "pass",
+    "worker_exit_code": 0,
+    "requests": [
+      {"request_id": 1, "label": "short_success", "audio_bytes": 162976, "audio_chunks": 6, "codec_frame_count": 43, "completed_ms": 28469.681, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
+      {"request_id": 2, "label": "punctuation", "audio_bytes": 303876, "audio_chunks": 11, "codec_frame_count": 81, "completed_ms": 27516.252, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
+      {"request_id": 3, "label": "numbers_dates_abbreviations", "audio_bytes": 746780, "audio_chunks": 25, "codec_frame_count": 200, "completed_ms": 47688.294, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
+      {"request_id": 4, "label": "paragraph", "audio_bytes": 842604, "audio_chunks": 29, "codec_frame_count": 226, "completed_ms": 52958.745, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
+      {"request_id": 5, "label": "repeat_short_success", "audio_bytes": 137100, "audio_chunks": 5, "codec_frame_count": 36, "completed_ms": 19357.482, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false}
+    ],
+    "raw_eos_receipt": "E:/stage-a-base-evidence/b1-persistent-eos-oracle.json",
+    "raw_benchmark_receipt": "E:/stage-a-base-evidence/b1-persistent-benchmark.json"
+  },
+  "b1_b": {
+    "status": "pass",
+    "cancellation_recovery_receipt": "E:/stage-a-base-evidence/b1-cancel-recovery.json",
+    "restart_receipt": "E:/stage-a-base-evidence/b1-restart.json",
+    "cancel_terminal_messages": ["cancelled"],
+    "recovery_audio_bytes": 155296,
+    "recovery_natural_eos": true,
+    "restart_process_count": 2,
+    "restart_audio_bytes": [140940, 140940]
+  },
+  "b1_c_physical_playback": "not_run",
+  "b1_c_listening": "not_run",
+  "b2_clean_portable": "not_run",
+  "rtx4090": "not_run"
+}
