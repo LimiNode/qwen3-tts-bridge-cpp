@@ -129,6 +129,17 @@ runtime library dependency.
 ## Non-findings and deferred work
 
 - No evidence in this inventory justifies a large architectural refactor.
+- `worker/src/qwen_tts_bridge_worker/cli.py` and `config.py` were reviewed for
+  parser/config ownership; no correctness or beta-blocking finding was
+  promoted from that pass.
+- `src/qwen_tts_bridge/client/QwenTtsClient.cpp` and
+  `src/qwen_tts_bridge/session/WorkerSession.cpp` were reviewed for callback
+  locking and lifecycle boundaries; the existing callback-copy-before-invoke
+  pattern and mutex boundaries were retained.
+- The current tree names the native implementation
+  `src/qwen_tts_bridge/native/NativeQwenBackend.cpp`; the older
+  `NativeEngine.cpp`/`StdioServer.cpp` names are not present at this baseline,
+  so no finding is attributed to nonexistent files.
 - `request_admission_released` and logical cancellation semantics are covered
   by the existing B1 evidence; this audit does not reinterpret those results.
 - Native backend files were not changed by this report; native quality and
