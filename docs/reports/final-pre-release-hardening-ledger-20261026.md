@@ -7,7 +7,7 @@ hardware evidence as merged release capabilities.
 | --- | --- | --- | --- | --- |
 | #231 `tts-front-cpp` v0.2.3 | `4cb6703088dc66f8f6be66e38e9fb27ba4c298ea` | `b6c7ccdf7ef601a7db50db32105c64d7fd8b8ad9` | Draft / ongoing | corpus and effective-text tests pass; targeted Russian listening remains open |
 | #242 active cancellation/playback | `c4f3ee980110608befc3a8c8f87d226db8eb9eec` | `ac51dd1746377a5b27184a5e310ebb27f7f4fe41` → merge `b62f88badee963f2ad36fec68394a345c1ac63f1` | **Merged** | 6/6 CI; cancellation bounded PASS; audio-only playback PARTIAL; animation epoch NOT RUN |
-| #243 production code-quality audit | `c4f3ee980110608befc3a8c8f87d226db8eb9eec` | `30fbc199a46b33c7f084c937e3f86cf79b4e4248` | Draft | evidence-backed inventory only; no refactor started |
+| #243 production code-quality audit | `c4f3ee980110608befc3a8c8f87d226db8eb9eec` | `998f9715c197d1246d196443a87319a097349e06` | Draft | evidence-backed inventory only; no refactor started |
 | #244 VoiceDesign 1.7B gate | `c4f3ee980110608befc3a8c8f87d226db8eb9eec` | `a1f00f79cce7efa2a6ff112c6ffb437935f181be` | Draft | real model artifact unavailable; status explicitly NOT RUN |
 
 ## Release blockers and next independent work
