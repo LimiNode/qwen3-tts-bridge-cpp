@@ -1913,6 +1913,13 @@ int wmain(int argc, wchar_t** argv) {
                     options.playback_animation_receipts_file);
             }
             animation_context = std::make_shared<PlaybackAnimationContext>();
+            {
+                std::lock_guard<std::mutex> lock(animation_context->mutex);
+                // The animation loop can tick before the first request is
+                // submitted. Start it on the player's current epoch so an
+                // early diagnostic/selection cannot publish epoch zero.
+                animation_context->playback_epoch = player.playback_epoch();
+            }
             animation_receipt_mutex = std::make_shared<std::mutex>();
             animation_diagnostics =
                 std::make_shared<PlaybackAnimationDiagnosticQueue>();
@@ -1940,6 +1947,7 @@ int wmain(int argc, wchar_t** argv) {
                     std::lock_guard<std::mutex> lock(animation_diagnostics->mutex);
                     animation_diagnostics->records.push_back(diagnostic);
                 });
+            animation_runtime->initialize_epoch(player.playback_epoch());
             animation_loop.start(
                 [&animation_runtime,
                  animation_diagnostics,

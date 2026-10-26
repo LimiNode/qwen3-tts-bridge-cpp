@@ -42,6 +42,34 @@ PcmChunk pcm_chunk(std::uint64_t request_id, std::uint64_t first_sample) {
     return chunk;
 }
 
+void test_initialized_idle_epoch_is_fenced_before_first_request() {
+    PlaybackCursorSnapshot snapshot;
+    snapshot.playback_epoch = 1;
+    snapshot.request_id = 0;
+    snapshot.sample_rate = 24000;
+    snapshot.position_available = true;
+    std::vector<PlaybackAnimationRuntime::Selection> selections;
+
+    PlaybackAnimationRuntime runtime(
+        [&snapshot] { return snapshot; },
+        [&selections](const PlaybackAnimationRuntime::Selection& selection) {
+            selections.push_back(selection);
+        });
+    runtime.initialize_epoch(1);
+
+    const auto idle = runtime.tick();
+    CHECK(idle.status != PlaybackSelectionStatus::StaleEpoch);
+    CHECK(idle.status != PlaybackSelectionStatus::Selected);
+    CHECK(selections.size() == 1);
+    CHECK(selections.front().status != PlaybackSelectionStatus::StaleEpoch);
+    CHECK(selections.front().status != PlaybackSelectionStatus::Selected);
+
+    snapshot.request_id = 17;
+    const auto generation = runtime.begin(1, 17, 24000);
+    CHECK(runtime.push_audio(1, generation, pcm_chunk(17, 0)));
+    CHECK(runtime.tick().status == PlaybackSelectionStatus::Selected);
+}
+
 void test_selection_uses_sample_cursor_and_resets_stale_epoch() {
     PlaybackCursorSnapshot snapshot;
     snapshot.playback_epoch = 3;
@@ -166,6 +194,7 @@ void test_unavailable_and_stale_snapshots_are_neutral() {
 } // namespace
 
 int main() {
+    test_initialized_idle_epoch_is_fenced_before_first_request();
     test_selection_uses_sample_cursor_and_resets_stale_epoch();
     test_degradation_is_reported_without_rewriting_playback();
     test_bounded_cue_overflow_degrades_to_neutral_once();
