@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "status": "not_run_missing_model_artifact",
+  "target_model": {
+    "source": "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+    "revision": null,
+    "sha256_manifest": null
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "12.8"
+  },
+  "backend": "python_worker_qwen_tts_save_wav",
+  "language": "Russian",
+  "realtime_claim": false,
+  "required_evidence": [
+    "model_and_runtime_provenance",
+    "effective_utf8_text_and_instruction",
+    "startup_first_pcm_inference_and_audio_duration_timings",
+    "natural_eos_or_classified_failure",
+    "repeat_and_restart_subset",
+    "bounded_time_and_finite_memory",
+    "human_intelligibility_and_instruction_adherence"
+  ],
+  "result": "not_run"
+}
