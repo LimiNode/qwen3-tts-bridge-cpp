@@ -5,8 +5,9 @@ minimal corrective proposals. It intentionally does not start a refactor.
 
 ## Scope and method
 
-The audit sampled the largest production and example files on the current
-`main` (`c4f3ee980110608befc3a8c8f87d226db8eb9eec`). Findings include an exact
+The audit sampled the largest production and example files on the audited
+baseline `c4f3ee980110608befc3a8c8f87d226db8eb9eec` (the `main` tip before the
+B1 closeout merge). Findings include an exact
 path and line range, the observed evidence, impact, and a severity. Line
 ranges refer to this commit and will need refreshing after unrelated edits.
 Generated artifacts, model code outside this repository, and style-only
