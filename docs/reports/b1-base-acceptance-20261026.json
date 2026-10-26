@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "b1_a_b_pass_b1_c_b2_pending",
+  "status": "b1_a_pass_b1_b_protocol_pass_active_cancel_not_verified_b1_c_b2_pending",
   "bridge_main": "3ad3527aa063298159e40bc6362d060548688369",
   "hardware": {
     "gpu": "NVIDIA CMP 50HX",
@@ -36,22 +36,30 @@
     "status": "pass",
     "worker_exit_code": 0,
     "requests": [
-      {"request_id": 1, "label": "short_success", "audio_bytes": 162976, "audio_chunks": 6, "codec_frame_count": 43, "completed_ms": 28469.681, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
-      {"request_id": 2, "label": "punctuation", "audio_bytes": 303876, "audio_chunks": 11, "codec_frame_count": 81, "completed_ms": 27516.252, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
-      {"request_id": 3, "label": "numbers_dates_abbreviations", "audio_bytes": 746780, "audio_chunks": 25, "codec_frame_count": 200, "completed_ms": 47688.294, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
-      {"request_id": 4, "label": "paragraph", "audio_bytes": 842604, "audio_chunks": 29, "codec_frame_count": 226, "completed_ms": 52958.745, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
-      {"request_id": 5, "label": "repeat_short_success", "audio_bytes": 137100, "audio_chunks": 5, "codec_frame_count": 36, "completed_ms": 19357.482, "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false}
+      {"request_id": 1, "label": "short_success", "audio_bytes": 162976, "audio_chunks": 6, "codec_frame_count": 43, "first_audio_ms": 17545.814, "completed_ms": 28469.681, "pcm_sha256": "127cdf48825d857055afad96d0f2eb9aa640ff003aa37721fff7fd2a26e78945", "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
+      {"request_id": 2, "label": "punctuation", "audio_bytes": 303876, "audio_chunks": 11, "codec_frame_count": 81, "first_audio_ms": 6073.199, "completed_ms": 27516.252, "pcm_sha256": "628bc5578625b6bef27cab104c13cfb7d2fcc69b3c24df221d94cd81c0199b6c", "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
+      {"request_id": 3, "label": "numbers_dates_abbreviations", "audio_bytes": 746780, "audio_chunks": 25, "codec_frame_count": 200, "first_audio_ms": 6084.074, "completed_ms": 47688.294, "pcm_sha256": "1e44efdde46e78fdad4a37414abfb3b280267b823ca8bf958672c0493b9a580a", "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
+      {"request_id": 4, "label": "paragraph", "audio_bytes": 842604, "audio_chunks": 29, "codec_frame_count": 226, "first_audio_ms": 6102.457, "completed_ms": 52958.745, "pcm_sha256": "ba32b86ffe3958380c4677a8ab1e50b4e263c01352275b827a1600607f17430a", "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
+      {"request_id": 5, "label": "repeat_short_success", "audio_bytes": 137100, "audio_chunks": 5, "codec_frame_count": 36, "first_audio_ms": 6079.825, "completed_ms": 19357.482, "pcm_sha256": "825c2fa67e91515d6b2450771e03beee4649685c89c65ba82491e6c5e6101df58", "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false}
     ],
     "raw_eos_receipt": "E:/stage-a-base-evidence/b1-persistent-eos-oracle.json",
-    "raw_benchmark_receipt": "E:/stage-a-base-evidence/b1-persistent-benchmark.json"
+    "raw_eos_receipt_sha256": "940D5E23D25D4670F1F97B8CB740EA029E4F1475DF95B3B538537E6CB06A5D68",
+    "raw_benchmark_receipt": "E:/stage-a-base-evidence/b1-persistent-benchmark.json",
+    "raw_benchmark_receipt_sha256": "53D17D076CECFE2533DF9C61CC1A234D521951F63F531091B76154E2DC47B8B1"
   },
   "b1_b": {
-    "status": "pass",
+    "status": "protocol_recovery_pass_active_gpu_cancellation_not_yet_verified",
     "cancellation_recovery_receipt": "E:/stage-a-base-evidence/b1-cancel-recovery.json",
+    "cancellation_recovery_receipt_sha256": "2A66578B82B8A037CDE625DD226CBB3625EA7E2D3D080BB4CBECF35636A6A866",
     "restart_receipt": "E:/stage-a-base-evidence/b1-restart.json",
+    "restart_receipt_sha256": "582F3E8DEA4D7F2EB08A9695E48A63B2B52CD5F3612F89DF80AE7F0AA1454A81",
     "cancel_terminal_messages": ["cancelled"],
     "recovery_audio_bytes": 155296,
     "recovery_natural_eos": true,
+    "logical_cancel_ack_latency_ms": 2.526,
+    "active_gpu_cancellation": "not_yet_verified",
+    "physical_engine_unwind": "not_yet_verified",
+    "admission_release_timing": "not_yet_verified",
     "restart_process_count": 2,
     "restart_audio_bytes": [140940, 140940]
   },
