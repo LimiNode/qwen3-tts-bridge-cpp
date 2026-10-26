@@ -1,28 +1,110 @@
 {
-  "schema_version": 1,
-  "status": "not_run_missing_model_artifact",
+  "schema_version": 3,
+  "status": "conditional_pass_human_listening_and_native_open",
   "target_model": {
     "source": "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
-    "revision": null,
-    "sha256_manifest": null
+    "revision": "5ecdb67327fd37bb2e042aab12ff7391903235d3",
+    "sha256_manifest_entries": 13,
+    "main_model_sha256": "391e8db219f292c515297cdceeb43e4eae67cdde35fa57e79a6a8a532fca0522",
+    "speech_tokenizer_sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258",
+    "files": [
+      {"path": ".gitattributes", "bytes": 1519, "sha256": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361"},
+      {"path": "README.md", "bytes": 3214, "sha256": "acfaf6c0d433866cb5e2bb73e7915ea3767f5a2e3abca413b485635a2c72b5e6"},
+      {"path": "config.json", "bytes": 4421, "sha256": "aecd2cc4c1fe9edef1cb7ca7c401685a43879ad43f3f9e883f1c6760b61731e0"},
+      {"path": "generation_config.json", "bytes": 245, "sha256": "f1b90b4513f3b34c62851049e2492d7b4c5940daf1276f89c82b8ef04127f3aa"},
+      {"path": "merges.txt", "bytes": 1671839, "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3"},
+      {"path": "model.safetensors", "bytes": 3833402552, "sha256": "391e8db219f292c515297cdceeb43e4eae67cdde35fa57e79a6a8a532fca0522"},
+      {"path": "preprocessor_config.json", "bytes": 127, "sha256": "efdde1022ea9d76928bf7a9cd53139138f5ba2e466e837f08f6105ab1af1c119"},
+      {"path": "speech_tokenizer/config.json", "bytes": 2336, "sha256": "ee65bb901c876664ab8707c487157aa1a6ee57c65969b28fb5ec9dc211e68167"},
+      {"path": "speech_tokenizer/configuration.json", "bytes": 76, "sha256": "6bc26d64eb5024b4d1dab5a52371958b429256d6c9d59787f1f5294a54e0cebd"},
+      {"path": "speech_tokenizer/model.safetensors", "bytes": 682293092, "sha256": "836b7b357f5ea43e889936a3709af68dfe3751881acefe4ecf0dbd30ba571258"},
+      {"path": "speech_tokenizer/preprocessor_config.json", "bytes": 234, "sha256": "fcb3805e597e786d4067706e602f6688524640f8d3396790e2e09b5942fcbdfb"},
+      {"path": "tokenizer_config.json", "bytes": 7344, "sha256": "dc3c31c3bdaedd5016382bb3cbe07323026775ad51f5a4fb564505992ae4a670"},
+      {"path": "vocab.json", "bytes": 2776833, "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"}
+    ]
+  },
+  "bridge": {
+    "tested_commit": "713f3a4bdafed86338260f99b4fe49e1ca659433",
+    "tested_tree": "b46acd6551f92de05482b0505e2e03c5fcfcee9d",
+    "qwen_tts_save_wav_sha256": "ecf54dbfd005658f9a1415ab82e9cd24e23186d18d039865cac7793fcb24b35f"
+  },
+  "runtime": {
+    "python": "3.11.9",
+    "qwen_tts": "0.0.4",
+    "torch": "2.8.0+cu128",
+    "cuda_runtime": "12.8",
+    "transformers": "4.57.3",
+    "tokenizers": "0.22.1",
+    "faster_qwen3_tts_commit": "bd28393708c64812a1cf67d14e0c71cd95d01204"
   },
   "hardware": {
     "gpu": "NVIDIA CMP 50HX",
+    "vram_mib": 20480,
     "compute_capability": "7.5",
-    "driver": "581.94",
-    "cuda": "12.8"
+    "driver": "581.94"
   },
-  "backend": "python_worker_qwen_tts_save_wav",
-  "language": "Russian",
-  "realtime_claim": false,
-  "required_evidence": [
-    "model_and_runtime_provenance",
-    "effective_utf8_text_and_instruction",
-    "startup_first_pcm_inference_and_audio_duration_timings",
-    "natural_eos_or_classified_failure",
-    "repeat_and_restart_subset",
-    "bounded_time_and_finite_memory",
-    "human_intelligibility_and_instruction_adherence"
-  ],
-  "result": "not_run"
+  "request": {
+    "language": "Russian",
+    "text_utf8_sha256": "7bf8f4ea17a356bb23b911376a046cf52da892bf69b27f9b446e434cfc2bab96",
+    "instruction_utf8_sha256": "cb9c2d630a872853cfe9274c6137f18e6a10f7a6161d957872eed511e0d5528a",
+    "sample_rate": 24000,
+    "channels": 1,
+    "sample_format": "s16le",
+    "seed": 1002,
+    "seed_mode": "fixed"
+  },
+  "upstream_full_audio": {
+    "result": "pass_with_eos_telemetry_unavailable",
+    "model_load_ms": 20637.43,
+    "startup_ms": 20639.076,
+    "first_pcm_ms": 44596.735,
+    "synthesis_ms": 44597.164,
+    "audio_duration_ms": 5256.875,
+    "real_time_factor": 8.483588,
+    "audio_chunks": 1,
+    "pcm_bytes": 252330,
+    "wav_sha256": "689db88196bf512fa9887e72a2e58c962ed0d43935b5505c4bcfeca00af5f14a",
+    "generation_trace_available": false
+  },
+  "persistent_repeat": {
+    "result": "pass",
+    "same_worker": true,
+    "requests": 2,
+    "same_pcm_sha256": "c7cc8ce397910d3d2a4030ed091b558942988504dec79586b3013a0afd060781",
+    "restart_subset": "pass"
+  },
+  "faster_streaming": {
+    "result": "pass_natural_eos",
+    "streaming": true,
+    "model_load_ms": 20904.47,
+    "startup_ms": 20906.039,
+    "first_pcm_ms": 8571.927,
+    "synthesis_ms": 12054.387,
+    "audio_duration_ms": 2376.875,
+    "audio_chunks": 4,
+    "pcm_bytes": 114090,
+    "wav_sha256": "f481905c64bca5e738c756c262313a4553fc5366bf32cb3af3c6a524789f52ae",
+    "termination_reason": "eos",
+    "hit_eos": true,
+    "codec_frame_count": 30,
+    "pre_corrective_wav_identical": true
+  },
+  "acceptance": {
+    "model_load": "pass",
+    "instruction_and_russian_text": "pass",
+    "pcm16_wav": "pass",
+    "persistent_repeat": "pass",
+    "restart": "pass",
+    "bounded_time_and_finite_memory": "pass",
+    "natural_eos": "pass",
+    "human_intelligibility_and_instruction_adherence": "not_run",
+    "native_voice_design_gguf": "not_run",
+    "realtime_claim": false
+  },
+  "artifacts": {
+    "weights_committed": false,
+    "wav_committed": false,
+    "private_runtime_committed": false
+  },
+  "result": "conditional"
 }
