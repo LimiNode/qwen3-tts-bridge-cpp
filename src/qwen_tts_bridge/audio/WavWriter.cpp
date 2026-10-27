@@ -1,6 +1,7 @@
 #include <qwen_tts_bridge/audio/WavWriter.hpp>
 
 #include <array>
+#include <filesystem>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -78,7 +79,9 @@ WavWriter::WavWriter(
     }
     block_align_ = static_cast<std::uint16_t>(block_align);
 
-    file_.open(path_, std::ios::binary | std::ios::trunc);
+    file_.open(
+        std::filesystem::u8path(path_),
+        std::ios::binary | std::ios::trunc);
     if (!file_.is_open()) {
         throw std::runtime_error("failed to open WAV file: " + path_);
     }

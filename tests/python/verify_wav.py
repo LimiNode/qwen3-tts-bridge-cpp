@@ -4,10 +4,19 @@ from __future__ import annotations
 
 import argparse
 import struct
+import sys
 from pathlib import Path
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Windows runners may inherit a legacy console code page.  The verifier
+    # reports the path, which can legitimately contain non-ASCII characters.
+    # Prefer UTF-8 output without making StringIO-based callers depend on a
+    # concrete stream implementation.
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(reconfigure):
+        reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(description="Verify a PCM WAV file header.")
     parser.add_argument("path")
     parser.add_argument("--sample-rate", type=int, required=True)

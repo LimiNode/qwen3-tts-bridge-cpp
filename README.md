@@ -75,6 +75,38 @@ same bridge API. VoiceDesign uses a natural-language `instruction` rather than
 a preset speaker; the reproducible WAV smoke path is documented in
 [docs/voice-design-acceptance.md](docs/voice-design-acceptance.md).
 
+The portable package also exposes the user-facing CLI. It discovers an exact
+compatible model from explicit input, user configuration, the package-local
+`models/` directory, or the Hugging Face cache, in that order:
+
+```powershell
+qwen-tts models list
+qwen-tts design --text "Hello" --instruction "A calm warm voice" --out voice.wav
+```
+
+Model downloads are always explicit through `qwen-tts models download`; a
+synthesis command never downloads or replaces model data silently.
+`models verify` reports structural validity separately from integrity verified
+against a complete model manifest, and `models list` keeps invalid discovered
+candidates visible with their validation error. After synthesis, `design`
+validates both the PCM WAV and its result JSON before reporting success.
+`design --play` opens that completed file with the configured Windows default
+application; it is not the project's native WinMM playback acceptance path.
+
+The Python runtime package and the complete user distribution are separate
+build stages. Assemble the latter from an explicitly selected Release
+`qwen_tts_save_wav.exe` (plus any explicitly named non-system runtime DLLs):
+
+```powershell
+.\scripts\assemble-portable-release.ps1 `
+  -PythonPackageRoot .\dist\QwenTTSBridge `
+  -SaveWavExecutable .\build\default\Release\qwen_tts_save_wav.exe `
+  -OutputRoot .\dist\QwenTTSBridge-release
+```
+
+The assembled directory contains `qwen-tts.cmd`, the sealed Python worker,
+the C++ WAV executable, configuration examples, and a SHA-256 release manifest.
+
 ## Goals
 
 - provide a simple C++17 API for Qwen3-TTS;
@@ -82,7 +114,8 @@ a preset speaker; the reproducible WAV smoke path is documented in
 - isolate model/runtime code in a separate worker process;
 - keep the worker and model alive between requests;
 - support low-latency streaming PCM output;
-- package the worker as a standalone Windows application with Nuitka;
+- package the worker as a standalone Windows application with Nuitka or the
+  conservative portable Python runtime;
 - avoid requiring Python to be installed on the target machine;
 - keep the transport architecture open for a future WebSocket transport.
 
@@ -91,7 +124,7 @@ a preset speaker; the reproducible WAV smoke path is documented in
 | Model family | Request inputs | Backend status |
 | --- | --- | --- |
 | 0.6B/1.7B CustomVoice | text, language, speaker, optional instruction | Supported through the worker path; validate the selected runtime/model pair |
-| 1.7B VoiceDesign | text, language, non-empty voice instruction | API and worker path implemented; real-model acceptance is an environment-specific gate |
+| 1.7B VoiceDesign | text, language, non-empty voice instruction | API, worker, CLI discovery, and real-model receipt implemented; human listening remains a separate gate |
 | 0.6B/1.7B Base | text, language, reference audio or registered voice profile | Implemented voice-clone path; verify the selected profile and reference provenance |
 
 Streaming availability and performance are backend/model dependent. A full-

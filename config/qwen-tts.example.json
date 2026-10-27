@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "models": {
+    "voice-design": {
+      "path": "D:/Models/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+      "revision": "5ecdb67327fd37bb2e042aab12ff7391903235d3"
+    },
+    "base-1.7b": {
+      "path": "D:/Models/Qwen3-TTS-12Hz-1.7B-Base"
+    }
+  },
+  "runtime": {
+    "save_wav_executable": "C:/Program Files/QwenTTSBridge/qwen_tts_save_wav.exe",
+    "startup_timeout_ms": 120000,
+    "request_timeout_ms": 300000
+  },
+  "native_profiles": {
+    "ru-stress": {
+      "runtime_dir": "D:/QwenRuntime",
+      "talker_model": "D:/Models/qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+      "codec_model": "D:/Models/qwen-tokenizer-12hz-Q8_0.gguf"
+    }
+  }
+}
