@@ -48,7 +48,7 @@ CMakeUserPresets.json
 *.vcxproj.user
 /config/playback-runtime.local.json
 /config/voice-profiles.local.json
-/config/voice-design-runtime.local.json
+/config/qwen-tts.local.json
 
 # Logs and temporary local files
 *.log

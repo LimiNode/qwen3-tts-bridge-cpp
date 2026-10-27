@@ -9,7 +9,6 @@ param(
     [string]$Text,
     [Parameter(Mandatory = $true)]
     [string]$Instruction,
-    [string[]]$PythonPath = @(),
     [string]$Language = "Russian",
     [string]$Output = "voice-design.wav",
     [string]$ResultJson = "",
@@ -125,23 +124,6 @@ if ($SampleRate -eq 0 -or $Channels -eq 0) {
     throw "-SampleRate and -Channels must be greater than zero"
 }
 
-$resolvedPythonPath = @()
-foreach ($pathEntry in $PythonPath) {
-    if ([string]::IsNullOrWhiteSpace($pathEntry)) {
-        continue
-    }
-    $pathCandidate = if ([IO.Path]::IsPathRooted($pathEntry)) {
-        $pathEntry
-    }
-    else {
-        Join-Path $RepoRoot $pathEntry
-    }
-    if (-not (Test-Path -LiteralPath $pathCandidate -PathType Container)) {
-        throw "Python path entry was not found: $pathCandidate"
-    }
-    $resolvedPythonPath += (Resolve-Path -LiteralPath $pathCandidate).Path
-}
-
 $outputDirectory = Split-Path -Parent $outputPath
 if ($outputDirectory -and -not (Test-Path -LiteralPath $outputDirectory)) {
     New-Item -ItemType Directory -Path $outputDirectory | Out-Null
@@ -164,28 +146,9 @@ if ($RequireNaturalEos) {
     $arguments += "--require-natural-eos"
 }
 
-$previousPythonPath = $env:PYTHONPATH
-if ($resolvedPythonPath.Count -gt 0) {
-    $pythonPathEntries = @($resolvedPythonPath)
-    if (-not [string]::IsNullOrWhiteSpace($previousPythonPath)) {
-        $pythonPathEntries += $previousPythonPath
-    }
-    $env:PYTHONPATH = $pythonPathEntries -join [IO.Path]::PathSeparator
-}
-try {
-    & $saveWavPath @arguments
-    $exitCode = $LASTEXITCODE
-}
-finally {
-    if ($null -eq $previousPythonPath) {
-        Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
-    }
-    else {
-        $env:PYTHONPATH = $previousPythonPath
-    }
-}
-if ($exitCode -ne 0) {
-    throw "qwen_tts_save_wav failed with exit code $exitCode"
+& $saveWavPath @arguments
+if ($LASTEXITCODE -ne 0) {
+    throw "qwen_tts_save_wav failed with exit code $LASTEXITCODE"
 }
 if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
     throw "qwen_tts_save_wav did not create the output WAV"

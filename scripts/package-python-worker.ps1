@@ -789,6 +789,7 @@ $WorkerPackageSource = Resolve-RepoPath "worker/src/qwen_tts_bridge_worker"
 $WorkerProjectSource = Resolve-RepoPath "worker"
 $LauncherPath = Join-Path $WorkerOutput "qwen_tts_worker.cmd"
 $DoctorLauncherPath = Join-Path $WorkerOutput "qwen_tts_doctor.cmd"
+$UserCliLauncherPath = Join-Path $PackageRoot "qwen-tts.cmd"
 
 Assert-UnderRepo $PackageRoot
 Assert-UnderRepo $WorkerOutput
@@ -941,6 +942,29 @@ set "PYTHONDONTWRITEBYTECODE=1"
     )
 }
 
+function Write-UserCliLauncher {
+    param(
+        [string]$LauncherPath
+    )
+
+    $LauncherContent = @'
+@echo off
+setlocal
+set "QTB_PACKAGE_ROOT=%~dp0"
+set "WORKER_ROOT=%QTB_PACKAGE_ROOT%worker-python"
+set "PYTHONHOME=%WORKER_ROOT%\python"
+set "PYTHONPATH=%WORKER_ROOT%\python\Lib\site-packages"
+set "PYTHONNOUSERSITE=1"
+set "PYTHONDONTWRITEBYTECODE=1"
+"%WORKER_ROOT%\python\python.exe" -B -P -s -m qwen_tts_bridge_worker.user_cli %*
+'@
+    [IO.File]::WriteAllText(
+        $LauncherPath,
+        $LauncherContent.Replace("`n", "`r`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
 Assert-PortableSitePaths -SitePackages $SitePackagesOutput
 Invoke-StagedPythonIsolationProbe `
     -PythonRoot $PythonOutput `
@@ -985,15 +1009,18 @@ Write-BuildManifest `
 
 Write-WorkerLauncher -LauncherPath $LauncherPath
 Write-DoctorLauncher -LauncherPath $DoctorLauncherPath
+Write-UserCliLauncher -LauncherPath $UserCliLauncherPath
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "config") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $PackageRoot "models") | Out-Null
 
 if (
     -not (Test-Path -LiteralPath $LauncherPath) -or
-    -not (Test-Path -LiteralPath $DoctorLauncherPath)
+    -not (Test-Path -LiteralPath $DoctorLauncherPath) -or
+    -not (Test-Path -LiteralPath $UserCliLauncherPath)
 ) {
-    throw "Portable Python worker launchers were not found under: $WorkerOutput"
+    throw "Portable Python worker or user CLI launchers were not found"
 }
 
 Write-Host "Portable Python worker launcher: $LauncherPath"
 Write-Host "Portable Python worker doctor: $DoctorLauncherPath"
+Write-Host "QwenTTSBridge user CLI: $UserCliLauncherPath"

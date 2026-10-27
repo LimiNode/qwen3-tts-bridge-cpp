@@ -75,6 +75,18 @@ same bridge API. VoiceDesign uses a natural-language `instruction` rather than
 a preset speaker; the reproducible WAV smoke path is documented in
 [docs/voice-design-acceptance.md](docs/voice-design-acceptance.md).
 
+The portable package also exposes the user-facing CLI. It discovers an exact
+compatible model from explicit input, user configuration, the package-local
+`models/` directory, or the Hugging Face cache, in that order:
+
+```powershell
+qwen-tts models list
+qwen-tts design --text "Hello" --instruction "A calm warm voice" --out voice.wav
+```
+
+Model downloads are always explicit through `qwen-tts models download`; a
+synthesis command never downloads or replaces model data silently.
+
 ## Goals
 
 - provide a simple C++17 API for Qwen3-TTS;
@@ -91,7 +103,7 @@ a preset speaker; the reproducible WAV smoke path is documented in
 | Model family | Request inputs | Backend status |
 | --- | --- | --- |
 | 0.6B/1.7B CustomVoice | text, language, speaker, optional instruction | Supported through the worker path; validate the selected runtime/model pair |
-| 1.7B VoiceDesign | text, language, non-empty voice instruction | API and worker path implemented; real-model acceptance is an environment-specific gate |
+| 1.7B VoiceDesign | text, language, non-empty voice instruction | API, worker, CLI discovery, and real-model receipt implemented; human listening remains a separate gate |
 | 0.6B/1.7B Base | text, language, reference audio or registered voice profile | Implemented voice-clone path; verify the selected profile and reference provenance |
 
 Streaming availability and performance are backend/model dependent. A full-

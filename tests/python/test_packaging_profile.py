@@ -256,6 +256,8 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
 
         self.assertIn("qwen_tts_worker.cmd", script)
         self.assertIn("qwen_tts_doctor.cmd", script)
+        self.assertIn("qwen-tts.cmd", script)
+        self.assertIn("QTB_PACKAGE_ROOT", script)
         self.assertIn("PYTHONHOME", script)
         self.assertIn("PYTHONPATH", script)
         self.assertIn("PYTHONNOUSERSITE", script)
@@ -263,6 +265,7 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("-B -P -s -m qwen_tts_bridge_worker", script)
         self.assertIn("-m qwen_tts_bridge_worker", script)
         self.assertIn("-m qwen_tts_bridge_worker.doctor", script)
+        self.assertIn("-m qwen_tts_bridge_worker.user_cli", script)
         self.assertIn('--portable-root "%WORKER_ROOT%."', script)
 
     def test_portable_worker_smoke_wrapper_uses_protocol_verifier(self) -> None:
