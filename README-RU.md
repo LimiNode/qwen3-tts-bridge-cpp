@@ -84,6 +84,27 @@ qwen-tts design --text "Привет" --instruction "Мягкий тёплый �
 Загрузка модели выполняется только явной командой `qwen-tts models download`;
 синтез никогда не скачивает и не заменяет модель молча.
 
+`models verify` отдельно сообщает структурную корректность и проверку
+целостности по полному manifest модели. `models list` не скрывает найденные, но
+повреждённые модели, а показывает причину ошибки. После синтеза `design`
+проверяет PCM WAV и result JSON до сообщения об успехе. `design --play`
+открывает готовый файл в приложении Windows по умолчанию; это не native WinMM
+playback acceptance проекта.
+
+Python runtime и полный пользовательский дистрибутив собираются разными
+этапами. Полный пакет создаётся из явно выбранного Release
+`qwen_tts_save_wav.exe` и, при необходимости, явно перечисленных runtime DLL:
+
+```powershell
+.\scripts\assemble-portable-release.ps1 `
+  -PythonPackageRoot .\dist\QwenTTSBridge `
+  -SaveWavExecutable .\build\default\Release\qwen_tts_save_wav.exe `
+  -OutputRoot .\dist\QwenTTSBridge-release
+```
+
+В собранном каталоге находятся `qwen-tts.cmd`, sealed Python worker, C++ WAV
+executable, примеры конфигурации и release manifest с SHA-256.
+
 ## VoiceDesign → WAV
 
 Существующий `qwen_tts_save_wav` сохраняет PCM и не дублирует синтез. Для

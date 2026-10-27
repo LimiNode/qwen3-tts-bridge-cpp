@@ -11,6 +11,7 @@ from qwen_tts_bridge_worker.model_resolver import (
     MODEL_CATALOG,
     download_model,
     hugging_face_cache_root,
+    list_models,
     resolve_hf_snapshot,
     resolve_model,
     resolve_native_profile,
@@ -217,6 +218,114 @@ class ModelResolverTests(unittest.TestCase):
             self.assertTrue(result.path.is_dir())
             self.assertFalse(
                 (result.path.parent / f".{result.path.name}.incomplete").exists()
+            )
+
+    def test_hf_local_dir_metadata_is_not_model_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / "package"
+
+            def fake_download(**kwargs: object) -> str:
+                local = _write_model(
+                    Path(str(kwargs["local_dir"])), "voice_design", "1b7"
+                )
+                metadata = local / ".cache" / "huggingface" / "download"
+                metadata.mkdir(parents=True)
+                (metadata / "model.safetensors.lock").write_bytes(b"metadata")
+                (metadata / "config.json.metadata").write_bytes(b"metadata")
+                return str(local)
+
+            result = download_model(
+                "voice-design",
+                portable_root=package,
+                revision="0123456789abcdef",
+                downloader=fake_download,
+            )
+            self.assertEqual("0123456789abcdef", result.revision)
+            self.assertFalse((result.path / ".cache" / "huggingface").exists())
+            validate_python_model(result.path, MODEL_CATALOG["voice-design"])
+
+    def test_failed_download_removes_staging_and_keeps_target_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / "package"
+
+            def fake_download(**kwargs: object) -> str:
+                local = Path(str(kwargs["local_dir"]))
+                _write_model(local, "voice_design", "1b7")
+                (local / "model.safetensors").unlink()
+                return str(local)
+
+            with self.assertRaisesRegex(ValueError, "missing: model.safetensors"):
+                download_model(
+                    "voice-design", portable_root=package, downloader=fake_download
+                )
+            target = package / "models" / MODEL_CATALOG["voice-design"].directory_name
+            self.assertFalse(target.exists())
+            self.assertFalse((target.parent / f".{target.name}.incomplete").exists())
+
+    def test_existing_download_target_is_not_modified(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / "package"
+            target = package / "models" / MODEL_CATALOG["voice-design"].directory_name
+            target.mkdir(parents=True)
+            sentinel = target / "keep.txt"
+            sentinel.write_text("keep", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "already exists"):
+                download_model(
+                    "voice-design",
+                    portable_root=package,
+                    downloader=lambda **_kwargs: "unused",
+                )
+            self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
+
+    def test_models_list_reports_invalid_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / "package"
+            invalid = _write_model(
+                package / "models" / MODEL_CATALOG["voice-design"].directory_name,
+                "base",
+                "1b7",
+            )
+            rows = list_models(
+                config_path=Path(temporary) / "missing.json",
+                portable_root=package,
+                environ={"HF_HUB_CACHE": str(Path(temporary) / "hub")},
+            )
+            self.assertEqual(1, len(rows))
+            self.assertFalse(rows[0].structurally_valid)
+            self.assertEqual(invalid.resolve(), rows[0].path)
+            self.assertIn("family mismatch", rows[0].error or "")
+
+    def test_integrity_status_requires_complete_signed_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            model = _write_model(Path(temporary) / "model", "voice_design", "1b7")
+            self.assertFalse(
+                validate_python_model(model, MODEL_CATALOG["voice-design"])
+            )
+
+            runtime_files = []
+            for path in sorted(item for item in model.rglob("*") if item.is_file()):
+                runtime_files.append(
+                    {
+                        "path": path.relative_to(model).as_posix(),
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                        "size_bytes": path.stat().st_size,
+                    }
+                )
+            manifest: dict[str, object] = {
+                "model_runtime_manifest_schema_version": 1,
+                "runtime_files": runtime_files,
+            }
+            canonical = (
+                json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n"
+            ).encode("utf-8")
+            manifest["directory_manifest_sha256"] = hashlib.sha256(
+                canonical
+            ).hexdigest()
+            (model / "model-runtime-manifest.json").write_text(
+                json.dumps(manifest), encoding="utf-8"
+            )
+            self.assertTrue(
+                validate_python_model(model, MODEL_CATALOG["voice-design"])
             )
 
     def test_unwritable_portable_destination_fails_before_download(self) -> None:

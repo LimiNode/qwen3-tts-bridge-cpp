@@ -67,10 +67,36 @@ refuses ambiguous unreferenced revisions. Incomplete downloads and model-family
 mismatches fail closed. If no model exists, the error names the exact explicit
 download command.
 
+An explicit model, worker, or `qwen_tts_save_wav.exe` path also fails closed:
+the CLI never replaces a bad explicit selection with a portable or developer
+fallback. Hugging Face's internal `.cache/huggingface/` local-directory
+metadata is not model payload, while incomplete files anywhere else in the
+checkpoint remain an error.
+
+`models verify` emits both `structurally_valid` and `integrity_verified`.
+Structural validation checks required files and model identity. Integrity is
+true only when a complete signed runtime manifest covers the model file set;
+the absence of that manifest is not described as cryptographic verification.
+`models list --json` provides the same fields and includes invalid discovered
+candidates with an actionable `error`.
+
 Custom locations and native GGUF profiles may be stored in a user config based
 on `config/qwen-tts.example.json`. `qwen-tts init` is not required. Native
 profiles retain explicit runtime, Talker GGUF, codec GGUF, and optional SHA-256
 fields; the Python Hugging Face directory contract is never applied to them.
+
+The release-facing CLI is complete only after the sealed Python package has
+been combined with an explicitly selected Release `qwen_tts_save_wav.exe` by
+`scripts/assemble-portable-release.ps1`. The assembly writes a SHA-256 manifest
+covering the launchers, worker runtime, C++ executable, explicitly supplied
+runtime dependencies, and config examples. The adjacent `models/` directory is
+intentionally mutable and is not sealed into that application manifest.
+
+After a zero subprocess exit, `design` independently requires a non-empty
+24 kHz mono PCM16 WAV and a consistent schema-1 result JSON. `--play` then opens
+the completed WAV using the configured Windows default application. It neither
+uses nor proves the optional native WinMM playback module. Natural EOS remains
+an explicit `--require-natural-eos` acceptance gate.
 
 ## Low-level acceptance wrapper
 

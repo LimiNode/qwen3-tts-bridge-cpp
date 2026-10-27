@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import shutil
@@ -7,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import wave
 from pathlib import Path
 from unittest import mock
 
@@ -24,7 +26,7 @@ class UserCliTests(unittest.TestCase):
 
             with mock.patch(
                 "qwen_tts_bridge_worker.user_cli.subprocess.run",
-                return_value=mock.Mock(returncode=0),
+                side_effect=_successful_synthesis,
             ) as run:
                 result = user_cli.main(
                     [
@@ -87,7 +89,7 @@ class UserCliTests(unittest.TestCase):
             )
             with mock.patch(
                 "qwen_tts_bridge_worker.user_cli.subprocess.run",
-                return_value=mock.Mock(returncode=0),
+                side_effect=_successful_synthesis,
             ) as run:
                 result = user_cli.main(
                     [
@@ -189,11 +191,104 @@ class UserCliTests(unittest.TestCase):
             self.assertIn(str(package.resolve()), completed.stdout)
             self.assertNotIn(str(source_package), completed.stdout + completed.stderr)
 
+    def test_explicit_runtime_paths_fail_closed_before_portable_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fallback = _write_executable(root / "qwen_tts_save_wav.exe")
+            missing = root / "missing.exe"
+            with self.assertRaisesRegex(ValueError, "explicit.*was not found"):
+                user_cli._resolve_executable(
+                    missing, None, root, "qwen_tts_save_wav.exe"
+                )
+            with self.assertRaisesRegex(ValueError, "configured.*was not found"):
+                user_cli._resolve_executable(
+                    None, missing, root, "qwen_tts_save_wav.exe"
+                )
+            self.assertTrue(fallback.is_file())
+
+            worker = root / "worker-python" / "python" / "python.exe"
+            _write_executable(worker)
+            with self.assertRaisesRegex(ValueError, "explicit worker.*was not found"):
+                user_cli._resolve_worker(missing, None, root)
+            with self.assertRaisesRegex(ValueError, "configured worker.*was not found"):
+                user_cli._resolve_worker(None, missing, root)
+
+    def test_portable_worker_does_not_fall_back_to_developer_python(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(ValueError, "portable worker.*was not found"):
+                user_cli._resolve_worker(None, None, Path(temporary))
+
+    def test_successful_subprocess_must_create_valid_wav_and_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=0),
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--out",
+                            str(root / "missing.wav"),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+
+    def test_play_help_names_default_application_not_native_playback(self) -> None:
+        with mock.patch("sys.stdout", new_callable=io.StringIO) as output:
+            with self.assertRaises(SystemExit) as raised:
+                user_cli._build_parser().parse_args(["design", "--help"])
+        self.assertEqual(0, raised.exception.code)
+        self.assertIn("default application", output.getvalue())
+        self.assertNotIn("--acceptance-mock-worker", output.getvalue())
+
 
 def _write_executable(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"exe")
     return path
+
+
+def _successful_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
+    output = Path(command[command.index("--output") + 1])
+    result = Path(command[command.index("--result-json") + 1])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(output), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x00" * 16)
+    result.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "terminal_state": "completed",
+                "audio_chunks": 1,
+                "audio_bytes": 32,
+                "completion_metadata_received": True,
+                "termination_reason": "eos",
+                "hit_eos": True,
+                "hit_max_seq_len": False,
+                "hit_max_new_tokens": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return mock.Mock(returncode=0)
 
 
 def _write_model(root: Path) -> Path:

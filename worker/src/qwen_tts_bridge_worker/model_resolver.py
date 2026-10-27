@@ -38,6 +38,20 @@ class ResolvedModel:
     path: Path
     source: str
     revision: str | None = None
+    integrity_verified: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class ModelDiagnostic:
+    """Describe one valid or invalid model selected by discovery precedence."""
+
+    spec: ModelSpec
+    path: Path | None
+    source: str
+    revision: str | None
+    structurally_valid: bool
+    integrity_verified: bool
+    error: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,8 +153,8 @@ def resolve_model(
     spec = model_spec(family)
     if explicit_path is not None:
         path = explicit_path.expanduser().resolve()
-        validate_python_model(path, spec)
-        return ResolvedModel(spec, path, "explicit")
+        integrity_verified = validate_python_model(path, spec)
+        return ResolvedModel(spec, path, "explicit", None, integrity_verified)
 
     selected_config_path = (
         (default_user_config_path(environ) if config_path is None else config_path)
@@ -151,20 +165,24 @@ def resolve_model(
     configured = _configured_model(config, spec, selected_config_path.parent)
     if configured is not None:
         path, revision = configured
-        validate_python_model(path, spec)
-        return ResolvedModel(spec, path, "config", revision)
+        integrity_verified = validate_python_model(path, spec)
+        return ResolvedModel(spec, path, "config", revision, integrity_verified)
 
     if portable_root is not None:
         portable = portable_root.resolve() / "models" / spec.directory_name
         if portable.exists():
-            validate_python_model(portable, spec)
-            return ResolvedModel(spec, portable, "portable")
+            integrity_verified = validate_python_model(portable, spec)
+            return ResolvedModel(
+                spec, portable, "portable", None, integrity_verified
+            )
 
     cache_root = hugging_face_cache_root(environ)
     snapshot, revision = resolve_hf_snapshot(cache_root, spec.repository)
     if snapshot is not None:
-        validate_python_model(snapshot, spec)
-        return ResolvedModel(spec, snapshot, "huggingface-cache", revision)
+        integrity_verified = validate_python_model(snapshot, spec)
+        return ResolvedModel(
+            spec, snapshot, "huggingface-cache", revision, integrity_verified
+        )
 
     raise ValueError(
         f"{spec.name} model was not found. Install it explicitly with: "
@@ -216,8 +234,8 @@ def resolve_hf_snapshot(
     return None, None
 
 
-def validate_python_model(path: Path, spec: ModelSpec) -> None:
-    """Validate checkpoint completeness, family identity, and optional manifest."""
+def validate_python_model(path: Path, spec: ModelSpec) -> bool:
+    """Validate a checkpoint and report complete-manifest integrity status."""
 
     if not path.is_dir():
         raise ValueError(f"model path is not a directory: {path}")
@@ -243,7 +261,8 @@ def validate_python_model(path: Path, spec: ModelSpec) -> None:
         )
     manifest_path = path / "model-runtime-manifest.json"
     if manifest_path.is_file():
-        _verify_manifest(path, _read_json(manifest_path))
+        return _verify_manifest(path, _read_json(manifest_path))
+    return False
 
 
 def list_models(
@@ -251,22 +270,46 @@ def list_models(
     config_path: Path | None = None,
     portable_root: Path | None = None,
     environ: Mapping[str, str] | None = None,
-) -> list[ResolvedModel]:
-    """List every valid catalog model visible from config, portable, or HF cache."""
+) -> list[ModelDiagnostic]:
+    """List catalog models, preserving diagnostics for invalid candidates."""
 
-    found: list[ResolvedModel] = []
+    found: list[ModelDiagnostic] = []
     for name in MODEL_CATALOG:
         try:
+            model = resolve_model(
+                name,
+                config_path=config_path,
+                portable_root=portable_root,
+                environ=environ,
+            )
             found.append(
-                resolve_model(
-                    name,
-                    config_path=config_path,
-                    portable_root=portable_root,
-                    environ=environ,
+                ModelDiagnostic(
+                    model.spec,
+                    model.path,
+                    model.source,
+                    model.revision,
+                    True,
+                    model.integrity_verified,
                 )
             )
-        except ValueError:
-            continue
+        except ValueError as exc:
+            candidate = _selected_candidate(
+                MODEL_CATALOG[name], config_path, portable_root, environ
+            )
+            if candidate is None:
+                continue
+            path, source, revision = candidate
+            found.append(
+                ModelDiagnostic(
+                    MODEL_CATALOG[name],
+                    path,
+                    source,
+                    revision,
+                    False,
+                    False,
+                    str(exc),
+                )
+            )
     return found
 
 
@@ -306,8 +349,15 @@ def download_model(
                 cache_dir=str(cache_root) if cache_root else None,
             )
         ).resolve()
-        validate_python_model(path, spec)
-        return ResolvedModel(spec, path, "huggingface-cache", revision)
+        integrity_verified = validate_python_model(path, spec)
+        resolved_revision = revision or _snapshot_revision(path)
+        return ResolvedModel(
+            spec,
+            path,
+            "huggingface-cache",
+            resolved_revision,
+            integrity_verified,
+        )
 
     target = (
         portable_root.resolve() / "models" / spec.directory_name
@@ -326,13 +376,18 @@ def download_model(
             revision=revision,
             local_dir=str(staging),
         )
-        validate_python_model(staging, spec)
+        integrity_verified = validate_python_model(staging, spec)
+        _remove_hugging_face_metadata(staging)
         staging.replace(target)
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
         raise
     return ResolvedModel(
-        spec, target, "portable" if portable_root else "explicit", revision
+        spec,
+        target,
+        "portable" if portable_root else "explicit",
+        revision,
+        integrity_verified,
     )
 
 
@@ -414,9 +469,27 @@ def _configured_model(
 
 def _has_transient_files(root: Path) -> bool:
     return any(
-        path.is_file() and path.name.endswith(_TRANSIENT_SUFFIXES)
+        path.is_file()
+        and not _is_hugging_face_metadata(path, root)
+        and path.name.endswith(_TRANSIENT_SUFFIXES)
         for path in root.rglob("*")
     )
+
+
+def _is_hugging_face_metadata(path: Path, root: Path) -> bool:
+    relative = path.relative_to(root)
+    return relative.parts[:2] == (".cache", "huggingface")
+
+
+def _remove_hugging_face_metadata(root: Path) -> None:
+    """Remove downloader bookkeeping before promoting a completed snapshot."""
+
+    metadata_root = root / ".cache" / "huggingface"
+    if metadata_root.is_dir():
+        shutil.rmtree(metadata_root)
+        cache_root = metadata_root.parent
+        if cache_root.is_dir() and not any(cache_root.iterdir()):
+            cache_root.rmdir()
 
 
 def _read_json(path: Path) -> dict[str, object]:
@@ -429,10 +502,12 @@ def _read_json(path: Path) -> dict[str, object]:
     return value
 
 
-def _verify_manifest(root: Path, manifest: dict[str, object]) -> None:
+def _verify_manifest(root: Path, manifest: dict[str, object]) -> bool:
     files = manifest.get("runtime_files")
     if not isinstance(files, list) or not files:
         raise ValueError("model manifest has no runtime_files")
+    expected_paths: set[str] = set()
+    complete_entries = True
     for entry in files:
         if not isinstance(entry, dict):
             raise ValueError("model manifest file entry is invalid")
@@ -441,8 +516,9 @@ def _verify_manifest(root: Path, manifest: dict[str, object]) -> None:
         if not isinstance(name, str) or not isinstance(digest, str):
             raise ValueError("model manifest file entry is invalid")
         relative = Path(name)
-        if relative.is_absolute() or ".." in relative.parts:
+        if relative.is_absolute() or ".." in relative.parts or name in expected_paths:
             raise ValueError("model manifest path is unsafe")
+        expected_paths.add(name)
         candidate = (root / relative).resolve()
         if not candidate.is_relative_to(root.resolve()):
             raise ValueError("model manifest path is unsafe")
@@ -450,6 +526,85 @@ def _verify_manifest(root: Path, manifest: dict[str, object]) -> None:
             raise ValueError(f"model manifest SHA-256 is invalid: {name}")
         if not candidate.is_file() or _sha256_file(candidate) != digest.lower():
             raise ValueError(f"model manifest integrity failed: {name}")
+        expected_size = entry.get("size_bytes")
+        if not isinstance(expected_size, int) or expected_size < 0:
+            complete_entries = False
+        elif candidate.stat().st_size != expected_size:
+            raise ValueError(f"model manifest size failed: {name}")
+
+    actual_paths = {
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.is_file()
+        and path.name != "model-runtime-manifest.json"
+        and not _is_hugging_face_metadata(path, root)
+    }
+    complete = complete_entries and actual_paths == expected_paths
+    schema = manifest.get("model_runtime_manifest_schema_version")
+    directory_hash = manifest.get("directory_manifest_sha256")
+    if schema == 1 or directory_hash is not None:
+        unsigned = dict(manifest)
+        unsigned.pop("directory_manifest_sha256", None)
+        expected_hash = hashlib.sha256(
+            (
+                json.dumps(unsigned, sort_keys=True, separators=(",", ":")) + "\n"
+            ).encode("utf-8")
+        ).hexdigest()
+        if (
+            not isinstance(directory_hash, str)
+            or directory_hash.lower() != expected_hash
+        ):
+            raise ValueError("model manifest SHA-256 is invalid")
+        complete = complete and schema == 1
+    else:
+        complete = False
+    return complete
+
+
+def _selected_candidate(
+    spec: ModelSpec,
+    config_path: Path | None,
+    portable_root: Path | None,
+    environ: Mapping[str, str] | None,
+) -> tuple[Path, str, str | None] | None:
+    selected_config = (
+        (default_user_config_path(environ) if config_path is None else config_path)
+        .expanduser()
+        .resolve()
+    )
+    try:
+        configured = _configured_model(
+            load_user_config(selected_config, environ), spec, selected_config.parent
+        )
+    except ValueError:
+        return selected_config, "config", None
+    if configured is not None:
+        return configured[0], "config", configured[1]
+    if portable_root is not None:
+        portable = portable_root.resolve() / "models" / spec.directory_name
+        if portable.exists():
+            return portable, "portable", None
+    cache_root = hugging_face_cache_root(environ)
+    repo_root = cache_root / ("models--" + spec.repository.replace("/", "--"))
+    snapshots = repo_root / "snapshots"
+    if not snapshots.is_dir():
+        return None
+    main_ref = repo_root / "refs" / "main"
+    if main_ref.is_file():
+        revision = main_ref.read_text(encoding="utf-8").strip()
+        candidate = snapshots / revision
+        if candidate.exists():
+            return candidate.resolve(), "huggingface-cache", revision
+    candidates = sorted(path for path in snapshots.iterdir() if path.is_dir())
+    if len(candidates) == 1:
+        return candidates[0].resolve(), "huggingface-cache", candidates[0].name
+    if candidates:
+        return snapshots.resolve(), "huggingface-cache", None
+    return None
+
+
+def _snapshot_revision(path: Path) -> str | None:
+    return path.name if path.parent.name == "snapshots" else None
 
 
 def _sha256_file(path: Path) -> str:

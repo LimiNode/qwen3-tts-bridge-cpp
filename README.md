@@ -86,6 +86,26 @@ qwen-tts design --text "Hello" --instruction "A calm warm voice" --out voice.wav
 
 Model downloads are always explicit through `qwen-tts models download`; a
 synthesis command never downloads or replaces model data silently.
+`models verify` reports structural validity separately from integrity verified
+against a complete model manifest, and `models list` keeps invalid discovered
+candidates visible with their validation error. After synthesis, `design`
+validates both the PCM WAV and its result JSON before reporting success.
+`design --play` opens that completed file with the configured Windows default
+application; it is not the project's native WinMM playback acceptance path.
+
+The Python runtime package and the complete user distribution are separate
+build stages. Assemble the latter from an explicitly selected Release
+`qwen_tts_save_wav.exe` (plus any explicitly named non-system runtime DLLs):
+
+```powershell
+.\scripts\assemble-portable-release.ps1 `
+  -PythonPackageRoot .\dist\QwenTTSBridge `
+  -SaveWavExecutable .\build\default\Release\qwen_tts_save_wav.exe `
+  -OutputRoot .\dist\QwenTTSBridge-release
+```
+
+The assembled directory contains `qwen-tts.cmd`, the sealed Python worker,
+the C++ WAV executable, configuration examples, and a SHA-256 release manifest.
 
 ## Goals
 
@@ -94,7 +114,8 @@ synthesis command never downloads or replaces model data silently.
 - isolate model/runtime code in a separate worker process;
 - keep the worker and model alive between requests;
 - support low-latency streaming PCM output;
-- package the worker as a standalone Windows application with Nuitka;
+- package the worker as a standalone Windows application with Nuitka or the
+  conservative portable Python runtime;
 - avoid requiring Python to be installed on the target machine;
 - keep the transport architecture open for a future WebSocket transport.
 

@@ -14,8 +14,10 @@ on:
       - "examples/**"
       - "external/cpp/**"
       - "scripts/package-python-worker.ps1"
+      - "scripts/assemble-portable-release.ps1"
       - "scripts/setup-python-packaging.ps1"
       - "scripts/test-portable-python-worker-cpp.ps1"
+      - "scripts/test-portable-user-cli.ps1"
       - "scripts/run-native-python-matrix.ps1"
       - "src/**"
       - "tests/**"
@@ -129,6 +131,28 @@ jobs:
           .\scripts\test-portable-python-worker-cpp.ps1
           -Python python
           -ExampleExe "${{ matrix.build-dir }}\Release\qwen_tts_save_wav.exe"
+
+      - name: Assemble complete portable CLI release
+        if: ${{ matrix.build-examples == 'ON' }}
+        shell: pwsh
+        run: |
+          $release = Join-Path $env:RUNNER_TEMP 'QwenTTSBridge-release'
+          .\scripts\assemble-portable-release.ps1 `
+            -PythonPackageRoot dist/QwenTTSBridge `
+            -SaveWavExecutable "${{ matrix.build-dir }}\Release\qwen_tts_save_wav.exe" `
+            -OutputRoot $release `
+            -Python python
+
+      - name: Exercise relocated qwen-tts CLI through C++ and mock worker
+        if: ${{ matrix.build-examples == 'ON' }}
+        shell: pwsh
+        run: |
+          $release = Join-Path $env:RUNNER_TEMP 'QwenTTSBridge-release'
+          $acceptance = Join-Path $env:RUNNER_TEMP 'qwen-tts-cli-acceptance'
+          .\scripts\test-portable-user-cli.ps1 `
+            -PackageRoot $release `
+            -OutputRoot $acceptance `
+            -Python python
 
   native-abi:
     name: Windows native qwentts ABI

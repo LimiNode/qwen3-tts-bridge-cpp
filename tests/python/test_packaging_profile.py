@@ -14,6 +14,12 @@ _TEST_PORTABLE_PYTHON_WORKER_SCRIPT = (
 _TEST_PORTABLE_PYTHON_WORKER_CPP_SCRIPT = (
     _REPO_ROOT / "scripts" / "test-portable-python-worker-cpp.ps1"
 )
+_ASSEMBLE_PORTABLE_RELEASE_SCRIPT = (
+    _REPO_ROOT / "scripts" / "assemble-portable-release.ps1"
+)
+_TEST_PORTABLE_USER_CLI_SCRIPT = (
+    _REPO_ROOT / "scripts" / "test-portable-user-cli.ps1"
+)
 _TEST_PORTABLE_PYTHON_QWEN_WORKER_SCRIPT = (
     _REPO_ROOT / "scripts" / "test-portable-python-qwen-worker.ps1"
 )
@@ -358,6 +364,34 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("Smoke-test portable worker through C++ transport", workflow)
         self.assertIn(".\\scripts\\test-portable-python-worker-cpp.ps1", workflow)
         self.assertIn('"worker/**"', workflow)
+
+    def test_release_assembly_requires_explicit_cpp_artifact_and_provenance(
+        self,
+    ) -> None:
+        script = _ASSEMBLE_PORTABLE_RELEASE_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("[Parameter(Mandatory = $true)]", script)
+        self.assertIn("[string]$SaveWavExecutable", script)
+        self.assertIn("portable-python-tree-manifest.json", script)
+        self.assertIn("release-manifest.json", script)
+        self.assertIn("bin/qwen_tts_save_wav.exe", script)
+        self.assertIn("runtime_dependencies", script)
+        self.assertIn("source_git_revision", script)
+        self.assertIn("Get-FileHash", script)
+        self.assertIn(".qtb-portable-release-root", script)
+
+    def test_portable_cli_acceptance_uses_real_launcher_and_cpp_executable(
+        self,
+    ) -> None:
+        script = _TEST_PORTABLE_USER_CLI_SCRIPT.read_text(encoding="utf-8")
+        workflow = _CPP_CHECKS_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("qwen-tts.cmd", script)
+        self.assertIn("--acceptance-mock-worker", script)
+        self.assertIn("verify_wav.py", script)
+        self.assertIn("explicit.*was not found", script)
+        self.assertIn("assemble-portable-release.ps1", workflow)
+        self.assertIn("test-portable-user-cli.ps1", workflow)
 
     def test_portable_worker_docs_recommend_environment_overrides(self) -> None:
         readme = _README.read_text(encoding="utf-8")
