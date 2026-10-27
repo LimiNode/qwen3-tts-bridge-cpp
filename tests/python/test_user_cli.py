@@ -342,6 +342,45 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(0, result)
             self.assertNotIn("--require-natural-eos", run.call_args.args[0])
 
+    def test_strict_natural_eos_failure_preserves_previous_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "voice.wav"
+            result_json = root / "voice.json"
+            output.write_bytes(b"previous wav")
+            result_json.write_text('{"previous": true}', encoding="utf-8")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_non_natural_synthesis,
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--out",
+                            str(output),
+                            "--result-json",
+                            str(result_json),
+                        ]
+                    )
+
+            self.assertEqual(2, raised.exception.code)
+            self.assertEqual(b"previous wav", output.read_bytes())
+            self.assertEqual('{"previous": true}', result_json.read_text())
+
     def test_models_list_finds_portable_model_without_init(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             package = Path(temporary)
@@ -546,6 +585,135 @@ class UserCliTests(unittest.TestCase):
         self.assertIn("default application", output.getvalue())
         self.assertNotIn("--acceptance-mock-worker", output.getvalue())
 
+    def test_publication_failure_backing_up_second_target_restores_first(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = _publication_fixture(Path(temporary))
+            original_replace = user_cli.os.replace
+            calls = 0
+
+            def fail_second_backup(source: str, destination: str) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("injected second-backup failure")
+                original_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace",
+                side_effect=fail_second_backup,
+            ):
+                with self.assertRaisesRegex(ValueError, "publish"):
+                    user_cli._publish_design_outputs(*paths)
+
+            self.assertEqual(b"old wav", paths[2].read_bytes())
+            self.assertEqual(b"old json", paths[3].read_bytes())
+            self.assertEqual([], list(Path(temporary).glob("*.qtb-backup")))
+
+    def test_publication_failure_before_wav_publish_restores_both_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = _publication_fixture(Path(temporary))
+            original_replace = user_cli.os.replace
+            calls = 0
+
+            def fail_wav_publish(source: str, destination: str) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 3:
+                    raise OSError("injected wav-publish failure")
+                original_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace",
+                side_effect=fail_wav_publish,
+            ):
+                with self.assertRaisesRegex(ValueError, "publish"):
+                    user_cli._publish_design_outputs(*paths)
+
+            self.assertEqual(b"old wav", paths[2].read_bytes())
+            self.assertEqual(b"old json", paths[3].read_bytes())
+            self.assertEqual([], list(Path(temporary).glob("*.qtb-backup")))
+
+    def test_publication_failure_after_wav_publish_restores_both_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = _publication_fixture(Path(temporary))
+            original_replace = user_cli.os.replace
+            calls = 0
+
+            def fail_json_publish(source: str, destination: str) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 4:
+                    raise OSError("injected json-publish failure")
+                original_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace",
+                side_effect=fail_json_publish,
+            ):
+                with self.assertRaisesRegex(ValueError, "publish"):
+                    user_cli._publish_design_outputs(*paths)
+
+            self.assertEqual(b"old wav", paths[2].read_bytes())
+            self.assertEqual(b"old json", paths[3].read_bytes())
+            self.assertEqual([], list(Path(temporary).glob("*.qtb-backup")))
+
+    def test_publication_reports_and_preserves_backup_when_rollback_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = _publication_fixture(Path(temporary))
+            original_replace = user_cli.os.replace
+            calls = 0
+
+            def fail_publish_and_json_restore(source: str, destination: str) -> None:
+                nonlocal calls
+                calls += 1
+                if calls in (4, 5):
+                    raise OSError(f"injected failure {calls}")
+                original_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace",
+                side_effect=fail_publish_and_json_restore,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError, "rollback was incomplete.*backup"
+                ) as raised:
+                    user_cli._publish_design_outputs(*paths)
+
+            json_backups = list(
+                Path(temporary).glob(".voice.json.*.qtb-backup")
+            )
+            self.assertEqual(1, len(json_backups))
+            self.assertIn(str(json_backups[0]), str(raised.exception))
+            self.assertEqual(b"old wav", paths[2].read_bytes())
+            self.assertFalse(paths[3].exists())
+            json_backups[0].unlink()
+            paths[0].unlink(missing_ok=True)
+            paths[1].unlink(missing_ok=True)
+
+    def test_successful_publication_cleans_backups(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = _publication_fixture(Path(temporary))
+            user_cli._publish_design_outputs(*paths)
+
+            self.assertEqual(b"new wav", paths[2].read_bytes())
+            self.assertEqual(b"new json", paths[3].read_bytes())
+            self.assertEqual([], list(Path(temporary).glob("*.qtb-backup")))
+            self.assertFalse(paths[0].exists())
+            self.assertFalse(paths[1].exists())
+
+    def test_publication_rejects_symlink_before_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            paths = _publication_fixture(Path(temporary))
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.Path.is_symlink",
+                return_value=True,
+            ), mock.patch("qwen_tts_bridge_worker.user_cli.os.replace") as replace:
+                with self.assertRaisesRegex(ValueError, "symlink"):
+                    user_cli._publish_design_outputs(*paths)
+            replace.assert_not_called()
+            paths[0].unlink(missing_ok=True)
+            paths[1].unlink(missing_ok=True)
+
 
 def _write_executable(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -581,6 +749,33 @@ def _successful_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
     return mock.Mock(returncode=0)
 
 
+def _non_natural_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
+    output = Path(command[command.index("--output") + 1])
+    result = Path(command[command.index("--result-json") + 1])
+    with wave.open(str(output), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x00" * 16)
+    result.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "terminal_state": "completed",
+                "audio_chunks": 1,
+                "audio_bytes": 32,
+                "completion_metadata_received": True,
+                "termination_reason": "max_new_tokens",
+                "hit_eos": False,
+                "hit_max_seq_len": False,
+                "hit_max_new_tokens": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return mock.Mock(returncode=0)
+
+
 def _write_model(root: Path) -> Path:
     root.mkdir(parents=True)
     (root / "speech_tokenizer").mkdir()
@@ -609,6 +804,20 @@ def _write_model(root: Path) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"model")
     return root
+
+
+def _publication_fixture(
+    root: Path,
+) -> tuple[Path, Path, Path, Path]:
+    temporary_wav = root / ".voice.wav.qtb-tmp"
+    temporary_result = root / ".voice.json.qtb-tmp"
+    output = root / "voice.wav"
+    result_json = root / "voice.json"
+    temporary_wav.write_bytes(b"new wav")
+    temporary_result.write_bytes(b"new json")
+    output.write_bytes(b"old wav")
+    result_json.write_bytes(b"old json")
+    return temporary_wav, temporary_result, output, result_json
 
 
 if __name__ == "__main__":

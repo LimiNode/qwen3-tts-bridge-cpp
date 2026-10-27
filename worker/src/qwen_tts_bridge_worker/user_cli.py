@@ -486,11 +486,20 @@ def _publish_design_outputs(
     except OSError as exc:
         for target in published:
             _remove_owned_temporary(target)
+        rollback_errors: list[str] = []
         for target, backup in reversed(backups):
             try:
                 os.replace(backup, target)
-            except OSError:
-                pass
+            except OSError as rollback_exc:
+                rollback_errors.append(
+                    f"original {target} remains at backup {backup}: {rollback_exc}"
+                )
+        if rollback_errors:
+            detail = "; ".join(rollback_errors)
+            raise ValueError(
+                "could not publish generated VoiceDesign outputs and rollback "
+                f"was incomplete ({detail})"
+            ) from exc
         raise ValueError(
             f"could not publish generated VoiceDesign outputs: {exc}"
         ) from exc
