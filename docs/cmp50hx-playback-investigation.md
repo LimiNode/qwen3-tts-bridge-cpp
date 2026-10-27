@@ -384,8 +384,8 @@ For a frozen-versus-candidate comparison, use the same seed, speaker, text,
 and then compare the metadata and raw SHA-256:
 
 ```powershell
-Get-FileHash .\.tmp\frozen.pcm -Algorithm SHA256
-Get-FileHash .\.tmp\streaming.pcm -Algorithm SHA256
+Get-FileHash .\.tmp\pcm-parity\frozen.pcm -Algorithm SHA256
+Get-FileHash .\.tmp\pcm-parity\streaming.pcm -Algorithm SHA256
 ```
 
 The repository also provides a dependency-free analyzer for fixed, explicit
@@ -393,9 +393,9 @@ tolerance gates:
 
 ```powershell
 python .\scripts\compare-cmp50hx-pcm-parity.py `
-  --expected .\.tmp\frozen.pcm `
-  --candidate .\.tmp\candidate.pcm `
-  --output .\.tmp\pcm-parity.json `
+  --expected .\.tmp\pcm-parity\frozen.pcm `
+  --candidate .\.tmp\pcm-parity\candidate.pcm `
+  --output .\.tmp\pcm-parity\result.json `
   --max-rms-delta 3 --min-snr-db 55 --max-abs-delta 64
 ```
 
