@@ -162,7 +162,7 @@ class UserCliTests(unittest.TestCase):
             elsewhere.mkdir()
             environment = os.environ.copy()
             environment["PYTHONPATH"] = str(site_packages)
-            environment["PYTHONIOENCODING"] = "utf-8"
+            environment["PYTHONIOENCODING"] = "cp1252"
             environment["PYTHONNOUSERSITE"] = "1"
             environment["QTB_PACKAGE_ROOT"] = str(package)
             environment["LOCALAPPDATA"] = str(root / "empty-user-config")
@@ -186,7 +186,7 @@ class UserCliTests(unittest.TestCase):
             )
             self.assertEqual(0, completed.returncode, completed.stderr)
             self.assertIn("voice-design\tportable", completed.stdout)
-            self.assertIn(str(package), completed.stdout)
+            self.assertIn(str(package.resolve()), completed.stdout)
             self.assertNotIn(str(source_package), completed.stdout + completed.stderr)
 
 

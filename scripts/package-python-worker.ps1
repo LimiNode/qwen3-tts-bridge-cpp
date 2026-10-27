@@ -956,6 +956,7 @@ set "PYTHONHOME=%WORKER_ROOT%\python"
 set "PYTHONPATH=%WORKER_ROOT%\python\Lib\site-packages"
 set "PYTHONNOUSERSITE=1"
 set "PYTHONDONTWRITEBYTECODE=1"
+set "PYTHONUTF8=1"
 "%WORKER_ROOT%\python\python.exe" -B -P -s -m qwen_tts_bridge_worker.user_cli %*
 '@
     [IO.File]::WriteAllText(

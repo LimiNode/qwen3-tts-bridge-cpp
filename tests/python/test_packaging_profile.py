@@ -262,6 +262,7 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("PYTHONPATH", script)
         self.assertIn("PYTHONNOUSERSITE", script)
         self.assertIn("PYTHONDONTWRITEBYTECODE", script)
+        self.assertIn("PYTHONUTF8", script)
         self.assertIn("-B -P -s -m qwen_tts_bridge_worker", script)
         self.assertIn("-m qwen_tts_bridge_worker", script)
         self.assertIn("-m qwen_tts_bridge_worker.doctor", script)

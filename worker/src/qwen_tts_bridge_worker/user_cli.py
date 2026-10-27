@@ -24,6 +24,7 @@ from qwen_tts_bridge_worker.model_resolver import (
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the user-facing CLI."""
 
+    _configure_standard_streams()
     parser = _build_parser()
     args = parser.parse_args(argv)
     try:
@@ -36,6 +37,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
     return 2
+
+
+def _configure_standard_streams() -> None:
+    if os.name != "nt":
+        return
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="replace")
 
 
 def _build_parser() -> argparse.ArgumentParser:
