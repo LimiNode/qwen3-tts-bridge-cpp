@@ -180,7 +180,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-dir",
-        default="tmp/qwen-voice-clone-direct",
+        default=".tmp/qwen-voice-clone-direct",
     )
     return parser
 

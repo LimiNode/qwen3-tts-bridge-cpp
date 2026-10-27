@@ -12,7 +12,7 @@ param(
     [switch]$Save,
     [string]$Python = "",
     [string]$ModelPath = "",
-    [string]$BuildDirectory = "build"
+    [string]$BuildDirectory = ".build\default"
 )
 
 $ErrorActionPreference = "Stop"

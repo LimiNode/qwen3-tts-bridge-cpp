@@ -144,7 +144,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-path", required=True)
     parser.add_argument("--faster-source", required=True)
     parser.add_argument("--voice-registry", required=True)
-    parser.add_argument("--output-dir", default="tmp/voice-profile-samples")
+    parser.add_argument("--output-dir", default=".tmp/voice-profile-samples")
     parser.add_argument("--voice-id", action="append", default=[])
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bfloat16")

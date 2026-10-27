@@ -78,9 +78,9 @@ For example, on the pinned validation host:
   -PackageId QwenTTSBridge-technical-beta-r4 `
   -ReplaceExisting `
   -CustomVoiceModelPath C:\models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
-  -CustomVoiceModelManifest tmp\customvoice-model-manifest.json `
+  -CustomVoiceModelManifest .tmp\customvoice-model-manifest.json `
   -BaseModelPath C:\models\Qwen3-TTS-12Hz-1.7B-Base `
-  -BaseModelManifest tmp\base-model-manifest.json `
+  -BaseModelManifest .tmp\base-model-manifest.json `
   -VerifierPython .\.venv-packaging\Scripts\python.exe `
   -AcceptanceOutput docs\reports\technical-beta-r4-acceptance.json
 ```

@@ -58,7 +58,7 @@ snapshot and keep it with the experiment evidence:
   --model-path C:\models\Qwen3-TTS-12Hz-1.7B-Base `
   --repository Qwen/Qwen3-TTS-12Hz-1.7B-Base `
   --revision <pinned-Hugging-Face-revision> `
-  --output tmp\voice-clone-bootstrap\model-runtime-manifest.json
+  --output .tmp\voice-clone-bootstrap\model-runtime-manifest.json
 ```
 
 Pass that file to every bootstrap invocation with
@@ -74,7 +74,7 @@ runtime roots:
 
 ```powershell
 .venv-faster-qwen\Scripts\python.exe scripts\python_runtime_manifest.py build `
-  --output tmp\voice-clone-bootstrap\python-runtime-manifest.json
+  --output .tmp\voice-clone-bootstrap\python-runtime-manifest.json
 ```
 
 Pass it as `--python-runtime-manifest`. The runner rehashes the active runtime
@@ -86,8 +86,8 @@ interpreter with `-I`:
 ```powershell
 .\scripts\run-authoritative-voice-clone-bootstrap.ps1 -- `
   --model-path C:\models\Qwen3-TTS-12Hz-1.7B-Base `
-  --model-runtime-manifest tmp\voice-clone-bootstrap\model-runtime-manifest.json `
-  --python-runtime-manifest tmp\voice-clone-bootstrap\python-runtime-manifest.json `
+  --model-runtime-manifest .tmp\voice-clone-bootstrap\model-runtime-manifest.json `
+  --python-runtime-manifest .tmp\voice-clone-bootstrap\python-runtime-manifest.json `
   --faster-source C:\repo\faster-qwen3-tts `
   --voice-registry config\voice-profiles.local.json
 ```

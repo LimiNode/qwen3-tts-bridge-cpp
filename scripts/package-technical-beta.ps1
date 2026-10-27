@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
     [string]$PackageId,
-    [string]$BuildDirectory = "build-mingw",
+    [string]$BuildDirectory = ".build\technical-beta-mingw",
     [string]$PackagingVenvPath = ".venv-packaging",
     [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
     [string]$FasterQwenSourcePath = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean",

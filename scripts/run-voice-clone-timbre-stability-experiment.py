@@ -158,7 +158,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-path", required=True)
     parser.add_argument("--faster-source", required=True)
     parser.add_argument("--voice-registry", required=True)
-    parser.add_argument("--output-dir", default="tmp/voice-clone-timbre-stability")
+    parser.add_argument("--output-dir", default=".tmp/voice-clone-timbre-stability")
     parser.add_argument("--voice-id", default=DEFAULT_VOICE_ID)
     parser.add_argument("--target-text", default=DEFAULT_TEXTS[0])
     parser.add_argument("--device", default="cuda")

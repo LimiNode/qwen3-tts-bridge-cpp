@@ -27,6 +27,18 @@ possible without redesigning the public API or protocol layer.
 ## Always Follow
 
 - Keep diffs minimal and focused.
+- Keep disposable local artifacts inside the repository: use `.tmp/<task-name>/`
+  for logs, traces, probes, receipts, downloaded diagnostics, and other
+  throwaway outputs. Do not create repository-adjacent `.tmp-*` directories or
+  put project artifacts under `C:\tmp`.
+- Use `.worktrees/<task-name>/` for real Git worktrees. Do not use `.tmp` for a
+  checkout that needs Git history or a branch.
+- Use `.build/<profile>/` for local CMake/test builds. Keep generated release
+  packages in `dist/` only when they are needed for packaging or acceptance;
+  remove or regenerate them after the acceptance task completes.
+- Do not leave debug scripts, executables, object files, profiling databases,
+  or ad-hoc logs in the repository root. Keep retained research helpers under
+  a named `.tmp/<task-name>/` archive or a deliberate `tools/` subdirectory.
 - Prefer simple, explicit C++17 over generic abstractions.
 - Use the C++17 standard library where it is clear and sufficient.
 - Do not add a C++ dependency just for convenience.
@@ -251,6 +263,22 @@ Python Qwen source dependency:
 external/python/Qwen3-TTS-streaming/
     https://github.com/NewYaroslav/Qwen3-TTS-streaming
 ```
+
+Selected native C++ Qwen engine fork:
+
+```text
+https://github.com/LimiNode/qwentts.cpp
+```
+
+Use this fork as the source for the future native GGML backend. Build it as a
+shared library with `QWEN_SHARED=ON` and integrate through its C ABI. Do not
+substitute the upstream repository, an unrelated prebuilt DLL, a Python
+wrapper, or another Qwen3-TTS C++ port without explicit user approval. When it
+is added to this repository, pin it as a git submodule under `external/cpp/`.
+The selection of this fork does not make the native backend production-ready:
+keep the current Python worker as the accepted release path until the DLL path
+passes the documented quality, streaming, cancellation, lifecycle, and target
+hardware performance gates.
 
 Future Rust Qwen engine candidate:
 

@@ -98,7 +98,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--local-files-only", action="store_true")
     parser.add_argument(
         "--output",
-        default="tmp/faster-codec-split.json",
+        default=".tmp/faster-codec-split.json",
     )
     return parser
 

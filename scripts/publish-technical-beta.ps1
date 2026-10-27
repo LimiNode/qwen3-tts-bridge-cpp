@@ -17,7 +17,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$AcceptanceOutput,
     [string]$BaseVoiceId = "kraftwerk_robot_ru_bootstrap_fidelity",
-    [string]$BuildDirectory = "build-mingw",
+    [string]$BuildDirectory = ".build\technical-beta-mingw",
     [string]$PackagingVenvPath = ".venv-packaging",
     [string]$QwenSourcePath = "external/python/Qwen3-TTS-streaming",
     [string]$FasterQwenSourcePath = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean",
@@ -173,8 +173,8 @@ $candidateRoot = Join-Path $finalParent ".__qtb-$([Guid]::NewGuid().ToString('N'
 $validationRoot = Join-Path (Split-Path -Parent $candidateRoot) `
     "$(Split-Path -Leaf $candidateRoot)-relocated"
 $relocationReport = "$validationRoot-report.json"
-$publishedReport = Join-Path $RepoRoot "tmp\technical-beta-published-$([Guid]::NewGuid().ToString('N')).json"
-$faultReport = Join-Path $RepoRoot "tmp\technical-beta-publication-faults-$([Guid]::NewGuid().ToString('N')).json"
+$publishedReport = Join-Path $RepoRoot ".tmp\technical-beta-published-$([Guid]::NewGuid().ToString('N')).json"
+$faultReport = Join-Path $RepoRoot ".tmp\technical-beta-publication-faults-$([Guid]::NewGuid().ToString('N')).json"
 $acceptancePath = Resolve-RepoPath $AcceptanceOutput
 $acceptanceStage = "$acceptancePath.pending-$([Guid]::NewGuid().ToString('N'))"
 

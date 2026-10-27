@@ -33,18 +33,19 @@ reference-audio workflow and the included `kraftwerk_robot_ru` example.
 Configure and build with CMake:
 
 ```powershell
-cmake -S . -B build -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON
-cmake --build build --config Release
-ctest --test-dir build -C Release --output-on-failure
+cmake -S . -B .build/default -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON
+cmake --build .build/default --config Release
+ctest --test-dir .build/default -C Release --output-on-failure
 ```
 
 With a single-config MinGW build, executables are written directly to
-`build`; multi-config generators such as Visual Studio use `build\Release`.
+`.build/default`; multi-config generators such as Visual Studio use
+`.build/default\Release`.
 
 The mock WAV example needs no CUDA model:
 
 ```powershell
-.\build\qwen_tts_save_wav.exe --mock --output sample.wav --text "Hello from QwenTTSBridge"
+.\.build\default\qwen_tts_save_wav.exe --mock --output sample.wav --text "Hello from QwenTTSBridge"
 ```
 
 For a real worker, point the examples at the packaged worker or the selected

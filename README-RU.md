@@ -33,9 +33,9 @@ runtime `0.6B-CustomVoice` по-прежнему работает с преду�
 Сконфигурируйте и соберите проект через CMake:
 
 ```powershell
-cmake -S . -B build -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON
-cmake --build build --config Release
-ctest --test-dir build -C Release --output-on-failure
+cmake -S . -B .build/default -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON
+cmake --build .build/default --config Release
+ctest --test-dir .build/default -C Release --output-on-failure
 ```
 
 При одноконфигурационной сборке MinGW исполняемые файлы находятся прямо в
@@ -45,7 +45,7 @@ ctest --test-dir build -C Release --output-on-failure
 Для mock-примера WAV не нужны CUDA и модель:
 
 ```powershell
-.\build\qwen_tts_save_wav.exe --mock --output sample.wav --text "Hello from QwenTTSBridge"
+.\.build\default\qwen_tts_save_wav.exe --mock --output sample.wav --text "Hello from QwenTTSBridge"
 ```
 
 Для реального worker укажите packaged worker либо выбранный Python launcher и

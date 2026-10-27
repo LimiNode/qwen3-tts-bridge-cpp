@@ -215,7 +215,7 @@ $env:PYTHONPATH = "C:\_repoz\faster-qwen3-tts-v032-stack112-clean;worker\src"
   --model-path "$env:USERPROFILE\.cache\huggingface\hub\models--Qwen--Qwen3-TTS-12Hz-1.7B-Base\snapshots\fd4b254389122332181a7c3db7f27e918eec64e3" `
   --faster-source C:\_repoz\faster-qwen3-tts-v032-stack112-clean `
   --voice-registry config\voice-profiles.example.json `
-  --output-dir tmp\voice-clone-diagnosis `
+  --output-dir .tmp\voice-clone-diagnosis `
   --warmup
 ```
 

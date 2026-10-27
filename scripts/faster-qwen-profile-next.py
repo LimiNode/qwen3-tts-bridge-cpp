@@ -125,7 +125,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--local-files-only", action="store_true")
     parser.add_argument(
         "--output",
-        default="tmp/faster-profile-next.json",
+        default=".tmp/faster-profile-next.json",
     )
     return parser
 

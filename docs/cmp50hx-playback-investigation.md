@@ -15,7 +15,7 @@ buffer remained queued. It is useful for detecting insufficient delivery slack,
 but it is not a hardware underrun counter and does not by itself establish an
 audible glitch or a GPU root cause.
 
-All capture artefacts are local and intentionally untracked under `tmp/`. The
+All capture artefacts are local and intentionally untracked under `.tmp/`. The
 run identifiers below make the results auditable without embedding machine-local
 paths in versioned documentation.
 
@@ -345,6 +345,116 @@ PCM chunk; it does not improve producer RTF or constitute a hardware-underrun
 counter. Longer idle and representative-load validation remain separate
 acceptance work.
 
+### RTX 4090-equivalent Base fast-start result
+
+The roughly four-second audible start observed in the later CMP 50HX Base
+startup work is not an established hardware minimum. That work preserved the
+1.7B Base model, a precomputed `voice_id`, FasterQwen, and selected-profile
+warmup, but changed both the producer cadence and the playback policy relative
+to the earlier RTX 4090 fast-start path:
+
+| Dimension | RTX 4090 fast-start path | CMP 50HX conservative path |
+| --- | --- | --- |
+| Chunk cadence | `emit_every_frames=8` | baseline `16`; candidate `8,23` |
+| Decoder path | 80-frame window | right-padded 48-frame path plus CUDA graph |
+| WaveOut start | first PCM chunk | after two PCM chunks |
+| FasterQwen revision | `e4ac767` | fork revision `19747d4` |
+| Primary goal | minimum audible-start latency | continuous playback reserve |
+
+This table concerns the later Base-profile startup branch. The earlier
+CustomVoice decoder experiments documented below used a separate 80-frame
+right-padded candidate and must not be conflated with this Base comparison.
+
+For the reported `8,23` Base candidate, the first PCM arrived at about
+`1.56 s`, while WaveOut started at about `4.44 s`. The difference is primarily
+the intentional two-chunk prebuffer: the player waits for the second,
+23-frame chunk before submitting audio. This is playback latency and must not
+be reported as time to first PCM or as inference latency.
+
+The Base cadence comparisons against `16` (`1,23`, `2,23`, `6,23`, and
+`8,23`) all used a two-chunk prebuffer, so they did not originally close the
+specific 1.7B Base fast-start question. The missing controls were run on an
+idle CMP 50HX on 2026-09-02 with the same long Russian request, prepared
+`kraftwerk_robot_ru_bootstrap_fidelity` voice, and fixed seed `20260806`.
+
+The matched current-runtime pair used FasterQwen revision `19747d4`, the
+48-frame right-padded codec path and CUDA Graph, and selected-profile full-EOS
+warmup in both arms:
+
+| Profile | First PCM | WaveOut start | Audio | Synthesis | RTF | Later-chunk proxy |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| fixed `E8`, prebuffer 1 | `1552 ms` | `1636 ms` | `19.332 s` | `26.851 s` | `1.389` | `31/31` |
+| `8,23`, prebuffer 2 | `1574 ms` | `4508 ms` | `19.708 s` | `21.309 s` | `1.081` | `0/11` |
+
+Fixed `E8` therefore gives a genuinely faster audible onset, but is not close
+to continuous playback. The queue was empty before every later chunk. After
+the early calibration gaps, about `619 ms` of PCM arrived every `663-684 ms`,
+and the complete request remained slower than realtime. The `8,23` arm had at
+least `639 ms` of queued audio before a later arrival and no proxy observation.
+
+The historical compatibility control used exact FasterQwen revision
+`e4ac767`, fixed Base `chunk_size=8`, BF16, the 80-frame decoder window,
+prebuffer 1, and a bounded two-chunk selected-profile warmup, with CMP-specific
+runtime overrides cleared. It was worse: first PCM `6198 ms`, WaveOut start
+`6268 ms`, `18.493 s` of audio generated in `57.087 s` (`RTF 3.087`), and
+`29/29` later-chunk proxy observations. The old RTX revision is therefore not
+a hidden fast path for Base on this CMP hardware.
+
+Keep two explicit, default-off CMP profiles with different contracts:
+
+| Profile | Producer and sink policy | Acceptance purpose |
+| --- | --- | --- |
+| `cmp50hx-low-latency` | `E8`, `prebuffer=1`, selected-profile warmup | Minimize audible start while measuring every later queue-starvation proxy observation. |
+| `cmp50hx-continuous` | `8,23`, `prebuffer=2`, selected-profile warmup | Preserve the current playback reserve and measure sustained continuity. |
+
+This closes the original parity gap for the measured hardware and request.
+Roughly four and a half seconds is not a hardware minimum for audible onset:
+the current fixed-`E8` path can start near `1.64 s`. The `8,23`, prebuffer-2
+profile is, however, the only tested candidate here that combines the early
+`8`-frame output with enough reserve and producer throughput for uninterrupted
+playback. Keep fixed `E8` diagnostic and default-off until a producer
+improvement passes the same long request without later-chunk proxy
+observations. A proxy observation remains a queue-starvation indicator, not
+proof of a physical hardware underrun.
+
+A subsequent default-off experiment found the Base-specific cause. The
+right-padded W48 codec CUDA Graph was captured at startup, but Base voice clone
+streaming still used its accumulated dynamic decoder path and recomputed a
+request-local frame-duration calibration over the large reference-code prefix.
+The experimental reference-context bootstrap instead decodes the last 25
+precomputed reference frames plus each eight-frame emission in the fixed graph.
+
+On the same request, three fresh-worker `E8`, prebuffer-1 runs started WaveOut
+in `1068-1070 ms` and recorded zero later-chunk proxy observations. A
+66.72-second response started WaveOut in `1071 ms`, completed at natural EOS
+after 834 codec frames, and recorded `0/104` later-chunk observations. The
+fixed-seed candidate preserved the baseline's 249 generated codec frames,
+codec-token SHA-256, and natural EOS. Its maximum measured PCM boundary jump
+was lower than the accumulated baseline (`0.047` versus `0.124`).
+
+A manual A/B listening review on 2026-09-02 provisionally accepted the
+candidate. The baseline contained barely audible loop/splice-like clicks. The
+candidate did not reproduce that splice character; its remaining occasional
+ticks were judged to belong to the synthesized signal rather than PCM joins.
+The reviewer described the candidate as nearly clean (approximately 99.9%)
+and otherwise sounding good.
+
+The idle multi-text gate then sent five sequential requests through one
+persistent worker after a bounded selected-profile warmup. All five completed.
+The shapes covered a very short Russian reply, Russian punctuation and
+numbers, a conversational response, mixed Russian/English identifiers, and a
+short reply after the mixed request. First PCM remained within `999-1006 ms`
+for every request. The medium shapes produced `12.32-16.08 s` of audio with
+aggregate RTF `1.031-1.037`; the separate physical WaveOut runs above remain
+the authoritative zero-starvation evidence.
+
+This closes the listening and idle multi-text acceptance gates. Representative
+LLM/avatar load testing is explicitly deferred until such a workload exists;
+it is not part of the current idle CMP 50HX acceptance scope. The experiment
+stays default-off pending deliberate release-profile integration and must fail
+closed unless the fixed right-padded decoder and at least 25 reference codec
+frames are available.
+
 ### Rejected left-padded fixed-shape codec-decode experiment
 
 The next performance investigation is deliberately separate from the playback
@@ -379,7 +489,7 @@ Then run only the streaming-API correctness smoke:
 ```powershell
 .\scripts\run-cmp50hx-playback-etw-soak.ps1 `
   -Attempts 1 `
-  -FasterShadowPath tmp\cmp50hx-faster-codec-streaming-shadow `
+  -FasterShadowPath .tmp\cmp50hx-faster-codec-streaming-shadow `
   -CodecStreamingDecode `
   -PlaybackPrebufferChunks 2 `
   -WorkerSynthesisWarmup `
@@ -416,8 +526,8 @@ For a frozen-versus-candidate comparison, use the same seed, speaker, text,
 and then compare the metadata and raw SHA-256:
 
 ```powershell
-Get-FileHash .\tmp\frozen.pcm -Algorithm SHA256
-Get-FileHash .\tmp\streaming.pcm -Algorithm SHA256
+Get-FileHash .\.tmp\frozen.pcm -Algorithm SHA256
+Get-FileHash .\.tmp\streaming.pcm -Algorithm SHA256
 ```
 
 The repository also provides a dependency-free analyzer for fixed, explicit
@@ -425,9 +535,9 @@ tolerance gates:
 
 ```powershell
 python .\scripts\compare-cmp50hx-pcm-parity.py `
-  --expected .\tmp\frozen.pcm `
-  --candidate .\tmp\candidate.pcm `
-  --output .\tmp\pcm-parity.json `
+  --expected .\.tmp\frozen.pcm `
+  --candidate .\.tmp\candidate.pcm `
+  --output .\.tmp\pcm-parity.json `
   --max-rms-delta 3 --min-snr-db 55 --max-abs-delta 64
 ```
 
@@ -576,15 +686,100 @@ from these records. Further automatic keyword expansion is not justified until
 an interactive GPUView/WPA review finds a documented join, or a controlled
 consumer-isolation A/B gives a causal result.
 
+## Deferred multi-voice scheduling
+
+The production worker intentionally performs one synthesis request at a time.
+It has one engine thread and therefore preserves one model state, one CUDA
+Graph policy, and deterministic request cancellation semantics.
+
+Running two independent workers is technically possible, but it is not a
+realtime configuration on one CMP 50HX. The controlled two-worker `ryan` and
+`serena` probe completed without a CUDA out-of-memory failure, but both
+five-second streams produced later-chunk queue-starvation proxy observations.
+This is workload evidence, not a hardware-underrun measurement.
+
+Future work may evaluate multi-request batching or fine-grained interleaving
+inside a *single* worker. It must remain default-off until all of the following
+are satisfied:
+
+1. Independent per-request generation, codec, EOS, cancellation, and seed
+   state are preserved.
+2. Batch-2 output passes a fixed-seed PCM parity gate against the equivalent
+   single-request outputs.
+3. The fixed-shape CUDA Graph path has an explicit batch-size contract and a
+   safe fallback for incompatible requests.
+4. Single-voice latency does not regress, and a two-voice CMP 50HX soak meets
+   separately documented queue-starvation proxy and throughput gates.
+
+Until then, concurrent application requests are accepted but queued by one
+worker; launching multiple GPU workers is a diagnostic/throughput experiment,
+not a supported realtime playback mode.
+
+## Selected native GGML/qwentts.cpp backend
+
+The current accepted CMP 50HX path remains the Python worker plus the
+Faster/PyTorch CUDA-Graph backend. PyTorch ships the CUDA runtime needed by
+that path, so it does not require a locally installed CUDA compiler.
+
+The selected source for the native backend is the project-owned
+[`LimiNode/qwentts.cpp`](https://github.com/LimiNode/qwentts.cpp) fork. Build
+the fork as a shared library with `QWEN_SHARED=ON` and integrate through its C
+ABI; do not make the bridge depend on an unrelated prebuilt DLL or Python
+wrapper. When the source is added to this repository, it must follow the normal
+dependency policy: use a pinned git submodule under `external/cpp/`.
+
+This selection fixes the implementation source, not the release status. The
+native backend remains default-off until it passes explicit quality, streaming,
+cancellation, lifecycle, and CMP 50HX performance gates. It supports
+CustomVoice and streaming, but uses its own GGUF talker and codec files; it
+must never be described as PCM-equivalent to the Torch/Faster model without an
+explicit quality evaluation. The current Python worker remains the accepted
+release path while that validation is incomplete. Whether the DLL is loaded
+directly by a C++ engine adapter or hosted in a separate native worker is a
+separate integration decision.
+
+### Windows CMP 50HX build prerequisites
+
+The public wrapper distribution currently has no compatible Windows CPython
+3.11 wheel for this experiment. Build the native DLL locally rather than
+installing an unverified binary. On this machine the target is NVIDIA CMP 50HX
+with compute capability `7.5` (`sm_75`). The required tools are:
+
+1. NVIDIA CUDA Toolkit 12.8, including `nvcc`. Match it to the installed
+   PyTorch CUDA 12.8 runtime for the initial experiment.
+2. Visual Studio 2022 Build Tools with the `Desktop development with C++`
+   workload, MSVC v143 x64/x86 tools, and a Windows 10 or 11 SDK. CUDA on
+   Windows uses this MSVC toolchain; MinGW alone is not a supported substitute.
+3. CMake, Git, and at least 10--15 GB of temporary free space for the CUDA
+   toolkit, native build, and separately cached CustomVoice GGUF files.
+
+Verify the toolchain from a new Developer PowerShell before configuring the
+experiment:
+
+```powershell
+nvcc --version
+cl
+cmake --version
+nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader
+```
+
+The native build must set `QWEN_SHARED=ON` and `GGML_CUDA=ON`, and include
+`75-real` in `CMAKE_CUDA_ARCHITECTURES`. The experiment runtime and its GGUF
+model cache remain under `.tmp/`; neither generated DLLs nor model weights are
+committed.
+
 ## Next acceptance gates
 
-1. Keep marker-aware ETW analysis limited to zero-loss, marker-complete ETLs;
+1. Complete multi-text and representative-load acceptance for the default-off
+   Base reference-context bootstrap. Its initial A/B listening gate passed, but
+   do not promote fixed `E8`, prebuffer 1 solely from idle zero-proxy runs.
+2. Keep marker-aware ETW analysis limited to zero-loss, marker-complete ETLs;
    it remains an attribution tool, not a GPU-duration measurement on this WDDM
    stack.
-2. Run a controlled opt-in sink-prebuffer A/B on the idle machine. Record TTFA,
+3. Run a controlled opt-in sink-prebuffer A/B on the idle machine. Record TTFA,
    sink start, completion, per-chunk cadence, worker RTF, and proxy observations
    separately; do not describe delayed sink start as improved synthesis speed.
-3. If a bounded playback reserve still reproduces a proxy outlier, capture a
+4. If a bounded playback reserve still reproduces a proxy outlier, capture a
    new marker-aligned ETL and investigate competing contexts or WDDM scheduling.
 
 ## Reproduction examples
@@ -627,7 +822,7 @@ the new run's generated `summary.json`.
 
 ```powershell
 .\scripts\analyze-cmp50hx-etw-markers.ps1 `
-  -SummaryPath .\tmp\cmp50hx-playback-etw-soak\<run-id>\summary.json `
+  -SummaryPath .\.tmp\cmp50hx-playback-etw-soak\<run-id>\summary.json `
   -RequireDmaPacketLifecycle
 ```
 

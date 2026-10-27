@@ -14,7 +14,7 @@ param(
     [string]$Seed = "",
     [switch]$NoSample,
     [string]$Text = "",
-    [string]$BuildDirectory = "build",
+    [string]$BuildDirectory = ".build\default",
     [uint32]$StartupTimeoutMs = 300000,
     [switch]$StyleExperiment,
     [switch]$DryRun

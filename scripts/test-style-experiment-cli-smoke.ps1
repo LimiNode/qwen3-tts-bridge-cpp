@@ -3,7 +3,7 @@ param(
     [string]$Python = "",
     [string]$FasterQwenSourcePath = "",
     [string]$ModelPath = "",
-    [string]$BuildDirectory = "build",
+    [string]$BuildDirectory = ".build\default",
     [uint32]$StartupTimeoutMs = 300000,
     [uint32]$StartupSettleSeconds = 35,
     [uint32]$RequestDelaySeconds = 4,

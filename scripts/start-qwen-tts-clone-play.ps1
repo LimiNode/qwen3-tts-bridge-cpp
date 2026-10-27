@@ -16,7 +16,7 @@ param(
     [switch]$StyleExperiment,
     [string]$Python = "",
     [string]$ModelPath = "",
-    [string]$BuildDirectory = "build"
+    [string]$BuildDirectory = ".build\default"
 )
 
 $ErrorActionPreference = "Stop"

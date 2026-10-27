@@ -114,7 +114,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--parity-mode", action="store_true")
     parser.add_argument("--non-streaming-mode", action="store_true")
     parser.add_argument("--local-files-only", action="store_true")
-    parser.add_argument("--output", default="tmp/faster-adaptive-chunks.json")
+    parser.add_argument("--output", default=".tmp/faster-adaptive-chunks.json")
     return parser
 
 

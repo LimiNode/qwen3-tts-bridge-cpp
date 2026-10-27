@@ -124,7 +124,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--language", default="Russian")
     parser.add_argument("--local-files-only", action="store_true")
-    parser.add_argument("--output-dir", default="tmp/faster-qwen-direct")
+    parser.add_argument("--output-dir", default=".tmp/faster-qwen-direct")
     return parser
 
 

@@ -146,7 +146,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--instruction", default="")
     parser.add_argument(
         "--output",
-        default="tmp/qwen-engine-latency-benchmark.json",
+        default=".tmp/qwen-engine-latency-benchmark.json",
     )
     return parser
 

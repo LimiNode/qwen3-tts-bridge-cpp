@@ -1,7 +1,7 @@
 param(
-    [string]$SourcePath = 'tmp\cmp50hx-faster-eager-shadow',
+    [string]$SourcePath = '.tmp\cmp50hx-faster-eager-shadow',
 
-    [string]$DestinationPath = 'tmp\cmp50hx-faster-codec-right-padded-shadow'
+    [string]$DestinationPath = '.tmp\cmp50hx-faster-codec-right-padded-shadow'
 )
 
 $ErrorActionPreference = 'Stop'

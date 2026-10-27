@@ -108,7 +108,7 @@ For an additional low-level bridge check, point a MinGW-built example directly
 at the staged private Python executable:
 
 ```powershell
-.\build-mingw\qwen_tts_save_wav.exe `
+.\..build\\technical-beta-mingw\qwen_tts_save_wav.exe `
   --worker .\dist\QwenTTSBridge\worker-python\python\python.exe `
   --worker-arg -B `
   --worker-arg -P `
@@ -137,10 +137,10 @@ scripts\model_runtime_manifest.py build `
   --model-path C:\models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
   --repository Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice `
   --revision <pinned-revision> `
-  --output .\tmp\customvoice-model-manifest.json
+  --output .\.tmp\customvoice-model-manifest.json
 scripts\test-portable-python-qwen-worker.ps1 -UseVenv `
   -ModelPath C:\models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
-  -ModelManifest .\tmp\customvoice-model-manifest.json `
+  -ModelManifest .\.tmp\customvoice-model-manifest.json `
   -RuntimeBackend faster
 ```
 

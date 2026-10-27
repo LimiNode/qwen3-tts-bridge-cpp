@@ -120,7 +120,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-path", required=True)
     parser.add_argument("--faster-source", required=True)
     parser.add_argument("--voice-registry", required=True)
-    parser.add_argument("--output-dir", default="tmp/voice-clone-identity-instruction")
+    parser.add_argument("--output-dir", default=".tmp/voice-clone-identity-instruction")
     parser.add_argument("--voice-id", default=DEFAULT_VOICE_ID)
     parser.add_argument("--identity-instruction", default=IDENTITY_INSTRUCTION)
     parser.add_argument("--device", default="cuda")

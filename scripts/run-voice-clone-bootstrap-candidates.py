@@ -201,7 +201,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--faster-source", required=True)
     parser.add_argument("--voice-registry", required=True)
     parser.add_argument(
-        "--output-dir", default="tmp/voice-clone-bootstrap-candidates-15s"
+        "--output-dir", default=".tmp/voice-clone-bootstrap-candidates-15s"
     )
     parser.add_argument(
         "--voice-id",

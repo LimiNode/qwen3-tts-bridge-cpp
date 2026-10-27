@@ -153,7 +153,7 @@ known problematic words to approved replacements.
     --model models\Qwen3-TTS-12Hz-0.6B-CustomVoice `
     --text "This is a controlled style test." `
     --instruction "Speak with controlled urgency." `
-    --output tmp\customvoice-style-ab.json
+    --output .tmp\customvoice-style-ab.json
   ```
 - There is no supported word-level phoneme, IPA, SSML, or stress-mark control.
 - The sealed RTX 4090 R10 profile is an internal opt-in performance profile,

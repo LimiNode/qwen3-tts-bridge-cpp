@@ -115,7 +115,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model-path", required=True)
     parser.add_argument("--faster-source", required=True)
     parser.add_argument("--reference-audio", required=True)
-    parser.add_argument("--output-dir", default="tmp/voice-clone-transcript-test")
+    parser.add_argument("--output-dir", default=".tmp/voice-clone-transcript-test")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--dtype", default="bfloat16")
     parser.add_argument("--attn-implementation", default="sdpa")
