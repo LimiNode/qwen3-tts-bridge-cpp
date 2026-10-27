@@ -10,7 +10,9 @@
     }
   },
   "runtime": {
-    "save_wav_executable": "C:/Program Files/QwenTTSBridge/qwen_tts_save_wav.exe"
+    "save_wav_executable": "C:/Program Files/QwenTTSBridge/qwen_tts_save_wav.exe",
+    "startup_timeout_ms": 120000,
+    "request_timeout_ms": 300000
   },
   "native_profiles": {
     "ru-stress": {

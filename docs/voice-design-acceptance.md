@@ -93,10 +93,17 @@ runtime dependencies, and config examples. The adjacent `models/` directory is
 intentionally mutable and is not sealed into that application manifest.
 
 After a zero subprocess exit, `design` independently requires a non-empty
-24 kHz mono PCM16 WAV and a consistent schema-1 result JSON. `--play` then opens
-the completed WAV using the configured Windows default application. It neither
-uses nor proves the optional native WinMM playback module. Natural EOS remains
-an explicit `--require-natural-eos` acceptance gate.
+24 kHz mono PCM16 WAV and a consistent schema-1 result JSON. The C++ timeout
+options are forwarded from `--startup-timeout-ms` and
+`--request-timeout-ms`, or from the matching `runtime` config values; defaults
+are 120 seconds for startup and 300 seconds for synthesis. CLI values override
+the config. The command writes temporary files beside the requested outputs and
+publishes both only after validation, so a failed run preserves the previous
+successful artifacts. `--play` then opens the completed WAV using the configured
+Windows default application. It neither uses nor proves the optional native
+WinMM playback module. Natural EOS is required by default; use
+`--allow-non-natural-eos` only for a deliberate diagnostic run that accepts a
+completed result without EOS.
 
 ## Low-level acceptance wrapper
 

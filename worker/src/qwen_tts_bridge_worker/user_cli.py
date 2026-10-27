@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import wave
 from collections.abc import Sequence
 from pathlib import Path
@@ -20,6 +21,10 @@ from qwen_tts_bridge_worker.model_resolver import (
     resolve_model,
     resolve_native_profile,
 )
+
+_DEFAULT_STARTUP_TIMEOUT_MS = 120_000
+_DEFAULT_REQUEST_TIMEOUT_MS = 300_000
+_MAX_TIMEOUT_MS = 4_294_967_295
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -87,11 +92,40 @@ def _build_parser() -> argparse.ArgumentParser:
     design.add_argument("--save-wav-executable", type=Path)
     design.add_argument("--worker", type=Path)
     design.add_argument(
+        "--startup-timeout-ms",
+        type=_parse_timeout_argument,
+        help=(
+            "Worker startup timeout in milliseconds "
+            f"(default: {_DEFAULT_STARTUP_TIMEOUT_MS})."
+        ),
+    )
+    design.add_argument(
+        "--request-timeout-ms",
+        type=_parse_timeout_argument,
+        help=(
+            "Synthesis request timeout in milliseconds "
+            f"(default: {_DEFAULT_REQUEST_TIMEOUT_MS})."
+        ),
+    )
+    design.add_argument(
         "--play",
         action="store_true",
         help="Open the completed WAV in the configured Windows default application.",
     )
-    design.add_argument("--require-natural-eos", action="store_true")
+    eos = design.add_mutually_exclusive_group()
+    eos.add_argument(
+        "--require-natural-eos",
+        dest="require_natural_eos",
+        action="store_true",
+        help="Require the worker to report natural EOS (the default).",
+    )
+    eos.add_argument(
+        "--allow-non-natural-eos",
+        dest="require_natural_eos",
+        action="store_false",
+        help="Allow a completed result without natural EOS.",
+    )
+    design.set_defaults(require_natural_eos=True)
     design.add_argument(
         "--acceptance-mock-worker",
         action="store_true",
@@ -260,24 +294,46 @@ def _run_design(args: argparse.Namespace) -> int:
         root,
     )
     result_json = args.result_json or args.out.with_suffix(args.out.suffix + ".json")
-    output_path = args.out.expanduser().resolve()
-    result_json = result_json.expanduser().resolve()
+    output_path = _output_path(args.out)
+    result_json = _output_path(result_json)
     if output_path == result_json:
         raise ValueError("--out and --result-json must refer to different files")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_json.parent.mkdir(parents=True, exist_ok=True)
-    for stale_path in (output_path, result_json):
-        if stale_path.exists():
-            stale_path.unlink()
+    _reject_output_symlink(output_path)
+    _reject_output_symlink(result_json)
+    startup_timeout_ms = _resolve_timeout(
+        args.startup_timeout_ms,
+        runtime.get("startup_timeout_ms"),
+        "runtime.startup_timeout_ms",
+        _DEFAULT_STARTUP_TIMEOUT_MS,
+    )
+    request_timeout_ms = _resolve_timeout(
+        args.request_timeout_ms,
+        runtime.get("request_timeout_ms"),
+        "runtime.request_timeout_ms",
+        _DEFAULT_REQUEST_TIMEOUT_MS,
+    )
+    try:
+        temporary_outputs = _temporary_output_paths(output_path, result_json)
+    except OSError as exc:
+        raise ValueError(
+            f"could not create temporary VoiceDesign outputs: {exc}"
+        ) from exc
+    temporary_wav, temporary_result = temporary_outputs
 
     command = [
         str(save_wav),
         "--worker",
         str(worker.executable),
         "--output",
-        str(output_path),
+        str(temporary_wav),
         "--result-json",
-        str(result_json),
+        str(temporary_result),
+        "--startup-timeout-ms",
+        str(startup_timeout_ms),
+        "--request-timeout-ms",
+        str(request_timeout_ms),
         "--text",
         args.text,
         "--language",
@@ -310,12 +366,24 @@ def _run_design(args: argparse.Namespace) -> int:
     if root is not None and worker.executable == Path(sys.executable).resolve():
         environment["PYTHONNOUSERSITE"] = "1"
     try:
-        completed = subprocess.run(command, env=environment, check=False)
-    except OSError as exc:
-        raise ValueError(f"could not start {save_wav}: {exc}") from exc
-    if completed.returncode != 0:
-        return completed.returncode
-    _validate_design_outputs(output_path, result_json, args.require_natural_eos)
+        try:
+            completed = subprocess.run(command, env=environment, check=False)
+        except OSError as exc:
+            raise ValueError(f"could not start {save_wav}: {exc}") from exc
+        if completed.returncode != 0:
+            return completed.returncode
+        _validate_design_outputs(
+            temporary_wav, temporary_result, args.require_natural_eos
+        )
+        _publish_design_outputs(
+            temporary_wav,
+            temporary_result,
+            output_path,
+            result_json,
+        )
+    finally:
+        for temporary_path in temporary_outputs:
+            _remove_owned_temporary(temporary_path)
     print(f"Wrote VoiceDesign WAV: {output_path}")
     if args.play:
         if os.name != "nt":
@@ -325,6 +393,120 @@ def _run_design(args: argparse.Namespace) -> int:
         except OSError as exc:
             raise ValueError(f"could not open generated WAV: {exc}") from exc
     return 0
+
+
+def _parse_timeout_argument(value: str) -> int:
+    try:
+        parsed = int(value, 10)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "timeout must be a positive integer number of milliseconds"
+        ) from exc
+    try:
+        return _validate_timeout(parsed, "timeout")
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _validate_timeout(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer number of milliseconds")
+    if value <= 0 or value > _MAX_TIMEOUT_MS:
+        raise ValueError(
+            f"{name} must be between 1 and {_MAX_TIMEOUT_MS} milliseconds"
+        )
+    return value
+
+
+def _resolve_timeout(
+    explicit: int | None,
+    configured: object,
+    name: str,
+    default: int,
+) -> int:
+    if explicit is not None:
+        return _validate_timeout(explicit, name)
+    if configured is None:
+        return default
+    return _validate_timeout(configured, name)
+
+
+def _output_path(path: Path) -> Path:
+    return Path(path.expanduser()).absolute()
+
+
+def _reject_output_symlink(path: Path) -> None:
+    if path.is_symlink():
+        raise ValueError(f"refusing to overwrite symlink output: {path}")
+
+
+def _temporary_output_paths(output_path: Path, result_json: Path) -> tuple[Path, Path]:
+    paths: list[Path] = []
+    try:
+        for target in (output_path, result_json):
+            descriptor, name = tempfile.mkstemp(
+                prefix=f".{target.name}.", suffix=".qtb-tmp", dir=target.parent
+            )
+            os.close(descriptor)
+            paths.append(Path(name))
+        return paths[0], paths[1]
+    except OSError:
+        for path in paths:
+            _remove_owned_temporary(path)
+        raise
+
+
+def _remove_owned_temporary(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def _publish_design_outputs(
+    temporary_wav: Path,
+    temporary_result: Path,
+    output_path: Path,
+    result_json: Path,
+) -> None:
+    targets = ((temporary_wav, output_path), (temporary_result, result_json))
+    backups: list[tuple[Path, Path]] = []
+    published: list[Path] = []
+    try:
+        for _, target in targets:
+            _reject_output_symlink(target)
+        for _, target in targets:
+            if target.exists():
+                backup = _temporary_backup_path(target)
+                os.replace(target, backup)
+                backups.append((target, backup))
+        for temporary, target in targets:
+            os.replace(temporary, target)
+            published.append(target)
+    except OSError as exc:
+        for target in published:
+            _remove_owned_temporary(target)
+        for target, backup in reversed(backups):
+            try:
+                os.replace(backup, target)
+            except OSError:
+                pass
+        raise ValueError(
+            f"could not publish generated VoiceDesign outputs: {exc}"
+        ) from exc
+    else:
+        for _, backup in backups:
+            _remove_owned_temporary(backup)
+
+
+def _temporary_backup_path(target: Path) -> Path:
+    descriptor, name = tempfile.mkstemp(
+        prefix=f".{target.name}.", suffix=".qtb-backup", dir=target.parent
+    )
+    os.close(descriptor)
+    backup = Path(name)
+    backup.unlink()
+    return backup
 
 
 class _WorkerCommand:

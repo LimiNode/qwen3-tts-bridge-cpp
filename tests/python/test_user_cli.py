@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import io
 import json
 import os
@@ -51,6 +52,295 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(str(save_wav.resolve()), command[0])
             self.assertIn(str(model.resolve()), command)
             self.assertIn("Мягкий женский голос", command)
+
+    def test_design_forwards_explicit_timeouts_and_requires_natural_eos(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "design",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--text",
+                        "Test",
+                        "--instruction",
+                        "Voice",
+                        "--out",
+                        str(root / "voice.wav"),
+                        "--startup-timeout-ms",
+                        "240000",
+                        "--request-timeout-ms",
+                        "900000",
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            self.assertEqual(
+                "240000", command[command.index("--startup-timeout-ms") + 1]
+            )
+            self.assertEqual(
+                "900000", command[command.index("--request-timeout-ms") + 1]
+            )
+            self.assertIn("--require-natural-eos", command)
+
+    def test_design_timeout_config_is_overridden_by_cli(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "models": {"voice-design": {"path": "model"}},
+                        "runtime": {
+                            "save_wav_executable": str(save_wav),
+                            "worker": str(worker),
+                            "startup_timeout_ms": 180000,
+                            "request_timeout_ms": 600000,
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "design",
+                        "--text",
+                        "Test",
+                        "--instruction",
+                        "Voice",
+                        "--out",
+                        str(root / "voice.wav"),
+                        "--request-timeout-ms",
+                        "720000",
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            self.assertEqual(
+                "180000", command[command.index("--startup-timeout-ms") + 1]
+            )
+            self.assertEqual(
+                "720000", command[command.index("--request-timeout-ms") + 1]
+            )
+
+    def test_design_failure_preserves_previous_outputs_and_cleans_temporary_files(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "voice.wav"
+            result_json = root / "voice.json"
+            output.write_bytes(b"previous wav")
+            result_json.write_text('{"previous": true}', encoding="utf-8")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=17),
+            ):
+                result = user_cli.main(
+                    [
+                        "design",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--text",
+                        "Test",
+                        "--instruction",
+                        "Voice",
+                        "--out",
+                        str(output),
+                        "--result-json",
+                        str(result_json),
+                    ]
+                )
+
+            self.assertEqual(17, result)
+            self.assertEqual(b"previous wav", output.read_bytes())
+            self.assertEqual('{"previous": true}', result_json.read_text())
+            self.assertEqual([], list(root.glob(".*.qtb-tmp")))
+
+    def test_design_success_replaces_previous_outputs_after_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "voice.wav"
+            result_json = root / "voice.json"
+            output.write_bytes(b"previous wav")
+            result_json.write_text('{"previous": true}', encoding="utf-8")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ):
+                result = user_cli.main(
+                    [
+                        "design",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--text",
+                        "Test",
+                        "--instruction",
+                        "Voice",
+                        "--out",
+                        str(output),
+                        "--result-json",
+                        str(result_json),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            with wave.open(str(output), "rb") as wav:
+                self.assertEqual(16, wav.getnframes())
+            self.assertEqual(1, json.loads(result_json.read_text())["audio_chunks"])
+            self.assertEqual([], list(root.glob(".*.qtb-tmp")))
+
+    def test_design_invalid_result_preserves_previous_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "voice.wav"
+            result_json = root / "voice.json"
+            output.write_bytes(b"previous wav")
+            result_json.write_text('{"previous": true}', encoding="utf-8")
+
+            def invalid_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
+                Path(command[command.index("--output") + 1]).write_bytes(b"bad wav")
+                Path(command[command.index("--result-json") + 1]).write_text(
+                    "{}", encoding="utf-8"
+                )
+                return mock.Mock(returncode=0)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=invalid_synthesis,
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--out",
+                            str(output),
+                            "--result-json",
+                            str(result_json),
+                        ]
+                    )
+
+            self.assertEqual(2, raised.exception.code)
+            self.assertEqual(b"previous wav", output.read_bytes())
+            self.assertEqual('{"previous": true}', result_json.read_text())
+            self.assertEqual([], list(root.glob(".*.qtb-tmp")))
+
+    def test_design_rejects_invalid_timeout_values(self) -> None:
+        for value in ("0", "-1", "4294967296", "not-a-number"):
+            with self.subTest(value=value):
+                with self.assertRaises(argparse.ArgumentTypeError):
+                    user_cli._parse_timeout_argument(value)
+
+    def test_design_can_explicitly_allow_non_natural_eos(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+
+            def truncated_synthesis(
+                command: list[str], **_kwargs: object
+            ) -> mock.Mock:
+                output = Path(command[command.index("--output") + 1])
+                result = Path(command[command.index("--result-json") + 1])
+                with wave.open(str(output), "wb") as wav:
+                    wav.setnchannels(1)
+                    wav.setsampwidth(2)
+                    wav.setframerate(24000)
+                    wav.writeframes(b"\x00\x00" * 16)
+                result.write_text(
+                    json.dumps(
+                        {
+                            "schema_version": 1,
+                            "terminal_state": "completed",
+                            "audio_chunks": 1,
+                            "audio_bytes": 32,
+                            "completion_metadata_received": True,
+                            "termination_reason": "max_new_tokens",
+                            "hit_eos": False,
+                            "hit_max_seq_len": False,
+                            "hit_max_new_tokens": True,
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return mock.Mock(returncode=0)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=truncated_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "design",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--text",
+                        "Test",
+                        "--instruction",
+                        "Voice",
+                        "--out",
+                        str(root / "voice.wav"),
+                        "--allow-non-natural-eos",
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            self.assertNotIn("--require-natural-eos", run.call_args.args[0])
 
     def test_models_list_finds_portable_model_without_init(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -68,7 +68,7 @@ The required user-facing commands are intentionally small:
 
 | Command | Required first-beta use | Minimum contract |
 |---|---|---|
-| `qwen_tts_save_wav` | scriptable WAV generation and automation | worker/runtime selection, model path, text, language, registered `voice_id` (or selected speaker where the accepted model requires it), output path, timeout, and an explicit `--require-natural-eos` acceptance check when natural EOS is required |
+| `qwen_tts_save_wav` | scriptable WAV generation and automation | worker/runtime selection, model path, text, language, registered `voice_id` (or selected speaker where the accepted model requires it), output path, bounded startup/request timeout, and natural EOS required by the release-facing CLI by default |
 | `qwen_tts_play` | interactive playback and cancellation | worker/runtime selection, model/profile selection, text, language, cancellation, tail enabled by default with `--no-tail` opt-out, and playback diagnostics |
 
 `qwen_tts_latency_benchmark` and the speech-animation probe remain diagnostic
@@ -76,9 +76,10 @@ tools, not release UX requirements. The first beta does not require unifying
 all example option parsers. Direct reference-audio, seed and sampling options
 in `qwen_tts_save_wav` are an explicit follow-up decision; registered Base
 profiles are the supported clone interface for this scope. A successful
-`qwen_tts_save_wav` invocation does not by itself enforce natural EOS unless
-`--require-natural-eos` is supplied; natural EOS remains mandatory in the
-release acceptance receipt for every supported model run. Bit-identical audio
+`qwen-tts design` requires natural EOS by default and accepts
+`--allow-non-natural-eos` only for an explicit diagnostic opt-out. Natural EOS
+remains mandatory in the release acceptance receipt for every supported model
+run. Bit-identical audio
 is not promised without a fixed-seed, fixed-runtime evidence record.
 
 ## Audio and DSP scope
