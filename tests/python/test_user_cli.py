@@ -714,6 +714,62 @@ class UserCliTests(unittest.TestCase):
             paths[0].unlink(missing_ok=True)
             paths[1].unlink(missing_ok=True)
 
+    def test_publication_rejects_wav_directory_and_preserves_contents(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            temporary_wav = root / ".voice.wav.qtb-tmp"
+            temporary_result = root / ".voice.json.qtb-tmp"
+            output = root / "voice.wav"
+            result_json = root / "voice.json"
+            temporary_wav.write_bytes(b"new wav")
+            temporary_result.write_bytes(b"new json")
+            output.mkdir()
+            sentinel = output / "sentinel.txt"
+            sentinel.write_text("keep", encoding="utf-8")
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace"
+            ) as replace:
+                with self.assertRaisesRegex(ValueError, "non-file output"):
+                    user_cli._publish_design_outputs(
+                        temporary_wav, temporary_result, output, result_json
+                    )
+
+            replace.assert_not_called()
+            self.assertTrue(output.is_dir())
+            self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
+            self.assertEqual(b"new wav", temporary_wav.read_bytes())
+            self.assertEqual(b"new json", temporary_result.read_bytes())
+
+    def test_publication_rejects_receipt_directory_and_preserves_contents(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            temporary_wav = root / ".voice.wav.qtb-tmp"
+            temporary_result = root / ".voice.json.qtb-tmp"
+            output = root / "voice.wav"
+            result_json = root / "voice.json"
+            temporary_wav.write_bytes(b"new wav")
+            temporary_result.write_bytes(b"new json")
+            output.write_bytes(b"old wav")
+            result_json.mkdir()
+            sentinel = result_json / "sentinel.txt"
+            sentinel.write_text("keep", encoding="utf-8")
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace"
+            ) as replace:
+                with self.assertRaisesRegex(ValueError, "non-file output"):
+                    user_cli._publish_design_outputs(
+                        temporary_wav, temporary_result, output, result_json
+                    )
+
+            replace.assert_not_called()
+            self.assertEqual(b"old wav", output.read_bytes())
+            self.assertTrue(result_json.is_dir())
+            self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
+            self.assertEqual(b"new wav", temporary_wav.read_bytes())
+            self.assertEqual(b"new json", temporary_result.read_bytes())
+
 
 def _write_executable(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)

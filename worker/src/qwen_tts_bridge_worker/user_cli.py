@@ -300,8 +300,8 @@ def _run_design(args: argparse.Namespace) -> int:
         raise ValueError("--out and --result-json must refer to different files")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_json.parent.mkdir(parents=True, exist_ok=True)
-    _reject_output_symlink(output_path)
-    _reject_output_symlink(result_json)
+    _reject_output_target(output_path)
+    _reject_output_target(result_json)
     startup_timeout_ms = _resolve_timeout(
         args.startup_timeout_ms,
         runtime.get("startup_timeout_ms"),
@@ -435,9 +435,11 @@ def _output_path(path: Path) -> Path:
     return Path(path.expanduser()).absolute()
 
 
-def _reject_output_symlink(path: Path) -> None:
+def _reject_output_target(path: Path) -> None:
     if path.is_symlink():
         raise ValueError(f"refusing to overwrite symlink output: {path}")
+    if path.exists() and not path.is_file():
+        raise ValueError(f"refusing to overwrite non-file output: {path}")
 
 
 def _temporary_output_paths(output_path: Path, result_json: Path) -> tuple[Path, Path]:
@@ -474,7 +476,7 @@ def _publish_design_outputs(
     published: list[Path] = []
     try:
         for _, target in targets:
-            _reject_output_symlink(target)
+            _reject_output_target(target)
         for _, target in targets:
             if target.exists():
                 backup = _temporary_backup_path(target)
