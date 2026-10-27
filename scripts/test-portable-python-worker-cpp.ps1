@@ -5,7 +5,7 @@ param(
     [string]$VenvPath = ".venv-packaging",
     [string]$ExampleExe = ".build/default/Release/qwen_tts_save_wav.exe",
     [string]$WorkerRoot = "dist/QwenTTSBridge/worker-python",
-    [string]$OutputPath = ".tmp/portable-python-worker-cpp.wav",
+    [string]$OutputPath = ".tmp/portable-python-worker-cpp/worker.wav",
     [int]$TimeoutSeconds = 30,
     [int]$MockChunks = 1,
     [int]$MockChunkMs = 100

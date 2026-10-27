@@ -133,7 +133,7 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
     --worker-arg cuda `
     --worker-arg --dtype `
     --worker-arg auto `
-    --output .tmp\qwen-gpu-smoke.wav `
+    --output .tmp\qwen-gpu-smoke\output.wav `
     --text "This is a GPU validation WAV." `
     --speaker ryan `
     --request-timeout-ms 900000
@@ -142,7 +142,7 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
 After the command succeeds, listen to:
 
 ```text
-.tmp/qwen-gpu-smoke.wav
+.tmp/qwen-gpu-smoke/output.wav
 ```
 
 The WAV proves the C++ public API, stdio transport, worker protocol, Qwen
