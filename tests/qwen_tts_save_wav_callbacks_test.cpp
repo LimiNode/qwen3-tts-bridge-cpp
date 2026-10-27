@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -57,7 +58,7 @@ std::vector<std::int16_t> read_wav_samples(const std::string& path) {
 }
 
 void remove_file(const std::string& path) {
-    std::remove(path.c_str());
+    std::filesystem::remove(std::filesystem::u8path(path));
 }
 
 std::shared_ptr<AudioPostProcessorChain> make_terminal_fade(
@@ -207,6 +208,21 @@ void test_optional_tail_fades_cancellation_without_default_pause() {
     remove_file(path);
 }
 
+void test_unicode_output_path() {
+    const std::string path = output_path("русский голос.wav");
+    remove_file(path);
+
+    AudioFormat expected;
+    WavWriter writer(path, expected.sample_rate, 1, 16);
+    const auto bytes = pcm_bytes(4);
+    writer.write_pcm(bytes.data(), bytes.size());
+    writer.close();
+
+    CHECK(std::filesystem::is_regular_file(std::filesystem::u8path(path)));
+    CHECK(writer.data_size() == bytes.size());
+    remove_file(path);
+}
+
 } // namespace
 
 int main() {
@@ -214,5 +230,6 @@ int main() {
     test_valid_audio_then_completed_marks_success();
     test_optional_tail_fades_completion_and_appends_silence();
     test_optional_tail_fades_cancellation_without_default_pause();
+    test_unicode_output_path();
     return EXIT_SUCCESS;
 }

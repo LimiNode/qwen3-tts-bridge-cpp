@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -183,7 +184,9 @@ void write_result_json(
         return;
     }
 
-    std::ofstream output(options.result_json_path, std::ios::binary | std::ios::trunc);
+    std::ofstream output(
+        std::filesystem::u8path(options.result_json_path),
+        std::ios::binary | std::ios::trunc);
     if (!output) {
         throw std::runtime_error("failed to open --result-json output");
     }
