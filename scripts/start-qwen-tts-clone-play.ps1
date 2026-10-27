@@ -26,7 +26,7 @@ param(
     [string]$ModelProfile = "",
     [string]$FasterSourcePath = "",
     [string]$QwenSourcePath = "",
-    [string]$BuildDirectory = "build"
+    [string]$BuildDirectory = ".build\default"
 )
 
 $ErrorActionPreference = "Stop"

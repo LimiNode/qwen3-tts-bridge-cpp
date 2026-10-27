@@ -12,7 +12,7 @@ param(
 
     [string[]]$WorkerArgument = @(),
 
-    [string]$OutputRoot = 'tmp\speech-animation-qwen-e2e',
+    [string]$OutputRoot = '.tmp\speech-animation-qwen-e2e',
 
     [string]$Language = 'auto',
     [string]$Speaker = '',

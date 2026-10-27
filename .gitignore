@@ -9,6 +9,8 @@
 
 # Local task-specific temporary files and diagnostics
 /.tmp/
+/.tmp-*
+/.build/
 
 # Generated release artifacts
 /dist/*

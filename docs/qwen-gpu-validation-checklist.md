@@ -107,7 +107,7 @@ speaker names, or model-specific Transformers import assumptions.
 Build the C++ example first, for example:
 
 ```powershell
-cmake --build build\default --config Release --target qwen_tts_save_wav
+cmake --build .build\default --config Release --target qwen_tts_save_wav
 ```
 
 Then launch the portable worker directly through its staged `python.exe`:
@@ -119,7 +119,7 @@ $env:PYTHONPATH = Join-Path $WorkerRoot "python\Lib\site-packages"
 $env:PYTHONNOUSERSITE = "1"
 $env:PYTHONDONTWRITEBYTECODE = "1"
 
-.\build\default\Release\qwen_tts_save_wav.exe `
+.\.build\default\Release\qwen_tts_save_wav.exe `
     --worker (Join-Path $WorkerRoot "python\python.exe") `
     --worker-arg -B `
     --worker-arg -P `
@@ -133,7 +133,7 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
     --worker-arg cuda `
     --worker-arg --dtype `
     --worker-arg auto `
-    --output tmp\qwen-gpu-smoke.wav `
+    --output .tmp\qwen-gpu-smoke.wav `
     --text "This is a GPU validation WAV." `
     --speaker ryan `
     --request-timeout-ms 900000
@@ -142,7 +142,7 @@ $env:PYTHONDONTWRITEBYTECODE = "1"
 After the command succeeds, listen to:
 
 ```text
-tmp/qwen-gpu-smoke.wav
+.tmp/qwen-gpu-smoke.wav
 ```
 
 The WAV proves the C++ public API, stdio transport, worker protocol, Qwen

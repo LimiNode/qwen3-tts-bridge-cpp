@@ -112,7 +112,7 @@ direct worker diagnostics. It is not the primary user CLI:
 
 ```powershell
 .\scripts\start-voice-design-save-wav.ps1 `
-  -SaveWavExecutable .\build\default\Release\qwen_tts_save_wav.exe `
+  -SaveWavExecutable .\.build\default\Release\qwen_tts_save_wav.exe `
   -Worker .\dist\QwenTTSBridge\worker\qwen_tts_worker.exe `
   -WorkerArgument @("qwen", "--model-path", "D:\Models\Qwen3-TTS-12Hz-1.7B-VoiceDesign") `
   -Text "Привет! Я рада тебя видеть." `
@@ -128,8 +128,8 @@ the acceptance receipt:
 
 ```powershell
 .\scripts\start-voice-design-save-wav.ps1 `
-  -SaveWavExecutable .\build\default\Release\qwen_tts_save_wav.exe `
-  -Worker .\build\native\Release\qwen_tts_native_worker.exe `
+  -SaveWavExecutable .\.build\default\Release\qwen_tts_save_wav.exe `
+  -Worker .\.build\native\Release\qwen_tts_native_worker.exe `
   -WorkerArgument @(
       "--runtime-dir", "D:\QwenRuntime",
       "--talker-model", "D:\Models\voice-design-talker-Q8_0.gguf",

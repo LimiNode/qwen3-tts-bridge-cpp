@@ -27,7 +27,7 @@ param(
     [ValidateRange(1, 10)]
     [int]$Attempts = 3,
 
-    [string]$OutputRoot = 'tmp\cmp50hx-base-profile-startup-ab',
+    [string]$OutputRoot = '.tmp\cmp50hx-base-profile-startup-ab',
 
     [string]$CudaVisibleDevices = 'GPU-40361931-6cb5-ac58-a059-5ba3e70986fb'
 )
