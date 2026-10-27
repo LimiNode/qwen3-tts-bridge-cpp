@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 import shutil
@@ -10,7 +11,7 @@ import tempfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 ModelFamily = Literal["voice-design", "base-1.7b", "base-0.6b"]
 
@@ -283,19 +284,23 @@ def download_model(
     spec = model_spec(family)
     if portable_root is not None and destination is not None:
         raise ValueError("--portable and --to are mutually exclusive")
-    if downloader is None:
+    selected_downloader = downloader
+    if selected_downloader is None:
         try:
-            from huggingface_hub import snapshot_download
+            module = importlib.import_module("huggingface_hub")
         except ModuleNotFoundError as exc:
             raise ValueError(
                 "huggingface_hub is required for downloads; "
                 "install the packaged Qwen runtime"
             ) from exc
-        downloader = snapshot_download
+        candidate = getattr(module, "snapshot_download", None)
+        if not callable(candidate):
+            raise ValueError("huggingface_hub does not provide snapshot_download")
+        selected_downloader = cast(Callable[..., str], candidate)
 
     if portable_root is None and destination is None:
         path = Path(
-            downloader(
+            selected_downloader(
                 repo_id=spec.repository,
                 revision=revision,
                 cache_dir=str(cache_root) if cache_root else None,
@@ -316,7 +321,7 @@ def download_model(
     if staging.exists():
         raise ValueError(f"incomplete download staging path already exists: {staging}")
     try:
-        downloader(
+        selected_downloader(
             repo_id=spec.repository,
             revision=revision,
             local_dir=str(staging),
