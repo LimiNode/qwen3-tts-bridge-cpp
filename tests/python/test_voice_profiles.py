@@ -16,14 +16,15 @@ def _write_pcm_wav(
     path: Path,
     *,
     channels: int = 1,
+    sample_rate: int = 24_000,
     seconds: float = 2.0,
     sample: int = 4_000,
 ) -> None:
-    frame_count = int(24_000 * seconds)
+    frame_count = int(sample_rate * seconds)
     with wave.open(str(path), "wb") as writer:
         writer.setnchannels(channels)
         writer.setsampwidth(2)
-        writer.setframerate(24_000)
+        writer.setframerate(sample_rate)
         writer.writeframes(struct.pack("<h", sample) * frame_count * channels)
 
 
@@ -37,6 +38,18 @@ class VoiceProfilePreflightTests(unittest.TestCase):
 
         self.assertEqual(2, info.channels)
         self.assertEqual(24_000, info.sample_rate)
+
+    def test_accepts_python_only_non_24khz_reference_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference = Path(temporary_directory) / "sixteen-khz.wav"
+            _write_pcm_wav(reference, sample_rate=16_000)
+
+            info = preflight_reference_audio(reference, "Reference text.", False)
+
+        # The native process worker deliberately accepts only mono 24 kHz
+        # PCM16/float32 references.  This fixture documents the wider Python
+        # preflight boundary without claiming cross-backend compatibility.
+        self.assertEqual(16_000, info.sample_rate)
 
     def test_rejects_silent_wav(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -107,6 +120,37 @@ class VoiceProfilePreflightTests(unittest.TestCase):
         normal = registry.profile_for("normal")
         self.assertEqual("Reference text.    ", experimental.reference_text)
         self.assertEqual("Reference text.", normal.reference_text)
+
+    def test_empty_registry_is_valid_without_registered_profiles(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            registry_path = Path(temporary_directory) / "voices.json"
+            registry_path.write_text(
+                json.dumps({"schema_version": 1, "voices": []}),
+                encoding="utf-8",
+            )
+
+            registry = VoiceProfileRegistry.from_json_file(registry_path, 1)
+
+        self.assertEqual((), registry.voice_ids)
+
+    def test_duplicate_voice_ids_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            reference = directory / "reference.wav"
+            _write_pcm_wav(reference)
+            registry_path = directory / "voices.json"
+            profile = {
+                "voice_id": "duplicate",
+                "reference_audio_path": "reference.wav",
+                "reference_text": "Reference text.",
+            }
+            registry_path.write_text(
+                json.dumps({"schema_version": 1, "voices": [profile, profile]}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(VoiceProfileError, "duplicate voice_id"):
+                VoiceProfileRegistry.from_json_file(registry_path, 1)
 
 
 if __name__ == "__main__":

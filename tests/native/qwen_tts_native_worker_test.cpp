@@ -476,7 +476,9 @@ int run_raw_native_running_admission_test() {
     return EXIT_SUCCESS;
 }
 
-void write_reference_wav(const std::filesystem::path& path) {
+void write_reference_wav(
+    const std::filesystem::path& path,
+    std::uint32_t sample_rate = 24000) {
     const std::array<std::int16_t, 4> samples{0, 4096, -4096, 0};
     const std::uint32_t data_size = static_cast<std::uint32_t>(samples.size() * sizeof(samples[0]));
     const std::uint32_t riff_size = 36u + data_size;
@@ -499,8 +501,8 @@ void write_reference_wav(const std::filesystem::path& path) {
     write_u32(16);
     write_u16(1);
     write_u16(1);
-    write_u32(24000);
-    write_u32(24000u * 2u);
+    write_u32(sample_rate);
+    write_u32(sample_rate * 2u);
     write_u16(2);
     write_u16(16);
     output.write("data", 4);
@@ -811,6 +813,108 @@ int main() {
     CHECK(registry_probe.completed == 1);
     CHECK(registry_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
     registry_client.stop();
+
+    // An explicitly supplied empty registry is equivalent to no registered
+    // profiles.  Python already accepts this configuration, so native must
+    // keep the same non-breaking policy instead of failing before ready.
+    const auto empty_registry = runtime / "voice-registry-empty.json";
+    {
+        std::ofstream output(empty_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":[]}";
+    }
+    QwenTtsClient empty_registry_client;
+    QwenTtsClientOptions empty_registry_options;
+    empty_registry_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(empty_registry_client.start(
+        voice_registry_options(empty_registry), empty_registry_options));
+    ReadyMessage empty_registry_ready;
+    CHECK(empty_registry_client.ready_message(empty_registry_ready));
+    CHECK(empty_registry_ready.voice_ids.empty());
+
+    Probe unknown_empty_registry_probe;
+    TtsCallbacks unknown_empty_registry_callbacks;
+    unknown_empty_registry_callbacks.on_error = [&unknown_empty_registry_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(unknown_empty_registry_probe.mutex);
+        unknown_empty_registry_probe.errors.push_back(error);
+        unknown_empty_registry_probe.condition.notify_all();
+    };
+    TtsRequest unknown_empty_registry_request;
+    unknown_empty_registry_request.text = "unknown empty-registry voice";
+    unknown_empty_registry_request.voice_id = "missing-voice";
+    CHECK(empty_registry_client.synthesize_async(
+        unknown_empty_registry_request, unknown_empty_registry_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(unknown_empty_registry_probe.mutex);
+        CHECK(unknown_empty_registry_probe.condition.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [&unknown_empty_registry_probe]() {
+                return !unknown_empty_registry_probe.errors.empty();
+            }));
+    }
+    CHECK(unknown_empty_registry_probe.errors.size() == 1);
+    CHECK(unknown_empty_registry_probe.errors.front().category == "request_error");
+    CHECK(unknown_empty_registry_probe.errors.front().code == "invalid_native_request");
+
+    Probe unregistered_probe;
+    TtsCallbacks unregistered_callbacks;
+    unregistered_callbacks.on_completed = [&unregistered_probe]() {
+        std::lock_guard<std::mutex> lock(unregistered_probe.mutex);
+        ++unregistered_probe.completed;
+        unregistered_probe.condition.notify_all();
+    };
+    unregistered_callbacks.on_error = [&unregistered_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(unregistered_probe.mutex);
+        unregistered_probe.errors.push_back(error);
+        unregistered_probe.condition.notify_all();
+    };
+    TtsRequest unregistered_request;
+    unregistered_request.text = "ordinary request without a registered voice";
+    CHECK(empty_registry_client.synthesize_async(
+        unregistered_request, unregistered_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(unregistered_probe.mutex);
+        CHECK(unregistered_probe.condition.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [&unregistered_probe]() {
+                return unregistered_probe.completed == 1 || !unregistered_probe.errors.empty();
+            }));
+    }
+    CHECK(unregistered_probe.errors.empty());
+    CHECK(unregistered_probe.completed == 1);
+    empty_registry_client.stop();
+
+    const auto incompatible_reference_wav = runtime / "reference-16khz.wav";
+    write_reference_wav(incompatible_reference_wav, 16000);
+    const auto incompatible_registry = runtime / "voice-registry-16khz.json";
+    {
+        std::ofstream output(incompatible_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":[{"
+                  "\"voice_id\":\"sixteen-khz\","
+                  "\"reference_audio_path\":\"reference-16khz.wav\","
+                  "\"reference_text\":\"Fake reference\"}]}";
+    }
+    QwenTtsClient incompatible_registry_client;
+    QwenTtsClientOptions incompatible_registry_options;
+    incompatible_registry_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!incompatible_registry_client.start(
+        voice_registry_options(incompatible_registry), incompatible_registry_options));
+
+    const auto duplicate_registry = runtime / "voice-registry-duplicate.json";
+    {
+        std::ofstream output(duplicate_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":["
+                  "{\"voice_id\":\"duplicate\",\"reference_audio_path\":\"reference-cache-test.wav\","
+                  "\"reference_text\":\"Fake reference\"},"
+                  "{\"voice_id\":\"duplicate\",\"reference_audio_path\":\"reference-cache-test.wav\","
+                  "\"reference_text\":\"Fake reference\"}]}";
+    }
+    QwenTtsClient duplicate_registry_client;
+    QwenTtsClientOptions duplicate_registry_options;
+    duplicate_registry_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!duplicate_registry_client.start(
+        voice_registry_options(duplicate_registry), duplicate_registry_options));
 
     const auto malformed_registry = runtime / "voice-registry-missing-reference-text.json";
     {

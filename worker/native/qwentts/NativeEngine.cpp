@@ -133,8 +133,8 @@ void NativeEngine::load_voice_registry() {
         throw std::runtime_error("native voice registry schema_version must be 1");
     }
     const auto voices = document.find("voices");
-    if (voices == document.end() || !voices->is_array() || voices->empty()) {
-        throw std::runtime_error("native voice registry must contain a non-empty voices array");
+    if (voices == document.end() || !voices->is_array()) {
+        throw std::runtime_error("native voice registry voices must be an array");
     }
     const auto registry_dir = options_.voice_registry_path.parent_path();
     for (const auto& item : *voices) {

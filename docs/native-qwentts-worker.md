@@ -65,6 +65,11 @@ path. The ready message advertises the sorted `voice_ids`, and an unknown ID is
 rejected fail-closed. This startup cost is intentional: it moves reference
 conditioning out of first-PCM latency without changing the PCM or sampling
 contract.
+An explicitly supplied registry with an empty `voices` array is valid and is
+treated the same as having no registered profiles. The worker announces
+`ready` with an empty `voice_ids` list; this keeps registry provisioning
+non-breaking before the first voice profile is created. A non-empty registry
+still requires every profile to pass native WAV validation and preload.
 
 For a latency-sensitive deployment, add `--warmup-synthesis` and select the
 same `--warmup-voice-id` used by the first request (plus `--warmup-language`
