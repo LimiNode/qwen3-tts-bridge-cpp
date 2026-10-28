@@ -26,6 +26,9 @@ struct RuntimeManifest {
 /// Return the lowercase SHA-256 digest of a regular file.
 std::string sha256_file(const std::filesystem::path& path);
 
+/// Return the lowercase SHA-256 digest of an already bounded byte buffer.
+std::string sha256_bytes(const unsigned char* bytes, std::size_t size);
+
 RuntimeManifest load_and_verify_runtime_manifest(
     const std::filesystem::path& manifest_path,
     const std::filesystem::path& dll_path);

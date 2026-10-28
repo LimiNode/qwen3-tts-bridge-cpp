@@ -20,27 +20,6 @@ namespace {
 
 using Json = nlohmann::json;
 
-class VoiceReferenceOwnershipGuard final {
-public:
-    VoiceReferenceOwnershipGuard(const QwenApi& api, qt_voice_ref& value)
-        : api_(api), value_(&value) {}
-
-    VoiceReferenceOwnershipGuard(const VoiceReferenceOwnershipGuard&) = delete;
-    VoiceReferenceOwnershipGuard& operator=(const VoiceReferenceOwnershipGuard&) = delete;
-
-    ~VoiceReferenceOwnershipGuard() {
-        if (value_ != nullptr) {
-            api_.voice_ref_free(value_);
-        }
-    }
-
-    void release() noexcept { value_ = nullptr; }
-
-private:
-    const QwenApi& api_;
-    qt_voice_ref* value_;
-};
-
 std::mutex log_mutex;
 
 void qwen_log_callback(qt_log_level level, const char* message, void*) {
@@ -258,7 +237,6 @@ PreparedVoiceReferenceContext NativeEngine::prepared_context(const VoiceProfile&
 std::unique_ptr<NativeEngine::CachedVoiceReference> NativeEngine::make_persisted_reference(
     PreparedVoiceReferenceData data) {
     auto entry = std::make_unique<CachedVoiceReference>();
-    entry->runtime_owned = false;
     entry->persisted_speaker = std::move(data.speaker_embedding);
     entry->persisted_codes = std::move(data.codes);
     entry->value.ref_spk_emb = entry->persisted_speaker.data();
@@ -295,9 +273,15 @@ void NativeEngine::preload_voice_registry() {
     }
     for (auto& [voice_id, profile] : voice_profiles_) {
         const auto profile_started = std::chrono::steady_clock::now();
+        PreparedVoiceReferenceContext prepared_profile_context;
+        if (!profile.prepared_manifest_path.empty()) {
+            prepared_profile_context = prepared_context(profile);
+            reconcile_prepared_publication(prepared_profile_context);
+        }
         if (!profile.prepared_manifest_path.empty() &&
             std::filesystem::is_regular_file(profile.prepared_manifest_path)) {
-            auto prepared = load_prepared_voice_reference(prepared_context(profile));
+            auto prepared = load_prepared_voice_reference(prepared_profile_context);
+            finalize_prepared_publication(prepared_profile_context);
             profile.reference_cache_key = prepared.cache_key;
             if (voice_reference_cache_.find(profile.reference_cache_key) == voice_reference_cache_.end()) {
                 voice_reference_cache_.emplace(
@@ -333,20 +317,18 @@ void NativeEngine::preload_voice_registry() {
                 "failed to preload native voice profile '" + voice_id + "': " +
                 last_error(api, "qwentts voice reference extraction failed"));
         }
-        VoiceReferenceOwnershipGuard extracted_ownership(api, entry->value);
+        entry->owner_api = &api;
         if (!profile.prepared_manifest_path.empty()) {
             const auto context = prepared_context(profile);
             const auto prepared = persist_prepared_voice_reference(context, entry->value);
             api.voice_ref_free(&entry->value);
-            extracted_ownership.release();
+            entry->owner_api = nullptr;
             entry = make_persisted_reference(prepared);
             profile.reference_cache_key = prepared.cache_key;
             log_prepared_reference_metric(voice_id, "extracted_and_persisted", profile_started);
             // The persisted vectors are worker-owned and are never passed back
             // to the DLL deallocator. The extracted DLL-owned buffers were
             // freed before replacing the temporary cache entry.
-        } else {
-            extracted_ownership.release();
         }
         voice_reference_cache_.emplace(profile.reference_cache_key, std::move(entry));
         profile.reference_audio.clear();
@@ -357,12 +339,6 @@ void NativeEngine::clear_voice_reference_cache() noexcept {
     if (context_ == nullptr || voice_reference_cache_.empty()) {
         voice_reference_cache_.clear();
         return;
-    }
-    const QwenApi& api = loader_.api();
-    for (auto& entry : voice_reference_cache_) {
-        if (entry.second->runtime_owned) {
-            api.voice_ref_free(&entry.second->value);
-        }
     }
     voice_reference_cache_.clear();
     talker_sha256_.clear();
@@ -579,6 +555,7 @@ SynthesisResult NativeEngine::synthesize(
                                 last_error(api, "qwentts voice reference extraction failed"), {}, false,
                                 voice_reference_extract_ms, reference_audio_decode_ms};
                     }
+                    entry->owner_api = &api;
                     cached_reference = &entry->value;
                     auto [inserted, was_inserted] = voice_reference_cache_.emplace(
                         std::move(reference_cache_key), std::move(entry));

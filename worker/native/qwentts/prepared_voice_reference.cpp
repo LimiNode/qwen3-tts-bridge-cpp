@@ -8,11 +8,15 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <atomic>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <limits>
+#include <random>
+#include <sstream>
 #include <stdexcept>
 
 namespace qwen_tts_bridge::native_worker {
@@ -208,53 +212,172 @@ std::filesystem::path publication_marker_path(const std::filesystem::path& direc
     return directory / ".qtb-publication.incomplete";
 }
 
-void recover_incomplete_publication(
+std::string new_generation_id() {
+    static std::atomic<std::uint64_t> sequence{0};
+    LARGE_INTEGER counter{};
+    QueryPerformanceCounter(&counter);
+    std::random_device random;
+    std::ostringstream output;
+    output << std::hex << static_cast<unsigned long long>(GetCurrentProcessId()) << '-'
+           << static_cast<unsigned long long>(GetTickCount64()) << '-'
+           << static_cast<unsigned long long>(counter.QuadPart) << '-'
+           << static_cast<unsigned long long>(random()) << '-'
+           << sequence.fetch_add(1, std::memory_order_relaxed);
+    return output.str();
+}
+
+bool is_safe_generation_id(const std::string& value) {
+    return !value.empty() && value.size() <= 160 &&
+        std::all_of(value.begin(), value.end(), [](unsigned char character) {
+            return std::isalnum(character) || character == '-';
+        });
+}
+
+class PublicationLock final {
+public:
+    explicit PublicationLock(const std::filesystem::path& directory)
+        : path_(directory / ".qtb-publication.lock") {
+        for (int attempt = 0; attempt != 3; ++attempt) {
+            handle_ = CreateFileW(
+                path_.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+                FILE_ATTRIBUTE_HIDDEN, nullptr);
+            if (handle_ != INVALID_HANDLE_VALUE) {
+                return;
+            }
+            const DWORD lock_error = GetLastError();
+            if (lock_error != ERROR_FILE_EXISTS && lock_error != ERROR_ALREADY_EXISTS) {
+                throw std::runtime_error("unable to acquire prepared voice publication lock");
+            }
+            const HANDLE probe = CreateFileW(
+                path_.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (probe == INVALID_HANDLE_VALUE) {
+                throw std::runtime_error("prepared voice publication is active in another worker");
+            }
+            CloseHandle(probe);
+            if (!DeleteFileW(path_.c_str())) {
+                throw std::runtime_error("unable to remove stale prepared voice publication lock");
+            }
+        }
+        throw std::runtime_error("prepared voice publication lock is contended");
+    }
+
+    PublicationLock(const PublicationLock&) = delete;
+    PublicationLock& operator=(const PublicationLock&) = delete;
+
+    ~PublicationLock() {
+        if (handle_ != INVALID_HANDLE_VALUE) {
+            CloseHandle(handle_);
+            DeleteFileW(path_.c_str());
+        }
+    }
+
+private:
+    std::filesystem::path path_;
+    HANDLE handle_ = INVALID_HANDLE_VALUE;
+};
+
+Json read_publication_marker(const std::filesystem::path& marker) {
+    const auto bytes = read_bounded_text_file(marker, 16u * 1024u);
+    Json value;
+    try {
+        value = Json::parse(bytes);
+    }
+    catch (const std::exception& error) {
+        throw std::runtime_error(std::string("invalid prepared voice publication marker: ") + error.what());
+    }
+    if (!value.is_object() || value.value("schema_version", 0) != 1 ||
+        value.value("format", std::string{}) != "qwen3-tts-native-publication" ||
+        !is_safe_generation_id(value.value("generation_id", std::string{}))) {
+        throw std::runtime_error("invalid prepared voice publication marker");
+    }
+    return value;
+}
+
+void recover_incomplete_publication_locked(
     const std::filesystem::path& directory,
     const std::filesystem::path& manifest_path) {
-    const auto marker = publication_marker_path(directory);
-    if (!std::filesystem::exists(marker)) {
+    const auto marker_path = publication_marker_path(directory);
+    if (!std::filesystem::exists(marker_path)) {
         return;
     }
+    const Json marker = read_publication_marker(marker_path);
+    const std::string generation = marker.at("generation_id").get<std::string>();
+    const auto speaker_name = marker.value("speaker_path", std::string{});
+    const auto rvq_name = marker.value("rvq_path", std::string{});
+    const auto marker_manifest = marker.value("manifest_path", std::string{});
+    if (marker_manifest != manifest_path.filename().u8string() ||
+        speaker_name != "reference-" + generation + ".spk" ||
+        (!rvq_name.empty() && rvq_name != "reference-" + generation + ".rvq")) {
+        throw std::runtime_error("prepared voice publication marker conflicts with target");
+    }
     if (std::filesystem::exists(manifest_path)) {
-        // The manifest is the commit marker. A crash after its rename but
-        // before marker cleanup leaves a valid publication to preserve.
-        remove_if_exists(marker);
+        // The manifest is the commit boundary. The caller validates it before
+        // removing this stale marker, so a crash cannot trigger regeneration.
         return;
     }
 
-    const auto quarantine = directory / (".qtb-recovery-" + std::to_string(GetCurrentProcessId()));
     std::error_code error;
-    std::filesystem::create_directories(quarantine, error);
+    const auto quarantine = directory / (".qtb-recovery-" + generation);
+    if (std::filesystem::exists(quarantine)) {
+        throw std::runtime_error("prepared voice recovery directory already exists");
+    }
+    std::filesystem::create_directory(quarantine, error);
     if (error) {
         throw std::runtime_error("unable to create prepared voice recovery directory");
     }
-    const auto move_owned = [&](const std::filesystem::path& path) {
-        if (!std::filesystem::exists(path)) {
+    const auto move_owned = [&](const std::string& name) {
+        if (name.empty()) {
             return;
         }
-        const auto target = quarantine / path.filename();
-        std::filesystem::rename(path, target, error);
+        const auto source = directory / name;
+        if (!std::filesystem::exists(source)) {
+            return;
+        }
+        const auto target = quarantine / name;
+        if (std::filesystem::exists(target)) {
+            throw std::runtime_error("prepared voice recovery target already exists");
+        }
+        std::filesystem::rename(source, target, error);
         if (error) {
             throw std::runtime_error("unable to quarantine incomplete prepared voice artifact");
         }
     };
-    move_owned(directory / "reference.spk");
-    move_owned(directory / "reference.rvq");
-    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-        const auto name = entry.path().filename().u8string();
-        if (name.rfind("reference.spk.qtb-tmp-", 0) == 0 ||
-            name.rfind("reference.rvq.qtb-tmp-", 0) == 0 ||
-            name.rfind(manifest_path.filename().u8string() + ".qtb-tmp-", 0) == 0) {
-            move_owned(entry.path());
-        }
+    move_owned(speaker_name);
+    move_owned(rvq_name);
+    move_owned("reference-" + generation + ".spk.qtb-tmp");
+    move_owned("reference-" + generation + ".rvq.qtb-tmp");
+    move_owned(manifest_path.filename().u8string() + ".qtb-tmp-" + generation);
+    std::filesystem::rename(marker_path, quarantine / marker_path.filename(), error);
+    if (error) {
+        throw std::runtime_error("unable to quarantine prepared voice publication marker");
     }
-    move_owned(marker);
 }
 
 void maybe_inject_publication_failure(const char* phase) {
     const char* configured = std::getenv("QTB_TEST_PUBLICATION_FAILURE_PHASE");
     if (configured != nullptr && std::string(configured) == phase) {
         throw std::runtime_error(std::string("injected publication interruption at ") + phase);
+    }
+}
+
+void maybe_delay_publication(const char* phase) {
+    const char* configured_phase = std::getenv("QTB_TEST_PUBLICATION_DELAY_PHASE");
+    const char* configured_ms = std::getenv("QTB_TEST_PUBLICATION_DELAY_MS");
+    if (configured_phase == nullptr || configured_ms == nullptr ||
+        std::string(configured_phase) != phase) {
+        return;
+    }
+    const auto delay = std::strtoul(configured_ms, nullptr, 10);
+    if (delay > 0 && delay <= 30000) {
+        Sleep(static_cast<DWORD>(delay));
+    }
+}
+
+void maybe_terminate_publication(const char* phase) {
+    const char* configured = std::getenv("QTB_TEST_PUBLICATION_TERMINATE_PHASE");
+    if (configured != nullptr && std::string(configured) == phase) {
+        TerminateProcess(GetCurrentProcess(), 70);
     }
 }
 
@@ -268,6 +391,28 @@ void validate_context(const PreparedVoiceReferenceContext& context) {
 }
 
 } // namespace
+
+void reconcile_prepared_publication(const PreparedVoiceReferenceContext& context) {
+    const auto directory = context.manifest_path.parent_path();
+    if (!std::filesystem::exists(publication_marker_path(directory))) {
+        return;
+    }
+    PublicationLock lock(directory);
+    recover_incomplete_publication_locked(directory, context.manifest_path);
+}
+
+void finalize_prepared_publication(const PreparedVoiceReferenceContext& context) {
+    const auto directory = context.manifest_path.parent_path();
+    if (!std::filesystem::exists(publication_marker_path(directory))) {
+        return;
+    }
+    PublicationLock lock(directory);
+    if (!std::filesystem::exists(context.manifest_path)) {
+        throw std::runtime_error("prepared voice publication manifest disappeared during reconciliation");
+    }
+    recover_incomplete_publication_locked(directory, context.manifest_path);
+    remove_if_exists(publication_marker_path(directory));
+}
 
 std::filesystem::path resolve_prepared_manifest_path(
     const std::filesystem::path& registry_directory,
@@ -341,11 +486,10 @@ PreparedVoiceReferenceData load_prepared_voice_reference(
         throw std::runtime_error("prepared voice speaker scalar is unsupported");
     }
     const auto speaker_path = artifact_path(context.manifest_path, required_string(speaker, "path"));
-    (void)read_bounded_file(speaker_path, speaker_size, kMaxSpeakerBytes);
-    if (sha256_file(speaker_path) != required_string(speaker, "sha256")) {
+    const auto speaker_bytes = read_bounded_file(speaker_path, speaker_size, kMaxSpeakerBytes);
+    if (sha256_bytes(speaker_bytes.data(), speaker_bytes.size()) != required_string(speaker, "sha256")) {
         throw std::runtime_error("prepared voice speaker SHA-256 mismatch");
     }
-    const auto speaker_bytes = read_bounded_file(speaker_path, speaker_size, kMaxSpeakerBytes);
 
     PreparedVoiceReferenceData result;
     result.speaker_embedding.resize(static_cast<std::size_t>(speaker_dim));
@@ -390,11 +534,11 @@ PreparedVoiceReferenceData load_prepared_voice_reference(
             throw std::runtime_error("prepared voice RVQ size is invalid");
         }
         const auto rvq_path = artifact_path(context.manifest_path, required_string(*rvq, "path"));
-        (void)read_bounded_file(rvq_path, rvq_size, kMaxRvqBytes);
-        if (sha256_file(rvq_path) != required_string(*rvq, "sha256")) {
+        const auto rvq_bytes = read_bounded_file(rvq_path, rvq_size, kMaxRvqBytes);
+        if (sha256_bytes(rvq_bytes.data(), rvq_bytes.size()) != required_string(*rvq, "sha256")) {
             throw std::runtime_error("prepared voice RVQ SHA-256 mismatch");
         }
-        result.codes = unpack_codes(read_bounded_file(rvq_path, rvq_size, kMaxRvqBytes), code_count);
+        result.codes = unpack_codes(rvq_bytes, code_count);
         result.frames = frames;
     }
     result.cache_key = "prepared:" + required_string(speaker, "sha256") + ":" +
@@ -437,26 +581,40 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
     reject_reparse_ancestors(directory.parent_path());
     std::filesystem::create_directories(directory);
     reject_reparse_ancestors(directory);
-    recover_incomplete_publication(directory, context.manifest_path);
-    const auto speaker_path = directory / "reference.spk";
-    const auto rvq_path = directory / "reference.rvq";
-    if (std::filesystem::exists(context.manifest_path) || std::filesystem::exists(speaker_path) ||
-        std::filesystem::exists(rvq_path)) {
+    PublicationLock publication_lock(directory);
+    recover_incomplete_publication_locked(directory, context.manifest_path);
+    if (std::filesystem::exists(context.manifest_path) ||
+        std::filesystem::exists(directory / "reference.spk") ||
+        std::filesystem::exists(directory / "reference.rvq")) {
         throw std::runtime_error("refusing to overwrite an existing prepared voice publication");
     }
 
-    const std::string suffix = ".qtb-tmp-" + std::to_string(GetCurrentProcessId());
-    const auto speaker_temp = directory / ("reference.spk" + suffix);
-    const auto rvq_temp = directory / ("reference.rvq" + suffix);
-    const auto manifest_temp = directory / (context.manifest_path.filename().u8string() + suffix);
+    const auto generation = new_generation_id();
+    const auto speaker_name = "reference-" + generation + ".spk";
+    const auto rvq_name = "reference-" + generation + ".rvq";
+    const auto speaker_path = directory / speaker_name;
+    const auto rvq_path = directory / rvq_name;
+    const auto speaker_temp = directory / (speaker_name + ".qtb-tmp");
+    const auto rvq_temp = directory / (rvq_name + ".qtb-tmp");
+    const auto manifest_temp = directory / (context.manifest_path.filename().u8string() + ".qtb-tmp-" + generation);
     const auto marker = publication_marker_path(directory);
-    const auto marker_temp = directory / ".qtb-publication.incomplete.qtb-tmp";
+    const auto marker_temp = directory / (".qtb-publication.incomplete.qtb-tmp-" + generation);
     bool speaker_published = false;
     bool rvq_published = false;
     try {
-        const std::string marker_text = "qwen3-tts native voice publication\n";
+        const Json marker_json = {
+            {"schema_version", 1},
+            {"format", "qwen3-tts-native-publication"},
+            {"generation_id", generation},
+            {"manifest_path", context.manifest_path.filename().u8string()},
+            {"speaker_path", speaker_name},
+            {"rvq_path", context.x_vector_only ? std::string{} : rvq_name},
+        };
+        const std::string marker_text = marker_json.dump() + "\n";
         write_bytes(marker_temp, marker_text.data(), marker_text.size());
         std::filesystem::rename(marker_temp, marker);
+        maybe_delay_publication("after-marker");
+        maybe_terminate_publication("after-marker");
         maybe_inject_publication_failure("before-speaker");
         const auto speaker_bytes = static_cast<std::size_t>(extracted.ref_spk_dim) * sizeof(float);
         write_bytes(speaker_temp, extracted.ref_spk_emb, speaker_bytes);
@@ -496,7 +654,7 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
                 {"icl_trailing_silence_samples", context.x_vector_only ? 0 : 12000},
             }},
             {"speaker", {
-                {"path", "reference.spk"},
+                {"path", speaker_name},
                 {"dimension", extracted.ref_spk_dim},
                 {"size_bytes", speaker_bytes},
                 {"sha256", sha256_file(speaker_temp)},
@@ -506,7 +664,7 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
         };
         if (!context.x_vector_only) {
             root["rvq"] = {
-                {"path", "reference.rvq"},
+                {"path", rvq_name},
                 {"codebooks", extracted.num_codebooks},
                 {"frames", extracted.ref_T},
                 {"bits_per_code", kRvqCodeBits},
@@ -537,6 +695,7 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
 
         std::filesystem::rename(speaker_temp, speaker_path);
         speaker_published = true;
+        maybe_terminate_publication("after-publish-speaker");
         maybe_inject_publication_failure("after-publish-speaker");
         if (!context.x_vector_only) {
             std::filesystem::rename(rvq_temp, rvq_path);
@@ -545,6 +704,8 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
         }
         maybe_inject_publication_failure("before-manifest");
         std::filesystem::rename(manifest_temp, context.manifest_path);
+        maybe_terminate_publication("after-manifest");
+        maybe_inject_publication_failure("after-manifest");
         remove_if_exists(marker);
     }
     catch (...) {

@@ -959,8 +959,15 @@ int main() {
     CHECK(prepare_client.start(
         voice_registry_options(prepared_registry, &prepare_stderr), prepare_options));
     CHECK(std::filesystem::is_regular_file(prepared_manifest));
-    CHECK(std::filesystem::is_regular_file(prepared_directory / "reference.spk"));
-    CHECK(std::filesystem::is_regular_file(prepared_directory / "reference.rvq"));
+    const auto prepared_manifest_bytes = read_file_bytes(prepared_manifest);
+    const auto prepared_manifest_json = nlohmann::json::parse(
+        prepared_manifest_bytes.begin(), prepared_manifest_bytes.end());
+    const auto prepared_speaker_path = prepared_directory /
+        prepared_manifest_json.at("speaker").at("path").get<std::string>();
+    const auto prepared_rvq_path = prepared_directory /
+        prepared_manifest_json.at("rvq").at("path").get<std::string>();
+    CHECK(std::filesystem::is_regular_file(prepared_speaker_path));
+    CHECK(std::filesystem::is_regular_file(prepared_rvq_path));
     CHECK(prepare_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
     Probe prepared_probe;
     TtsCallbacks prepared_callbacks;
@@ -1031,11 +1038,113 @@ int main() {
         CHECK(!std::filesystem::exists(fault_directory / "reference.rvq"));
     }
 
+    std::filesystem::remove_all(fault_directory, fault_cleanup_error);
+    auto killed_after_speaker_options = voice_registry_options(fault_registry);
+    killed_after_speaker_options.environment_overrides.emplace(
+        "QTB_TEST_PUBLICATION_TERMINATE_PHASE", "after-publish-speaker");
+    QwenTtsClient killed_after_speaker;
+    QwenTtsClientOptions killed_after_speaker_client_options;
+    killed_after_speaker_client_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!killed_after_speaker.start(
+        killed_after_speaker_options, killed_after_speaker_client_options));
+    killed_after_speaker.stop();
+    CHECK(std::filesystem::exists(fault_directory / ".qtb-publication.incomplete"));
+
+    QwenTtsClient recovered_after_kill;
+    QwenTtsClientOptions recovered_after_kill_options;
+    recovered_after_kill_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(recovered_after_kill.start(
+        voice_registry_options(fault_registry), recovered_after_kill_options));
+    recovered_after_kill.stop();
+    bool found_killed_generation = false;
+    for (const auto& entry : std::filesystem::directory_iterator(fault_directory)) {
+        if (entry.path().filename().u8string().rfind(".qtb-recovery-", 0) == 0) {
+            found_killed_generation = true;
+        }
+    }
+    CHECK(found_killed_generation);
+
+    const auto committed_directory = runtime / "prepared-native-committed";
+    std::filesystem::remove_all(committed_directory, fault_cleanup_error);
+    const auto committed_registry = runtime / "voice-registry-prepared-committed.json";
+    {
+        std::ofstream output(committed_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":[{\"voice_id\":\"committed\","
+                  "\"reference_audio_path\":\"reference-cache-test.wav\","
+                  "\"reference_text\":\"Fake reference\",\"x_vector_only\":false,"
+                  "\"native_reference\":{\"manifest_path\":\"prepared-native-committed/manifest.json\","
+                  "\"prepare_if_missing\":true}}]}";
+    }
+    auto killed_after_manifest_options = voice_registry_options(committed_registry);
+    killed_after_manifest_options.environment_overrides.emplace(
+        "QTB_TEST_PUBLICATION_TERMINATE_PHASE", "after-manifest");
+    QwenTtsClient killed_after_manifest;
+    QwenTtsClientOptions killed_after_manifest_client_options;
+    killed_after_manifest_client_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!killed_after_manifest.start(
+        killed_after_manifest_options, killed_after_manifest_client_options));
+    killed_after_manifest.stop();
+    CHECK(std::filesystem::is_regular_file(committed_directory / "manifest.json"));
+    std::string committed_restart_stderr;
+    QwenTtsClient committed_restart;
+    QwenTtsClientOptions committed_restart_options;
+    committed_restart_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(committed_restart.start(
+        voice_registry_options(committed_registry, &committed_restart_stderr),
+        committed_restart_options));
+    CHECK(committed_restart_stderr.find("fake voice_ref_samples=") == std::string::npos);
+    CHECK(!std::filesystem::exists(committed_directory / ".qtb-publication.incomplete"));
+    committed_restart.stop();
+
+    const auto concurrent_directory = runtime / "prepared-native-concurrent";
+    std::filesystem::remove_all(concurrent_directory, fault_cleanup_error);
+    const auto concurrent_registry = runtime / "voice-registry-prepared-concurrent.json";
+    {
+        std::ofstream output(concurrent_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":[{\"voice_id\":\"concurrent\","
+                  "\"reference_audio_path\":\"reference-cache-test.wav\","
+                  "\"reference_text\":\"Fake reference\",\"x_vector_only\":false,"
+                  "\"native_reference\":{\"manifest_path\":\"prepared-native-concurrent/manifest.json\","
+                  "\"prepare_if_missing\":true}}]}";
+    }
+    auto delayed_publisher_options = voice_registry_options(concurrent_registry);
+    delayed_publisher_options.environment_overrides.emplace(
+        "QTB_TEST_PUBLICATION_DELAY_PHASE", "after-marker");
+    delayed_publisher_options.environment_overrides.emplace("QTB_TEST_PUBLICATION_DELAY_MS", "2000");
+    QwenTtsClient delayed_publisher;
+    QwenTtsClientOptions delayed_publisher_client_options;
+    delayed_publisher_client_options.session.startup_timeout = std::chrono::seconds(5);
+    std::atomic<bool> delayed_publisher_started{false};
+    std::atomic<bool> delayed_publisher_result{false};
+    std::thread delayed_publisher_thread([&]() {
+        delayed_publisher_started.store(true, std::memory_order_release);
+        delayed_publisher_result.store(
+            delayed_publisher.start(delayed_publisher_options, delayed_publisher_client_options),
+            std::memory_order_release);
+    });
+    while (!delayed_publisher_started.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    QwenTtsClient concurrent_publisher;
+    QwenTtsClientOptions concurrent_publisher_options;
+    concurrent_publisher_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!concurrent_publisher.start(
+        voice_registry_options(concurrent_registry), concurrent_publisher_options));
+    delayed_publisher_thread.join();
+    CHECK(delayed_publisher_result.load(std::memory_order_acquire));
+    delayed_publisher.stop();
+
+    std::filesystem::remove_all(fault_directory, fault_cleanup_error);
     std::filesystem::create_directories(fault_directory);
     {
         std::ofstream marker(fault_directory / ".qtb-publication.incomplete", std::ios::binary);
-        marker << "qwen3-tts native voice publication\n";
-        std::ofstream orphan(fault_directory / "reference.spk", std::ios::binary);
+        marker << "{\"schema_version\":1,\"format\":\"qwen3-tts-native-publication\","
+                  "\"generation_id\":\"manual-recovery\","
+                  "\"manifest_path\":\"manifest.json\","
+                  "\"speaker_path\":\"reference-manual-recovery.spk\","
+                  "\"rvq_path\":\"reference-manual-recovery.rvq\"}\n";
+        std::ofstream orphan(fault_directory / "reference-manual-recovery.spk", std::ios::binary);
         orphan << "orphan-sentinel";
     }
     QwenTtsClient recovery_client;
@@ -1048,9 +1157,9 @@ int main() {
     for (const auto& entry : std::filesystem::directory_iterator(fault_directory)) {
         const auto name = entry.path().filename().u8string();
         if (name.rfind(".qtb-recovery-", 0) == 0 &&
-            std::filesystem::is_regular_file(entry.path() / "reference.spk")) {
+            std::filesystem::is_regular_file(entry.path() / "reference-manual-recovery.spk")) {
             recovered_orphan =
-                read_file_bytes(entry.path() / "reference.spk") ==
+                read_file_bytes(entry.path() / "reference-manual-recovery.spk") ==
                 std::vector<char>({'o', 'r', 'p', 'h', 'a', 'n', '-', 's', 'e', 'n', 't', 'i', 'n', 'e', 'l'});
         }
     }
@@ -1092,14 +1201,14 @@ int main() {
     CHECK(reload_probe.audio == prepared_probe.audio);
     reload_client.stop();
 
-    const auto speaker_bytes = read_file_bytes(prepared_directory / "reference.spk");
-    write_file_bytes(prepared_directory / "reference.spk", {'x'});
+    const auto speaker_bytes = read_file_bytes(prepared_speaker_path);
+    write_file_bytes(prepared_speaker_path, {'x'});
     QwenTtsClient corrupt_speaker_client;
     QwenTtsClientOptions corrupt_speaker_options;
     corrupt_speaker_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(!corrupt_speaker_client.start(
         voice_registry_options(prepared_registry), corrupt_speaker_options));
-    write_file_bytes(prepared_directory / "reference.spk", speaker_bytes);
+    write_file_bytes(prepared_speaker_path, speaker_bytes);
 
     const std::string changed_transcript_registry =
         "{\"schema_version\":1,\"voices\":[{\"voice_id\":\"prepared-voice\","
@@ -1145,14 +1254,14 @@ int main() {
         voice_registry_options(prepared_registry), changed_model_options));
     write_file_bytes(talker_path, talker_bytes);
 
-    const auto rvq_bytes = read_file_bytes(prepared_directory / "reference.rvq");
-    std::filesystem::remove(prepared_directory / "reference.rvq");
+    const auto rvq_bytes = read_file_bytes(prepared_rvq_path);
+    std::filesystem::remove(prepared_rvq_path);
     QwenTtsClient missing_rvq_client;
     QwenTtsClientOptions missing_rvq_options;
     missing_rvq_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(!missing_rvq_client.start(
         voice_registry_options(prepared_registry), missing_rvq_options));
-    write_file_bytes(prepared_directory / "reference.rvq", rvq_bytes);
+    write_file_bytes(prepared_rvq_path, rvq_bytes);
 
     const auto manifest_bytes = read_file_bytes(prepared_manifest);
     const auto write_manifest_variant = [&](const nlohmann::json& value) {
@@ -1235,17 +1344,17 @@ int main() {
     auto non_finite_speaker = speaker_bytes;
     const std::uint32_t quiet_nan = 0x7fc00000u;
     std::memcpy(non_finite_speaker.data(), &quiet_nan, sizeof(quiet_nan));
-    write_file_bytes(prepared_directory / "reference.spk", non_finite_speaker);
+    write_file_bytes(prepared_speaker_path, non_finite_speaker);
     nlohmann::json non_finite_manifest = manifest_json;
     non_finite_manifest["speaker"]["sha256"] =
-        qwen_tts_bridge::native_worker::sha256_file(prepared_directory / "reference.spk");
+        qwen_tts_bridge::native_worker::sha256_file(prepared_speaker_path);
     write_manifest_variant(non_finite_manifest);
     QwenTtsClient non_finite_client;
     QwenTtsClientOptions non_finite_options;
     non_finite_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(!non_finite_client.start(
         voice_registry_options(prepared_registry), non_finite_options));
-    write_file_bytes(prepared_directory / "reference.spk", speaker_bytes);
+    write_file_bytes(prepared_speaker_path, speaker_bytes);
     write_file_bytes(prepared_manifest, manifest_bytes);
 
     const auto xvector_directory = runtime / "prepared-native-xvector";
@@ -1264,8 +1373,12 @@ int main() {
     xvector_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(xvector_client.start(voice_registry_options(xvector_registry), xvector_options));
     CHECK(std::filesystem::is_regular_file(xvector_directory / "manifest.json"));
-    CHECK(std::filesystem::is_regular_file(xvector_directory / "reference.spk"));
-    CHECK(!std::filesystem::exists(xvector_directory / "reference.rvq"));
+    const auto xvector_manifest_bytes = read_file_bytes(xvector_directory / "manifest.json");
+    const auto xvector_manifest_json = nlohmann::json::parse(
+        xvector_manifest_bytes.begin(), xvector_manifest_bytes.end());
+    CHECK(std::filesystem::is_regular_file(
+        xvector_directory / xvector_manifest_json.at("speaker").at("path").get<std::string>()));
+    CHECK(xvector_manifest_json.at("rvq").is_null());
     xvector_client.stop();
 
     const auto shared_registry = runtime / "voice-registry-prepared-shared.json";

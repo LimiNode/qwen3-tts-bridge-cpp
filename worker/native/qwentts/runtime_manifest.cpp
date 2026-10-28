@@ -106,6 +106,48 @@ std::string sha256_file_impl(const std::filesystem::path& path) {
     return out.str();
 }
 
+std::string sha256_bytes_impl(const unsigned char* bytes, std::size_t size) {
+    BCRYPT_ALG_HANDLE algorithm = nullptr;
+    BCRYPT_HASH_HANDLE hash = nullptr;
+    DWORD object_size = 0;
+    DWORD hash_size = 0;
+    DWORD written = 0;
+    std::vector<unsigned char> object;
+    std::vector<unsigned char> digest;
+    const auto cleanup = [&]() {
+        if (hash != nullptr) {
+            BCryptDestroyHash(hash);
+        }
+        if (algorithm != nullptr) {
+            BCryptCloseAlgorithmProvider(algorithm, 0);
+        }
+    };
+    if (BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) < 0 ||
+        BCryptGetProperty(algorithm, BCRYPT_OBJECT_LENGTH,
+                          reinterpret_cast<PUCHAR>(&object_size), sizeof(object_size), &written, 0) < 0 ||
+        BCryptGetProperty(algorithm, BCRYPT_HASH_LENGTH,
+                          reinterpret_cast<PUCHAR>(&hash_size), sizeof(hash_size), &written, 0) < 0) {
+        cleanup();
+        throw std::runtime_error("unable to initialize SHA-256 verification");
+    }
+    object.resize(object_size);
+    digest.resize(hash_size);
+    if (BCryptCreateHash(algorithm, &hash, object.data(), static_cast<ULONG>(object.size()),
+                         nullptr, 0, 0) < 0 ||
+        (size > 0 && BCryptHashData(hash, const_cast<PUCHAR>(bytes), static_cast<ULONG>(size), 0) < 0) ||
+        BCryptFinishHash(hash, digest.data(), static_cast<ULONG>(digest.size()), 0) < 0) {
+        cleanup();
+        throw std::runtime_error("unable to hash bounded artifact");
+    }
+    cleanup();
+    std::ostringstream out;
+    out << std::hex << std::setfill('0');
+    for (const unsigned char byte : digest) {
+        out << std::setw(2) << static_cast<unsigned int>(byte);
+    }
+    return out.str();
+}
+
 std::string lower_ascii(std::string value) {
     for (char& ch : value) {
         ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
@@ -145,6 +187,10 @@ bool is_safe_relative_path(const std::filesystem::path& path) {
 
 std::string sha256_file(const std::filesystem::path& path) {
     return sha256_file_impl(path);
+}
+
+std::string sha256_bytes(const unsigned char* bytes, std::size_t size) {
+    return sha256_bytes_impl(bytes, size);
 }
 
 RuntimeManifest load_and_verify_runtime_manifest(

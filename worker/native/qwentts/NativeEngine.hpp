@@ -128,9 +128,15 @@ public:
 private:
     struct CachedVoiceReference {
         qt_voice_ref value{};
-        bool runtime_owned = true;
+        const QwenApi* owner_api = nullptr;
         std::vector<float> persisted_speaker;
         std::vector<std::int32_t> persisted_codes;
+
+        ~CachedVoiceReference() {
+            if (owner_api != nullptr) {
+                owner_api->voice_ref_free(&value);
+            }
+        }
     };
 
     struct VoiceProfile {

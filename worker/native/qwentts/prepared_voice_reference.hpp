@@ -30,6 +30,13 @@ struct PreparedVoiceReferenceData {
     std::string cache_key;
 };
 
+/// Reconcile a stale publication marker without touching an active publisher.
+/// Incomplete generations are quarantined; a committed manifest is preserved.
+void reconcile_prepared_publication(const PreparedVoiceReferenceContext& context);
+
+/// Remove a stale marker after the committed manifest has loaded successfully.
+void finalize_prepared_publication(const PreparedVoiceReferenceContext& context);
+
 /// Resolve a registry-relative prepared manifest without allowing traversal.
 std::filesystem::path resolve_prepared_manifest_path(
     const std::filesystem::path& registry_directory,
