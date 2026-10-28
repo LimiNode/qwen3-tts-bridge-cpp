@@ -812,6 +812,39 @@ int main() {
     CHECK(registry_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
     registry_client.stop();
 
+    // An explicitly supplied empty registry is equivalent to no registered
+    // profiles.  Python already accepts this configuration, so native must
+    // keep the same non-breaking policy instead of failing before ready.
+    const auto empty_registry = runtime / "voice-registry-empty.json";
+    {
+        std::ofstream output(empty_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":[]}";
+    }
+    QwenTtsClient empty_registry_client;
+    QwenTtsClientOptions empty_registry_options;
+    empty_registry_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(empty_registry_client.start(
+        voice_registry_options(empty_registry), empty_registry_options));
+    ReadyMessage empty_registry_ready;
+    CHECK(empty_registry_client.ready_message(empty_registry_ready));
+    CHECK(empty_registry_ready.voice_ids.empty());
+    empty_registry_client.stop();
+
+    const auto duplicate_registry = runtime / "voice-registry-duplicate.json";
+    {
+        std::ofstream output(duplicate_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":["
+                  "{\"voice_id\":\"duplicate\",\"reference_audio_path\":\"reference-cache-test.wav\","
+                  "\"reference_text\":\"Fake reference\"},"
+                  "{\"voice_id\":\"duplicate\",\"reference_audio_path\":\"reference-cache-test.wav\","
+                  "\"reference_text\":\"Fake reference\"}]}";
+    }
+    QwenTtsClient duplicate_registry_client;
+    QwenTtsClientOptions duplicate_registry_options;
+    duplicate_registry_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!duplicate_registry_client.start(
+        voice_registry_options(duplicate_registry), duplicate_registry_options));
+
     const auto malformed_registry = runtime / "voice-registry-missing-reference-text.json";
     {
         std::ofstream output(malformed_registry, std::ios::binary);
