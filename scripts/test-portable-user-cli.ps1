@@ -182,6 +182,9 @@ $ReceiptValue = Get-Content -Raw -Encoding UTF8 -LiteralPath $Receipt | ConvertF
 if (
     $ReceiptValue.schema_version -ne 1 -or
     $ReceiptValue.terminal_state -ne "completed" -or
+    $ReceiptValue.generation_trace_available -ne $true -or
+    $ReceiptValue.termination_reason -ne "eos" -or
+    $ReceiptValue.hit_eos -ne $true -or
     $ReceiptValue.audio_bytes -le 0
 ) {
     throw "Relocated CLI receipt is invalid: $Receipt"
