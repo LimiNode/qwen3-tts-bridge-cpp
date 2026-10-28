@@ -58,12 +58,19 @@ and voice-identity gates.
 
 For the product registered-voice path, pass `--voice-registry-path` instead.
 The registry uses the same schema as `config/voice-profiles.example.json` and
-is resolved relative to its own directory. Every profile is decoded and its
-`qt_voice_ref` is extracted before the worker announces `ready`; a request then
-selects it with `voice_id` and does not read or extract the WAV on the critical
-path. The ready message advertises the sorted `voice_ids`, and an unknown ID is
-rejected fail-closed. This startup cost is intentional: it moves reference
-conditioning out of first-PCM latency without changing the PCM or sampling
+is resolved relative to its own directory. A legacy WAV profile is decoded and
+its `qt_voice_ref` is extracted before the worker announces `ready`; a request
+then selects it with `voice_id` and does not read or extract the WAV on the
+critical path. The ready message advertises the sorted `voice_ids`, and an
+unknown ID is rejected fail-closed. This startup cost is intentional: it moves
+reference conditioning out of first-PCM latency without changing the PCM or
+sampling contract.
+
+Registry rows may opt into persistent, model-bound `.spk` / `.rvq` conditioning
+through a `native_reference` object. A validated prepared profile skips WAV
+decode and extraction after restart while retaining the same external
+`voice_id`. See [Persistent native voice references](native-prepared-voice-references.md)
+for the manifest, compatibility, ownership, and transactional publication
 contract.
 An explicitly supplied registry with an empty `voices` array is valid and is
 treated the same as having no registered profiles. The worker announces

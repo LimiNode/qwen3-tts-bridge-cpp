@@ -23,6 +23,9 @@ struct RuntimeManifest {
     std::vector<RuntimeFile> files;
 };
 
+/// Return the lowercase SHA-256 digest of a regular file.
+std::string sha256_file(const std::filesystem::path& path);
+
 RuntimeManifest load_and_verify_runtime_manifest(
     const std::filesystem::path& manifest_path,
     const std::filesystem::path& dll_path);

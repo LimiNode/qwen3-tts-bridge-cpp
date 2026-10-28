@@ -205,6 +205,7 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
     add_executable(qwen_tts_native_worker
         worker/native/qwentts/main.cpp
         worker/native/qwentts/NativeEngine.cpp
+        worker/native/qwentts/prepared_voice_reference.cpp
         worker/native/qwentts/QwenDllLoader.cpp
         worker/native/qwentts/runtime_manifest.cpp
         worker/native/qwentts/StdioServer.cpp
@@ -654,15 +655,20 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         add_executable(qwen_tts_native_worker_test
             tests/native/qwen_tts_native_worker_test.cpp
+            worker/native/qwentts/prepared_voice_reference.cpp
+            worker/native/qwentts/runtime_manifest.cpp
             worker/native/qwentts/wav_reader.cpp
         )
         target_include_directories(qwen_tts_native_worker_test
             PRIVATE
                 "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
+                "${QWEN_TTS_BRIDGE_QWENTTS_DIR}/src"
         )
         target_link_libraries(qwen_tts_native_worker_test
             PRIVATE
                 QwenTTSBridge::qwen_tts_bridge
+                nlohmann_json::nlohmann_json
+                bcrypt
         )
         target_compile_definitions(qwen_tts_native_worker_test
             PRIVATE

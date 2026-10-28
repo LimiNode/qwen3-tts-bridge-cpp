@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "voices": [
+    {
+      "voice_id": "prepared_native_voice",
+      "reference_audio_path": "../examples/assets/reference.wav",
+      "reference_text": "Exact reference transcript.",
+      "x_vector_only": false,
+      "native_reference": {
+        "manifest_path": "voices/prepared_native_voice/native/manifest.json",
+        "prepare_if_missing": true
+      }
+    }
+  ]
+}

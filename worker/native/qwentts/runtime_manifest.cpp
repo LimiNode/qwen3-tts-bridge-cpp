@@ -18,7 +18,7 @@ namespace {
 
 using Json = nlohmann::json;
 
-std::string sha256_file(const std::filesystem::path& path) {
+std::string sha256_file_impl(const std::filesystem::path& path) {
     BCRYPT_ALG_HANDLE algorithm = nullptr;
     BCRYPT_HASH_HANDLE hash = nullptr;
     DWORD object_size = 0;
@@ -142,6 +142,10 @@ bool is_safe_relative_path(const std::filesystem::path& path) {
 }
 
 } // namespace
+
+std::string sha256_file(const std::filesystem::path& path) {
+    return sha256_file_impl(path);
+}
 
 RuntimeManifest load_and_verify_runtime_manifest(
     const std::filesystem::path& manifest_path,
