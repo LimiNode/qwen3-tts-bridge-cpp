@@ -98,7 +98,7 @@ Python runtime и полный пользовательский дистрибу
 ```powershell
 .\scripts\assemble-portable-release.ps1 `
   -PythonPackageRoot .\dist\QwenTTSBridge `
-  -SaveWavExecutable .\build\default\Release\qwen_tts_save_wav.exe `
+  -SaveWavExecutable .\.build\default\Release\qwen_tts_save_wav.exe `
   -OutputRoot .\dist\QwenTTSBridge-release
 ```
 
@@ -112,7 +112,7 @@ executable, примеры конфигурации и release manifest с SHA-2
 
 ```powershell
 .\scripts\start-voice-design-save-wav.ps1 `
-  -SaveWavExecutable .\build\default\Release\qwen_tts_save_wav.exe `
+  -SaveWavExecutable .\.build\default\Release\qwen_tts_save_wav.exe `
   -Worker .\dist\QwenTTSBridge\worker\qwen_tts_worker.exe `
   -WorkerArgument @("--engine", "qwen", "--model-path", "D:\Models\Qwen3-TTS-12Hz-1.7B-VoiceDesign") `
   -Text "Привет! Я рада тебя видеть." `
@@ -208,12 +208,12 @@ speech-animation подтверждает sample-addressed timeline, но не �
 ## Сборка и тесты
 
 Проект собирается CMake под C++17 и Windows x64. Модели, CUDA runtime и
-сгенерированные `build/`/`dist/` не коммитятся.
+сгенерированные `.build/`/`dist/` не коммитятся.
 
 ```powershell
-cmake -S . -B build -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON
-cmake --build build --config Release
-ctest --test-dir build -C Release --output-on-failure
+cmake -S . -B .build/default -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON
+cmake --build .build/default --config Release
+ctest --test-dir .build/default -C Release --output-on-failure
 ```
 
 Python-проверки используют worker из `worker/src` и locked development tools:

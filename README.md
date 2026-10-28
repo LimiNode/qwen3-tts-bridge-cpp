@@ -100,7 +100,7 @@ build stages. Assemble the latter from an explicitly selected Release
 ```powershell
 .\scripts\assemble-portable-release.ps1 `
   -PythonPackageRoot .\dist\QwenTTSBridge `
-  -SaveWavExecutable .\build\default\Release\qwen_tts_save_wav.exe `
+  -SaveWavExecutable .\.build\default\Release\qwen_tts_save_wav.exe `
   -OutputRoot .\dist\QwenTTSBridge-release
 ```
 
@@ -820,7 +820,7 @@ executable against a real local model:
 
 ```text
 .\scripts\setup-python-packaging.ps1 -UseVenv -InstallQwenFork
-.\scripts\package-worker.ps1 -UseVenv -Clean -AssumeYesForDownloads -QwenProfile CustomVoice -NuitkaReportPath tmp\nuitka-worker\qwen-report.xml
+.\scripts\package-worker.ps1 -UseVenv -Clean -AssumeYesForDownloads -QwenProfile CustomVoice -NuitkaReportPath .tmp\nuitka-worker\qwen-report.xml
 .\scripts\test-packaged-qwen-worker.ps1 -UseVenv -ModelPath models\<model-dir> -Speaker <speaker-name>
 ```
 

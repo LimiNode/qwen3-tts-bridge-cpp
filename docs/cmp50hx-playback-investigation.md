@@ -15,7 +15,7 @@ buffer remained queued. It is useful for detecting insufficient delivery slack,
 but it is not a hardware underrun counter and does not by itself establish an
 audible glitch or a GPU root cause.
 
-All capture artefacts are local and intentionally untracked under `tmp/`. The
+All capture artefacts are local and intentionally untracked under `.tmp/`. The
 run identifiers below make the results auditable without embedding machine-local
 paths in versioned documentation.
 
@@ -384,8 +384,8 @@ For a frozen-versus-candidate comparison, use the same seed, speaker, text,
 and then compare the metadata and raw SHA-256:
 
 ```powershell
-Get-FileHash .\tmp\frozen.pcm -Algorithm SHA256
-Get-FileHash .\tmp\streaming.pcm -Algorithm SHA256
+Get-FileHash .\.tmp\pcm-parity\frozen.pcm -Algorithm SHA256
+Get-FileHash .\.tmp\pcm-parity\streaming.pcm -Algorithm SHA256
 ```
 
 The repository also provides a dependency-free analyzer for fixed, explicit
@@ -393,9 +393,9 @@ tolerance gates:
 
 ```powershell
 python .\scripts\compare-cmp50hx-pcm-parity.py `
-  --expected .\tmp\frozen.pcm `
-  --candidate .\tmp\candidate.pcm `
-  --output .\tmp\pcm-parity.json `
+  --expected .\.tmp\pcm-parity\frozen.pcm `
+  --candidate .\.tmp\pcm-parity\candidate.pcm `
+  --output .\.tmp\pcm-parity\result.json `
   --max-rms-delta 3 --min-snr-db 55 --max-abs-delta 64
 ```
 
@@ -631,7 +631,7 @@ the new run's generated `summary.json`.
 
 ```powershell
 .\scripts\analyze-cmp50hx-etw-markers.ps1 `
-  -SummaryPath .\tmp\cmp50hx-playback-etw-soak\<run-id>\summary.json `
+  -SummaryPath .\.tmp\cmp50hx-playback-etw-soak\<run-id>\summary.json `
   -RequireDmaPacketLifecycle
 ```
 

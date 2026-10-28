@@ -4,7 +4,7 @@ param(
     [switch]$UseVenv,
     [string]$VenvPath = ".venv-packaging",
     [string]$OutputRoot = "dist/QwenTTSBridge",
-    [string]$NuitkaWorkRoot = "tmp/nuitka-worker",
+    [string]$NuitkaWorkRoot = ".tmp/nuitka-worker",
     [switch]$Clean,
     [switch]$DryRun,
     [switch]$AssumeYesForDownloads,

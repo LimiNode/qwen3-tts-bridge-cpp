@@ -190,13 +190,13 @@ function Resolve-RepoPath {
 }
 
 if (-not $PlayerPath) {
-    $PlayerPath = 'build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe'
+    $PlayerPath = '.build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe'
 }
 if (-not $PythonPath) {
-    $PythonPath = 'tmp\QwenTTSBridge-technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe'
+    $PythonPath = '.tmp\technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe'
 }
 if (-not $ModelPath) {
-    $ModelPath = 'tmp\cmp50hx-r3-external-models\Qwen3-TTS-12Hz-0.6B-CustomVoice'
+    $ModelPath = 'models\Qwen3-TTS-12Hz-0.6B-CustomVoice'
 }
 if (-not $FasterSourcePath) {
     $FasterSourcePath = 'external\python\faster-qwen3-tts'
@@ -206,10 +206,10 @@ else {
     $usingVersionedFasterSubmodule = $false
 }
 if (-not $RuntimeCachePath) {
-    $RuntimeCachePath = 'tmp\cmp50hx-r3-runtime-cache'
+    $RuntimeCachePath = '.tmp\cmp50hx-r3-runtime-cache'
 }
 if (-not $OutputRoot) {
-    $OutputRoot = 'tmp\cmp50hx-playback-etw-soak'
+    $OutputRoot = '.tmp\cmp50hx-playback-etw-soak'
 }
 if (-not $WprProfilePath) {
     $WprProfilePath = 'scripts\profiles\cmp50hx-dxgkrnl-scheduler.wprp'

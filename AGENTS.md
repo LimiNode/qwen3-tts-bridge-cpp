@@ -79,6 +79,11 @@ receipts, downloaded diagnostics, and other short-lived artifacts. Use
 with its own branch, index, and checkout; do not confuse a worktree with a
 temporary output directory. Both locations are local-only and must remain
 ignored and uncommitted.
+Use `.build/<profile>/` for local CMake and test builds. Keep generated release
+packages in `dist/` only while they are needed for packaging or acceptance;
+remove or regenerate them after the acceptance task completes. Do not leave
+debug scripts, executables, object files, profiling databases, or ad-hoc logs
+in the repository root.
 Large model weights, CUDA/runtime bundles, and hardware-test artifacts may be
 stored outside the repository when a procedure requires it; document their
 location and provenance, and never commit them.

@@ -20,7 +20,7 @@ param(
 
     [string]$VoiceId = '',
 
-    [string]$OutputRoot = 'tmp\real-model-release-acceptance',
+    [string]$OutputRoot = '.tmp\real-model-release-acceptance',
 
     [ValidateRange(2, 8)]
     [int]$PersistentRequests = 4,

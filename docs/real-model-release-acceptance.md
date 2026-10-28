@@ -21,10 +21,10 @@ and the versioned Faster submodule:
 
 ```powershell
 .\scripts\run-real-model-release-acceptance.ps1 `
-  -PlayerPath 'E:\_repoz\qwen3-tts-bridge-cpp\build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe' `
-  -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\QwenTTSBridge-technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe' `
-  -CustomVoiceModelPath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\cmp50hx-r3-external-models\Qwen3-TTS-12Hz-0.6B-CustomVoice' `
-  -RuntimeCachePath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\cmp50hx-r3-runtime-cache'
+  -PlayerPath 'E:\_repoz\qwen3-tts-bridge-cpp\.build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe' `
+  -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\.tmp\technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe' `
+  -CustomVoiceModelPath 'E:\_repoz\qwen3-tts-bridge-cpp\models\Qwen3-TTS-12Hz-0.6B-CustomVoice' `
+  -RuntimeCachePath 'E:\_repoz\qwen3-tts-bridge-cpp\.tmp\cmp50hx-r3-runtime-cache'
 ```
 
 It requires all of the following:

@@ -35,7 +35,7 @@ Build `qwen_tts_play`, then run:
 
 ```powershell
 scripts/start-qwen-tts-clone-play.ps1 `
-  -BuildDirectory build/Release `
+  -BuildDirectory .build/Release `
   -Python C:/runtime/python.exe `
   -ModelPath C:/models/Qwen3-TTS-12Hz-1.7B-Base `
   -VoiceRegistryPath config/voice-profiles.local.json `
@@ -69,7 +69,7 @@ Example low-latency Kraftwerk playback:
 
 ```powershell
 scripts/start-qwen-tts-clone-play.ps1 `
-  -BuildDirectory build/Release `
+  -BuildDirectory .build/Release `
   -Python C:/runtime/python.exe `
   -RuntimeProfile cmp50hx-low-latency `
   -VoiceRegistryPath config/voice-profiles.local.json `
