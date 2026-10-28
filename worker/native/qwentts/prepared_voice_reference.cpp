@@ -294,6 +294,8 @@ Json read_publication_marker(const std::filesystem::path& marker) {
     return value;
 }
 
+void maybe_terminate_recovery(const char* phase);
+
 void recover_incomplete_publication_locked(
     const std::filesystem::path& directory,
     const std::filesystem::path& manifest_path) {
@@ -320,11 +322,16 @@ void recover_incomplete_publication_locked(
     std::error_code error;
     const auto quarantine = directory / (".qtb-recovery-" + generation);
     if (std::filesystem::exists(quarantine)) {
-        throw std::runtime_error("prepared voice recovery directory already exists");
+        if (!std::filesystem::is_directory(quarantine)) {
+            throw std::runtime_error("prepared voice recovery path is not a directory");
+        }
+        reject_reparse_point(quarantine);
     }
-    std::filesystem::create_directory(quarantine, error);
-    if (error) {
-        throw std::runtime_error("unable to create prepared voice recovery directory");
+    else {
+        std::filesystem::create_directory(quarantine, error);
+        if (error) {
+            throw std::runtime_error("unable to create prepared voice recovery directory");
+        }
     }
     const auto move_owned = [&](const std::string& name) {
         if (name.empty()) {
@@ -334,9 +341,11 @@ void recover_incomplete_publication_locked(
         if (!std::filesystem::exists(source)) {
             return;
         }
+        reject_reparse_point(source);
         const auto target = quarantine / name;
         if (std::filesystem::exists(target)) {
-            throw std::runtime_error("prepared voice recovery target already exists");
+            reject_reparse_point(target);
+            throw std::runtime_error("prepared voice recovery has conflicting owned artifact");
         }
         std::filesystem::rename(source, target, error);
         if (error) {
@@ -344,11 +353,17 @@ void recover_incomplete_publication_locked(
         }
     };
     move_owned(speaker_name);
+    maybe_terminate_recovery("after-speaker");
     move_owned(rvq_name);
     move_owned("reference-" + generation + ".spk.qtb-tmp");
     move_owned("reference-" + generation + ".rvq.qtb-tmp");
     move_owned(manifest_path.filename().u8string() + ".qtb-tmp-" + generation);
-    std::filesystem::rename(marker_path, quarantine / marker_path.filename(), error);
+    const auto marker_target = quarantine / marker_path.filename();
+    if (std::filesystem::exists(marker_target)) {
+        reject_reparse_point(marker_target);
+        throw std::runtime_error("prepared voice recovery has conflicting publication marker");
+    }
+    std::filesystem::rename(marker_path, marker_target, error);
     if (error) {
         throw std::runtime_error("unable to quarantine prepared voice publication marker");
     }
@@ -378,6 +393,13 @@ void maybe_terminate_publication(const char* phase) {
     const char* configured = std::getenv("QTB_TEST_PUBLICATION_TERMINATE_PHASE");
     if (configured != nullptr && std::string(configured) == phase) {
         TerminateProcess(GetCurrentProcess(), 70);
+    }
+}
+
+void maybe_terminate_recovery(const char* phase) {
+    const char* configured = std::getenv("QTB_TEST_RECOVERY_TERMINATE_PHASE");
+    if (configured != nullptr && std::string(configured) == phase) {
+        TerminateProcess(GetCurrentProcess(), 71);
     }
 }
 
@@ -601,6 +623,7 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
     const auto marker_temp = directory / (".qtb-publication.incomplete.qtb-tmp-" + generation);
     bool speaker_published = false;
     bool rvq_published = false;
+    bool manifest_committed = false;
     try {
         const Json marker_json = {
             {"schema_version", 1},
@@ -704,6 +727,7 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
         }
         maybe_inject_publication_failure("before-manifest");
         std::filesystem::rename(manifest_temp, context.manifest_path);
+        manifest_committed = true;
         maybe_terminate_publication("after-manifest");
         maybe_inject_publication_failure("after-manifest");
         remove_if_exists(marker);
@@ -712,14 +736,16 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
         remove_if_exists(speaker_temp);
         remove_if_exists(rvq_temp);
         remove_if_exists(manifest_temp);
-        if (speaker_published) {
-            remove_if_exists(speaker_path);
-        }
-        if (rvq_published) {
-            remove_if_exists(rvq_path);
+        if (!manifest_committed) {
+            if (speaker_published) {
+                remove_if_exists(speaker_path);
+            }
+            if (rvq_published) {
+                remove_if_exists(rvq_path);
+            }
+            remove_if_exists(marker);
         }
         remove_if_exists(marker_temp);
-        remove_if_exists(marker);
         throw;
     }
     return load_prepared_voice_reference(context);

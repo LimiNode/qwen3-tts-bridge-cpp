@@ -90,6 +90,12 @@ quarantines only that generation in a `.qtb-recovery-*` directory and preserves
 its bytes. Unknown files are never deleted or replaced. A manifest that is
 already present is the commit marker and is preserved across restart; a stale
 marker is reconciled only after the committed manifest is loaded.
+Before the manifest rename, rollback removes only artifacts owned by the
+current generation. After the rename, the publication is committed: cleanup
+may remove only temporary files and the stale marker, never the manifest or
+its referenced artifacts. If recovery finds a partially moved generation,
+repeating the same recovery resumes only non-conflicting owned moves; an
+existing conflicting target or unknown state fails closed and is preserved.
 The native worker test suite injects interruptions before speaker write, after
 each temporary/final artifact publication, and before manifest commit to verify
 rollback. Separate bounded subprocess-termination tests cover termination
