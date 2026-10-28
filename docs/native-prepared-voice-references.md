@@ -79,12 +79,29 @@ artifact, invalid dimensions, or incompatible codec layout fails before
 Preparation writes temporary artifacts, reads them back, verifies the RVQ
 round trip and manifest, publishes `.spk` and `.rvq`, and publishes the manifest
 last. A profile is visible only when the manifest is present. Existing files
-are never overwritten by `prepare_if_missing`; partial or ambiguous output is
-rejected. Owned temporary and partially published files are removed on failure.
+are never overwritten by `prepare_if_missing`.
+
+Publication uses `.qtb-publication.incomplete` as an ownership marker. If the
+process is interrupted after an artifact becomes visible but before the
+manifest commit, the next preparation quarantines only the worker-owned
+artifacts in a `.qtb-recovery-*` directory and preserves their bytes. Unknown
+files are never deleted or replaced. A manifest that is already present is the
+commit marker and is preserved across restart; a stale marker is then removed.
+The native worker test suite injects interruptions before speaker write, after
+each temporary/final artifact publication, and before manifest commit to verify
+rollback. A separate recovery test seeds an owned orphan and verifies that its
+bytes are quarantined rather than deleted.
 
 Startup emits a `native_voice_reference_ready` metric whose `source` is either
 `persisted` or `extracted_and_persisted`, together with the bounded preparation
 or load duration.
+
+Performance receipts must report startup/model preload, request-to-first-PCM,
+synthesis duration, and whole-operation time separately. The prepared path
+moves extraction and serialization before `ready`, so a lower first-PCM value
+cannot be attributed to persistence alone. PCM equivalence, extraction reuse,
+and the independent real-time starvation gate remain separate acceptance
+claims.
 
 The first CMP 50HX ABI-6 equivalence probe produced identical raw-WAV and
 persisted-restart PCM, but did not pass the separate real-time streaming gate

@@ -20,6 +20,27 @@ namespace {
 
 using Json = nlohmann::json;
 
+class VoiceReferenceOwnershipGuard final {
+public:
+    VoiceReferenceOwnershipGuard(const QwenApi& api, qt_voice_ref& value)
+        : api_(api), value_(&value) {}
+
+    VoiceReferenceOwnershipGuard(const VoiceReferenceOwnershipGuard&) = delete;
+    VoiceReferenceOwnershipGuard& operator=(const VoiceReferenceOwnershipGuard&) = delete;
+
+    ~VoiceReferenceOwnershipGuard() {
+        if (value_ != nullptr) {
+            api_.voice_ref_free(value_);
+        }
+    }
+
+    void release() noexcept { value_ = nullptr; }
+
+private:
+    const QwenApi& api_;
+    qt_voice_ref* value_;
+};
+
 std::mutex log_mutex;
 
 void qwen_log_callback(qt_log_level level, const char* message, void*) {
@@ -312,13 +333,20 @@ void NativeEngine::preload_voice_registry() {
                 "failed to preload native voice profile '" + voice_id + "': " +
                 last_error(api, "qwentts voice reference extraction failed"));
         }
+        VoiceReferenceOwnershipGuard extracted_ownership(api, entry->value);
         if (!profile.prepared_manifest_path.empty()) {
             const auto context = prepared_context(profile);
             const auto prepared = persist_prepared_voice_reference(context, entry->value);
             api.voice_ref_free(&entry->value);
+            extracted_ownership.release();
             entry = make_persisted_reference(prepared);
             profile.reference_cache_key = prepared.cache_key;
             log_prepared_reference_metric(voice_id, "extracted_and_persisted", profile_started);
+            // The persisted vectors are worker-owned and are never passed back
+            // to the DLL deallocator. The extracted DLL-owned buffers were
+            // freed before replacing the temporary cache entry.
+        } else {
+            extracted_ownership.release();
         }
         voice_reference_cache_.emplace(profile.reference_cache_key, std::move(entry));
         profile.reference_audio.clear();

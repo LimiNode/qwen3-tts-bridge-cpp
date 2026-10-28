@@ -24,16 +24,23 @@ fixed across all runs.
 
 ## Equivalence matrix
 
-| Path | Profile preparation | First PCM | Total | EOS | WAV SHA-256 |
-| --- | --- | ---: | ---: | --- | --- |
-| A — direct raw WAV | decode + extract per request | ~3,927 ms | ~7,182 ms | `natural_eos` | `7e824af59705f3de2addd19b30b96176936442e3aeedcfcc4232efb468cfd38d` |
-| B — prepared first run | extract, persist, then use vectors | ~1,558 ms | ~5,036 ms | `natural_eos` | same |
-| C — prepared restart | load persisted manifest/artifacts | ~1,731 ms | ~5,110 ms | `natural_eos` | same |
+| Path | Startup/model preload | Profile preparation | Request → first PCM | Synthesis duration | Whole operation | EOS | WAV SHA-256 |
+| --- | --- | --- | ---: | --- | ---: | --- | --- |
+| A — direct raw WAV | model ready before request | decode + extract per request | ~3,927 ms | not isolated | ~7,182 ms | `natural_eos` | `7e824af59705f3de2addd19b30b96176936442e3aeedcfcc4232efb468cfd38d` |
+| B — prepared first run | model ready before request | extract, persist, then use vectors | ~1,558 ms | not isolated | ~5,036 ms | `natural_eos` | same |
+| C — prepared restart | model ready before request | load persisted manifest/artifacts | ~1,731 ms | not isolated | ~5,110 ms | `natural_eos` | same |
 
 All three WAV hashes are identical. The first prepared run emitted
 `native_voice_reference_ready source=extracted_and_persisted`; the restart
 emitted `source=persisted` with a 5.5 ms load duration. Both prepared and raw
 requests reported non-empty PCM, `completed`, and `natural_eos`.
+
+The table intentionally does not present startup/model preload as a
+request-path improvement: the prepared worker performs preparation before
+`ready`, while the raw path performs it after admission. The available receipt
+does not isolate synthesis duration from the whole-operation timings, so that
+column remains explicitly marked as not separately measured rather than being
+used to claim a persistence-only speedup.
 
 The complete receipts remain local under:
 

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <limits>
@@ -24,6 +25,10 @@ constexpr int kPreprocessingVersion = 1;
 constexpr int kSampleRate = 24000;
 constexpr int kRvqCodeBits = 11;
 constexpr std::int32_t kMaxRvqCode = (1 << kRvqCodeBits) - 1;
+constexpr int kMaxSpeakerDimension = 1 << 20;
+constexpr int kMaxRvqCodebooks = 64;
+constexpr int kMaxRvqFrames = 1 << 20;
+constexpr std::uintmax_t kMaxManifestBytes = 1u * 1024u * 1024u;
 constexpr std::uintmax_t kMaxSpeakerBytes = 16u * 1024u * 1024u;
 constexpr std::uintmax_t kMaxRvqBytes = 256u * 1024u * 1024u;
 
@@ -117,6 +122,26 @@ std::vector<unsigned char> read_bounded_file(
     return bytes;
 }
 
+std::string read_bounded_text_file(
+    const std::filesystem::path& path,
+    std::uintmax_t maximum_size) {
+    reject_reparse_ancestors(path);
+    if (!std::filesystem::is_regular_file(path)) {
+        throw std::runtime_error("prepared voice manifest is missing: " + path.u8string());
+    }
+    const auto size = std::filesystem::file_size(path);
+    if (size > maximum_size ||
+        size > static_cast<std::uintmax_t>((std::numeric_limits<std::streamsize>::max)())) {
+        throw std::runtime_error("prepared voice manifest is too large: " + path.u8string());
+    }
+    std::string bytes(static_cast<std::size_t>(size), '\0');
+    std::ifstream input(path, std::ios::binary);
+    if (!input || !input.read(bytes.data(), static_cast<std::streamsize>(bytes.size()))) {
+        throw std::runtime_error("unable to read prepared voice manifest: " + path.u8string());
+    }
+    return bytes;
+}
+
 std::vector<unsigned char> pack_codes(const std::vector<std::int32_t>& codes) {
     const std::size_t total_bits = codes.size() * static_cast<std::size_t>(kRvqCodeBits);
     std::vector<unsigned char> output((total_bits + 7u) / 8u, 0);
@@ -179,6 +204,60 @@ void remove_if_exists(const std::filesystem::path& path) noexcept {
     std::filesystem::remove(path, error);
 }
 
+std::filesystem::path publication_marker_path(const std::filesystem::path& directory) {
+    return directory / ".qtb-publication.incomplete";
+}
+
+void recover_incomplete_publication(
+    const std::filesystem::path& directory,
+    const std::filesystem::path& manifest_path) {
+    const auto marker = publication_marker_path(directory);
+    if (!std::filesystem::exists(marker)) {
+        return;
+    }
+    if (std::filesystem::exists(manifest_path)) {
+        // The manifest is the commit marker. A crash after its rename but
+        // before marker cleanup leaves a valid publication to preserve.
+        remove_if_exists(marker);
+        return;
+    }
+
+    const auto quarantine = directory / (".qtb-recovery-" + std::to_string(GetCurrentProcessId()));
+    std::error_code error;
+    std::filesystem::create_directories(quarantine, error);
+    if (error) {
+        throw std::runtime_error("unable to create prepared voice recovery directory");
+    }
+    const auto move_owned = [&](const std::filesystem::path& path) {
+        if (!std::filesystem::exists(path)) {
+            return;
+        }
+        const auto target = quarantine / path.filename();
+        std::filesystem::rename(path, target, error);
+        if (error) {
+            throw std::runtime_error("unable to quarantine incomplete prepared voice artifact");
+        }
+    };
+    move_owned(directory / "reference.spk");
+    move_owned(directory / "reference.rvq");
+    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+        const auto name = entry.path().filename().u8string();
+        if (name.rfind("reference.spk.qtb-tmp-", 0) == 0 ||
+            name.rfind("reference.rvq.qtb-tmp-", 0) == 0 ||
+            name.rfind(manifest_path.filename().u8string() + ".qtb-tmp-", 0) == 0) {
+            move_owned(entry.path());
+        }
+    }
+    move_owned(marker);
+}
+
+void maybe_inject_publication_failure(const char* phase) {
+    const char* configured = std::getenv("QTB_TEST_PUBLICATION_FAILURE_PHASE");
+    if (configured != nullptr && std::string(configured) == phase) {
+        throw std::runtime_error(std::string("injected publication interruption at ") + phase);
+    }
+}
+
 void validate_context(const PreparedVoiceReferenceContext& context) {
     if (context.engine_commit.empty() || context.abi_version <= 0 ||
         context.num_codebooks <= 0 || context.talker_sha256.size() != 64 ||
@@ -210,13 +289,10 @@ std::filesystem::path resolve_prepared_manifest_path(
 PreparedVoiceReferenceData load_prepared_voice_reference(
     const PreparedVoiceReferenceContext& context) {
     validate_context(context);
-    std::ifstream input(context.manifest_path, std::ios::binary);
-    if (!input) {
-        throw std::runtime_error("prepared voice manifest is missing: " + context.manifest_path.u8string());
-    }
     Json root;
     try {
-        input >> root;
+        const auto manifest_bytes = read_bounded_text_file(context.manifest_path, kMaxManifestBytes);
+        root = Json::parse(manifest_bytes);
     }
     catch (const std::exception& error) {
         throw std::runtime_error(std::string("invalid prepared voice manifest: ") + error.what());
@@ -246,17 +322,26 @@ PreparedVoiceReferenceData load_prepared_voice_reference(
     if (!preprocessing.is_object() || required_integer(preprocessing, "version") != kPreprocessingVersion ||
         required_integer(preprocessing, "sample_rate") != kSampleRate ||
         required_integer(preprocessing, "channels") != 1 ||
-        required_integer(preprocessing, "icl_trailing_silence_samples") != expected_silence) {
+        required_integer(preprocessing, "icl_trailing_silence_samples") != expected_silence ||
+        required_string(preprocessing, "sample_format") != "float32") {
         throw std::runtime_error("prepared voice preprocessing identity mismatch");
     }
 
     const auto& speaker = root.at("speaker");
     const int speaker_dim = required_integer(speaker, "dimension");
     const auto speaker_size = required_size(speaker, "size_bytes");
-    if (speaker_dim <= 0 || speaker_size != static_cast<std::uintmax_t>(speaker_dim) * sizeof(float)) {
+    if (speaker_dim <= 0 || speaker_dim > kMaxSpeakerDimension ||
+        static_cast<std::uintmax_t>(speaker_dim) >
+            (std::numeric_limits<std::uintmax_t>::max)() / sizeof(float) ||
+        speaker_size != static_cast<std::uintmax_t>(speaker_dim) * sizeof(float) ||
+        speaker_size > kMaxSpeakerBytes) {
         throw std::runtime_error("prepared voice speaker dimensions are invalid");
     }
+    if (required_string(speaker, "scalar") != "float32-le") {
+        throw std::runtime_error("prepared voice speaker scalar is unsupported");
+    }
     const auto speaker_path = artifact_path(context.manifest_path, required_string(speaker, "path"));
+    (void)read_bounded_file(speaker_path, speaker_size, kMaxSpeakerBytes);
     if (sha256_file(speaker_path) != required_string(speaker, "sha256")) {
         throw std::runtime_error("prepared voice speaker SHA-256 mismatch");
     }
@@ -284,10 +369,18 @@ PreparedVoiceReferenceData load_prepared_voice_reference(
         const int codebooks = required_integer(*rvq, "codebooks");
         const int frames = required_integer(*rvq, "frames");
         const int bits = required_integer(*rvq, "bits_per_code");
-        if (codebooks != context.num_codebooks || frames <= 0 || bits != kRvqCodeBits) {
+        if (codebooks != context.num_codebooks || codebooks <= 0 ||
+            codebooks > kMaxRvqCodebooks || frames <= 0 || frames > kMaxRvqFrames ||
+            bits != kRvqCodeBits ||
+            required_string(*rvq, "layout") != "codebook-major-frame-fastest") {
             throw std::runtime_error("prepared voice RVQ layout is incompatible");
         }
-        const std::size_t code_count = static_cast<std::size_t>(codebooks) * static_cast<std::size_t>(frames);
+        if (static_cast<std::size_t>(codebooks) >
+            (std::numeric_limits<std::size_t>::max)() / static_cast<std::size_t>(frames)) {
+            throw std::runtime_error("prepared voice RVQ dimensions are too large");
+        }
+        const std::size_t code_count = static_cast<std::size_t>(codebooks) *
+            static_cast<std::size_t>(frames);
         if (code_count > (std::numeric_limits<std::size_t>::max)() / kRvqCodeBits) {
             throw std::runtime_error("prepared voice RVQ dimensions are too large");
         }
@@ -297,6 +390,7 @@ PreparedVoiceReferenceData load_prepared_voice_reference(
             throw std::runtime_error("prepared voice RVQ size is invalid");
         }
         const auto rvq_path = artifact_path(context.manifest_path, required_string(*rvq, "path"));
+        (void)read_bounded_file(rvq_path, rvq_size, kMaxRvqBytes);
         if (sha256_file(rvq_path) != required_string(*rvq, "sha256")) {
             throw std::runtime_error("prepared voice RVQ SHA-256 mismatch");
         }
@@ -313,14 +407,29 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
     const PreparedVoiceReferenceContext& context,
     const qt_voice_ref& extracted) {
     validate_context(context);
+    // Deterministic fault injection keeps the DLL-owned extraction cleanup
+    // path testable without changing the public ABI. This is intentionally
+    // ignored unless a test explicitly opts in through the environment.
+    if (std::getenv("QTB_TEST_PERSISTENCE_FAILURE") != nullptr) {
+        throw std::runtime_error("injected prepared voice persistence failure");
+    }
     if (extracted.ref_spk_emb == nullptr || extracted.ref_spk_dim <= 0 ||
+        extracted.ref_spk_dim > kMaxSpeakerDimension ||
+        static_cast<std::size_t>(extracted.ref_spk_dim) >
+            (std::numeric_limits<std::size_t>::max)() / sizeof(float) ||
+        static_cast<std::uintmax_t>(extracted.ref_spk_dim) * sizeof(float) > kMaxSpeakerBytes ||
         std::any_of(extracted.ref_spk_emb, extracted.ref_spk_emb + extracted.ref_spk_dim,
                     [](float value) { return !std::isfinite(value); })) {
         throw std::runtime_error("extracted speaker embedding is invalid");
     }
     if (!context.x_vector_only &&
         (extracted.ref_codes == nullptr || extracted.ref_T <= 0 ||
-         extracted.num_codebooks != context.num_codebooks)) {
+         extracted.ref_T > kMaxRvqFrames || extracted.num_codebooks <= 0 ||
+         extracted.num_codebooks > kMaxRvqCodebooks ||
+         extracted.num_codebooks != context.num_codebooks ||
+         static_cast<std::size_t>(extracted.num_codebooks) >
+             (std::numeric_limits<std::size_t>::max)() /
+                 static_cast<std::size_t>(extracted.ref_T))) {
         throw std::runtime_error("extracted RVQ layout is invalid");
     }
 
@@ -328,6 +437,7 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
     reject_reparse_ancestors(directory.parent_path());
     std::filesystem::create_directories(directory);
     reject_reparse_ancestors(directory);
+    recover_incomplete_publication(directory, context.manifest_path);
     const auto speaker_path = directory / "reference.spk";
     const auto rvq_path = directory / "reference.rvq";
     if (std::filesystem::exists(context.manifest_path) || std::filesystem::exists(speaker_path) ||
@@ -339,11 +449,18 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
     const auto speaker_temp = directory / ("reference.spk" + suffix);
     const auto rvq_temp = directory / ("reference.rvq" + suffix);
     const auto manifest_temp = directory / (context.manifest_path.filename().u8string() + suffix);
+    const auto marker = publication_marker_path(directory);
+    const auto marker_temp = directory / ".qtb-publication.incomplete.qtb-tmp";
     bool speaker_published = false;
     bool rvq_published = false;
     try {
+        const std::string marker_text = "qwen3-tts native voice publication\n";
+        write_bytes(marker_temp, marker_text.data(), marker_text.size());
+        std::filesystem::rename(marker_temp, marker);
+        maybe_inject_publication_failure("before-speaker");
         const auto speaker_bytes = static_cast<std::size_t>(extracted.ref_spk_dim) * sizeof(float);
         write_bytes(speaker_temp, extracted.ref_spk_emb, speaker_bytes);
+        maybe_inject_publication_failure("after-temp-speaker");
 
         std::vector<std::int32_t> codes;
         std::vector<unsigned char> packed_codes;
@@ -353,6 +470,7 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
             codes.assign(extracted.ref_codes, extracted.ref_codes + count);
             packed_codes = pack_codes(codes);
             write_bytes(rvq_temp, packed_codes.data(), packed_codes.size());
+            maybe_inject_publication_failure("after-temp-rvq");
         }
 
         Json root = {
@@ -419,11 +537,15 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
 
         std::filesystem::rename(speaker_temp, speaker_path);
         speaker_published = true;
+        maybe_inject_publication_failure("after-publish-speaker");
         if (!context.x_vector_only) {
             std::filesystem::rename(rvq_temp, rvq_path);
             rvq_published = true;
+            maybe_inject_publication_failure("after-publish-rvq");
         }
+        maybe_inject_publication_failure("before-manifest");
         std::filesystem::rename(manifest_temp, context.manifest_path);
+        remove_if_exists(marker);
     }
     catch (...) {
         remove_if_exists(speaker_temp);
@@ -435,6 +557,8 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
         if (rvq_published) {
             remove_if_exists(rvq_path);
         }
+        remove_if_exists(marker_temp);
+        remove_if_exists(marker);
         throw;
     }
     return load_prepared_voice_reference(context);

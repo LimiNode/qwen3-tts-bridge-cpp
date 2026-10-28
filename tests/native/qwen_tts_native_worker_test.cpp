@@ -994,6 +994,68 @@ int main() {
     CHECK(!prepared_probe.audio.empty());
     prepare_client.stop();
 
+    const auto fault_directory = runtime / "prepared-native-fault";
+    std::error_code fault_cleanup_error;
+    std::filesystem::remove_all(fault_directory, fault_cleanup_error);
+    const auto fault_registry = runtime / "voice-registry-prepared-fault.json";
+    {
+        std::ofstream output(fault_registry, std::ios::binary);
+        output << "{\"schema_version\":1,\"voices\":[{\"voice_id\":\"fault\"" << ","
+                    "\"reference_audio_path\":\"reference-cache-test.wav\"" << ","
+                    "\"reference_text\":\"Fake reference\",\"x_vector_only\":false,"
+                    "\"native_reference\":{\"manifest_path\":\"prepared-native-fault/manifest.json\","
+                    "\"prepare_if_missing\":true}}]}";
+    }
+    _putenv_s("QTB_TEST_PERSISTENCE_FAILURE", "1");
+    QwenTtsClient fault_client;
+    QwenTtsClientOptions fault_options;
+    fault_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!fault_client.start(voice_registry_options(fault_registry), fault_options));
+    _putenv_s("QTB_TEST_PERSISTENCE_FAILURE", "");
+    CHECK(!std::filesystem::exists(fault_directory / "manifest.json"));
+    CHECK(!std::filesystem::exists(fault_directory / "reference.spk"));
+    CHECK(!std::filesystem::exists(fault_directory / "reference.rvq"));
+
+    for (const auto* phase : std::array<const char*, 6>{
+             "before-speaker", "after-temp-speaker", "after-temp-rvq",
+             "after-publish-speaker", "after-publish-rvq", "before-manifest"}) {
+        std::filesystem::remove_all(fault_directory, fault_cleanup_error);
+        _putenv_s("QTB_TEST_PUBLICATION_FAILURE_PHASE", phase);
+        QwenTtsClient interrupted_client;
+        QwenTtsClientOptions interrupted_options;
+        interrupted_options.session.startup_timeout = std::chrono::seconds(5);
+        CHECK(!interrupted_client.start(voice_registry_options(fault_registry), interrupted_options));
+        _putenv_s("QTB_TEST_PUBLICATION_FAILURE_PHASE", "");
+        CHECK(!std::filesystem::exists(fault_directory / "manifest.json"));
+        CHECK(!std::filesystem::exists(fault_directory / "reference.spk"));
+        CHECK(!std::filesystem::exists(fault_directory / "reference.rvq"));
+    }
+
+    std::filesystem::create_directories(fault_directory);
+    {
+        std::ofstream marker(fault_directory / ".qtb-publication.incomplete", std::ios::binary);
+        marker << "qwen3-tts native voice publication\n";
+        std::ofstream orphan(fault_directory / "reference.spk", std::ios::binary);
+        orphan << "orphan-sentinel";
+    }
+    QwenTtsClient recovery_client;
+    QwenTtsClientOptions recovery_options;
+    recovery_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(recovery_client.start(voice_registry_options(fault_registry), recovery_options));
+    recovery_client.stop();
+    CHECK(std::filesystem::is_regular_file(fault_directory / "manifest.json"));
+    bool recovered_orphan = false;
+    for (const auto& entry : std::filesystem::directory_iterator(fault_directory)) {
+        const auto name = entry.path().filename().u8string();
+        if (name.rfind(".qtb-recovery-", 0) == 0 &&
+            std::filesystem::is_regular_file(entry.path() / "reference.spk")) {
+            recovered_orphan =
+                read_file_bytes(entry.path() / "reference.spk") ==
+                std::vector<char>({'o', 'r', 'p', 'h', 'a', 'n', '-', 's', 'e', 'n', 't', 'i', 'n', 'e', 'l'});
+        }
+    }
+    CHECK(recovered_orphan);
+
     std::string reload_stderr;
     QwenTtsClient reload_client;
     QwenTtsClientOptions reload_options;
@@ -1128,6 +1190,46 @@ int main() {
     invalid_layout_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(!invalid_layout_client.start(
         voice_registry_options(prepared_registry), invalid_layout_options));
+    write_file_bytes(prepared_manifest, manifest_bytes);
+
+    nlohmann::json invalid_speaker_scalar_manifest = manifest_json;
+    invalid_speaker_scalar_manifest["speaker"]["scalar"] = "float64-le";
+    write_manifest_variant(invalid_speaker_scalar_manifest);
+    QwenTtsClient invalid_speaker_scalar_client;
+    QwenTtsClientOptions invalid_speaker_scalar_options;
+    invalid_speaker_scalar_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!invalid_speaker_scalar_client.start(
+        voice_registry_options(prepared_registry), invalid_speaker_scalar_options));
+    write_file_bytes(prepared_manifest, manifest_bytes);
+
+    nlohmann::json invalid_rvq_layout_manifest = manifest_json;
+    invalid_rvq_layout_manifest["rvq"]["layout"] = "frame-major-codebook-fastest";
+    write_manifest_variant(invalid_rvq_layout_manifest);
+    QwenTtsClient invalid_rvq_layout_client;
+    QwenTtsClientOptions invalid_rvq_layout_options;
+    invalid_rvq_layout_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!invalid_rvq_layout_client.start(
+        voice_registry_options(prepared_registry), invalid_rvq_layout_options));
+    write_file_bytes(prepared_manifest, manifest_bytes);
+
+    nlohmann::json invalid_sample_format_manifest = manifest_json;
+    invalid_sample_format_manifest["preprocessing"]["sample_format"] = "float16";
+    write_manifest_variant(invalid_sample_format_manifest);
+    QwenTtsClient invalid_sample_format_client;
+    QwenTtsClientOptions invalid_sample_format_options;
+    invalid_sample_format_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!invalid_sample_format_client.start(
+        voice_registry_options(prepared_registry), invalid_sample_format_options));
+    write_file_bytes(prepared_manifest, manifest_bytes);
+
+    nlohmann::json oversized_rvq_manifest = manifest_json;
+    oversized_rvq_manifest["rvq"]["frames"] = 1 << 21;
+    write_manifest_variant(oversized_rvq_manifest);
+    QwenTtsClient oversized_rvq_client;
+    QwenTtsClientOptions oversized_rvq_options;
+    oversized_rvq_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(!oversized_rvq_client.start(
+        voice_registry_options(prepared_registry), oversized_rvq_options));
     write_file_bytes(prepared_manifest, manifest_bytes);
 
     auto non_finite_speaker = speaker_bytes;
