@@ -51,6 +51,7 @@ class UserCliTests(unittest.TestCase):
             command = run.call_args.args[0]
             self.assertEqual(str(save_wav.resolve()), command[0])
             self.assertIn(str(model.resolve()), command)
+            self.assertIn("--collect-generation-trace", command)
             self.assertIn("Мягкий женский голос", command)
 
     def test_design_forwards_explicit_timeouts_and_requires_natural_eos(self) -> None:
@@ -94,6 +95,7 @@ class UserCliTests(unittest.TestCase):
                 "900000", command[command.index("--request-timeout-ms") + 1]
             )
             self.assertIn("--require-natural-eos", command)
+            self.assertIn("--collect-generation-trace", command)
 
     def test_design_timeout_config_is_overridden_by_cli(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -341,6 +343,85 @@ class UserCliTests(unittest.TestCase):
 
             self.assertEqual(0, result)
             self.assertNotIn("--require-natural-eos", run.call_args.args[0])
+            self.assertIn("--collect-generation-trace", run.call_args.args[0])
+
+    def test_upstream_diagnostic_does_not_receive_faster_trace_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_non_natural_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "design",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--runtime-backend",
+                        "upstream",
+                        "--allow-non-natural-eos",
+                        "--text",
+                        "Test",
+                        "--instruction",
+                        "Voice",
+                        "--out",
+                        str(root / "voice.wav"),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            self.assertNotIn("--collect-generation-trace", run.call_args.args[0])
+
+    def test_strict_natural_eos_requires_generation_trace_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            wav_path, receipt_path = _write_valid_design_outputs(
+                Path(temporary),
+                generation_trace_available=False,
+                termination_reason="",
+                hit_eos=False,
+            )
+
+            with self.assertRaisesRegex(ValueError, "natural EOS"):
+                user_cli._validate_design_outputs(wav_path, receipt_path, True)
+
+    def test_strict_natural_eos_accepts_generation_trace_eos(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            wav_path, receipt_path = _write_valid_design_outputs(
+                Path(temporary),
+                generation_trace_available=True,
+                termination_reason="eos",
+                hit_eos=True,
+            )
+
+            user_cli._validate_design_outputs(wav_path, receipt_path, True)
+
+    def test_strict_natural_eos_rejects_generation_limits(self) -> None:
+        for reason, max_seq_len, max_new_tokens in (
+            ("max_new_tokens", False, True),
+            ("max_seq_len", True, False),
+        ):
+            with (
+                self.subTest(reason=reason),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                wav_path, receipt_path = _write_valid_design_outputs(
+                    Path(temporary),
+                    generation_trace_available=True,
+                    termination_reason=reason,
+                    hit_eos=False,
+                    hit_max_seq_len=max_seq_len,
+                    hit_max_new_tokens=max_new_tokens,
+                )
+
+                with self.assertRaisesRegex(ValueError, "natural EOS"):
+                    user_cli._validate_design_outputs(wav_path, receipt_path, True)
 
     def test_strict_natural_eos_failure_preserves_previous_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -794,6 +875,7 @@ def _successful_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
                 "audio_chunks": 1,
                 "audio_bytes": 32,
                 "completion_metadata_received": True,
+                "generation_trace_available": True,
                 "termination_reason": "eos",
                 "hit_eos": True,
                 "hit_max_seq_len": False,
@@ -821,6 +903,7 @@ def _non_natural_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
                 "audio_chunks": 1,
                 "audio_bytes": 32,
                 "completion_metadata_received": True,
+                "generation_trace_available": True,
                 "termination_reason": "max_new_tokens",
                 "hit_eos": False,
                 "hit_max_seq_len": False,
@@ -830,6 +913,42 @@ def _non_natural_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
         encoding="utf-8",
     )
     return mock.Mock(returncode=0)
+
+
+def _write_valid_design_outputs(
+    root: Path,
+    *,
+    generation_trace_available: bool,
+    termination_reason: str,
+    hit_eos: bool,
+    hit_max_seq_len: bool = False,
+    hit_max_new_tokens: bool = False,
+) -> tuple[Path, Path]:
+    output = root / "voice.wav"
+    result = root / "voice.json"
+    with wave.open(str(output), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x00" * 16)
+    result.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "terminal_state": "completed",
+                "audio_chunks": 1,
+                "audio_bytes": 32,
+                "completion_metadata_received": True,
+                "generation_trace_available": generation_trace_available,
+                "termination_reason": termination_reason,
+                "hit_eos": hit_eos,
+                "hit_max_seq_len": hit_max_seq_len,
+                "hit_max_new_tokens": hit_max_new_tokens,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return output, result
 
 
 def _write_model(root: Path) -> Path:

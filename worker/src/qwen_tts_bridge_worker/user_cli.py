@@ -343,10 +343,10 @@ def _run_design(args: argparse.Namespace) -> int:
     ]
     for value in worker.prefix_arguments:
         command.extend(("--worker-arg", value))
-    worker_arguments = (
-        ("mock", "--chunks", "2", "--chunk-ms", "40")
-        if args.acceptance_mock_worker
-        else (
+    if args.acceptance_mock_worker:
+        worker_arguments = ("mock", "--chunks", "2", "--chunk-ms", "40")
+    else:
+        worker_arguments = (
             "qwen",
             "--model-path",
             str(model.path),
@@ -357,7 +357,8 @@ def _run_design(args: argparse.Namespace) -> int:
             "--dtype",
             "auto",
         )
-    )
+        if args.runtime_backend == "faster":
+            worker_arguments += ("--collect-generation-trace",)
     for value in worker_arguments:
         command.extend(("--worker-arg", value))
     if args.require_natural_eos:
@@ -657,6 +658,7 @@ def _validate_design_outputs(
         raise ValueError("result JSON is inconsistent with the generated WAV")
     if require_natural_eos and (
         receipt.get("completion_metadata_received") is not True
+        or receipt.get("generation_trace_available") is not True
         or receipt.get("termination_reason") != "eos"
         or receipt.get("hit_eos") is not True
         or receipt.get("hit_max_seq_len") is not False

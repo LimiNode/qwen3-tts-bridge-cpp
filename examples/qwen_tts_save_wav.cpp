@@ -198,6 +198,8 @@ void write_result_json(
            << "  \"audio_bytes\": " << state.audio_bytes << ",\n"
            << "  \"completion_metadata_received\": "
            << (completion_metadata_received ? "true" : "false") << ",\n"
+           << "  \"generation_trace_available\": "
+           << (completion.has_generation_trace ? "true" : "false") << ",\n"
            << "  \"execution_outcome\": \""
            << escape_json_string(completion.execution_outcome) << "\",\n"
            << "  \"termination_reason\": \""

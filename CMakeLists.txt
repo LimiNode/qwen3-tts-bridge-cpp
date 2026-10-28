@@ -907,6 +907,17 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 PROPERTIES
                     DEPENDS qwen_tts_save_wav_mock_example
             )
+            add_test(
+                NAME qwen_tts_save_wav_generation_trace_receipts
+                COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_generation_trace_receipts.py"
+                    --save-wav "$<TARGET_FILE:qwen_tts_save_wav>"
+                    --python "${Python3_EXECUTABLE}"
+                    --worker
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/acceptance/generation_trace_worker.py"
+            )
+            set_tests_properties(qwen_tts_save_wav_generation_trace_receipts
+                PROPERTIES TIMEOUT 60)
             if(WIN32)
                 add_test(
                     NAME qwen_tts_voice_design_wrapper_mock
