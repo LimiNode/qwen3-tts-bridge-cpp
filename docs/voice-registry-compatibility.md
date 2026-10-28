@@ -76,17 +76,22 @@ remain separate human-listening gates; identical PCM is not a requirement.
 
 ## Evidence
 
-The first real native registry probe on CMP 50HX used:
+The real native registry probe on CMP 50HX used:
 
 - Q8_0 Base talker and 12 Hz codec;
 - `kraftwerk_robot_ru_warm` with its exact transcript;
 - `ready.voice_ids = ["kraftwerk_robot_ru_warm"]`;
-- one registered-voice request reaching `natural_eos`;
+- two registered-voice requests in one worker session, both reaching
+  `natural_eos`;
 - non-empty 24 kHz mono PCM output and worker exit code zero.
 
-The probe receipt is local evidence and is not part of the release package:
+Both requests reported a registry cache hit and zero reference decode/extract
+time on their request critical path. Exact artifact hashes and timings are in
+[`reports/native-voice-registry-cmp50hx-20261028.md`](reports/native-voice-registry-cmp50hx-20261028.md).
+The complete probe receipt is local evidence and is not part of the release
+package:
 
-`.tmp/cross-backend-audit/native-registry.json`
+`.tmp/cross-backend-audit/native-registry-repeat.json`
 
 It does not claim Python/native acoustic identity. That requires a separate
 fixed-seed comparison and human listening.

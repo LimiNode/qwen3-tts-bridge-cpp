@@ -18,6 +18,7 @@ from qwen_tts_bridge_worker.protocol import (
 from qwen_tts_bridge_worker.protocol.control import encode_json_payload
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+WORKER_STARTUP_TIMEOUT_SECONDS = 10.0
 
 
 class WorkerHarness:
@@ -210,7 +211,9 @@ class MockWorkerTests(unittest.TestCase):
                 "client_version": "0.2.0",
             },
         )
-        ready = control_payload(worker.read_frame())
+        ready = control_payload(
+            worker.read_frame(timeout=WORKER_STARTUP_TIMEOUT_SECONDS)
+        )
 
         self.assertEqual("ready", ready["message_type"])
         self.assertEqual("0.2.0", ready["worker_version"])
@@ -404,7 +407,9 @@ class MockWorkerTests(unittest.TestCase):
                 "client_version": "0.2.0",
             },
         )
-        ready = control_payload(worker.read_frame())
+        ready = control_payload(
+            worker.read_frame(timeout=WORKER_STARTUP_TIMEOUT_SECONDS)
+        )
         self.assertEqual("ready", ready["message_type"])
 
 
