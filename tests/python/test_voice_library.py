@@ -37,6 +37,15 @@ class VoiceLibraryTests(unittest.TestCase):
             (root / "nested").mkdir()
             self.assertIsNone(_contains_reparse_point(root, max_nodes=1))
 
+    def test_reparse_inspection_counts_regular_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for index in range(4):
+                (root / f"file-{index}.txt").write_text("content", encoding="utf-8")
+
+            self.assertIsNone(_contains_reparse_point(root, max_nodes=3))
+            self.assertFalse(_contains_reparse_point(root, max_nodes=5))
+
     @unittest.skipUnless(hasattr(Path, "symlink_to"), "symlink support unavailable")
     def test_orphan_cleanup_rejects_symlink_entries_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
