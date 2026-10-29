@@ -641,10 +641,12 @@ def _run_native_prepare(
             raise VoiceLibraryError(
                 f"native worker exited with code {process.returncode}{suffix}"
             )
-        stderr_text = _stderr_text(stderr_chunks)
+        stderr_evidence = "\n".join(
+            chunk.decode("utf-8", errors="replace") for chunk in stderr_chunks
+        )
         if (
-            "native_voice_reference_ready" not in stderr_text
-            or voice_id not in stderr_text
+            "native_voice_reference_ready" not in stderr_evidence
+            or voice_id not in stderr_evidence
         ):
             raise VoiceLibraryError(
                 "native worker did not report voice preparation evidence"
