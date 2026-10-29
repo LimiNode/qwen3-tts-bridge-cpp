@@ -505,6 +505,15 @@ endif()
 if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     enable_testing()
 
+    add_executable(example_cli_parsing_test
+        tests/example_cli_parsing_test.cpp
+    )
+    target_include_directories(example_cli_parsing_test
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+    add_test(NAME example_cli_parsing_test COMMAND example_cli_parsing_test)
+
     # Compile every public leaf/umbrella header as its own translation unit.
     # This prevents umbrella include order from hiding missing direct
     # dependencies in installed-facing headers.

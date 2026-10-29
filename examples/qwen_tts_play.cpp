@@ -3,6 +3,8 @@
 #include <qwen_tts_bridge/transport.hpp>
 #include <qwen_tts_bridge/playback/winmm_playback.hpp>
 
+#include "common/cli_parsing.hpp"
+
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
 #include <qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp>
 #endif
@@ -66,6 +68,10 @@ using qwen_tts_bridge::audio::AudioTerminalReason;
 using qwen_tts_bridge::audio::PlayoutBuffer;
 using qwen_tts_bridge::audio::TerminalFadeOptions;
 using qwen_tts_bridge::audio::TerminalFadePostProcessor;
+using qwen_tts_examples::cli::parse_double;
+using qwen_tts_examples::cli::parse_int;
+using qwen_tts_examples::cli::parse_u32;
+using qwen_tts_examples::cli::parse_u64;
 using qwen_tts_bridge::playback::MockPlaybackFailureStage;
 using qwen_tts_bridge::playback::PlaybackInterruptionDiagnostic;
 using qwen_tts_bridge::playback::PlaybackMetrics;
@@ -481,67 +487,18 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --mock-chunk-delay <seconds>   Mock delay between chunks, default: 0.\n";
 }
 
-std::string require_value(
-    int& index,
-    int argc,
-    wchar_t** argv,
-    const std::string& option) {
-    const std::string prefix = option + '=';
-    const std::string current = utf8_from_wide(argv[index]);
-    if (current.rfind(prefix, 0) == 0) {
-        return current.substr(prefix.size());
-    }
-    if (index + 1 >= argc) {
-        throw std::runtime_error("missing value for " + option);
-    }
-    ++index;
-    return utf8_from_wide(argv[index]);
-}
-
-std::uint32_t parse_u32(const std::string& value, const std::string& option) {
-    std::size_t parsed = 0;
-    const unsigned long result = std::stoul(value, &parsed, 10);
-    if (parsed != value.size() || result > std::numeric_limits<std::uint32_t>::max()) {
-        throw std::runtime_error("invalid integer for " + option + ": " + value);
-    }
-    return static_cast<std::uint32_t>(result);
-}
-
-std::uint64_t parse_u64(const std::string& value, const std::string& option) {
-    if (value.empty() || value.front() == '-') {
-        throw std::runtime_error("invalid integer for " + option + ": " + value);
-    }
-    std::size_t parsed = 0;
-    const unsigned long long result = std::stoull(value, &parsed, 10);
-    if (parsed != value.size()) {
-        throw std::runtime_error("invalid integer for " + option + ": " + value);
-    }
-    return static_cast<std::uint64_t>(result);
-}
-
-int parse_int(const std::string& value, const std::string& option) {
-    std::size_t parsed = 0;
-    const long result = std::stol(value, &parsed, 10);
-    if (parsed != value.size() || result < (std::numeric_limits<int>::min)() ||
-        result > (std::numeric_limits<int>::max)()) {
-        throw std::runtime_error("invalid integer for " + option + ": " + value);
-    }
-    return static_cast<int>(result);
-}
-
-double parse_double(const std::string& value, const std::string& option) {
-    std::size_t parsed = 0;
-    const double result = std::stod(value, &parsed);
-    if (parsed != value.size() || !std::isfinite(result)) {
-        throw std::runtime_error("invalid number for " + option + ": " + value);
-    }
-    return result;
-}
-
 ProgramOptions parse_options(int argc, wchar_t** argv) {
     ProgramOptions options;
     for (int index = 1; index < argc; ++index) {
         const std::string arg = utf8_from_wide(argv[index]);
+        const auto require_value = [&](int& value_index, int argument_count,
+                                       wchar_t**, const std::string& option) {
+            const auto argument_at = [&](int argument_index) {
+                return utf8_from_wide(argv[argument_index]);
+            };
+            return qwen_tts_examples::cli::require_value(
+                value_index, argument_count, arg, argument_at, option);
+        };
         if (arg == "--help" || arg == "-h") {
             options.help = true;
         }
