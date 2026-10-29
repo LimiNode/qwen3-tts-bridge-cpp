@@ -124,15 +124,17 @@ persisted-restart PCM, but did not pass the separate real-time streaming gate
 (RTF was above 1 and the probe detected starvation). See
 [`reports/persistent-native-reference-cmp50hx-20261028.md`](reports/persistent-native-reference-cmp50hx-20261028.md).
 
-## Future CLI boundary
+## CLI boundary
 
-This change deliberately does not add the complete Voice Library CLI. The
-planned command remains:
+The release-facing Voice Library CLI now exposes the bounded preparation
+operation:
 
 ```text
 qwen-tts voices prepare <voice_id> --backend native --native-profile <profile>
 ```
 
-That command can create or update the registry row and invoke this bounded
-preparation contract. It must not duplicate native extraction, serialization,
-validation, or synthesis logic.
+The command stores user-owned registry data outside the sealed installation and
+invokes this bounded preparation contract. It does not duplicate native
+extraction, serialization, validation, or synthesis logic. See
+[Voice Library CLI](voice-library-cli.md) for the complete command and failure
+policy.
