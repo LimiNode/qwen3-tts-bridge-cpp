@@ -1,6 +1,7 @@
 #pragma once
 
 #include "QwenDllLoader.hpp"
+#include "prepared_voice_reference.hpp"
 
 #include <qwen_tts_bridge/protocol/control.hpp>
 
@@ -127,6 +128,15 @@ public:
 private:
     struct CachedVoiceReference {
         qt_voice_ref value{};
+        const QwenApi* owner_api = nullptr;
+        std::vector<float> persisted_speaker;
+        std::vector<std::int32_t> persisted_codes;
+
+        ~CachedVoiceReference() {
+            if (owner_api != nullptr) {
+                owner_api->voice_ref_free(&value);
+            }
+        }
     };
 
     struct VoiceProfile {
@@ -136,17 +146,24 @@ private:
         bool x_vector_only = false;
         std::vector<float> reference_audio;
         std::string reference_cache_key;
+        std::filesystem::path prepared_manifest_path;
+        bool prepare_if_missing = false;
     };
 
     void clear_voice_reference_cache() noexcept;
     void load_voice_registry();
     void preload_voice_registry();
+    PreparedVoiceReferenceContext prepared_context(const VoiceProfile& profile) const;
+    static std::unique_ptr<CachedVoiceReference> make_persisted_reference(
+        PreparedVoiceReferenceData data);
 
     NativeEngineOptions options_;
     QwenDllLoader loader_;
     qt_context* context_ = nullptr;
     std::unordered_map<std::string, VoiceProfile> voice_profiles_;
     std::unordered_map<std::string, std::unique_ptr<CachedVoiceReference>> voice_reference_cache_;
+    std::string talker_sha256_;
+    std::string codec_sha256_;
     bool warmed_up_ = false;
 };
 

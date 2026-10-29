@@ -1,4 +1,5 @@
 #include "NativeEngine.hpp"
+#include "runtime_manifest.hpp"
 #include "wav_reader.hpp"
 
 #include <nlohmann/json.hpp>
@@ -31,6 +32,20 @@ void qwen_log_callback(qt_log_level level, const char* message, void*) {
 
 std::string path_utf8(const std::filesystem::path& path) {
     return path.u8string();
+}
+
+void log_prepared_reference_metric(
+    const std::string& voice_id,
+    const char* source,
+    std::chrono::steady_clock::time_point started) {
+    const double duration_ms = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - started).count();
+    std::cerr << "qtb_metric " << Json{
+        {"event", "native_voice_reference_ready"},
+        {"voice_id", voice_id},
+        {"source", source},
+        {"duration_ms", duration_ms},
+    }.dump() << '\n';
 }
 
 std::string voice_reference_cache_key(
@@ -181,8 +196,55 @@ void NativeEngine::load_voice_registry() {
                     "' requires a non-empty reference_text unless x_vector_only is true");
             }
         }
+        if (const auto prepared = item.find("native_reference"); prepared != item.end()) {
+            if (!prepared->is_object()) {
+                throw std::runtime_error("native voice profile native_reference must be an object: " + voice_id);
+            }
+            const auto manifest_path = prepared->find("manifest_path");
+            if (manifest_path == prepared->end() || !manifest_path->is_string() ||
+                manifest_path->get_ref<const std::string&>().empty()) {
+                throw std::runtime_error(
+                    "native voice profile native_reference requires manifest_path: " + voice_id);
+            }
+            profile.prepared_manifest_path = resolve_prepared_manifest_path(
+                registry_dir, manifest_path->get<std::string>());
+            if (const auto prepare = prepared->find("prepare_if_missing");
+                prepare != prepared->end() && !prepare->is_boolean()) {
+                throw std::runtime_error(
+                    "native voice profile prepare_if_missing must be a boolean: " + voice_id);
+            }
+            profile.prepare_if_missing = prepared->value("prepare_if_missing", false);
+        }
         voice_profiles_.emplace(voice_id, std::move(profile));
     }
+}
+
+PreparedVoiceReferenceContext NativeEngine::prepared_context(const VoiceProfile& profile) const {
+    PreparedVoiceReferenceContext result;
+    result.manifest_path = profile.prepared_manifest_path;
+    result.source_audio_path = profile.reference_audio_path;
+    result.reference_text = profile.reference_text;
+    result.x_vector_only = profile.x_vector_only;
+    result.source_audio_sha256 = sha256_file(profile.reference_audio_path);
+    result.talker_sha256 = talker_sha256_;
+    result.codec_sha256 = codec_sha256_;
+    result.engine_commit = loader_.manifest().engine_commit;
+    result.abi_version = loader_.manifest().qt_abi_version;
+    result.num_codebooks = loader_.api().num_codebooks(context_);
+    return result;
+}
+
+std::unique_ptr<NativeEngine::CachedVoiceReference> NativeEngine::make_persisted_reference(
+    PreparedVoiceReferenceData data) {
+    auto entry = std::make_unique<CachedVoiceReference>();
+    entry->persisted_speaker = std::move(data.speaker_embedding);
+    entry->persisted_codes = std::move(data.codes);
+    entry->value.ref_spk_emb = entry->persisted_speaker.data();
+    entry->value.ref_spk_dim = static_cast<int>(entry->persisted_speaker.size());
+    entry->value.ref_codes = entry->persisted_codes.empty() ? nullptr : entry->persisted_codes.data();
+    entry->value.ref_T = data.frames;
+    entry->value.num_codebooks = data.num_codebooks;
+    return entry;
 }
 
 void NativeEngine::preload_voice_registry() {
@@ -190,11 +252,48 @@ void NativeEngine::preload_voice_registry() {
         return;
     }
     const QwenApi& api = loader_.api();
-    if (!loader_.supports_voice_reference()) {
+    const bool requires_extraction = std::any_of(
+        voice_profiles_.begin(), voice_profiles_.end(),
+        [](const auto& item) {
+            const auto& profile = item.second;
+            return profile.prepared_manifest_path.empty() ||
+                !std::filesystem::is_regular_file(profile.prepared_manifest_path);
+        });
+    if (requires_extraction && !loader_.supports_voice_reference()) {
         throw std::runtime_error(
-            "--voice-registry-path requires qt_extract_voice_ref and qt_voice_ref_free exports");
+            "native voice registry requires qt_extract_voice_ref and qt_voice_ref_free exports "
+            "unless every profile has a validated prepared reference");
+    }
+    const bool has_prepared_profiles = std::any_of(
+        voice_profiles_.begin(), voice_profiles_.end(),
+        [](const auto& item) { return !item.second.prepared_manifest_path.empty(); });
+    if (has_prepared_profiles) {
+        talker_sha256_ = sha256_file(options_.talker_model);
+        codec_sha256_ = sha256_file(options_.codec_model);
     }
     for (auto& [voice_id, profile] : voice_profiles_) {
+        const auto profile_started = std::chrono::steady_clock::now();
+        PreparedVoiceReferenceContext prepared_profile_context;
+        if (!profile.prepared_manifest_path.empty()) {
+            prepared_profile_context = prepared_context(profile);
+            reconcile_prepared_publication(prepared_profile_context);
+        }
+        if (!profile.prepared_manifest_path.empty() &&
+            std::filesystem::is_regular_file(profile.prepared_manifest_path)) {
+            auto prepared = load_prepared_voice_reference(prepared_profile_context);
+            finalize_prepared_publication(prepared_profile_context);
+            profile.reference_cache_key = prepared.cache_key;
+            if (voice_reference_cache_.find(profile.reference_cache_key) == voice_reference_cache_.end()) {
+                voice_reference_cache_.emplace(
+                    profile.reference_cache_key, make_persisted_reference(std::move(prepared)));
+            }
+            log_prepared_reference_metric(voice_id, "persisted", profile_started);
+            continue;
+        }
+        if (!profile.prepared_manifest_path.empty() && !profile.prepare_if_missing) {
+            throw std::runtime_error(
+                "prepared native voice manifest is missing for profile '" + voice_id + "'");
+        }
         profile.reference_audio = read_mono_24k_wav(profile.reference_audio_path);
         if (!profile.x_vector_only) {
             append_reference_trailing_silence(profile.reference_audio);
@@ -218,6 +317,19 @@ void NativeEngine::preload_voice_registry() {
                 "failed to preload native voice profile '" + voice_id + "': " +
                 last_error(api, "qwentts voice reference extraction failed"));
         }
+        entry->owner_api = &api;
+        if (!profile.prepared_manifest_path.empty()) {
+            const auto context = prepared_context(profile);
+            const auto prepared = persist_prepared_voice_reference(context, entry->value);
+            api.voice_ref_free(&entry->value);
+            entry->owner_api = nullptr;
+            entry = make_persisted_reference(prepared);
+            profile.reference_cache_key = prepared.cache_key;
+            log_prepared_reference_metric(voice_id, "extracted_and_persisted", profile_started);
+            // The persisted vectors are worker-owned and are never passed back
+            // to the DLL deallocator. The extracted DLL-owned buffers were
+            // freed before replacing the temporary cache entry.
+        }
         voice_reference_cache_.emplace(profile.reference_cache_key, std::move(entry));
         profile.reference_audio.clear();
     }
@@ -228,11 +340,9 @@ void NativeEngine::clear_voice_reference_cache() noexcept {
         voice_reference_cache_.clear();
         return;
     }
-    const QwenApi& api = loader_.api();
-    for (auto& entry : voice_reference_cache_) {
-        api.voice_ref_free(&entry.second->value);
-    }
     voice_reference_cache_.clear();
+    talker_sha256_.clear();
+    codec_sha256_.clear();
 }
 
 void NativeEngine::load() {
@@ -445,6 +555,7 @@ SynthesisResult NativeEngine::synthesize(
                                 last_error(api, "qwentts voice reference extraction failed"), {}, false,
                                 voice_reference_extract_ms, reference_audio_decode_ms};
                     }
+                    entry->owner_api = &api;
                     cached_reference = &entry->value;
                     auto [inserted, was_inserted] = voice_reference_cache_.emplace(
                         std::move(reference_cache_key), std::move(entry));
