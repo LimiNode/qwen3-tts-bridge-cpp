@@ -1163,7 +1163,7 @@ def _verify_prepared_artifacts(
     if speaker.get("scalar") != "float32-le":
         raise ValueError("native speaker scalar is unsupported")
     speaker_hash = speaker.get("sha256")
-    if not _is_sha256(speaker_hash):
+    if not isinstance(speaker_hash, str) or not _is_sha256(speaker_hash):
         raise ValueError("native speaker SHA-256 is invalid")
     speaker_name = speaker.get("path")
     if not isinstance(speaker_name, str):
@@ -1203,7 +1203,11 @@ def _verify_prepared_artifacts(
         raise ValueError("native RVQ dimensions are invalid")
     rvq_name = rvq.get("path")
     rvq_hash = rvq.get("sha256")
-    if not isinstance(rvq_name, str) or not _is_sha256(rvq_hash):
+    if (
+        not isinstance(rvq_name, str)
+        or not isinstance(rvq_hash, str)
+        or not _is_sha256(rvq_hash)
+    ):
         raise ValueError("native RVQ artifact declaration is invalid")
     expected_size = (
         (codebooks * frames * 11 + 7) // 8
