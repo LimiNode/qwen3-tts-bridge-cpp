@@ -12,8 +12,8 @@ three executable examples:
 Before the change, each example contained its own implementation of
 `require_value`, `parse_u32`, `parse_int`, and `parse_double`; the benchmark and
 play examples also contained `parse_u64`. That was three copies of the option
-value helper and three copies of each scalar parser (fourteen local definitions in
-total, counting the benchmark-only and play-only `parse_u64` copies).
+value helper and of `parse_u32`, `parse_int`, and `parse_double`, plus two
+`parse_u64` copies (fourteen local definitions in total).
 
 After the change, `examples/common/cli_parsing.hpp` contains one implementation
 of each helper. The examples retain their option-specific parsing, validation,
