@@ -469,14 +469,8 @@ def prepare_voice(
         )
     except VoiceProfileError as exc:
         raise VoiceLibraryError(f"reference is not native-compatible: {exc}") from exc
-    if (
-        info.sample_rate != 24000
-        or info.channels != 1
-        or info.sample_width_bytes != 2
-    ):
-        raise VoiceLibraryError(
-            "native preparation requires a mono 24000 Hz PCM16 WAV"
-        )
+    if info.sample_rate != 24000 or info.channels != 1 or info.sample_width_bytes != 2:
+        raise VoiceLibraryError("native preparation requires a mono 24000 Hz PCM16 WAV")
     relative_manifest = (
         Path("entries")
         / _internal_id(voice_id)
@@ -602,7 +596,15 @@ def _run_native_prepare(
     )
     reader.start()
     try:
-        stdin.write(_frame({"message_type": "hello"}))
+        stdin.write(
+            _frame(
+                {
+                    "message_type": "hello",
+                    "client_name": "qwen-tts-voice-library",
+                    "client_version": "1",
+                }
+            )
+        )
         stdin.flush()
         deadline = time.monotonic() + timeout_seconds
         ready = False
@@ -693,17 +695,23 @@ def _read_frame_blocking(stream: Any) -> dict[str, Any]:
     header = stream.read(_FRAME_HEADER.size)
     if not isinstance(header, bytes) or len(header) != _FRAME_HEADER.size:
         raise VoiceLibraryError("native worker closed protocol stream before ready")
-    magic, version, header_size, frame_type, _flags, payload_size, _request_id = (
+    magic, version, header_size, frame_type, flags, payload_size, _request_id = (
         _FRAME_HEADER.unpack(header)
     )
     if (
         magic != _MAGIC
         or version != 1
-        or header_size != 24
-        or frame_type != 1
+        or header_size < _FRAME_HEADER.size
+        or header_size > 4096
+        or frame_type not in {1, 3}
+        or flags != 0
         or payload_size > 1_048_576
     ):
         raise VoiceLibraryError("native worker returned an invalid protocol frame")
+    if header_size > _FRAME_HEADER.size:
+        extension = stream.read(header_size - _FRAME_HEADER.size)
+        if len(extension) != header_size - _FRAME_HEADER.size:
+            raise VoiceLibraryError("native worker returned a truncated frame header")
     payload = stream.read(payload_size)
     if len(payload) != payload_size:
         raise VoiceLibraryError("native worker returned a truncated protocol frame")
