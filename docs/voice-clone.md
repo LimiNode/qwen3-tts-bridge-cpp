@@ -7,8 +7,9 @@ by a stable `voice_id` for later requests.
 
 ## Registry
 
-Copy `config/voice-profiles.example.json` to an ignored local file and keep the
-same schema:
+Use `examples/voice-profiles/registry.example.json` as the schema example. To
+edit the bundled profiles, copy the complete `examples/voice-profiles`
+directory so its relative WAV paths remain valid:
 
 ```json
 {
@@ -31,17 +32,26 @@ persistent session.
 
 ## Playback smoke
 
-Build `qwen_tts_play`, then run:
+Build `qwen_tts_play`, copy the complete opt-in example directory, then run a
+bundled profile:
 
 ```powershell
+New-Item -ItemType Directory -Force .tmp | Out-Null
+Copy-Item examples/voice-profiles .tmp/example-voice-profiles -Recurse
+
 scripts/start-qwen-tts-clone-play.ps1 `
   -BuildDirectory .build/Release `
   -Python C:/runtime/python.exe `
   -ModelPath C:/models/Qwen3-TTS-12Hz-1.7B-Base `
-  -VoiceRegistryPath config/voice-profiles.local.json `
-  -VoiceId my_voice `
+  -VoiceRegistryPath .tmp/example-voice-profiles/registry.example.json `
+  -VoiceId kraftwerk_robot_ru_source_like `
   -Text "Voice clone smoke test"
 ```
+
+The Python runtime, model directory, built player and any required CUDA
+dependencies must already be installed. To use `my_voice` instead, create a
+separate local registry entry with your own WAV and exact transcript, then pass
+that registry path and `-VoiceId my_voice`.
 
 Do not pass a preset `speaker` together with a Base `voice_id`. Direct
 per-request reference audio remains a diagnostic path; applications should use
