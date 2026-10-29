@@ -62,6 +62,7 @@ registry file's directory, so the registry and `kraftwerk` directory must stay
 together unless you deliberately update the paths.
 
 ```powershell
+New-Item -ItemType Directory -Force .tmp | Out-Null
 Copy-Item examples/voice-profiles .tmp/example-voice-profiles -Recurse
 ```
 
@@ -70,3 +71,10 @@ registered voices. Pass
 `.tmp/example-voice-profiles/registry.example.json` as the registry path. The
 launcher's conservative default temperature is `0.45`; use
 `-StyleExperiment` only for explicit sampling experiments.
+
+For a reproducible smoke test, select the bundled
+`kraftwerk_robot_ru_source_like` voice. The Python runtime, model directory,
+built player and CUDA dependencies are external prerequisites. A custom
+`my_voice` requires a separate registry entry containing your own WAV and exact
+transcript; pass that registry explicitly instead of changing this example
+registry.

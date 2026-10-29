@@ -32,17 +32,26 @@ ready и повторно использует подготовленный prom
 
 ## Проверка воспроизведения
 
-Соберите `qwen_tts_play`, затем выполните:
+Соберите `qwen_tts_play`, скопируйте полный каталог опциональных примеров и
+запустите один из поставляемых профилей:
 
 ```powershell
+New-Item -ItemType Directory -Force .tmp | Out-Null
+Copy-Item examples/voice-profiles .tmp/example-voice-profiles -Recurse
+
 scripts/start-qwen-tts-clone-play.ps1 `
   -BuildDirectory build/Release `
   -Python C:/runtime/python.exe `
   -ModelPath C:/models/Qwen3-TTS-12Hz-1.7B-Base `
-  -VoiceRegistryPath config/voice-profiles.local.json `
-  -VoiceId my_voice `
+  -VoiceRegistryPath .tmp/example-voice-profiles/registry.example.json `
+  -VoiceId kraftwerk_robot_ru_source_like `
   -Text "Проверка клонированного голоса"
 ```
+
+Python, каталог модели, собранный player и необходимые CUDA-зависимости должны
+быть установлены заранее. Для собственного `my_voice` создайте отдельную
+локальную запись реестра со своим WAV и точной расшифровкой, затем передайте
+путь к этому реестру и `-VoiceId my_voice`.
 
 Нельзя одновременно передавать preset `speaker` и Base `voice_id`. Передача
 референсного аудио в каждом запросе остаётся диагностическим режимом;
