@@ -469,6 +469,7 @@ def prepare_voice(
         )
     except VoiceProfileError as exc:
         raise VoiceLibraryError(f"reference is not native-compatible: {exc}") from exc
+    source_hash = info.sha256
     if info.sample_rate != 24000 or info.channels != 1 or info.sample_width_bytes != 2:
         raise VoiceLibraryError("native preparation requires a mono 24000 Hz PCM16 WAV")
     relative_manifest = (
@@ -505,6 +506,10 @@ def prepare_voice(
         if not manifest_path.is_file():
             raise VoiceLibraryError(
                 "native worker exited without publishing the expected manifest"
+            )
+        if _sha256_file(audio_path) != source_hash:
+            raise VoiceLibraryError(
+                "reference WAV changed during native preparation; retry explicitly"
             )
         # Verify before publishing the authoritative row.
         temp_verified = _verify_row_manifest(
