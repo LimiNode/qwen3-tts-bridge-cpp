@@ -16,6 +16,11 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
+
 from qwen_tts_bridge_worker.engine.voice_profiles import (
     VoiceProfileError,
     preflight_reference_audio,
@@ -29,6 +34,14 @@ from qwen_tts_bridge_worker.model_resolver import (
 _SCHEMA_VERSION = 1
 _MAGIC = b"QTB1"
 _FRAME_HEADER = struct.Struct("<4sHHHHIQ")
+_MAX_MANIFEST_BYTES = 1 << 20
+_MAX_SPEAKER_DIMENSION = 1 << 20
+_MAX_SPEAKER_BYTES = 16 << 20
+_MAX_RVQ_CODEBOOKS = 64
+_MAX_RVQ_FRAMES = 1 << 20
+_MAX_RVQ_BYTES = 256 << 20
+_MAX_NATIVE_STDERR_BYTES = 1 << 20
+_ENTRY_MARKER = ".qtb-managed-entry"
 
 
 class VoiceLibraryError(ValueError):
@@ -123,6 +136,7 @@ def add_voice(
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     with _registry_lock(registry_path):
         rows = load_voice_rows(registry_path)
+        _cleanup_orphaned_entries(registry_path, rows)
         if any(row["voice_id"] == voice_id for row in rows):
             raise VoiceLibraryError(f"voice_id already exists: {voice_id}")
         internal_id = _internal_id(voice_id)
@@ -141,6 +155,10 @@ def add_voice(
                     "managed reference copy does not match the validated source WAV"
                 )
             (staging / "reference.txt").write_text(text, encoding="utf-8")
+            (staging / _ENTRY_MARKER).write_text(
+                json.dumps({"schema_version": 1, "voice_id": voice_id}) + "\n",
+                encoding="utf-8",
+            )
             entry_dir.parent.mkdir(parents=True, exist_ok=True)
             staging.replace(entry_dir)
             relative_wav = Path("entries") / internal_id / "reference.wav"
@@ -346,7 +364,9 @@ def verify_voice(
             "manifest_path": str(manifest_path),
         }
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = _read_json_file_bounded(manifest_path, _MAX_MANIFEST_BYTES)
+        if not isinstance(manifest, dict):
+            raise ValueError("native manifest must be a JSON object")
         if (
             manifest.get("schema_version") != 1
             or manifest.get("format") != "qwen3-tts-native-voice-reference"
@@ -591,8 +611,11 @@ def _run_native_prepare(
     stdout = process.stdout
     stderr_stream = process.stderr
     stderr_chunks: list[bytes] = []
+    stderr_overflow = threading.Event()
     stderr_thread = threading.Thread(
-        target=lambda: stderr_chunks.append(stderr_stream.read()), daemon=True
+        target=_capture_stderr,
+        args=(stderr_stream, stderr_chunks, stderr_overflow),
+        daemon=True,
     )
     stderr_thread.start()
     frames: queue.Queue[dict[str, Any] | BaseException | None] = queue.Queue()
@@ -627,6 +650,12 @@ def _run_native_prepare(
             if message.get("message_type") == "ready":
                 ready = True
                 ids = message.get("voice_ids", [])
+                if not isinstance(ids, list) or not all(
+                    isinstance(item, str) for item in ids
+                ):
+                    raise VoiceLibraryError(
+                        "native worker returned an invalid ready voice_ids list"
+                    )
                 if voice_id not in ids:
                     raise VoiceLibraryError(
                         f"native worker did not advertise prepared voice_id: {voice_id}"
@@ -638,21 +667,45 @@ def _run_native_prepare(
             raise VoiceLibraryError("native worker did not become ready before timeout")
         stdin.write(_frame({"message_type": "shutdown", "mode": "cancel"}))
         stdin.flush()
+        shutdown_deadline = time.monotonic() + max(1.0, min(timeout_seconds, 10.0))
+        shutdown_ack = False
+        while time.monotonic() < shutdown_deadline:
+            try:
+                message = frames.get(timeout=0.1)
+            except queue.Empty:
+                if process.poll() is not None:
+                    break
+                continue
+            if message is None:
+                break
+            if isinstance(message, BaseException):
+                raise message
+            if message.get("message_type") == "shutdown_ack":
+                shutdown_ack = True
+                break
+            if message.get("message_type") == "error" or message.get("category"):
+                raise VoiceLibraryError(f"native worker shutdown failed: {message}")
+        if not shutdown_ack:
+            raise VoiceLibraryError("native worker did not acknowledge shutdown")
         process.wait(timeout=max(1.0, min(timeout_seconds, 10.0)))
         stderr_thread.join(timeout=1.0)
+        if stderr_overflow.is_set():
+            raise VoiceLibraryError("native worker stderr exceeded the capture limit")
         if process.returncode != 0:
             detail = _stderr_text(stderr_chunks)
             suffix = f": {detail}" if detail else ""
             raise VoiceLibraryError(
                 f"native worker exited with code {process.returncode}{suffix}"
             )
-        stderr_evidence = "\n".join(
-            chunk.decode("utf-8", errors="replace") for chunk in stderr_chunks
-        )
-        if (
-            "native_voice_reference_ready" not in stderr_evidence
-            or voice_id not in stderr_evidence
-        ):
+        metrics = _parse_native_metrics(stderr_chunks)
+        evidence = [
+            metric
+            for metric in metrics
+            if metric.get("event") == "native_voice_reference_ready"
+            and metric.get("voice_id") == voice_id
+            and metric.get("source") in {"persisted", "extracted_and_persisted"}
+        ]
+        if not evidence:
             raise VoiceLibraryError(
                 "native worker did not report voice preparation evidence"
             )
@@ -737,21 +790,91 @@ def _stderr_text(stderr_chunks: list[bytes]) -> str:
     return stderr_chunks[0].decode("utf-8", errors="replace").strip()[:400]
 
 
+def _capture_stderr(
+    stream: Any, chunks: list[bytes], overflow: threading.Event
+) -> None:
+    total = 0
+    while True:
+        chunk = stream.read(64 * 1024)
+        if not chunk:
+            return
+        total += len(chunk)
+        if total <= _MAX_NATIVE_STDERR_BYTES:
+            chunks.append(chunk)
+        else:
+            overflow.set()
+
+
+def _parse_native_metrics(chunks: list[bytes]) -> list[dict[str, Any]]:
+    evidence = b"".join(chunks).decode("utf-8", errors="replace")
+    metrics: list[dict[str, Any]] = []
+    for line in evidence.splitlines():
+        if not line.startswith("qtb_metric "):
+            continue
+        try:
+            value = json.loads(line[len("qtb_metric ") :])
+        except json.JSONDecodeError as exc:
+            raise VoiceLibraryError(
+                "native worker emitted malformed qtb_metric JSON"
+            ) from exc
+        if not isinstance(value, dict):
+            raise VoiceLibraryError("native worker qtb_metric must be an object")
+        metrics.append(value)
+    return metrics
+
+
 @contextmanager
 def _registry_lock(registry_path: Path) -> Iterator[None]:
     lock = registry_path.with_name(registry_path.name + ".lock")
+    descriptor = -1
     try:
-        descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError as exc:
-        raise VoiceLibraryError(
-            f"voice registry is being modified by another process: {registry_path}"
-        ) from exc
+        descriptor = os.open(lock, os.O_CREAT | os.O_RDWR)
+        if os.name == "nt":
+            if os.fstat(descriptor).st_size == 0:
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                try:
+                    os.write(descriptor, b"\0")
+                except OSError as exc:
+                    raise VoiceLibraryError(
+                        "voice registry is being modified by another process: "
+                        f"{registry_path}"
+                    ) from exc
+            os.lseek(descriptor, 0, os.SEEK_SET)
+            try:
+                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise VoiceLibraryError(
+                    "voice registry is being modified by another process: "
+                    f"{registry_path}"
+                ) from exc
+        else:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                raise VoiceLibraryError(
+                    "voice registry is being modified by another process: "
+                    f"{registry_path}"
+                ) from exc
+    except BaseException:
+        if descriptor != -1:
+            os.close(descriptor)
+        raise
     try:
-        os.write(descriptor, str(os.getpid()).encode("ascii"))
         yield
     finally:
-        os.close(descriptor)
-        lock.unlink(missing_ok=True)
+        if descriptor != -1:
+            if os.name == "nt":
+                try:
+                    os.lseek(descriptor, 0, os.SEEK_SET)
+                    msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+                except OSError:
+                    pass
+            else:
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_UN)
+                except OSError:
+                    pass
+            os.close(descriptor)
 
 
 def _atomic_write_registry(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -769,6 +892,16 @@ def _atomic_write_payload(path: Path, payload: dict[str, Any]) -> None:
         temporary.replace(path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _read_json_file_bounded(path: Path, maximum_bytes: int) -> Any:
+    if not path.is_file():
+        raise OSError(f"file was not found: {path}")
+    with path.open("rb") as source:
+        payload = source.read(maximum_bytes + 1)
+    if len(payload) > maximum_bytes:
+        raise ValueError(f"JSON file is too large: {path}")
+    return json.loads(payload.decode("utf-8"))
 
 
 def _selected_config_path(path: Path | None) -> Path:
@@ -831,25 +964,26 @@ def _manifest_files_present(registry_path: Path, relative: str) -> bool:
     if not manifest.is_file():
         return False
     try:
-        value = json.loads(manifest.read_text(encoding="utf-8"))
+        value = _read_json_file_bounded(manifest, _MAX_MANIFEST_BYTES)
+        if not isinstance(value, dict):
+            return False
         if (
             value.get("schema_version") != 1
             or value.get("format") != "qwen3-tts-native-voice-reference"
         ):
             return False
-        for key in ("speaker", "rvq"):
-            artifact = value.get(key)
-            if artifact is None:
-                continue
-            artifact_path = _resolve_manifest_artifact(manifest, artifact["path"])
-            if (
-                not artifact_path.is_file()
-                or not isinstance(artifact.get("sha256"), str)
-                or _sha256_file(artifact_path) != artifact["sha256"]
-            ):
-                return False
+        _verify_prepared_artifacts(
+            manifest, value, bool(value.get("x_vector_only", False))
+        )
         return True
-    except (OSError, KeyError, TypeError, json.JSONDecodeError, VoiceLibraryError):
+    except (
+        OSError,
+        KeyError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+        VoiceLibraryError,
+    ):
         return False
 
 
@@ -878,11 +1012,78 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _is_sha256(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(
+        character in "0123456789abcdefABCDEF" for character in value
+    )
+
+
+def _read_bounded_artifact(path: Path, expected_size: int, maximum_size: int) -> bytes:
+    if expected_size <= 0 or expected_size > maximum_size or not path.is_file():
+        raise ValueError(f"native artifact is missing or has an invalid size: {path}")
+    actual_size = path.stat().st_size
+    if actual_size != expected_size or actual_size > maximum_size:
+        raise ValueError(f"native artifact size mismatch: {path}")
+    with path.open("rb") as source:
+        value = source.read(expected_size + 1)
+    if len(value) != expected_size:
+        raise ValueError(f"native artifact changed while reading: {path}")
+    return value
+
+
+def _cleanup_orphaned_entries(
+    registry_path: Path, rows: list[dict[str, Any]], *, limit: int = 64
+) -> None:
+    entries = registry_path.parent / "entries"
+    if not entries.is_dir():
+        return
+    referenced = {
+        Path(str(row.get("reference_audio_path", ""))).parts[1]
+        for row in rows
+        if isinstance(row.get("reference_audio_path"), str)
+        and len(Path(str(row["reference_audio_path"])).parts) >= 2
+        and Path(str(row["reference_audio_path"])).parts[0] == "entries"
+    }
+    inspected = 0
+    for entry in entries.iterdir():
+        if inspected >= limit:
+            break
+        inspected += 1
+        if not entry.is_dir() or entry.name in referenced:
+            continue
+        marker = entry / _ENTRY_MARKER
+        if not marker.is_file():
+            continue
+        try:
+            value = _read_json_file_bounded(marker, 4096)
+            if not isinstance(value, dict):
+                continue
+            orphan_id = value.get("voice_id")
+            if (
+                value.get("schema_version") != 1
+                or not isinstance(orphan_id, str)
+                or _internal_id(orphan_id) != entry.name
+            ):
+                continue
+            children = {child.name for child in entry.iterdir()}
+            if not children.issubset(
+                {_ENTRY_MARKER, "reference.wav", "reference.txt", "native"}
+            ):
+                continue
+            shutil.rmtree(entry)
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+
+
 def _load_runtime_identity(runtime_dir: Path) -> dict[str, Any]:
     path = runtime_dir / "manifest.json"
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        value = _read_json_file_bounded(path, _MAX_MANIFEST_BYTES)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise ValueError(f"native runtime manifest is invalid: {path}") from exc
     if not isinstance(value, dict):
         raise ValueError(f"native runtime manifest identity is invalid: {path}")
@@ -891,6 +1092,7 @@ def _load_runtime_identity(runtime_dir: Path) -> dict[str, Any]:
         or value.get("engine") != "qwentts.cpp"
         or not isinstance(value.get("engine_commit"), str)
         or not value["engine_commit"]
+        or isinstance(value.get("qt_abi_version"), bool)
         or not isinstance(value.get("qt_abi_version"), int)
         or value["qt_abi_version"] <= 0
         or str(value.get("architecture", "")).lower() != "x64"
@@ -907,7 +1109,12 @@ def _load_runtime_identity(runtime_dir: Path) -> dict[str, Any]:
             raise ValueError(f"native runtime manifest file is invalid: {path}")
         relative = item.get("path")
         expected = item.get("sha256")
-        if not isinstance(relative, str) or not isinstance(expected, str):
+        if (
+            not isinstance(relative, str)
+            or not isinstance(expected, str)
+            or len(expected) != 64
+            or any(character not in "0123456789abcdefABCDEF" for character in expected)
+        ):
             raise ValueError(f"native runtime manifest file is invalid: {path}")
         artifact = _resolve_runtime_artifact(runtime_dir, relative)
         if not artifact.is_file() or _sha256_file(artifact) != expected.lower():
@@ -937,18 +1144,40 @@ def _resolve_runtime_artifact(runtime_dir: Path, value: str) -> Path:
 def _verify_prepared_artifacts(
     manifest_path: Path, manifest: dict[str, Any], x_vector_only: bool
 ) -> None:
-    speaker = manifest["speaker"]
-    speaker_path = _resolve_manifest_artifact(manifest_path, speaker["path"])
-    speaker_size = speaker_path.stat().st_size
+    speaker = manifest.get("speaker")
+    if not isinstance(speaker, dict):
+        raise ValueError("native speaker artifact declaration is invalid")
+    dimension = speaker.get("dimension")
+    size_bytes = speaker.get("size_bytes")
     if (
-        speaker.get("scalar") != "float32-le"
-        or not isinstance(speaker.get("dimension"), int)
-        or speaker["dimension"] <= 0
-        or speaker.get("size_bytes") != speaker_size
-        or speaker_size != speaker["dimension"] * 4
-        or _sha256_file(speaker_path) != speaker.get("sha256")
+        isinstance(dimension, bool)
+        or not isinstance(dimension, int)
+        or dimension <= 0
+        or dimension > _MAX_SPEAKER_DIMENSION
+        or isinstance(size_bytes, bool)
+        or not isinstance(size_bytes, int)
+        or size_bytes != dimension * 4
+        or size_bytes > _MAX_SPEAKER_BYTES
     ):
+        raise ValueError("native speaker dimensions are invalid")
+    if speaker.get("scalar") != "float32-le":
+        raise ValueError("native speaker scalar is unsupported")
+    speaker_hash = speaker.get("sha256")
+    if not _is_sha256(speaker_hash):
+        raise ValueError("native speaker SHA-256 is invalid")
+    speaker_name = speaker.get("path")
+    if not isinstance(speaker_name, str):
+        raise ValueError("native speaker path is invalid")
+    speaker_path = _resolve_manifest_artifact(manifest_path, speaker_name)
+    speaker_bytes = _read_bounded_artifact(speaker_path, size_bytes, _MAX_SPEAKER_BYTES)
+    if _sha256_bytes(speaker_bytes) != speaker_hash.lower():
         raise ValueError("native speaker artifact is missing or corrupt")
+    try:
+        values = struct.unpack(f"<{dimension}f", speaker_bytes)
+    except struct.error as exc:
+        raise ValueError("native speaker artifact is truncated") from exc
+    if not all(value == value and abs(value) != float("inf") for value in values):
+        raise ValueError("native speaker artifact contains NaN or Inf")
     rvq = manifest.get("rvq")
     if x_vector_only:
         if rvq is not None:
@@ -956,25 +1185,39 @@ def _verify_prepared_artifacts(
         return
     if not isinstance(rvq, dict):
         raise ValueError("ICL native manifest has no RVQ data")
-    rvq_path = _resolve_manifest_artifact(manifest_path, rvq["path"])
-    rvq_size = rvq_path.stat().st_size
     codebooks = rvq.get("codebooks")
     frames = rvq.get("frames")
+    rvq_size_declared = rvq.get("size_bytes")
+    if (
+        isinstance(codebooks, bool)
+        or not isinstance(codebooks, int)
+        or codebooks <= 0
+        or codebooks > _MAX_RVQ_CODEBOOKS
+        or isinstance(frames, bool)
+        or not isinstance(frames, int)
+        or frames <= 0
+        or frames > _MAX_RVQ_FRAMES
+        or isinstance(rvq_size_declared, bool)
+        or not isinstance(rvq_size_declared, int)
+    ):
+        raise ValueError("native RVQ dimensions are invalid")
+    rvq_name = rvq.get("path")
+    rvq_hash = rvq.get("sha256")
+    if not isinstance(rvq_name, str) or not _is_sha256(rvq_hash):
+        raise ValueError("native RVQ artifact declaration is invalid")
     expected_size = (
         (codebooks * frames * 11 + 7) // 8
-        if isinstance(codebooks, int)
-        and isinstance(frames, int)
-        and codebooks > 0
-        and frames > 0
-        else -1
     )
     if (
         rvq.get("bits_per_code") != 11
         or rvq.get("layout") != "codebook-major-frame-fastest"
-        or rvq.get("size_bytes") != rvq_size
-        or rvq_size != expected_size
-        or _sha256_file(rvq_path) != rvq.get("sha256")
+        or rvq_size_declared != expected_size
+        or rvq_size_declared > _MAX_RVQ_BYTES
     ):
+        raise ValueError("native RVQ dimensions or layout are invalid")
+    rvq_path = _resolve_manifest_artifact(manifest_path, rvq_name)
+    rvq_bytes = _read_bounded_artifact(rvq_path, rvq_size_declared, _MAX_RVQ_BYTES)
+    if _sha256_bytes(rvq_bytes) != rvq_hash.lower():
         raise ValueError("native RVQ artifact is missing or corrupt")
 
 

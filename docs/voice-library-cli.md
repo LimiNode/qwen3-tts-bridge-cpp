@@ -58,11 +58,19 @@ artifacts. A manually authored singular `native_reference` remains supported.
 
 Voice IDs are display identifiers, not filesystem paths. Managed copies are
 stored below a SHA-256-derived directory under the registry directory. Registry
-writes are atomic and guarded by an exclusive lock. Existing managed WAVs and
-native manifests are never silently replaced. A stale or corrupt native
-manifest fails closed and must be explicitly removed before a new preparation.
+writes are atomic and guarded by an OS-backed exclusive lock. The lock is
+released automatically when its owning process exits, including abnormal
+termination; the lock file itself may remain as a reusable coordination
+handle. Existing managed WAVs and native manifests are never silently replaced.
+A stale or corrupt native manifest fails closed and must be explicitly removed
+before a new preparation.
 
-Native manifests are bound to the source WAV hash, transcript, x-vector mode,
+Native manifests are bounded and validated against the native loader contract:
+speaker data is finite little-endian float32 within the native dimension and
+size limits, while ICL RVQ data uses the fixed 11-bit codebook-major layout and
+bounded dimensions. Native preparation accepts only structured `qtb_metric`
+evidence for the exact voice and an acknowledged graceful shutdown. Native
+manifests are bound to the source WAV hash, transcript, x-vector mode,
 talker/codec model hashes, and artifact hashes. `voices verify --backend native`
 reports `prepared_valid`, `prepared_stale`, `prepared_corrupt`, `unprepared`, or
 `model_unavailable` without regenerating anything.

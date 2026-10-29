@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -13,7 +15,10 @@ from unittest import mock
 from qwen_tts_bridge_worker import user_cli
 from qwen_tts_bridge_worker.voice_library import (
     VoiceLibraryError,
+    _internal_id,
+    _registry_lock,
     _run_native_prepare,
+    _verify_prepared_artifacts,
     add_voice,
     list_voices,
     load_voice_rows,
@@ -167,6 +172,32 @@ class VoiceLibraryTests(unittest.TestCase):
             self.assertFalse(registry.exists())
             self.assertEqual([], list((registry.parent / "entries").glob("*")))
 
+    def test_add_reclaims_only_marked_orphaned_managed_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            registry = root / "voices" / "registry.json"
+            entries = registry.parent / "entries"
+            orphan = entries / _internal_id("orphan")
+            orphan.mkdir(parents=True)
+            (orphan / ".qtb-managed-entry").write_text(
+                json.dumps({"schema_version": 1, "voice_id": "orphan"}),
+                encoding="utf-8",
+            )
+            (orphan / "reference.wav").write_bytes(b"orphan")
+            user_dir = entries / "user-owned"
+            user_dir.mkdir(parents=True)
+            (user_dir / "sentinel").write_text("keep", encoding="utf-8")
+            add_voice(
+                registry,
+                voice_id="voice",
+                wav_path=_write_wav(root / "source.wav"),
+                reference_text="text",
+                x_vector_only=False,
+                preserve_reference_text_whitespace=False,
+            )
+            self.assertFalse(orphan.exists())
+            self.assertTrue((user_dir / "sentinel").is_file())
+
     def test_changed_managed_audio_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -190,17 +221,44 @@ class VoiceLibraryTests(unittest.TestCase):
             registry.write_text(
                 '{"schema_version": 1, "voices": []}\n', encoding="utf-8"
             )
-            lock = registry.with_name(registry.name + ".lock")
-            lock.write_text("other", encoding="ascii")
-            with self.assertRaisesRegex(VoiceLibraryError, "being modified"):
-                add_voice(
-                    registry,
-                    voice_id="voice",
-                    wav_path=_write_wav(root / "source.wav"),
-                    reference_text="text",
-                    x_vector_only=False,
-                    preserve_reference_text_whitespace=False,
-                )
+            with _registry_lock(registry):
+                with self.assertRaisesRegex(VoiceLibraryError, "being modified"):
+                    add_voice(
+                        registry,
+                        voice_id="voice",
+                        wav_path=_write_wav(root / "source.wav"),
+                        reference_text="text",
+                        x_vector_only=False,
+                        preserve_reference_text_whitespace=False,
+                    )
+
+    def test_registry_lock_file_is_reusable_after_owner_termination(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            registry = Path(temporary) / "registry.json"
+            script = (
+                "import sys,time; "
+                "from pathlib import Path; "
+                "from qwen_tts_bridge_worker.voice_library import _registry_lock; "
+                "path=Path(sys.argv[1]); "
+                "lock=_registry_lock(path); lock.__enter__(); "
+                "print('ready', flush=True); time.sleep(30)"
+            )
+            process = subprocess.Popen(
+                [sys.executable, "-c", script, str(registry)],
+                stdout=subprocess.PIPE,
+                text=True,
+            )
+            assert process.stdout is not None
+            try:
+                self.assertEqual("ready\n", process.stdout.readline())
+                with self.assertRaisesRegex(VoiceLibraryError, "being modified"):
+                    with _registry_lock(registry):
+                        pass
+            finally:
+                process.terminate()
+                process.wait(timeout=5)
+            with _registry_lock(registry):
+                pass
 
     def test_native_manifest_path_traversal_is_corrupt(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -225,6 +283,32 @@ class VoiceLibraryTests(unittest.TestCase):
                 native_profile="profile",
             )
             self.assertEqual("prepared_corrupt", result["status"])
+
+    def test_native_verifier_rejects_non_finite_speaker_with_matching_hash(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest_path = root / "native" / "manifest.json"
+            row = {"reference_text": "text", "x_vector_only": False}
+            wav = _write_wav(root / "reference.wav")
+            talker = root / "talker.gguf"
+            codec = root / "codec.gguf"
+            talker.write_bytes(b"talker")
+            codec.write_bytes(b"codec")
+            _write_native_manifest(manifest_path, wav, row, talker, codec)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            speaker_path = manifest_path.parent / manifest["speaker"]["path"]
+            for value in (float("nan"), float("inf"), float("-inf")):
+                speaker_path.write_bytes(struct.pack("<f", value))
+                manifest["speaker"]["sha256"] = _sha256(speaker_path)
+                manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "NaN or Inf"):
+                    _verify_prepared_artifacts(
+                        manifest_path,
+                        manifest,
+                        False,
+                    )
 
     def test_cli_add_and_list_json(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -292,6 +376,31 @@ class VoiceLibraryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             script = _write_fake_worker(Path(temporary) / "worker.py", "other")
             with self.assertRaisesRegex(VoiceLibraryError, "did not advertise"):
+                _run_native_prepare(
+                    [sys.executable, str(script)], "voice", timeout_seconds=2.0
+                )
+
+    def test_native_prepare_requires_structured_metric(self) -> None:
+        for behavior, expected in (
+            ("no_metric", "did not report voice preparation evidence"),
+            ("wrong_voice_metric", "did not report voice preparation evidence"),
+            ("invalid_source", "did not report voice preparation evidence"),
+            ("bad_metric", "malformed qtb_metric JSON"),
+        ):
+            with (
+                self.subTest(behavior=behavior),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                script = _write_fake_worker(Path(temporary) / "worker.py", behavior)
+                with self.assertRaisesRegex(VoiceLibraryError, expected):
+                    _run_native_prepare(
+                        [sys.executable, str(script)], "voice", timeout_seconds=2.0
+                    )
+
+    def test_native_prepare_rejects_excessive_stderr(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            script = _write_fake_worker(Path(temporary) / "worker.py", "verbose")
+            with self.assertRaisesRegex(VoiceLibraryError, "stderr exceeded"):
                 _run_native_prepare(
                     [sys.executable, str(script)], "voice", timeout_seconds=2.0
                 )
@@ -432,9 +541,18 @@ behavior = %r
 if behavior == "hang":
     time.sleep(5)
     raise SystemExit(0)
-voice_ids = ["voice"] if behavior == "ready" else ["other"]
-metric = {"event": "native_voice_reference_ready", "voice_id": "voice"}
-sys.stderr.write("qtb_metric " + json.dumps(metric) + "\\n")
+voice_ids = ["other"] if behavior == "other" else ["voice"]
+if behavior == "bad_metric":
+    sys.stderr.write("qtb_metric {not-json}\\n")
+elif behavior == "verbose":
+    sys.stderr.write("x" * (2 * 1024 * 1024))
+elif behavior != "no_metric":
+    metric = {
+        "event": "native_voice_reference_ready",
+        "voice_id": "other" if behavior == "wrong_voice_metric" else "voice",
+        "source": "invalid" if behavior == "invalid_source" else "persisted",
+    }
+    sys.stderr.write("qtb_metric " + json.dumps(metric) + "\\n")
 sys.stderr.flush()
 payload = json.dumps({"message_type": "ready", "voice_ids": voice_ids}).encode()
 sys.stdout.buffer.write(header.pack(b"QTB1", 1, 24, 1, 0, len(payload), 0) + payload)
@@ -443,6 +561,11 @@ raw = sys.stdin.buffer.read(header.size)
 if raw:
     payload_size = header.unpack(raw)[5]
     sys.stdin.buffer.read(payload_size)
+    payload = json.dumps({"message_type": "shutdown_ack"}).encode()
+    sys.stdout.buffer.write(
+        header.pack(b"QTB1", 1, 24, 1, 0, len(payload), 0) + payload
+    )
+    sys.stdout.buffer.flush()
 """
         % behavior,
         encoding="utf-8",
