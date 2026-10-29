@@ -79,6 +79,7 @@ Portable-пакет также предоставляет пользовател
 ```powershell
 qwen-tts models list
 qwen-tts design --text "Привет" --instruction "Мягкий тёплый голос" --out voice.wav
+qwen-tts voices list
 ```
 
 Загрузка модели выполняется только явной командой `qwen-tts models download`;
@@ -231,6 +232,7 @@ Python-проверки используют worker из `worker/src` и locked 
 
 - [Основной README на английском](README.md)
 - [VoiceDesign acceptance](docs/voice-design-acceptance.md)
+- [CLI библиотеки голосов](docs/voice-library-cli-ru.md)
 - [Native qwentts backend](docs/native-qwentts-backend.md)
 - [Текущий статус и подтверждённая архитектура](docs/project-status.md)
 - [tts-front-cpp integration](docs/tts-front-integration.md)

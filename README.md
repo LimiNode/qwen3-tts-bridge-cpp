@@ -82,6 +82,7 @@ compatible model from explicit input, user configuration, the package-local
 ```powershell
 qwen-tts models list
 qwen-tts design --text "Hello" --instruction "A calm warm voice" --out voice.wav
+qwen-tts voices list
 ```
 
 Model downloads are always explicit through `qwen-tts models download`; a
@@ -92,6 +93,9 @@ candidates visible with their validation error. After synthesis, `design`
 validates both the PCM WAV and its result JSON before reporting success.
 `design --play` opens that completed file with the configured Windows default
 application; it is not the project's native WinMM playback acceptance path.
+Reusable Base voice references are managed with `qwen-tts voices`; registration,
+backend verification, native preparation, storage ownership, and backup are
+documented in [Voice Library CLI](docs/voice-library-cli.md).
 
 The Python runtime package and the complete user distribution are separate
 build stages. Assemble the latter from an explicitly selected Release

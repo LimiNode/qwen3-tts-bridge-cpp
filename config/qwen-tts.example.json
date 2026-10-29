@@ -14,8 +14,12 @@
     "startup_timeout_ms": 120000,
     "request_timeout_ms": 300000
   },
+  "voice_library": {
+    "registry_path": "voices/registry.json"
+  },
   "native_profiles": {
     "ru-stress": {
+      "worker": "C:/Program Files/QwenTTSBridge/qwen_tts_native_worker.exe",
       "runtime_dir": "D:/QwenRuntime",
       "talker_model": "D:/Models/qwen-talker-1.7b-ru-stress-Q8_0.gguf",
       "codec_model": "D:/Models/qwen-tokenizer-12hz-Q8_0.gguf"

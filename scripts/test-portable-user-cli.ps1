@@ -143,6 +143,13 @@ try {
         throw "Relocated models list failed: $($List.output)"
     }
 
+    $VoicesList = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "voices", "list", "--json"
+    )
+    if ($VoicesList.exit_code -ne 0 -or $VoicesList.output.Trim() -ne "[]") {
+        throw "Relocated voices list failed: $($VoicesList.output)"
+    }
+
     $Design = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
         "design",
         "--text", "Привет! Это проверка переносимого CLI.",
@@ -190,7 +197,13 @@ if (
     throw "Relocated CLI receipt is invalid: $Receipt"
 }
 
-$CombinedEvidence = @($List.output, $Design.output, $FailClosed.output, (Get-Content -Raw $ManifestPath)) -join "`n"
+$CombinedEvidence = @(
+    $List.output,
+    $VoicesList.output,
+    $Design.output,
+    $FailClosed.output,
+    (Get-Content -Raw $ManifestPath)
+) -join "`n"
 if ($CombinedEvidence -match [regex]::Escape($RepoRoot)) {
     throw "Relocated CLI evidence leaked the repository path."
 }
