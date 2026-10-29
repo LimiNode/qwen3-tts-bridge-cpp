@@ -1,3 +1,4 @@
+import hashlib
 import json
 import struct
 import tempfile
@@ -29,6 +30,67 @@ def _write_pcm_wav(
 
 
 class VoiceProfilePreflightTests(unittest.TestCase):
+    def test_bundled_example_registry_is_self_contained(self) -> None:
+        repository = Path(__file__).resolve().parents[2]
+        registry_path = (
+            repository
+            / "examples"
+            / "voice-profiles"
+            / "registry.example.json"
+        )
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        expected_hashes = {
+            "kraftwerk_robot_3_ru.wav": (
+                "baba7f26a9eb8de1df53a51c4b33ac6c"
+                "b3625fe70509d7c1a281b64d4827000b"
+            ),
+            "kraftwerk_robot_ru_fidelity.wav": (
+                "90e5f7576991ea5b9f0a85e9109f7bd3"
+                "1ff667c4a12d58783a06c650796c3ca1"
+            ),
+            "kraftwerk_robot_ru_warm.wav": (
+                "b8285c5925d89d90435afa2f084a197a"
+                "9e428dec41fff09c74969e6624a4b147"
+            ),
+            "kraftwerk_robot_ru_source_like.wav": (
+                "b2480523e3dae70f2267260e3d60dce0"
+                "c04dbe19f332f3fae6b031a54ab640f3"
+            ),
+            "kraftwerk_robot_ru_warm_metal.wav": (
+                "9c96c277ffb61709a511a01ee715bd4c"
+                "15b1ccc669c9c55ca900f2229bb2799a"
+            ),
+        }
+
+        self.assertEqual(1, registry["schema_version"])
+        self.assertEqual(9, len(registry["voices"]))
+        for row in registry["voices"]:
+            reference = (registry_path.parent / row["reference_audio_path"]).resolve()
+            self.assertTrue(reference.is_relative_to(registry_path.parent.resolve()))
+            self.assertTrue(reference.is_file())
+            self.assertEqual(
+                expected_hashes[reference.name],
+                hashlib.sha256(reference.read_bytes()).hexdigest(),
+            )
+
+        whitespace = {
+            row["voice_id"]: row["reference_text"]
+            for row in registry["voices"]
+            if row["voice_id"].startswith("kraftwerk_robot_ru_icl_period")
+        }
+        self.assertEqual(
+            "Я твой слуга, я твой работник.",
+            whitespace["kraftwerk_robot_ru_icl_period"],
+        )
+        self.assertEqual(
+            "Я твой слуга, я твой работник. ",
+            whitespace["kraftwerk_robot_ru_icl_period_space"],
+        )
+        self.assertEqual(
+            "Я твой слуга, я твой работник.    ",
+            whitespace["kraftwerk_robot_ru_icl_period_four_spaces"],
+        )
+
     def test_accepts_stereo_pcm_wav(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             reference = Path(temporary_directory) / "stereo.wav"

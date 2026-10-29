@@ -7,8 +7,9 @@ by a stable `voice_id` for later requests.
 
 ## Registry
 
-Copy `config/voice-profiles.example.json` to an ignored local file and keep the
-same schema:
+Use `examples/voice-profiles/registry.example.json` as the schema example. To
+edit the bundled profiles, copy the complete `examples/voice-profiles`
+directory so its relative WAV paths remain valid:
 
 ```json
 {

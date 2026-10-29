@@ -127,7 +127,7 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
             warmup_speaker="ryan",
             warmup_voice_id="kraftwerk_robot_ru_bootstrap_fidelity",
             warmup_instruction="",
-            voice_registry_path="config/voice-profiles.example.json",
+            voice_registry_path="examples/voice-profiles/registry.example.json",
             preload_voice_profiles=True,
             engine_startup_mode="engine_warmup",
         )
@@ -155,7 +155,7 @@ class VerifyPackagedWorkerTests(unittest.TestCase):
         self.assertIn("--warmup-voice-id", worker_args)
         self.assertIn("kraftwerk_robot_ru_bootstrap_fidelity", worker_args)
         self.assertIn("--voice-registry-path", worker_args)
-        self.assertIn("config/voice-profiles.example.json", worker_args)
+        self.assertIn("examples/voice-profiles/registry.example.json", worker_args)
         self.assertIn("--preload-voice-profiles", worker_args)
 
 

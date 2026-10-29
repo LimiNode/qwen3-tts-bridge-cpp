@@ -275,7 +275,7 @@ proxy is not a hardware-underrun counter.
   -PlayerPath 'E:\_repoz\qwen3-tts-bridge-cpp\build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe' `
   -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\QwenTTSBridge-technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe' `
   -BaseModelPath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\cmp50hx-r3-external-models\Qwen3-TTS-12Hz-1.7B-Base' `
-  -VoiceRegistryPath '.\config\voice-profiles.example.json' `
+  -VoiceRegistryPath '.\examples\voice-profiles\registry.example.json' `
   -VoiceId 'kraftwerk_robot_ru_bootstrap_fidelity' `
   -RuntimeCachePath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\cmp50hx-r3-runtime-cache' `
   -Attempts 3

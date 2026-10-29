@@ -57,7 +57,8 @@ explicit A/B run because precomputed conditioning must still pass the same PCM
 and voice-identity gates.
 
 For the product registered-voice path, pass `--voice-registry-path` instead.
-The registry uses the same schema as `config/voice-profiles.example.json` and
+The registry uses the same schema as
+`examples/voice-profiles/registry.example.json` and
 is resolved relative to its own directory. A legacy WAV profile is decoded and
 its `qt_voice_ref` is extracted before the worker announces `ready`; a request
 then selects it with `voice_id` and does not read or extract the WAV on the
