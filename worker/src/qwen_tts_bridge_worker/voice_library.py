@@ -1,0 +1,1047 @@
+"""Managed user voice library built on the schema-1 voice registry."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import queue
+import shutil
+import struct
+import subprocess
+import threading
+import time
+import uuid
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any, Iterator
+
+from qwen_tts_bridge_worker.engine.voice_profiles import (
+    VoiceProfileError,
+    preflight_reference_audio,
+)
+from qwen_tts_bridge_worker.model_resolver import (
+    default_user_config_path,
+    load_user_config,
+    resolve_native_profile,
+)
+
+_SCHEMA_VERSION = 1
+_MAGIC = b"QTB1"
+_FRAME_HEADER = struct.Struct("<4sHHHHIQ")
+
+
+class VoiceLibraryError(ValueError):
+    """Raised for invalid, conflicting, or unverifiable voice-library state."""
+
+
+def default_voice_registry_path(config_path: Path | None = None) -> Path:
+    """Resolve the managed registry path from the user CLI config."""
+
+    config = _selected_config_path(config_path)
+    payload = load_user_config(config)
+    value = payload.get("voice_library")
+    if isinstance(value, dict):
+        configured = value.get("registry_path")
+        if isinstance(configured, str) and configured.strip():
+            path = Path(configured).expanduser()
+            return (
+                (config.parent / path).resolve()
+                if not path.is_absolute()
+                else path.resolve()
+            )
+    configured = payload.get("voice_registry_path")
+    if isinstance(configured, str) and configured.strip():
+        path = Path(configured).expanduser()
+        return (
+            (config.parent / path).resolve()
+            if not path.is_absolute()
+            else path.resolve()
+        )
+    return config.parent / "voices" / "registry.json"
+
+
+def load_voice_rows(
+    registry_path: Path, *, allow_missing: bool = True
+) -> list[dict[str, Any]]:
+    """Load and validate schema-1 registry rows."""
+
+    if not registry_path.is_file():
+        if allow_missing:
+            return []
+        raise VoiceLibraryError(f"voice registry was not found: {registry_path}")
+    try:
+        payload = json.loads(registry_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise VoiceLibraryError(
+            f"voice registry is not valid UTF-8 JSON: {registry_path}"
+        ) from exc
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema_version") != _SCHEMA_VERSION
+    ):
+        raise VoiceLibraryError("voice registry must be a schema_version 1 object")
+    rows = payload.get("voices")
+    if not isinstance(rows, list):
+        raise VoiceLibraryError("voice registry voices must be an array")
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise VoiceLibraryError("each voice registry row must be an object")
+        voice_id = row.get("voice_id")
+        if not isinstance(voice_id, str) or not voice_id.strip():
+            raise VoiceLibraryError("voice_id must be a non-empty string")
+        voice_id = voice_id.strip()
+        if voice_id in seen:
+            raise VoiceLibraryError(f"duplicate voice_id: {voice_id}")
+        seen.add(voice_id)
+        result.append(dict(row, voice_id=voice_id))
+    return result
+
+
+def add_voice(
+    registry_path: Path,
+    *,
+    voice_id: str,
+    wav_path: Path,
+    reference_text: str,
+    x_vector_only: bool,
+    preserve_reference_text_whitespace: bool,
+) -> dict[str, Any]:
+    """Validate and atomically add a managed copy of a reference WAV."""
+
+    voice_id = _require_voice_id(voice_id)
+    text = (
+        reference_text if preserve_reference_text_whitespace else reference_text.strip()
+    )
+    try:
+        audio = preflight_reference_audio(wav_path, text, x_vector_only)
+    except VoiceProfileError as exc:
+        raise VoiceLibraryError(str(exc)) from exc
+    registry_path = registry_path.expanduser().resolve()
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    with _registry_lock(registry_path):
+        rows = load_voice_rows(registry_path)
+        if any(row["voice_id"] == voice_id for row in rows):
+            raise VoiceLibraryError(f"voice_id already exists: {voice_id}")
+        internal_id = _internal_id(voice_id)
+        entry_dir = registry_path.parent / "entries" / internal_id
+        if entry_dir.exists():
+            raise VoiceLibraryError(f"managed voice entry already exists: {entry_dir}")
+        staging = (
+            registry_path.parent / f".entry-{internal_id}.{uuid.uuid4().hex}.incomplete"
+        )
+        try:
+            (staging / "native").mkdir(parents=True)
+            managed_wav = staging / "reference.wav"
+            shutil.copy2(audio.path, managed_wav)
+            if _sha256_file(managed_wav) != audio.sha256:
+                raise VoiceLibraryError(
+                    "managed reference copy does not match the validated source WAV"
+                )
+            (staging / "reference.txt").write_text(text, encoding="utf-8")
+            entry_dir.parent.mkdir(parents=True, exist_ok=True)
+            staging.replace(entry_dir)
+            relative_wav = Path("entries") / internal_id / "reference.wav"
+            row: dict[str, Any] = {
+                "voice_id": voice_id,
+                "reference_audio_path": relative_wav.as_posix(),
+                "reference_text": text,
+                "preserve_reference_text_whitespace": (
+                    preserve_reference_text_whitespace
+                ),
+                "x_vector_only": x_vector_only,
+                "managed_reference_audio": True,
+                "source_reference_audio_path": str(audio.path),
+                "reference_audio_sha256": audio.sha256,
+            }
+            _atomic_write_registry(registry_path, rows + [row])
+            return row
+        except Exception:
+            shutil.rmtree(staging, ignore_errors=True)
+            shutil.rmtree(entry_dir, ignore_errors=True)
+            raise
+
+
+def list_voices(registry_path: Path) -> list[dict[str, Any]]:
+    """Return deterministic user-facing voice status rows without loading models."""
+
+    rows = load_voice_rows(registry_path)
+    result: list[dict[str, Any]] = []
+    for row in sorted(rows, key=lambda value: value["voice_id"]):
+        audio_path = _row_audio_path(registry_path, row)
+        python_status = "missing"
+        if audio_path.is_file():
+            try:
+                audio = preflight_reference_audio(
+                    audio_path,
+                    str(row.get("reference_text", "")),
+                    bool(row.get("x_vector_only", False)),
+                )
+                expected = row.get("reference_audio_sha256")
+                python_status = (
+                    "compatible" if expected in (None, audio.sha256) else "changed"
+                )
+            except VoiceProfileError:
+                python_status = "incompatible"
+        native_status = "unprepared"
+        native_entries: list[dict[str, Any]] = []
+        references = row.get("native_references")
+        if isinstance(references, dict):
+            native_entries.extend(
+                value for value in references.values() if isinstance(value, dict)
+            )
+        legacy = row.get("native_reference")
+        if isinstance(legacy, dict):
+            native_entries.append(legacy)
+        if native_entries:
+            native_status = (
+                "prepared"
+                if all(
+                    isinstance(native.get("manifest_path"), str)
+                    and _manifest_files_present(registry_path, native["manifest_path"])
+                    for native in native_entries
+                )
+                else "stale"
+            )
+        result.append(
+            {
+                "voice_id": row["voice_id"],
+                "reference_audio_present": audio_path.is_file(),
+                "python_status": python_status,
+                "native_status": native_status,
+                "native_profile_count": len(native_entries),
+            }
+        )
+    return result
+
+
+def show_voice(registry_path: Path, voice_id: str) -> dict[str, Any]:
+    """Return the full persisted row plus current file metadata."""
+
+    row = _find_row(load_voice_rows(registry_path, allow_missing=False), voice_id)
+    audio_path = _row_audio_path(registry_path, row)
+    result = dict(row)
+    result["registry_path"] = str(registry_path)
+    result["resolved_reference_audio_path"] = str(audio_path)
+    result["reference_audio_present"] = audio_path.is_file()
+    if audio_path.is_file():
+        try:
+            info = preflight_reference_audio(
+                audio_path,
+                str(row.get("reference_text", "")),
+                bool(row.get("x_vector_only", False)),
+            )
+            result["audio"] = {
+                "sha256": info.sha256,
+                "duration_seconds": info.duration_seconds,
+                "sample_rate": info.sample_rate,
+                "channels": info.channels,
+                "sample_width_bytes": info.sample_width_bytes,
+            }
+        except VoiceProfileError as exc:
+            result["audio_error"] = str(exc)
+    return result
+
+
+def verify_voice(
+    registry_path: Path,
+    voice_id: str,
+    *,
+    backend: str,
+    native_profile: str | None = None,
+    config_path: Path | None = None,
+) -> dict[str, Any]:
+    """Verify Python compatibility or persisted native identity."""
+
+    row = _find_row(load_voice_rows(registry_path, allow_missing=False), voice_id)
+    audio_path = _row_audio_path(registry_path, row)
+    if backend == "python":
+        try:
+            info = preflight_reference_audio(
+                audio_path,
+                str(row.get("reference_text", "")),
+                bool(row.get("x_vector_only", False)),
+            )
+        except (VoiceProfileError, OSError) as exc:
+            return {
+                "voice_id": voice_id,
+                "backend": backend,
+                "status": "incompatible",
+                "error": str(exc),
+            }
+        expected = row.get("reference_audio_sha256")
+        status = "compatible" if expected in (None, info.sha256) else "incompatible"
+        return {
+            "voice_id": voice_id,
+            "backend": backend,
+            "status": status,
+            "sha256": info.sha256,
+            "path": str(audio_path),
+        }
+    if backend != "native":
+        raise VoiceLibraryError("backend must be python or native")
+    if not native_profile:
+        raise VoiceLibraryError("native verification requires --native-profile")
+    try:
+        _validate_native_reference_paths(registry_path, row)
+    except VoiceLibraryError as exc:
+        return {
+            "voice_id": voice_id,
+            "backend": backend,
+            "native_profile": native_profile,
+            "status": "prepared_corrupt",
+            "error": str(exc),
+        }
+    try:
+        profile = resolve_native_profile(native_profile, config_path=config_path)
+        binding = _native_binding(profile, native_profile)
+    except ValueError as exc:
+        return {
+            "voice_id": voice_id,
+            "backend": backend,
+            "native_profile": native_profile,
+            "status": "model_unavailable",
+            "error": str(exc),
+        }
+    native, binding_changed = _select_native_reference(
+        row, binding["binding_key"], native_profile
+    )
+    if native is None:
+        return {
+            "voice_id": voice_id,
+            "backend": backend,
+            "native_profile": native_profile,
+            "status": "unprepared",
+            "binding_key": binding["binding_key"],
+        }
+    if binding_changed:
+        return {
+            "voice_id": voice_id,
+            "backend": backend,
+            "native_profile": native_profile,
+            "status": "prepared_stale",
+            "reason": "model_binding_changed",
+            "binding_key": binding["binding_key"],
+        }
+    try:
+        manifest_path = _resolve_registry_relative_path(
+            registry_path, native["manifest_path"], "manifest_path"
+        )
+    except (KeyError, TypeError, VoiceLibraryError) as exc:
+        return {
+            "voice_id": voice_id,
+            "backend": backend,
+            "native_profile": native_profile,
+            "status": "prepared_corrupt",
+            "error": str(exc),
+        }
+    if not manifest_path.is_file():
+        return {
+            "voice_id": voice_id,
+            "backend": backend,
+            "native_profile": native_profile,
+            "status": "unprepared",
+            "manifest_path": str(manifest_path),
+        }
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if (
+            manifest.get("schema_version") != 1
+            or manifest.get("format") != "qwen3-tts-native-voice-reference"
+        ):
+            raise ValueError("unsupported native manifest format")
+        current_source_hash = _sha256_file(audio_path)
+        recorded_source_hash = row.get("reference_audio_sha256")
+        if (
+            manifest.get("source_wav_sha256") != current_source_hash
+            or recorded_source_hash not in (None, current_source_hash)
+            or manifest.get("reference_text") != row.get("reference_text", "")
+            or manifest.get("x_vector_only") != bool(row.get("x_vector_only", False))
+        ):
+            return {
+                "voice_id": voice_id,
+                "backend": backend,
+                "native_profile": native_profile,
+                "status": "prepared_stale",
+                "manifest_path": str(manifest_path),
+            }
+        engine = manifest["engine"]
+        if (
+            engine.get("name") != binding["engine"]
+            or engine.get("commit") != binding["engine_commit"]
+            or engine.get("abi_version") != binding["qt_abi_version"]
+        ):
+            return {
+                "voice_id": voice_id,
+                "backend": backend,
+                "native_profile": native_profile,
+                "status": "prepared_stale",
+                "manifest_path": str(manifest_path),
+            }
+        models = manifest["models"]
+        if (
+            models.get("talker_sha256") != binding["talker_sha256"]
+            or models.get("codec_sha256") != binding["codec_sha256"]
+        ):
+            return {
+                "voice_id": voice_id,
+                "backend": backend,
+                "native_profile": native_profile,
+                "status": "prepared_stale",
+                "manifest_path": str(manifest_path),
+            }
+        preprocessing = manifest["preprocessing"]
+        expected_silence = 0 if bool(row.get("x_vector_only", False)) else 12_000
+        if (
+            preprocessing.get("version") != 1
+            or preprocessing.get("sample_rate") != 24_000
+            or preprocessing.get("channels") != 1
+            or preprocessing.get("sample_format") != "float32"
+            or preprocessing.get("icl_trailing_silence_samples") != expected_silence
+        ):
+            raise ValueError("native manifest preprocessing is incompatible")
+        _verify_prepared_artifacts(
+            manifest_path,
+            manifest,
+            bool(row.get("x_vector_only", False)),
+        )
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        return {
+            "voice_id": voice_id,
+            "backend": backend,
+            "native_profile": native_profile,
+            "status": "prepared_corrupt",
+            "error": str(exc),
+            "manifest_path": str(manifest_path),
+        }
+    return {
+        "voice_id": voice_id,
+        "backend": backend,
+        "native_profile": native_profile,
+        "status": "prepared_valid",
+        "manifest_path": str(manifest_path),
+        "binding_key": binding["binding_key"],
+    }
+
+
+def prepare_voice(
+    registry_path: Path,
+    voice_id: str,
+    *,
+    native_profile: str,
+    config_path: Path | None = None,
+    timeout_seconds: float = 300.0,
+) -> dict[str, Any]:
+    """Prepare one voice through the authoritative native worker."""
+
+    if timeout_seconds <= 0:
+        raise VoiceLibraryError("timeout_seconds must be greater than zero")
+    registry_path = registry_path.expanduser().resolve()
+    row = _find_row(load_voice_rows(registry_path, allow_missing=False), voice_id)
+    current = verify_voice(
+        registry_path,
+        voice_id,
+        backend="native",
+        native_profile=native_profile,
+        config_path=config_path,
+    )
+    if current["status"] == "prepared_valid":
+        return current | {"idempotent": True}
+    if current["status"] in {"prepared_stale", "prepared_corrupt"}:
+        if current.get("reason") != "model_binding_changed":
+            raise VoiceLibraryError(
+                "native reference is stale or corrupt; remove it explicitly "
+                "before re-preparing"
+            )
+    profile = resolve_native_profile(native_profile, config_path=config_path)
+    try:
+        binding = _native_binding(profile, native_profile)
+    except ValueError as exc:
+        raise VoiceLibraryError(str(exc)) from exc
+    audio_path = _row_audio_path(registry_path, row)
+    try:
+        info = preflight_reference_audio(
+            audio_path,
+            str(row.get("reference_text", "")),
+            bool(row.get("x_vector_only", False)),
+        )
+    except VoiceProfileError as exc:
+        raise VoiceLibraryError(f"reference is not native-compatible: {exc}") from exc
+    if (
+        info.sample_rate != 24000
+        or info.channels != 1
+        or info.sample_width_bytes != 2
+    ):
+        raise VoiceLibraryError(
+            "native preparation requires a mono 24000 Hz PCM16 WAV"
+        )
+    relative_manifest = (
+        Path("entries")
+        / _internal_id(voice_id)
+        / "native"
+        / binding["binding_key"]
+        / "manifest.json"
+    )
+    temp_registry = registry_path.parent / f".prepare-{uuid.uuid4().hex}.json"
+    temp_row = dict(row)
+    temp_row.pop("native_references", None)
+    temp_row["native_reference"] = {
+        "manifest_path": relative_manifest.as_posix(),
+        "prepare_if_missing": True,
+    }
+    temp_payload = {"schema_version": 1, "voices": [temp_row]}
+    _atomic_write_payload(temp_registry, temp_payload)
+    try:
+        worker = _resolve_native_worker(config_path, native_profile)
+        command = [
+            str(worker),
+            "--runtime-dir",
+            str(profile.runtime_dir),
+            "--talker-model",
+            str(profile.talker_model),
+            "--codec-model",
+            str(profile.codec_model),
+            "--voice-registry-path",
+            str(temp_registry),
+        ]
+        _run_native_prepare(command, voice_id, timeout_seconds)
+        manifest_path = registry_path.parent / relative_manifest
+        if not manifest_path.is_file():
+            raise VoiceLibraryError(
+                "native worker exited without publishing the expected manifest"
+            )
+        # Verify before publishing the authoritative row.
+        temp_verified = _verify_row_manifest(
+            temp_registry, temp_row, native_profile, config_path
+        )
+        if temp_verified["status"] != "prepared_valid":
+            raise VoiceLibraryError(
+                f"native preparation did not produce a valid manifest: {temp_verified}"
+            )
+        with _registry_lock(registry_path):
+            rows = load_voice_rows(registry_path, allow_missing=False)
+            current_row = _find_row(rows, voice_id)
+            if current_row != row:
+                raise VoiceLibraryError(
+                    "voice registry row changed during native preparation"
+                )
+            existing = current_row.get("native_references", {})
+            if not isinstance(existing, dict):
+                raise VoiceLibraryError("native_references must be an object")
+            references = dict(existing)
+            references[binding["binding_key"]] = {
+                "manifest_path": relative_manifest.as_posix(),
+                "prepare_if_missing": False,
+                "native_profile": native_profile,
+                "engine": binding["engine"],
+                "engine_commit": binding["engine_commit"],
+                "qt_abi_version": binding["qt_abi_version"],
+                "talker_sha256": binding["talker_sha256"],
+                "codec_sha256": binding["codec_sha256"],
+            }
+            current_row["native_references"] = references
+            _atomic_write_registry(registry_path, rows)
+        verified = verify_voice(
+            registry_path,
+            voice_id,
+            backend="native",
+            native_profile=native_profile,
+            config_path=config_path,
+        )
+        return verified | {"idempotent": False}
+    finally:
+        temp_registry.unlink(missing_ok=True)
+
+
+def _verify_row_manifest(
+    registry_path: Path,
+    row: dict[str, Any],
+    native_profile: str,
+    config_path: Path | None,
+) -> dict[str, Any]:
+    # Reuse the normal verifier with the temporary registry's row.
+    return verify_voice(
+        registry_path,
+        row["voice_id"],
+        backend="native",
+        native_profile=native_profile,
+        config_path=config_path,
+    )
+
+
+def _run_native_prepare(
+    command: list[str], voice_id: str, timeout_seconds: float
+) -> None:
+    try:
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as exc:
+        raise VoiceLibraryError(f"could not start native worker: {exc}") from exc
+    assert (
+        process.stdin is not None
+        and process.stdout is not None
+        and process.stderr is not None
+    )
+    stdin = process.stdin
+    stdout = process.stdout
+    stderr_stream = process.stderr
+    stderr_chunks: list[bytes] = []
+    stderr_thread = threading.Thread(
+        target=lambda: stderr_chunks.append(stderr_stream.read()), daemon=True
+    )
+    stderr_thread.start()
+    frames: queue.Queue[dict[str, Any] | BaseException | None] = queue.Queue()
+    reader = threading.Thread(
+        target=_read_native_frames, args=(stdout, frames), daemon=True
+    )
+    reader.start()
+    try:
+        stdin.write(_frame({"message_type": "hello"}))
+        stdin.flush()
+        deadline = time.monotonic() + timeout_seconds
+        ready = False
+        while time.monotonic() < deadline:
+            try:
+                message = frames.get(timeout=max(0.1, deadline - time.monotonic()))
+            except queue.Empty:
+                break
+            if message is None:
+                raise VoiceLibraryError(
+                    "native worker closed protocol stream before ready"
+                )
+            if isinstance(message, BaseException):
+                raise message
+            if message.get("message_type") == "ready":
+                ready = True
+                ids = message.get("voice_ids", [])
+                if voice_id not in ids:
+                    raise VoiceLibraryError(
+                        f"native worker did not advertise prepared voice_id: {voice_id}"
+                    )
+                break
+            if message.get("message_type") == "error" or message.get("category"):
+                raise VoiceLibraryError(f"native worker preparation failed: {message}")
+        if not ready:
+            raise VoiceLibraryError("native worker did not become ready before timeout")
+        stdin.write(_frame({"message_type": "shutdown", "mode": "cancel"}))
+        stdin.flush()
+        process.wait(timeout=max(1.0, min(timeout_seconds, 10.0)))
+        stderr_thread.join(timeout=1.0)
+        if process.returncode != 0:
+            detail = _stderr_text(stderr_chunks)
+            suffix = f": {detail}" if detail else ""
+            raise VoiceLibraryError(
+                f"native worker exited with code {process.returncode}{suffix}"
+            )
+        stderr_text = _stderr_text(stderr_chunks)
+        if (
+            "native_voice_reference_ready" not in stderr_text
+            or voice_id not in stderr_text
+        ):
+            raise VoiceLibraryError(
+                "native worker did not report voice preparation evidence"
+            )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        process.kill()
+        detail = _stderr_text(stderr_chunks)
+        suffix = f": {detail}" if detail else ""
+        raise VoiceLibraryError(f"native preparation failed{suffix}") from exc
+    finally:
+        if process.poll() is None:
+            process.kill()
+        try:
+            process.wait(timeout=2.0)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=2.0)
+        try:
+            stdin.close()
+        except OSError:
+            pass
+        reader.join(timeout=1.0)
+        stderr_thread.join(timeout=1.0)
+        stdout.close()
+        stderr_stream.close()
+
+
+def _frame(payload: dict[str, Any]) -> bytes:
+    encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    return _FRAME_HEADER.pack(_MAGIC, 1, 24, 1, 0, len(encoded), 0) + encoded
+
+
+def _read_native_frames(
+    stream: Any, frames: queue.Queue[dict[str, Any] | BaseException | None]
+) -> None:
+    try:
+        while True:
+            frames.put(_read_frame_blocking(stream))
+    except (OSError, VoiceLibraryError) as exc:
+        frames.put(exc)
+    finally:
+        frames.put(None)
+
+
+def _read_frame_blocking(stream: Any) -> dict[str, Any]:
+    header = stream.read(_FRAME_HEADER.size)
+    if not isinstance(header, bytes) or len(header) != _FRAME_HEADER.size:
+        raise VoiceLibraryError("native worker closed protocol stream before ready")
+    magic, version, header_size, frame_type, _flags, payload_size, _request_id = (
+        _FRAME_HEADER.unpack(header)
+    )
+    if (
+        magic != _MAGIC
+        or version != 1
+        or header_size != 24
+        or frame_type != 1
+        or payload_size > 1_048_576
+    ):
+        raise VoiceLibraryError("native worker returned an invalid protocol frame")
+    payload = stream.read(payload_size)
+    if len(payload) != payload_size:
+        raise VoiceLibraryError("native worker returned a truncated protocol frame")
+    try:
+        value = json.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise VoiceLibraryError("native worker returned invalid control JSON") from exc
+    if not isinstance(value, dict):
+        raise VoiceLibraryError("native worker control payload must be an object")
+    return value
+
+
+def _stderr_text(stderr_chunks: list[bytes]) -> str:
+    if not stderr_chunks:
+        return ""
+    return stderr_chunks[0].decode("utf-8", errors="replace").strip()[:400]
+
+
+@contextmanager
+def _registry_lock(registry_path: Path) -> Iterator[None]:
+    lock = registry_path.with_name(registry_path.name + ".lock")
+    try:
+        descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError as exc:
+        raise VoiceLibraryError(
+            f"voice registry is being modified by another process: {registry_path}"
+        ) from exc
+    try:
+        os.write(descriptor, str(os.getpid()).encode("ascii"))
+        yield
+    finally:
+        os.close(descriptor)
+        lock.unlink(missing_ok=True)
+
+
+def _atomic_write_registry(path: Path, rows: list[dict[str, Any]]) -> None:
+    _atomic_write_payload(path, {"schema_version": _SCHEMA_VERSION, "voices": rows})
+
+
+def _atomic_write_payload(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.parent / f".{path.name}.{uuid.uuid4().hex}.tmp"
+    try:
+        temporary.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _selected_config_path(path: Path | None) -> Path:
+    return (default_user_config_path() if path is None else path).expanduser().resolve()
+
+
+def _require_voice_id(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise VoiceLibraryError("voice_id must be a non-empty string")
+    if len(value) > 128:
+        raise VoiceLibraryError("voice_id is too long")
+    return value
+
+
+def _internal_id(voice_id: str) -> str:
+    return hashlib.sha256(voice_id.encode("utf-8")).hexdigest()[:32]
+
+
+def _find_row(rows: list[dict[str, Any]], voice_id: str) -> dict[str, Any]:
+    voice_id = _require_voice_id(voice_id)
+    for row in rows:
+        if row["voice_id"] == voice_id:
+            return row
+    raise VoiceLibraryError(f"voice_id was not found: {voice_id}")
+
+
+def _row_audio_path(registry_path: Path, row: dict[str, Any]) -> Path:
+    value = row.get("reference_audio_path")
+    if not isinstance(value, str) or not value.strip():
+        raise VoiceLibraryError(f"voice {row['voice_id']} has no reference_audio_path")
+    path = Path(value).expanduser()
+    if path.is_absolute():
+        return path.resolve()
+    return (registry_path.parent / path).resolve()
+
+
+def _resolve_registry_relative_path(
+    registry_path: Path, value: str, field_name: str
+) -> Path:
+    path = Path(value).expanduser()
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        raise VoiceLibraryError(f"{field_name} must be a relative managed path")
+    root = registry_path.parent.resolve()
+    resolved = (root / path).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise VoiceLibraryError(f"{field_name} escapes the registry directory") from exc
+    return resolved
+
+
+def _manifest_files_present(registry_path: Path, relative: str) -> bool:
+    try:
+        manifest = _resolve_registry_relative_path(
+            registry_path, relative, "manifest_path"
+        )
+    except VoiceLibraryError:
+        return False
+    if not manifest.is_file():
+        return False
+    try:
+        value = json.loads(manifest.read_text(encoding="utf-8"))
+        if (
+            value.get("schema_version") != 1
+            or value.get("format") != "qwen3-tts-native-voice-reference"
+        ):
+            return False
+        for key in ("speaker", "rvq"):
+            artifact = value.get(key)
+            if artifact is None:
+                continue
+            artifact_path = _resolve_manifest_artifact(manifest, artifact["path"])
+            if (
+                not artifact_path.is_file()
+                or not isinstance(artifact.get("sha256"), str)
+                or _sha256_file(artifact_path) != artifact["sha256"]
+            ):
+                return False
+        return True
+    except (OSError, KeyError, TypeError, json.JSONDecodeError, VoiceLibraryError):
+        return False
+
+
+def _resolve_manifest_artifact(manifest_path: Path, value: str) -> Path:
+    artifact = Path(value)
+    if artifact.is_absolute() or any(
+        part in {"", ".", ".."} for part in artifact.parts
+    ):
+        raise VoiceLibraryError("native manifest artifact path is not relative")
+    root = manifest_path.parent.resolve()
+    resolved = (root / artifact).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise VoiceLibraryError(
+            "native manifest artifact escapes its directory"
+        ) from exc
+    return resolved
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _load_runtime_identity(runtime_dir: Path) -> dict[str, Any]:
+    path = runtime_dir / "manifest.json"
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"native runtime manifest is invalid: {path}") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"native runtime manifest identity is invalid: {path}")
+    if (
+        value.get("schema_version") != 1
+        or value.get("engine") != "qwentts.cpp"
+        or not isinstance(value.get("engine_commit"), str)
+        or not value["engine_commit"]
+        or not isinstance(value.get("qt_abi_version"), int)
+        or value["qt_abi_version"] <= 0
+        or str(value.get("architecture", "")).lower() != "x64"
+        or not isinstance(value.get("backend"), str)
+        or not value["backend"]
+    ):
+        raise ValueError(f"native runtime manifest identity is invalid: {path}")
+    files = value.get("files")
+    if not isinstance(files, list) or not files:
+        raise ValueError(f"native runtime manifest files are invalid: {path}")
+    dll_declared = False
+    for item in files:
+        if not isinstance(item, dict):
+            raise ValueError(f"native runtime manifest file is invalid: {path}")
+        relative = item.get("path")
+        expected = item.get("sha256")
+        if not isinstance(relative, str) or not isinstance(expected, str):
+            raise ValueError(f"native runtime manifest file is invalid: {path}")
+        artifact = _resolve_runtime_artifact(runtime_dir, relative)
+        if not artifact.is_file() or _sha256_file(artifact) != expected.lower():
+            raise ValueError(f"native runtime file verification failed: {artifact}")
+        if artifact.name.lower() == "qwen.dll":
+            dll_declared = True
+    if not dll_declared:
+        raise ValueError(f"native runtime manifest does not declare qwen.dll: {path}")
+    return value
+
+
+def _resolve_runtime_artifact(runtime_dir: Path, value: str) -> Path:
+    relative = Path(value)
+    if relative.is_absolute() or any(
+        part in {"", ".", ".."} for part in relative.parts
+    ):
+        raise ValueError("native runtime manifest contains an unsafe path")
+    root = runtime_dir.resolve()
+    artifact = (root / relative).resolve()
+    try:
+        artifact.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("native runtime manifest file escapes its directory") from exc
+    return artifact
+
+
+def _verify_prepared_artifacts(
+    manifest_path: Path, manifest: dict[str, Any], x_vector_only: bool
+) -> None:
+    speaker = manifest["speaker"]
+    speaker_path = _resolve_manifest_artifact(manifest_path, speaker["path"])
+    speaker_size = speaker_path.stat().st_size
+    if (
+        speaker.get("scalar") != "float32-le"
+        or not isinstance(speaker.get("dimension"), int)
+        or speaker["dimension"] <= 0
+        or speaker.get("size_bytes") != speaker_size
+        or speaker_size != speaker["dimension"] * 4
+        or _sha256_file(speaker_path) != speaker.get("sha256")
+    ):
+        raise ValueError("native speaker artifact is missing or corrupt")
+    rvq = manifest.get("rvq")
+    if x_vector_only:
+        if rvq is not None:
+            raise ValueError("x-vector-only native manifest contains RVQ data")
+        return
+    if not isinstance(rvq, dict):
+        raise ValueError("ICL native manifest has no RVQ data")
+    rvq_path = _resolve_manifest_artifact(manifest_path, rvq["path"])
+    rvq_size = rvq_path.stat().st_size
+    codebooks = rvq.get("codebooks")
+    frames = rvq.get("frames")
+    expected_size = (
+        (codebooks * frames * 11 + 7) // 8
+        if isinstance(codebooks, int)
+        and isinstance(frames, int)
+        and codebooks > 0
+        and frames > 0
+        else -1
+    )
+    if (
+        rvq.get("bits_per_code") != 11
+        or rvq.get("layout") != "codebook-major-frame-fastest"
+        or rvq.get("size_bytes") != rvq_size
+        or rvq_size != expected_size
+        or _sha256_file(rvq_path) != rvq.get("sha256")
+    ):
+        raise ValueError("native RVQ artifact is missing or corrupt")
+
+
+def _native_binding(profile: Any, native_profile: str) -> dict[str, Any]:
+    runtime = _load_runtime_identity(profile.runtime_dir)
+    binding: dict[str, Any] = {
+        "native_profile": native_profile,
+        "engine": runtime["engine"],
+        "engine_commit": runtime["engine_commit"],
+        "qt_abi_version": runtime["qt_abi_version"],
+        "talker_sha256": _sha256_file(profile.talker_model),
+        "codec_sha256": _sha256_file(profile.codec_model),
+    }
+    encoded = json.dumps(
+        binding, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    binding["binding_key"] = hashlib.sha256(encoded).hexdigest()[:32]
+    return binding
+
+
+def _select_native_reference(
+    row: dict[str, Any], binding_key: str, native_profile: str
+) -> tuple[dict[str, Any] | None, bool]:
+    references = row.get("native_references")
+    if isinstance(references, dict):
+        exact = references.get(binding_key)
+        if isinstance(exact, dict):
+            return exact, False
+        for candidate in references.values():
+            if (
+                isinstance(candidate, dict)
+                and candidate.get("native_profile") == native_profile
+            ):
+                return candidate, True
+    legacy = row.get("native_reference")
+    if isinstance(legacy, dict):
+        return legacy, False
+    return None, False
+
+
+def _validate_native_reference_paths(registry_path: Path, row: dict[str, Any]) -> None:
+    candidates: list[object] = []
+    legacy = row.get("native_reference")
+    if legacy is not None:
+        candidates.append(legacy)
+    references = row.get("native_references")
+    if references is not None:
+        if not isinstance(references, dict):
+            raise VoiceLibraryError("native_references must be an object")
+        candidates.extend(references.values())
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            raise VoiceLibraryError("native reference entry must be an object")
+        path = candidate.get("manifest_path")
+        if not isinstance(path, str):
+            raise VoiceLibraryError("native reference requires manifest_path")
+        _resolve_registry_relative_path(registry_path, path, "manifest_path")
+
+
+def _resolve_native_worker(config_path: Path | None, profile_name: str) -> Path:
+    config_file = _selected_config_path(config_path)
+    config = load_user_config(config_file)
+    profiles = config.get("native_profiles")
+    entry = profiles.get(profile_name) if isinstance(profiles, dict) else None
+    runtime = config.get("runtime")
+    value: object = entry.get("worker") if isinstance(entry, dict) else None
+    if not isinstance(value, str) and isinstance(runtime, dict):
+        value = runtime.get("native_worker") or runtime.get("worker")
+    if isinstance(value, str) and value.strip():
+        path = Path(value).expanduser()
+        if not path.is_absolute():
+            path = config_file.parent / path
+        path = path.resolve()
+        if path.is_file():
+            return path
+        raise VoiceLibraryError(f"native worker was not found: {path}")
+    selected = shutil.which("qwen_tts_native_worker.exe") or shutil.which(
+        "qwen_tts_native_worker"
+    )
+    if selected:
+        return Path(selected).resolve()
+    raise VoiceLibraryError(
+        "native worker is not configured; set runtime.native_worker or "
+        "native_profiles.<name>.worker"
+    )

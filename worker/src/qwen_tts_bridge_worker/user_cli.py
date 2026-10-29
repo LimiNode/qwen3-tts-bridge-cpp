@@ -21,6 +21,15 @@ from qwen_tts_bridge_worker.model_resolver import (
     resolve_model,
     resolve_native_profile,
 )
+from qwen_tts_bridge_worker.voice_library import (
+    VoiceLibraryError,
+    add_voice,
+    default_voice_registry_path,
+    list_voices,
+    prepare_voice,
+    show_voice,
+    verify_voice,
+)
 
 _DEFAULT_STARTUP_TIMEOUT_MS = 120_000
 _DEFAULT_REQUEST_TIMEOUT_MS = 300_000
@@ -38,6 +47,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _run_models(args)
         if args.command == "design":
             return _run_design(args)
+        if args.command == "voices":
+            return _run_voices(args)
         parser.print_help()
         return 2
     except ValueError as exc:
@@ -89,6 +100,34 @@ def _build_parser() -> argparse.ArgumentParser:
     design.add_argument(
         "--runtime-backend", choices=("faster", "upstream"), default="faster"
     )
+
+    voices = commands.add_parser(
+        "voices", help="Manage persistent user voice profiles."
+    )
+    voice_commands = voices.add_subparsers(dest="voices_command", required=True)
+    add = voice_commands.add_parser("add", help="Register a reference WAV.")
+    add.add_argument("--id", required=True, dest="voice_id")
+    add.add_argument("--wav", required=True, type=Path)
+    add.add_argument("--text", default="")
+    add.add_argument("--x-vector-only", action="store_true")
+    add.add_argument("--preserve-reference-text-whitespace", action="store_true")
+    list_command = voice_commands.add_parser("list", help="List registered voices.")
+    list_command.add_argument("--json", action="store_true")
+    show = voice_commands.add_parser("show", help="Show one registered voice.")
+    show.add_argument("voice_id")
+    show.add_argument("--json", action="store_true")
+    verify = voice_commands.add_parser("verify", help="Verify one registered voice.")
+    verify.add_argument("voice_id")
+    verify.add_argument("--backend", choices=("python", "native"), required=True)
+    verify.add_argument("--native-profile")
+    prepare = voice_commands.add_parser(
+        "prepare", help="Prepare a native voice reference."
+    )
+    prepare.add_argument("voice_id")
+    prepare.add_argument("--backend", choices=("native",), required=True)
+    prepare.add_argument("--native-profile", required=True)
+    prepare.add_argument("--timeout-seconds", type=float, default=300.0)
+    prepare.add_argument("--json", action="store_true")
     design.add_argument("--save-wav-executable", type=Path)
     design.add_argument("--worker", type=Path)
     design.add_argument(
@@ -266,6 +305,76 @@ def _run_models(args: argparse.Namespace) -> int:
         )
         return 0
     raise ValueError("a models command is required")
+
+
+def _run_voices(args: argparse.Namespace) -> int:
+    registry_path = default_voice_registry_path(args.config)
+    if args.voices_command == "add":
+        row = add_voice(
+            registry_path,
+            voice_id=args.voice_id,
+            wav_path=args.wav,
+            reference_text=args.text,
+            x_vector_only=args.x_vector_only,
+            preserve_reference_text_whitespace=args.preserve_reference_text_whitespace,
+        )
+        print(
+            json.dumps(
+                {
+                    "status": "registered",
+                    "registry_path": str(registry_path),
+                    "voice": row,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.voices_command == "list":
+        rows = list_voices(registry_path)
+        if args.json:
+            print(json.dumps(rows, ensure_ascii=False, sort_keys=True))
+        else:
+            for row in rows:
+                print(
+                    f"{row['voice_id']}\tpython={row['python_status']}\tnative={row['native_status']}"
+                )
+            if not rows:
+                print("No voices registered.")
+        return 0
+    if args.voices_command == "show":
+        value = show_voice(registry_path, args.voice_id)
+        print(
+            json.dumps(value, ensure_ascii=False, sort_keys=True)
+            if args.json
+            else json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)
+        )
+        return 0
+    if args.voices_command == "verify":
+        value = verify_voice(
+            registry_path,
+            args.voice_id,
+            backend=args.backend,
+            native_profile=args.native_profile,
+            config_path=args.config,
+        )
+        print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+        return 0 if value.get("status") in {"compatible", "prepared_valid"} else 1
+    if args.voices_command == "prepare":
+        value = prepare_voice(
+            registry_path,
+            args.voice_id,
+            native_profile=args.native_profile,
+            config_path=args.config,
+            timeout_seconds=args.timeout_seconds,
+        )
+        print(
+            json.dumps(value, ensure_ascii=False, sort_keys=True)
+            if args.json
+            else f"Prepared native voice {args.voice_id} ({args.native_profile})."
+        )
+        return 0
+    raise VoiceLibraryError("a voices command is required")
 
 
 def _run_design(args: argparse.Namespace) -> int:
