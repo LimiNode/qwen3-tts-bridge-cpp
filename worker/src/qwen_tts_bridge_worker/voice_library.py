@@ -42,6 +42,8 @@ _MAX_RVQ_FRAMES = 1 << 20
 _MAX_RVQ_BYTES = 256 << 20
 _MAX_NATIVE_STDERR_BYTES = 1 << 20
 _ENTRY_MARKER = ".qtb-managed-entry"
+_SUPPORTED_NATIVE_QT_ABI_VERSION = 6
+_ORPHAN_QUARANTINE = ".qtb-orphans"
 
 
 class VoiceLibraryError(ValueError):
@@ -368,14 +370,24 @@ def verify_voice(
         if not isinstance(manifest, dict):
             raise ValueError("native manifest must be a JSON object")
         if (
-            manifest.get("schema_version") != 1
-            or manifest.get("format") != "qwen3-tts-native-voice-reference"
+            not isinstance(manifest.get("schema_version"), int)
+            or isinstance(manifest.get("schema_version"), bool)
+            or manifest.get("schema_version") != 1
         ):
+            raise ValueError("native manifest schema_version is invalid")
+        if manifest.get("format") != "qwen3-tts-native-voice-reference":
             raise ValueError("unsupported native manifest format")
+        source_hash = manifest.get("source_wav_sha256")
+        if not _is_sha256(source_hash):
+            raise ValueError("native manifest source_wav_sha256 is invalid")
+        if not isinstance(manifest.get("reference_text"), str):
+            raise ValueError("native manifest reference_text is invalid")
+        if not isinstance(manifest.get("x_vector_only"), bool):
+            raise ValueError("native manifest x_vector_only is invalid")
         current_source_hash = _sha256_file(audio_path)
         recorded_source_hash = row.get("reference_audio_sha256")
         if (
-            manifest.get("source_wav_sha256") != current_source_hash
+            source_hash != current_source_hash
             or recorded_source_hash not in (None, current_source_hash)
             or manifest.get("reference_text") != row.get("reference_text", "")
             or manifest.get("x_vector_only") != bool(row.get("x_vector_only", False))
@@ -387,7 +399,17 @@ def verify_voice(
                 "status": "prepared_stale",
                 "manifest_path": str(manifest_path),
             }
-        engine = manifest["engine"]
+        engine = manifest.get("engine")
+        if not isinstance(engine, dict):
+            raise ValueError("native manifest engine is invalid")
+        if (
+            not isinstance(engine.get("name"), str)
+            or not isinstance(engine.get("commit"), str)
+            or not engine.get("commit")
+            or isinstance(engine.get("abi_version"), bool)
+            or not isinstance(engine.get("abi_version"), int)
+        ):
+            raise ValueError("native manifest engine is invalid")
         if (
             engine.get("name") != binding["engine"]
             or engine.get("commit") != binding["engine_commit"]
@@ -400,7 +422,13 @@ def verify_voice(
                 "status": "prepared_stale",
                 "manifest_path": str(manifest_path),
             }
-        models = manifest["models"]
+        models = manifest.get("models")
+        if not isinstance(models, dict):
+            raise ValueError("native manifest models are invalid")
+        if not _is_sha256(models.get("talker_sha256")) or not _is_sha256(
+            models.get("codec_sha256")
+        ):
+            raise ValueError("native manifest model hashes are invalid")
         if (
             models.get("talker_sha256") != binding["talker_sha256"]
             or models.get("codec_sha256") != binding["codec_sha256"]
@@ -412,7 +440,19 @@ def verify_voice(
                 "status": "prepared_stale",
                 "manifest_path": str(manifest_path),
             }
-        preprocessing = manifest["preprocessing"]
+        preprocessing = manifest.get("preprocessing")
+        if not isinstance(preprocessing, dict):
+            raise ValueError("native manifest preprocessing is invalid")
+        for field in (
+            "version",
+            "sample_rate",
+            "channels",
+            "icl_trailing_silence_samples",
+        ):
+            if isinstance(preprocessing.get(field), bool) or not isinstance(
+                preprocessing.get(field), int
+            ):
+                raise ValueError("native manifest preprocessing is invalid")
         expected_silence = 0 if bool(row.get("x_vector_only", False)) else 12_000
         if (
             preprocessing.get("version") != 1
@@ -441,6 +481,7 @@ def verify_voice(
         "backend": backend,
         "native_profile": native_profile,
         "status": "prepared_valid",
+        "validation_scope": "static_manifest",
         "manifest_path": str(manifest_path),
         "binding_key": binding["binding_key"],
     }
@@ -968,7 +1009,9 @@ def _manifest_files_present(registry_path: Path, relative: str) -> bool:
         if not isinstance(value, dict):
             return False
         if (
-            value.get("schema_version") != 1
+            not isinstance(value.get("schema_version"), int)
+            or isinstance(value.get("schema_version"), bool)
+            or value.get("schema_version") != 1
             or value.get("format") != "qwen3-tts-native-voice-reference"
         ):
             return False
@@ -1069,14 +1112,36 @@ def _cleanup_orphaned_entries(
                 or _internal_id(orphan_id) != entry.name
             ):
                 continue
-            children = {child.name for child in entry.iterdir()}
-            if not children.issubset(
-                {_ENTRY_MARKER, "reference.wav", "reference.txt", "native"}
-            ):
+            if _contains_reparse_point(entry):
                 continue
-            shutil.rmtree(entry)
+            quarantine = entries / _ORPHAN_QUARANTINE
+            quarantine.mkdir(exist_ok=True)
+            target = quarantine / f"{entry.name}-{uuid.uuid4().hex}"
+            if target.exists():
+                raise VoiceLibraryError(
+                    f"orphan quarantine target already exists: {target}"
+                )
+            entry.replace(target)
+        except VoiceLibraryError:
+            raise
         except (OSError, ValueError, json.JSONDecodeError):
             continue
+
+
+def _contains_reparse_point(path: Path) -> bool:
+    for candidate in (path, *path.rglob("*")):
+        if candidate.is_symlink():
+            return True
+        if os.name == "nt":
+            try:
+                attributes = os.stat(
+                    candidate, follow_symlinks=False
+                ).st_file_attributes
+            except OSError:
+                return True
+            if attributes & 0x400:
+                return True
+    return False
 
 
 def _load_runtime_identity(runtime_dir: Path) -> dict[str, Any]:
@@ -1094,7 +1159,7 @@ def _load_runtime_identity(runtime_dir: Path) -> dict[str, Any]:
         or not value["engine_commit"]
         or isinstance(value.get("qt_abi_version"), bool)
         or not isinstance(value.get("qt_abi_version"), int)
-        or value["qt_abi_version"] <= 0
+        or value["qt_abi_version"] != _SUPPORTED_NATIVE_QT_ABI_VERSION
         or str(value.get("architecture", "")).lower() != "x64"
         or not isinstance(value.get("backend"), str)
         or not value["backend"]
@@ -1170,7 +1235,7 @@ def _verify_prepared_artifacts(
         raise ValueError("native speaker path is invalid")
     speaker_path = _resolve_manifest_artifact(manifest_path, speaker_name)
     speaker_bytes = _read_bounded_artifact(speaker_path, size_bytes, _MAX_SPEAKER_BYTES)
-    if _sha256_bytes(speaker_bytes) != speaker_hash.lower():
+    if _sha256_bytes(speaker_bytes) != speaker_hash:
         raise ValueError("native speaker artifact is missing or corrupt")
     try:
         values = struct.unpack(f"<{dimension}f", speaker_bytes)
@@ -1180,8 +1245,8 @@ def _verify_prepared_artifacts(
         raise ValueError("native speaker artifact contains NaN or Inf")
     rvq = manifest.get("rvq")
     if x_vector_only:
-        if rvq is not None:
-            raise ValueError("x-vector-only native manifest contains RVQ data")
+        if "rvq" not in manifest or rvq is not None:
+            raise ValueError("x-vector-only native manifest requires rvq: null")
         return
     if not isinstance(rvq, dict):
         raise ValueError("ICL native manifest has no RVQ data")
@@ -1221,7 +1286,7 @@ def _verify_prepared_artifacts(
         raise ValueError("native RVQ dimensions or layout are invalid")
     rvq_path = _resolve_manifest_artifact(manifest_path, rvq_name)
     rvq_bytes = _read_bounded_artifact(rvq_path, rvq_size_declared, _MAX_RVQ_BYTES)
-    if _sha256_bytes(rvq_bytes) != rvq_hash.lower():
+    if _sha256_bytes(rvq_bytes) != rvq_hash:
         raise ValueError("native RVQ artifact is missing or corrupt")
 
 

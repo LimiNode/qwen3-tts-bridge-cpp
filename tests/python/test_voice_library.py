@@ -15,6 +15,7 @@ from unittest import mock
 from qwen_tts_bridge_worker import user_cli
 from qwen_tts_bridge_worker.voice_library import (
     VoiceLibraryError,
+    _cleanup_orphaned_entries,
     _internal_id,
     _registry_lock,
     _run_native_prepare,
@@ -172,7 +173,7 @@ class VoiceLibraryTests(unittest.TestCase):
             self.assertFalse(registry.exists())
             self.assertEqual([], list((registry.parent / "entries").glob("*")))
 
-    def test_add_reclaims_only_marked_orphaned_managed_entry(self) -> None:
+    def test_add_quarantines_marked_orphan_without_deleting_nested_files(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             registry = root / "voices" / "registry.json"
@@ -184,6 +185,14 @@ class VoiceLibraryTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (orphan / "reference.wav").write_bytes(b"orphan")
+            (orphan / "native").mkdir()
+            (orphan / "native" / "user-sentinel.txt").write_text(
+                "keep", encoding="utf-8"
+            )
+            (orphan / "unexpected").mkdir()
+            (orphan / "unexpected" / "nested.txt").write_text(
+                "keep", encoding="utf-8"
+            )
             user_dir = entries / "user-owned"
             user_dir.mkdir(parents=True)
             (user_dir / "sentinel").write_text("keep", encoding="utf-8")
@@ -195,8 +204,50 @@ class VoiceLibraryTests(unittest.TestCase):
                 x_vector_only=False,
                 preserve_reference_text_whitespace=False,
             )
-            self.assertFalse(orphan.exists())
+            quarantined = list((entries / ".qtb-orphans").glob("*"))
+            self.assertEqual(1, len(quarantined))
+            self.assertTrue(
+                (quarantined[0] / "native" / "user-sentinel.txt").is_file()
+            )
+            self.assertTrue(
+                (quarantined[0] / "unexpected" / "nested.txt").is_file()
+            )
             self.assertTrue((user_dir / "sentinel").is_file())
+
+    def test_orphan_quarantine_conflict_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            registry = root / "registry.json"
+            entries = root / "entries"
+            orphan = entries / _internal_id("orphan")
+            orphan.mkdir(parents=True)
+            (orphan / ".qtb-managed-entry").write_text(
+                json.dumps({"schema_version": 1, "voice_id": "orphan"}),
+                encoding="utf-8",
+            )
+            quarantine = entries / ".qtb-orphans"
+            (quarantine / f"{orphan.name}-fixed").mkdir(parents=True)
+            with mock.patch(
+                "qwen_tts_bridge_worker.voice_library.uuid.uuid4",
+                return_value=mock.Mock(hex="fixed"),
+            ):
+                with self.assertRaisesRegex(VoiceLibraryError, "quarantine target"):
+                    _cleanup_orphaned_entries(registry, [])
+            self.assertTrue(orphan.is_dir())
+
+    def test_orphan_quarantine_interruption_preserves_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            registry = root / "registry.json"
+            orphan = root / "entries" / _internal_id("orphan")
+            orphan.mkdir(parents=True)
+            (orphan / ".qtb-managed-entry").write_text(
+                json.dumps({"schema_version": 1, "voice_id": "orphan"}),
+                encoding="utf-8",
+            )
+            with mock.patch.object(Path, "replace", side_effect=OSError("injected")):
+                _cleanup_orphaned_entries(registry, [])
+            self.assertTrue(orphan.is_dir())
 
     def test_changed_managed_audio_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -309,6 +360,105 @@ class VoiceLibraryTests(unittest.TestCase):
                         manifest,
                         False,
                     )
+
+    def test_native_verifier_requires_explicit_null_rvq_for_x_vector(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest_path = root / "native" / "manifest.json"
+            row = {"reference_text": "", "x_vector_only": True}
+            wav = _write_wav(root / "reference.wav")
+            talker = root / "talker.gguf"
+            codec = root / "codec.gguf"
+            talker.write_bytes(b"talker")
+            codec.write_bytes(b"codec")
+            _write_native_manifest(manifest_path, wav, row, talker, codec)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["rvq"] = None
+            _verify_prepared_artifacts(manifest_path, manifest, True)
+            del manifest["rvq"]
+            with self.assertRaisesRegex(ValueError, "requires rvq"):
+                _verify_prepared_artifacts(manifest_path, manifest, True)
+
+    def test_native_verifier_rejects_uppercase_artifact_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest_path = root / "native" / "manifest.json"
+            row = {"reference_text": "text", "x_vector_only": False}
+            wav = _write_wav(root / "reference.wav")
+            talker = root / "talker.gguf"
+            codec = root / "codec.gguf"
+            talker.write_bytes(b"talker")
+            codec.write_bytes(b"codec")
+            _write_native_manifest(manifest_path, wav, row, talker, codec)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["speaker"]["sha256"] = manifest["speaker"]["sha256"].upper()
+            with self.assertRaisesRegex(ValueError, "speaker artifact"):
+                _verify_prepared_artifacts(manifest_path, manifest, False)
+
+    def test_native_unsupported_runtime_abi_is_unavailable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = _write_native_config(root)
+            runtime_manifest = root / "runtime" / "manifest.json"
+            payload = json.loads(runtime_manifest.read_text(encoding="utf-8"))
+            payload["qt_abi_version"] = 7
+            runtime_manifest.write_text(json.dumps(payload), encoding="utf-8")
+            registry = root / "registry.json"
+            add_voice(
+                registry,
+                voice_id="voice",
+                wav_path=_write_wav(root / "source.wav"),
+                reference_text="text",
+                x_vector_only=False,
+                preserve_reference_text_whitespace=False,
+            )
+            result = verify_voice(
+                registry,
+                "voice",
+                backend="native",
+                native_profile="native",
+                config_path=config,
+            )
+            self.assertEqual("model_unavailable", result["status"])
+
+    def test_malformed_nested_native_manifest_is_prepared_corrupt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            registry = root / "registry.json"
+            row = add_voice(
+                registry,
+                voice_id="voice",
+                wav_path=_write_wav(root / "source.wav"),
+                reference_text="text",
+                x_vector_only=False,
+                preserve_reference_text_whitespace=False,
+            )
+            config = _write_native_config(root)
+            manifest_path = registry.parent / "native" / "manifest.json"
+            _write_native_manifest(
+                manifest_path,
+                registry.parent / row["reference_audio_path"],
+                row,
+                root / "talker.gguf",
+                root / "codec.gguf",
+            )
+            row["native_reference"] = {"manifest_path": "native/manifest.json"}
+            registry.write_text(
+                json.dumps({"schema_version": 1, "voices": [row]}),
+                encoding="utf-8",
+            )
+            for field in ("engine", "models", "preprocessing"):
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest[field] = []
+                manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                result = verify_voice(
+                    registry,
+                    "voice",
+                    backend="native",
+                    native_profile="native",
+                    config_path=config,
+                )
+                self.assertEqual("prepared_corrupt", result["status"])
 
     def test_cli_add_and_list_json(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

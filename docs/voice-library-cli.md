@@ -73,7 +73,10 @@ evidence for the exact voice and an acknowledged graceful shutdown. Native
 manifests are bound to the source WAV hash, transcript, x-vector mode,
 talker/codec model hashes, and artifact hashes. `voices verify --backend native`
 reports `prepared_valid`, `prepared_stale`, `prepared_corrupt`, `unprepared`, or
-`model_unavailable` without regenerating anything.
+`model_unavailable` without regenerating anything. A `prepared_valid` result is
+explicitly a `static_manifest` validation; the runtime-dependent RVQ codebook
+count is authoritative only after the native worker loads the selected DLL and
+codec context during preparation or synthesis.
 
 This command family does not download models, create VoiceDesign voices, or
 promise that a native profile is interchangeable with a Python prompt. Backend
