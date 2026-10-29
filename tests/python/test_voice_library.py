@@ -16,6 +16,7 @@ from qwen_tts_bridge_worker import user_cli
 from qwen_tts_bridge_worker.voice_library import (
     VoiceLibraryError,
     _cleanup_orphaned_entries,
+    _contains_reparse_point,
     _internal_id,
     _registry_lock,
     _run_native_prepare,
@@ -30,6 +31,117 @@ from qwen_tts_bridge_worker.voice_library import (
 
 
 class VoiceLibraryTests(unittest.TestCase):
+    def test_reparse_inspection_is_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "nested").mkdir()
+            self.assertIsNone(_contains_reparse_point(root, max_nodes=1))
+
+    @unittest.skipUnless(hasattr(Path, "symlink_to"), "symlink support unavailable")
+    def test_orphan_cleanup_rejects_symlink_entries_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            real_entries = root / "real-entries"
+            real_entries.mkdir()
+            entries = root / "entries"
+            try:
+                entries.symlink_to(real_entries, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symlink creation unavailable: {exc}")
+            with self.assertRaisesRegex(VoiceLibraryError, "safe directory"):
+                _cleanup_orphaned_entries(root / "registry.json", [])
+
+    @unittest.skipUnless(hasattr(Path, "symlink_to"), "symlink support unavailable")
+    def test_orphan_cleanup_rejects_symlink_quarantine_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            entries = root / "entries"
+            entries.mkdir()
+            orphan = entries / _internal_id("orphan")
+            orphan.mkdir()
+            (orphan / ".qtb-managed-entry").write_text(
+                json.dumps({"schema_version": 1, "voice_id": "orphan"}),
+                encoding="utf-8",
+            )
+            outside = root / "outside"
+            outside.mkdir()
+            quarantine = entries / ".qtb-orphans"
+            try:
+                quarantine.symlink_to(outside, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symlink creation unavailable: {exc}")
+            with self.assertRaisesRegex(VoiceLibraryError, "safe directory"):
+                _cleanup_orphaned_entries(root / "registry.json", [])
+            self.assertTrue(orphan.is_dir())
+            self.assertEqual([], list(outside.iterdir()))
+
+    def test_orphan_cleanup_rejects_non_directory_quarantine_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            entries = root / "entries"
+            orphan = entries / _internal_id("orphan")
+            orphan.mkdir(parents=True)
+            (orphan / ".qtb-managed-entry").write_text(
+                json.dumps({"schema_version": 1, "voice_id": "orphan"}),
+                encoding="utf-8",
+            )
+            (entries / ".qtb-orphans").write_text("sentinel", encoding="utf-8")
+            with self.assertRaisesRegex(VoiceLibraryError, "safe directory"):
+                _cleanup_orphaned_entries(root / "registry.json", [])
+            self.assertTrue(orphan.is_dir())
+            self.assertEqual(
+                "sentinel",
+                (entries / ".qtb-orphans").read_text(encoding="utf-8"),
+            )
+
+    @unittest.skipUnless(hasattr(Path, "symlink_to"), "symlink support unavailable")
+    def test_orphan_cleanup_rejects_dangling_quarantine_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            entries = root / "entries"
+            orphan = entries / _internal_id("orphan")
+            orphan.mkdir(parents=True)
+            (orphan / ".qtb-managed-entry").write_text(
+                json.dumps({"schema_version": 1, "voice_id": "orphan"}),
+                encoding="utf-8",
+            )
+            quarantine = entries / ".qtb-orphans"
+            quarantine.mkdir()
+            try:
+                with mock.patch(
+                    "qwen_tts_bridge_worker.voice_library.uuid.uuid4",
+                    return_value=mock.Mock(hex="fixed"),
+                ):
+                    (quarantine / f"{orphan.name}-fixed").symlink_to(
+                        root / "missing-target", target_is_directory=True
+                    )
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symlink creation unavailable: {exc}")
+            with mock.patch(
+                "qwen_tts_bridge_worker.voice_library.uuid.uuid4",
+                return_value=mock.Mock(hex="fixed"),
+            ):
+                with self.assertRaisesRegex(VoiceLibraryError, "quarantine target"):
+                    _cleanup_orphaned_entries(root / "registry.json", [])
+            self.assertTrue(orphan.is_dir())
+
+    def test_orphan_cleanup_rejects_target_outside_quarantine(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            orphan = root / "entries" / _internal_id("orphan")
+            orphan.mkdir(parents=True)
+            (orphan / ".qtb-managed-entry").write_text(
+                json.dumps({"schema_version": 1, "voice_id": "orphan"}),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.voice_library.uuid.uuid4",
+                return_value=mock.Mock(hex="..\\..\\..\\escape"),
+            ):
+                with self.assertRaisesRegex(VoiceLibraryError, "escapes quarantine"):
+                    _cleanup_orphaned_entries(root / "registry.json", [])
+            self.assertTrue(orphan.is_dir())
+
     def test_add_list_show_and_python_verify_use_managed_copy(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

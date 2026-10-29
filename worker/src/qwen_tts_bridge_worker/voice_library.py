@@ -44,6 +44,7 @@ _MAX_NATIVE_STDERR_BYTES = 1 << 20
 _ENTRY_MARKER = ".qtb-managed-entry"
 _SUPPORTED_NATIVE_QT_ABI_VERSION = 6
 _ORPHAN_QUARANTINE = ".qtb-orphans"
+_MAX_REPARSE_INSPECTION_NODES = 4096
 
 
 class VoiceLibraryError(ValueError):
@@ -1082,6 +1083,10 @@ def _cleanup_orphaned_entries(
     registry_path: Path, rows: list[dict[str, Any]], *, limit: int = 64
 ) -> None:
     entries = registry_path.parent / "entries"
+    if _path_has_reparse_ancestor(entries) is not False:
+        raise VoiceLibraryError(
+            f"managed voice entries path is not a safe directory: {entries}"
+        )
     if not entries.is_dir():
         return
     referenced = {
@@ -1112,12 +1117,49 @@ def _cleanup_orphaned_entries(
                 or _internal_id(orphan_id) != entry.name
             ):
                 continue
-            if _contains_reparse_point(entry):
+            if _contains_reparse_point(entry) is not False:
                 continue
             quarantine = entries / _ORPHAN_QUARANTINE
-            quarantine.mkdir(exist_ok=True)
+            if quarantine.exists() or quarantine.is_symlink():
+                if not quarantine.is_dir():
+                    raise VoiceLibraryError(
+                        f"orphan quarantine path is not a safe directory: {quarantine}"
+                    )
+            else:
+                try:
+                    quarantine.mkdir()
+                except OSError as exc:
+                    raise VoiceLibraryError(
+                        f"could not create orphan quarantine path: {quarantine}"
+                    ) from exc
+            if (
+                not quarantine.is_dir()
+                or _path_has_reparse_ancestor(quarantine) is not False
+            ):
+                raise VoiceLibraryError(
+                    f"orphan quarantine path is not a safe directory: {quarantine}"
+                )
             target = quarantine / f"{entry.name}-{uuid.uuid4().hex}"
-            if target.exists():
+            try:
+                target_root = quarantine.resolve(strict=True)
+                entries_root = entries.resolve(strict=True)
+                if not target_root.is_relative_to(entries_root):
+                    raise VoiceLibraryError(
+                        f"orphan quarantine path escapes managed entries: {quarantine}"
+                    )
+                if not target.resolve(strict=False).is_relative_to(target_root):
+                    raise VoiceLibraryError(
+                        f"orphan quarantine target escapes quarantine: {target}"
+                    )
+                if not target.parent.resolve(strict=True).is_relative_to(entries_root):
+                    raise VoiceLibraryError(
+                        f"orphan quarantine target escapes managed entries: {target}"
+                    )
+            except OSError as exc:
+                raise VoiceLibraryError(
+                    f"could not validate orphan quarantine path: {quarantine}"
+                ) from exc
+            if target.exists() or target.is_symlink():
                 raise VoiceLibraryError(
                     f"orphan quarantine target already exists: {target}"
                 )
@@ -1128,19 +1170,67 @@ def _cleanup_orphaned_entries(
             continue
 
 
-def _contains_reparse_point(path: Path) -> bool:
-    for candidate in (path, *path.rglob("*")):
-        if candidate.is_symlink():
-            return True
-        if os.name == "nt":
-            try:
-                attributes = os.stat(
-                    candidate, follow_symlinks=False
-                ).st_file_attributes
-            except OSError:
-                return True
-            if attributes & 0x400:
-                return True
+def _is_reparse_point(path: Path) -> bool | None:
+    """Return whether an existing path is a symlink or Windows reparse point."""
+
+    try:
+        status = os.lstat(path)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return None
+    if path.is_symlink():
+        return True
+    if os.name == "nt" and status.st_file_attributes & 0x400:
+        return True
+    return False
+
+
+def _path_has_reparse_ancestor(path: Path) -> bool | None:
+    """Inspect a path and its existing ancestors without following links."""
+
+    current = path
+    while True:
+        state = _is_reparse_point(current)
+        if state is True or state is None:
+            return state
+        if current.parent == current:
+            return False
+        current = current.parent
+
+
+def _contains_reparse_point(
+    path: Path, *, max_nodes: int = _MAX_REPARSE_INSPECTION_NODES
+) -> bool | None:
+    """Inspect a tree without following links, returning None when uncertain."""
+
+    if max_nodes <= 0:
+        return None
+    pending = [path]
+    inspected = 0
+    while pending:
+        candidate = pending.pop()
+        inspected += 1
+        if inspected > max_nodes:
+            return None
+        state = _is_reparse_point(candidate)
+        if state is not False:
+            return state
+        try:
+            if not candidate.is_dir():
+                continue
+            with os.scandir(candidate) as children:
+                for child in children:
+                    child_path = Path(child.path)
+                    child_state = _is_reparse_point(child_path)
+                    if child_state is True:
+                        return True
+                    if child_state is None:
+                        return None
+                    if child.is_dir(follow_symlinks=False):
+                        pending.append(child_path)
+        except OSError:
+            return None
     return False
 
 
