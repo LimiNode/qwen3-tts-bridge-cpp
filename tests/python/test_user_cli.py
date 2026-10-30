@@ -481,6 +481,16 @@ class UserCliTests(unittest.TestCase):
         self.assertNotIn('qtb_metric {"event":"cleanup"}', output)
         self.assertLess(len(output.encode("utf-8")), 9 * 1024)
 
+    def test_failure_tail_bounds_long_invalid_utf8_line_in_bytes(self) -> None:
+        payload = b"\xff" * (user_cli._DIAGNOSTIC_LINE_BYTES + 1024) + b"\n"
+        text = user_cli._collect_failure_diagnostics(_BoundedReadStream(payload))
+
+        self.assertLessEqual(
+            len(text.encode("utf-8")) + 1,
+            user_cli._DIAGNOSTIC_TAIL_BYTES,
+        )
+        self.assertIn("tail truncated", text)
+
     def test_design_resolves_explicit_model_and_invokes_existing_wav_cli(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

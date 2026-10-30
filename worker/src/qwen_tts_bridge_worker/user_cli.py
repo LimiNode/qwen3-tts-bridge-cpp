@@ -724,8 +724,11 @@ def _collect_failure_diagnostics(stream: BinaryIO) -> str:
             continue
         encoded_size = len(text.encode("utf-8")) + 1
         if encoded_size > _DIAGNOSTIC_TAIL_BYTES:
-            text = text[-(_DIAGNOSTIC_TAIL_BYTES - 32) :]
-            text = "…[line truncated] " + text
+            text = _truncate_utf8_suffix(
+                text,
+                _DIAGNOSTIC_TAIL_BYTES - 1,
+                marker="…[tail truncated] ",
+            )
             encoded_size = len(text.encode("utf-8")) + 1
         entries.append((text, encoded_size))
         total_bytes += encoded_size
@@ -733,6 +736,30 @@ def _collect_failure_diagnostics(stream: BinaryIO) -> str:
             _, removed_size = entries.popleft()
             total_bytes -= removed_size
     return "\n".join(text for text, _ in entries)
+
+
+def _truncate_utf8_suffix(text: str, max_bytes: int, *, marker: str) -> str:
+    """Keep a Unicode-safe suffix whose UTF-8 representation fits the limit."""
+
+    if max_bytes <= 0:
+        return ""
+    if len(text.encode("utf-8")) <= max_bytes:
+        return text
+
+    marker_bytes = len(marker.encode("utf-8"))
+    if marker_bytes >= max_bytes:
+        return marker.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore")
+
+    suffix: list[str] = []
+    remaining = max_bytes - marker_bytes
+    for character in reversed(text):
+        character_bytes = len(character.encode("utf-8"))
+        if character_bytes > remaining:
+            break
+        suffix.append(character)
+        remaining -= character_bytes
+    suffix.reverse()
+    return marker + "".join(suffix)
 
 
 def _parse_timeout_argument(value: str) -> int:
