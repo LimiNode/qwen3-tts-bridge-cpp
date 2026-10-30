@@ -285,6 +285,62 @@ try {
     if ($FailClosed.output -match "NativeCommandError") {
         throw "Native stderr was converted into a PowerShell error record: $($FailClosed.output)"
     }
+
+    $ProbeOutput = Join-Path $ResolvedOutput "argument-probe.json"
+    $ProbeScript = Join-Path $ResolvedOutput "argument-probe.py"
+    [IO.File]::WriteAllText(
+        $ProbeScript,
+        @'
+import json
+import os
+import sys
+
+with open(os.environ["QTB_ARGUMENT_PROBE_OUTPUT"], "w", encoding="utf-8") as output:
+    json.dump(sys.argv[1:], output, ensure_ascii=False)
+print("probe diagnostic", file=sys.stderr)
+if "--fail" in sys.argv[1:]:
+    raise SystemExit(19)
+'@,
+        [Text.UTF8Encoding]::new($false)
+    )
+    $ProbeLauncher = Join-Path $ResolvedOutput "argument-probe.cmd"
+    $ProbeLauncherText = "@echo off`r`n`"$Python`" `"$ProbeScript`" %*`r`n"
+    [IO.File]::WriteAllText(
+        $ProbeLauncher,
+        $ProbeLauncherText,
+        [Text.ASCIIEncoding]::new()
+    )
+    $PreviousProbeOutput = $env:QTB_ARGUMENT_PROBE_OUTPUT
+    $PreviousLauncher = $script:Launcher
+    try {
+        $env:QTB_ARGUMENT_PROBE_OUTPUT = $ProbeOutput
+        $script:Launcher = $ProbeLauncher
+        $ProbeArguments = @(
+            "spaced value",
+            "Русский `"текст`" \path & tail"
+        )
+        $Probe = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments $ProbeArguments
+        if ($Probe.exit_code -ne 0 -or $Probe.stderr -notmatch "probe diagnostic") {
+            throw "Argument probe success case failed: $($Probe.output)"
+        }
+        $ObservedArguments = @(Get-Content -Raw -Encoding UTF8 -LiteralPath $ProbeOutput | ConvertFrom-Json)
+        if (
+            $ObservedArguments.Count -ne $ProbeArguments.Count -or
+            $ObservedArguments[0] -cne $ProbeArguments[0] -or
+            $ObservedArguments[1] -cne $ProbeArguments[1]
+        ) {
+            throw "Argument probe changed child arguments: $($ObservedArguments | ConvertTo-Json -Compress)"
+        }
+
+        $ProbeFailure = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @("--fail")
+        if ($ProbeFailure.exit_code -ne 19 -or $ProbeFailure.stderr -notmatch "probe diagnostic") {
+            throw "Argument probe failure case did not preserve stderr/exit code: $($ProbeFailure.output)"
+        }
+    }
+    finally {
+        $script:Launcher = $PreviousLauncher
+        $env:QTB_ARGUMENT_PROBE_OUTPUT = $PreviousProbeOutput
+    }
 }
 finally {
     $env:LOCALAPPDATA = $PreviousLocalAppData

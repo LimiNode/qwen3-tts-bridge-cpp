@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import codecs
 import json
 import os
 import shutil
@@ -10,7 +11,8 @@ import subprocess
 import sys
 import tempfile
 import wave
-from collections.abc import Sequence
+from collections import deque
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import BinaryIO, cast
 
@@ -37,6 +39,8 @@ _DEFAULT_STARTUP_TIMEOUT_MS = 120_000
 _DEFAULT_REQUEST_TIMEOUT_MS = 300_000
 _MAX_TIMEOUT_MS = 4_294_967_295
 _DIAGNOSTIC_TAIL_BYTES = 8 * 1024
+_DIAGNOSTIC_READ_CHUNK_BYTES = 4 * 1024
+_DIAGNOSTIC_LINE_BYTES = 4 * 1024
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -642,32 +646,93 @@ def _write_diagnostic_log(stream: BinaryIO, path: Path) -> None:
                 pass
 
 
-def _read_diagnostic_text(stream: BinaryIO, *, tail_only: bool) -> str:
-    stream.seek(0, os.SEEK_END)
-    end = stream.tell()
-    if tail_only:
-        stream.seek(max(0, end - _DIAGNOSTIC_TAIL_BYTES))
-    else:
-        stream.seek(0)
-    return stream.read().decode("utf-8", errors="replace")
-
-
 def _emit_diagnostics(stream: BinaryIO) -> None:
-    text = _read_diagnostic_text(stream, tail_only=False)
-    if text:
+    stream.seek(0)
+    wrote = False
+    last_character = ""
+    for text in _iter_decoded_diagnostic_chunks(stream):
+        wrote = True
+        last_character = text[-1]
         sys.stderr.write(text)
-        if not text.endswith("\n"):
-            sys.stderr.write("\n")
+    if wrote and last_character != "\n":
+        sys.stderr.write("\n")
+    if wrote:
         sys.stderr.flush()
 
 
 def _emit_failure_diagnostics(returncode: int, stream: BinaryIO) -> None:
     print(f"Synthesis failed (exit code {returncode}).", file=sys.stderr)
-    text = _read_diagnostic_text(stream, tail_only=True)
-    lines = [line for line in text.splitlines() if not line.startswith("qtb_metric ")]
-    if lines:
+    text = _collect_failure_diagnostics(stream)
+    if text:
         print("Diagnostic tail:", file=sys.stderr)
-        print("\n".join(lines), file=sys.stderr)
+        print(text, file=sys.stderr)
+
+
+def _iter_decoded_diagnostic_chunks(stream: BinaryIO) -> Iterator[str]:
+    """Yield decoded diagnostics in bounded chunks without retaining the log."""
+
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    while True:
+        chunk = stream.read(_DIAGNOSTIC_READ_CHUNK_BYTES)
+        if not chunk:
+            break
+        text = decoder.decode(chunk, final=False)
+        if text:
+            yield text
+    tail = decoder.decode(b"", final=True)
+    if tail:
+        yield tail
+
+
+def _iter_diagnostic_lines(stream: BinaryIO) -> Iterator[tuple[bytes, bool]]:
+    """Yield bounded raw lines and whether each line exceeded the cap."""
+
+    line = bytearray()
+    truncated = False
+    while True:
+        chunk = stream.read(_DIAGNOSTIC_READ_CHUNK_BYTES)
+        if not chunk:
+            break
+        for value in chunk:
+            if value == ord("\n"):
+                yield bytes(line), truncated
+                line.clear()
+                truncated = False
+            elif not truncated:
+                if len(line) < _DIAGNOSTIC_LINE_BYTES:
+                    line.append(value)
+                else:
+                    truncated = True
+    if line or truncated:
+        yield bytes(line), truncated
+
+
+def _collect_failure_diagnostics(stream: BinaryIO) -> str:
+    """Keep a bounded tail of recent non-metric diagnostic lines."""
+
+    stream.seek(0)
+    entries: deque[tuple[str, int]] = deque()
+    total_bytes = 0
+    for raw_line, truncated in _iter_diagnostic_lines(stream):
+        if raw_line.startswith(b"qtb_metric "):
+            continue
+        raw_line = raw_line.rstrip(b"\r")
+        text = raw_line.decode("utf-8", errors="replace")
+        if truncated:
+            text += " …[line truncated]"
+        if not text:
+            continue
+        encoded_size = len(text.encode("utf-8")) + 1
+        if encoded_size > _DIAGNOSTIC_TAIL_BYTES:
+            text = text[-(_DIAGNOSTIC_TAIL_BYTES - 32) :]
+            text = "…[line truncated] " + text
+            encoded_size = len(text.encode("utf-8")) + 1
+        entries.append((text, encoded_size))
+        total_bytes += encoded_size
+        while total_bytes > _DIAGNOSTIC_TAIL_BYTES and entries:
+            _, removed_size = entries.popleft()
+            total_bytes -= removed_size
+    return "\n".join(text for text, _ in entries)
 
 
 def _parse_timeout_argument(value: str) -> int:

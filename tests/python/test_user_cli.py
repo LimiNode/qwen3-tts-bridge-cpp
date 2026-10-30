@@ -451,6 +451,36 @@ class UserCliTests(unittest.TestCase):
             self.assertIn("worker failure", failure_stderr.getvalue())
             self.assertNotIn("qtb_metric", failure_stderr.getvalue())
 
+    def test_verbose_diagnostics_stream_in_bounded_utf8_chunks(self) -> None:
+        payload = b"a" * 4095 + "Живой поток\n".encode("utf-8")
+        stream = _BoundedReadStream(payload)
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            user_cli._emit_diagnostics(stream)
+        self.assertEqual(payload.decode("utf-8"), stderr.getvalue())
+        self.assertTrue(stream.read_sizes)
+        self.assertTrue(all(size == 4096 for size in stream.read_sizes[:-1]))
+
+    def test_failure_tail_keeps_errors_after_many_metrics_with_bounded_memory(
+        self,
+    ) -> None:
+        payload = (
+            b"model_error: CUDA allocation failed\n"
+            + b'qtb_metric {"event":"cleanup"}\n' * 2000
+            + b"ordinary qtb_metric marker\n"
+            + b"warning: invalid byte \xff\n"
+        )
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            user_cli._emit_failure_diagnostics(23, _BoundedReadStream(payload))
+        output = stderr.getvalue()
+        self.assertIn("exit code 23", output)
+        self.assertIn("model_error: CUDA allocation failed", output)
+        self.assertIn("ordinary qtb_metric marker", output)
+        self.assertIn("warning: invalid byte �", output)
+        self.assertNotIn('qtb_metric {"event":"cleanup"}', output)
+        self.assertLess(len(output.encode("utf-8")), 9 * 1024)
+
     def test_design_resolves_explicit_model_and_invokes_existing_wav_cli(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1284,6 +1314,18 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
             self.assertEqual(b"new wav", temporary_wav.read_bytes())
             self.assertEqual(b"new json", temporary_result.read_bytes())
+
+
+class _BoundedReadStream(io.BytesIO):
+    def __init__(self, payload: bytes) -> None:
+        super().__init__(payload)
+        self.read_sizes: list[int] = []
+
+    def read(self, size: int = -1) -> bytes:
+        if size < 0 or size > user_cli._DIAGNOSTIC_READ_CHUNK_BYTES:
+            raise AssertionError(f"unbounded diagnostic read: {size}")
+        self.read_sizes.append(size)
+        return super().read(size)
 
 
 def _write_executable(path: Path) -> Path:

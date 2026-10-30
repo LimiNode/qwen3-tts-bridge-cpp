@@ -13,7 +13,8 @@ request.
 - Actionable failures retain the subprocess exit code and print a bounded
   diagnostic tail. `qtb_metric` records are omitted from that tail so a failed
   command remains readable.
-- `--verbose` replays the complete captured diagnostic stream on stderr.
+- `--verbose` replays the complete captured diagnostic stream on stderr after
+  the synthesis subprocess exits; it is not live progress streaming.
 - `--log-file <path>` atomically writes the complete diagnostic stream,
   including unchanged `qtb_metric` lines. The file is written separately from
   the WAV and receipt outputs.
