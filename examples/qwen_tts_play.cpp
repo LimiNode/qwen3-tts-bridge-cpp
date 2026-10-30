@@ -1660,7 +1660,8 @@ int wmain(int argc, wchar_t** argv) {
                 "the active worker does not advertise voice clone support; "
                 "launch a Qwen Base model with --reference-audio");
         }
-        if (!options.voice_id.empty() && !options.voice_profiles_supported) {
+        if (!options.voice_id.empty() && !options.voice_profiles_supported &&
+            !options.use_mock_worker) {
             client.stop();
             throw std::runtime_error(
                 "the active worker has no registered voice-profile registry; "
