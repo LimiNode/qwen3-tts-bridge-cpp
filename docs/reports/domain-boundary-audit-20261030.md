@@ -20,7 +20,7 @@ supported unless explicitly called out.
 | protocol | `qwen_tts_bridge/protocol/control.hpp`, `protocol/framing.hpp` | JSON control and binary framing |
 | transport | `qwen_tts_bridge/transport.hpp` | byte transport interfaces and stdio transport |
 | session | `qwen_tts_bridge/session.hpp` | worker/session orchestration |
-| playback | `qwen_tts_bridge/playback.hpp` | neutral sample-clock receipt helpers |
+| playback | `qwen_tts_bridge/playback.hpp` | neutral sample-clock receipt helpers; the umbrella supplies shared data before its leaves |
 | native | `qwen_tts_bridge/native.hpp` | optional qwentts.cpp adapter |
 | text | `qwen_tts_bridge/text.hpp` | optional `tts-front-cpp` adapter |
 | WinMM | `qwen_tts_bridge/playback/winmm_playback.hpp` | explicitly supported optional build-tree entry point |
@@ -47,8 +47,12 @@ installed leaf as a standalone API promise.
 
 `playback/playback_cursor.hpp` previously included the client DTO umbrella to
 obtain only `RequestId`. That made a neutral playback-clock value type depend
-on the client domain. It now includes the minimal public data definition,
-`data/protocol_types.hpp`, without changing the type or namespace.
+on the client domain. The supported `playback.hpp` umbrella now supplies
+`data.hpp` before its playback leaves, and the cursor leaf consumes that
+domain-first context without a cross-domain relative include. The receipt leaf
+keeps its client DTO include because `PcmChunk` is part of its public contract;
+the include order is explicit so `playback_receipt.cpp` enters through the
+umbrella contract.
 
 No evidence justified moving `PcmChunk`, `AudioFormat`, or other DTOs in this
 pass. Doing so would broaden the ABI and ownership change without a concrete
@@ -60,6 +64,11 @@ boundary defect.
   include layout is introduced.
 - Keep `winmm_playback.hpp` independently usable because it is an optional
   sink entry point used by build-tree consumers.
+- `text.hpp` is the optional text-front umbrella. Its implementation leaf is
+  not a standalone header-check entry point.
+- The speech-animation bridge currently has no single umbrella; its two
+  opt-in adapter headers remain explicitly supported independent entry points
+  and are checked only when that optional integration is enabled.
 - Revisit `playback_receipt.hpp` and audio helpers only if the project splits
   media DTOs from client request DTOs as a separate API decision.
 - Keep speech-animation and native headers opt-in; this audit does not promote
@@ -70,4 +79,3 @@ boundary defect.
 - `git diff --check`
 - CMake header self-containment target with umbrella list
 - Existing C++ test matrix on the exact corrective HEAD
-

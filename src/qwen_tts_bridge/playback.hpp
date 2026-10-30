@@ -3,5 +3,6 @@
 /// \file playback.hpp
 /// \brief Neutral sample-clock playback helpers.
 
+#include "data.hpp"
 #include "playback/playback_cursor.hpp"
 #include "playback/playback_receipt.hpp"

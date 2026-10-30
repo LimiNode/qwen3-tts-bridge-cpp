@@ -535,10 +535,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         list(APPEND _qwen_tts_public_headers
             qwen_tts_bridge/text.hpp
-            qwen_tts_bridge/text/TtsFrontTextPreparer.hpp
         )
     endif()
     if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+        # speech-animation currently has no bridge umbrella; these two
+        # opt-in integration headers are intentionally supported entry points.
         list(APPEND _qwen_tts_public_headers
             qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.hpp
             qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp
