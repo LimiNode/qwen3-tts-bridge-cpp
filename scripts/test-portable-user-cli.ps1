@@ -43,7 +43,7 @@ function Invoke-Cli {
         $ProcessArguments = foreach ($Argument in $Arguments) {
             $Escaped = [string]$Argument
             if ($Escaped -match '[\s"&<>^|()]' -or $Escaped.Length -eq 0) {
-                '"' + $Escaped.Replace('"', '\"') + '"'
+                '"' + $Escaped.Replace('"', '^"') + '"'
             } else {
                 $Escaped
             }
