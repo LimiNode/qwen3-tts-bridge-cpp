@@ -1222,6 +1222,9 @@ def _contains_reparse_point(
             with os.scandir(candidate) as children:
                 for child in children:
                     child_path = Path(child.path)
+                    inspected += 1
+                    if inspected > max_nodes:
+                        return None
                     child_state = _is_reparse_point(child_path)
                     if child_state is True:
                         return True
