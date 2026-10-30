@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-#include "../client/client_types.hpp"
+#include "../data/protocol_types.hpp"
 
 namespace qwen_tts_bridge::playback {
 

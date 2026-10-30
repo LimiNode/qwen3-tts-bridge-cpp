@@ -516,37 +516,21 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     )
     add_test(NAME example_cli_parsing_test COMMAND example_cli_parsing_test)
 
-    # Compile every public leaf/umbrella header as its own translation unit.
-    # This prevents umbrella include order from hiding missing direct
-    # dependencies in installed-facing headers.
+    # Compile each supported public umbrella as its own translation unit.
+    # Domain leaf headers are implementation details of their umbrella unless
+    # explicitly documented as independently usable (WinMM is the current
+    # optional exception).  Keeping this list aligned with that contract
+    # avoids turning incidental leaf include order into public API.
     set(_qwen_tts_public_headers
         qwen_tts_bridge/audio.hpp
-        qwen_tts_bridge/audio/post_processor.hpp
-        qwen_tts_bridge/audio/playout_cursor.hpp
-        qwen_tts_bridge/audio/save_wav_callbacks.hpp
-        qwen_tts_bridge/audio/TerminalFadePostProcessor.hpp
-        qwen_tts_bridge/audio/WavWriter.hpp
         qwen_tts_bridge/client.hpp
-        qwen_tts_bridge/client/client_types.hpp
-        qwen_tts_bridge/client/QwenTtsClient.hpp
         qwen_tts_bridge/data.hpp
-        qwen_tts_bridge/data/enums.hpp
-        qwen_tts_bridge/data/protocol_types.hpp
         qwen_tts_bridge/native.hpp
         qwen_tts_bridge/playback.hpp
-        qwen_tts_bridge/playback/playback_cursor.hpp
-        qwen_tts_bridge/playback/playback_receipt.hpp
         qwen_tts_bridge/protocol/control.hpp
-        qwen_tts_bridge/protocol/control/control_codec.hpp
-        qwen_tts_bridge/protocol/control/control_messages.hpp
         qwen_tts_bridge/protocol/framing.hpp
-        qwen_tts_bridge/protocol/framing/frame_codec.hpp
-        qwen_tts_bridge/protocol/framing/FrameParser.hpp
         qwen_tts_bridge/session.hpp
-        qwen_tts_bridge/session/WorkerSession.hpp
         qwen_tts_bridge/transport.hpp
-        qwen_tts_bridge/transport/ITransport.hpp
-        qwen_tts_bridge/transport/stdio/StdIoTransport.hpp
     )
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         list(APPEND _qwen_tts_public_headers
