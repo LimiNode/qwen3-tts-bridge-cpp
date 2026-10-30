@@ -396,6 +396,23 @@ class PortablePythonWorkerPackagingTests(unittest.TestCase):
         self.assertIn("assemble-portable-release.ps1", workflow)
         self.assertIn("test-portable-user-cli.ps1", workflow)
 
+    def test_portable_cli_path_leak_policy_distinguishes_local_and_external_relocation(
+        self,
+    ) -> None:
+        script = _TEST_PORTABLE_USER_CLI_SCRIPT.read_text(encoding="utf-8")
+
+        # A repository-local .tmp acceptance copy may legitimately retain the
+        # repository path in its manifest.  A copy outside the repository must
+        # still reject that path leakage.
+        self.assertIn(
+            "if (-not $RelocatedIsUnderRepo -and\n"
+            "    $CombinedEvidence -match [regex]::Escape($RepoRoot))",
+            script,
+        )
+        self.assertIn("$RelocatedIsUnderRepo", script)
+        self.assertIn("$WorkerModuleOrigin.StartsWith", script)
+        self.assertIn("$WorkerExecutableOrigin.Equals", script)
+
     def test_portable_worker_docs_recommend_environment_overrides(self) -> None:
         readme = _README.read_text(encoding="utf-8")
 

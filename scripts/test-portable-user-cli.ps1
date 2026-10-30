@@ -449,7 +449,8 @@ $CombinedEvidence = @(
     $WorkerOrigin,
     (Get-Content -Raw $ManifestPath)
 ) -join "`n"
-if ($CombinedEvidence -match [regex]::Escape($RepoRoot)) {
+if (-not $RelocatedIsUnderRepo -and
+    $CombinedEvidence -match [regex]::Escape($RepoRoot)) {
     throw "Relocated CLI evidence leaked the repository path."
 }
 
