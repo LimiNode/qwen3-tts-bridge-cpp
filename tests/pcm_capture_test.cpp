@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
@@ -34,10 +35,42 @@ namespace {
 using qwen_tts_bridge::PcmChunk;
 using qwen_tts_examples::PcmCapture;
 
-const std::filesystem::path kRoot =
-    std::filesystem::temp_directory_path() /
-    (std::string("qwen_tts_bridge_pcm_capture_") +
-     std::to_string(GetCurrentProcessId()));
+std::filesystem::path g_root;
+bool g_root_owned = false;
+
+void cleanup_owned_root() noexcept {
+    if (!g_root_owned) {
+        return;
+    }
+    std::error_code ignored;
+    std::filesystem::remove_all(g_root, ignored);
+    g_root_owned = false;
+}
+
+std::filesystem::path create_unique_directory(
+    const std::filesystem::path& parent,
+    const std::string& prefix) {
+    for (std::uint32_t attempt = 0; attempt < 100; ++attempt) {
+        const auto candidate = parent /
+            (prefix + "_" + std::to_string(GetCurrentProcessId()) +
+             "_" + std::to_string(attempt));
+        std::error_code error;
+        if (std::filesystem::create_directory(candidate, error)) {
+            return candidate;
+        }
+        if (!error || error == std::errc::file_exists) {
+            continue;
+        }
+        throw std::runtime_error(
+            "failed to create unique PCM capture test directory: " +
+            error.message());
+    }
+    throw std::runtime_error("failed to find a unique PCM capture test directory");
+}
+
+const std::filesystem::path& root() {
+    return g_root;
+}
 
 PcmChunk chunk(std::initializer_list<std::uint8_t> bytes, std::uint32_t rate = 24000) {
     PcmChunk result;
@@ -88,7 +121,7 @@ std::string read_text(const std::filesystem::path& path) {
 }
 
 void test_exact_capture_and_metadata() {
-    const auto target = kRoot / std::filesystem::u8path(u8"многочастный capture.pcm");
+    const auto target = root() / std::filesystem::u8path(u8"многочастный capture.pcm");
     remove_capture(target);
     {
         PcmCapture capture(target.u8string());
@@ -122,7 +155,7 @@ void test_exact_capture_and_metadata() {
 }
 
 void test_rejects_format_mismatch_and_empty_capture() {
-    const auto mismatch_target = kRoot / "format-mismatch.pcm";
+    const auto mismatch_target = root() / "format-mismatch.pcm";
     remove_capture(mismatch_target);
     {
         PcmCapture capture(mismatch_target.u8string());
@@ -138,7 +171,7 @@ void test_rejects_format_mismatch_and_empty_capture() {
     }
     CHECK(!std::filesystem::exists(temporary_path(mismatch_target)));
 
-    const auto empty_target = kRoot / "empty.pcm";
+    const auto empty_target = root() / "empty.pcm";
     remove_capture(empty_target);
     {
         PcmCapture capture(empty_target.u8string());
@@ -157,7 +190,7 @@ void test_rejects_format_mismatch_and_empty_capture() {
 }
 
 void test_rejects_existing_targets_and_temporary_paths() {
-    const auto target = kRoot / "conflict.pcm";
+    const auto target = root() / "conflict.pcm";
     remove_capture(target);
     {
         std::ofstream(target) << "sentinel";
@@ -199,8 +232,8 @@ void test_rejects_existing_targets_and_temporary_paths() {
 }
 
 void test_rolls_back_pcm_when_metadata_publication_fails() {
-    const auto target = kRoot / "rollback.pcm";
-    const auto unrelated = kRoot / "unrelated.txt";
+    const auto target = root() / "rollback.pcm";
+    const auto unrelated = root() / "unrelated.txt";
     remove_capture(target);
     std::ofstream(unrelated) << "keep me";
     {
@@ -223,16 +256,45 @@ void test_rolls_back_pcm_when_metadata_publication_fails() {
     remove_capture(target);
 }
 
+void test_unique_directory_collision_preserves_sentinel() {
+    const auto collision_base = root() / "collision-base";
+    std::filesystem::create_directory(collision_base);
+    const auto collision = collision_base /
+        (std::string("capture_") + std::to_string(GetCurrentProcessId()) + "_0");
+    CHECK(std::filesystem::create_directory(collision));
+    const auto sentinel = collision / "sentinel.txt";
+    std::ofstream(sentinel) << "pre-existing data";
+
+    const auto owned = create_unique_directory(collision_base, "capture");
+    CHECK(owned != collision);
+    CHECK(read_text(sentinel) == "pre-existing data");
+    std::error_code ignored;
+    std::filesystem::remove_all(owned, ignored);
+    std::filesystem::remove_all(collision_base, ignored);
+}
+
 } // namespace
 
 int main() {
-    std::error_code ignored;
-    std::filesystem::remove_all(kRoot, ignored);
-    std::filesystem::create_directories(kRoot);
-    test_exact_capture_and_metadata();
-    test_rejects_format_mismatch_and_empty_capture();
-    test_rejects_existing_targets_and_temporary_paths();
-    test_rolls_back_pcm_when_metadata_publication_fails();
-    std::filesystem::remove_all(kRoot, ignored);
-    return 0;
+    try {
+        const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+        g_root = create_unique_directory(
+            std::filesystem::temp_directory_path(),
+            "qwen_tts_bridge_pcm_capture_" + std::to_string(stamp));
+        g_root_owned = true;
+        std::atexit(cleanup_owned_root);
+
+        test_exact_capture_and_metadata();
+        test_rejects_format_mismatch_and_empty_capture();
+        test_rejects_existing_targets_and_temporary_paths();
+        test_rolls_back_pcm_when_metadata_publication_fails();
+        test_unique_directory_collision_preserves_sentinel();
+        cleanup_owned_root();
+        return 0;
+    }
+    catch (const std::exception& error) {
+        std::cerr << "pcm_capture_test failed: " << error.what() << '\n';
+        cleanup_owned_root();
+        return EXIT_FAILURE;
+    }
 }

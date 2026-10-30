@@ -10,14 +10,17 @@
 #include <fstream>
 #include <mutex>
 #include <optional>
+#include <string>
 
 namespace qwen_tts_examples {
 
-/// \brief Atomically publishes raw PCM and capture metadata after streaming.
+/// \brief Publishes raw PCM and metadata sequentially after streaming.
 ///
 /// The helper intentionally captures the chunks delivered by the bridge before
 /// any example-specific playback post-processing. It is not part of the public
-/// SDK and is only used by the example diagnostic path.
+/// SDK and is only used by the example diagnostic path. PCM publication is
+/// followed by metadata publication; if the second step fails, the PCM file is
+/// rolled back.
 class PcmCapture final {
 public:
     explicit PcmCapture(const std::string& file_name);
