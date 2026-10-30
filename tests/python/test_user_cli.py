@@ -12,6 +12,7 @@ import unittest
 import wave
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from typing import Any, cast
 from unittest import mock
 
 from qwen_tts_bridge_worker import user_cli
@@ -1321,8 +1322,8 @@ def _successful_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
 
 
 def _diagnostic_success(command: list[str], **kwargs: object) -> mock.Mock:
-    stream = kwargs.get("stdout")
-    if hasattr(stream, "write"):
+    stream = cast(Any, kwargs.get("stdout"))
+    if stream is not None:
         stream.write(b'qtb_metric {"event":"worker_loaded"}\n')
         stream.write("worker предупреждение\n".encode("utf-8"))
     _successful_synthesis(command, **kwargs)
@@ -1330,8 +1331,8 @@ def _diagnostic_success(command: list[str], **kwargs: object) -> mock.Mock:
 
 
 def _diagnostic_failure(command: list[str], **kwargs: object) -> mock.Mock:
-    stream = kwargs.get("stdout")
-    if hasattr(stream, "write"):
+    stream = cast(Any, kwargs.get("stdout"))
+    if stream is not None:
         stream.write(b'qtb_metric {"event":"worker_failed"}\n')
         stream.write(b"worker failure\n")
     return mock.Mock(returncode=17)

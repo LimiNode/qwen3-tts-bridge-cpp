@@ -12,7 +12,7 @@ import tempfile
 import wave
 from collections.abc import Sequence
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, cast
 
 from qwen_tts_bridge_worker.model_resolver import (
     MODEL_CATALOG,
@@ -565,7 +565,7 @@ def _run_synthesis(
     environment = os.environ.copy()
     if root is not None and worker.executable == Path(sys.executable).resolve():
         environment["PYTHONNOUSERSITE"] = "1"
-    diagnostics = tempfile.TemporaryFile(mode="w+b")
+    diagnostics = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
     try:
         try:
             completed = subprocess.run(
