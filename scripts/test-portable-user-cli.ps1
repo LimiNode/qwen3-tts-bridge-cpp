@@ -177,6 +177,9 @@ $Manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $ManifestPath | Convert
 if ($Manifest.release_manifest_schema_version -ne 1) {
     throw "Portable release manifest schema is invalid."
 }
+if (-not (Test-Path -LiteralPath (Join-Path $Relocated "bin/qwen_tts_play.exe") -PathType Leaf)) {
+    throw "Portable playback executable was not packaged."
+}
 foreach ($Entry in $Manifest.release_files) {
     $File = Join-Path $Relocated ([string]$Entry.path).Replace("/", "\")
     if (-not (Test-Path -LiteralPath $File -PathType Leaf)) {
@@ -268,6 +271,21 @@ try {
     }
     if ($Synth.output -match "qtb_metric") {
         throw "Quiet synth output leaked worker metrics: $($Synth.output)"
+    }
+
+    $Play = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "play",
+        "--voice-id", "portable-test",
+        "--text", "Portable registered voice playback.",
+        "--language", "English",
+        "--acceptance-mock-worker",
+        "--acceptance-mock-playback"
+    )
+    if ($Play.exit_code -ne 0) {
+        throw "Relocated qwen-tts play failed: $($Play.output)"
+    }
+    if ($Play.output.Trim().Length -ne 0) {
+        throw "Quiet play output was not silent: $($Play.output)"
     }
 
     $MissingExe = Join-Path $ResolvedOutput "missing-save-wav.exe"
@@ -376,6 +394,7 @@ $CombinedEvidence = @(
     $VoiceVerify.output,
     $Design.output,
     $Synth.output,
+    $Play.output,
     $FailClosed.output,
     (Get-Content -Raw $ManifestPath)
 ) -join "`n"

@@ -118,6 +118,7 @@ struct ProgramOptions {
     std::optional<std::size_t> mock_playback_fail_after_submissions;
     std::optional<std::string> mock_playback_fail_stage;
     std::chrono::milliseconds startup_timeout{30000};
+    std::chrono::milliseconds request_timeout{300000};
     std::string playback_metrics_file;
     std::string playback_interruption_diagnostics_file;
     std::string playback_animation_receipts_file;
@@ -320,6 +321,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
+        << "  --request-timeout-ms <ms>      One-shot request/playback timeout, default: 300000.\n"
         << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
         << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
         << "  --mock-playback-fail-after <n> Inject a mock sink failure after n submissions (test only).\n"
@@ -470,6 +472,12 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
                 require_value(index, argc, argv, "--startup-timeout-ms"),
                 "--startup-timeout-ms"));
         }
+        else if (arg == "--request-timeout-ms" ||
+                 arg.rfind("--request-timeout-ms=", 0) == 0) {
+            options.request_timeout = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--request-timeout-ms"),
+                "--request-timeout-ms"));
+        }
         else if (arg == "--playback-metrics-file" ||
                  arg.rfind("--playback-metrics-file=", 0) == 0) {
             options.playback_metrics_file = require_value(
@@ -566,6 +574,9 @@ void validate_options(const ProgramOptions& options) {
     if (options.sample_rate == 0 || options.channels == 0 ||
         options.channels > (std::numeric_limits<WORD>::max)()) {
         throw std::runtime_error("invalid requested PCM format");
+    }
+    if (options.startup_timeout.count() <= 0 || options.request_timeout.count() <= 0) {
+        throw std::runtime_error("timeouts must be greater than zero");
     }
     if (options.mock_chunks <= 0 || options.mock_chunk_ms <= 0 ||
         options.mock_chunk_delay < 0.0) {
@@ -1810,7 +1821,7 @@ int wmain(int argc, wchar_t** argv) {
                 , animation_runtime.get(), animation_context.get()
 #endif
             );
-            if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
+            if (!wait_for_one_shot(state, options.request_timeout)) {
                 cancel_active_request(
                     client,
                     player,
@@ -1833,7 +1844,7 @@ int wmain(int argc, wchar_t** argv) {
                 client.stop();
                 throw std::runtime_error(state.message.empty() ? "one-shot synthesis failed" : state.message);
             }
-            player.wait_until_idle(std::chrono::minutes(5));
+            player.wait_until_idle(options.request_timeout);
             if (pcm_capture != nullptr) {
                 pcm_capture->finalize();
             }

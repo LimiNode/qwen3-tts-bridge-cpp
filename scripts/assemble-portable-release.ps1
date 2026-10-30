@@ -2,6 +2,7 @@ param(
     [string]$PythonPackageRoot = "dist/QwenTTSBridge",
     [Parameter(Mandatory = $true)]
     [string]$SaveWavExecutable,
+    [string]$PlayExecutable,
     [string[]]$RuntimeDependency = @(),
     [string[]]$ConfigExample = @("config/qwen-tts.example.json"),
     [string]$OutputRoot = "dist/QwenTTSBridge-release",
@@ -60,6 +61,7 @@ function Get-FileIdentity {
 
 $ResolvedPythonPackage = Resolve-InputPath $PythonPackageRoot
 $ResolvedSaveWav = Resolve-InputPath $SaveWavExecutable
+$ResolvedPlay = if ($PlayExecutable) { Resolve-InputPath $PlayExecutable } else { $null }
 $ResolvedOutput = if ([IO.Path]::IsPathRooted($OutputRoot)) {
     [IO.Path]::GetFullPath($OutputRoot)
 }
@@ -81,6 +83,9 @@ foreach ($Required in $RequiredPackageFiles) {
 }
 if (-not (Test-Path -LiteralPath $ResolvedSaveWav -PathType Leaf)) {
     throw "Explicit qwen_tts_save_wav executable was not found: $ResolvedSaveWav"
+}
+if ($ResolvedPlay -and -not (Test-Path -LiteralPath $ResolvedPlay -PathType Leaf)) {
+    throw "Explicit qwen_tts_play executable was not found: $ResolvedPlay"
 }
 
 & $Python (Join-Path $RepoRoot "scripts/runtime_tree_manifest.py") verify `
@@ -140,6 +145,11 @@ try {
     New-Item -ItemType Directory -Force -Path $Bin | Out-Null
     $SaveWavDestination = Join-Path $Bin "qwen_tts_save_wav.exe"
     Copy-Item -LiteralPath $ResolvedSaveWav -Destination $SaveWavDestination
+    $PlayDestination = $null
+    if ($ResolvedPlay) {
+        $PlayDestination = Join-Path $Bin "qwen_tts_play.exe"
+        Copy-Item -LiteralPath $ResolvedPlay -Destination $PlayDestination
+    }
 
     $DependencyIdentities = @()
     foreach ($Dependency in $Dependencies) {
@@ -193,6 +203,13 @@ try {
                 -Path $SaveWavDestination `
                 -RelativePath "bin/qwen_tts_save_wav.exe" `
                 -SourceName (Split-Path -Leaf $ResolvedSaveWav)
+            play_executable = if ($PlayDestination) {
+                Get-FileIdentity `
+                    -Path $PlayDestination `
+                    -RelativePath "bin/qwen_tts_play.exe" `
+                    -SourceName (Split-Path -Leaf $ResolvedPlay)
+            }
+            else { $null }
             runtime_dependencies = $DependencyIdentities
         }
         release_files = $ReleaseFiles
