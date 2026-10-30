@@ -167,6 +167,10 @@ New-Item -ItemType Directory -Force -Path $ResolvedOutput | Out-Null
 
 $Relocated = Join-Path $ResolvedOutput "перенесённый пакет"
 Copy-Tree -Source $ResolvedPackage -Destination $Relocated
+$RelocatedIsUnderRepo = [IO.Path]::GetFullPath($Relocated).StartsWith(
+    [IO.Path]::GetFullPath($RepoRoot).TrimEnd("\") + "\",
+    [StringComparison]::OrdinalIgnoreCase
+)
 $script:Launcher = Join-Path $Relocated "qwen-tts.cmd"
 $ManifestPath = Join-Path $Relocated "release-manifest.json"
 if (-not (Test-Path -LiteralPath $script:Launcher -PathType Leaf)) {
@@ -216,7 +220,8 @@ try {
             [IO.Path]::GetFullPath($PortableWorkerPython),
             [StringComparison]::OrdinalIgnoreCase
         ) -or
-        $WorkerOrigin -match [regex]::Escape($RepoRoot)
+        (-not $RelocatedIsUnderRepo -and
+            $WorkerOrigin -match [regex]::Escape($RepoRoot))
     ) {
         throw "Portable worker module origin escaped the relocated package: $WorkerOrigin"
     }
