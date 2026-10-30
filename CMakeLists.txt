@@ -177,6 +177,7 @@ if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
     endif()
     add_library(qwen_tts_bridge_winmm_playback STATIC
         src/qwen_tts_bridge/playback/winmm_playback.cpp
+        src/qwen_tts_bridge/playback/playback_interruption_diagnostics.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_winmm_playback ALIAS
         qwen_tts_bridge_winmm_playback)
@@ -593,6 +594,15 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_link_libraries(winmm_playback_test
             PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
         add_test(NAME winmm_playback_test COMMAND winmm_playback_test)
+
+        add_executable(playback_interruption_diagnostics_test
+            tests/playback_interruption_diagnostics_test.cpp
+        )
+        target_link_libraries(playback_interruption_diagnostics_test
+            PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
+        add_test(
+            NAME playback_interruption_diagnostics_test
+            COMMAND playback_interruption_diagnostics_test)
     endif()
 
     if(WIN32)
