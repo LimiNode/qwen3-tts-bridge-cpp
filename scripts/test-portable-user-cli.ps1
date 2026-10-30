@@ -284,7 +284,7 @@ try {
     if ($Play.exit_code -ne 0) {
         throw "Relocated qwen-tts play failed: $($Play.output)"
     }
-    if ($Play.output.Trim().Length -ne 0) {
+    if ($null -ne $Play.output -and $Play.output.Trim().Length -ne 0) {
         throw "Quiet play output was not silent: $($Play.output)"
     }
 
