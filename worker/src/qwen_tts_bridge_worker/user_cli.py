@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import codecs
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 import wave
-from collections.abc import Sequence
+from collections import deque
+from collections.abc import Iterator, Sequence
 from pathlib import Path
+from typing import BinaryIO, cast
 
 from qwen_tts_bridge_worker.model_resolver import (
     MODEL_CATALOG,
@@ -34,6 +38,9 @@ from qwen_tts_bridge_worker.voice_library import (
 _DEFAULT_STARTUP_TIMEOUT_MS = 120_000
 _DEFAULT_REQUEST_TIMEOUT_MS = 300_000
 _MAX_TIMEOUT_MS = 4_294_967_295
+_DIAGNOSTIC_TAIL_BYTES = 8 * 1024
+_DIAGNOSTIC_READ_CHUNK_BYTES = 4 * 1024
+_DIAGNOSTIC_LINE_BYTES = 4 * 1024
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -165,6 +172,16 @@ def _build_parser() -> argparse.ArgumentParser:
             help=(
                 "Open the completed WAV in the configured Windows default application."
             ),
+        )
+        synthesis.add_argument(
+            "--verbose",
+            action="store_true",
+            help="Show detailed worker and runtime diagnostics.",
+        )
+        synthesis.add_argument(
+            "--log-file",
+            type=Path,
+            help="Save complete worker and runtime diagnostics to this file.",
         )
         eos = synthesis.add_mutually_exclusive_group()
         eos.add_argument(
@@ -492,8 +509,13 @@ def _run_synthesis(
     result_json = args.result_json or args.out.with_suffix(args.out.suffix + ".json")
     output_path = _output_path(args.out)
     result_json = _output_path(result_json)
+    log_file = (
+        _output_path(args.log_file) if getattr(args, "log_file", None) else None
+    )
     if output_path == result_json:
         raise ValueError("--out and --result-json must refer to different files")
+    if log_file is not None and log_file in (output_path, result_json):
+        raise ValueError("--log-file must be different from synthesis outputs")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_json.parent.mkdir(parents=True, exist_ok=True)
     _reject_output_target(output_path)
@@ -547,12 +569,31 @@ def _run_synthesis(
     environment = os.environ.copy()
     if root is not None and worker.executable == Path(sys.executable).resolve():
         environment["PYTHONNOUSERSITE"] = "1"
+    diagnostics = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
     try:
         try:
-            completed = subprocess.run(command, env=environment, check=False)
+            completed = subprocess.run(
+                command,
+                env=environment,
+                check=False,
+                stdout=diagnostics,
+                stderr=subprocess.STDOUT,
+            )
         except OSError as exc:
             raise ValueError(f"could not start {save_wav}: {exc}") from exc
+        diagnostics.flush()
+        if log_file is not None:
+            _write_diagnostic_log(diagnostics, log_file)
+        if args.verbose:
+            _emit_diagnostics(diagnostics)
         if completed.returncode != 0:
+            if not args.verbose:
+                _emit_failure_diagnostics(completed.returncode, diagnostics)
+            else:
+                print(
+                    f"Synthesis failed (exit code {completed.returncode}).",
+                    file=sys.stderr,
+                )
             return completed.returncode
         _validate_design_outputs(
             temporary_wav, temporary_result, args.require_natural_eos
@@ -564,6 +605,7 @@ def _run_synthesis(
             result_json,
         )
     finally:
+        diagnostics.close()
         for temporary_path in temporary_outputs:
             _remove_owned_temporary(temporary_path)
     print(f"Wrote {output_description}: {output_path}")
@@ -575,6 +617,149 @@ def _run_synthesis(
         except OSError as exc:
             raise ValueError(f"could not open generated WAV: {exc}") from exc
     return 0
+
+
+def _write_diagnostic_log(stream: BinaryIO, path: Path) -> None:
+    """Atomically replace a requested diagnostic log without buffering it all."""
+
+    _reject_output_target(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_name: str | None = None
+    try:
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{path.name}.", suffix=".qtb-log-tmp", dir=path.parent
+        )
+        with os.fdopen(descriptor, "w+b") as destination:
+            stream.seek(0)
+            shutil.copyfileobj(stream, destination)
+            destination.flush()
+            os.fsync(destination.fileno())
+        os.replace(temporary_name, path)
+        temporary_name = None
+    except OSError as exc:
+        raise ValueError(f"could not write diagnostic log {path}: {exc}") from exc
+    finally:
+        if temporary_name is not None:
+            try:
+                os.unlink(temporary_name)
+            except OSError:
+                pass
+
+
+def _emit_diagnostics(stream: BinaryIO) -> None:
+    stream.seek(0)
+    wrote = False
+    last_character = ""
+    for text in _iter_decoded_diagnostic_chunks(stream):
+        wrote = True
+        last_character = text[-1]
+        sys.stderr.write(text)
+    if wrote and last_character != "\n":
+        sys.stderr.write("\n")
+    if wrote:
+        sys.stderr.flush()
+
+
+def _emit_failure_diagnostics(returncode: int, stream: BinaryIO) -> None:
+    print(f"Synthesis failed (exit code {returncode}).", file=sys.stderr)
+    text = _collect_failure_diagnostics(stream)
+    if text:
+        print("Diagnostic tail:", file=sys.stderr)
+        print(text, file=sys.stderr)
+
+
+def _iter_decoded_diagnostic_chunks(stream: BinaryIO) -> Iterator[str]:
+    """Yield decoded diagnostics in bounded chunks without retaining the log."""
+
+    decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+    while True:
+        chunk = stream.read(_DIAGNOSTIC_READ_CHUNK_BYTES)
+        if not chunk:
+            break
+        text = decoder.decode(chunk, final=False)
+        if text:
+            yield text
+    tail = decoder.decode(b"", final=True)
+    if tail:
+        yield tail
+
+
+def _iter_diagnostic_lines(stream: BinaryIO) -> Iterator[tuple[bytes, bool]]:
+    """Yield bounded raw lines and whether each line exceeded the cap."""
+
+    line = bytearray()
+    truncated = False
+    while True:
+        chunk = stream.read(_DIAGNOSTIC_READ_CHUNK_BYTES)
+        if not chunk:
+            break
+        for value in chunk:
+            if value == ord("\n"):
+                yield bytes(line), truncated
+                line.clear()
+                truncated = False
+            elif not truncated:
+                if len(line) < _DIAGNOSTIC_LINE_BYTES:
+                    line.append(value)
+                else:
+                    truncated = True
+    if line or truncated:
+        yield bytes(line), truncated
+
+
+def _collect_failure_diagnostics(stream: BinaryIO) -> str:
+    """Keep a bounded tail of recent non-metric diagnostic lines."""
+
+    stream.seek(0)
+    entries: deque[tuple[str, int]] = deque()
+    total_bytes = 0
+    for raw_line, truncated in _iter_diagnostic_lines(stream):
+        if raw_line.startswith(b"qtb_metric "):
+            continue
+        raw_line = raw_line.rstrip(b"\r")
+        text = raw_line.decode("utf-8", errors="replace")
+        if truncated:
+            text += " …[line truncated]"
+        if not text:
+            continue
+        encoded_size = len(text.encode("utf-8")) + 1
+        if encoded_size > _DIAGNOSTIC_TAIL_BYTES:
+            text = _truncate_utf8_suffix(
+                text,
+                _DIAGNOSTIC_TAIL_BYTES - 1,
+                marker="…[tail truncated] ",
+            )
+            encoded_size = len(text.encode("utf-8")) + 1
+        entries.append((text, encoded_size))
+        total_bytes += encoded_size
+        while total_bytes > _DIAGNOSTIC_TAIL_BYTES and entries:
+            _, removed_size = entries.popleft()
+            total_bytes -= removed_size
+    return "\n".join(text for text, _ in entries)
+
+
+def _truncate_utf8_suffix(text: str, max_bytes: int, *, marker: str) -> str:
+    """Keep a Unicode-safe suffix whose UTF-8 representation fits the limit."""
+
+    if max_bytes <= 0:
+        return ""
+    if len(text.encode("utf-8")) <= max_bytes:
+        return text
+
+    marker_bytes = len(marker.encode("utf-8"))
+    if marker_bytes >= max_bytes:
+        return marker.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore")
+
+    suffix: list[str] = []
+    remaining = max_bytes - marker_bytes
+    for character in reversed(text):
+        character_bytes = len(character.encode("utf-8"))
+        if character_bytes > remaining:
+            break
+        suffix.append(character)
+        remaining -= character_bytes
+    suffix.reverse()
+    return marker + "".join(suffix)
 
 
 def _parse_timeout_argument(value: str) -> int:

@@ -10,7 +10,9 @@ import sys
 import tempfile
 import unittest
 import wave
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from typing import Any, cast
 from unittest import mock
 
 from qwen_tts_bridge_worker import user_cli
@@ -359,6 +361,135 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(23, result)
             self.assertEqual(b"previous wav", output.read_bytes())
             self.assertEqual('{"previous": true}', receipt.read_text())
+
+    def test_synthesis_is_quiet_by_default_and_writes_complete_log(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            log_file = root / "logs" / "synth.log"
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_diagnostic_success,
+            ):
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    result = user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "synth",
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--out",
+                            str(root / "speech.wav"),
+                            "--log-file",
+                            str(log_file),
+                        ]
+                    )
+
+            self.assertEqual(0, result)
+            self.assertIn("Wrote Base voice WAV:", stdout.getvalue())
+            self.assertEqual("", stderr.getvalue())
+            log_text = log_file.read_text(encoding="utf-8")
+            self.assertIn('qtb_metric {"event":"worker_loaded"}', log_text)
+            self.assertIn("worker предупреждение", log_text)
+
+    def test_verbose_replays_diagnostics_and_failure_hides_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            common = [
+                "--config",
+                str(config),
+                "synth",
+                "--voice-id",
+                "voice",
+                "--text",
+                "Test",
+                "--model",
+                str(model),
+                "--save-wav-executable",
+                str(save_wav),
+                "--worker",
+                str(worker),
+                "--out",
+                str(root / "speech.wav"),
+            ]
+            verbose_stderr = io.StringIO()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_diagnostic_success,
+            ):
+                with redirect_stderr(verbose_stderr):
+                    self.assertEqual(0, user_cli.main(common + ["--verbose"]))
+            self.assertIn("qtb_metric", verbose_stderr.getvalue())
+            self.assertIn("worker предупреждение", verbose_stderr.getvalue())
+
+            failure_stderr = io.StringIO()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_diagnostic_failure,
+            ):
+                with redirect_stderr(failure_stderr):
+                    self.assertEqual(17, user_cli.main(common))
+            self.assertIn("exit code 17", failure_stderr.getvalue())
+            self.assertIn("worker failure", failure_stderr.getvalue())
+            self.assertNotIn("qtb_metric", failure_stderr.getvalue())
+
+    def test_verbose_diagnostics_stream_in_bounded_utf8_chunks(self) -> None:
+        payload = b"a" * 4095 + "Живой поток\n".encode("utf-8")
+        stream = _BoundedReadStream(payload)
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            user_cli._emit_diagnostics(stream)
+        self.assertEqual(payload.decode("utf-8"), stderr.getvalue())
+        self.assertTrue(stream.read_sizes)
+        self.assertTrue(all(size == 4096 for size in stream.read_sizes[:-1]))
+
+    def test_failure_tail_keeps_errors_after_many_metrics_with_bounded_memory(
+        self,
+    ) -> None:
+        payload = (
+            b"model_error: CUDA allocation failed\n"
+            + b'qtb_metric {"event":"cleanup"}\n' * 2000
+            + b"ordinary qtb_metric marker\n"
+            + b"warning: invalid byte \xff\n"
+        )
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            user_cli._emit_failure_diagnostics(23, _BoundedReadStream(payload))
+        output = stderr.getvalue()
+        self.assertIn("exit code 23", output)
+        self.assertIn("model_error: CUDA allocation failed", output)
+        self.assertIn("ordinary qtb_metric marker", output)
+        self.assertIn("warning: invalid byte �", output)
+        self.assertNotIn('qtb_metric {"event":"cleanup"}', output)
+        self.assertLess(len(output.encode("utf-8")), 9 * 1024)
+
+    def test_failure_tail_bounds_long_invalid_utf8_line_in_bytes(self) -> None:
+        payload = b"\xff" * (user_cli._DIAGNOSTIC_LINE_BYTES + 1024) + b"\n"
+        text = user_cli._collect_failure_diagnostics(_BoundedReadStream(payload))
+
+        self.assertLessEqual(
+            len(text.encode("utf-8")) + 1,
+            user_cli._DIAGNOSTIC_TAIL_BYTES,
+        )
+        self.assertIn("tail truncated", text)
 
     def test_design_resolves_explicit_model_and_invokes_existing_wav_cli(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1195,6 +1326,18 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(b"new json", temporary_result.read_bytes())
 
 
+class _BoundedReadStream(io.BytesIO):
+    def __init__(self, payload: bytes) -> None:
+        super().__init__(payload)
+        self.read_sizes: list[int] = []
+
+    def read(self, size: int = -1) -> bytes:
+        if size < 0 or size > user_cli._DIAGNOSTIC_READ_CHUNK_BYTES:
+            raise AssertionError(f"unbounded diagnostic read: {size}")
+        self.read_sizes.append(size)
+        return super().read(size)
+
+
 def _write_executable(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"exe")
@@ -1228,6 +1371,23 @@ def _successful_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
         encoding="utf-8",
     )
     return mock.Mock(returncode=0)
+
+
+def _diagnostic_success(command: list[str], **kwargs: object) -> mock.Mock:
+    stream = cast(Any, kwargs.get("stdout"))
+    if stream is not None:
+        stream.write(b'qtb_metric {"event":"worker_loaded"}\n')
+        stream.write("worker предупреждение\n".encode("utf-8"))
+    _successful_synthesis(command, **kwargs)
+    return mock.Mock(returncode=0)
+
+
+def _diagnostic_failure(command: list[str], **kwargs: object) -> mock.Mock:
+    stream = cast(Any, kwargs.get("stdout"))
+    if stream is not None:
+        stream.write(b'qtb_metric {"event":"worker_failed"}\n')
+        stream.write(b"worker failure\n")
+    return mock.Mock(returncode=17)
 
 
 def _non_natural_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
