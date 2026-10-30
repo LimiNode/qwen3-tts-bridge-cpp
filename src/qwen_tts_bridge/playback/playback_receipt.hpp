@@ -3,14 +3,13 @@
 /// \file playback_receipt.hpp
 /// \brief Bounded, sample-addressed playback timeline probe.
 
-#include "playback_cursor.hpp"
-
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 #include "../client/client_types.hpp"
+#include "playback_cursor.hpp"
 
 namespace qwen_tts_bridge::playback {
 
