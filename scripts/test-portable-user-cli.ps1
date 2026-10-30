@@ -33,17 +33,36 @@ function Invoke-Cli {
     param([string[]]$Arguments, [string]$WorkingDirectory)
 
     $Previous = Get-Location
+    $StdoutPath = Join-Path $ResolvedOutput (".invoke-" + [guid]::NewGuid().ToString("N") + ".stdout")
+    $StderrPath = Join-Path $ResolvedOutput (".invoke-" + [guid]::NewGuid().ToString("N") + ".stderr")
     try {
         Set-Location $WorkingDirectory
-        $Output = & $script:Launcher @Arguments 2>&1
-        $ExitCode = $LASTEXITCODE
+        # Start the launcher and redirect both streams at the process level.
+        # PowerShell otherwise materializes native stderr as NativeCommandError
+        # when the caller has $ErrorActionPreference=Stop, even for exit 0.
+        $Process = Start-Process -FilePath $script:Launcher `
+            -ArgumentList $Arguments `
+            -WorkingDirectory $WorkingDirectory `
+            -RedirectStandardOutput $StdoutPath `
+            -RedirectStandardError $StderrPath `
+            -NoNewWindow -Wait -PassThru
+        $ExitCode = $Process.ExitCode
+        $Stdout = if (Test-Path -LiteralPath $StdoutPath) {
+            Get-Content -Raw -Encoding UTF8 -LiteralPath $StdoutPath
+        } else { "" }
+        $Stderr = if (Test-Path -LiteralPath $StderrPath) {
+            Get-Content -Raw -Encoding UTF8 -LiteralPath $StderrPath
+        } else { "" }
     }
     finally {
         Set-Location $Previous
+        Remove-Item -LiteralPath $StdoutPath, $StderrPath -Force -ErrorAction SilentlyContinue
     }
     return [pscustomobject]@{
         exit_code = $ExitCode
-        output = @($Output) -join "`n"
+        stdout = $Stdout
+        stderr = $Stderr
+        output = $Stdout + $Stderr
     }
 }
 
@@ -223,6 +242,9 @@ try {
     if ($Design.exit_code -ne 0) {
         throw "Relocated qwen-tts design failed: $($Design.output)"
     }
+    if ($Design.output -match "qtb_metric") {
+        throw "Quiet design output leaked worker metrics: $($Design.output)"
+    }
 
     $Synth = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
         "synth",
@@ -236,6 +258,9 @@ try {
     if ($Synth.exit_code -ne 0) {
         throw "Relocated qwen-tts synth failed: $($Synth.output)"
     }
+    if ($Synth.output -match "qtb_metric") {
+        throw "Quiet synth output leaked worker metrics: $($Synth.output)"
+    }
 
     $MissingExe = Join-Path $ResolvedOutput "missing-save-wav.exe"
     $FailClosed = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
@@ -248,6 +273,9 @@ try {
     )
     if ($FailClosed.exit_code -eq 0 -or $FailClosed.output -notmatch "explicit.*was not found") {
         throw "Explicit runtime selection did not fail closed: $($FailClosed.output)"
+    }
+    if ($FailClosed.output -match "NativeCommandError") {
+        throw "Native stderr was converted into a PowerShell error record: $($FailClosed.output)"
     }
 }
 finally {
