@@ -436,6 +436,7 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     if(WIN32)
         add_executable(qwen_tts_play
             examples/qwen_tts_play.cpp
+            examples/common/pcm_capture.cpp
         )
     endif()
 
@@ -592,6 +593,20 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_link_libraries(winmm_playback_test
             PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
         add_test(NAME winmm_playback_test COMMAND winmm_playback_test)
+    endif()
+
+    if(WIN32)
+        add_executable(pcm_capture_test
+            tests/pcm_capture_test.cpp
+            examples/common/pcm_capture.cpp
+        )
+        target_include_directories(pcm_capture_test
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}"
+        )
+        target_link_libraries(pcm_capture_test
+            PRIVATE QwenTTSBridge::qwen_tts_bridge)
+        add_test(NAME pcm_capture_test COMMAND pcm_capture_test)
     endif()
 
     add_executable(playback_receipt_probe_test
