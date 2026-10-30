@@ -62,6 +62,7 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(
                 "12345", command[command.index("--request-timeout-ms") + 1]
             )
+            self.assertNotIn("--allow-non-natural-eos", command)
             worker_args = _worker_argument_values(command)
             self.assertEqual("qwen", worker_args[0])
             self.assertIn("--collect-generation-trace", worker_args)
@@ -109,6 +110,40 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(19, result)
             self.assertIn("Playback failed", stderr.getvalue())
             self.assertIn("player failure", stderr.getvalue())
+
+    def test_play_allows_explicit_non_natural_eos_diagnostic_opt_out(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=0),
+            ) as run:
+                self.assertEqual(
+                    0,
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "play",
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test",
+                            "--model",
+                            str(model),
+                            "--play-executable",
+                            str(player),
+                            "--worker",
+                            str(worker),
+                            "--allow-non-natural-eos",
+                        ]
+                    ),
+                )
+            self.assertIn("--allow-non-natural-eos", run.call_args.args[0])
 
     def test_synth_uses_base_model_registered_voice_and_authoritative_registry(
         self,

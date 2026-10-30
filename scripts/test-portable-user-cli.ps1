@@ -180,6 +180,31 @@ if ($Manifest.release_manifest_schema_version -ne 1) {
 if (-not (Test-Path -LiteralPath (Join-Path $Relocated "bin/qwen_tts_play.exe") -PathType Leaf)) {
     throw "Portable playback executable was not packaged."
 }
+$PortableWorkerRoot = Join-Path $Relocated "worker-python"
+$PortableWorkerPython = Join-Path $PortableWorkerRoot "python/python.exe"
+if (-not (Test-Path -LiteralPath $PortableWorkerPython -PathType Leaf)) {
+    throw "Portable worker Python executable was not packaged."
+}
+$PreviousPythonHome = $env:PYTHONHOME
+$PreviousPythonPath = $env:PYTHONPATH
+try {
+    $env:PYTHONHOME = Join-Path $PortableWorkerRoot "python"
+    $env:PYTHONPATH = Join-Path $PortableWorkerRoot "python/Lib/site-packages"
+    $WorkerOrigin = (& $PortableWorkerPython -B -P -s -c `
+        "import qwen_tts_bridge_worker, sys; print(qwen_tts_bridge_worker.__file__); print(sys.executable)") -join "`n"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Portable worker import probe failed with exit code $LASTEXITCODE."
+    }
+    $ExpectedWorkerPrefix = (Join-Path $PortableWorkerRoot "python/Lib/site-packages").TrimEnd("\")
+    if ($WorkerOrigin -notmatch [regex]::Escape($ExpectedWorkerPrefix) -or
+        $WorkerOrigin -match [regex]::Escape($RepoRoot)) {
+        throw "Portable worker module origin escaped the relocated package: $WorkerOrigin"
+    }
+}
+finally {
+    $env:PYTHONHOME = $PreviousPythonHome
+    $env:PYTHONPATH = $PreviousPythonPath
+}
 foreach ($Entry in $Manifest.release_files) {
     $File = Join-Path $Relocated ([string]$Entry.path).Replace("/", "\")
     if (-not (Test-Path -LiteralPath $File -PathType Leaf)) {
@@ -396,6 +421,7 @@ $CombinedEvidence = @(
     $Synth.output,
     $Play.output,
     $FailClosed.output,
+    $WorkerOrigin,
     (Get-Content -Raw $ManifestPath)
 ) -join "`n"
 if ($CombinedEvidence -match [regex]::Escape($RepoRoot)) {

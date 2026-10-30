@@ -133,6 +133,11 @@ def _build_parser() -> argparse.ArgumentParser:
     play.add_argument(
         "--runtime-backend", choices=("faster", "upstream"), default="faster"
     )
+    play.add_argument(
+        "--allow-non-natural-eos",
+        action="store_true",
+        help="Diagnostic opt-out from the natural-EOS playback gate.",
+    )
 
     voices = commands.add_parser(
         "voices", help="Manage persistent user voice profiles."
@@ -610,9 +615,9 @@ def _run_play(args: argparse.Namespace) -> int:
     for value in worker_arguments:
         command.extend(("--worker-arg", value))
     if args.acceptance_mock_playback:
-        if args.acceptance_mock_worker:
-            command.append("--mock")
         command.append("--mock-playback-sink")
+    if args.allow_non_natural_eos:
+        command.append("--allow-non-natural-eos")
     environment = os.environ.copy()
     if root is not None and worker.executable == Path(sys.executable).resolve():
         environment["PYTHONNOUSERSITE"] = "1"
