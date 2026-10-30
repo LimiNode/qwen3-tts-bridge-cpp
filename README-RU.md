@@ -82,13 +82,32 @@ qwen-tts design --text "Привет" --instruction "Мягкий тёплый �
 qwen-tts voices list
 ```
 
+Для повторного использования зарегистрированного голоса через поддерживаемый
+Python-маршрут Base 1.7B:
+
+```powershell
+qwen-tts voices add --id kraftwerk-ru --wav .\kraftwerk.wav `
+  --text "Точная расшифровка референсной записи."
+qwen-tts voices verify kraftwerk-ru --backend python
+qwen-tts synth --voice-id kraftwerk-ru `
+  --text "Привет! Это зарегистрированный голос." `
+  --language Russian --out .\speech.wav
+```
+
+`synth` проверяет существующий managed-профиль, выбирает только Base 1.7B и
+передаёт authoritative registry в persistent Python worker. Команда не
+скачивает модель, не изменяет registry, не откатывается к прямому reference WAV
+и не выбирает native backend неявно. `design` решает другую задачу: создаёт
+новую VoiceDesign rendition по текстовому описанию голоса, а не использует
+зарегистрированный Base-профиль.
+
 Загрузка модели выполняется только явной командой `qwen-tts models download`;
 синтез никогда не скачивает и не заменяет модель молча.
 
 `models verify` отдельно сообщает структурную корректность и проверку
 целостности по полному manifest модели. `models list` не скрывает найденные, но
-повреждённые модели, а показывает причину ошибки. После синтеза `design`
-проверяет PCM WAV и result JSON до сообщения об успехе. `design --play`
+повреждённые модели, а показывает причину ошибки. После синтеза `design` и
+`synth` проверяют PCM WAV и result JSON до сообщения об успехе. `--play`
 открывает готовый файл в приложении Windows по умолчанию; это не native WinMM
 playback acceptance проекта.
 

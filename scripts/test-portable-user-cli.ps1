@@ -48,12 +48,15 @@ function Invoke-Cli {
 }
 
 function Write-TestModel {
-    param([string]$Path)
+    param(
+        [string]$Path,
+        [string]$ModelType = "voice_design"
+    )
 
     New-Item -ItemType Directory -Force -Path (Join-Path $Path "speech_tokenizer") | Out-Null
     $Config = [ordered]@{
         model_type = "qwen3_tts"
-        tts_model_type = "voice_design"
+        tts_model_type = $ModelType
         tts_model_size = "1b7"
     } | ConvertTo-Json
     [IO.File]::WriteAllText(
@@ -75,6 +78,41 @@ function Write-TestModel {
         $Target = Join-Path $Path $Relative
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Target) | Out-Null
         [IO.File]::WriteAllBytes($Target, [byte[]](1, 2, 3, 4))
+    }
+}
+
+function Write-TestReferenceWav {
+    param([string]$Path)
+
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
+    $FrameCount = 72000
+    $DataBytes = $FrameCount * 2
+    $Stream = [IO.File]::Create($Path)
+    $Writer = [IO.BinaryWriter]::new($Stream, [Text.Encoding]::ASCII, $false)
+    try {
+        $Writer.Write([Text.Encoding]::ASCII.GetBytes("RIFF"))
+        $Writer.Write([int](36 + $DataBytes))
+        $Writer.Write([Text.Encoding]::ASCII.GetBytes("WAVEfmt "))
+        $Writer.Write([int]16)
+        $Writer.Write([int16]1)
+        $Writer.Write([int16]1)
+        $Writer.Write([int]24000)
+        $Writer.Write([int]48000)
+        $Writer.Write([int16]2)
+        $Writer.Write([int16]16)
+        $Writer.Write([Text.Encoding]::ASCII.GetBytes("data"))
+        $Writer.Write([int]$DataBytes)
+        for ($Index = 0; $Index -lt $FrameCount; $Index++) {
+            if ($Index % 2 -eq 0) {
+                $Writer.Write([int16]8192)
+            }
+            else {
+                $Writer.Write([int16]-8192)
+            }
+        }
+    }
+    finally {
+        $Writer.Dispose()
     }
 }
 
@@ -125,10 +163,16 @@ foreach ($Entry in $Manifest.release_files) {
 
 $Model = Join-Path $Relocated "models/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
 Write-TestModel $Model
+$BaseModel = Join-Path $Relocated "models/Qwen3-TTS-12Hz-1.7B-Base"
+Write-TestModel -Path $BaseModel -ModelType "base"
 $UnrelatedCwd = Join-Path $ResolvedOutput "unrelated cwd"
 New-Item -ItemType Directory -Force -Path $UnrelatedCwd | Out-Null
 $ResultRoot = Join-Path $ResolvedOutput "результаты"
 New-Item -ItemType Directory -Force -Path $ResultRoot | Out-Null
+$ReferenceWav = Join-Path $ResultRoot "reference voice.wav"
+$SynthWav = Join-Path $ResultRoot "registered voice.wav"
+$SynthReceipt = Join-Path $ResultRoot "registered voice.json"
+Write-TestReferenceWav $ReferenceWav
 $Wav = Join-Path $ResultRoot "русский голос.wav"
 $Receipt = Join-Path $ResultRoot "русский голос.json"
 
@@ -150,6 +194,24 @@ try {
         throw "Relocated voices list failed: $($VoicesList.output)"
     }
 
+    $VoiceAdd = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "voices", "add", "--id", "portable-test", "--wav", $ReferenceWav,
+        "--text", "Portable reference text."
+    )
+    if ($VoiceAdd.exit_code -ne 0) {
+        throw "Relocated voices add failed: $($VoiceAdd.output)"
+    }
+
+    $VoiceVerify = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "voices", "verify", "portable-test", "--backend", "python"
+    )
+    if (
+        $VoiceVerify.exit_code -ne 0 -or
+        $VoiceVerify.output -notmatch '"status": "compatible"'
+    ) {
+        throw "Relocated voices verify failed: $($VoiceVerify.output)"
+    }
+
     $Design = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
         "design",
         "--text", "Привет! Это проверка переносимого CLI.",
@@ -160,6 +222,19 @@ try {
     )
     if ($Design.exit_code -ne 0) {
         throw "Relocated qwen-tts design failed: $($Design.output)"
+    }
+
+    $Synth = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "synth",
+        "--voice-id", "portable-test",
+        "--text", "Portable registered voice synthesis.",
+        "--language", "English",
+        "--out", $SynthWav,
+        "--result-json", $SynthReceipt,
+        "--acceptance-mock-worker"
+    )
+    if ($Synth.exit_code -ne 0) {
+        throw "Relocated qwen-tts synth failed: $($Synth.output)"
     }
 
     $MissingExe = Join-Path $ResolvedOutput "missing-save-wav.exe"
@@ -185,6 +260,11 @@ finally {
 if ($LASTEXITCODE -ne 0) {
     throw "Relocated CLI WAV verification failed."
 }
+& $Python (Join-Path $RepoRoot "tests/python/verify_wav.py") $SynthWav `
+    --sample-rate 24000 --channels 1 --bits-per-sample 16 --min-data-bytes 1
+if ($LASTEXITCODE -ne 0) {
+    throw "Relocated CLI synth WAV verification failed."
+}
 $ReceiptValue = Get-Content -Raw -Encoding UTF8 -LiteralPath $Receipt | ConvertFrom-Json
 if (
     $ReceiptValue.schema_version -ne 1 -or
@@ -200,7 +280,10 @@ if (
 $CombinedEvidence = @(
     $List.output,
     $VoicesList.output,
+    $VoiceAdd.output,
+    $VoiceVerify.output,
     $Design.output,
+    $Synth.output,
     $FailClosed.output,
     (Get-Content -Raw $ManifestPath)
 ) -join "`n"

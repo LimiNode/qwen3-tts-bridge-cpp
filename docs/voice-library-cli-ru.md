@@ -27,6 +27,23 @@ qwen-tts voices verify kraftwerk-ru --backend native `
   --native-profile q8-base-17b
 ```
 
+Синтез через поддерживаемый persistent Python-маршрут Base 1.7B:
+
+```powershell
+qwen-tts synth --voice-id kraftwerk-ru `
+  --text "Привет! Это зарегистрированный голос Base." `
+  --language Russian --out .\speech.wav
+```
+
+`synth` требует существующий Python-совместимый managed-профиль. Команда
+передаёт authoritative registry и `voice_id` в `qwen_tts_save_wav` и persistent
+worker, по умолчанию требует natural EOS, затем проверяет непустой WAV 24 kHz
+mono PCM16 и result JSON schema 1 до последовательной публикации файлов.
+`--allow-non-natural-eos` предназначен только для явной диагностической отмены
+этого требования. Команда не скачивает модель, не создаёт и не изменяет запись
+registry, не откатывается к прямому WAV и не переключает backend или семейство
+модели молча.
+
 `voices add` проверяет WAV существующим Python preflight, сохраняет отдельную
 managed-копию и SHA-256, а registry публикует атомарно. Исходный WAV пользователя
 не меняется и не удаляется. Для режима без транскрипта служит
@@ -54,6 +71,11 @@ artifact отклоняется без автоматической переза
 Статусы проверки различают `compatible`, `incompatible`, `unprepared`,
 `prepared_valid`, `prepared_stale`, `prepared_corrupt` и `model_unavailable`.
 Наличие одного `manifest.json` само по себе не считается успехом.
+
+`design` создаёт новую VoiceDesign rendition, а `synth` переиспользует
+зарегистрированный Base-профиль. Native preparation и native synthesis — разные
+возможности: наличие подготовленных `.spk/.rvq` не заставляет `qwen-tts synth`
+выбрать native backend, а native-профиль не взаимозаменяем с Python prompt.
 
 Для резервной копии переносите весь каталог `voices`, когда команды изменения
 не выполняются. Managed WAV можно использовать как Python reference на другой

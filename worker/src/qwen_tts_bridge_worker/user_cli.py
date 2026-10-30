@@ -47,6 +47,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _run_models(args)
         if args.command == "design":
             return _run_design(args)
+        if args.command == "synth":
+            return _run_synth(args)
         if args.command == "voices":
             return _run_voices(args)
         parser.print_help()
@@ -101,6 +103,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--runtime-backend", choices=("faster", "upstream"), default="faster"
     )
 
+    synth = commands.add_parser(
+        "synth", help="Synthesize with a registered Base voice profile."
+    )
+    synth.add_argument("--voice-id", required=True)
+    synth.add_argument("--text", required=True)
+    synth.add_argument("--out", type=Path, required=True)
+    synth.add_argument("--result-json", type=Path)
+    synth.add_argument("--model", type=Path)
+    synth.add_argument("--language", default="Russian")
+
     voices = commands.add_parser(
         "voices", help="Manage persistent user voice profiles."
     )
@@ -128,48 +140,51 @@ def _build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("--native-profile", required=True)
     prepare.add_argument("--timeout-seconds", type=float, default=300.0)
     prepare.add_argument("--json", action="store_true")
-    design.add_argument("--save-wav-executable", type=Path)
-    design.add_argument("--worker", type=Path)
-    design.add_argument(
-        "--startup-timeout-ms",
-        type=_parse_timeout_argument,
-        help=(
-            "Worker startup timeout in milliseconds "
-            f"(default: {_DEFAULT_STARTUP_TIMEOUT_MS})."
-        ),
-    )
-    design.add_argument(
-        "--request-timeout-ms",
-        type=_parse_timeout_argument,
-        help=(
-            "Synthesis request timeout in milliseconds "
-            f"(default: {_DEFAULT_REQUEST_TIMEOUT_MS})."
-        ),
-    )
-    design.add_argument(
-        "--play",
-        action="store_true",
-        help="Open the completed WAV in the configured Windows default application.",
-    )
-    eos = design.add_mutually_exclusive_group()
-    eos.add_argument(
-        "--require-natural-eos",
-        dest="require_natural_eos",
-        action="store_true",
-        help="Require the worker to report natural EOS (the default).",
-    )
-    eos.add_argument(
-        "--allow-non-natural-eos",
-        dest="require_natural_eos",
-        action="store_false",
-        help="Allow a completed result without natural EOS.",
-    )
-    design.set_defaults(require_natural_eos=True)
-    design.add_argument(
-        "--acceptance-mock-worker",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
+    for synthesis in (design, synth):
+        synthesis.add_argument("--save-wav-executable", type=Path)
+        synthesis.add_argument("--worker", type=Path)
+        synthesis.add_argument(
+            "--startup-timeout-ms",
+            type=_parse_timeout_argument,
+            help=(
+                "Worker startup timeout in milliseconds "
+                f"(default: {_DEFAULT_STARTUP_TIMEOUT_MS})."
+            ),
+        )
+        synthesis.add_argument(
+            "--request-timeout-ms",
+            type=_parse_timeout_argument,
+            help=(
+                "Synthesis request timeout in milliseconds "
+                f"(default: {_DEFAULT_REQUEST_TIMEOUT_MS})."
+            ),
+        )
+        synthesis.add_argument(
+            "--play",
+            action="store_true",
+            help=(
+                "Open the completed WAV in the configured Windows default application."
+            ),
+        )
+        eos = synthesis.add_mutually_exclusive_group()
+        eos.add_argument(
+            "--require-natural-eos",
+            dest="require_natural_eos",
+            action="store_true",
+            help="Require the worker to report natural EOS (the default).",
+        )
+        eos.add_argument(
+            "--allow-non-natural-eos",
+            dest="require_natural_eos",
+            action="store_false",
+            help="Allow a completed result without natural EOS.",
+        )
+        synthesis.set_defaults(require_natural_eos=True)
+        synthesis.add_argument(
+            "--acceptance-mock-worker",
+            action="store_true",
+            help=argparse.SUPPRESS,
+        )
     return parser
 
 
@@ -196,9 +211,7 @@ def _run_models(args: argparse.Namespace) -> int:
             if not args.json:
                 revision = f" revision={row.revision}" if row.revision else ""
                 status = "valid" if row.structurally_valid else "invalid"
-                integrity = (
-                    "verified" if row.integrity_verified else "not-verified"
-                )
+                integrity = "verified" if row.integrity_verified else "not-verified"
                 detail = row.error or str(row.path)
                 print(
                     f"{row.spec.name}\t{row.source}\t{status}\t{detail}"
@@ -385,6 +398,80 @@ def _run_design(args: argparse.Namespace) -> int:
         config_path=args.config,
         portable_root=root,
     )
+    worker_arguments = (
+        "qwen",
+        "--model-path",
+        str(model.path),
+        "--runtime-backend",
+        args.runtime_backend,
+        "--device",
+        "cuda",
+        "--dtype",
+        "auto",
+    )
+    if args.runtime_backend == "faster":
+        worker_arguments += ("--collect-generation-trace",)
+    return _run_synthesis(
+        args,
+        root=root,
+        worker_arguments=worker_arguments,
+        request_arguments=("--instruction", args.instruction),
+        output_description="VoiceDesign WAV",
+    )
+
+
+def _run_synth(args: argparse.Namespace) -> int:
+    root = _portable_root(args.portable_root)
+    registry_path = default_voice_registry_path(args.config).expanduser().resolve()
+    verification = verify_voice(
+        registry_path,
+        args.voice_id,
+        backend="python",
+        config_path=args.config,
+    )
+    if verification.get("status") != "compatible":
+        detail = verification.get("error")
+        suffix = f": {detail}" if isinstance(detail, str) and detail else ""
+        raise VoiceLibraryError(
+            f"voice {args.voice_id} is not compatible with the Python backend{suffix}"
+        )
+    model = resolve_model(
+        "base-1.7b",
+        explicit_path=args.model,
+        config_path=args.config,
+        portable_root=root,
+    )
+    worker_arguments = (
+        "qwen",
+        "--model-path",
+        str(model.path),
+        "--runtime-backend",
+        "faster",
+        "--device",
+        "cuda",
+        "--dtype",
+        "auto",
+        "--collect-generation-trace",
+        "--voice-registry-path",
+        str(registry_path),
+    )
+    return _run_synthesis(
+        args,
+        root=root,
+        worker_arguments=worker_arguments,
+        request_arguments=("--voice-id", args.voice_id),
+        output_description="Base voice WAV",
+    )
+
+
+def _run_synthesis(
+    args: argparse.Namespace,
+    *,
+    root: Path | None,
+    worker_arguments: tuple[str, ...],
+    request_arguments: tuple[str, ...],
+    output_description: str,
+) -> int:
     config = load_user_config(args.config)
     runtime_value = config.get("runtime")
     runtime: dict[str, object] = (
@@ -427,7 +514,7 @@ def _run_design(args: argparse.Namespace) -> int:
         temporary_outputs = _temporary_output_paths(output_path, result_json)
     except OSError as exc:
         raise ValueError(
-            f"could not create temporary VoiceDesign outputs: {exc}"
+            f"could not create temporary synthesis outputs: {exc}"
         ) from exc
     temporary_wav, temporary_result = temporary_outputs
 
@@ -447,27 +534,12 @@ def _run_design(args: argparse.Namespace) -> int:
         args.text,
         "--language",
         args.language,
-        "--instruction",
-        args.instruction,
     ]
+    command.extend(request_arguments)
     for value in worker.prefix_arguments:
         command.extend(("--worker-arg", value))
     if args.acceptance_mock_worker:
         worker_arguments = ("mock", "--chunks", "2", "--chunk-ms", "40")
-    else:
-        worker_arguments = (
-            "qwen",
-            "--model-path",
-            str(model.path),
-            "--runtime-backend",
-            args.runtime_backend,
-            "--device",
-            "cuda",
-            "--dtype",
-            "auto",
-        )
-        if args.runtime_backend == "faster":
-            worker_arguments += ("--collect-generation-trace",)
     for value in worker_arguments:
         command.extend(("--worker-arg", value))
     if args.require_natural_eos:
@@ -494,7 +566,7 @@ def _run_design(args: argparse.Namespace) -> int:
     finally:
         for temporary_path in temporary_outputs:
             _remove_owned_temporary(temporary_path)
-    print(f"Wrote VoiceDesign WAV: {output_path}")
+    print(f"Wrote {output_description}: {output_path}")
     if args.play:
         if os.name != "nt":
             raise ValueError("--play currently requires Windows")
@@ -522,9 +594,7 @@ def _validate_timeout(value: object, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError(f"{name} must be an integer number of milliseconds")
     if value <= 0 or value > _MAX_TIMEOUT_MS:
-        raise ValueError(
-            f"{name} must be between 1 and {_MAX_TIMEOUT_MS} milliseconds"
-        )
+        raise ValueError(f"{name} must be between 1 and {_MAX_TIMEOUT_MS} milliseconds")
     return value
 
 

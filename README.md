@@ -85,12 +85,30 @@ qwen-tts design --text "Hello" --instruction "A calm warm voice" --out voice.wav
 qwen-tts voices list
 ```
 
+To reuse a registered voice with the supported Python Base 1.7B path:
+
+```powershell
+qwen-tts voices add --id kraftwerk-ru --wav .\kraftwerk.wav `
+  --text "Exact transcript of the reference recording."
+qwen-tts voices verify kraftwerk-ru --backend python
+qwen-tts synth --voice-id kraftwerk-ru `
+  --text "Hello! This is a registered voice." `
+  --language English --out .\speech.wav
+```
+
+`synth` validates the existing managed profile, resolves only Base 1.7B, and
+passes the authoritative registry to the persistent Python worker. It does not
+download a model, mutate the registry, fall back to a reference WAV, or select
+the native backend implicitly. `design` is different: it creates a new
+VoiceDesign rendition from a natural-language instruction rather than reusing
+a registered Base voice.
+
 Model downloads are always explicit through `qwen-tts models download`; a
 synthesis command never downloads or replaces model data silently.
 `models verify` reports structural validity separately from integrity verified
 against a complete model manifest, and `models list` keeps invalid discovered
-candidates visible with their validation error. After synthesis, `design`
-validates both the PCM WAV and its result JSON before reporting success.
+candidates visible with their validation error. After synthesis, `design` and
+`synth` validate both the PCM WAV and result JSON before reporting success.
 `design --play` opens that completed file with the configured Windows default
 application; it is not the project's native WinMM playback acceptance path.
 Reusable Base voice references are managed with `qwen-tts voices`; registration,
