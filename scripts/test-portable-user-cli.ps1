@@ -190,14 +190,34 @@ $PreviousPythonPath = $env:PYTHONPATH
 try {
     $env:PYTHONHOME = Join-Path $PortableWorkerRoot "python"
     $env:PYTHONPATH = Join-Path $PortableWorkerRoot "python/Lib/site-packages"
-    $WorkerOrigin = (& $PortableWorkerPython -B -P -s -c `
-        "import qwen_tts_bridge_worker, sys; print(qwen_tts_bridge_worker.__file__); print(sys.executable)") -join "`n"
+    $WorkerOriginJson = (& $PortableWorkerPython -B -P -s -c `
+        "import json, qwen_tts_bridge_worker, sys; print(json.dumps({'module': qwen_tts_bridge_worker.__file__, 'executable': sys.executable}, ensure_ascii=True))") -join ""
     if ($LASTEXITCODE -ne 0) {
         throw "Portable worker import probe failed with exit code $LASTEXITCODE."
     }
-    $ExpectedWorkerPrefix = (Join-Path $PortableWorkerRoot "python/Lib/site-packages").TrimEnd("\")
-    if ($WorkerOrigin -notmatch [regex]::Escape($ExpectedWorkerPrefix) -or
-        $WorkerOrigin -match [regex]::Escape($RepoRoot)) {
+    try {
+        $WorkerOriginProbe = $WorkerOriginJson | ConvertFrom-Json
+    }
+    catch {
+        throw "Portable worker import probe returned invalid JSON: $WorkerOriginJson"
+    }
+    $ExpectedWorkerPrefix = [IO.Path]::GetFullPath(
+        (Join-Path $PortableWorkerRoot "python/Lib/site-packages")
+    ).TrimEnd("\")
+    $WorkerModuleOrigin = [IO.Path]::GetFullPath([string]$WorkerOriginProbe.module)
+    $WorkerExecutableOrigin = [IO.Path]::GetFullPath([string]$WorkerOriginProbe.executable)
+    $WorkerOrigin = "$WorkerModuleOrigin`n$WorkerExecutableOrigin"
+    if (
+        -not $WorkerModuleOrigin.StartsWith(
+            $ExpectedWorkerPrefix + "\",
+            [StringComparison]::OrdinalIgnoreCase
+        ) -or
+        -not $WorkerExecutableOrigin.Equals(
+            [IO.Path]::GetFullPath($PortableWorkerPython),
+            [StringComparison]::OrdinalIgnoreCase
+        ) -or
+        $WorkerOrigin -match [regex]::Escape($RepoRoot)
+    ) {
         throw "Portable worker module origin escaped the relocated package: $WorkerOrigin"
     }
 }
