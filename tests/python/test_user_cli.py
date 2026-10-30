@@ -17,6 +17,349 @@ from qwen_tts_bridge_worker import user_cli
 
 
 class UserCliTests(unittest.TestCase):
+    def test_synth_uses_base_model_registered_voice_and_authoritative_registry(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "модель Base", model_type="base")
+            save_wav = _write_executable(root / "bin" / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "bin" / "qwen_tts_worker.exe")
+            config, registry = _write_voice_library(root, voice_id="крафтверк-ru")
+            registry_before = registry.read_bytes()
+            output = root / "результат" / "речь.wav"
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "synth",
+                        "--voice-id",
+                        "крафтверк-ru",
+                        "--text",
+                        "Привет! Это проверка синтеза речи.",
+                        "--language",
+                        "Russian",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--out",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            self.assertEqual(
+                "крафтверк-ru", command[command.index("--voice-id") + 1]
+            )
+            worker_args = _worker_argument_values(command)
+            self.assertEqual("qwen", worker_args[0])
+            self.assertEqual(
+                str(model.resolve()), worker_args[worker_args.index("--model-path") + 1]
+            )
+            self.assertEqual(
+                str(registry.resolve()),
+                worker_args[worker_args.index("--voice-registry-path") + 1],
+            )
+            self.assertIn("--collect-generation-trace", worker_args)
+            self.assertIn("--require-natural-eos", command)
+            self.assertEqual(registry_before, registry.read_bytes())
+
+    def test_synth_uses_configured_base_model_and_timeout_precedence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "models" / "base", model_type="base")
+            save_wav = _write_executable(root / "bin" / "save.exe")
+            worker = _write_executable(root / "bin" / "worker.exe")
+            config, _ = _write_voice_library(
+                root,
+                voice_id="voice",
+                extra_config={
+                    "models": {"base-1.7b": {"path": "models/base"}},
+                    "runtime": {
+                        "save_wav_executable": str(save_wav),
+                        "worker": str(worker),
+                        "startup_timeout_ms": 180000,
+                        "request_timeout_ms": 600000,
+                    },
+                },
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "synth",
+                        "--voice-id",
+                        "voice",
+                        "--text",
+                        "Test",
+                        "--out",
+                        str(root / "speech.wav"),
+                        "--request-timeout-ms",
+                        "720000",
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            self.assertEqual(
+                "180000", command[command.index("--startup-timeout-ms") + 1]
+            )
+            self.assertEqual(
+                "720000", command[command.index("--request-timeout-ms") + 1]
+            )
+            self.assertIn(str(model.resolve()), _worker_argument_values(command))
+
+    def test_synth_resolves_base_model_from_portable_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            package = root / "portable package"
+            model = _write_model(
+                package / "models" / "Qwen3-TTS-12Hz-1.7B-Base", model_type="base"
+            )
+            save_wav = _write_executable(package / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "--portable-root",
+                        str(package),
+                        "synth",
+                        "--voice-id",
+                        "voice",
+                        "--text",
+                        "Test",
+                        "--worker",
+                        str(worker),
+                        "--out",
+                        str(root / "speech.wav"),
+                    ]
+                )
+            self.assertEqual(0, result)
+            self.assertEqual(str(save_wav.resolve()), run.call_args.args[0][0])
+            self.assertIn(
+                str(model.resolve()), _worker_argument_values(run.call_args.args[0])
+            )
+
+    def test_synth_rejects_missing_and_python_incompatible_voices(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, registry = _write_voice_library(root, voice_id="voice")
+            common = [
+                "--config",
+                str(config),
+                "synth",
+                "--text",
+                "Test",
+                "--model",
+                str(model),
+                "--save-wav-executable",
+                str(save_wav),
+                "--worker",
+                str(worker),
+                "--out",
+                str(root / "speech.wav"),
+            ]
+            with self.assertRaises(SystemExit) as missing:
+                user_cli.main(common + ["--voice-id", "missing"])
+            self.assertEqual(2, missing.exception.code)
+
+            row = json.loads(registry.read_text(encoding="utf-8"))["voices"][0]
+            managed_wav = registry.parent / row["reference_audio_path"]
+            managed_wav.write_bytes(b"corrupt")
+            with self.assertRaises(SystemExit) as incompatible:
+                user_cli.main(common + ["--voice-id", "voice"])
+            self.assertEqual(2, incompatible.exception.code)
+
+    def test_synth_rejects_missing_or_invalid_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voice_library": {"registry_path": "voices/registry.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            arguments = [
+                "--config",
+                str(config),
+                "synth",
+                "--voice-id",
+                "voice",
+                "--text",
+                "Test",
+                "--out",
+                str(root / "speech.wav"),
+            ]
+            with self.assertRaises(SystemExit) as missing:
+                user_cli.main(arguments)
+            self.assertEqual(2, missing.exception.code)
+
+            registry = root / "voices" / "registry.json"
+            registry.parent.mkdir(parents=True)
+            registry.write_text("not json", encoding="utf-8")
+            with self.assertRaises(SystemExit) as invalid:
+                user_cli.main(arguments)
+            self.assertEqual(2, invalid.exception.code)
+
+    def test_synth_explicit_model_executable_and_worker_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            common = [
+                "--config",
+                str(config),
+                "synth",
+                "--voice-id",
+                "voice",
+                "--text",
+                "Test",
+                "--out",
+                str(root / "speech.wav"),
+            ]
+            cases = (
+                ("--model", root / "missing-model"),
+                ("--save-wav-executable", root / "missing-save.exe"),
+                ("--worker", root / "missing-worker.exe"),
+            )
+            required = {
+                "--model": [
+                    "--save-wav-executable",
+                    str(save_wav),
+                    "--worker",
+                    str(worker),
+                ],
+                "--save-wav-executable": [
+                    "--model",
+                    str(model),
+                    "--worker",
+                    str(worker),
+                ],
+                "--worker": [
+                    "--model",
+                    str(model),
+                    "--save-wav-executable",
+                    str(save_wav),
+                ],
+            }
+            for option, missing_path in cases:
+                with self.subTest(option=option):
+                    with self.assertRaises(SystemExit) as raised:
+                        user_cli.main(
+                            common
+                            + required[option]
+                            + [option, str(missing_path)]
+                        )
+                    self.assertEqual(2, raised.exception.code)
+
+    def test_synth_natural_eos_is_default_and_opt_out_is_explicit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            arguments = [
+                "--config",
+                str(config),
+                "synth",
+                "--voice-id",
+                "voice",
+                "--text",
+                "Test",
+                "--model",
+                str(model),
+                "--save-wav-executable",
+                str(save_wav),
+                "--worker",
+                str(worker),
+                "--out",
+                str(root / "speech.wav"),
+            ]
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_non_natural_synthesis,
+            ):
+                with self.assertRaises(SystemExit) as natural_eos:
+                    user_cli.main(arguments)
+            self.assertEqual(2, natural_eos.exception.code)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_non_natural_synthesis,
+            ) as run:
+                result = user_cli.main(arguments + ["--allow-non-natural-eos"])
+            self.assertEqual(0, result)
+            self.assertNotIn("--require-natural-eos", run.call_args.args[0])
+
+    def test_synth_failure_preserves_existing_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "speech.wav"
+            receipt = root / "speech.json"
+            output.write_bytes(b"previous wav")
+            receipt.write_text('{"previous": true}', encoding="utf-8")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=23),
+            ):
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "synth",
+                        "--voice-id",
+                        "voice",
+                        "--text",
+                        "Test",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--out",
+                        str(output),
+                        "--result-json",
+                        str(receipt),
+                    ]
+                )
+            self.assertEqual(23, result)
+            self.assertEqual(b"previous wav", output.read_bytes())
+            self.assertEqual('{"previous": true}', receipt.read_text())
+
     def test_design_resolves_explicit_model_and_invokes_existing_wav_cli(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -951,15 +1294,17 @@ def _write_valid_design_outputs(
     return output, result
 
 
-def _write_model(root: Path) -> Path:
+def _write_model(
+    root: Path, *, model_type: str = "voice_design", model_size: str = "1b7"
+) -> Path:
     root.mkdir(parents=True)
     (root / "speech_tokenizer").mkdir()
     (root / "config.json").write_text(
         json.dumps(
             {
                 "model_type": "qwen3_tts",
-                "tts_model_type": "voice_design",
-                "tts_model_size": "1b7",
+                "tts_model_type": model_type,
+                "tts_model_size": model_size,
             }
         ),
         encoding="utf-8",
@@ -979,6 +1324,47 @@ def _write_model(root: Path) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"model")
     return root
+
+
+def _write_voice_library(
+    root: Path,
+    *,
+    voice_id: str,
+    extra_config: dict[str, object] | None = None,
+) -> tuple[Path, Path]:
+    config = root / "config.json"
+    payload: dict[str, object] = {
+        "schema_version": 1,
+        "voice_library": {"registry_path": "voices/registry.json"},
+    }
+    if extra_config:
+        payload.update(extra_config)
+    config.write_text(json.dumps(payload), encoding="utf-8")
+    source = root / "source" / "reference.wav"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(source), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x20\x00\xe0" * 36_000)
+    registry = root / "voices" / "registry.json"
+    user_cli.add_voice(
+        registry,
+        voice_id=voice_id,
+        wav_path=source,
+        reference_text="Reference text",
+        x_vector_only=False,
+        preserve_reference_text_whitespace=False,
+    )
+    return config, registry
+
+
+def _worker_argument_values(command: list[str]) -> list[str]:
+    return [
+        command[index + 1]
+        for index, value in enumerate(command[:-1])
+        if value == "--worker-arg"
+    ]
 
 
 def _publication_fixture(

@@ -37,6 +37,22 @@ qwen-tts voices show kraftwerk-ru --json
 qwen-tts voices verify kraftwerk-ru --backend python
 ```
 
+Synthesize through the supported persistent Python Base 1.7B path:
+
+```powershell
+qwen-tts synth --voice-id kraftwerk-ru `
+  --text "Hello! This is a registered Base voice." `
+  --language English --out .\speech.wav
+```
+
+`synth` requires an existing Python-compatible managed profile. It passes the
+authoritative registry path and `voice_id` to `qwen_tts_save_wav` and the
+persistent worker, requires natural EOS by default, and validates the non-empty
+24 kHz mono PCM16 WAV plus schema-1 result JSON before sequential publication.
+Use `--allow-non-natural-eos` only as an explicit diagnostic opt-out. The
+command never downloads a model, creates or changes a registry entry, falls
+back to a direct WAV, or silently switches backend/model family.
+
 Prepare a model-bound native reference through the authoritative native worker:
 
 ```powershell
@@ -78,8 +94,11 @@ explicitly a `static_manifest` validation; the runtime-dependent RVQ codebook
 count is authoritative only after the native worker loads the selected DLL and
 codec context during preparation or synthesis.
 
-This command family does not download models, create VoiceDesign voices, or
-promise that a native profile is interchangeable with a Python prompt. Backend
+This command family does not download models or create VoiceDesign voices.
+`design` creates a new VoiceDesign rendition; `synth` reuses a registered Base
+profile. Native preparation and native synthesis are separate capabilities:
+preparing `.spk`/`.rvq` does not make `qwen-tts synth` select the native backend,
+and a native profile is not interchangeable with a Python prompt. Backend
 compatibility remains explicit and model/runtime bound.
 
 To back up or move the library, copy the whole `voices` directory while no CLI
