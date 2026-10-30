@@ -40,8 +40,16 @@ function Invoke-Cli {
         # Start the launcher and redirect both streams at the process level.
         # PowerShell otherwise materializes native stderr as NativeCommandError
         # when the caller has $ErrorActionPreference=Stop, even for exit 0.
+        $ProcessArguments = foreach ($Argument in $Arguments) {
+            $Escaped = [string]$Argument
+            if ($Escaped -match '[\s"&<>^|()]' -or $Escaped.Length -eq 0) {
+                '"' + $Escaped.Replace('"', '\"') + '"'
+            } else {
+                $Escaped
+            }
+        }
         $Process = Start-Process -FilePath $script:Launcher `
-            -ArgumentList $Arguments `
+            -ArgumentList $ProcessArguments `
             -WorkingDirectory $WorkingDirectory `
             -RedirectStandardOutput $StdoutPath `
             -RedirectStandardError $StderrPath `
