@@ -18,6 +18,7 @@
 #include <iostream>
 #include <iterator>
 #include <stdexcept>
+#include <system_error>
 #include <string>
 #include <vector>
 
@@ -282,7 +283,9 @@ int main() {
             std::filesystem::temp_directory_path(),
             "qwen_tts_bridge_pcm_capture_" + std::to_string(stamp));
         g_root_owned = true;
-        std::atexit(cleanup_owned_root);
+        if (std::atexit(cleanup_owned_root) != 0) {
+            throw std::runtime_error("failed to register PCM capture test cleanup");
+        }
 
         test_exact_capture_and_metadata();
         test_rejects_format_mismatch_and_empty_capture();
