@@ -123,7 +123,8 @@ def _build_parser() -> argparse.ArgumentParser:
     synth.add_argument("--language", default="Russian")
 
     play = commands.add_parser(
-        "play", help="Stream one registered Base voice profile to the default audio device."
+        "play",
+        help="Stream one registered Base voice profile to the default audio device.",
     )
     play.add_argument("--voice-id", required=True)
     play.add_argument("--text", required=True)
@@ -235,8 +236,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     play.add_argument("--verbose", action="store_true")
     play.add_argument("--log-file", type=Path)
-    play.add_argument("--acceptance-mock-worker", action="store_true", help=argparse.SUPPRESS)
-    play.add_argument("--acceptance-mock-playback", action="store_true", help=argparse.SUPPRESS)
+    play.add_argument(
+        "--acceptance-mock-worker", action="store_true", help=argparse.SUPPRESS
+    )
+    play.add_argument(
+        "--acceptance-mock-playback", action="store_true", help=argparse.SUPPRESS
+    )
     return parser
 
 
