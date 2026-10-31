@@ -5,8 +5,10 @@ bridge sends to Qwen through `PreparedText::effective_text`.
 
 ## Revisions and method
 
-The comparison uses bridge revision `c1936f78ac6cdb7938b9a70d4aee50c6f5936c4f`
-(the corrective PR #231 HEAD). Each version is configured in its
+The historical comparison was executed with bridge revision
+`c1936f78ac6cdb7938b9a70d4aee50c6f5936c4f`. The current rebased PR #231 HEAD
+is `94f9d193cb6f00ffbe77d54ecdb1d2c554ec1520`; it contains the same comparison
+result and is the revision under review. Each version is configured in its
 own independent checkout so the frontend submodule pin cannot leak between
 runs.
 
@@ -16,27 +18,32 @@ runs.
 | v0.2.3 | `52383911290aabe6e2963ec434d195fdeaac0aad` |
 
 The reproducible setup below is for Windows x64, Visual Studio 17 2022, and
-Release configuration. It creates two independent source/build pairs under
+Release configuration. It creates independent source checkouts under
+`.worktrees/`, CMake build trees under `.build/`, and generated receipts under
 `.tmp/`; replace `$repoUrl` with the bridge remote when reproducing outside the
 repository checkout:
 
 ```powershell
 $bridgeRevision = "c1936f78ac6cdb7938b9a70d4aee50c6f5936c4f"
 $repoUrl = "https://github.com/LimiNode/qwen3-tts-bridge-cpp.git"
-$root = Join-Path (git rev-parse --show-toplevel) ".tmp\b2-1-repro"
+$repoRoot = git rev-parse --show-toplevel
+$sourceRoot = Join-Path $repoRoot ".worktrees\b2-1-repro"
+$buildRoot = Join-Path $repoRoot ".build\b2-1-repro"
+$resultRoot = Join-Path $repoRoot ".tmp\b2-1-repro"
+New-Item -ItemType Directory -Force $resultRoot | Out-Null
 
-git clone --no-checkout $repoUrl "$root\v022\src"
-git clone --no-checkout $repoUrl "$root\v023\src"
+git clone --no-checkout $repoUrl "$sourceRoot\v022"
+git clone --no-checkout $repoUrl "$sourceRoot\v023"
 foreach ($version in @("v022", "v023")) {
-    git -C "$root\$version\src" checkout $bridgeRevision
-    git -C "$root\$version\src" submodule update --init --recursive
+    git -C "$sourceRoot\$version" checkout $bridgeRevision
+    git -C "$sourceRoot\$version" submodule update --init --recursive
 }
-git -C "$root\v022\src\external\cpp\tts-front-cpp" checkout f828893b46728544041ab577215640338756a9d4
-git -C "$root\v023\src\external\cpp\tts-front-cpp" checkout 52383911290aabe6e2963ec434d195fdeaac0aad
+git -C "$sourceRoot\v022\external\cpp\tts-front-cpp" checkout f828893b46728544041ab577215640338756a9d4
+git -C "$sourceRoot\v023\external\cpp\tts-front-cpp" checkout 52383911290aabe6e2963ec434d195fdeaac0aad
 
-cmake -S "$root\v022\src" -B "$root\v022\build" -G "Visual Studio 17 2022" -A x64 `
+cmake -S "$sourceRoot\v022" -B "$buildRoot\v022" -G "Visual Studio 17 2022" -A x64 `
     -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON -DQWEN_TTS_BRIDGE_BUILD_TTS_FRONT=ON
-cmake -S "$root\v023\src" -B "$root\v023\build" -G "Visual Studio 17 2022" -A x64 `
+cmake -S "$sourceRoot\v023" -B "$buildRoot\v023" -G "Visual Studio 17 2022" -A x64 `
     -DQWEN_TTS_BRIDGE_BUILD_TESTS=ON -DQWEN_TTS_BRIDGE_BUILD_TTS_FRONT=ON
 ```
 
@@ -46,17 +53,18 @@ state, and warning diagnostics as UTF-8 JSON. Build and run both independent
 trees with:
 
 ```powershell
-cmake --build "$root\v022\build" --config Release --target tts_front_effective_text_corpus
-& "$root\v022\build\Release\tts_front_effective_text_corpus.exe" --stdout --emit-only > "$root\v022.json"
+cmake --build "$buildRoot\v022" --config Release --target tts_front_effective_text_corpus
+& "$buildRoot\v022\Release\tts_front_effective_text_corpus.exe" --stdout --emit-only > "$resultRoot\v022.json"
 
-cmake --build "$root\v023\build" --config Release --target tts_front_effective_text_corpus
-& "$root\v023\build\Release\tts_front_effective_text_corpus.exe" --stdout > "$root\v023.json"
+cmake --build "$buildRoot\v023" --config Release --target tts_front_effective_text_corpus
+& "$buildRoot\v023\Release\tts_front_effective_text_corpus.exe" --stdout > "$resultRoot\v023.json"
 ```
 
 The v0.2.2 invocation uses `--emit-only` because the executable's default
 oracle asserts the v0.2.3 contract; both invocations still emit the same JSON
-schema for differential comparison. All temporary source, build, and receipt output stays under the repository
-worktree's `.tmp/` directory. The expected bridge flags are
+schema for differential comparison. Source checkouts stay under `.worktrees/`,
+build trees under `.build/`, and generated JSON receipts under `.tmp/`. The
+expected bridge flags are
 `QWEN_TTS_BRIDGE_BUILD_TESTS=ON` and `QWEN_TTS_BRIDGE_BUILD_TTS_FRONT=ON` in
 both configurations.
 
@@ -161,6 +169,13 @@ independently of pronunciation quality. PR #231 remains Draft until this gate
 is completed or an external receipt is supplied.
 
 ## Classification
+
+- Dependency pin v0.2.3: PASS.
+- C++ adapter compatibility: PASS.
+- 15-case effective-text regression: PASS.
+- Intended `ru_genitive_decimal` text/diagnostic change: PASS.
+- Targeted audio listening: NOT RUN.
+- Base model availability: `MODEL_ARTIFACT_UNAVAILABLE`.
 
 - Intended: 1 (`ru_genitive_decimal`), pending targeted listening acceptance.
 - Regression: none observed in this corpus.
