@@ -261,5 +261,11 @@ Python-проверки используют worker из `worker/src` и locked 
 - [Audio и Unity integration](docs/audio-and-unity-integration.md)
 - [Примеры](examples/README.md)
 
+Внешние ссылки на Qwen3-TTS:
+
+- основной репозиторий: https://github.com/QwenLM/Qwen3-TTS
+- streaming fork: https://github.com/LimiNode/Qwen3-TTS-streaming
+- документация и streaming examples: https://github.com/QwenLM/Qwen3-TTS#quick-start
+
 Исследовательские benchmark-отчёты и аппаратные receipts находятся в `docs/`;
 они не являются обещанием одинакового поведения для всех моделей и GPU.

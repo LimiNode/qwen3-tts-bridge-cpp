@@ -963,5 +963,5 @@ CMP 50HX Base-profile latency and cadence evidence is maintained separately:
 
 - Qwen3-TTS upstream: https://github.com/QwenLM/Qwen3-TTS
 - Qwen3-TTS streaming fork: https://github.com/LimiNode/Qwen3-TTS-streaming
-- Qwen3-TTS streaming documentation: https://qwenlm-qwen3-tts.mintlify.app/guides/streaming
+- Qwen3-TTS documentation and streaming examples: https://github.com/QwenLM/Qwen3-TTS#quick-start
 - Nuitka user manual: https://nuitka.net/user-documentation/user-manual.html

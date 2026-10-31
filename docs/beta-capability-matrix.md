@@ -1,8 +1,11 @@
 # Beta capability matrix
 
-This is the Phase B1 inventory for `qwen3-tts-bridge-cpp` at
-`6cf272fce7358479393f0bdd7d9bb3186cd1f1fb` (current `main`). It is an
-evidence ledger, not a promise that every implemented path is release-ready.
+This document preserves the historical Phase B1 inventory baseline
+`30500e9426ba1309c295f9e3228e7a80ad35d97b` (the merge of Phase A). The
+release-polish corrections were reviewed against current `main`
+`6cf272fce7358479393f0bdd7d9bb3186cd1f1fb`.
+It is an evidence ledger, not a new full capability audit or a promise that
+every implemented path is release-ready.
 The production baseline remains the persistent Python worker.  Native Qwen,
 the RU-stress profile, and speech-animation are explicitly opt-in or
 experimental until their listed gates are closed.

@@ -14,6 +14,13 @@ emission, and a two-chunk WaveOut prebuffer. It is an idle-machine acceptance
 test. It does not promise real-time playback while another application uses the
 GPU.
 
+The runner validates the real-model contract using the supplied Python
+runtime, model paths, registry and C++ player. Its repository `PYTHONPATH`
+includes the checked-out worker sources, so this command is a functional
+research/release-candidate runner, not the isolated clean portable-package
+gate. That gate remains a separate B2 acceptance step using the sealed package
+in a clean environment.
+
 ## Automated CustomVoice and CLI Matrix
 
 From a checkout containing the built client, sealed Python runtime, local model,
