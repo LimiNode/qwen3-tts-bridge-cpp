@@ -1,6 +1,6 @@
 #pragma once
 
-#include <qwen_tts_bridge/client/client_types.hpp>
+#include <qwen_tts_bridge/client.hpp>
 
 #include <optional>
 
