@@ -29,6 +29,14 @@ class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
         self.assertIn("$CodecRightPaddedHistoryFrames = 25", launcher)
         self.assertIn("external\\python\\faster-qwen3-tts", launcher)
         self.assertIn(
+            "$PythonPath = 'dist\\QwenTTSBridge\\worker-python\\python\\python.exe'",
+            launcher,
+        )
+        self.assertIn(
+            "$OutputRoot = '.tmp\\base-acceptance\\playback-etw-soak'",
+            launcher,
+        )
+        self.assertIn(
             "QTB_FASTER_CODEC_RIGHT_PADDED_MAX_DECODE_INPUT_FRAMES", launcher
         )
         self.assertIn(

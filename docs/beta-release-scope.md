@@ -1,11 +1,11 @@
 # Windows beta release scope
 
-Status: proposed B2-0 scope contract. This document is deliberately
+Status: release-candidate beta contract, not a published release. This document is deliberately
 documentation-only. It does not announce a release, select a tag, change the
 runtime, or replace the acceptance reports in `docs/`.
 
 The scope is based on `main` at
-`232e57f09bf4ab91dae9cf96bf14d907420ca8b5` and the Phase B1 inventory in
+`6cf272fce7358479393f0bdd7d9bb3186cd1f1fb` and the Phase B1 inventory in
 [`beta-capability-matrix.md`](beta-capability-matrix.md). “Verified” below
 means that implementation and evidence exist; “supported” is the narrower
 product promise for the first beta.

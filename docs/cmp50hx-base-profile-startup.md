@@ -273,7 +273,7 @@ proxy is not a hardware-underrun counter.
 ```powershell
 .\scripts\run-cmp50hx-base-profile-startup-ab.ps1 `
   -PlayerPath 'E:\_repoz\qwen3-tts-bridge-cpp\build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe' `
-  -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\QwenTTSBridge-technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe' `
+  -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\dist\QwenTTSBridge\worker-python\python\python.exe' `
   -BaseModelPath 'E:\_repoz\qwen3-tts-bridge-cpp\tmp\cmp50hx-r3-external-models\Qwen3-TTS-12Hz-1.7B-Base' `
   -VoiceRegistryPath '.\examples\voice-profiles\registry.example.json' `
   -VoiceId 'kraftwerk_robot_ru_bootstrap_fidelity' `

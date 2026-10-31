@@ -1,6 +1,6 @@
 # Beta release gap analysis
 
-Baseline: `30500e9426ba1309c295f9e3228e7a80ad35d97b`.
+Baseline: `6cf272fce7358479393f0bdd7d9bb3186cd1f1fb` (current `main`).
 
 This document narrows Phase B2 to evidence-backed work. It deliberately keeps
 the Python worker as the production baseline and does not promote the native
@@ -184,12 +184,11 @@ threat model.
 
 ### Documentation contradictions to resolve before publication
 
-`CHANGELOG.md` still describes an “Unreleased — v0.2.0 release candidate” and
-mentions native routing, while `docs/project-status.md` correctly says that the
-Python worker is the production baseline. Before beta publication, reconcile
-the release-facing changelog with the actual supported/opt-in matrix. The
-historical v0.2.0 checklist and old ABI/near-silent reports should remain
-historical; they must not be rewritten as current failures or current passes.
+The release-facing `CHANGELOG.md` now describes the unreleased Windows beta
+scope and keeps native routing explicitly opt-in, matching
+`docs/project-status.md` and the capability matrix. The historical v0.2.0
+checklist and old ABI/near-silent reports remain historical; they must not be
+rewritten as current failures or current passes.
 
 ## Recommended B2 order
 
