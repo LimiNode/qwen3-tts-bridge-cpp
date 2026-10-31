@@ -6,9 +6,9 @@ bridge sends to Qwen through `PreparedText::effective_text`.
 ## Revisions and method
 
 The historical comparison was executed with bridge revision
-`c1936f78ac6cdb7938b9a70d4aee50c6f5936c4f`. The current rebased PR #231 HEAD
-is `94f9d193cb6f00ffbe77d54ecdb1d2c554ec1520`; it contains the same comparison
-result and is the revision under review. Each version is configured in its
+`c1936f78ac6cdb7938b9a70d4aee50c6f5936c4f`. The comparison was previously
+reviewed at PR #231 HEAD `94f9d193cb6f00ffbe77d54ecdb1d2c554ec1520`; that SHA
+is retained as provenance and is not a claim about the current PR HEAD. Each version is configured in its
 own independent checkout so the frontend submodule pin cannot leak between
 runs.
 
@@ -30,12 +30,17 @@ $repoRoot = git rev-parse --show-toplevel
 $sourceRoot = Join-Path $repoRoot ".worktrees\b2-1-repro"
 $buildRoot = Join-Path $repoRoot ".build\b2-1-repro"
 $resultRoot = Join-Path $repoRoot ".tmp\b2-1-repro"
+New-Item -ItemType Directory -Force $sourceRoot | Out-Null
 New-Item -ItemType Directory -Force $resultRoot | Out-Null
 
-git clone --no-checkout $repoUrl "$sourceRoot\v022"
-git clone --no-checkout $repoUrl "$sourceRoot\v023"
+git -C $repoRoot cat-file --quiet --verify ($bridgeRevision + "^{commit}")
+if ($LASTEXITCODE -ne 0) {
+    git -C $repoRoot fetch --no-tags $repoUrl $bridgeRevision
+    if ($LASTEXITCODE -ne 0) { throw "Unable to fetch bridge revision $bridgeRevision" }
+}
+git worktree add --detach "$sourceRoot\v022" $bridgeRevision
+git worktree add --detach "$sourceRoot\v023" $bridgeRevision
 foreach ($version in @("v022", "v023")) {
-    git -C "$sourceRoot\$version" checkout $bridgeRevision
     git -C "$sourceRoot\$version" submodule update --init --recursive
 }
 git -C "$sourceRoot\v022\external\cpp\tts-front-cpp" checkout f828893b46728544041ab577215640338756a9d4
@@ -54,16 +59,18 @@ trees with:
 
 ```powershell
 cmake --build "$buildRoot\v022" --config Release --target tts_front_effective_text_corpus
-& "$buildRoot\v022\Release\tts_front_effective_text_corpus.exe" --stdout --emit-only > "$resultRoot\v022.json"
+cmd.exe /d /s /c "`"$buildRoot\v022\Release\tts_front_effective_text_corpus.exe`" --stdout --emit-only > `"$resultRoot\v022.json`""
 
 cmake --build "$buildRoot\v023" --config Release --target tts_front_effective_text_corpus
-& "$buildRoot\v023\Release\tts_front_effective_text_corpus.exe" --stdout > "$resultRoot\v023.json"
+cmd.exe /d /s /c "`"$buildRoot\v023\Release\tts_front_effective_text_corpus.exe`" --stdout > `"$resultRoot\v023.json`""
 ```
 
 The v0.2.2 invocation uses `--emit-only` because the executable's default
 oracle asserts the v0.2.3 contract; both invocations still emit the same JSON
 schema for differential comparison. Source checkouts stay under `.worktrees/`,
 build trees under `.build/`, and generated JSON receipts under `.tmp/`. The
+commands deliberately use `cmd.exe` redirection so the corpus executable's raw
+UTF-8 bytes are preserved on Windows PowerShell 5.1 and PowerShell 7. The
 expected bridge flags are
 `QWEN_TTS_BRIDGE_BUILD_TESTS=ON` and `QWEN_TTS_BRIDGE_BUILD_TTS_FRONT=ON` in
 both configurations.
