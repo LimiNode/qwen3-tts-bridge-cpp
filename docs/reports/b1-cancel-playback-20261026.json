@@ -6,7 +6,7 @@
   "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
   "active_cancellation": {
     "status": "pass",
-    "raw_receipt": ".tmp/historical/stage-a-base-evidence/b1-active-cancel.json",
+    "raw_receipt": "E:/stage-a-base-evidence/b1-active-cancel.json",
     "raw_receipt_sha256": "5C27D7D455D329D3323676F0F14731ECF89A231CB9F7D266850AF21EA3CC2F1F",
     "engine_started_metric": true,
     "first_pcm_before_cancel": true,

@@ -42,16 +42,16 @@
       {"request_id": 4, "label": "paragraph", "audio_bytes": 842604, "audio_chunks": 29, "codec_frame_count": 226, "first_audio_ms": 6102.457, "completed_ms": 52958.745, "pcm_sha256": "ba32b86ffe3958380c4677a8ab1e50b4e263c01352275b827a1600607f17430a", "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false},
       {"request_id": 5, "label": "repeat_short_success", "audio_bytes": 137100, "audio_chunks": 5, "codec_frame_count": 36, "first_audio_ms": 6079.825, "completed_ms": 19357.482, "pcm_sha256": "825c2fa67e91515d6b2450771e03beee4649685c89c65ba82491e6c5e6101df58", "termination_reason": "eos", "hit_eos": true, "hit_max_new_tokens": false, "hit_max_seq_len": false}
     ],
-    "raw_eos_receipt": ".tmp/historical/stage-a-base-evidence/b1-persistent-eos-oracle.json",
+    "raw_eos_receipt": "E:/stage-a-base-evidence/b1-persistent-eos-oracle.json",
     "raw_eos_receipt_sha256": "940D5E23D25D4670F1F97B8CB740EA029E4F1475DF95B3B538537E6CB06A5D68",
-    "raw_benchmark_receipt": ".tmp/historical/stage-a-base-evidence/b1-persistent-benchmark.json",
+    "raw_benchmark_receipt": "E:/stage-a-base-evidence/b1-persistent-benchmark.json",
     "raw_benchmark_receipt_sha256": "53D17D076CECFE2533DF9C61CC1A234D521951F63F531091B76154E2DC47B8B1"
   },
   "b1_b": {
     "status": "protocol_recovery_pass_active_gpu_cancellation_not_yet_verified",
-    "cancellation_recovery_receipt": ".tmp/historical/stage-a-base-evidence/b1-cancel-recovery.json",
+    "cancellation_recovery_receipt": "E:/stage-a-base-evidence/b1-cancel-recovery.json",
     "cancellation_recovery_receipt_sha256": "2A66578B82B8A037CDE625DD226CBB3625EA7E2D3D080BB4CBECF35636A6A866",
-    "restart_receipt": ".tmp/historical/stage-a-base-evidence/b1-restart.json",
+    "restart_receipt": "E:/stage-a-base-evidence/b1-restart.json",
     "restart_receipt_sha256": "582F3E8DEA4D7F2EB08A9695E48A63B2B52CD5F3612F89DF80AE7F0AA1454A81",
     "cancel_terminal_messages": ["cancelled"],
     "recovery_audio_bytes": 155296,

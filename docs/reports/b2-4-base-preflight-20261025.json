@@ -6,13 +6,13 @@
     "path": "E:/_repoz/qwen3-tts-bridge-cpp/tmp/cmp50hx-r3-external-models/Qwen3-TTS-12Hz-1.7B-Base",
     "repository": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
     "revision": null,
-    "manifest_path": ".tmp/historical/stage-a-base-evidence/qwen3-tts-12hz-1.7b-base-manifest.json",
+    "manifest_path": "E:/stage-a-base-evidence/qwen3-tts-12hz-1.7b-base-manifest.json",
     "file_count": 13,
     "directory_manifest_sha256": "d47209b486d4e6929a554e09f5be87803309be68387ac075c0b1f7e62a1f7d66",
     "doctor_manifest_validation": true
   },
   "voice": {
-    "registry_path": ".tmp/historical/stage-a-base-evidence/voice-registry/voice-profiles.local.json",
+    "registry_path": "E:/stage-a-base-evidence/voice-registry/voice-profiles.local.json",
     "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
     "reference_audio": "kraftwerk_robot_ru_fidelity.wav",
     "reference_audio_sha256": "90E5F7576991EA5B9F0A85E9109F7BD31FF667C4A12D58783A06C650796C3CA1",
@@ -51,7 +51,7 @@
     "hit_max_new_tokens": false,
     "hit_max_seq_len": false,
     "codec_frame_count": 37,
-    "raw_receipt": ".tmp/historical/stage-a-base-evidence/b1-real-base-smoke-utf8.json",
+    "raw_receipt": "E:/stage-a-base-evidence/b1-real-base-smoke-utf8.json",
     "reproduction": {
       "harness": "tests/python/verify_packaged_worker.py:PackagedWorkerHarness",
       "invocation": "E:/stage-a-relocated/QwenTTSBridge/worker-python/python/python.exe .tmp/base_utf8_smoke.py",

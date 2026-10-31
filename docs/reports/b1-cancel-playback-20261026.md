@@ -44,7 +44,7 @@ capacity was saturated or that a request was rejected for lack of capacity.
 Raw receipt SHA-256:
 
 ```text
-.tmp/historical/stage-a-base-evidence/b1-active-cancel.json
+E:\stage-a-base-evidence\b1-active-cancel.json
 5C27D7D455D329D3323676F0F14731ECF89A231CB9F7D266850AF21EA3CC2F1F
 ```
 

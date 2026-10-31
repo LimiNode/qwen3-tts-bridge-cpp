@@ -14,7 +14,7 @@ model: Qwen3-TTS-12Hz-1.7B-Base
 model manifest: d47209b486d4e6929a554e09f5be87803309be68387ac075c0b1f7e62a1f7d66
 voice_id: kraftwerk_robot_ru_bootstrap_fidelity
 portable worker: E:\stage-a-relocated\QwenTTSBridge\worker-python
-voice registry: `.tmp/historical/stage-a-base-evidence/voice-registry/voice-profiles.local.json`
+voice registry: E:\stage-a-base-evidence\voice-registry\voice-profiles.local.json
 runtime backend: faster / CUDA / bfloat16 / SDPA / eager prefill
 compile: disabled; CUDA graphs: disabled
 max_seq_len: 768; emit_every_frames: 8; decode_window_frames: 80
@@ -50,9 +50,9 @@ positive `generated_steps`, `emitted_steps`, and `terminal_step_index`.
 
 Worker exit code was `0`. Per-request PCM SHA-256 values and text hashes are
 in the external oracle receipt:
-`.tmp/historical/stage-a-base-evidence/b1-persistent-eos-oracle.json`.
+`E:\stage-a-base-evidence\b1-persistent-eos-oracle.json`.
 The benchmark receipt with first-audio and real-time metrics is:
-`.tmp/historical/stage-a-base-evidence/b1-persistent-benchmark.json`.
+`E:\stage-a-base-evidence\b1-persistent-benchmark.json`.
 
 External receipt SHA-256 values are recorded in the machine-readable summary;
 the raw files are intentionally not committed.
@@ -73,12 +73,12 @@ does not measure physical engine unwind, and does not establish when admission
 capacity was released. Those three measurements remain **NOT YET VERIFIED**.
 A subsequent request 2 in the same worker produced 155,296 PCM bytes and
 passed the full natural-EOS oracle. The worker exited cleanly with code `0`.
-Receipt: `.tmp/historical/stage-a-base-evidence/b1-cancel-recovery.json`.
+Receipt: `E:\stage-a-base-evidence\b1-cancel-recovery.json`.
 
 Two fresh worker processes then synthesized the same registered-voice subset.
 Both produced 140,940 PCM bytes, reached natural EOS without safety-limit hits,
 and exited with code `0`. Receipt:
-`.tmp/historical/stage-a-base-evidence/b1-restart.json`.
+`E:\stage-a-base-evidence\b1-restart.json`.
 
 These checks cover functional restart and protocol-level cancellation/recovery.
 They do not yet include proof of cancellation during confirmed GPU execution,

@@ -82,8 +82,12 @@ ignored and uncommitted.
 For new model and hardware acceptance runs, use the dedicated
 `.tmp/base-acceptance/<run-id>/` tree so model manifests, receipts, logs, and
 listening outputs stay together. Historical evidence migrated from older
-external locations belongs under `.tmp/historical/<name>/`; do not create new
-evidence beside the repository or in a sibling temporary directory.
+external locations belongs under the protected local archive
+`.tmp/historical/<name>/`. This archive is excluded from routine cleanup and
+must have an independent backup before its external rollback copy is deleted;
+do not create new evidence beside the repository or in a sibling temporary
+directory. Ignored directories are not versioned, transferred, or backed up by
+Git.
 Use `.build/<profile>/` for local CMake and test builds. Keep generated release
 packages in `dist/` only while they are needed for packaging or acceptance;
 remove or regenerate them after the acceptance task completes. Do not leave
