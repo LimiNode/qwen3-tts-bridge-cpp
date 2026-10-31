@@ -50,8 +50,10 @@ RTX-era reports.
 ## 2. Reusable acceptance runners
 
 Use the existing runners and preserve their machine-readable output under
-`.tmp/` during execution, then copy only the final report/manifest into the
-reviewed evidence location:
+`.tmp/base-acceptance/<run-id>/` during execution. Keep the final report,
+manifest, logs, and listening result in that same run directory; historical
+evidence migrated from older locations belongs under
+`.tmp/historical/<name>/`:
 
 ```powershell
 .\scripts\run-real-model-release-acceptance.ps1 ...

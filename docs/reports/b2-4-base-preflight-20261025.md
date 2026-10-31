@@ -31,7 +31,7 @@ revision: not present in the local export; no revision was invented
 A complete doctor-schema-v2 manifest was generated outside Git at:
 
 ```text
-E:\stage-a-base-evidence\qwen3-tts-12hz-1.7b-base-manifest.json
+.tmp/historical/stage-a-base-evidence/qwen3-tts-12hz-1.7b-base-manifest.json
 files: 13 (the model's transient .cache directory is excluded by the doctor contract)
 directory_manifest_sha256: d47209b486d4e6929a554e09f5be87803309be68387ac075c0b1f7e62a1f7d66
 ```
@@ -63,8 +63,8 @@ same CMP 50HX/CUDA identity.
 Deployment-local registry and copied reference asset are outside Git:
 
 ```text
-E:\stage-a-base-evidence\voice-registry\voice-profiles.local.json
-E:\stage-a-base-evidence\voice-registry\kraftwerk_robot_ru_fidelity.wav
+.tmp/historical/stage-a-base-evidence/voice-registry/voice-profiles.local.json
+.tmp/historical/stage-a-base-evidence/voice-registry/kraftwerk_robot_ru_fidelity.wav
 voice_id: kraftwerk_robot_ru_bootstrap_fidelity
 reference WAV: 844,844 bytes
 reference WAV SHA-256: 90E5F7576991EA5B9F0A85E9109F7BD31FF667C4A12D58783A06C650796C3CA1
@@ -116,7 +116,7 @@ The run returned exit code `0` and produced five non-empty audio frames
 and `natural_eos=true`; it did not hit `max_new_tokens` or `max_seq_len`.
 The generation trace contained 37 codec frames. The authoritative UTF-8 receipt
 is retained outside Git at
-`E:\stage-a-base-evidence\b1-real-base-smoke-utf8.json`.
+`.tmp/historical/stage-a-base-evidence/b1-real-base-smoke-utf8.json`.
 
 This smoke proves that the frozen Base checkpoint, registered voice, relocated
 worker, and CUDA runtime can complete one real synthesis and clean EOS. It does
