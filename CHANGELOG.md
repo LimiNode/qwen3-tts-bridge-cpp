@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — proposed Windows beta scope
+## Unreleased — Windows beta preparation
 
 The proposed first beta uses the persistent Python worker as its production
 baseline, with the documented Qwen3-TTS Base 1.7B profile and external,

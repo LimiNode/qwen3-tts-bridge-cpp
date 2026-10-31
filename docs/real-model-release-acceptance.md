@@ -14,6 +14,13 @@ emission, and a two-chunk WaveOut prebuffer. It is an idle-machine acceptance
 test. It does not promise real-time playback while another application uses the
 GPU.
 
+The runner validates the real-model contract using the supplied Python
+runtime, model paths, registry and C++ player. Its repository `PYTHONPATH`
+includes the checked-out worker sources, so this command is a functional
+research/release-candidate runner, not the isolated clean portable-package
+gate. That gate remains a separate B2 acceptance step using the sealed package
+in a clean environment.
+
 ## Automated CustomVoice and CLI Matrix
 
 From a checkout containing the built client, sealed Python runtime, local model,
@@ -22,7 +29,7 @@ and the versioned Faster submodule:
 ```powershell
 .\scripts\run-real-model-release-acceptance.ps1 `
   -PlayerPath 'E:\_repoz\qwen3-tts-bridge-cpp\.build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe' `
-  -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\.tmp\technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe' `
+  -PythonPath 'E:\_repoz\qwen3-tts-bridge-cpp\dist\QwenTTSBridge\worker-python\python\python.exe' `
   -CustomVoiceModelPath 'E:\_repoz\qwen3-tts-bridge-cpp\models\Qwen3-TTS-12Hz-0.6B-CustomVoice' `
   -RuntimeCachePath 'E:\_repoz\qwen3-tts-bridge-cpp\.tmp\cmp50hx-r3-runtime-cache'
 ```
