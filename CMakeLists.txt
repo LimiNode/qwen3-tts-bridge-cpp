@@ -815,6 +815,20 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
     add_test(NAME playout_cursor_test COMMAND playout_cursor_test)
 
+    add_executable(qwen_tts_play_completion_policy_test
+        tests/qwen_tts_play_completion_policy_test.cpp
+    )
+
+    target_link_libraries(qwen_tts_play_completion_policy_test
+        PRIVATE
+            QwenTTSBridge::qwen_tts_bridge
+    )
+
+    add_test(
+        NAME qwen_tts_play_completion_policy_test
+        COMMAND qwen_tts_play_completion_policy_test
+    )
+
     add_executable(qwen_tts_save_wav_callbacks_test
         tests/qwen_tts_save_wav_callbacks_test.cpp
     )

@@ -56,6 +56,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _run_design(args)
         if args.command == "synth":
             return _run_synth(args)
+        if args.command == "play":
+            return _run_play(args)
         if args.command == "voices":
             return _run_voices(args)
         parser.print_help()
@@ -119,6 +121,23 @@ def _build_parser() -> argparse.ArgumentParser:
     synth.add_argument("--result-json", type=Path)
     synth.add_argument("--model", type=Path)
     synth.add_argument("--language", default="Russian")
+
+    play = commands.add_parser(
+        "play",
+        help="Stream one registered Base voice profile to the default audio device.",
+    )
+    play.add_argument("--voice-id", required=True)
+    play.add_argument("--text", required=True)
+    play.add_argument("--model", type=Path)
+    play.add_argument("--language", default="Russian")
+    play.add_argument(
+        "--runtime-backend", choices=("faster", "upstream"), default="faster"
+    )
+    play.add_argument(
+        "--allow-non-natural-eos",
+        action="store_true",
+        help="Diagnostic opt-out from the natural-EOS playback gate.",
+    )
 
     voices = commands.add_parser(
         "voices", help="Manage persistent user voice profiles."
@@ -202,6 +221,32 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help=argparse.SUPPRESS,
         )
+    play.add_argument("--play-executable", type=Path)
+    play.add_argument("--worker", type=Path)
+    play.add_argument(
+        "--startup-timeout-ms",
+        type=_parse_timeout_argument,
+        help=(
+            "Worker startup timeout in milliseconds "
+            f"(default: {_DEFAULT_STARTUP_TIMEOUT_MS})."
+        ),
+    )
+    play.add_argument(
+        "--request-timeout-ms",
+        type=_parse_timeout_argument,
+        help=(
+            "Playback request timeout in milliseconds "
+            f"(default: {_DEFAULT_REQUEST_TIMEOUT_MS})."
+        ),
+    )
+    play.add_argument("--verbose", action="store_true")
+    play.add_argument("--log-file", type=Path)
+    play.add_argument(
+        "--acceptance-mock-worker", action="store_true", help=argparse.SUPPRESS
+    )
+    play.add_argument(
+        "--acceptance-mock-playback", action="store_true", help=argparse.SUPPRESS
+    )
     return parser
 
 
@@ -481,6 +526,135 @@ def _run_synth(args: argparse.Namespace) -> int:
     )
 
 
+def _run_play(args: argparse.Namespace) -> int:
+    """Run the existing streaming playback client for one Base voice request."""
+
+    root = _portable_root(args.portable_root)
+    registry_path = default_voice_registry_path(args.config).expanduser().resolve()
+    verification = verify_voice(
+        registry_path,
+        args.voice_id,
+        backend="python",
+        config_path=args.config,
+    )
+    if verification.get("status") != "compatible":
+        detail = verification.get("error")
+        suffix = f": {detail}" if isinstance(detail, str) and detail else ""
+        raise VoiceLibraryError(
+            f"voice {args.voice_id} is not compatible with the Python backend{suffix}"
+        )
+    model = resolve_model(
+        "base-1.7b",
+        explicit_path=args.model,
+        config_path=args.config,
+        portable_root=root,
+    )
+    config = load_user_config(args.config)
+    runtime_value = config.get("runtime")
+    runtime: dict[str, object] = (
+        runtime_value if isinstance(runtime_value, dict) else {}
+    )
+    config_directory = _selected_config_path(args.config).parent
+    player = _resolve_executable(
+        args.play_executable,
+        _configured_path(runtime.get("play_executable"), config_directory),
+        root,
+        "qwen_tts_play.exe",
+    )
+    worker = _resolve_worker(
+        args.worker,
+        _configured_path(runtime.get("worker"), config_directory),
+        root,
+    )
+    startup_timeout_ms = _resolve_timeout(
+        args.startup_timeout_ms,
+        runtime.get("startup_timeout_ms"),
+        "runtime.startup_timeout_ms",
+        _DEFAULT_STARTUP_TIMEOUT_MS,
+    )
+    request_timeout_ms = _resolve_timeout(
+        args.request_timeout_ms,
+        runtime.get("request_timeout_ms"),
+        "runtime.request_timeout_ms",
+        _DEFAULT_REQUEST_TIMEOUT_MS,
+    )
+    command = [
+        str(player),
+        "--worker",
+        str(worker.executable),
+        "--text",
+        args.text,
+        "--language",
+        args.language,
+        "--voice-id",
+        args.voice_id,
+        "--startup-timeout-ms",
+        str(startup_timeout_ms),
+        "--request-timeout-ms",
+        str(request_timeout_ms),
+    ]
+    for value in worker.prefix_arguments:
+        command.extend(("--worker-arg", value))
+    worker_arguments = (
+        "qwen",
+        "--model-path",
+        str(model.path),
+        "--runtime-backend",
+        args.runtime_backend,
+        "--device",
+        "cuda",
+        "--dtype",
+        "auto",
+        "--voice-registry-path",
+        str(registry_path),
+    )
+    if args.runtime_backend == "faster":
+        worker_arguments += ("--collect-generation-trace",)
+    if args.acceptance_mock_worker:
+        worker_arguments = ("mock", "--chunks", "2", "--chunk-ms", "40")
+    for value in worker_arguments:
+        command.extend(("--worker-arg", value))
+    if args.acceptance_mock_playback:
+        command.append("--mock-playback-sink")
+    if args.allow_non_natural_eos:
+        command.append("--allow-non-natural-eos")
+    environment = os.environ.copy()
+    if root is not None and worker.executable == Path(sys.executable).resolve():
+        environment["PYTHONNOUSERSITE"] = "1"
+    log_file = _output_path(args.log_file) if args.log_file else None
+    diagnostics = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
+    try:
+        try:
+            completed = subprocess.run(
+                command,
+                env=environment,
+                check=False,
+                stdout=diagnostics,
+                stderr=subprocess.STDOUT,
+            )
+        except OSError as exc:
+            raise ValueError(f"could not start {player}: {exc}") from exc
+        diagnostics.flush()
+        if log_file is not None:
+            _write_diagnostic_log(diagnostics, log_file)
+        if args.verbose:
+            _emit_diagnostics(diagnostics)
+        if completed.returncode != 0:
+            if not args.verbose:
+                _emit_failure_diagnostics(
+                    completed.returncode, diagnostics, operation="Playback"
+                )
+            else:
+                print(
+                    f"Playback failed (exit code {completed.returncode}).",
+                    file=sys.stderr,
+                )
+            return completed.returncode
+    finally:
+        diagnostics.close()
+    return 0
+
+
 def _run_synthesis(
     args: argparse.Namespace,
     *,
@@ -660,8 +834,10 @@ def _emit_diagnostics(stream: BinaryIO) -> None:
         sys.stderr.flush()
 
 
-def _emit_failure_diagnostics(returncode: int, stream: BinaryIO) -> None:
-    print(f"Synthesis failed (exit code {returncode}).", file=sys.stderr)
+def _emit_failure_diagnostics(
+    returncode: int, stream: BinaryIO, *, operation: str = "Synthesis"
+) -> None:
+    print(f"{operation} failed (exit code {returncode}).", file=sys.stderr)
     text = _collect_failure_diagnostics(stream)
     if text:
         print("Diagnostic tail:", file=sys.stderr)

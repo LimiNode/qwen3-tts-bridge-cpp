@@ -167,6 +167,10 @@ New-Item -ItemType Directory -Force -Path $ResolvedOutput | Out-Null
 
 $Relocated = Join-Path $ResolvedOutput "перенесённый пакет"
 Copy-Tree -Source $ResolvedPackage -Destination $Relocated
+$RelocatedIsUnderRepo = [IO.Path]::GetFullPath($Relocated).StartsWith(
+    [IO.Path]::GetFullPath($RepoRoot).TrimEnd("\") + "\",
+    [StringComparison]::OrdinalIgnoreCase
+)
 $script:Launcher = Join-Path $Relocated "qwen-tts.cmd"
 $ManifestPath = Join-Path $Relocated "release-manifest.json"
 if (-not (Test-Path -LiteralPath $script:Launcher -PathType Leaf)) {
@@ -176,6 +180,55 @@ if (-not (Test-Path -LiteralPath $script:Launcher -PathType Leaf)) {
 $Manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $ManifestPath | ConvertFrom-Json
 if ($Manifest.release_manifest_schema_version -ne 1) {
     throw "Portable release manifest schema is invalid."
+}
+if (-not (Test-Path -LiteralPath (Join-Path $Relocated "bin/qwen_tts_play.exe") -PathType Leaf)) {
+    throw "Portable playback executable was not packaged."
+}
+$PortableWorkerRoot = Join-Path $Relocated "worker-python"
+$PortableWorkerPython = Join-Path $PortableWorkerRoot "python/python.exe"
+if (-not (Test-Path -LiteralPath $PortableWorkerPython -PathType Leaf)) {
+    throw "Portable worker Python executable was not packaged."
+}
+$PreviousPythonHome = $env:PYTHONHOME
+$PreviousPythonPath = $env:PYTHONPATH
+try {
+    $env:PYTHONHOME = Join-Path $PortableWorkerRoot "python"
+    $env:PYTHONPATH = Join-Path $PortableWorkerRoot "python/Lib/site-packages"
+    $WorkerOriginJson = (& $PortableWorkerPython -B -P -s -c `
+        "import json, qwen_tts_bridge_worker, sys; print(json.dumps({'module': qwen_tts_bridge_worker.__file__, 'executable': sys.executable}, ensure_ascii=True))") -join ""
+    if ($LASTEXITCODE -ne 0) {
+        throw "Portable worker import probe failed with exit code $LASTEXITCODE."
+    }
+    try {
+        $WorkerOriginProbe = $WorkerOriginJson | ConvertFrom-Json
+    }
+    catch {
+        throw "Portable worker import probe returned invalid JSON: $WorkerOriginJson"
+    }
+    $ExpectedWorkerPrefix = [IO.Path]::GetFullPath(
+        (Join-Path $PortableWorkerRoot "python/Lib/site-packages")
+    ).TrimEnd("\")
+    $WorkerModuleOrigin = [IO.Path]::GetFullPath([string]$WorkerOriginProbe.module)
+    $WorkerExecutableOrigin = [IO.Path]::GetFullPath([string]$WorkerOriginProbe.executable)
+    $WorkerOrigin = "$WorkerModuleOrigin`n$WorkerExecutableOrigin"
+    if (
+        -not $WorkerModuleOrigin.StartsWith(
+            $ExpectedWorkerPrefix + "\",
+            [StringComparison]::OrdinalIgnoreCase
+        ) -or
+        -not $WorkerExecutableOrigin.Equals(
+            [IO.Path]::GetFullPath($PortableWorkerPython),
+            [StringComparison]::OrdinalIgnoreCase
+        ) -or
+        (-not $RelocatedIsUnderRepo -and
+            $WorkerOrigin -match [regex]::Escape($RepoRoot))
+    ) {
+        throw "Portable worker module origin escaped the relocated package: $WorkerOrigin"
+    }
+}
+finally {
+    $env:PYTHONHOME = $PreviousPythonHome
+    $env:PYTHONPATH = $PreviousPythonPath
 }
 foreach ($Entry in $Manifest.release_files) {
     $File = Join-Path $Relocated ([string]$Entry.path).Replace("/", "\")
@@ -268,6 +321,21 @@ try {
     }
     if ($Synth.output -match "qtb_metric") {
         throw "Quiet synth output leaked worker metrics: $($Synth.output)"
+    }
+
+    $Play = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "play",
+        "--voice-id", "portable-test",
+        "--text", "Portable registered voice playback.",
+        "--language", "English",
+        "--acceptance-mock-worker",
+        "--acceptance-mock-playback"
+    )
+    if ($Play.exit_code -ne 0) {
+        throw "Relocated qwen-tts play failed: $($Play.output)"
+    }
+    if ($null -ne $Play.output -and $Play.output.Trim().Length -ne 0) {
+        throw "Quiet play output was not silent: $($Play.output)"
     }
 
     $MissingExe = Join-Path $ResolvedOutput "missing-save-wav.exe"
@@ -376,10 +444,13 @@ $CombinedEvidence = @(
     $VoiceVerify.output,
     $Design.output,
     $Synth.output,
+    $Play.output,
     $FailClosed.output,
+    $WorkerOrigin,
     (Get-Content -Raw $ManifestPath)
 ) -join "`n"
-if ($CombinedEvidence -match [regex]::Escape($RepoRoot)) {
+if (-not $RelocatedIsUnderRepo -and
+    $CombinedEvidence -match [regex]::Escape($RepoRoot)) {
     throw "Relocated CLI evidence leaked the repository path."
 }
 

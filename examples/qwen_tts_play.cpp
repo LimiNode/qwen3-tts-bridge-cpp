@@ -5,6 +5,7 @@
 
 #include "common/cli_parsing.hpp"
 #include "common/pcm_capture.hpp"
+#include "qwen_tts_play_completion_policy.hpp"
 
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
 #include <qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp>
@@ -62,6 +63,7 @@ using qwen_tts_bridge::ReadyMessage;
 using qwen_tts_bridge::RequestId;
 using qwen_tts_bridge::StdIoTransportOptions;
 using qwen_tts_bridge::TtsCallbacks;
+using qwen_tts_bridge::TtsCompletion;
 using qwen_tts_bridge::TtsError;
 using qwen_tts_bridge::TtsRequest;
 using qwen_tts_bridge::audio::AudioPostProcessorChain;
@@ -81,6 +83,7 @@ using qwen_tts_bridge::playback::PlaybackCursorSnapshot;
 using qwen_tts_bridge::playback::PlaybackSinkMode;
 using qwen_tts_bridge::playback::WaveOutPlayer;
 using qwen_tts_bridge::playback::WprPlaybackMarkers;
+using qwen_tts_examples::playback::completion_has_natural_eos;
 
 struct ProgramOptions {
     bool help = false;
@@ -88,6 +91,7 @@ struct ProgramOptions {
     bool use_mock_worker = false;
     bool playback_enabled = true;
     bool use_mock_playback_sink = false;
+    bool require_natural_eos = true;
     std::string worker_executable;
     std::vector<std::string> worker_arguments;
     std::string working_directory;
@@ -118,6 +122,7 @@ struct ProgramOptions {
     std::optional<std::size_t> mock_playback_fail_after_submissions;
     std::optional<std::string> mock_playback_fail_stage;
     std::chrono::milliseconds startup_timeout{30000};
+    std::chrono::milliseconds request_timeout{300000};
     std::string playback_metrics_file;
     std::string playback_interruption_diagnostics_file;
     std::string playback_animation_receipts_file;
@@ -130,6 +135,13 @@ struct ProgramOptions {
     bool terminal_fade_enabled = true;
     TerminalFadeOptions terminal_fade;
 };
+
+bool uses_mock_worker(const ProgramOptions& options) {
+    return options.use_mock_worker || std::find(
+        options.worker_arguments.begin(),
+        options.worker_arguments.end(),
+        "mock") != options.worker_arguments.end();
+}
 
 class ConsoleCodePageGuard final {
 public:
@@ -251,6 +263,11 @@ struct OneShotState {
     std::string message;
 };
 
+struct OneShotCompletionState {
+    std::mutex mutex;
+    std::optional<TtsCompletion> metadata;
+};
+
 void mark_one_shot_terminal(
     OneShotState* state,
     bool success,
@@ -320,6 +337,8 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --sample-rate <hz>             Requested sample rate, default: 24000.\n"
         << "  --channels <count>             Requested channel count, default: 1.\n"
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
+        << "  --request-timeout-ms <ms>      One-shot request/playback timeout, default: 300000.\n"
+        << "  --allow-non-natural-eos        Diagnostic opt-out from the natural-EOS gate.\n"
         << "  --no-playback                  Deliver PCM without opening a WaveOut device.\n"
         << "  --mock-playback-sink           Use a deterministic timed sink with --mock.\n"
         << "  --mock-playback-fail-after <n> Inject a mock sink failure after n submissions (test only).\n"
@@ -470,6 +489,15 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
                 require_value(index, argc, argv, "--startup-timeout-ms"),
                 "--startup-timeout-ms"));
         }
+        else if (arg == "--request-timeout-ms" ||
+                 arg.rfind("--request-timeout-ms=", 0) == 0) {
+            options.request_timeout = std::chrono::milliseconds(parse_u32(
+                require_value(index, argc, argv, "--request-timeout-ms"),
+                "--request-timeout-ms"));
+        }
+        else if (arg == "--allow-non-natural-eos") {
+            options.require_natural_eos = false;
+        }
         else if (arg == "--playback-metrics-file" ||
                  arg.rfind("--playback-metrics-file=", 0) == 0) {
             options.playback_metrics_file = require_value(
@@ -567,6 +595,9 @@ void validate_options(const ProgramOptions& options) {
         options.channels > (std::numeric_limits<WORD>::max)()) {
         throw std::runtime_error("invalid requested PCM format");
     }
+    if (options.startup_timeout.count() <= 0 || options.request_timeout.count() <= 0) {
+        throw std::runtime_error("timeouts must be greater than zero");
+    }
     if (options.mock_chunks <= 0 || options.mock_chunk_ms <= 0 ||
         options.mock_chunk_delay < 0.0) {
         throw std::runtime_error("invalid mock worker options");
@@ -593,8 +624,9 @@ void validate_options(const ProgramOptions& options) {
         options.terminal_fade.cancellation_silence_ms > max_terminal_duration_ms) {
         throw std::runtime_error("audio terminal durations must not exceed 600000 ms");
     }
-    if (options.use_mock_playback_sink && !options.use_mock_worker) {
-        throw std::runtime_error("--mock-playback-sink requires --mock");
+    if (options.use_mock_playback_sink && !uses_mock_worker(options)) {
+        throw std::runtime_error(
+            "--mock-playback-sink requires a mock worker (use --mock or worker argument mock)");
     }
     if (options.use_mock_playback_sink && !options.playback_enabled) {
         throw std::runtime_error("--mock-playback-sink cannot be combined with --no-playback");
@@ -906,6 +938,30 @@ int run_playback_lifecycle_self_test() {
         throw std::runtime_error("active completion transition is not exactly once");
     }
 
+    OneShotState worker_error_state;
+    mark_one_shot_terminal(&worker_error_state, false, "worker error");
+    mark_one_shot_terminal(&worker_error_state, true, "late completion");
+    {
+        std::lock_guard<std::mutex> lock(worker_error_state.mutex);
+        if (!worker_error_state.terminal || worker_error_state.success ||
+            worker_error_state.message != "worker error") {
+            throw std::runtime_error(
+                "worker error terminalization was not preserved exactly once");
+        }
+    }
+
+    OneShotState cancelled_state;
+    mark_one_shot_terminal(&cancelled_state, false, "request cancelled");
+    mark_one_shot_terminal(&cancelled_state, true, "late completion");
+    {
+        std::lock_guard<std::mutex> lock(cancelled_state.mutex);
+        if (!cancelled_state.terminal || cancelled_state.success ||
+            cancelled_state.message != "request cancelled") {
+            throw std::runtime_error(
+                "cancellation terminalization was not preserved exactly once");
+        }
+    }
+
     const auto assert_injected_submission_failure = [](
         MockPlaybackFailureStage stage,
         const char* expected_operation) {
@@ -1082,6 +1138,7 @@ RequestId submit_request(
     const ProgramOptions& options,
     PreparedTtsRequest prepared_request,
     OneShotState* one_shot_state = nullptr,
+    OneShotCompletionState* completion_state = nullptr,
     PcmCapture* pcm_capture = nullptr,
     std::optional<std::uint64_t> playback_epoch_override = std::nullopt
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
@@ -1137,6 +1194,7 @@ RequestId submit_request(
     }
 #endif
     TtsCallbacks callbacks;
+    const bool require_natural_eos = options.require_natural_eos;
     callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id,
         one_shot_state, pcm_capture
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
@@ -1173,13 +1231,32 @@ RequestId submit_request(
         }
     };
     callbacks.on_completed = [&player, &active_state, processors, playback_epoch,
-        one_shot_state, request_id
+        one_shot_state, completion_state, require_natural_eos, request_id
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
         , animation_runtime, animation_generation
 #endif
         ] {
         if (!is_active_request(active_state, request_id)) {
             return;
+        }
+        if (one_shot_state != nullptr && require_natural_eos) {
+            std::optional<TtsCompletion> completion;
+            if (completion_state != nullptr) {
+                std::lock_guard<std::mutex> lock(completion_state->mutex);
+                completion = completion_state->metadata;
+            }
+            if (!completion_has_natural_eos(completion)) {
+                fail_playback_request(
+                    player,
+                    active_state,
+                    request_id,
+                    playback_epoch,
+                    one_shot_state,
+                    completion.has_value()
+                        ? "completion metadata did not confirm natural EOS"
+                        : "completion metadata was missing");
+                return;
+            }
         }
         try {
             for (const PcmChunk& processed :
@@ -1215,6 +1292,13 @@ RequestId submit_request(
         else {
             std::cout << "completed request " << request_id << '\n';
         }
+    };
+    callbacks.on_completion_metadata = [completion_state](const TtsCompletion& completion) {
+        if (completion_state == nullptr) {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(completion_state->mutex);
+        completion_state->metadata = completion;
     };
     const std::uint32_t interruption_fade_ms =
         options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0;
@@ -1649,7 +1733,8 @@ int wmain(int argc, wchar_t** argv) {
                 "the active worker does not advertise voice clone support; "
                 "launch a Qwen Base model with --reference-audio");
         }
-        if (!options.voice_id.empty() && !options.voice_profiles_supported) {
+        if (!options.voice_id.empty() && !options.voice_profiles_supported &&
+            !uses_mock_worker(options)) {
             client.stop();
             throw std::runtime_error(
                 "the active worker has no registered voice-profile registry; "
@@ -1789,6 +1874,7 @@ int wmain(int argc, wchar_t** argv) {
 
         if (!options.text.empty()) {
             OneShotState state;
+            OneShotCompletionState completion_state;
             if (playback_metrics != nullptr) {
                 playback_metrics->begin_request();
             }
@@ -1804,13 +1890,14 @@ int wmain(int argc, wchar_t** argv) {
                 options,
                 std::move(prepared_request),
                 &state,
+                &completion_state,
                 pcm_capture.get(),
                 std::nullopt
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                 , animation_runtime.get(), animation_context.get()
 #endif
             );
-            if (!wait_for_one_shot(state, std::chrono::minutes(5))) {
+            if (!wait_for_one_shot(state, options.request_timeout)) {
                 cancel_active_request(
                     client,
                     player,
@@ -1833,7 +1920,7 @@ int wmain(int argc, wchar_t** argv) {
                 client.stop();
                 throw std::runtime_error(state.message.empty() ? "one-shot synthesis failed" : state.message);
             }
-            player.wait_until_idle(std::chrono::minutes(5));
+            player.wait_until_idle(options.request_timeout);
             if (pcm_capture != nullptr) {
                 pcm_capture->finalize();
             }
@@ -1916,6 +2003,7 @@ int wmain(int argc, wchar_t** argv) {
                 active_state,
                 options,
                 std::move(prepared_request),
+                nullptr,
                 nullptr,
                 nullptr,
                 playback_epoch

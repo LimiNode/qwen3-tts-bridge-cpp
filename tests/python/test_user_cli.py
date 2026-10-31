@@ -12,13 +12,139 @@ import unittest
 import wave
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, BinaryIO, cast
 from unittest import mock
 
 from qwen_tts_bridge_worker import user_cli
 
 
 class UserCliTests(unittest.TestCase):
+    def test_play_uses_existing_streaming_player_and_is_quiet(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "bin" / "qwen_tts_play.exe")
+            worker = _write_executable(root / "bin" / "worker.exe")
+            config, registry = _write_voice_library(root, voice_id="voice")
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=0),
+            ) as run:
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    result = user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "play",
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test playback",
+                            "--model",
+                            str(model),
+                            "--play-executable",
+                            str(player),
+                            "--worker",
+                            str(worker),
+                            "--request-timeout-ms",
+                            "12345",
+                        ]
+                    )
+
+            self.assertEqual(0, result)
+            self.assertEqual("", stdout.getvalue())
+            self.assertEqual("", stderr.getvalue())
+            command = run.call_args.args[0]
+            self.assertEqual(str(player.resolve()), command[0])
+            self.assertEqual("voice", command[command.index("--voice-id") + 1])
+            self.assertEqual(
+                "12345", command[command.index("--request-timeout-ms") + 1]
+            )
+            self.assertNotIn("--allow-non-natural-eos", command)
+            worker_args = _worker_argument_values(command)
+            self.assertEqual("qwen", worker_args[0])
+            self.assertIn("--collect-generation-trace", worker_args)
+            self.assertEqual(
+                str(registry.resolve()),
+                worker_args[worker_args.index("--voice-registry-path") + 1],
+            )
+
+    def test_play_failure_preserves_bounded_diagnostics_and_exit_code(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+
+            def failed_play(command: list[str], **kwargs: object) -> mock.Mock:
+                stream = cast(BinaryIO, kwargs["stdout"])
+                stream.write(b"player failure\\n")
+                return mock.Mock(returncode=19)
+
+            stderr = io.StringIO()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=failed_play,
+            ):
+                with redirect_stderr(stderr):
+                    result = user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "play",
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test playback",
+                            "--model",
+                            str(model),
+                            "--play-executable",
+                            str(player),
+                            "--worker",
+                            str(worker),
+                        ]
+                    )
+            self.assertEqual(19, result)
+            self.assertIn("Playback failed", stderr.getvalue())
+            self.assertIn("player failure", stderr.getvalue())
+
+    def test_play_allows_explicit_non_natural_eos_diagnostic_opt_out(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=0),
+            ) as run:
+                self.assertEqual(
+                    0,
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "play",
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test",
+                            "--model",
+                            str(model),
+                            "--play-executable",
+                            str(player),
+                            "--worker",
+                            str(worker),
+                            "--allow-non-natural-eos",
+                        ]
+                    ),
+                )
+            self.assertIn("--allow-non-natural-eos", run.call_args.args[0])
+
     def test_synth_uses_base_model_registered_voice_and_authoritative_registry(
         self,
     ) -> None:

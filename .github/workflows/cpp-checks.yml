@@ -140,6 +140,7 @@ jobs:
           .\scripts\assemble-portable-release.ps1 `
             -PythonPackageRoot dist/QwenTTSBridge `
             -SaveWavExecutable "${{ matrix.build-dir }}\Release\qwen_tts_save_wav.exe" `
+            -PlayExecutable "${{ matrix.build-dir }}\Release\qwen_tts_play.exe" `
             -OutputRoot $release `
             -Python python
 
