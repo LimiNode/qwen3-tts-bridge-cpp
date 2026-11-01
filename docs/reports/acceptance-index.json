@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-01",
+  "canonical_receipts": [
+    {
+      "acceptance_id": "base-portable-cmp50hx-20261030",
+      "receipt": "docs/reports/base-portable-cmp50hx-20261030.json",
+      "model_family": "Base",
+      "backend": "faster",
+      "human_listening": "partial_pass",
+      "release_status": "conditional"
+    },
+    {
+      "acceptance_id": "voice-design-frozen-cmp50hx-20261028",
+      "receipt": "docs/reports/voice-design-frozen-cmp50hx-20261028.json",
+      "model_family": "VoiceDesign",
+      "backend": "faster",
+      "human_listening": "partial_pass",
+      "release_status": "conditional"
+    }
+  ],
+  "legacy_reference_reports": [
+    {
+      "path": "docs/reports/russian-stress-cmp50hx-acceptance-2026-10-07.json",
+      "model_family": "RU-stress",
+      "status": "human_listening_pass",
+      "note": "Existing detailed receipt remains the reference implementation. It is not silently rewritten into schema_version 1; a future run will create a canonical receipt under this contract."
+    }
+  ]
+}
