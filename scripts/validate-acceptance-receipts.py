@@ -200,6 +200,14 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
         raise ValidationError(f"{path}: invalid release_status")
     if release == "accepted" and ("fail" in mechanical.values() or status != "pass"):
         raise ValidationError(f"{path}: accepted release cannot hide failed or incomplete gates")
+    if "supersedes" in receipt and receipt["supersedes"] is not None:
+        if not isinstance(receipt["supersedes"], list) or any(not isinstance(item, str) or not item for item in receipt["supersedes"]):
+            raise ValidationError(f"{path}: supersedes must be null or a string array")
+    if "related_reports" in receipt:
+        if not isinstance(receipt["related_reports"], list) or any(not isinstance(item, str) or not item for item in receipt["related_reports"]):
+            raise ValidationError(f"{path}: related_reports must be a string array")
+    if "notes" in receipt and not isinstance(receipt["notes"], str):
+        raise ValidationError(f"{path}: notes must be a string")
     return receipt
 
 
@@ -228,7 +236,7 @@ def validate_index(root: Path, check_artifacts: bool = False) -> int:
         if receipt["human_listening"]["status"] != entry["human_listening"] or receipt["release_status"] != entry["release_status"]:
             raise ValidationError(f"{index_path}: status does not match {receipt_path}")
     for legacy in index["legacy_reference_reports"]:
-        if not isinstance(legacy, dict) or not isinstance(legacy.get("path"), str) or not (root / legacy["path"]).is_file():
+        if not isinstance(legacy, dict) or set(legacy) - {"path", "model_family", "status", "note"} or not isinstance(legacy.get("path"), str) or not (root / legacy["path"]).is_file():
             raise ValidationError(f"{index_path}: missing legacy reference report")
     print(f"validated {len(entries)} canonical acceptance receipts")
     return 0
