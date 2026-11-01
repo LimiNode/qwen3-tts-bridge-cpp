@@ -22,6 +22,12 @@ each referenced payload by repository-relative path, byte count, and SHA-256.
 If a payload is outside `.tmp/base-acceptance/`, it is historical evidence and
 must be explicitly marked as such; new runs must use the standard directory.
 
+`input_identity` is part of the canonical receipt. When exact UTF-8 request or
+instruction bytes (or a corpus manifest) were preserved, record their SHA-256
+under the corresponding field and identify the source. For historical runs
+where those bytes were not retained, use `status: not_recorded` with an honest
+source note; never reconstruct or invent a hash.
+
 ## Receipt lifecycle
 
 For every significant acceptance run:
@@ -84,3 +90,8 @@ Validate receipts locally with:
 ```powershell
 python scripts/validate-acceptance-receipts.py
 ```
+
+The same model-free validator and its positive/negative regression tests run
+in the required `Acceptance evidence contract` CI job. `--check-artifacts` is
+for a local machine that has the ignored payload directory; CI validates the
+tracked contract without requiring model weights or WAV files.

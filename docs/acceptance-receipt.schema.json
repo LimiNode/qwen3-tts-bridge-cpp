@@ -13,6 +13,7 @@
     "bridge_commit",
     "model_revision",
     "runtime_revision",
+    "input_identity",
     "hardware",
     "artifact_root",
     "artifacts",
@@ -26,9 +27,21 @@
     "recorded_at": {"type": "string", "format": "date"},
     "model_family": {"type": "string", "enum": ["Base", "VoiceDesign", "RU-stress", "CustomVoice", "other"]},
     "backend": {"type": "string", "enum": ["faster", "native", "upstream", "other"]},
-    "bridge_commit": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "bridge_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "model_revision": {"type": "string", "minLength": 1},
     "runtime_revision": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}},
+    "input_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "source"],
+      "properties": {
+        "status": {"type": "string", "enum": ["recorded", "not_recorded"]},
+        "source": {"type": "string", "minLength": 1},
+        "text_utf8_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "instruction_utf8_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "corpus_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
     "hardware": {
       "type": "object",
       "additionalProperties": false,

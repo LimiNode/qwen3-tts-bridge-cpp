@@ -4,13 +4,17 @@
   "recorded_at": "2026-10-30",
   "model_family": "Base",
   "backend": "faster",
-  "bridge_commit": "c04f7898",
+  "bridge_commit": "c04f78982921ac3d0dadabed1c747af1ee4e703c",
   "model_revision": "fd4b254389122332181a7c3db7f27e918eec64e3",
   "runtime_revision": {
     "faster_qwen3_tts": "90b596d2ffa41eb2da173db92e6f896df11b19cb",
     "qwen_tts": "25cc5886a753035ac3ed9d4000440b2e842e5e56",
     "python": "3.11.9",
     "torch": "2.10.0+cu128"
+  },
+  "input_identity": {
+    "status": "not_recorded",
+    "source": "portable-base output receipts did not preserve the exact request bytes"
   },
   "hardware": {
     "gpu": "NVIDIA CMP 50HX",

@@ -4,13 +4,19 @@
   "recorded_at": "2026-10-30",
   "model_family": "VoiceDesign",
   "backend": "faster",
-  "bridge_commit": "cd1b01e2",
+  "bridge_commit": "cd1b01e2fb06ebf11561daabdae402bc6ee39b58",
   "model_revision": "5ecdb67327fd37bb2e042aab12ff7391903235d3",
   "runtime_revision": {
     "faster_qwen3_tts": "4bdcd3f8d57fabbdc605152c7958e095321a4e46",
     "qwen_tts": "25cc5886a753035ac3ed9d4000440b2e842e5e56",
     "python": "3.11.9",
     "torch": "2.10.0+cu128"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/voice-design-frozen-cmp50hx-20261028/acceptance-summary.json",
+    "text_utf8_sha256": "37dad9bb34c327b42ef0f6e13c1a7a3093d1446700ec8161d3acc26b763e3617",
+    "instruction_utf8_sha256": "1e6eaab0d81f51274a513f5a87b1dc95f8e94bd7935d3c63a033ee644e9d2b8b"
   },
   "hardware": {
     "gpu": "NVIDIA CMP 50HX",
