@@ -46,7 +46,7 @@ provenance и receipts перечислены в [docs/project-status.md](docs/p
 | Семейство | Поля запроса | Статус |
 | --- | --- | --- |
 | CustomVoice 0.6B/1.7B | текст, язык, speaker, optional instruction | Реализовано через worker; проверяйте конкретную модель и runtime |
-| VoiceDesign 1.7B | текст, язык, непустое описание голоса в `instruction` | Реализованы API, worker, CLI discovery и real-model receipt; human listening остаётся отдельным gate |
+| VoiceDesign 1.7B | текст, язык, непустое описание голоса в `instruction` | Условно: проверены API, worker, CLI discovery и real-model receipt с natural EOS; human listening остаётся release gate |
 | Base 0.6B/1.7B | текст, язык, reference audio или зарегистрированный voice profile | Реализовано клонирование голоса и работа с референсами |
 
 Streaming зависит от выбранного backend и wrapper модели. Если runtime умеет
@@ -260,6 +260,12 @@ Python-проверки используют worker из `worker/src` и locked 
 - [Протокол QTB v1](docs/protocol-v1.md)
 - [Audio и Unity integration](docs/audio-and-unity-integration.md)
 - [Примеры](examples/README.md)
+
+Внешние ссылки на Qwen3-TTS:
+
+- основной репозиторий: https://github.com/QwenLM/Qwen3-TTS
+- streaming fork: https://github.com/LimiNode/Qwen3-TTS-streaming
+- документация и streaming examples: https://github.com/QwenLM/Qwen3-TTS#quick-start
 
 Исследовательские benchmark-отчёты и аппаратные receipts находятся в `docs/`;
 они не являются обещанием одинакового поведения для всех моделей и GPU.

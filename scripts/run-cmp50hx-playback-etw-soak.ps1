@@ -193,7 +193,7 @@ if (-not $PlayerPath) {
     $PlayerPath = '.build\cmp50hx-diagnostic-mingw\qwen_tts_play.exe'
 }
 if (-not $PythonPath) {
-    $PythonPath = '.tmp\technical-beta-r3\QwenTTSBridge-technical-beta-r3\worker\python\python.exe'
+    $PythonPath = 'dist\QwenTTSBridge\worker-python\python\python.exe'
 }
 if (-not $ModelPath) {
     $ModelPath = 'models\Qwen3-TTS-12Hz-0.6B-CustomVoice'
@@ -209,7 +209,7 @@ if (-not $RuntimeCachePath) {
     $RuntimeCachePath = '.tmp\cmp50hx-r3-runtime-cache'
 }
 if (-not $OutputRoot) {
-    $OutputRoot = '.tmp\cmp50hx-playback-etw-soak'
+    $OutputRoot = '.tmp\base-acceptance\playback-etw-soak'
 }
 if (-not $WprProfilePath) {
     $WprProfilePath = 'scripts\profiles\cmp50hx-dxgkrnl-scheduler.wprp'
