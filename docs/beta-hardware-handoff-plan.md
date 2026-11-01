@@ -49,11 +49,14 @@ RTX-era reports.
 
 ## 2. Reusable acceptance runners
 
-Use the existing runners and preserve their machine-readable output under
-`.tmp/base-acceptance/<run-id>/` during execution. Keep the final report,
-manifest, logs, and listening result in that same run directory; historical
-evidence migrated from older locations belongs under
-`.tmp/historical/<name>/`:
+Use the existing runners and preserve their machine-readable payload under
+`.tmp/base-acceptance/<run-id>/` during execution. Keep WAV files, raw logs,
+manifests, and generated receipts in that run directory, but publish the small
+canonical acceptance receipt under `docs/reports/` and update
+`docs/reports/acceptance-index.json` after the run. Historical evidence
+migrated from older locations belongs under `.tmp/historical/<name>/`; follow
+[`acceptance-evidence-contract.md`](acceptance-evidence-contract.md) for the
+receipt lifecycle:
 
 ```powershell
 .\scripts\run-real-model-release-acceptance.ps1 ...

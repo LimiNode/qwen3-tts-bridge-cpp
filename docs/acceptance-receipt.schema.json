@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/LimiNode/qwen3-tts-bridge-cpp/schemas/acceptance-receipt.schema.json",
+  "title": "QwenTTSBridge canonical acceptance receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "acceptance_id",
+    "recorded_at",
+    "model_family",
+    "backend",
+    "bridge_commit",
+    "model_revision",
+    "runtime_revision",
+    "hardware",
+    "artifact_root",
+    "artifacts",
+    "mechanical",
+    "human_listening",
+    "release_status"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "acceptance_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"},
+    "recorded_at": {"type": "string", "format": "date"},
+    "model_family": {"type": "string", "enum": ["Base", "VoiceDesign", "RU-stress", "CustomVoice", "other"]},
+    "backend": {"type": "string", "enum": ["faster", "native", "upstream", "other"]},
+    "bridge_commit": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+    "model_revision": {"type": "string", "minLength": 1},
+    "runtime_revision": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}},
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gpu", "compute_capability", "driver", "cuda"],
+      "properties": {
+        "gpu": {"type": "string", "minLength": 1},
+        "compute_capability": {"type": "string", "minLength": 1},
+        "driver": {"type": "string", "minLength": 1},
+        "cuda": {"type": "string", "minLength": 1}
+      }
+    },
+    "artifact_root": {"type": "string", "pattern": "^\\.tmp/base-acceptance/[a-z0-9][a-z0-9-]+$"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind", "bytes", "sha256"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^\\.tmp/base-acceptance/[^\\\\]+$"},
+          "kind": {"type": "string", "enum": ["wav", "json", "log", "manifest", "other"]},
+          "bytes": {"type": "integer", "minimum": 0},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "mechanical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_load", "pcm", "natural_eos", "persistent_repeat", "restart"],
+      "properties": {
+        "model_load": {"$ref": "#/$defs/mechanical_status"},
+        "pcm": {"$ref": "#/$defs/mechanical_status"},
+        "natural_eos": {"$ref": "#/$defs/mechanical_status"},
+        "persistent_repeat": {"$ref": "#/$defs/mechanical_status"},
+        "restart": {"$ref": "#/$defs/mechanical_status"}
+      }
+    },
+    "human_listening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "observer", "recorded_at", "scope", "criteria", "notes"],
+      "properties": {
+        "status": {"type": "string", "enum": ["pass", "partial_pass", "not_run", "fail"]},
+        "observer": {"type": "string", "minLength": 1},
+        "recorded_at": {"type": "string", "format": "date"},
+        "scope": {"type": "string", "minLength": 1},
+        "criteria": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["intelligibility", "voice_or_instruction", "artifacts", "final_tail", "sequential_contamination"],
+          "properties": {
+            "intelligibility": {"$ref": "#/$defs/listening_status"},
+            "voice_or_instruction": {"$ref": "#/$defs/listening_status"},
+            "artifacts": {"$ref": "#/$defs/listening_status"},
+            "final_tail": {"$ref": "#/$defs/listening_status"},
+            "sequential_contamination": {"$ref": "#/$defs/listening_status"}
+          }
+        },
+        "notes": {"type": "string", "minLength": 1}
+      }
+    },
+    "release_status": {"type": "string", "enum": ["accepted", "conditional", "blocked"]},
+    "supersedes": {
+      "type": ["null", "array"],
+      "items": {"type": "string", "minLength": 1}
+    },
+    "related_reports": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "notes": {"type": "string"}
+  },
+  "$defs": {
+    "mechanical_status": {"type": "string", "enum": ["pass", "fail", "not_run"]},
+    "listening_status": {"type": "string", "enum": ["pass", "partial", "not_assessed", "fail"]}
+  }
+}
