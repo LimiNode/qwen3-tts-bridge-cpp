@@ -172,7 +172,11 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
     values = set(criteria.values())
     if status == "pass" and values != {"pass"}:
         raise ValidationError(f"{path}: pass requires every listening criterion to pass")
-    if status == "partial_pass" and ("fail" in values or values == {"pass"} or not (values - {"pass"})):
+    if status == "partial_pass" and (
+        "fail" in values
+        or not values.intersection({"pass", "partial"})
+        or not values.intersection({"partial", "not_assessed"})
+    ):
         raise ValidationError(f"{path}: partial_pass must contain positive, non-failing evidence")
     if status == "not_run" and values != {"not_assessed"}:
         raise ValidationError(f"{path}: not_run cannot contain positive criteria")

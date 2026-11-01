@@ -90,6 +90,9 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
         listening["criteria"] = {key: "pass" for key in listening["criteria"]}
         receipt["human_listening"] = listening
         self.assert_invalid(receipt)
+        listening["criteria"] = {key: "not_assessed" for key in listening["criteria"]}
+        receipt["human_listening"] = listening
+        self.assert_invalid(receipt)
 
     def test_accepted_requires_core_mechanical_gates(self) -> None:
         receipt = self.receipt.copy()
