@@ -58,13 +58,15 @@ def check_string(value: Any, label: str) -> None:
         raise ValidationError(f"{label}: expected non-empty string")
 
 
-def validate_artifact_path(value: Any, receipt_root: str, root: Path, label: str, check_artifacts: bool) -> None:
+def validate_artifact_path(value: Any, receipt_root: str, root: Path, label: str) -> Path:
     if not isinstance(value, str) or "\\" in value:
         raise ValidationError(f"{label}: path must use repository POSIX separators")
     try:
         relative = PurePosixPath(value)
     except (TypeError, ValueError) as exc:
         raise ValidationError(f"{label}: invalid path") from exc
+    if str(relative) != value:
+        raise ValidationError(f"{label}: non-canonical path")
     if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
         raise ValidationError(f"{label}: path traversal or non-canonical path")
     prefix = PurePosixPath(receipt_root)
@@ -72,13 +74,20 @@ def validate_artifact_path(value: Any, receipt_root: str, root: Path, label: str
         raise ValidationError(f"{label}: path is outside artifact_root")
     if not value.startswith(".tmp/base-acceptance/"):
         raise ValidationError(f"{label}: path is not repository-local")
-    if check_artifacts:
-        artifact_root = (root / Path(*prefix.parts)).resolve()
-        local_path = (root / Path(*relative.parts)).resolve()
+    repository_root = root.resolve()
+    payload_root = (repository_root / ".tmp/base-acceptance").resolve()
+    resolved_artifact_root = (repository_root / Path(*prefix.parts)).resolve()
+    resolved_path = (repository_root / Path(*relative.parts)).resolve()
+    for candidate, candidate_label in ((resolved_artifact_root, "artifact_root"), (resolved_path, "artifact")):
         try:
-            local_path.relative_to(artifact_root)
+            candidate.relative_to(payload_root)
         except ValueError as exc:
-            raise ValidationError(f"{label}: resolved path escapes artifact_root") from exc
+            raise ValidationError(f"{label}: resolved {candidate_label} escapes .tmp/base-acceptance") from exc
+    try:
+        resolved_path.relative_to(resolved_artifact_root)
+    except ValueError as exc:
+        raise ValidationError(f"{label}: resolved path escapes artifact_root") from exc
+    return resolved_path
 
 
 def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str, Any]:
@@ -163,7 +172,7 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
     values = set(criteria.values())
     if status == "pass" and values != {"pass"}:
         raise ValidationError(f"{path}: pass requires every listening criterion to pass")
-    if status == "partial_pass" and ("fail" in values or values <= {"not_assessed"}):
+    if status == "partial_pass" and ("fail" in values or values == {"pass"} or not (values - {"pass"})):
         raise ValidationError(f"{path}: partial_pass must contain positive, non-failing evidence")
     if status == "not_run" and values != {"not_assessed"}:
         raise ValidationError(f"{path}: not_run cannot contain positive criteria")
@@ -179,7 +188,7 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
             raise ValidationError(f"{label}: must be an object")
         fields = {"path", "kind", "bytes", "sha256"}
         object_keys(artifact, fields, fields, label)
-        validate_artifact_path(artifact["path"], artifact_root, root, f"{label}.path", check_artifacts)
+        local_path = validate_artifact_path(artifact["path"], artifact_root, root, f"{label}.path")
         if artifact["kind"] not in ARTIFACT_KINDS:
             raise ValidationError(f"{label}: invalid kind")
         if isinstance(artifact["bytes"], bool) or not isinstance(artifact["bytes"], int) or artifact["bytes"] < 0:
@@ -187,7 +196,6 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
         if not isinstance(artifact["sha256"], str) or not HEX64.fullmatch(artifact["sha256"]):
             raise ValidationError(f"{label}: invalid sha256")
         if check_artifacts:
-            local_path = (root / Path(*PurePosixPath(artifact["path"]).parts)).resolve()
             if not local_path.is_file():
                 raise ValidationError(f"{label}: artifact is missing: {local_path}")
             if local_path.stat().st_size != artifact["bytes"]:
@@ -198,7 +206,10 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
     release = receipt["release_status"]
     if release not in {"accepted", "conditional", "blocked"}:
         raise ValidationError(f"{path}: invalid release_status")
-    if release == "accepted" and ("fail" in mechanical.values() or status != "pass"):
+    core_gates = {"model_load", "pcm", "natural_eos"}
+    if release == "accepted" and (
+        any(mechanical[key] != "pass" for key in core_gates) or status != "pass"
+    ):
         raise ValidationError(f"{path}: accepted release cannot hide failed or incomplete gates")
     if "supersedes" in receipt and receipt["supersedes"] is not None:
         if not isinstance(receipt["supersedes"], list) or any(not isinstance(item, str) or not item for item in receipt["supersedes"]):
@@ -211,8 +222,10 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
     return receipt
 
 
-def validate_index(root: Path, check_artifacts: bool = False) -> int:
-    index_path = root / "docs/reports/acceptance-index.json"
+def validate_index(
+    root: Path, check_artifacts: bool = False, index_path: Path | None = None
+) -> int:
+    index_path = index_path or (root / "docs/reports/acceptance-index.json")
     index = load_json(index_path)
     if not isinstance(index, dict):
         raise ValidationError(f"{index_path}: top-level value must be an object")
@@ -223,12 +236,38 @@ def validate_index(root: Path, check_artifacts: bool = False) -> int:
     entries = index["canonical_receipts"]
     if not isinstance(entries, list) or not entries:
         raise ValidationError(f"{index_path}: canonical_receipts must be non-empty")
+    reports_root = (root / "docs/reports").resolve()
+    seen_ids: set[str] = set()
+    seen_paths: set[str] = set()
     for entry in entries:
         if not isinstance(entry, dict):
             raise ValidationError(f"{index_path}: malformed canonical receipt entry")
         entry_fields = {"acceptance_id", "receipt", "model_family", "backend", "human_listening", "release_status"}
         object_keys(entry, entry_fields, entry_fields, f"{index_path}: entry")
-        receipt_path = root / entry["receipt"]
+        acceptance_id = entry["acceptance_id"]
+        if not isinstance(acceptance_id, str) or not ID.fullmatch(acceptance_id):
+            raise ValidationError(f"{index_path}: invalid entry acceptance_id")
+        if acceptance_id in seen_ids:
+            raise ValidationError(f"{index_path}: duplicate acceptance_id: {acceptance_id}")
+        seen_ids.add(acceptance_id)
+        receipt_name = entry["receipt"]
+        expected_receipt = f"docs/reports/{acceptance_id}.json"
+        if receipt_name != expected_receipt or not isinstance(receipt_name, str):
+            raise ValidationError(f"{index_path}: receipt must be canonical: {expected_receipt}")
+        try:
+            receipt_relative = PurePosixPath(receipt_name)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError(f"{index_path}: invalid receipt path") from exc
+        if str(receipt_relative) != receipt_name or receipt_relative.is_absolute() or ".." in receipt_relative.parts:
+            raise ValidationError(f"{index_path}: non-canonical receipt path")
+        if receipt_name in seen_paths:
+            raise ValidationError(f"{index_path}: duplicate receipt path: {receipt_name}")
+        seen_paths.add(receipt_name)
+        receipt_path = (root / Path(*receipt_relative.parts)).resolve()
+        try:
+            receipt_path.relative_to(reports_root)
+        except ValueError as exc:
+            raise ValidationError(f"{index_path}: receipt escapes docs/reports") from exc
         receipt = validate_receipt(receipt_path, root, check_artifacts)
         for key in ("acceptance_id", "model_family", "backend"):
             if receipt[key] != entry[key]:
@@ -236,8 +275,21 @@ def validate_index(root: Path, check_artifacts: bool = False) -> int:
         if receipt["human_listening"]["status"] != entry["human_listening"] or receipt["release_status"] != entry["release_status"]:
             raise ValidationError(f"{index_path}: status does not match {receipt_path}")
     for legacy in index["legacy_reference_reports"]:
-        if not isinstance(legacy, dict) or set(legacy) - {"path", "model_family", "status", "note"} or not isinstance(legacy.get("path"), str) or not (root / legacy["path"]).is_file():
+        legacy_path = legacy.get("path") if isinstance(legacy, dict) else None
+        if (
+            not isinstance(legacy, dict)
+            or set(legacy) - {"path", "model_family", "status", "note"}
+            or not isinstance(legacy_path, str)
+        ):
             raise ValidationError(f"{index_path}: missing legacy reference report")
+        try:
+            legacy_relative = PurePosixPath(legacy_path)
+            legacy_resolved = (root / Path(*legacy_relative.parts)).resolve()
+            legacy_resolved.relative_to(reports_root)
+        except (TypeError, ValueError):
+            raise ValidationError(f"{index_path}: legacy report escapes docs/reports")
+        if str(legacy_relative) != legacy_path or legacy_relative.is_absolute() or ".." in legacy_relative.parts or not legacy_resolved.is_file():
+            raise ValidationError(f"{index_path}: missing legacy reference report: {legacy_path!r}")
     print(f"validated {len(entries)} canonical acceptance receipts")
     return 0
 
