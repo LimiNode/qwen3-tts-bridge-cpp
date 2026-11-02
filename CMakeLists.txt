@@ -356,17 +356,33 @@ install(
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/tiny-process-library"
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
-# The direct qwen.dll adapter is experimental and intentionally remains a
-# build-tree target.  Its qwentts/ggml dependency is a separately pinned
-# runtime and is not part of the stable installed package.
+# Install the core public headers, excluding optional backends and private
+# implementation headers.  Umbrellas retain their existing include paths;
+# optional components add their own headers below when they are supported.
 install(
     DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-        FILES_MATCHING
-            PATTERN "*.hpp"
-            PATTERN "integration" EXCLUDE
-            PATTERN "playback" EXCLUDE
+    FILES_MATCHING
+        PATTERN "*.hpp"
+        PATTERN "native" EXCLUDE
+        PATTERN "native.hpp" EXCLUDE
+        PATTERN "text" EXCLUDE
+        PATTERN "text.hpp" EXCLUDE
+        PATTERN "integration" EXCLUDE
+        PATTERN "playback" EXCLUDE
+        PATTERN "control_codec_internal.hpp" EXCLUDE
+)
+if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
+    install(
+        DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/text"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge"
+        FILES_MATCHING PATTERN "*.hpp"
     )
+    install(
+        FILES "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/text.hpp"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge"
+    )
+endif()
 install(
     FILES "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback.hpp"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge"
@@ -531,6 +547,10 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         qwen_tts_bridge/protocol/framing.hpp
         qwen_tts_bridge/session.hpp
         qwen_tts_bridge/transport.hpp
+        # Explicit leaf checks for neutral value types whose standalone use is
+        # part of the ownership/include contract.
+        qwen_tts_bridge/data/audio_types.hpp
+        qwen_tts_bridge/playback/playback_cursor.hpp
     )
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         list(APPEND _qwen_tts_public_headers

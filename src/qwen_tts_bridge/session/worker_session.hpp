@@ -12,10 +12,10 @@
 #include <string>
 #include <vector>
 
-#include "../data/protocol_types.hpp"
-#include "../protocol/control/control_messages.hpp"
-#include "../protocol/framing/frame_parser.hpp"
-#include "../transport/i_transport.hpp"
+#include <qwen_tts_bridge/data/protocol_types.hpp>
+#include <qwen_tts_bridge/protocol/control/control_messages.hpp>
+#include <qwen_tts_bridge/protocol/framing/frame_parser.hpp>
+#include <qwen_tts_bridge/transport/i_transport.hpp>
 
 namespace qwen_tts_bridge {
 

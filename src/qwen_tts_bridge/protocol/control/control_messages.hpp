@@ -10,6 +10,8 @@
 #include <variant>
 #include <vector>
 
+#include <qwen_tts_bridge/data/audio_types.hpp>
+
 namespace qwen_tts_bridge {
 
 /// \enum ControlMessageDirection
@@ -57,14 +59,6 @@ enum class ControlCodecError {
 /// \param error Codec error category.
 /// \return Stable protocol error code string.
 const char* control_codec_error_code(ControlCodecError error);
-
-/// \struct AudioFormat
-/// \brief PCM format announced or requested by control messages.
-struct AudioFormat {
-    std::string sample_format = "s16le"; ///< PCM sample encoding.
-    std::uint32_t sample_rate = 24000; ///< PCM samples per second.
-    std::uint32_t channels = 1; ///< Number of interleaved PCM channels.
-};
 
 /// \struct WorkerCapabilities
 /// \brief Worker feature flags announced by the ready message.

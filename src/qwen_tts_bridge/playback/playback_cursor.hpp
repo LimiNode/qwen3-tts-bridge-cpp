@@ -5,6 +5,8 @@
 
 #include <cstdint>
 
+#include <qwen_tts_bridge/data/protocol_types.hpp>
+
 namespace qwen_tts_bridge::playback {
 
 using qwen_tts_bridge::RequestId;

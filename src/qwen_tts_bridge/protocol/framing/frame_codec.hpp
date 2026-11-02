@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "../../data/protocol_types.hpp"
+#include <qwen_tts_bridge/data/protocol_types.hpp>
 
 namespace qwen_tts_bridge {
 
