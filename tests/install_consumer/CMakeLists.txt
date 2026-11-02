@@ -3,6 +3,8 @@ project(QwenTTSBridgeInstallConsumer LANGUAGES CXX)
 find_package(QwenTTSBridge CONFIG REQUIRED)
 option(QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_WINMM
     "Exercise the optional installed WinMM playback target" OFF)
+option(QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_TTS_FRONT
+    "Exercise the optional installed tts-front-cpp adapter" OFF)
 add_executable(qwen_tts_bridge_install_consumer main.cpp)
 target_link_libraries(qwen_tts_bridge_install_consumer PRIVATE QwenTTSBridge::qwen_tts_bridge)
 if(QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_WINMM)
@@ -14,4 +16,14 @@ if(QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_WINMM)
         PRIVATE QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_WINMM=1)
     target_link_libraries(qwen_tts_bridge_install_consumer
         PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
+endif()
+if(QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_TTS_FRONT)
+    if(NOT TARGET QwenTTSBridge::qwen_tts_bridge_tts_front)
+        message(FATAL_ERROR
+            "The installed package does not export the optional text frontend target")
+    endif()
+    target_compile_definitions(qwen_tts_bridge_install_consumer
+        PRIVATE QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_TTS_FRONT=1)
+    target_link_libraries(qwen_tts_bridge_install_consumer
+        PRIVATE QwenTTSBridge::qwen_tts_bridge_tts_front)
 endif()
