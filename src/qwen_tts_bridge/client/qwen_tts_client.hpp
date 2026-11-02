@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file QwenTtsClient.hpp
+/// \file qwen_tts_client.hpp
 /// \brief Async public facade for a persistent Qwen TTS worker.
 
 #include <condition_variable>
@@ -19,8 +19,8 @@
 
 #include "client_types.hpp"
 #include "../protocol/control/control_messages.hpp"
-#include "../session/WorkerSession.hpp"
-#include "../transport/stdio/StdIoTransport.hpp"
+#include "../session/worker_session.hpp"
+#include "../transport/stdio/std_io_transport.hpp"
 
 namespace qwen_tts_bridge {
 

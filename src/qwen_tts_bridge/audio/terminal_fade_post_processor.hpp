@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file TerminalFadePostProcessor.hpp
+/// \file terminal_fade_post_processor.hpp
 /// \brief Configurable terminal fade and silence PCM post-processor.
 
 #include <cstddef>

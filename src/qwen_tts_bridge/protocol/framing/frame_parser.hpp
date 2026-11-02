@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file FrameParser.hpp
+/// \file frame_parser.hpp
 /// \brief Incremental parser for QwenTTSBridge protocol v1 frames.
 
 #include <cstddef>

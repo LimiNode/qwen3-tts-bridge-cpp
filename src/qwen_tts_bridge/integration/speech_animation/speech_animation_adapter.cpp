@@ -1,4 +1,4 @@
-#include "SpeechAnimationAdapter.hpp"
+#include "speech_animation_adapter.hpp"
 
 #include <algorithm>
 #include <atomic>

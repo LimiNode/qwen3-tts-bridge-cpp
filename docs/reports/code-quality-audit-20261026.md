@@ -23,9 +23,9 @@ audited baseline:
 
 | Layer | Files and ranges inspected | Result |
 | --- | --- | --- |
-| In-process C ABI adapter | `src/qwen_tts_bridge/native/NativeQwenBackend.cpp:1-167`; `NativeQwenBackend.hpp:1-115` | Callback and cancellation trampolines are `noexcept` and convert callback exceptions to a failed/cancelled native call. `qt_context` and returned audio are released on all shown paths. ABI-6 parameter initialization and finish-reason mapping are explicit. No new P0/P1 finding was promoted from this pass. |
-| Native DLL loader and runtime manifest | `worker/native/qwentts/QwenDllLoader.cpp:1-137`; `runtime_manifest.cpp:146-224`; `QwenDllLoader.hpp` | Manifest validation precedes `LoadLibraryExW`; architecture, ABI, declared files and selected DLL containment are checked. Required/optional exports are separated, version is matched to the manifest, and partial loads call `unload()` before rethrowing. No new P0/P1 finding was promoted; negative manifest/export coverage remains an explicit test follow-up. |
-| Native process worker | `worker/native/qwentts/NativeEngine.cpp:78-641`; `StdioServer.cpp:79-673`; corresponding headers | Voice registry/preload, request validation, cancellation callback, PCM conversion, terminalization, shutdown, writer failure and fatal-error paths were reviewed. Logical terminal state and physical engine ownership are intentionally separate. No evidence was found here for a second independent lifecycle authority; the maintainability risk is retained below as a bounded P2 concern. |
+| In-process C ABI adapter | `src/qwen_tts_bridge/native/native_qwen_backend.cpp:1-167`; `native_qwen_backend.hpp:1-115` | Callback and cancellation trampolines are `noexcept` and convert callback exceptions to a failed/cancelled native call. `qt_context` and returned audio are released on all shown paths. ABI-6 parameter initialization and finish-reason mapping are explicit. No new P0/P1 finding was promoted from this pass. |
+| Native DLL loader and runtime manifest | `worker/native/qwentts/qwen_dll_loader.cpp:1-137`; `runtime_manifest.cpp:146-224`; `qwen_dll_loader.hpp` | Manifest validation precedes `LoadLibraryExW`; architecture, ABI, declared files and selected DLL containment are checked. Required/optional exports are separated, version is matched to the manifest, and partial loads call `unload()` before rethrowing. No new P0/P1 finding was promoted; negative manifest/export coverage remains an explicit test follow-up. |
+| Native process worker | `worker/native/qwentts/native_engine.cpp:78-641`; `stdio_server.cpp:79-673`; corresponding headers | Voice registry/preload, request validation, cancellation callback, PCM conversion, terminalization, shutdown, writer failure and fatal-error paths were reviewed. Logical terminal state and physical engine ownership are intentionally separate. No evidence was found here for a second independent lifecycle authority; the maintainability risk is retained below as a bounded P2 concern. |
 
 This is an evidence inventory, not a claim that every native branch has been
 exhaustively model-tested. Fully inspected areas are the loader/manifest
@@ -174,8 +174,8 @@ runtime library dependency.
 - `worker/src/qwen_tts_bridge_worker/cli.py` and `config.py` were reviewed for
   parser/config ownership; no correctness or beta-blocking finding was
   promoted from that pass.
-- `src/qwen_tts_bridge/client/QwenTtsClient.cpp` and
-  `src/qwen_tts_bridge/session/WorkerSession.cpp` were reviewed for callback
+- `src/qwen_tts_bridge/client/qwen_tts_client.cpp` and
+  `src/qwen_tts_bridge/session/worker_session.cpp` were reviewed for callback
   locking and lifecycle boundaries; the existing callback-copy-before-invoke
   pattern and mutex boundaries were retained.
 - The native implementation is split deliberately between the in-process

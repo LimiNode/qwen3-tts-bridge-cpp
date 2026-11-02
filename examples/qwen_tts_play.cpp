@@ -8,7 +8,7 @@
 #include "qwen_tts_play_completion_policy.hpp"
 
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
-#include <qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp>
+#include <qwen_tts_bridge/integration/speech_animation/playback_animation_runtime.hpp>
 #endif
 
 #define WIN32_LEAN_AND_MEAN

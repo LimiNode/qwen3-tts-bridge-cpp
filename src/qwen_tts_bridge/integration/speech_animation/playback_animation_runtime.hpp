@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpeechAnimationAdapter.hpp"
+#include "speech_animation_adapter.hpp"
 
 #include <speech_animation/playback.hpp>
 

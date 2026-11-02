@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file WorkerSession.hpp
+/// \file worker_session.hpp
 /// \brief Worker lifetime and protocol event orchestration.
 
 #include <chrono>
@@ -14,8 +14,8 @@
 
 #include "../data/protocol_types.hpp"
 #include "../protocol/control/control_messages.hpp"
-#include "../protocol/framing/FrameParser.hpp"
-#include "../transport/ITransport.hpp"
+#include "../protocol/framing/frame_parser.hpp"
+#include "../transport/i_transport.hpp"
 
 namespace qwen_tts_bridge {
 

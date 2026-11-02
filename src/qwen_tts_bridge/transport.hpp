@@ -3,5 +3,5 @@
 /// \file transport.hpp
 /// \brief Umbrella header for QwenTTSBridge byte transports.
 
-#include "transport/ITransport.hpp"
-#include "transport/stdio/StdIoTransport.hpp"
+#include "transport/i_transport.hpp"
+#include "transport/stdio/std_io_transport.hpp"

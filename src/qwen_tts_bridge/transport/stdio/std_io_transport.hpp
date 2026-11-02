@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file StdIoTransport.hpp
+/// \file std_io_transport.hpp
 /// \brief Worker process transport over stdin/stdout pipes.
 
 #include <chrono>
@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../ITransport.hpp"
+#include "../i_transport.hpp"
 
 namespace qwen_tts_bridge {
 

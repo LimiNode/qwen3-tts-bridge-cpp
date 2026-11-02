@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.hpp>
+#include <qwen_tts_bridge/integration/speech_animation/speech_animation_adapter.hpp>
 
 #include <cstdint>
 #include <cstdlib>

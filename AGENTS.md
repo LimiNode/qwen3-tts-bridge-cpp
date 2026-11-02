@@ -265,12 +265,12 @@ Inside `src/qwen_tts_bridge`, umbrella headers should include project leaf
 headers with local quoted paths:
 
 ```cpp
-#include "transport/ITransport.hpp"
-#include "transport/stdio/StdIoTransport.hpp"
+#include "transport/i_transport.hpp"
+#include "transport/stdio/std_io_transport.hpp"
 ```
 
 Prefer that over project-qualified leaf includes such as
-`<qwen_tts_bridge/transport/ITransport.hpp>` inside the library's own umbrella
+`<qwen_tts_bridge/transport/i_transport.hpp>` inside the library's own umbrella
 headers.
 
 Avoid direct leaf-to-leaf project includes in public headers when a forward

@@ -238,7 +238,7 @@ pending.
 The public API is a normal asynchronous C++ library, not a command-line wrapper
 around Python. `QwenTtsClient::synthesize_async()` accepts a request and
 delivers PCM and one terminal callback through `TtsCallbacks`. The public
-declarations live in [`src/qwen_tts_bridge/client/QwenTtsClient.hpp`](src/qwen_tts_bridge/client/QwenTtsClient.hpp);
+declarations live in [`src/qwen_tts_bridge/client/qwen_tts_client.hpp`](src/qwen_tts_bridge/client/qwen_tts_client.hpp);
 [`examples/basic_synthesis.cpp`](examples/basic_synthesis.cpp) is the smallest
 complete executable example.
 

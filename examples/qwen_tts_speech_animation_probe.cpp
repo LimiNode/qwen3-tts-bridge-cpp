@@ -1,5 +1,5 @@
 #include <qwen_tts_bridge/client.hpp>
-#include <qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.hpp>
+#include <qwen_tts_bridge/integration/speech_animation/speech_animation_adapter.hpp>
 #include <qwen_tts_bridge/transport.hpp>
 
 #include <nlohmann/json.hpp>

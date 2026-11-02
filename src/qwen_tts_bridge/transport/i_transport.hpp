@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file ITransport.hpp
+/// \file i_transport.hpp
 /// \brief Protocol-neutral byte transport interface.
 
 #include <cstddef>

@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file NativeQwenBackend.hpp
+/// \file native_qwen_backend.hpp
 /// \brief Optional adapter for the qwentts.cpp shared C ABI.
 
 #include <cstddef>

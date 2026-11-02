@@ -3,4 +3,4 @@
 /// \file text.hpp
 /// \brief Optional text frontend adapters.
 
-#include "text/TtsFrontTextPreparer.hpp"
+#include "text/tts_front_text_preparer.hpp"

@@ -1,7 +1,7 @@
 #include <qwen_tts_bridge/client.hpp>
 #include <qwen_tts_bridge/protocol/control/control_codec.hpp>
-#include <qwen_tts_bridge/protocol/framing/FrameParser.hpp>
-#include <qwen_tts_bridge/transport/stdio/StdIoTransport.hpp>
+#include <qwen_tts_bridge/protocol/framing/frame_parser.hpp>
+#include <qwen_tts_bridge/transport/stdio/std_io_transport.hpp>
 #include "wav_reader.hpp"
 #include "prepared_voice_reference.hpp"
 #include "runtime_manifest.hpp"
