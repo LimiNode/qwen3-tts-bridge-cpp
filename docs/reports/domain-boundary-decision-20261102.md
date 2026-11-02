@@ -1,15 +1,16 @@
-# C++ domain ownership and filename decision — 2026-11-02
+# C++ domain ownership and filename decision - 2026-11-02
 
-Status: **audit complete; no directory relocation justified before beta**.
+Status: **decision audit complete; implementation normalization remains open**.
 
-This is a documentation-only decision record prepared after acceptance PR #268
-was merged at `9ebce2cd6f8db8b5de43b0ba021e171a3b0e1364`. It inventories the
-current tree and separates actual ownership defects from filename consistency
-work. It does not change ABI, namespaces, include semantics, or runtime code.
+This documentation-only record follows acceptance PR #268 at
+`9ebce2cd6f8db8b5de43b0ba021e171a3b0e1364`. It distinguishes actual
+definition locations, intended ownership, and mechanical filename work. It
+does not claim that intended ownership is already implemented, and it changes
+no ABI, namespace, include semantics, or runtime behavior.
 
 ## Public include contract
 
-Supported stable entry points remain the domain umbrellas:
+The supported stable entry points remain the domain umbrellas:
 
 | Domain | Supported include | Classification |
 | --- | --- | --- |
@@ -22,83 +23,102 @@ Supported stable entry points remain the domain umbrellas:
 | playback | `qwen_tts_bridge/playback.hpp` | stable playback helpers |
 | native | `qwen_tts_bridge/native.hpp` | opt-in experimental backend |
 | text | `qwen_tts_bridge/text.hpp` | opt-in external frontend |
-| speech animation | the two adapter headers under `integration/speech_animation/` | opt-in integration |
+| speech animation | adapter headers under `integration/speech_animation/` | opt-in integration |
 | WinMM | `qwen_tts_bridge/playback/winmm_playback.hpp` | opt-in Windows sink |
 
-Installed leaf headers are implementation details unless listed above. The
-existing `public_header_self_contained` target checks these umbrellas and the
-explicit WinMM/speech-animation exceptions. No evidence supports promising
-every installed leaf as an independently stable API before beta.
+Installed leaf headers are not automatically stable API merely because they
+exist in the source tree. The current self-containment target checks umbrellas
+and explicit optional exceptions, but the install surface still needs to be
+aligned with the components actually exported before beta freeze.
 
-## Ownership decisions
+## Actual definitions and intended ownership
 
-| Area | Current owner | Direct dependencies | Decision | Severity |
+| Type or area | Actual definition location | Intended owner | Decision | Severity |
 | --- | --- | --- | --- | --- |
-| `RequestId`, `PcmChunk`, `AudioFormat` | `data` plus client-facing DTO aliases | protocol/client/audio/playback | Keep shared value types in `data`; do not move them during filename work | P3 |
-| audio `playout_cursor` | `audio` | client PCM DTO | It shapes producer-ahead PCM for interruption; it is not a physical device cursor | P3 clarification |
-| playback `playback_cursor` | `playback` | `RequestId` only | It is the sink-owned physical sample clock; keep separate from audio playout shaping | P3 clarification |
-| WAV callback helpers | `audio` | client callbacks, control messages, post-processing | Application-facing streaming/WAV helper; keep under audio umbrella, not core client | P3 |
-| playback receipt | `playback` | PCM DTO and playback cursor | Correct optional playback observer; no ownership move | P3 |
-| native adapter | `native` and `worker/native/qwentts` | qwentts ABI/runtime manifest | Opt-in backend boundary is intentional; do not promote to stable beta backend | P2 |
-| text adapter | `text` | external `tts-front-cpp`, client DTO | Optional frontend integration; no relocation | P2 |
-| speech animation | `integration/speech_animation` | external adapter and client PCM | Optional integration boundary is correct; keep build-gated | P2 |
-| protocol control/framing | `protocol` | data DTOs, private JSON implementation | Dependency direction is correct; keep JSON private | P2 |
-| client/session/transport | `client` → `session` → `transport`/protocol | lower-level domains | Facade and lifecycle ownership are coherent | P3 |
+| `RequestId` | `data/protocol_types.hpp` | `data` | Keep in data | P3 |
+| `AudioFormat` | `protocol/control/control_messages.hpp` | `data` | Move to neutral audio value types in a separate implementation PR | P2 |
+| `PcmChunk` | `client/client_types.hpp` | `data` | Move to neutral audio value types in a separate implementation PR | P2 |
+| `SpeechTimingChunk` | `client/client_types.hpp` | `data` | Move with the neutral PCM value types | P2 |
+| `TtsRequest`, `PreparedText`, `TtsCallbacks` | `client/client_types.hpp` | `client` | Keep as client request, preparation, and callback contracts | P3 |
+| `Frame`, `FrameHeader`, `ProtocolLimits` | `data/protocol_types.hpp` | `protocol/framing` | Inspect dependency cost before any move | P2 open decision |
+| `SynthesizeMessage`, `ReadyMessage` | `protocol/control/control_messages.hpp` | `protocol/control` | Keep in protocol control | P3 |
+| audio `playout_cursor` | `audio/playout_cursor.hpp` | `audio` | Producer-ahead PCM shaping, distinct from a physical device cursor | P3 clarification |
+| playback `playback_cursor` | `playback/playback_cursor.hpp` | `playback` | Keep as sink-owned physical sample clock and add its explicit `RequestId` dependency | P2 include hygiene |
+| native adapter | `native` and `worker/native/qwentts` | same domains | Keep opt-in and experimental for beta | P2 |
+| text adapter | `text` | `text` | Keep optional and build-gated; correct its installed component contract | P2 packaging |
+| speech animation | `integration/speech_animation` | same domain | Keep optional and build-gated | P2 packaging |
 
-No P1 ownership violation was found. The earlier `playback_cursor` dependency
-on the client umbrella has already been removed; the playback umbrella supplies
-the shared data context explicitly.
+No P1 ownership violation was found. P2 work remains for neutral audio value
+types, cross-domain include hygiene, and the installed optional-component
+surface. These findings are intentionally outside the mechanical filename PR.
 
-## Complete current inventory
+## Header/source classification
 
-The inventory was generated on the exact tree with:
+The audited 71 C++ files contain 24 same-stem `.hpp`/`.cpp` pairs, 17 headers
+without a same-stem source, and 6 sources without a same-stem header. The
+absence of a matching file is not itself a defect:
 
-```powershell
-Get-ChildItem src/qwen_tts_bridge -Recurse -File |
-  Where-Object Extension -in '.hpp','.cpp'
-Get-ChildItem worker/native/qwentts -Recurse -File |
-  Where-Object Extension -in '.hpp','.cpp'
-```
+- header-only DTOs, interfaces, and umbrellas are intentional;
+- `protocol/control/control_codec_internal.hpp` is a private implementation
+  header shared by several codec translation units and needs no matching source;
+- the five control-codec sources without matching public headers are an
+  intentional responsibility split;
+- `main.cpp` is a normal source-only entry point;
+- `playback_interruption_diagnostics.{hpp,cpp}` is a private WinMM JSON
+  formatter introduced in `1b3824d`; it belongs under `playback`, has a focused
+  test, and must not be added to `playback.hpp`;
+- implementation-private helpers must not become installed public SDK API only
+  because their declarations live in a header.
 
-Counts: `src/qwen_tts_bridge`: 58 C++ files, of which 21 use PascalCase
-filenames; `worker/native/qwentts`: 13 C++ files, of which 6 use PascalCase.
-The remaining files already use snake_case and are unchanged by this decision.
+## Filename inventory
 
-### PascalCase rename map (mechanical, no symbol changes)
+The pre-normalization tree contains 58 C++ files under
+`src/qwen_tts_bridge`, including 21 PascalCase filenames, and 13 native-worker
+C++ files, including 6 PascalCase filenames. The mechanical rename map is:
 
-| Current path | Proposed path | Owner/classification | Move justified? |
-| --- | --- | --- | --- |
-| `audio/TerminalFadePostProcessor.{cpp,hpp}` | `audio/terminal_fade_post_processor.{cpp,hpp}` | audio, internal leaf | Yes, naming only |
-| `audio/WavWriter.{cpp,hpp}` | `audio/wav_writer.{cpp,hpp}` | audio, internal leaf | Yes, naming only |
-| `client/QwenTtsClient.{cpp,hpp}` | `client/qwen_tts_client.{cpp,hpp}` | client, implementation behind umbrella | Yes, naming only |
-| `integration/speech_animation/PlaybackAnimationRuntime.{cpp,hpp}` | `integration/speech_animation/playback_animation_runtime.{cpp,hpp}` | opt-in integration | Yes, naming only |
-| `integration/speech_animation/SpeechAnimationAdapter.{cpp,hpp}` | `integration/speech_animation/speech_animation_adapter.{cpp,hpp}` | opt-in integration | Yes, naming only |
-| `native/NativeQwenBackend.{cpp,hpp}` | `native/native_qwen_backend.{cpp,hpp}` | opt-in native adapter | Yes, naming only |
-| `protocol/framing/FrameParser.{cpp,hpp}` | `protocol/framing/frame_parser.{cpp,hpp}` | protocol leaf | Yes, naming only |
-| `session/WorkerSession.{cpp,hpp}` | `session/worker_session.{cpp,hpp}` | session leaf | Yes, naming only |
-| `text/TtsFrontTextPreparer.{cpp,hpp}` | `text/tts_front_text_preparer.{cpp,hpp}` | opt-in frontend adapter | Yes, naming only |
-| `transport/ITransport.hpp` | `transport/i_transport.hpp` | transport leaf | Yes, naming only |
-| `transport/stdio/StdIoTransport.{cpp,hpp}` | `transport/stdio/std_io_transport.{cpp,hpp}` | transport leaf | Yes, naming only |
-| `worker/native/qwentts/NativeEngine.{cpp,hpp}` | `worker/native/qwentts/native_engine.{cpp,hpp}` | native worker | Yes, naming only |
-| `worker/native/qwentts/QwenDllLoader.{cpp,hpp}` | `worker/native/qwentts/qwen_dll_loader.{cpp,hpp}` | native worker | Yes, naming only |
-| `worker/native/qwentts/StdioServer.{cpp,hpp}` | `worker/native/qwentts/stdio_server.{cpp,hpp}` | native worker transport | Yes, naming only |
+| Current path | Proposed path | Classification |
+| --- | --- | --- |
+| `audio/TerminalFadePostProcessor.{cpp,hpp}` | `audio/terminal_fade_post_processor.{cpp,hpp}` | audio leaf |
+| `audio/WavWriter.{cpp,hpp}` | `audio/wav_writer.{cpp,hpp}` | audio leaf |
+| `client/QwenTtsClient.{cpp,hpp}` | `client/qwen_tts_client.{cpp,hpp}` | client leaf |
+| `integration/speech_animation/PlaybackAnimationRuntime.{cpp,hpp}` | `integration/speech_animation/playback_animation_runtime.{cpp,hpp}` | opt-in integration |
+| `integration/speech_animation/SpeechAnimationAdapter.{cpp,hpp}` | `integration/speech_animation/speech_animation_adapter.{cpp,hpp}` | opt-in integration |
+| `native/NativeQwenBackend.{cpp,hpp}` | `native/native_qwen_backend.{cpp,hpp}` | opt-in native adapter |
+| `protocol/framing/FrameParser.{cpp,hpp}` | `protocol/framing/frame_parser.{cpp,hpp}` | protocol leaf |
+| `session/WorkerSession.{cpp,hpp}` | `session/worker_session.{cpp,hpp}` | session leaf |
+| `text/TtsFrontTextPreparer.{cpp,hpp}` | `text/tts_front_text_preparer.{cpp,hpp}` | opt-in frontend adapter |
+| `transport/ITransport.hpp` | `transport/i_transport.hpp` | transport interface |
+| `transport/stdio/StdIoTransport.{cpp,hpp}` | `transport/stdio/std_io_transport.{cpp,hpp}` | transport leaf |
+| `worker/native/qwentts/NativeEngine.{cpp,hpp}` | `worker/native/qwentts/native_engine.{cpp,hpp}` | native worker |
+| `worker/native/qwentts/QwenDllLoader.{cpp,hpp}` | `worker/native/qwentts/qwen_dll_loader.{cpp,hpp}` | native worker |
+| `worker/native/qwentts/StdioServer.{cpp,hpp}` | `worker/native/qwentts/stdio_server.{cpp,hpp}` | native worker transport |
 
-The table expands pairs as two files; it covers all 21 PascalCase files in
-`src` and all 6 PascalCase files in the native worker. Existing snake_case
-files, including protocol control/framing leaves, playback, data, and audio
-helpers, remain at their current paths.
+The table expands pairs as two files and covers all 27 PascalCase filenames.
+
+## Include and install policy selected for the corrective
+
+- cross-directory first-party includes use `<qwen_tts_bridge/...>`;
+- private same-directory includes may use `"local_header.hpp"`;
+- cross-domain `../` and `../../` paths are not retained;
+- third-party headers keep their own include roots;
+- optional headers are installed only with a supported exported component;
+- private implementation headers such as `control_codec_internal.hpp` are not
+  installed as public SDK headers;
+- existing stable umbrella paths continue to expose their existing types.
 
 ## Compatibility and sequencing decision
 
-1. Do not move domains or DTOs before beta; the audit found no concrete defect
-   that justifies an ABI or ownership change.
-2. Perform filename normalization as a separate mechanical PR using `git mv`.
-   Update CMake, includes, tests, examples, documentation and Doxygen paths.
-3. Keep umbrella include paths stable. Do not add compatibility wrappers for
-   internal leaves; document the pre-beta migration if a direct leaf include is
-   found in supported examples.
-4. Run installed-consumer, header self-containment, optional-feature and full
-   Windows CI before considering the rename PR.
+1. Integrate this corrected decision record first.
+2. Keep filename normalization mechanical: no DTO moves, include normalization,
+   or install/export changes in that PR.
+3. Rebase the filename PR after this record lands and rerun exact-head CI.
+4. Implement neutral audio ownership, include-path normalization, and install
+   component corrections in one separately reviewed structural PR.
+5. Preserve namespaces, public names, member defaults, layouts, protocol JSON,
+   and existing umbrella behavior in the structural correction.
+6. Leave framing DTO relocation open unless its dependency cost proves small
+   and independently reviewable.
+7. Run installed-consumer, leaf and umbrella self-containment,
+   optional-feature, and full Windows CI before beta freeze.
 
-The filename PR must not be merged automatically. Any justified domain move is
-deferred to a later, separately reviewed PR.
+Neither the filename PR nor the later structural PR is merged automatically.
