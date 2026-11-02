@@ -126,6 +126,7 @@ jobs:
           .\scripts\test-installed-package.ps1 `
             -InstallPrefix $prefix `
             -BuildDirectory (Join-Path $env:RUNNER_TEMP 'qwen-tts-bridge-install-consumer') `
+            -RequireTtsFront `
             -RequireWinmmPlayback
 
       - name: Parse native/Python matrix runner
