@@ -3,7 +3,8 @@
 /// \file speech_animation_adapter.hpp
 /// \brief Optional adapter from Qwen bridge callbacks to speech-animation.
 
-#include "../../client/client_types.hpp"
+#include <qwen_tts_bridge/data/audio_types.hpp>
+#include <qwen_tts_bridge/client/client_types.hpp>
 
 #include <functional>
 #include <memory>

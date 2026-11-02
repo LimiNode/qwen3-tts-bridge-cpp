@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "../client/client_types.hpp"
+#include <qwen_tts_bridge/client/client_types.hpp>
 
 namespace qwen_tts_bridge {
 

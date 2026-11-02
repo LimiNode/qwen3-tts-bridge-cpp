@@ -273,6 +273,16 @@ Prefer that over project-qualified leaf includes such as
 `<qwen_tts_bridge/transport/i_transport.hpp>` inside the library's own umbrella
 headers.
 
+For cross-domain first-party dependencies, prefer the project-qualified
+`<qwen_tts_bridge/...>` include root. Relative `../` and `../../` paths are not
+allowed across domains; a private same-directory header may use a short quoted
+include. Neutral PCM value types live in `data/audio_types.hpp`
+(`AudioFormat`, `PcmChunk`, and `SpeechTimingChunk`), while request,
+preparation, callback, and error contracts remain in `client/client_types.hpp`
+and wire message DTOs remain in `protocol/control/control_messages.hpp`.
+Implementation-private headers such as `control_codec_internal.hpp` must not be
+installed as public SDK headers.
+
 Avoid direct leaf-to-leaf project includes in public headers when a forward
 declaration or a higher-level umbrella header can express the dependency. It is
 acceptable that umbrella headers include related leaf headers in advance and

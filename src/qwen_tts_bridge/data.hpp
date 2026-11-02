@@ -4,4 +4,5 @@
 /// \brief Umbrella header for QwenTTSBridge protocol data types.
 
 #include "data/enums.hpp"
+#include "data/audio_types.hpp"
 #include "data/protocol_types.hpp"

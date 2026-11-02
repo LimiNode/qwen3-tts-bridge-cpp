@@ -7,7 +7,8 @@
 #include <mutex>
 #include <vector>
 
-#include "../client/client_types.hpp"
+#include <qwen_tts_bridge/data/audio_types.hpp>
+#include <qwen_tts_bridge/client/client_types.hpp>
 
 namespace qwen_tts_bridge::audio {
 

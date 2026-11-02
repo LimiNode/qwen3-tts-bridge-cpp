@@ -10,8 +10,9 @@
 #include <string>
 #include <vector>
 
-#include "../data/protocol_types.hpp"
-#include "../protocol/control/control_messages.hpp"
+#include <qwen_tts_bridge/data/audio_types.hpp>
+#include <qwen_tts_bridge/data/protocol_types.hpp>
+#include <qwen_tts_bridge/protocol/control/control_messages.hpp>
 
 namespace qwen_tts_bridge {
 
@@ -132,42 +133,6 @@ struct PreparedText {
 struct PreparedTtsRequest {
     TtsRequest request; ///< Original request metadata and options.
     PreparedText text; ///< Prepared spoken text and routing measurements.
-};
-
-/// \struct PcmChunk
-/// \brief User-facing PCM audio chunk routed to a request callback.
-struct PcmChunk {
-    /// \brief Request that produced this audio.
-    RequestId request_id = 0; ///< Request that produced this audio.
-
-    /// \brief PCM format for the chunk.
-    AudioFormat format; ///< PCM format for this chunk.
-
-    /// \brief Raw PCM bytes.
-    std::vector<std::byte> bytes; ///< Raw PCM bytes.
-
-    /// \brief Zero-based position of the first interleaved sample frame.
-    ///
-    /// This is the canonical media-clock position for the utterance. It is
-    /// derived from PCM accounting and is independent of callback arrival
-    /// time or worker scheduling.
-    std::uint64_t first_sample = 0; ///< First sample-frame position in the utterance.
-
-    /// \brief Number of interleaved sample frames in `bytes`.
-    std::uint32_t sample_count = 0; ///< Number of sample frames in this chunk.
-};
-
-/// \struct SpeechTimingChunk
-/// \brief Sample-addressed sideband event for downstream speech analysis.
-///
-/// The timing stream deliberately contains no viseme or phoneme decision. It
-/// is a lightweight, canonical media-clock feed that can be consumed by an
-/// optional speech-animation layer without delaying PCM delivery.
-struct SpeechTimingChunk {
-    RequestId request_id = 0; ///< Utterance/request that produced this timing.
-    std::uint64_t first_sample = 0; ///< First sample-frame position in the utterance.
-    std::uint32_t sample_count = 0; ///< Number of sample frames in the chunk.
-    std::uint32_t sample_rate = 0; ///< Samples per second for the timeline.
 };
 
 /// \struct TtsError

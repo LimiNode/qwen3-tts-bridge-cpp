@@ -18,9 +18,9 @@
 #include <vector>
 
 #include "client_types.hpp"
-#include "../protocol/control/control_messages.hpp"
-#include "../session/worker_session.hpp"
-#include "../transport/stdio/std_io_transport.hpp"
+#include <qwen_tts_bridge/protocol/control/control_messages.hpp>
+#include <qwen_tts_bridge/session/worker_session.hpp>
+#include <qwen_tts_bridge/transport/stdio/std_io_transport.hpp>
 
 namespace qwen_tts_bridge {
 
