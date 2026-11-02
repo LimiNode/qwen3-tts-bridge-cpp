@@ -167,7 +167,7 @@ threat model.
   audio, seed and sampling controls that `qwen_tts_save_wav` does not. This is a
   documented capability difference, not yet a demonstrated bug.
 * **Large maintenance surfaces:** `qwen_tts_play.cpp`,
-  `qwen_tts_latency_benchmark.cpp`, `stdio_server.py`, `QwenTtsClient.cpp` and
+  `qwen_tts_latency_benchmark.cpp`, `stdio_server.py`, `qwen_tts_client.cpp` and
   `package-python-worker.ps1` are large files. Treat this as review pressure,
   not a license for speculative refactoring.
 

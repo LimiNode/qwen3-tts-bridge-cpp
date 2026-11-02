@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file WavWriter.hpp
+/// \file wav_writer.hpp
 /// \brief Small RIFF/WAVE PCM writer used by the save-wav example.
 
 #include <cstddef>

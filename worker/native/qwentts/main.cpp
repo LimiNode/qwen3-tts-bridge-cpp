@@ -1,5 +1,5 @@
-#include "NativeEngine.hpp"
-#include "StdioServer.hpp"
+#include "native_engine.hpp"
+#include "stdio_server.hpp"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

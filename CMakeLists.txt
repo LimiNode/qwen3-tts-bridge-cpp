@@ -139,9 +139,9 @@ add_library(qwen_tts_bridge
     src/qwen_tts_bridge/audio/post_processor.cpp
     src/qwen_tts_bridge/audio/playout_cursor.cpp
     src/qwen_tts_bridge/audio/save_wav_callbacks.cpp
-    src/qwen_tts_bridge/audio/TerminalFadePostProcessor.cpp
-    src/qwen_tts_bridge/audio/WavWriter.cpp
-    src/qwen_tts_bridge/client/QwenTtsClient.cpp
+    src/qwen_tts_bridge/audio/terminal_fade_post_processor.cpp
+    src/qwen_tts_bridge/audio/wav_writer.cpp
+    src/qwen_tts_bridge/client/qwen_tts_client.cpp
     src/qwen_tts_bridge/playback/playback_receipt.cpp
     src/qwen_tts_bridge/protocol/control/control_codec.cpp
     src/qwen_tts_bridge/protocol/control/control_decode.cpp
@@ -150,9 +150,9 @@ add_library(qwen_tts_bridge
     src/qwen_tts_bridge/protocol/control/control_validation.cpp
     src/qwen_tts_bridge/protocol/control/error_codec.cpp
     src/qwen_tts_bridge/protocol/framing/frame_codec.cpp
-    src/qwen_tts_bridge/protocol/framing/FrameParser.cpp
-    src/qwen_tts_bridge/session/WorkerSession.cpp
-    src/qwen_tts_bridge/transport/stdio/StdIoTransport.cpp
+    src/qwen_tts_bridge/protocol/framing/frame_parser.cpp
+    src/qwen_tts_bridge/session/worker_session.cpp
+    src/qwen_tts_bridge/transport/stdio/std_io_transport.cpp
 )
 add_library(QwenTTSBridge::qwen_tts_bridge ALIAS qwen_tts_bridge)
 
@@ -205,11 +205,11 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
 
     add_executable(qwen_tts_native_worker
         worker/native/qwentts/main.cpp
-        worker/native/qwentts/NativeEngine.cpp
+        worker/native/qwentts/native_engine.cpp
         worker/native/qwentts/prepared_voice_reference.cpp
-        worker/native/qwentts/QwenDllLoader.cpp
+        worker/native/qwentts/qwen_dll_loader.cpp
         worker/native/qwentts/runtime_manifest.cpp
-        worker/native/qwentts/StdioServer.cpp
+        worker/native/qwentts/stdio_server.cpp
         worker/native/qwentts/wav_reader.cpp
     )
     # Keep the Windows min/max macros out of the native worker.  The worker
@@ -238,7 +238,7 @@ endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND)
     add_library(qwen_tts_bridge_native STATIC
-        src/qwen_tts_bridge/native/NativeQwenBackend.cpp
+        src/qwen_tts_bridge/native/native_qwen_backend.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_native ALIAS qwen_tts_bridge_native)
     target_compile_features(qwen_tts_bridge_native PUBLIC cxx_std_17)
@@ -257,7 +257,7 @@ endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
     add_library(qwen_tts_bridge_tts_front STATIC
-        src/qwen_tts_bridge/text/TtsFrontTextPreparer.cpp
+        src/qwen_tts_bridge/text/tts_front_text_preparer.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_tts_front ALIAS qwen_tts_bridge_tts_front)
     target_compile_features(qwen_tts_bridge_tts_front PUBLIC cxx_std_17)
@@ -275,8 +275,8 @@ endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
     add_library(qwen_tts_bridge_speech_animation STATIC
-        src/qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.cpp
-        src/qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.cpp
+        src/qwen_tts_bridge/integration/speech_animation/speech_animation_adapter.cpp
+        src/qwen_tts_bridge/integration/speech_animation/playback_animation_runtime.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_speech_animation ALIAS
         qwen_tts_bridge_speech_animation)
@@ -541,8 +541,8 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         # speech-animation currently has no bridge umbrella; these two
         # opt-in integration headers are intentionally supported entry points.
         list(APPEND _qwen_tts_public_headers
-            qwen_tts_bridge/integration/speech_animation/SpeechAnimationAdapter.hpp
-            qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp
+            qwen_tts_bridge/integration/speech_animation/speech_animation_adapter.hpp
+            qwen_tts_bridge/integration/speech_animation/playback_animation_runtime.hpp
         )
     endif()
     if(WIN32 AND QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
@@ -748,7 +748,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         add_test(NAME native_qwen_backend_abi_test COMMAND native_qwen_backend_abi_test)
 
         add_executable(native_qwen_backend_finish_test
-            src/qwen_tts_bridge/native/NativeQwenBackend.cpp
+            src/qwen_tts_bridge/native/native_qwen_backend.cpp
             tests/native_qwen_backend_finish_test.cpp
         )
         target_compile_definitions(native_qwen_backend_finish_test PRIVATE QWEN_STATIC)

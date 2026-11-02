@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/integration/speech_animation/PlaybackAnimationRuntime.hpp>
+#include <qwen_tts_bridge/integration/speech_animation/playback_animation_runtime.hpp>
 
 #include <cstdint>
 #include <cstdlib>

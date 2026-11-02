@@ -4,8 +4,8 @@
 /// \brief Convenience include for optional audio utility helpers.
 
 #include "client.hpp"
-#include "audio/WavWriter.hpp"
+#include "audio/wav_writer.hpp"
 #include "audio/post_processor.hpp"
 #include "audio/playout_cursor.hpp"
 #include "audio/save_wav_callbacks.hpp"
-#include "audio/TerminalFadePostProcessor.hpp"
+#include "audio/terminal_fade_post_processor.hpp"

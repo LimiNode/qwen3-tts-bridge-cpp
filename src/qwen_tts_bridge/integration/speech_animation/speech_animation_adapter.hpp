@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file SpeechAnimationAdapter.hpp
+/// \file speech_animation_adapter.hpp
 /// \brief Optional adapter from Qwen bridge callbacks to speech-animation.
 
 #include "../../client/client_types.hpp"

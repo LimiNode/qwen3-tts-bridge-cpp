@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file TtsFrontTextPreparer.hpp
+/// \file tts_front_text_preparer.hpp
 /// \brief Adapter from the released tts-front-cpp frontend to PreparedText.
 
 #include <tts_front.hpp>

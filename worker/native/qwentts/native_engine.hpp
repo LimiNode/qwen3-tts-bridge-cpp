@@ -1,6 +1,6 @@
 #pragma once
 
-#include "QwenDllLoader.hpp"
+#include "qwen_dll_loader.hpp"
 #include "prepared_voice_reference.hpp"
 
 #include <qwen_tts_bridge/protocol/control.hpp>

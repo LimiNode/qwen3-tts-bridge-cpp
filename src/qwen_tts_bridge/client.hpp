@@ -8,4 +8,4 @@
 #include "session.hpp"
 #include "transport.hpp"
 #include "client/client_types.hpp"
-#include "client/QwenTtsClient.hpp"
+#include "client/qwen_tts_client.hpp"

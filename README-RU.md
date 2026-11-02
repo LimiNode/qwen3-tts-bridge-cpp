@@ -155,7 +155,7 @@ Wrapper проверяет terminal result JSON и PCM16 WAV: sample rate, чи�
 ## C++ API
 
 Публичный API уже реализован как асинхронный клиент. Объявления находятся в
-[`src/qwen_tts_bridge/client/QwenTtsClient.hpp`](src/qwen_tts_bridge/client/QwenTtsClient.hpp),
+[`src/qwen_tts_bridge/client/qwen_tts_client.hpp`](src/qwen_tts_bridge/client/qwen_tts_client.hpp),
 а полный минимальный исполняемый пример — в
 [`examples/basic_synthesis.cpp`](examples/basic_synthesis.cpp).
 
