@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "acceptance_id": "voice-design-frozen-cmp50hx-20261028",
+  "recorded_at": "2026-10-30",
+  "model_family": "VoiceDesign",
+  "backend": "faster",
+  "bridge_commit": "cd1b01e2fb06ebf11561daabdae402bc6ee39b58",
+  "model_revision": "5ecdb67327fd37bb2e042aab12ff7391903235d3",
+  "runtime_revision": {
+    "faster_qwen3_tts": "4bdcd3f8d57fabbdc605152c7958e095321a4e46",
+    "qwen_tts": "25cc5886a753035ac3ed9d4000440b2e842e5e56",
+    "python": "3.11.9",
+    "torch": "2.10.0+cu128"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/voice-design-frozen-cmp50hx-20261028/acceptance-summary.json",
+    "text_utf8_sha256": "37dad9bb34c327b42ef0f6e13c1a7a3093d1446700ec8161d3acc26b763e3617",
+    "instruction_utf8_sha256": "1e6eaab0d81f51274a513f5a87b1dc95f8e94bd7935d3c63a033ee644e9d2b8b"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "12.8"
+  },
+  "artifact_root": ".tmp/base-acceptance/voice-design-frozen-cmp50hx-20261028",
+  "artifacts": [
+    {"path": ".tmp/base-acceptance/voice-design-frozen-cmp50hx-20261028/voice-design-strict.wav", "kind": "wav", "bytes": 201728, "sha256": "3ed04ee3aeca429b9bcbe7f74883dd387ae1e8851057b55f1320b5bdb4b75a4d"},
+    {"path": ".tmp/base-acceptance/voice-design-frozen-cmp50hx-20261028/voice-design-strict.json", "kind": "json", "bytes": 374, "sha256": "a8d5385cf8e5cba90d6eb5ea269f63db39a68802bf068f2bbabdda05013215bf"},
+    {"path": ".tmp/base-acceptance/voice-design-frozen-cmp50hx-20261028/acceptance-summary.json", "kind": "json", "bytes": 5318, "sha256": "80a3ce3c930e359ec49e643e104f3dabf6252c1a670c8bf94cd1452ffe8aba6b"
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "not_run",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-10-30",
+    "scope": "Listening check of the exact frozen VoiceDesign WAV on CMP 50HX.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "partial",
+      "artifacts": "not_assessed",
+      "final_tail": "pass",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User reported that the speech was clear, the voice was good, and the track ended normally. Instruction adherence, every possible artefact, and sequential-request isolation were not separately assessed."
+  },
+  "release_status": "conditional",
+  "supersedes": null,
+  "related_reports": ["docs/reports/voice-design-1.7b-acceptance-20261026.json"],
+  "notes": "This receipt clarifies the exact frozen-release candidate. It does not change the older generation-trace report or transfer its verdict to the separate voice-design-generation-trace candidate."
+}

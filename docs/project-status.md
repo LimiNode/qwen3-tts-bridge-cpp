@@ -17,6 +17,23 @@ PCM, and supports request IDs, cancellation, terminal lifecycle events, and
 portable/Nuitka packaging with models stored outside Git. This is the route to
 use when a product needs the currently supported bridge behavior.
 
+### Current model acceptance records
+
+The tracked [acceptance index](reports/acceptance-index.json) is the source of
+current model and listening status. The two frozen CMP 50HX records currently
+have mechanical synthesis and natural-EOS evidence plus scoped human listening:
+
+* [Base portable 1.7B](reports/base-portable-cmp50hx-20261030.json) — two WAVs
+  were listened to by the user; the subjective result was good, while the
+  receipt leaves unassessed artefact and sequential-isolation criteria open.
+* [VoiceDesign frozen 1.7B](reports/voice-design-frozen-cmp50hx-20261028.json)
+  — the user confirmed clear speech, a good voice, and a normal final tail;
+  instruction adherence and broader quality criteria remain conditional.
+
+These are scoped `partial_pass` listening verdicts, not a universal release
+acceptance. The exact payloads remain local under `.tmp/base-acceptance/` and
+are identified in the tracked receipts by SHA-256.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL

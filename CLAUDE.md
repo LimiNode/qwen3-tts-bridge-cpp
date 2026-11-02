@@ -12,3 +12,10 @@ for behavior and performance claims.
 
 Do not commit model weights, virtual environments, generated build output,
 WAV captures, or machine-local acceptance artifacts.
+
+For acceptance and research records, read
+[`docs/acceptance-evidence-contract.md`](docs/acceptance-evidence-contract.md).
+Keep raw payloads in ignored `.tmp/base-acceptance/<run-id>/`, but commit the
+small canonical receipt under `docs/reports/` and update the acceptance index.
+User listening verdicts are not durable until the tracked receipt is updated;
+never transfer them between model families, backends, or candidates.

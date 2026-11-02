@@ -97,6 +97,24 @@ Large model weights, CUDA/runtime bundles, and hardware-test artifacts may be
 stored outside the repository when a procedure requires it; document their
 location and provenance, and never commit them.
 
+## Acceptance Evidence Contract
+
+Acceptance payloads belong in the ignored repository-local
+`.tmp/base-acceptance/<run-id>/` directory. This directory is for WAV files,
+logs, raw manifests, and machine-generated receipts only; it is not a source
+of durable acceptance status. The canonical receipt must be a small tracked
+JSON file under `docs/reports/`, indexed by
+`docs/reports/acceptance-index.json`. Follow
+[`docs/acceptance-evidence-contract.md`](docs/acceptance-evidence-contract.md)
+and validate it with `python scripts/validate-acceptance-receipts.py`.
+
+After a user or named observer listens to an exact artifact, update the tracked
+receipt in the same change. Record the artifact path, byte count, SHA-256,
+observer, listening scope, and each assessed or unassessed criterion. Do not
+transfer a verdict between model families, backends, revisions, or candidates.
+Do not report that a verdict was recorded when only an ignored `.tmp` file was
+changed. Preserve older reports and link a new receipt with `supersedes`.
+
 ## Architecture Preflight
 
 Before changing a cross-cutting subsystem, read the nearest applicable ADR and
@@ -110,11 +128,12 @@ normal SDK, or silently promote an experimental backend/profile.
 ## Acceptance State Updates
 
 When an experiment or hardware run changes an acceptance gate, update the
-canonical receipt/status document in the same change. Preserve earlier failed,
-invalid, or superseded runs as historical evidence, but label which receipt is
-current and state its exact hardware, software, model, and listening scope.
-Never leave a completed gate described as pending, and never convert a partial
-or build-only check into a production-support claim.
+canonical tracked receipt under `docs/reports/` in the same change. Preserve
+earlier failed, invalid, or superseded runs as historical evidence, but label
+which receipt is current and state its exact hardware, software, model, and
+listening scope. Mechanical success, human listening, and release status are
+separate fields. Never leave a completed gate described as pending, and never
+convert a partial or build-only check into a production-support claim.
 
 ## Codebase Discovery
 

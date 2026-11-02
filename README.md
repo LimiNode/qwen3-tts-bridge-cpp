@@ -38,7 +38,9 @@ Russian stress profile; neither is the production default.
   avatar presentation integration.
 
 The receipts and architecture boundaries are collected in
-[docs/project-status.md](docs/project-status.md).
+[docs/project-status.md](docs/project-status.md). Current model and listening
+verdicts use the tracked [acceptance index](docs/reports/acceptance-index.json)
+and the [acceptance evidence contract](docs/acceptance-evidence-contract.md).
 
 ## Quick start
 
@@ -146,7 +148,7 @@ the C++ WAV executable, configuration examples, and a SHA-256 release manifest.
 | Model family | Request inputs | Backend status |
 | --- | --- | --- |
 | 0.6B/1.7B CustomVoice | text, language, speaker, optional instruction | Supported through the worker path; validate the selected runtime/model pair |
-| 1.7B VoiceDesign | text, language, non-empty voice instruction | Conditional: API, worker, CLI discovery, and real-model natural-EOS receipt are verified; human listening remains a release gate |
+| 1.7B VoiceDesign | text, language, non-empty voice instruction | API, worker, CLI discovery, and real-model receipt implemented; the CMP frozen candidate has scoped listening evidence, while full instruction/quality acceptance remains conditional |
 | 0.6B/1.7B Base | text, language, reference audio or registered voice profile | Implemented voice-clone path; verify the selected profile and reference provenance |
 
 Streaming availability and performance are backend/model dependent. A full-

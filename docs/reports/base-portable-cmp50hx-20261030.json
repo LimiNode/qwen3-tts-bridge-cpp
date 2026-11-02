@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "acceptance_id": "base-portable-cmp50hx-20261030",
+  "recorded_at": "2026-10-30",
+  "model_family": "Base",
+  "backend": "faster",
+  "bridge_commit": "c04f78982921ac3d0dadabed1c747af1ee4e703c",
+  "model_revision": "fd4b254389122332181a7c3db7f27e918eec64e3",
+  "runtime_revision": {
+    "faster_qwen3_tts": "90b596d2ffa41eb2da173db92e6f896df11b19cb",
+    "qwen_tts": "25cc5886a753035ac3ed9d4000440b2e842e5e56",
+    "python": "3.11.9",
+    "torch": "2.10.0+cu128"
+  },
+  "input_identity": {
+    "status": "not_recorded",
+    "source": "portable-base output receipts did not preserve the exact request bytes"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "12.8"
+  },
+  "artifact_root": ".tmp/base-acceptance/base-portable-cmp50hx-20261030",
+  "artifacts": [
+    {"path": ".tmp/base-acceptance/base-portable-cmp50hx-20261030/portable-base-1.wav", "kind": "wav", "bytes": 244504, "sha256": "141bd622b5af0a86736e63ea73622b6c743726b9fc2779b8dda42fced3626ba0"},
+    {"path": ".tmp/base-acceptance/base-portable-cmp50hx-20261030/portable-base-1.json", "kind": "json", "bytes": 374, "sha256": "1f0254ba2bf6f8bbd81316018c11b8453940d5647f125613764aee4b65089f7c"},
+    {"path": ".tmp/base-acceptance/base-portable-cmp50hx-20261030/portable-base-2.wav", "kind": "wav", "bytes": 396944, "sha256": "1060203571dd36fb3e8bbb66be17a3fb11755549f55a7d4a812aa8e638a6fdbd"},
+    {"path": ".tmp/base-acceptance/base-portable-cmp50hx-20261030/portable-base-2.json", "kind": "json", "bytes": 376, "sha256": "fc3aa75ac69885957ffdd5ab1bb5d93b411b900b5e0289be7a49e53aa9002d0f"}
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "not_run",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-10-30",
+    "scope": "Subjective listening smoke check of both portable Base 1.7B WAV outputs.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "pass",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User listened to both WAVs and reported that everything sounded good. This is a scoped listening verdict, not a claim that every listed artefact or sequential-isolation criterion was separately assessed."
+  },
+  "release_status": "conditional",
+  "supersedes": null,
+  "notes": "Portable package candidate. The two output receipts report completed synthesis, non-empty PCM, natural EOS, and no max-token or max-sequence termination."
+}

@@ -19,6 +19,10 @@ on:
       - "scripts/test-portable-python-worker-cpp.ps1"
       - "scripts/test-portable-user-cli.ps1"
       - "scripts/run-native-python-matrix.ps1"
+      - "scripts/validate-acceptance-receipts.py"
+      - "tests/validate_acceptance_receipts_test.py"
+      - "docs/acceptance-receipt.schema.json"
+      - "docs/reports/acceptance-index.json"
       - "src/**"
       - "tests/**"
       - "worker/**"
@@ -32,6 +36,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  acceptance-evidence:
+    name: Acceptance evidence contract
+    runs-on: windows-2022
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate canonical receipts and regression cases
+        shell: pwsh
+        run: |
+          python tests/validate_acceptance_receipts_test.py
+          python scripts/validate-acceptance-receipts.py
+
   windows:
     name: Windows MSVC (${{ matrix.name }})
     runs-on: windows-2022

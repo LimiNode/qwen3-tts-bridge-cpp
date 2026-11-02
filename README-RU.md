@@ -40,13 +40,16 @@ In-process адаптер `qwen.dll` остаётся экспериментал
 
 Русский профиль и native path остаются экспериментальными и opt-in. Полные
 provenance и receipts перечислены в [docs/project-status.md](docs/project-status.md).
+Текущие вердикты по моделям и прослушиванию ведутся через отслеживаемый
+[индекс приёмки](docs/reports/acceptance-index.json) и
+[контракт evidence](docs/acceptance-evidence-contract.md).
 
 ## Возможности и семейства моделей
 
 | Семейство | Поля запроса | Статус |
 | --- | --- | --- |
 | CustomVoice 0.6B/1.7B | текст, язык, speaker, optional instruction | Реализовано через worker; проверяйте конкретную модель и runtime |
-| VoiceDesign 1.7B | текст, язык, непустое описание голоса в `instruction` | Условно: проверены API, worker, CLI discovery и real-model receipt с natural EOS; human listening остаётся release gate |
+| VoiceDesign 1.7B | текст, язык, непустое описание голоса в `instruction` | Реализованы API, worker, CLI discovery и real-model receipt; для frozen-кандидата CMP есть ограниченная listening-приёмка, но полная проверка инструкции и качества остаётся conditional |
 | Base 0.6B/1.7B | текст, язык, reference audio или зарегистрированный voice profile | Реализовано клонирование голоса и работа с референсами |
 
 Streaming зависит от выбранного backend и wrapper модели. Если runtime умеет
