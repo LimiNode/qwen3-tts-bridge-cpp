@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$PackageRoot = "dist/QwenTTSBridge-release",
     [string]$OutputRoot = ".tmp/portable-user-cli-acceptance",
     [string]$Python = "python",
@@ -267,6 +267,20 @@ try {
         throw "Relocated models list failed: $($List.output)"
     }
 
+    $ModelVerify = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "models", "verify", "voice-design"
+    )
+    if ($ModelVerify.exit_code -ne 0) {
+        throw "Relocated models verify failed: $($ModelVerify.output)"
+    }
+
+    foreach ($InvalidArguments in @(@("invalid-command"), @("design"))) {
+        $Invalid = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments $InvalidArguments
+        if ($Invalid.exit_code -eq 0 -or $Invalid.stderr -notmatch "error:") {
+            throw "Invalid CLI command/arguments did not fail: $($Invalid.output)"
+        }
+    }
+
     $VoicesList = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
         "voices", "list", "--json"
     )
@@ -372,16 +386,20 @@ if "--fail" in sys.argv[1:]:
         [Text.UTF8Encoding]::new($false)
     )
     $ProbeLauncher = Join-Path $ResolvedOutput "argument-probe.cmd"
-    $ProbeLauncherText = "@echo off`r`n`"$Python`" `"$ProbeScript`" %*`r`n"
+    # Keep the batch file ASCII without encoding the Unicode output path.
+    $ProbeLauncherText = '@echo off' + "`r`n" +
+        '"%QTB_ARGUMENT_PROBE_PYTHON%" "%~dp0argument-probe.py" %*' + "`r`n"
     [IO.File]::WriteAllText(
         $ProbeLauncher,
         $ProbeLauncherText,
         [Text.ASCIIEncoding]::new()
     )
     $PreviousProbeOutput = $env:QTB_ARGUMENT_PROBE_OUTPUT
+    $PreviousProbePython = $env:QTB_ARGUMENT_PROBE_PYTHON
     $PreviousLauncher = $script:Launcher
     try {
         $env:QTB_ARGUMENT_PROBE_OUTPUT = $ProbeOutput
+        $env:QTB_ARGUMENT_PROBE_PYTHON = $Python
         $script:Launcher = $ProbeLauncher
         $ProbeArguments = @(
             "spaced value",
@@ -391,7 +409,9 @@ if "--fail" in sys.argv[1:]:
         if ($Probe.exit_code -ne 0 -or $Probe.stderr -notmatch "probe diagnostic") {
             throw "Argument probe success case failed: $($Probe.output)"
         }
-        $ObservedArguments = @(Get-Content -Raw -Encoding UTF8 -LiteralPath $ProbeOutput | ConvertFrom-Json)
+        # Windows PowerShell 5.1 does not enumerate a root JSON array in the
+        # pipeline; @(... | ConvertFrom-Json) would wrap it in a second array.
+        $ObservedArguments = Get-Content -Raw -Encoding UTF8 -LiteralPath $ProbeOutput | ConvertFrom-Json
         if (
             $ObservedArguments.Count -ne $ProbeArguments.Count -or
             $ObservedArguments[0] -cne $ProbeArguments[0] -or
@@ -408,6 +428,7 @@ if "--fail" in sys.argv[1:]:
     finally {
         $script:Launcher = $PreviousLauncher
         $env:QTB_ARGUMENT_PROBE_OUTPUT = $PreviousProbeOutput
+        $env:QTB_ARGUMENT_PROBE_PYTHON = $PreviousProbePython
     }
 }
 finally {
@@ -439,6 +460,7 @@ if (
 
 $CombinedEvidence = @(
     $List.output,
+    $ModelVerify.output,
     $VoicesList.output,
     $VoiceAdd.output,
     $VoiceVerify.output,
@@ -455,5 +477,8 @@ if (-not $RelocatedIsUnderRepo -and
 }
 
 Write-Host "portable qwen-tts CLI acceptance passed: $Relocated"
+Write-Host "PowerShell: $($PSVersionTable.PSVersion); manifest hashes verified: $($Manifest.release_files.Count)"
+Write-Host "Worker origin: $WorkerModuleOrigin"
+Write-Host "Argument probe: exact UTF-8 arguments PASS; stderr/exit 19 PASS"
 Write-Host "WAV: $Wav"
 Write-Host "Receipt: $Receipt"
