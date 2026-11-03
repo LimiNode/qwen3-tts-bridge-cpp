@@ -24,8 +24,9 @@ Package roots are intentionally under ignored `.tmp`:
 - worker package: `.tmp/beta-rc/QwenTTSBridge`
 - assembled release: `.tmp/beta-rc/QwenTTSBridge-release`
 
-The staged worker package is approximately 5.33 GiB and uses Python 3.11.9,
-Torch `2.10.0+cu128`, and CUDA runtime 12.8. No model files are included.
+The staged worker package is approximately 5.33 GB (4.97 GiB) and uses Python
+3.11.9, Torch `2.10.0+cu128`, and CUDA runtime 12.8. No real model weights are
+included; the follow-up inventory distinguishes leftover mock fixtures.
 
 | Artifact | Size | SHA-256 |
 | --- | ---: | --- |
@@ -38,7 +39,7 @@ Checks:
 - `test-portable-python-worker.ps1`: PASS on CMP 50HX (CUDA visible; mock
   worker smoke).
 - `test-portable-python-worker-cpp.ps1`: PASS (4,800 PCM bytes, 24 kHz mono
-  PCM16, natural EOS).
+  PCM16, mock terminal EOS).
 - `inspect-portable-python-worker.ps1`: PASS; no repository source-path leaks.
 
 ## Relocated CLI smoke
@@ -55,13 +56,14 @@ user/Hugging Face caches:
 - Both mock WAVs: 3,840 PCM bytes, 24 kHz mono PCM16; receipt reports
   `terminal_state=completed`, `termination_reason=eos`, and `hit_eos=true`.
 
-The full `test-portable-user-cli.ps1` was also attempted. On this machine it
-reaches the final argument-probe assertion but fails under Windows PowerShell
-5.1 because the harness's embedded non-ASCII literal is transcoded by `cmd`
-before comparison. The same run passes all package, registry, synthesis,
-playback, fail-closed, and manifest checks before that assertion. This is a
-test-harness/environment limitation, not a portable package failure; rerun the
-script under PowerShell 7 in CI before release sign-off.
+The full `test-portable-user-cli.ps1` was also attempted. This historical run
+reached the final argument-probe assertion but failed under Windows PowerShell
+5.1. Its initial suspected cause was Unicode forwarding through PowerShell/CMD;
+that attribution was not established by this run. The complete harness result
+was INCOMPLETE, even though earlier package, registry, mock synthesis/playback,
+fail-closed, and manifest checks passed. See the
+[2026-11-03 closeout](beta-rc-model-free-closeout-20261103.md) for the subsequent
+reproduction, corrected diagnosis, and current gate statuses.
 
 ## Open gates
 
