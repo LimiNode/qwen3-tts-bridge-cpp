@@ -3,6 +3,7 @@
 /// \file audio.hpp
 /// \brief Convenience include for optional audio utility helpers.
 
+#include "data.hpp"
 #include "client.hpp"
 #include "audio/wav_writer.hpp"
 #include "audio/post_processor.hpp"

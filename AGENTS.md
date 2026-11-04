@@ -306,7 +306,9 @@ Umbrella ordering must be explicit and must not form cycles.
 Leaf-header contract:
 
 - public domain umbrellas and documented public entry headers must compile on
-  their own;
+  their own; the existing `data/audio_types.hpp` and
+  `playback/playback_cursor.hpp` value-type entry points remain supported
+  standalone exceptions;
 - internal leaf headers may rely on definitions supplied by their enclosing
   umbrella and are not required to compile independently;
 - a `.cpp` that uses such a leaf includes the owning umbrella first;
@@ -319,6 +321,10 @@ Leaf-header contract:
 Do not replace every include with a project-qualified path. The supported public
 surface is the umbrella hierarchy, while leaf-to-leaf includes remain limited to
 same-domain implementation details.
+
+The current domain graph, compatibility entry points, and header compilation
+contract are documented in
+[`docs/architecture/header-dependencies.md`](docs/architecture/header-dependencies.md).
 
 Concrete implementations should be named after their responsibility, for
 example `FrameParser`, `StdIoTransport`, or `RequestRegistry`. Functional

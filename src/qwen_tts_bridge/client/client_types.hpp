@@ -10,10 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <qwen_tts_bridge/data/audio_types.hpp>
-#include <qwen_tts_bridge/data/protocol_types.hpp>
-#include <qwen_tts_bridge/protocol/control/control_messages.hpp>
-
 namespace qwen_tts_bridge {
 
 /// \struct TextPreparationWarning

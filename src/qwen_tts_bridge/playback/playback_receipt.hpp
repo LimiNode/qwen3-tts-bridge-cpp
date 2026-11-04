@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <qwen_tts_bridge/data/audio_types.hpp>
 #include "playback_cursor.hpp"
 
 namespace qwen_tts_bridge::playback {

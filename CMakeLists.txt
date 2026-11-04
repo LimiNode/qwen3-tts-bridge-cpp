@@ -414,8 +414,15 @@ install(
 )
 if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
     install(
-        FILES "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback/winmm_playback.hpp"
+        FILES
+            "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback/winmm.hpp"
+            "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback/winmm_playback.hpp"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge/playback"
+    )
+    install(
+        DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback/winmm"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge/playback"
+        FILES_MATCHING PATTERN "*.hpp"
     )
 endif()
 install(
@@ -553,8 +560,8 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
     # Compile each supported public umbrella as its own translation unit.
     # Domain leaf headers are implementation details of their umbrella unless
-    # explicitly documented as independently usable (WinMM is the current
-    # optional exception).  Keeping this list aligned with that contract
+    # explicitly documented as independently usable. Optional compatibility
+    # entry points remain checked too. Keeping this list aligned with the contract
     # avoids turning incidental leaf include order into public API.
     set(_qwen_tts_public_headers
         qwen_tts_bridge/audio.hpp
@@ -566,6 +573,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         qwen_tts_bridge/protocol/framing.hpp
         qwen_tts_bridge/session.hpp
         qwen_tts_bridge/transport.hpp
+        qwen_tts_bridge/transport/stdio.hpp
         # Explicit leaf checks for neutral value types whose standalone use is
         # part of the ownership/include contract.
         qwen_tts_bridge/data/audio_types.hpp
@@ -577,15 +585,16 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
     endif()
     if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
-        # speech-animation currently has no bridge umbrella; these two
-        # opt-in integration headers are intentionally supported entry points.
+        # Check the subdomain umbrella and both existing public entry paths.
         list(APPEND _qwen_tts_public_headers
+            qwen_tts_bridge/integration/speech_animation.hpp
             qwen_tts_bridge/integration/speech_animation/speech_animation_adapter.hpp
             qwen_tts_bridge/integration/speech_animation/playback_animation_runtime.hpp
         )
     endif()
     if(WIN32 AND QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
         list(APPEND _qwen_tts_public_headers
+            qwen_tts_bridge/playback/winmm.hpp
             qwen_tts_bridge/playback/winmm_playback.hpp
         )
     endif()
@@ -595,6 +604,20 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         set(_header_source "${CMAKE_CURRENT_BINARY_DIR}/header-check/${_header_stem}.cpp")
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/header-check")
         file(WRITE "${_header_source}" "#include <${_header}>\n")
+        list(APPEND _qwen_tts_header_check_sources "${_header_source}")
+    endforeach()
+    # Also compile all entry points together in both orders. Compatibility
+    # wrappers must not make umbrella definitions depend on a previous include.
+    foreach(_order forward reverse)
+        set(_ordered_headers ${_qwen_tts_public_headers})
+        if(_order STREQUAL "reverse")
+            list(REVERSE _ordered_headers)
+        endif()
+        set(_header_source "${CMAKE_CURRENT_BINARY_DIR}/header-check/${_order}.cpp")
+        file(WRITE "${_header_source}" "")
+        foreach(_header IN LISTS _ordered_headers)
+            file(APPEND "${_header_source}" "#include <${_header}>\n")
+        endforeach()
         list(APPEND _qwen_tts_header_check_sources "${_header_source}")
     endforeach()
     add_library(public_header_self_contained OBJECT ${_qwen_tts_header_check_sources})
