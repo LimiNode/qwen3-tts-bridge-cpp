@@ -21,6 +21,7 @@
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <fstream>
@@ -39,7 +40,7 @@
 namespace {
 using namespace qwen_tts_bridge;
 
-struct Probe {
+struct ProbeState {
     std::mutex mutex;
     std::condition_variable condition;
     std::vector<std::byte> audio;
@@ -49,6 +50,20 @@ struct Probe {
     std::vector<TtsCompletion> completions;
 };
 
+// Callback state is heap-owned so an early CHECK return cannot leave a callback
+// holding a reference to a destroyed stack Probe. The client callback owns one
+// shared state copy until the callback has returned.
+using Probe = std::shared_ptr<ProbeState>;
+
+void record_probe_error(ProbeState& probe, const TtsError& error) {
+    probe.errors.push_back(error);
+    std::cerr << "[native-worker-callback-error] request_id="
+              << error.request_id
+              << " category=" << error.category
+              << " code=" << error.code
+              << " message=" << error.message << '\n';
+    probe.condition.notify_all();
+}
 StdIoTransportOptions options(
     int stream_max_chunk_frames = 8,
     std::string* stderr_capture = nullptr,
@@ -107,7 +122,6 @@ StdIoTransportOptions options(
     };
     return result;
 }
-
 StdIoTransportOptions missing_dll_options() {
     const auto runtime = std::filesystem::path(QWEN_TTS_FAKE_RUNTIME_DIR);
     StdIoTransportOptions result = options();
@@ -226,6 +240,15 @@ public:
                 frames_.begin(), frames_.end(), predicate);
         });
         if (!observed || !error_.empty()) {
+            std::cerr << "[raw-worker-diagnostic] wait failed observed=" << observed
+                      << " exited=" << exited_ << " error=" << error_
+                      << " queued_frames=" << frames_.size() << '\n';
+            for (const auto& queued : frames_) {
+                std::cerr << "[raw-worker-diagnostic] frame type="
+                          << static_cast<unsigned>(queued.header.frame_type)
+                          << " request_id=" << queued.header.request_id
+                          << " payload_size=" << queued.payload.size() << '\n';
+            }
             return false;
         }
         const auto it = std::find_if(frames_.begin(), frames_.end(), predicate);
@@ -532,9 +555,26 @@ void write_file_bytes(const std::filesystem::path& path, const std::vector<char>
 }
 
 int main() {
-    CHECK(run_raw_native_request_id_policy_test() == EXIT_SUCCESS);
-    CHECK(run_raw_native_admission_test() == EXIT_SUCCESS);
-    CHECK(run_raw_native_running_admission_test() == EXIT_SUCCESS);
+    bool raw_diagnostics_ok = true;
+    const auto record_raw_result = [&raw_diagnostics_ok](
+        const char* name,
+        int result) {
+        if (result == EXIT_SUCCESS) {
+            return;
+        }
+        raw_diagnostics_ok = false;
+        std::cerr << "[diagnostic] " << name << " failed with exit code "
+                  << result << '\n';
+    };
+    record_raw_result(
+        "run_raw_native_request_id_policy_test",
+        run_raw_native_request_id_policy_test());
+    record_raw_result(
+        "run_raw_native_admission_test",
+        run_raw_native_admission_test());
+    record_raw_result(
+        "run_raw_native_running_admission_test",
+        run_raw_native_running_admission_test());
 
     std::vector<float> reference_samples{0.25F, -0.25F};
     qwen_tts_bridge::native_worker::append_reference_trailing_silence(reference_samples);
@@ -572,10 +612,10 @@ int main() {
     invalid_options.session.startup_timeout = std::chrono::seconds(2);
     CHECK(!invalid_client.start(missing_dll_options(), invalid_options));
 
+    std::atomic<bool> cadence_observed{false};
     QwenTtsClient client;
     QwenTtsClientOptions client_options;
     client_options.session.startup_timeout = std::chrono::seconds(5);
-    std::atomic<bool> cadence_observed{false};
     CHECK(client.start(options(4, nullptr, &cadence_observed), client_options));
     for (int attempt = 0; attempt < 20 &&
          !cadence_observed.load(std::memory_order_acquire); ++attempt) {
@@ -598,50 +638,49 @@ int main() {
     CHECK(warmed_ready.warmed_up);
     warmed_client.stop();
 
-    Probe probe;
+    Probe probe = std::make_shared<ProbeState>();
     TtsCallbacks callbacks;
-    callbacks.on_audio = [&probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(probe.mutex);
-        probe.audio.insert(probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    callbacks.on_audio = [probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(probe->mutex);
+        probe->audio.insert(probe->audio.end(), chunk.bytes.begin(), chunk.bytes.end());
     };
-    callbacks.on_completed = [&probe]() {
-        std::lock_guard<std::mutex> lock(probe.mutex);
-        ++probe.completed;
-        probe.condition.notify_all();
+    callbacks.on_completed = [probe]() {
+        std::lock_guard<std::mutex> lock(probe->mutex);
+        ++probe->completed;
+        probe->condition.notify_all();
     };
-    callbacks.on_completion_metadata = [&probe](const TtsCompletion& completion) {
-        std::lock_guard<std::mutex> lock(probe.mutex);
-        probe.completions.push_back(completion);
-        probe.condition.notify_all();
+    callbacks.on_completion_metadata = [probe](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(probe->mutex);
+        probe->completions.push_back(completion);
+        probe->condition.notify_all();
     };
-    callbacks.on_cancelled = [&probe]() {
-        std::lock_guard<std::mutex> lock(probe.mutex);
-        ++probe.cancelled;
-        probe.condition.notify_all();
+    callbacks.on_cancelled = [probe]() {
+        std::lock_guard<std::mutex> lock(probe->mutex);
+        ++probe->cancelled;
+        probe->condition.notify_all();
     };
-    callbacks.on_error = [&probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(probe.mutex);
-        probe.errors.push_back(error);
-        probe.condition.notify_all();
+    callbacks.on_error = [probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(probe->mutex);
+        record_probe_error(*probe, error);
     };
 
     const RequestId id = client.synthesize_async("native worker test", callbacks);
     CHECK(id != 0);
     {
-        std::unique_lock<std::mutex> lock(probe.mutex);
-        CHECK(probe.condition.wait_for(lock, std::chrono::seconds(5), [&probe]() {
-            return probe.completed != 0 || !probe.errors.empty();
+        std::unique_lock<std::mutex> lock(probe->mutex);
+        CHECK(probe->condition.wait_for(lock, std::chrono::seconds(5), [probe]() {
+            return probe->completed != 0 || !probe->errors.empty();
         }));
     }
-    CHECK(probe.errors.empty());
-    CHECK(probe.completed == 1);
-    CHECK(probe.completions.size() == 1);
-    CHECK(probe.completions.front().execution_outcome == "natural_eos");
-    CHECK(probe.audio.size() == 16);
-    CHECK(static_cast<unsigned char>(probe.audio[0]) == 0x00u);
-    CHECK(static_cast<unsigned char>(probe.audio[1]) == 0x80u);
-    CHECK(static_cast<unsigned char>(probe.audio[10]) == 0xffu);
-    CHECK(static_cast<unsigned char>(probe.audio[11]) == 0x7fu);
+    CHECK(probe->errors.empty());
+    CHECK(probe->completed == 1);
+    CHECK(probe->completions.size() == 1);
+    CHECK(probe->completions.front().execution_outcome == "natural_eos");
+    CHECK(probe->audio.size() == 16);
+    CHECK(static_cast<unsigned char>(probe->audio[0]) == 0x00u);
+    CHECK(static_cast<unsigned char>(probe->audio[1]) == 0x80u);
+    CHECK(static_cast<unsigned char>(probe->audio[10]) == 0xffu);
+    CHECK(static_cast<unsigned char>(probe->audio[11]) == 0x7fu);
 
     // The native worker keeps constant terminal-ID state.  Exercise a larger
     // sequential run, then verify that a lower ID cannot be reused.
@@ -650,17 +689,16 @@ int main() {
     history_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(history_client.start(options(8), history_options));
     for (RequestId request_id = 1; request_id <= 64; ++request_id) {
-        Probe history_probe;
+        Probe history_probe = std::make_shared<ProbeState>();
         TtsCallbacks history_callbacks;
-        history_callbacks.on_completed = [&history_probe]() {
-            std::lock_guard<std::mutex> lock(history_probe.mutex);
-            ++history_probe.completed;
-            history_probe.condition.notify_all();
+        history_callbacks.on_completed = [history_probe]() {
+            std::lock_guard<std::mutex> lock(history_probe->mutex);
+            ++history_probe->completed;
+            history_probe->condition.notify_all();
         };
-        history_callbacks.on_error = [&history_probe](const TtsError& error) {
-            std::lock_guard<std::mutex> lock(history_probe.mutex);
-            history_probe.errors.push_back(error);
-            history_probe.condition.notify_all();
+        history_callbacks.on_error = [history_probe](const TtsError& error) {
+            std::lock_guard<std::mutex> lock(history_probe->mutex);
+            record_probe_error(*history_probe, error);
         };
         TtsRequest history_request;
         history_request.id = request_id;
@@ -668,29 +706,28 @@ int main() {
         CHECK(history_client.synthesize_async(
             std::move(history_request), history_callbacks) == request_id);
         {
-            std::unique_lock<std::mutex> lock(history_probe.mutex);
-            CHECK(history_probe.condition.wait_for(
+            std::unique_lock<std::mutex> lock(history_probe->mutex);
+            CHECK(history_probe->condition.wait_for(
                 lock,
                 std::chrono::seconds(5),
-                [&history_probe]() {
-                    return history_probe.completed != 0 || !history_probe.errors.empty();
+                [history_probe]() {
+                    return history_probe->completed != 0 || !history_probe->errors.empty();
                 }));
         }
-        CHECK(history_probe.completed == 1);
-        CHECK(history_probe.errors.empty());
+        CHECK(history_probe->completed == 1);
+        CHECK(history_probe->errors.empty());
     }
 
-    Probe lower_probe;
+    Probe lower_probe = std::make_shared<ProbeState>();
     TtsCallbacks lower_callbacks;
-    lower_callbacks.on_completed = [&lower_probe]() {
-        std::lock_guard<std::mutex> lock(lower_probe.mutex);
-        ++lower_probe.completed;
-        lower_probe.condition.notify_all();
+    lower_callbacks.on_completed = [lower_probe]() {
+        std::lock_guard<std::mutex> lock(lower_probe->mutex);
+        ++lower_probe->completed;
+        lower_probe->condition.notify_all();
     };
-    lower_callbacks.on_error = [&lower_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(lower_probe.mutex);
-        lower_probe.errors.push_back(error);
-        lower_probe.condition.notify_all();
+    lower_callbacks.on_error = [lower_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(lower_probe->mutex);
+        record_probe_error(*lower_probe, error);
     };
     TtsRequest lower_request;
     lower_request.id = 1;
@@ -700,9 +737,9 @@ int main() {
     CHECK(history_client.synthesize_async(
         std::move(lower_request), lower_callbacks) == 0);
     {
-        std::lock_guard<std::mutex> lock(lower_probe.mutex);
-        CHECK(lower_probe.completed == 0);
-        CHECK(lower_probe.errors.empty());
+        std::lock_guard<std::mutex> lock(lower_probe->mutex);
+        CHECK(lower_probe->completed == 0);
+        CHECK(lower_probe->errors.empty());
     }
     history_client.stop();
 
@@ -715,17 +752,16 @@ int main() {
     cached_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(cached_client.start(
         options(8, &reference_stderr, nullptr, 0, true, false, diagnostic_dump_dir), cached_options));
-    Probe reference_probe;
+    Probe reference_probe = std::make_shared<ProbeState>();
     TtsCallbacks reference_callbacks;
-    reference_callbacks.on_completed = [&reference_probe]() {
-        std::lock_guard<std::mutex> lock(reference_probe.mutex);
-        ++reference_probe.completed;
-        reference_probe.condition.notify_all();
+    reference_callbacks.on_completed = [reference_probe]() {
+        std::lock_guard<std::mutex> lock(reference_probe->mutex);
+        ++reference_probe->completed;
+        reference_probe->condition.notify_all();
     };
-    reference_callbacks.on_error = [&reference_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(reference_probe.mutex);
-        reference_probe.errors.push_back(error);
-        reference_probe.condition.notify_all();
+    reference_callbacks.on_error = [reference_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(reference_probe->mutex);
+        record_probe_error(*reference_probe, error);
     };
     TtsRequest reference_request;
     reference_request.text = "cached reference request";
@@ -734,13 +770,13 @@ int main() {
     CHECK(cached_client.synthesize_async(reference_request, reference_callbacks) != 0);
     CHECK(cached_client.synthesize_async(reference_request, reference_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(reference_probe.mutex);
-        CHECK(reference_probe.condition.wait_for(lock, std::chrono::seconds(5), [&reference_probe]() {
-            return reference_probe.completed == 2 || !reference_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(reference_probe->mutex);
+        CHECK(reference_probe->condition.wait_for(lock, std::chrono::seconds(5), [reference_probe]() {
+            return reference_probe->completed == 2 || !reference_probe->errors.empty();
         }));
     }
-    CHECK(reference_probe.errors.empty());
-    CHECK(reference_probe.completed == 2);
+    CHECK(reference_probe->errors.empty());
+    CHECK(reference_probe->completed == 2);
     CHECK(reference_stderr.find("\"voice_reference_cache_hit\":false") != std::string::npos);
     CHECK(reference_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
     CHECK(reference_stderr.find("fake voice_ref_samples=4") != std::string::npos);
@@ -755,17 +791,16 @@ int main() {
     QwenTtsClientOptions icl_options;
     icl_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(icl_client.start(options(8, &icl_stderr, nullptr, 0, true), icl_options));
-    Probe icl_probe;
+    Probe icl_probe = std::make_shared<ProbeState>();
     TtsCallbacks icl_callbacks;
-    icl_callbacks.on_completed = [&icl_probe]() {
-        std::lock_guard<std::mutex> lock(icl_probe.mutex);
-        ++icl_probe.completed;
-        icl_probe.condition.notify_all();
+    icl_callbacks.on_completed = [icl_probe]() {
+        std::lock_guard<std::mutex> lock(icl_probe->mutex);
+        ++icl_probe->completed;
+        icl_probe->condition.notify_all();
     };
-    icl_callbacks.on_error = [&icl_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(icl_probe.mutex);
-        icl_probe.errors.push_back(error);
-        icl_probe.condition.notify_all();
+    icl_callbacks.on_error = [icl_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(icl_probe->mutex);
+        record_probe_error(*icl_probe, error);
     };
     TtsRequest icl_request;
     icl_request.text = "raw ICL reference request";
@@ -773,13 +808,13 @@ int main() {
     icl_request.reference_text = "Fake reference";
     CHECK(icl_client.synthesize_async(icl_request, icl_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(icl_probe.mutex);
-        CHECK(icl_probe.condition.wait_for(lock, std::chrono::seconds(5), [&icl_probe]() {
-            return icl_probe.completed == 1 || !icl_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(icl_probe->mutex);
+        CHECK(icl_probe->condition.wait_for(lock, std::chrono::seconds(5), [icl_probe]() {
+            return icl_probe->completed == 1 || !icl_probe->errors.empty();
         }));
     }
-    CHECK(icl_probe.errors.empty());
-    CHECK(icl_probe.completed == 1);
+    CHECK(icl_probe->errors.empty());
+    CHECK(icl_probe->completed == 1);
     CHECK(icl_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
     icl_client.stop();
 
@@ -802,30 +837,29 @@ int main() {
     CHECK(registry_ready.voice_ids.size() == 1);
     CHECK(registry_ready.voice_ids.front() == "fake-voice");
     CHECK(registry_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
-    Probe registry_probe;
+    Probe registry_probe = std::make_shared<ProbeState>();
     TtsCallbacks registry_callbacks;
-    registry_callbacks.on_completed = [&registry_probe]() {
-        std::lock_guard<std::mutex> lock(registry_probe.mutex);
-        ++registry_probe.completed;
-        registry_probe.condition.notify_all();
+    registry_callbacks.on_completed = [registry_probe]() {
+        std::lock_guard<std::mutex> lock(registry_probe->mutex);
+        ++registry_probe->completed;
+        registry_probe->condition.notify_all();
     };
-    registry_callbacks.on_error = [&registry_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(registry_probe.mutex);
-        registry_probe.errors.push_back(error);
-        registry_probe.condition.notify_all();
+    registry_callbacks.on_error = [registry_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(registry_probe->mutex);
+        record_probe_error(*registry_probe, error);
     };
     TtsRequest registry_request;
     registry_request.text = "registered voice request";
     registry_request.voice_id = "fake-voice";
     CHECK(registry_client.synthesize_async(registry_request, registry_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(registry_probe.mutex);
-        CHECK(registry_probe.condition.wait_for(lock, std::chrono::seconds(5), [&registry_probe]() {
-            return registry_probe.completed == 1 || !registry_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(registry_probe->mutex);
+        CHECK(registry_probe->condition.wait_for(lock, std::chrono::seconds(5), [registry_probe]() {
+            return registry_probe->completed == 1 || !registry_probe->errors.empty();
         }));
     }
-    CHECK(registry_probe.errors.empty());
-    CHECK(registry_probe.completed == 1);
+    CHECK(registry_probe->errors.empty());
+    CHECK(registry_probe->completed == 1);
     CHECK(registry_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
     registry_client.stop();
 
@@ -846,12 +880,11 @@ int main() {
     CHECK(empty_registry_client.ready_message(empty_registry_ready));
     CHECK(empty_registry_ready.voice_ids.empty());
 
-    Probe unknown_empty_registry_probe;
+    Probe unknown_empty_registry_probe = std::make_shared<ProbeState>();
     TtsCallbacks unknown_empty_registry_callbacks;
-    unknown_empty_registry_callbacks.on_error = [&unknown_empty_registry_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(unknown_empty_registry_probe.mutex);
-        unknown_empty_registry_probe.errors.push_back(error);
-        unknown_empty_registry_probe.condition.notify_all();
+    unknown_empty_registry_callbacks.on_error = [unknown_empty_registry_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(unknown_empty_registry_probe->mutex);
+        record_probe_error(*unknown_empty_registry_probe, error);
     };
     TtsRequest unknown_empty_registry_request;
     unknown_empty_registry_request.text = "unknown empty-registry voice";
@@ -859,45 +892,44 @@ int main() {
     CHECK(empty_registry_client.synthesize_async(
         unknown_empty_registry_request, unknown_empty_registry_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(unknown_empty_registry_probe.mutex);
-        CHECK(unknown_empty_registry_probe.condition.wait_for(
+        std::unique_lock<std::mutex> lock(unknown_empty_registry_probe->mutex);
+        CHECK(unknown_empty_registry_probe->condition.wait_for(
             lock,
             std::chrono::seconds(5),
-            [&unknown_empty_registry_probe]() {
-                return !unknown_empty_registry_probe.errors.empty();
+            [unknown_empty_registry_probe]() {
+                return !unknown_empty_registry_probe->errors.empty();
             }));
     }
-    CHECK(unknown_empty_registry_probe.errors.size() == 1);
-    CHECK(unknown_empty_registry_probe.errors.front().category == "request_error");
-    CHECK(unknown_empty_registry_probe.errors.front().code == "invalid_native_request");
+    CHECK(unknown_empty_registry_probe->errors.size() == 1);
+    CHECK(unknown_empty_registry_probe->errors.front().category == "request_error");
+    CHECK(unknown_empty_registry_probe->errors.front().code == "invalid_native_request");
 
-    Probe unregistered_probe;
+    Probe unregistered_probe = std::make_shared<ProbeState>();
     TtsCallbacks unregistered_callbacks;
-    unregistered_callbacks.on_completed = [&unregistered_probe]() {
-        std::lock_guard<std::mutex> lock(unregistered_probe.mutex);
-        ++unregistered_probe.completed;
-        unregistered_probe.condition.notify_all();
+    unregistered_callbacks.on_completed = [unregistered_probe]() {
+        std::lock_guard<std::mutex> lock(unregistered_probe->mutex);
+        ++unregistered_probe->completed;
+        unregistered_probe->condition.notify_all();
     };
-    unregistered_callbacks.on_error = [&unregistered_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(unregistered_probe.mutex);
-        unregistered_probe.errors.push_back(error);
-        unregistered_probe.condition.notify_all();
+    unregistered_callbacks.on_error = [unregistered_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(unregistered_probe->mutex);
+        record_probe_error(*unregistered_probe, error);
     };
     TtsRequest unregistered_request;
     unregistered_request.text = "ordinary request without a registered voice";
     CHECK(empty_registry_client.synthesize_async(
         unregistered_request, unregistered_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(unregistered_probe.mutex);
-        CHECK(unregistered_probe.condition.wait_for(
+        std::unique_lock<std::mutex> lock(unregistered_probe->mutex);
+        CHECK(unregistered_probe->condition.wait_for(
             lock,
             std::chrono::seconds(5),
-            [&unregistered_probe]() {
-                return unregistered_probe.completed == 1 || !unregistered_probe.errors.empty();
+            [unregistered_probe]() {
+                return unregistered_probe->completed == 1 || !unregistered_probe->errors.empty();
             }));
     }
-    CHECK(unregistered_probe.errors.empty());
-    CHECK(unregistered_probe.completed == 1);
+    CHECK(unregistered_probe->errors.empty());
+    CHECK(unregistered_probe->completed == 1);
     empty_registry_client.stop();
 
     const auto incompatible_reference_wav = runtime / "reference-16khz.wav";
@@ -969,36 +1001,35 @@ int main() {
     CHECK(std::filesystem::is_regular_file(prepared_speaker_path));
     CHECK(std::filesystem::is_regular_file(prepared_rvq_path));
     CHECK(prepare_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
-    Probe prepared_probe;
+    Probe prepared_probe = std::make_shared<ProbeState>();
     TtsCallbacks prepared_callbacks;
-    prepared_callbacks.on_audio = [&prepared_probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(prepared_probe.mutex);
-        prepared_probe.audio.insert(
-            prepared_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    prepared_callbacks.on_audio = [prepared_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(prepared_probe->mutex);
+        prepared_probe->audio.insert(
+            prepared_probe->audio.end(), chunk.bytes.begin(), chunk.bytes.end());
     };
-    prepared_callbacks.on_completed = [&prepared_probe]() {
-        std::lock_guard<std::mutex> lock(prepared_probe.mutex);
-        ++prepared_probe.completed;
-        prepared_probe.condition.notify_all();
+    prepared_callbacks.on_completed = [prepared_probe]() {
+        std::lock_guard<std::mutex> lock(prepared_probe->mutex);
+        ++prepared_probe->completed;
+        prepared_probe->condition.notify_all();
     };
-    prepared_callbacks.on_error = [&prepared_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(prepared_probe.mutex);
-        prepared_probe.errors.push_back(error);
-        prepared_probe.condition.notify_all();
+    prepared_callbacks.on_error = [prepared_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(prepared_probe->mutex);
+        record_probe_error(*prepared_probe, error);
     };
     TtsRequest prepared_request;
     prepared_request.text = "persisted voice request";
     prepared_request.voice_id = "prepared-voice";
     CHECK(prepare_client.synthesize_async(prepared_request, prepared_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(prepared_probe.mutex);
-        CHECK(prepared_probe.condition.wait_for(lock, std::chrono::seconds(5), [&prepared_probe]() {
-            return prepared_probe.completed == 1 || !prepared_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(prepared_probe->mutex);
+        CHECK(prepared_probe->condition.wait_for(lock, std::chrono::seconds(5), [prepared_probe]() {
+            return prepared_probe->completed == 1 || !prepared_probe->errors.empty();
         }));
     }
-    CHECK(prepared_probe.errors.empty());
-    CHECK(prepared_probe.completed == 1);
-    CHECK(!prepared_probe.audio.empty());
+    CHECK(prepared_probe->errors.empty());
+    CHECK(prepared_probe->completed == 1);
+    CHECK(!prepared_probe->audio.empty());
     prepare_client.stop();
 
     const auto fault_directory = runtime / "prepared-native-fault";
@@ -1264,33 +1295,32 @@ int main() {
     CHECK(reload_client.start(
         voice_registry_options(prepared_registry, &reload_stderr), reload_options));
     CHECK(reload_stderr.find("fake voice_ref_samples=") == std::string::npos);
-    Probe reload_probe;
+    Probe reload_probe = std::make_shared<ProbeState>();
     TtsCallbacks reload_callbacks;
-    reload_callbacks.on_audio = [&reload_probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(reload_probe.mutex);
-        reload_probe.audio.insert(
-            reload_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    reload_callbacks.on_audio = [reload_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(reload_probe->mutex);
+        reload_probe->audio.insert(
+            reload_probe->audio.end(), chunk.bytes.begin(), chunk.bytes.end());
     };
-    reload_callbacks.on_completed = [&reload_probe]() {
-        std::lock_guard<std::mutex> lock(reload_probe.mutex);
-        ++reload_probe.completed;
-        reload_probe.condition.notify_all();
+    reload_callbacks.on_completed = [reload_probe]() {
+        std::lock_guard<std::mutex> lock(reload_probe->mutex);
+        ++reload_probe->completed;
+        reload_probe->condition.notify_all();
     };
-    reload_callbacks.on_error = [&reload_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(reload_probe.mutex);
-        reload_probe.errors.push_back(error);
-        reload_probe.condition.notify_all();
+    reload_callbacks.on_error = [reload_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(reload_probe->mutex);
+        record_probe_error(*reload_probe, error);
     };
     CHECK(reload_client.synthesize_async(prepared_request, reload_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(reload_probe.mutex);
-        CHECK(reload_probe.condition.wait_for(lock, std::chrono::seconds(5), [&reload_probe]() {
-            return reload_probe.completed == 1 || !reload_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(reload_probe->mutex);
+        CHECK(reload_probe->condition.wait_for(lock, std::chrono::seconds(5), [reload_probe]() {
+            return reload_probe->completed == 1 || !reload_probe->errors.empty();
         }));
     }
-    CHECK(reload_probe.errors.empty());
-    CHECK(reload_probe.completed == 1);
-    CHECK(reload_probe.audio == prepared_probe.audio);
+    CHECK(reload_probe->errors.empty());
+    CHECK(reload_probe->completed == 1);
+    CHECK(reload_probe->audio == prepared_probe->audio);
     reload_client.stop();
 
     const auto speaker_bytes = read_file_bytes(prepared_speaker_path);
@@ -1549,93 +1579,90 @@ int main() {
     QwenTtsClientOptions limited_options;
     limited_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(limited_client.start(options(8, nullptr, nullptr, 4), limited_options));
-    Probe limited_probe;
+    Probe limited_probe = std::make_shared<ProbeState>();
     TtsCallbacks limited_callbacks;
-    limited_callbacks.on_error = [&limited_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(limited_probe.mutex);
-        limited_probe.errors.push_back(error);
-        limited_probe.condition.notify_all();
+    limited_callbacks.on_error = [limited_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(limited_probe->mutex);
+        record_probe_error(*limited_probe, error);
     };
     CHECK(limited_client.synthesize_async("native worker request", limited_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(limited_probe.mutex);
-        CHECK(limited_probe.condition.wait_for(lock, std::chrono::seconds(5), [&limited_probe]() {
-            return !limited_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(limited_probe->mutex);
+        CHECK(limited_probe->condition.wait_for(lock, std::chrono::seconds(5), [limited_probe]() {
+            return !limited_probe->errors.empty();
         }));
     }
-    CHECK(limited_probe.errors.size() == 1);
-    CHECK(limited_probe.errors.front().code == "sequence_capacity_exceeded");
+    CHECK(limited_probe->errors.size() == 1);
+    CHECK(limited_probe->errors.front().code == "sequence_capacity_exceeded");
     limited_client.stop();
 
-    Probe cancelled_probe;
+    Probe cancelled_probe = std::make_shared<ProbeState>();
     TtsCallbacks cancelled_callbacks;
-    cancelled_callbacks.on_audio = [&cancelled_probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(cancelled_probe.mutex);
-        cancelled_probe.audio.insert(
-            cancelled_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
-        cancelled_probe.condition.notify_all();
+    cancelled_callbacks.on_audio = [cancelled_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(cancelled_probe->mutex);
+        cancelled_probe->audio.insert(
+            cancelled_probe->audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+        cancelled_probe->condition.notify_all();
     };
-    cancelled_callbacks.on_cancelled = [&cancelled_probe]() {
-        std::lock_guard<std::mutex> lock(cancelled_probe.mutex);
-        ++cancelled_probe.cancelled;
-        cancelled_probe.condition.notify_all();
+    cancelled_callbacks.on_cancelled = [cancelled_probe]() {
+        std::lock_guard<std::mutex> lock(cancelled_probe->mutex);
+        ++cancelled_probe->cancelled;
+        cancelled_probe->condition.notify_all();
     };
-    cancelled_callbacks.on_completed = [&cancelled_probe]() {
-        std::lock_guard<std::mutex> lock(cancelled_probe.mutex);
-        ++cancelled_probe.completed;
-        cancelled_probe.condition.notify_all();
+    cancelled_callbacks.on_completed = [cancelled_probe]() {
+        std::lock_guard<std::mutex> lock(cancelled_probe->mutex);
+        ++cancelled_probe->completed;
+        cancelled_probe->condition.notify_all();
     };
-    cancelled_callbacks.on_error = [&cancelled_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(cancelled_probe.mutex);
-        cancelled_probe.errors.push_back(error);
-        cancelled_probe.condition.notify_all();
+    cancelled_callbacks.on_error = [cancelled_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(cancelled_probe->mutex);
+        record_probe_error(*cancelled_probe, error);
     };
     const RequestId cancelled_id = client.synthesize_async("cancel native worker", cancelled_callbacks);
     {
-        std::unique_lock<std::mutex> lock(cancelled_probe.mutex);
-        CHECK(cancelled_probe.condition.wait_for(lock, std::chrono::seconds(5), [&cancelled_probe]() {
-            return cancelled_probe.audio.size() >= 8 || !cancelled_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(cancelled_probe->mutex);
+        CHECK(cancelled_probe->condition.wait_for(lock, std::chrono::seconds(5), [cancelled_probe]() {
+            return cancelled_probe->audio.size() >= 8 || !cancelled_probe->errors.empty();
         }));
     }
     CHECK(client.cancel(cancelled_id));
     {
-        std::unique_lock<std::mutex> lock(cancelled_probe.mutex);
-        CHECK(cancelled_probe.condition.wait_for(lock, std::chrono::seconds(5), [&cancelled_probe]() {
-            return cancelled_probe.cancelled != 0 || !cancelled_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(cancelled_probe->mutex);
+        CHECK(cancelled_probe->condition.wait_for(lock, std::chrono::seconds(5), [cancelled_probe]() {
+            return cancelled_probe->cancelled != 0 || !cancelled_probe->errors.empty();
         }));
     }
-    CHECK(cancelled_probe.errors.empty());
-    CHECK(cancelled_probe.cancelled == 1);
-    const auto cancelled_audio_size = cancelled_probe.audio.size();
+    CHECK(cancelled_probe->errors.empty());
+    CHECK(cancelled_probe->cancelled == 1);
+    const auto cancelled_audio_size = cancelled_probe->audio.size();
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
-    CHECK(cancelled_probe.audio.size() == cancelled_audio_size);
+    CHECK(cancelled_probe->audio.size() == cancelled_audio_size);
 
-    Probe recovery_probe;
+    Probe recovery_probe = std::make_shared<ProbeState>();
     TtsCallbacks recovery_callbacks;
-    recovery_callbacks.on_audio = [&recovery_probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(recovery_probe.mutex);
-        recovery_probe.audio.insert(
-            recovery_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    recovery_callbacks.on_audio = [recovery_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(recovery_probe->mutex);
+        recovery_probe->audio.insert(
+            recovery_probe->audio.end(), chunk.bytes.begin(), chunk.bytes.end());
     };
-    recovery_callbacks.on_completed = [&recovery_probe]() {
-        std::lock_guard<std::mutex> lock(recovery_probe.mutex);
-        ++recovery_probe.completed;
-        recovery_probe.condition.notify_all();
+    recovery_callbacks.on_completed = [recovery_probe]() {
+        std::lock_guard<std::mutex> lock(recovery_probe->mutex);
+        ++recovery_probe->completed;
+        recovery_probe->condition.notify_all();
     };
-    recovery_callbacks.on_error = [&recovery_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(recovery_probe.mutex);
-        recovery_probe.errors.push_back(error);
-        recovery_probe.condition.notify_all();
+    recovery_callbacks.on_error = [recovery_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(recovery_probe->mutex);
+        record_probe_error(*recovery_probe, error);
     };
     CHECK(client.synthesize_async("after cancellation", recovery_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(recovery_probe.mutex);
-        CHECK(recovery_probe.condition.wait_for(lock, std::chrono::seconds(5), [&recovery_probe]() {
-            return recovery_probe.completed != 0 || !recovery_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(recovery_probe->mutex);
+        CHECK(recovery_probe->condition.wait_for(lock, std::chrono::seconds(5), [recovery_probe]() {
+            return recovery_probe->completed != 0 || !recovery_probe->errors.empty();
         }));
     }
-    CHECK(recovery_probe.errors.empty());
-    CHECK(recovery_probe.completed == 1);
+    CHECK(recovery_probe->errors.empty());
+    CHECK(recovery_probe->completed == 1);
 
     std::string guard_stderr;
     QwenTtsClient guard_client;
@@ -1643,157 +1670,152 @@ int main() {
     guard_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(guard_client.start(
         options(8, &guard_stderr, nullptr, 0, false, false, {}, true), guard_options));
-    Probe guard_probe;
+    Probe guard_probe = std::make_shared<ProbeState>();
     TtsCallbacks guard_callbacks;
-    guard_callbacks.on_completed = [&guard_probe]() {
-        std::lock_guard<std::mutex> lock(guard_probe.mutex);
-        ++guard_probe.completed;
-        guard_probe.condition.notify_all();
+    guard_callbacks.on_completed = [guard_probe]() {
+        std::lock_guard<std::mutex> lock(guard_probe->mutex);
+        ++guard_probe->completed;
+        guard_probe->condition.notify_all();
     };
-    guard_callbacks.on_error = [&guard_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(guard_probe.mutex);
-        guard_probe.errors.push_back(error);
-        guard_probe.condition.notify_all();
+    guard_callbacks.on_error = [guard_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(guard_probe->mutex);
+        record_probe_error(*guard_probe, error);
     };
     CHECK(guard_client.synthesize_async("guard propagation", guard_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(guard_probe.mutex);
-        CHECK(guard_probe.condition.wait_for(lock, std::chrono::seconds(5), [&guard_probe]() {
-            return guard_probe.completed != 0 || !guard_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(guard_probe->mutex);
+        CHECK(guard_probe->condition.wait_for(lock, std::chrono::seconds(5), [guard_probe]() {
+            return guard_probe->completed != 0 || !guard_probe->errors.empty();
         }));
     }
-    CHECK(guard_probe.errors.empty());
-    CHECK(guard_probe.completed == 1);
+    CHECK(guard_probe->errors.empty());
+    CHECK(guard_probe->completed == 1);
     CHECK(guard_stderr.find("fake eos_guard_enabled=true") != std::string::npos);
     guard_client.stop();
 
-    Probe max_probe;
+    Probe max_probe = std::make_shared<ProbeState>();
     TtsCallbacks max_callbacks;
-    max_callbacks.on_audio = [&max_probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(max_probe.mutex);
-        max_probe.audio.insert(max_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    max_callbacks.on_audio = [max_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(max_probe->mutex);
+        max_probe->audio.insert(max_probe->audio.end(), chunk.bytes.begin(), chunk.bytes.end());
     };
-    max_callbacks.on_completion_metadata = [&max_probe](const TtsCompletion& completion) {
-        std::lock_guard<std::mutex> lock(max_probe.mutex);
-        max_probe.completions.push_back(completion);
-        max_probe.condition.notify_all();
+    max_callbacks.on_completion_metadata = [max_probe](const TtsCompletion& completion) {
+        std::lock_guard<std::mutex> lock(max_probe->mutex);
+        max_probe->completions.push_back(completion);
+        max_probe->condition.notify_all();
     };
-    max_callbacks.on_completed = [&max_probe]() {
-        std::lock_guard<std::mutex> lock(max_probe.mutex);
-        ++max_probe.completed;
-        max_probe.condition.notify_all();
+    max_callbacks.on_completed = [max_probe]() {
+        std::lock_guard<std::mutex> lock(max_probe->mutex);
+        ++max_probe->completed;
+        max_probe->condition.notify_all();
     };
-    max_callbacks.on_error = [&max_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(max_probe.mutex);
-        max_probe.errors.push_back(error);
-        max_probe.condition.notify_all();
+    max_callbacks.on_error = [max_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(max_probe->mutex);
+        record_probe_error(*max_probe, error);
     };
     CHECK(client.synthesize_async("force max tokens", max_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(max_probe.mutex);
-        CHECK(max_probe.condition.wait_for(lock, std::chrono::seconds(5), [&max_probe]() {
-            return max_probe.completed != 0 || !max_probe.errors.empty();
+        std::unique_lock<std::mutex> lock(max_probe->mutex);
+        CHECK(max_probe->condition.wait_for(lock, std::chrono::seconds(5), [max_probe]() {
+            return max_probe->completed != 0 || !max_probe->errors.empty();
         }));
     }
-    CHECK(max_probe.errors.empty());
-    CHECK(max_probe.completed == 1);
-    CHECK(max_probe.completions.size() == 1);
-    CHECK(max_probe.completions.front().execution_outcome == "max_tokens");
+    CHECK(max_probe->errors.empty());
+    CHECK(max_probe->completed == 1);
+    CHECK(max_probe->completions.size() == 1);
+    CHECK(max_probe->completions.front().execution_outcome == "max_tokens");
 
     const auto check_eos_outcome = [&](const char* text, const char* expected) {
-        Probe probe;
+        Probe probe = std::make_shared<ProbeState>();
         TtsCallbacks callbacks;
-        callbacks.on_completion_metadata = [&probe](const TtsCompletion& completion) {
-            std::lock_guard<std::mutex> lock(probe.mutex);
-            probe.completions.push_back(completion);
-            probe.condition.notify_all();
+        callbacks.on_completion_metadata = [probe](const TtsCompletion& completion) {
+            std::lock_guard<std::mutex> lock(probe->mutex);
+            probe->completions.push_back(completion);
+            probe->condition.notify_all();
         };
-        callbacks.on_completed = [&probe]() {
-            std::lock_guard<std::mutex> lock(probe.mutex);
-            ++probe.completed;
-            probe.condition.notify_all();
+        callbacks.on_completed = [probe]() {
+            std::lock_guard<std::mutex> lock(probe->mutex);
+            ++probe->completed;
+            probe->condition.notify_all();
         };
-        callbacks.on_error = [&probe](const TtsError& error) {
-            std::lock_guard<std::mutex> lock(probe.mutex);
-            probe.errors.push_back(error);
-            probe.condition.notify_all();
+        callbacks.on_error = [probe](const TtsError& error) {
+            std::lock_guard<std::mutex> lock(probe->mutex);
+            record_probe_error(*probe, error);
         };
         CHECK(client.synthesize_async(text, callbacks) != 0);
         {
-            std::unique_lock<std::mutex> lock(probe.mutex);
-            CHECK(probe.condition.wait_for(lock, std::chrono::seconds(5), [&probe]() {
-                return probe.completed != 0 || !probe.errors.empty();
+            std::unique_lock<std::mutex> lock(probe->mutex);
+            CHECK(probe->condition.wait_for(lock, std::chrono::seconds(5), [probe]() {
+                return probe->completed != 0 || !probe->errors.empty();
             }));
         }
-        CHECK(probe.errors.empty());
-        CHECK(probe.completed == 1);
-        CHECK(probe.completions.size() == 1);
-        CHECK(probe.completions.front().execution_outcome == expected);
+        CHECK(probe->errors.empty());
+        CHECK(probe->completed == 1);
+        CHECK(probe->completions.size() == 1);
+        CHECK(probe->completions.front().execution_outcome == expected);
         return 0;
     };
     CHECK(check_eos_outcome("force assisted eos", "eos_assisted") == 0);
     CHECK(check_eos_outcome("force forced eos", "eos_forced") == 0);
 
-    Probe unknown_probe;
+    Probe unknown_probe = std::make_shared<ProbeState>();
     TtsCallbacks unknown_callbacks;
-    unknown_callbacks.on_audio = [&unknown_probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
-        unknown_probe.audio.insert(unknown_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    unknown_callbacks.on_audio = [unknown_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(unknown_probe->mutex);
+        unknown_probe->audio.insert(unknown_probe->audio.end(), chunk.bytes.begin(), chunk.bytes.end());
     };
-    unknown_callbacks.on_error = [&unknown_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
-        unknown_probe.errors.push_back(error);
-        unknown_probe.condition.notify_all();
+    unknown_callbacks.on_error = [unknown_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(unknown_probe->mutex);
+        record_probe_error(*unknown_probe, error);
     };
-    unknown_callbacks.on_completed = [&unknown_probe]() {
-        std::lock_guard<std::mutex> lock(unknown_probe.mutex);
-        ++unknown_probe.completed;
-        unknown_probe.condition.notify_all();
+    unknown_callbacks.on_completed = [unknown_probe]() {
+        std::lock_guard<std::mutex> lock(unknown_probe->mutex);
+        ++unknown_probe->completed;
+        unknown_probe->condition.notify_all();
     };
     CHECK(client.synthesize_async("force unknown finish reason", unknown_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(unknown_probe.mutex);
-        CHECK(unknown_probe.condition.wait_for(lock, std::chrono::seconds(5), [&unknown_probe]() {
-            return !unknown_probe.errors.empty() || unknown_probe.completed != 0;
+        std::unique_lock<std::mutex> lock(unknown_probe->mutex);
+        CHECK(unknown_probe->condition.wait_for(lock, std::chrono::seconds(5), [unknown_probe]() {
+            return !unknown_probe->errors.empty() || unknown_probe->completed != 0;
         }));
     }
-    CHECK(unknown_probe.completed == 0);
-    CHECK(unknown_probe.errors.size() == 1);
-    CHECK(unknown_probe.errors.front().code == "invalid_finish_reason");
+    CHECK(unknown_probe->completed == 0);
+    CHECK(unknown_probe->errors.size() == 1);
+    CHECK(unknown_probe->errors.front().code == "invalid_finish_reason");
 
-    Probe empty_eos_probe;
+    Probe empty_eos_probe = std::make_shared<ProbeState>();
     TtsCallbacks empty_eos_callbacks;
-    empty_eos_callbacks.on_audio = [&empty_eos_probe](const PcmChunk& chunk) {
-        std::lock_guard<std::mutex> lock(empty_eos_probe.mutex);
-        empty_eos_probe.audio.insert(
-            empty_eos_probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
-        empty_eos_probe.condition.notify_all();
+    empty_eos_callbacks.on_audio = [empty_eos_probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(empty_eos_probe->mutex);
+        empty_eos_probe->audio.insert(
+            empty_eos_probe->audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+        empty_eos_probe->condition.notify_all();
     };
-    empty_eos_callbacks.on_completed = [&empty_eos_probe]() {
-        std::lock_guard<std::mutex> lock(empty_eos_probe.mutex);
-        ++empty_eos_probe.completed;
-        empty_eos_probe.condition.notify_all();
+    empty_eos_callbacks.on_completed = [empty_eos_probe]() {
+        std::lock_guard<std::mutex> lock(empty_eos_probe->mutex);
+        ++empty_eos_probe->completed;
+        empty_eos_probe->condition.notify_all();
     };
-    empty_eos_callbacks.on_error = [&empty_eos_probe](const TtsError& error) {
-        std::lock_guard<std::mutex> lock(empty_eos_probe.mutex);
-        empty_eos_probe.errors.push_back(error);
-        empty_eos_probe.condition.notify_all();
+    empty_eos_callbacks.on_error = [empty_eos_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(empty_eos_probe->mutex);
+        record_probe_error(*empty_eos_probe, error);
     };
     CHECK(client.synthesize_async("force empty eos", empty_eos_callbacks) != 0);
     {
-        std::unique_lock<std::mutex> lock(empty_eos_probe.mutex);
-        CHECK(empty_eos_probe.condition.wait_for(
-            lock, std::chrono::seconds(5), [&empty_eos_probe]() {
-                return !empty_eos_probe.errors.empty() ||
-                    empty_eos_probe.completed != 0;
+        std::unique_lock<std::mutex> lock(empty_eos_probe->mutex);
+        CHECK(empty_eos_probe->condition.wait_for(
+            lock, std::chrono::seconds(5), [empty_eos_probe]() {
+                return !empty_eos_probe->errors.empty() ||
+                    empty_eos_probe->completed != 0;
             }));
     }
-    CHECK(empty_eos_probe.completed == 0);
-    CHECK(empty_eos_probe.errors.size() == 1);
-    CHECK(empty_eos_probe.errors.front().category == "model_error");
-    CHECK(empty_eos_probe.errors.front().code == "empty_audio");
-    CHECK(empty_eos_probe.audio.empty());
+    CHECK(empty_eos_probe->completed == 0);
+    CHECK(empty_eos_probe->errors.size() == 1);
+    CHECK(empty_eos_probe->errors.front().category == "model_error");
+    CHECK(empty_eos_probe->errors.front().code == "empty_audio");
+    CHECK(empty_eos_probe->audio.empty());
 
     client.stop();
-    return EXIT_SUCCESS;
+    return raw_diagnostics_ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
