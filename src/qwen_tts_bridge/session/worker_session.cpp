@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/session.hpp>
+#include "worker_session.hpp"
 
 #include <algorithm>
 #include <type_traits>
