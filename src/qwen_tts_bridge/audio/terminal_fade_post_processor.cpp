@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/audio.hpp>
+#include "terminal_fade_post_processor.hpp"
 
 #include <algorithm>
 #include <cmath>

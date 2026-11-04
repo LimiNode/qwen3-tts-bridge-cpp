@@ -7,5 +7,5 @@
 #include <speech_animation/integration.hpp>
 #include <speech_animation/playback.hpp>
 
-#include "speech_animation/SpeechAnimationAdapter.hpp"
-#include "speech_animation/PlaybackAnimationRuntime.hpp"
+#include "speech_animation/adapter.hpp"
+#include "speech_animation/playback_runtime.hpp"

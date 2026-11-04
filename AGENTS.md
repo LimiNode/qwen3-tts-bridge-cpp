@@ -311,7 +311,9 @@ Leaf-header contract:
   standalone exceptions;
 - internal leaf headers may rely on definitions supplied by their enclosing
   umbrella and are not required to compile independently;
-- a `.cpp` that uses such a leaf includes the owning umbrella first;
+- a domain-owned translation unit includes the owning umbrella before including
+  an implementation source; the implementation source itself includes its
+  neighbouring leaf through a short local path;
 - standard-library includes needed by a leaf remain in that leaf;
 - do not duplicate cross-domain includes in leaves merely to preserve
   standalone compilation;
@@ -333,11 +335,9 @@ class `Protocol` unless it truly owns the whole protocol surface.
 
 File naming:
 
-- Use `PascalCase.hpp`/`.cpp` when a file is centered on one primary
-  `PascalCase` class, interface, or type and normally shares its name.
-- Use `snake_case.hpp`/`.cpp` for DTO and enum collections, free-function
-  modules, codecs, validation/serialization helpers, internal implementation
-  splits, and entry points.
+- Use `snake_case.hpp`/`.cpp` for all C++ source filenames, including files
+  centered on a PascalCase class or interface. Public class and type names
+  remain PascalCase.
 - Use `snake_case.hpp` for umbrella headers.
 
 Keep enum classes and basic DTOs in `data/` or in the nearest subdomain

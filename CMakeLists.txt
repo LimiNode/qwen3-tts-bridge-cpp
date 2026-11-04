@@ -136,11 +136,11 @@ if(WIN32)
 endif()
 
 add_library(qwen_tts_bridge
-    src/qwen_tts_bridge/audio/post_processor.cpp
-    src/qwen_tts_bridge/audio/playout_cursor.cpp
-    src/qwen_tts_bridge/audio/save_wav_callbacks.cpp
-    src/qwen_tts_bridge/audio/terminal_fade_post_processor.cpp
-    src/qwen_tts_bridge/audio/wav_writer.cpp
+    src/qwen_tts_bridge/audio_domain/playout_cursor.cpp
+    src/qwen_tts_bridge/audio_domain/post_processor.cpp
+    src/qwen_tts_bridge/audio_domain/save_wav_callbacks.cpp
+    src/qwen_tts_bridge/audio_domain/terminal_fade_post_processor.cpp
+    src/qwen_tts_bridge/audio_domain/wav_writer.cpp
     src/qwen_tts_bridge/client/qwen_tts_client.cpp
     src/qwen_tts_bridge/playback/playback_receipt.cpp
     src/qwen_tts_bridge/protocol/control/control_codec.cpp

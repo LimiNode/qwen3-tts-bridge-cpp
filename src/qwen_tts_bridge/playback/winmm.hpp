@@ -6,4 +6,4 @@
 #include "../audio.hpp"
 #include "../playback.hpp"
 
-#include "winmm/WaveOutPlayer.hpp"
+#include "winmm/wave_out_player.hpp"

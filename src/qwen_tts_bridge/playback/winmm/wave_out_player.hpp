@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file WaveOutPlayer.hpp
+/// \file wave_out_player.hpp
 /// \brief WinMM player declarations supplied by playback/winmm.hpp.
 
 #define WIN32_LEAN_AND_MEAN
