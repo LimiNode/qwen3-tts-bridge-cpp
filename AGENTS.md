@@ -244,7 +244,7 @@ client/               public facade and user-facing request API
 session/              worker lifetime, queues, dispatch, request registry
 ```
 
-Use umbrella headers sparingly but consistently at subdomain boundaries:
+Use umbrella headers consistently at domain and meaningful subdomain boundaries:
 
 ```text
 qwen_tts_bridge/data.hpp
@@ -261,8 +261,10 @@ for example:
 #include <qwen_tts_bridge/transport.hpp>
 ```
 
-Inside `src/qwen_tts_bridge`, umbrella headers should include project leaf
-headers with local quoted paths:
+An umbrella is the dependency boundary for its domain. It includes the
+dependencies supplied by lower-level or sibling umbrellas first, then includes
+the leaf headers owned by that domain. Use local quoted paths inside the library
+umbrellas:
 
 ```cpp
 #include "transport/i_transport.hpp"
@@ -273,22 +275,50 @@ Prefer that over project-qualified leaf includes such as
 `<qwen_tts_bridge/transport/i_transport.hpp>` inside the library's own umbrella
 headers.
 
-For cross-domain first-party dependencies, prefer the project-qualified
-`<qwen_tts_bridge/...>` include root. Relative `../` and `../../` paths are not
-allowed across domains; a private same-directory header may use a short quoted
-include. Neutral PCM value types live in `data/audio_types.hpp`
-(`AudioFormat`, `PcmChunk`, and `SpeechTimingChunk`), while request,
-preparation, callback, and error contracts remain in `client/client_types.hpp`
-and wire message DTOs remain in `protocol/control/control_messages.hpp`.
-Implementation-private headers such as `control_codec_internal.hpp` must not be
-installed as public SDK headers.
+For first-party dependencies across domains, include the dependency through its
+umbrella rather than including one of that domain's leaves directly. A relative
+path between domains is therefore owned by the receiving umbrella; it is not a
+general leaf-header convention. Same-directory implementation-private headers
+may still use short quoted includes.
 
-Avoid direct leaf-to-leaf project includes in public headers when a forward
-declaration or a higher-level umbrella header can express the dependency. It is
-acceptable that umbrella headers include related leaf headers in advance and
-that some leaf headers are not fully standalone; this follows the style used by
-the reference libraries. Implementation-private headers inside one subdomain
-may still be included directly by that subdomain's `.cpp` files.
+The intended hierarchy is:
+
+```text
+qwen_tts_bridge/client.hpp
+    data.hpp
+    protocol/control.hpp
+    session.hpp
+    transport.hpp
+    client/client_types.hpp
+    client/qwen_tts_client.hpp
+
+qwen_tts_bridge/protocol/control.hpp
+    data.hpp
+    protocol/control/control_messages.hpp
+    protocol/control/control_codec.hpp
+```
+
+The same rule applies to `protocol/framing.hpp`, `transport/stdio.hpp`, and
+other meaningful subdomains. For example, `data.hpp` must provide
+`protocol_types.hpp` before `audio_types.hpp` when the latter uses `RequestId`.
+Umbrella ordering must be explicit and must not form cycles.
+
+Leaf-header contract:
+
+- public domain umbrellas and documented public entry headers must compile on
+  their own;
+- internal leaf headers may rely on definitions supplied by their enclosing
+  umbrella and are not required to compile independently;
+- a `.cpp` that uses such a leaf includes the owning umbrella first;
+- standard-library includes needed by a leaf remain in that leaf;
+- do not duplicate cross-domain includes in leaves merely to preserve
+  standalone compilation;
+- implementation-private headers such as `control_codec_internal.hpp` must not
+  be installed as public SDK headers.
+
+Do not replace every include with a project-qualified path. The supported public
+surface is the umbrella hierarchy, while leaf-to-leaf includes remain limited to
+same-domain implementation details.
 
 Concrete implementations should be named after their responsibility, for
 example `FrameParser`, `StdIoTransport`, or `RequestRegistry`. Functional
