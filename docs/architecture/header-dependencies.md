@@ -3,10 +3,17 @@
 The domain umbrella owns first-party cross-domain dependencies. It includes
 dependency umbrellas before its own leaves. Internal leaves keep their required
 standard-library headers, but need not compile without the enclosing umbrella.
-Domain-owned translation units provide that umbrella before including one
-implementation source; each implementation source still includes its own local
-header. This changes include ownership, not namespaces, DTO layouts, protocol,
+Where context is needed, per-source domain-owned translation units provide that
+umbrella before including exactly one implementation; each implementation starts
+with its own local header (or the private shared header for a source-only split).
+Sources whose standalone or compatibility header already supplies the context
+compile directly. This changes include ownership, not namespaces, DTO layouts, protocol,
 callbacks, or runtime policy.
+
+Includes reaching outside the current directory use library-qualified paths,
+not parent traversal: `<qwen_tts_bridge/audio.hpp>`. Umbrellas still include their
+own leaves with local quoted paths, and implementations use short local header
+names. This distinction does not authorize cross-domain leaf dependencies.
 
 ## Domain and subdomain graph
 
@@ -103,14 +110,48 @@ masked by another umbrella. Feature-disabled installs must not acquire optional
 dependencies. Full CTest, mock playback, and optional native-worker and
 speech-animation configurations remain the behavior regression gates.
 
-## Domain translation-unit prototype
+## Domain translation units
 
-The audio domain is the first implementation of the two-level include contract.
-The five implementation sources retain local includes such as
-`"playout_cursor.hpp"` and are not added to the library independently. Five
-small domain-owned wrapper TUs under `audio_domain/` include `audio.hpp` and one
-audio implementation source each. A single unity TU was intentionally rejected:
+The audio prototype established the two-level contract. Its five implementation
+sources retain local includes such as `"playout_cursor.hpp"`; wrappers use:
+
+```cpp
+#include <qwen_tts_bridge/audio.hpp>
+#include <qwen_tts_bridge/audio/playout_cursor.cpp>
+```
+
+The contract now covers every implementation under `src/qwen_tts_bridge/`,
+including the optional components. The [source audit](../reports/pr273-sdk-source-audit-20261104.md)
+lists all 23 implementation files, their classification and CMake mapping.
+There are 18 wrappers and five direct-compilation entries. CMake compiles
+wrappers instead of their included implementations, never both in one target.
+Source-only control codec splits retain `control_codec_internal.hpp`; no
+artificial public headers were added.
+
+A single unity TU was intentionally rejected:
 `playout_cursor.cpp` and `terminal_fade_post_processor.cpp` both define an
 anonymous-namespace `formats_match`, which collides when their sources share one
 translation unit. Per-source wrappers preserve symbol isolation and incremental
 rebuild granularity without renaming helpers.
+
+## Tooling context
+
+CMake's `compile_commands.json` describes the actual wrapper TUs. Included
+implementations intentionally have no separate build command. Compiler
+diagnostics still refer to the original implementation, and generated dependency
+information rebuilds the wrapper when that implementation changes.
+
+clangd can infer flags from the wrapper but cannot infer its preceding umbrella
+include. The repository `.clangd` supplies this context only for editor parsing
+of the corresponding implementation paths; CMake uses neither forced includes
+nor PCH. Configure Ninja with `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`, then start
+clangd with `--compile-commands-dir=<build-directory>`. Allow the trusted local
+MinGW driver through `--query-driver` when using clangd's Windows build.
+
+The selected database must come from a configuration enabling the optional
+component being edited. The native adapter needs its qwen C ABI include path;
+the audit checks it separately against the test ABI without loading GGML/CUDA.
+For whole-file `--check` diagnostics, `--tweaks=NoTweaks` disables clangd's
+developer refactoring probes; it does not disable parsing or semantic diagnostics.
+This avoids the unrelated clangd 22.1.4 ExtractFunction break/continue probe
+failure recorded during the audit.
