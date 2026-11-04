@@ -141,18 +141,18 @@ add_library(qwen_tts_bridge
     src/qwen_tts_bridge/audio_domain/save_wav_callbacks.cpp
     src/qwen_tts_bridge/audio_domain/terminal_fade_post_processor.cpp
     src/qwen_tts_bridge/audio_domain/wav_writer.cpp
-    src/qwen_tts_bridge/client/qwen_tts_client.cpp
+    src/qwen_tts_bridge/client_domain/qwen_tts_client.cpp
     src/qwen_tts_bridge/playback/playback_receipt.cpp
-    src/qwen_tts_bridge/protocol/control/control_codec.cpp
-    src/qwen_tts_bridge/protocol/control/control_decode.cpp
-    src/qwen_tts_bridge/protocol/control/control_encode.cpp
-    src/qwen_tts_bridge/protocol/control/control_json.cpp
-    src/qwen_tts_bridge/protocol/control/control_validation.cpp
-    src/qwen_tts_bridge/protocol/control/error_codec.cpp
-    src/qwen_tts_bridge/protocol/framing/frame_codec.cpp
-    src/qwen_tts_bridge/protocol/framing/frame_parser.cpp
-    src/qwen_tts_bridge/session/worker_session.cpp
-    src/qwen_tts_bridge/transport/stdio/std_io_transport.cpp
+    src/qwen_tts_bridge/protocol/control_domain/control_codec.cpp
+    src/qwen_tts_bridge/protocol/control_domain/control_decode.cpp
+    src/qwen_tts_bridge/protocol/control_domain/control_encode.cpp
+    src/qwen_tts_bridge/protocol/control_domain/control_json.cpp
+    src/qwen_tts_bridge/protocol/control_domain/control_validation.cpp
+    src/qwen_tts_bridge/protocol/control_domain/error_codec.cpp
+    src/qwen_tts_bridge/protocol/framing_domain/frame_codec.cpp
+    src/qwen_tts_bridge/protocol/framing_domain/frame_parser.cpp
+    src/qwen_tts_bridge/session_domain/worker_session.cpp
+    src/qwen_tts_bridge/transport/stdio_domain/std_io_transport.cpp
 )
 add_library(QwenTTSBridge::qwen_tts_bridge ALIAS qwen_tts_bridge)
 
@@ -177,7 +177,7 @@ if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
     endif()
     add_library(qwen_tts_bridge_winmm_playback STATIC
         src/qwen_tts_bridge/playback/winmm_playback.cpp
-        src/qwen_tts_bridge/playback/playback_interruption_diagnostics.cpp
+        src/qwen_tts_bridge/playback_domain/playback_interruption_diagnostics.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_winmm_playback ALIAS
         qwen_tts_bridge_winmm_playback)
@@ -257,7 +257,7 @@ endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
     add_library(qwen_tts_bridge_tts_front STATIC
-        src/qwen_tts_bridge/text/tts_front_text_preparer.cpp
+        src/qwen_tts_bridge/text_domain/tts_front_text_preparer.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_tts_front ALIAS qwen_tts_bridge_tts_front)
     target_compile_features(qwen_tts_bridge_tts_front PUBLIC cxx_std_17)

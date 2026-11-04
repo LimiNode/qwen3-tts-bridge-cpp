@@ -1,3 +1,3 @@
 // Domain-owned translation unit: umbrella context plus one implementation.
-#include "../audio.hpp"
-#include "../audio/post_processor.cpp"
+#include <qwen_tts_bridge/audio.hpp>
+#include <qwen_tts_bridge/audio/post_processor.cpp>
