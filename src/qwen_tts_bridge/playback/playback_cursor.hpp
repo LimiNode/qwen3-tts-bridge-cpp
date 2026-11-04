@@ -5,7 +5,8 @@
 
 #include <cstdint>
 
-#include <qwen_tts_bridge/data/protocol_types.hpp>
+// Supported standalone value-type entry point.
+#include "../data.hpp"
 
 namespace qwen_tts_bridge::playback {
 
