@@ -276,10 +276,11 @@ Prefer that over project-qualified leaf includes such as
 headers.
 
 For first-party dependencies across domains, include the dependency through its
-umbrella rather than including one of that domain's leaves directly. A relative
-path between domains is therefore owned by the receiving umbrella; it is not a
-general leaf-header convention. Same-directory implementation-private headers
-may still use short quoted includes.
+umbrella rather than including one of that domain's leaves directly. Use
+library-qualified paths such as `<qwen_tts_bridge/data.hpp>` when reaching outside
+the current directory; never use `../` in project C++ includes. Own leaves in an
+umbrella and same-directory implementation-private headers still use short
+quoted includes.
 
 The intended hierarchy is:
 
@@ -311,9 +312,13 @@ Leaf-header contract:
   standalone exceptions;
 - internal leaf headers may rely on definitions supplied by their enclosing
   umbrella and are not required to compile independently;
-- a domain-owned translation unit includes the owning umbrella before including
-  an implementation source; the implementation source itself includes its
-  neighbouring leaf through a short local path;
+- an implementation starts with its own neighbouring header, or the shared
+  private header for source-only implementation splits;
+- if the implementation needs umbrella context, a per-source domain-owned TU
+  includes that umbrella and exactly one implementation, using library-qualified
+  paths; CMake compiles the wrapper, never the included implementation as well;
+- standalone and compatibility headers can provide the context directly without
+  another wrapper; audit that need instead of wrapping every source;
 - standard-library includes needed by a leaf remain in that leaf;
 - do not duplicate cross-domain includes in leaves merely to preserve
   standalone compilation;
@@ -323,6 +328,12 @@ Leaf-header contract:
 Do not replace every include with a project-qualified path. The supported public
 surface is the umbrella hierarchy, while leaf-to-leaf includes remain limited to
 same-domain implementation details.
+
+For clangd, export CMake's compile database and select its directory explicitly.
+The repository `.clangd` supplies editor-only umbrella context when opening an
+included implementation directly. It does not change compiler commands, enable
+PCH, or make internal leaves standalone API. See the architecture document for
+the source classification and tooling limitations.
 
 The current domain graph, compatibility entry points, and header compilation
 contract are documented in

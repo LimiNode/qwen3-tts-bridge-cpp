@@ -18,9 +18,11 @@ Use the hierarchical umbrella dependency model from the root contract. Each
 domain umbrella owns its cross-domain includes and then includes its own leaf
 headers. Public umbrellas must compile independently; internal leaves may rely
 on their enclosing umbrella and do not need to be standalone. A domain-owned
-translation unit supplies the owning umbrella before including one
-implementation source; the implementation source includes its neighboring leaf
-through a short local path. Keep standard-library
+translation unit supplies the owning umbrella before including exactly one
+implementation source when context is needed; standalone/compatibility entries
+compile directly. Use library-qualified paths in wrappers, not `../`; the
+implementation source includes its neighboring leaf through a short local path.
+Source-only splits start with their existing private header. Keep standard-library
 includes in the leaf and do not duplicate first-party cross-domain includes just
 to make a private leaf standalone. Never create cycles between umbrellas.
 
