@@ -10,13 +10,60 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <utility>
 
 namespace qwen_tts_bridge::native_worker {
 namespace {
+
+#if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
+class PublicationCapture final {
+public:
+    ~PublicationCapture() {
+        const char* path = std::getenv("QTB_NATIVE_PUBLICATION_CAPTURE");
+        if (path == nullptr || *path == '\0') {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::ofstream output(path, std::ios::binary | std::ios::trunc);
+        if (!output) {
+            return;
+        }
+        for (const auto& frame : frames_) {
+            const auto size = static_cast<std::uint64_t>(frame.size());
+            output.write(reinterpret_cast<const char*>(&size), sizeof(size));
+            output.write(
+                reinterpret_cast<const char*>(frame.data()),
+                static_cast<std::streamsize>(frame.size()));
+        }
+    }
+
+    void record(const std::vector<std::byte>& frame) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (bytes_ + sizeof(std::uint64_t) + frame.size() > max_bytes_) {
+            return;
+        }
+        frames_.push_back(frame);
+        bytes_ += sizeof(std::uint64_t) + frame.size();
+    }
+
+private:
+    static constexpr std::size_t max_bytes_ = 8u * 1024u * 1024u;
+    std::mutex mutex_;
+    std::vector<std::vector<std::byte>> frames_;
+    std::size_t bytes_ = 0;
+};
+
+PublicationCapture& publication_capture() {
+    static PublicationCapture capture;
+    return capture;
+}
+#endif
 
 std::vector<std::byte> make_frame(
     FrameType type,
@@ -127,6 +174,9 @@ private:
                 not_full_.notify_one();
             }
 
+#if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
+            publication_capture().record(frame);
+#endif
             std::cout.write(
                 reinterpret_cast<const char*>(frame.data()),
                 static_cast<std::streamsize>(frame.size()));

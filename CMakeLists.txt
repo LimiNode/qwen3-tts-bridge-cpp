@@ -219,6 +219,9 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
         worker/native/qwentts/stdio_server.cpp
         worker/native/qwentts/wav_reader.cpp
     )
+    option(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC
+        "Enable bounded native-worker frame publication diagnostics"
+        OFF)
     # Keep the Windows min/max macros out of the native worker.  The worker
     # uses std::numeric_limits<>::max(), which otherwise collides with the
     # legacy max macro from windows.h under MSVC.
@@ -227,6 +230,12 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
             QWEN_STATIC
             NOMINMAX
     )
+    if(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
+        target_compile_definitions(qwen_tts_native_worker
+            PRIVATE
+                QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC
+        )
+    endif()
     target_include_directories(qwen_tts_native_worker
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
@@ -552,6 +561,12 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     set_tests_properties(wrapper_source_guard_negative PROPERTIES
         WILL_FAIL TRUE
         PASS_REGULAR_EXPRESSION "compiles wrapper and included implementation together")
+    add_test(
+        NAME wrapper_source_guard_positive
+        COMMAND "${CMAKE_COMMAND}"
+            -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/wrapper_guard_independent"
+            -B "${CMAKE_CURRENT_BINARY_DIR}/wrapper_guard_independent"
+            "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}")
 
     add_executable(example_cli_parsing_test
         tests/example_cli_parsing_test.cpp

@@ -239,6 +239,16 @@ public:
             return !error_.empty() || exited_ || std::any_of(
                 frames_.begin(), frames_.end(), predicate);
         });
+        const auto it = std::find_if(frames_.begin(), frames_.end(), predicate);
+        if (it != frames_.end()) {
+            if (!error_.empty()) {
+                std::cerr << "[raw-worker-diagnostic] matching frame delivered before parser error: "
+                          << error_ << '\n';
+            }
+            result = std::move(*it);
+            frames_.erase(it);
+            return true;
+        }
         if (!observed || !error_.empty()) {
             std::cerr << "[raw-worker-diagnostic] wait failed observed=" << observed
                       << " exited=" << exited_ << " error=" << error_
@@ -251,13 +261,7 @@ public:
             }
             return false;
         }
-        const auto it = std::find_if(frames_.begin(), frames_.end(), predicate);
-        if (it == frames_.end()) {
-            return false;
-        }
-        result = std::move(*it);
-        frames_.erase(it);
-        return true;
+        return false;
     }
 
 private:
@@ -1217,9 +1221,10 @@ int main() {
     QwenTtsClient concurrent_publisher;
     QwenTtsClientOptions concurrent_publisher_options;
     concurrent_publisher_options.session.startup_timeout = std::chrono::seconds(5);
-    CHECK(!concurrent_publisher.start(
-        voice_registry_options(concurrent_registry), concurrent_publisher_options));
+    const bool concurrent_publisher_started = concurrent_publisher.start(
+        voice_registry_options(concurrent_registry), concurrent_publisher_options);
     delayed_publisher_thread.join();
+    CHECK(!concurrent_publisher_started);
     CHECK(delayed_publisher_result.load(std::memory_order_acquire));
     delayed_publisher.stop();
 

@@ -197,7 +197,13 @@ int wmain(int argc, wchar_t** argv) {
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
     _setmode(_fileno(stdin), _O_BINARY);
     _setmode(_fileno(stdout), _O_BINARY);
+#if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
+    const char* diagnostic_sync_stdio = std::getenv("QTB_NATIVE_SYNC_STDIO");
+    std::ios::sync_with_stdio(
+        diagnostic_sync_stdio != nullptr && std::string(diagnostic_sync_stdio) == "1");
+#else
     std::ios::sync_with_stdio(false);
+#endif
 
     try {
         NativeEngineOptions options = parse_arguments(argc, argv);
