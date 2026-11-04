@@ -17,8 +17,10 @@ native -> optional qwentts.cpp adapter
 Use the hierarchical umbrella dependency model from the root contract. Each
 domain umbrella owns its cross-domain includes and then includes its own leaf
 headers. Public umbrellas must compile independently; internal leaves may rely
-on their enclosing umbrella and do not need to be standalone. A source file
-that uses such a leaf includes the owning umbrella first. Keep standard-library
+on their enclosing umbrella and do not need to be standalone. A domain-owned
+translation unit supplies the owning umbrella before including one
+implementation source; the implementation source includes its neighboring leaf
+through a short local path. Keep standard-library
 includes in the leaf and do not duplicate first-party cross-domain includes just
 to make a private leaf standalone. Never create cycles between umbrellas.
 

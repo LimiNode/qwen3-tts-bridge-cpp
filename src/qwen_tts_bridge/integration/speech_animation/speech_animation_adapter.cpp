@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/integration/speech_animation.hpp>
+#include "speech_animation_adapter.hpp"
 
 #include <algorithm>
 #include <atomic>

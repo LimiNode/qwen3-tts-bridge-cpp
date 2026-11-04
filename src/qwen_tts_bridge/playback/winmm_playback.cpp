@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/playback/winmm.hpp>
+#include "winmm_playback.hpp"
 
 #include "playback_interruption_diagnostics.hpp"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-/// \file SpeechAnimationAdapter.hpp
+/// \file adapter.hpp
 /// \brief Optional adapter from Qwen bridge callbacks to speech-animation.
 
 #include <cstdint>

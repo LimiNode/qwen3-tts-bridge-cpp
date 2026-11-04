@@ -3,8 +3,10 @@
 The domain umbrella owns first-party cross-domain dependencies. It includes
 dependency umbrellas before its own leaves. Internal leaves keep their required
 standard-library headers, but need not compile without the enclosing umbrella.
-Implementation files include their owning umbrella first. This changes include
-ownership, not namespaces, DTO layouts, protocol, callbacks, or runtime policy.
+Domain-owned translation units provide that umbrella before including one
+implementation source; each implementation source still includes its own local
+header. This changes include ownership, not namespaces, DTO layouts, protocol,
+callbacks, or runtime policy.
 
 ## Domain and subdomain graph
 
@@ -25,8 +27,8 @@ are not repeated in a leaf. No edge leads back to a higher-level consumer.
 | `audio.hpp` | `data.hpp`, `client.hpp` | `audio/{wav_writer,post_processor,playout_cursor,save_wav_callbacks,terminal_fade_post_processor}.hpp` |
 | `playback.hpp` | `data.hpp` | `playback/{playback_cursor,playback_receipt}.hpp` |
 | `text.hpp` (optional) | `client.hpp`, external `tts_front.hpp` | `text/tts_front_text_preparer.hpp` |
-| `playback/winmm.hpp` (optional) | `audio.hpp`, `playback.hpp` | `winmm/WaveOutPlayer.hpp` |
-| `integration/speech_animation.hpp` (optional) | `client.hpp`, external `speech_animation/{integration,playback}.hpp` | `speech_animation/{SpeechAnimationAdapter,PlaybackAnimationRuntime}.hpp` |
+| `playback/winmm.hpp` (optional) | `audio.hpp`, `playback.hpp` | `winmm/wave_out_player.hpp` |
+| `integration/speech_animation.hpp` (optional) | `client.hpp`, external `speech_animation/{integration,playback}.hpp` | `speech_animation/{adapter,playback_runtime}.hpp` |
 | `native.hpp` (opt-in adapter) | none | `native/native_qwen_backend.hpp` |
 
 `transport/stdio.hpp` supplies the byte-transport interface before the stdio
@@ -100,3 +102,15 @@ when requested, both WinMM entry paths, so a missing installed leaf cannot be
 masked by another umbrella. Feature-disabled installs must not acquire optional
 dependencies. Full CTest, mock playback, and optional native-worker and
 speech-animation configurations remain the behavior regression gates.
+
+## Domain translation-unit prototype
+
+The audio domain is the first implementation of the two-level include contract.
+The five implementation sources retain local includes such as
+`"playout_cursor.hpp"` and are not added to the library independently. Five
+small domain-owned wrapper TUs under `audio_domain/` include `audio.hpp` and one
+audio implementation source each. A single unity TU was intentionally rejected:
+`playout_cursor.cpp` and `terminal_fade_post_processor.cpp` both define an
+anonymous-namespace `formats_match`, which collides when their sources share one
+translation unit. Per-source wrappers preserve symbol isolation and incremental
+rebuild granularity without renaming helpers.
