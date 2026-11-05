@@ -8,6 +8,7 @@ worker sources contain bounded diagnostic instrumentation guarded by the
 The preservation commit for the original diagnostic harness is `907bea65`.
 Capture instrumentation described below is diagnostic-only and is not part of
 PR #273.
+The stdout-boundary follow-up is `c3250c73150c6d9fafcc3fca6cf820aa63b58298`.
 
 ## Revisions and setup
 
