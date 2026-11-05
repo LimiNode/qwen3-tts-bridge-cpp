@@ -186,3 +186,89 @@ The next corrective work is a separate diagnostic/engineering PR for the
 write-completion reproducer and then choose the smallest production-safe write
 primitive or buffering policy. Do not change PR #273 based solely on the
 `sync_with_stdio(true)` correlation.
+
+## Follow-up boundary experiment (2026-11-05)
+
+The diagnostic worker was rebuilt from this branch with
+`-DQWEN_TTS_NATIVE_FRAME_DIAGNOSTIC=ON`. The harness fixes the diagnostic
+session identifier to `diagnostic-session` so the ready frame does not vary with
+the process ID. The immediate two-request sequence was run ten times per
+variant under
+`E:\_repoz\qwen3-tts-bridge-cpp\.tmp\umbrella-dependency-policy\frame-captures\boundary-variants-10`:
+
+The base command is the existing capture command with `--two-requests`; B adds
+`--sync-stdio`, and C adds `--writefile-stdout`. The latter selects the
+diagnostic-only `QTB_NATIVE_WRITEFILE_STDOUT=1` environment path and leaves
+`sync_with_stdio(false)` unchanged.
+
+| Variant | stdout valid | publication records valid | writer traces | Result |
+| --- | ---: | ---: | ---: | --- |
+| A: `sync_with_stdio(false)`, `iostream` | 3/10 | 10/10 | 10/10, 12/12 successful | corruption reproduced |
+| B: `sync_with_stdio(true)`, `iostream` | 10/10 | 10/10 | 10/10, 12/12 successful | no corruption |
+| C: `sync_with_stdio(false)`, exclusive `WriteFile` | 10/10 | 10/10 | 10/10, 12/12 successful | no corruption |
+
+For every run, the publication records contain the same number of complete
+frames as the writer trace. In A, the trace reports successful iostream
+operations for all 12 frames even when the parent capture is malformed. This
+is a stream-level status, not proof that the same bytes reached the OS pipe.
+In C, every `WriteFile` call completed the entire frame; partial writes are
+looped and zero-progress or failed writes terminate the writer.
+
+Representative A capture:
+
+- stdout: `E:\_repoz\qwen3-tts-bridge-cpp\.tmp\umbrella-dependency-policy\frame-captures\boundary-variants-10\A-default\run-1793855769720950900-44144\stdout.bin`
+- stdout SHA-256: `54f00cdb4a10bc9e1ac91025e986b792c57a6401627fb38bd33b5020d0fe159f`
+- publication-concatenated SHA-256: `7c784caf2ce34bfca20dcf7c56f8bdaf4fbb94af0873c657b45717c98e5e6ba2`
+- parent bytes: 1184; intended bytes: 1098
+- first byte difference against intended concatenation: offset 855
+- parser first invalid header offset: 893, observed `22 3a 7b 22` instead of `QTB1`
+- last unaffected frame: request 100 `completed`, ending at offset 769
+- first affected frame: request 101 `started`, with nested `QTB1` at offset 855
+
+Representative B capture has stdout SHA-256 equal to its publication-
+concatenated SHA-256:
+`7c784caf2ce34bfca20dcf7c56f8bdaf4fbb94af0873c657b45717c98e5e6ba2`.
+Representative C capture has equal raw/publication SHA-256
+`d8a84b721bd76dcb5575dd0e041b3e9e682c463c9b16f8059778cfc82dc841b4`.
+
+The immediate sequence has a scheduler-dependent `queued.position` field, so
+publication SHA-256 values are not identical across all runs. The byte-for-
+byte comparison is therefore made within each run: raw stdout is compared with
+that run's own publication concatenation. A staggered sequence
+(`--stagger-requests`) produced valid streams in all 9/9 runs, which confirms
+that timing is a required condition for the observed corruption but does not
+identify which buffering boundary loses or duplicates bytes.
+
+### Current conclusion
+
+The evidence now distinguishes the layers more sharply:
+
+1. `OutputWriter` serialization and frame ordering are correct for the tested
+   runs; its diagnostic trace records all 12 successful frame writes.
+2. With `iostream` and `sync=false`, the parent receives a stream that differs
+   from the serialized frames, including an inserted nested frame and an 86-byte
+   length increase in the representative run.
+3. The same workload with `sync=true` or with an exclusive `WriteFile` path is
+   byte-for-byte identical to the publication records in the tested samples.
+
+This is strong evidence for an iostream/CRT stdout boundary defect under the
+concurrent timing pattern, but it is not yet a complete causal proof for every
+possible writer or Windows runtime configuration. The smallest justified
+production candidate is the exclusive `WriteFile` path, to be implemented only
+in a separate engineering PR with a deterministic regression test. The
+diagnostic branch itself remains separate from PR #273.
+
+## Validation of the follow-up branch
+
+- MinGW diagnostic build with `QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC=ON`: worker and
+  native test targets built successfully.
+- MinGW feature-disabled build with the option explicitly `OFF`: worker built
+  successfully; only the pre-existing `-Wsubobject-linkage` warnings appeared.
+- Wrapper guard CTest (`wrapper_source_guard_negative` and
+  `wrapper_source_guard_positive`): 2/2 passed.
+- Offline validator: all 30 boundary captures had valid publication records;
+  raw stdout was valid for 23/30 runs (3/10 in A, 10/10 in B, 10/10 in C).
+- The long `qwen_tts_native_worker_test` remained `INCONCLUSIVE`: one MinGW
+  run timed out at 60.09 seconds after reproducing `invalid frame magic`.
+- MSVC build and exact-head CI for this diagnostic branch were not run locally;
+  the branch remains diagnostic-only and is not merged into `main`.

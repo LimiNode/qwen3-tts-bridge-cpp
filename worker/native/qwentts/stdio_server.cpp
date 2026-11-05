@@ -21,25 +21,44 @@
 namespace qwen_tts_bridge::native_worker {
 namespace {
 
+struct StdoutWriteResult {
+    bool success = false;
+    std::size_t bytes_written = 0;
+    unsigned long error_code = 0;
+};
+
 #if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
 class PublicationCapture final {
 public:
     ~PublicationCapture() {
-        const char* path = std::getenv("QTB_NATIVE_PUBLICATION_CAPTURE");
-        if (path == nullptr || *path == '\0') {
-            return;
-        }
         std::lock_guard<std::mutex> lock(mutex_);
-        std::ofstream output(path, std::ios::binary | std::ios::trunc);
-        if (!output) {
-            return;
+        const char* publication_path = std::getenv("QTB_NATIVE_PUBLICATION_CAPTURE");
+        if (publication_path != nullptr && *publication_path != '\0') {
+            std::ofstream output(publication_path, std::ios::binary | std::ios::trunc);
+            if (output) {
+                for (const auto& frame : frames_) {
+                    const auto size = static_cast<std::uint64_t>(frame.size());
+                    output.write(reinterpret_cast<const char*>(&size), sizeof(size));
+                    output.write(
+                        reinterpret_cast<const char*>(frame.data()),
+                        static_cast<std::streamsize>(frame.size()));
+                }
+            }
         }
-        for (const auto& frame : frames_) {
-            const auto size = static_cast<std::uint64_t>(frame.size());
-            output.write(reinterpret_cast<const char*>(&size), sizeof(size));
-            output.write(
-                reinterpret_cast<const char*>(frame.data()),
-                static_cast<std::streamsize>(frame.size()));
+
+        const char* trace_path = std::getenv("QTB_NATIVE_WRITE_TRACE");
+        if (trace_path != nullptr && *trace_path != '\0') {
+            std::ofstream trace(trace_path, std::ios::trunc);
+            if (trace) {
+                for (const auto& record : writes_) {
+                    trace << "sequence=" << record.sequence
+                          << " api=" << record.api
+                          << " frame_bytes=" << record.frame_bytes
+                          << " bytes_written=" << record.bytes_written
+                          << " success=" << (record.success ? "true" : "false")
+                          << " error=" << record.error_code << '\n';
+                }
+            }
         }
     }
 
@@ -52,10 +71,40 @@ public:
         bytes_ += sizeof(std::uint64_t) + frame.size();
     }
 
+    void record_write(
+        const char* api,
+        std::size_t frame_bytes,
+        std::size_t bytes_written,
+        bool success,
+        unsigned long error_code) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (writes_.size() >= max_write_records_) {
+            return;
+        }
+        writes_.push_back(WriteRecord{
+            writes_.size(),
+            api,
+            frame_bytes,
+            bytes_written,
+            success,
+            error_code});
+    }
+
 private:
+    struct WriteRecord {
+        std::size_t sequence = 0;
+        const char* api = "unknown";
+        std::size_t frame_bytes = 0;
+        std::size_t bytes_written = 0;
+        bool success = false;
+        unsigned long error_code = 0;
+    };
+
     static constexpr std::size_t max_bytes_ = 8u * 1024u * 1024u;
+    static constexpr std::size_t max_write_records_ = 4096;
     std::mutex mutex_;
     std::vector<std::vector<std::byte>> frames_;
+    std::vector<WriteRecord> writes_;
     std::size_t bytes_ = 0;
 };
 
@@ -63,7 +112,66 @@ PublicationCapture& publication_capture() {
     static PublicationCapture capture;
     return capture;
 }
+
+bool writefile_stdout_enabled() {
+    static const bool enabled = []() {
+        const char* value = std::getenv("QTB_NATIVE_WRITEFILE_STDOUT");
+        return value != nullptr && std::string(value) == "1";
+    }();
+    return enabled;
+}
+
+StdoutWriteResult write_stdout_with_write_file(const std::vector<std::byte>& frame) {
+    const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
+        return {false, 0, GetLastError()};
+    }
+
+    std::size_t offset = 0;
+    while (offset < frame.size()) {
+        const auto remaining = frame.size() - offset;
+        const auto request_size = static_cast<DWORD>(std::min<std::size_t>(
+            remaining,
+            static_cast<std::size_t>(std::numeric_limits<DWORD>::max())));
+        DWORD written = 0;
+        if (!WriteFile(
+                handle,
+                frame.data() + offset,
+                request_size,
+                &written,
+                nullptr)) {
+            return {false, offset + written, GetLastError()};
+        }
+        if (written == 0) {
+            return {false, offset, ERROR_WRITE_FAULT};
+        }
+        offset += written;
+    }
+    return {true, offset, 0};
+}
 #endif
+
+StdoutWriteResult write_stdout_frame(const std::vector<std::byte>& frame) {
+#if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
+    if (writefile_stdout_enabled()) {
+        return write_stdout_with_write_file(frame);
+    }
+#endif
+
+    std::cout.write(
+        reinterpret_cast<const char*>(frame.data()),
+        static_cast<std::streamsize>(frame.size()));
+    std::cout.flush();
+    return {static_cast<bool>(std::cout), static_cast<bool>(std::cout) ? frame.size() : 0, 0};
+}
+
+const char* stdout_write_api() {
+#if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
+    return writefile_stdout_enabled() ? "WriteFile" : "iostream";
+#else
+    return "iostream";
+#endif
+}
 
 std::vector<std::byte> make_frame(
     FrameType type,
@@ -77,6 +185,12 @@ std::vector<std::byte> make_frame(
 }
 
 std::string make_session_id() {
+#if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
+    const char* fixed = std::getenv("QTB_NATIVE_FIXED_SESSION_ID");
+    if (fixed != nullptr && *fixed != '\0') {
+        return fixed;
+    }
+#endif
     const auto ticks = GetTickCount64();
     return "native-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(ticks);
 }
@@ -177,11 +291,16 @@ private:
 #if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
             publication_capture().record(frame);
 #endif
-            std::cout.write(
-                reinterpret_cast<const char*>(frame.data()),
-                static_cast<std::streamsize>(frame.size()));
-            std::cout.flush();
-            if (!std::cout) {
+            const auto write_result = write_stdout_frame(frame);
+#if defined(QWEN_TTS_NATIVE_FRAME_DIAGNOSTIC)
+            publication_capture().record_write(
+                stdout_write_api(),
+                frame.size(),
+                write_result.bytes_written,
+                write_result.success,
+                write_result.error_code);
+#endif
+            if (!write_result.success) {
                 std::lock_guard<std::mutex> lock(mutex_);
                 failed_ = true;
                 stopping_ = true;

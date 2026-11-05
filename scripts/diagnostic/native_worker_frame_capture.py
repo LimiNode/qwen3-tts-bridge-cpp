@@ -54,7 +54,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stream-max-chunk-frames", type=int, default=4)
     parser.add_argument("--max-admitted-requests", type=int, default=16)
     parser.add_argument("--two-requests", action="store_true")
+    parser.add_argument("--stagger-requests", action="store_true")
     parser.add_argument("--sync-stdio", action="store_true")
+    parser.add_argument("--writefile-stdout", action="store_true")
     parser.add_argument("--settle-seconds", type=float, default=0.35)
     parser.add_argument("--timeout-seconds", type=float, default=10.0)
     return parser.parse_args()
@@ -89,9 +91,14 @@ def main() -> int:
     }
     environment = os.environ.copy()
     publication_path = run_dir / "publication.bin"
+    write_trace_path = run_dir / "write-trace.txt"
     environment["QTB_NATIVE_PUBLICATION_CAPTURE"] = str(publication_path)
+    environment["QTB_NATIVE_WRITE_TRACE"] = str(write_trace_path)
+    environment["QTB_NATIVE_FIXED_SESSION_ID"] = "diagnostic-session"
     if args.sync_stdio:
         environment["QTB_NATIVE_SYNC_STDIO"] = "1"
+    if args.writefile_stdout:
+        environment["QTB_NATIVE_WRITEFILE_STDOUT"] = "1"
     lock = threading.Lock()
     started = time.monotonic()
     stdout_file = stdout_path.open("wb")
@@ -155,6 +162,8 @@ def main() -> int:
         }
         send(100, synthesize)
         if args.two_requests:
+            if args.stagger_requests:
+                time.sleep(args.settle_seconds)
             send(101, synthesize)
         time.sleep(args.settle_seconds)
         send(100, {"message_type": "cancel"})
@@ -184,6 +193,8 @@ def main() -> int:
     metadata["stderr_bytes"] = stderr_path.stat().st_size
     metadata["publication_path"] = str(publication_path)
     metadata["publication_bytes"] = publication_path.stat().st_size if publication_path.exists() else 0
+    metadata["write_trace_path"] = str(write_trace_path)
+    metadata["write_trace_bytes"] = write_trace_path.stat().st_size if write_trace_path.exists() else 0
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     print(run_dir)
     return 0 if process.returncode == 0 and not metadata.get("timeout") else 1
