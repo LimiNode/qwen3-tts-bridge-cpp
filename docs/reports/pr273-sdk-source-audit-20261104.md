@@ -218,6 +218,14 @@ The full run confirms that the prior native-worker failure is not reproduced on
 the corrected post-#274 base. This is a build/test compatibility result only;
 it does not promote a GPU/model or hardware acceptance gate.
 
+GitHub C++ Checks run
+[#42249634059](https://github.com/LimiNode/qwen3-tts-bridge-cpp/actions/runs/42249634059)
+finished **7/7 SUCCESS**. As with the preceding PR integration run, GitHub's
+pull-request workflow validated the generated PR merge ref (the branch HEAD
+merged with `859b346f`), not a literal checkout of `c56ab4cc`. The literal
+post-#274 HEAD is covered by the MinGW full/minimal runs and installed-consumer
+checks above; the CI result is recorded as merge-ref compatibility evidence.
+
 The wrapper guard intentionally inspects only explicit target source entries.
 It skips generator-expression entries (`$<...>`), which is documented scope for
 the current explicit CMake source lists rather than a claim to validate every
