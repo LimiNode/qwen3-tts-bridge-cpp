@@ -159,9 +159,13 @@ before unattended service claims:
    every required model row. Freeze binaries, manifests, hashes and request
    corpus before independent RTX 4090 validation.
 
-The tts-front update to v0.2.3 is a B2 dependency task. Its acceptance gate is
-effective UTF-8 comparison on a fixed corpus, adapter regressions, and targeted
-listening only for changed or affected stress/number/currency/agreement cases.
+The tts-front update to v0.2.5 is a completed B2 dependency task. Its
+comparison gate is recorded in
+`docs/reports/tts-front-v022-v025-effective-text.md`: effective UTF-8 and
+diagnostics were compared on a fixed corpus and adapter regressions passed.
+Targeted listening remains required only for the changed leading-zero year,
+contextual year-agreement, and genitive-decimal cases before those changes are
+included in a release claim.
 
 ## Compatibility and non-goals
 
