@@ -1,4 +1,5 @@
 #include "stdio_server.hpp"
+#include "stdout_writer.hpp"
 
 #include <qwen_tts_bridge/protocol/control.hpp>
 
@@ -114,6 +115,7 @@ public:
 
 private:
     void run() {
+        const HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
         for (;;) {
             std::vector<std::byte> frame;
             {
@@ -127,11 +129,12 @@ private:
                 not_full_.notify_one();
             }
 
-            std::cout.write(
-                reinterpret_cast<const char*>(frame.data()),
-                static_cast<std::streamsize>(frame.size()));
-            std::cout.flush();
-            if (!std::cout) {
+            const auto result = write_stdout_frame(stdout_handle, frame);
+            if (!result.success) {
+                std::cerr << "[native-worker:error] stdout WriteFile failed after "
+                          << result.bytes_written << " of " << frame.size()
+                          << " bytes, error=" << result.error_code << '\n'
+                          << std::flush;
                 std::lock_guard<std::mutex> lock(mutex_);
                 failed_ = true;
                 stopping_ = true;
