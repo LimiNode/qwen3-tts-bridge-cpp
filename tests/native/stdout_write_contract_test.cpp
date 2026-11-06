@@ -85,5 +85,20 @@ int main() {
     CHECK(result.error_code == ERROR_SUCCESS);
     resources.cleanup();
     CHECK(received == expected);
+
+    HANDLE broken_read = nullptr;
+    HANDLE broken_write = nullptr;
+    CHECK(CreatePipe(&broken_read, &broken_write, &attributes, 0) != FALSE);
+    CHECK(CloseHandle(broken_read) != FALSE);
+    broken_read = nullptr;
+    const auto broken_result = qwen_tts_bridge::native_worker::write_stdout_frame(
+        broken_write,
+        std::vector<std::byte>(64u, std::byte{0x5a}));
+    CHECK(GetFileType(broken_write) == FILE_TYPE_PIPE);
+    CHECK(CloseHandle(broken_write) != FALSE);
+    broken_write = nullptr;
+    CHECK(!broken_result.success);
+    CHECK(broken_result.bytes_written == 0);
+    CHECK(broken_result.error_code != ERROR_SUCCESS);
     return 0;
 }

@@ -34,6 +34,58 @@ Both test harnesses own their process, pipe handles, and reader threads. An
 early assertion therefore terminates an owned child, joins readers, and closes
 only handles created by that test.
 
+## Corrective verification (2026-11-06)
+
+The regression harness was tightened without changing the native worker:
+
+- `native_stdout_pipe_integrity_test` now drives the original timing-sensitive
+  sequence: `hello`, two back-to-back syntheses (`100`, `101`), bounded delay,
+  late `cancel(100)`, bounded delay, and `shutdown` without waiting for
+  terminal events first;
+- the case is repeated ten times, rejects parser fatal errors, and requires
+  `FrameParser::buffered_size() == 0` at EOF;
+- truncated headers, truncated payloads, and incomplete trailing bytes are
+  explicit negative parser cases;
+- every control and error payload is decoded; `Ready`, `ShutdownAck`, queue
+  events, starts, terminal events, and request IDs are checked without relying
+  on scheduling-dependent frame order;
+- PCM frames are restricted to request IDs `100`/`101`, the expected fake
+  runtime `s16le` format, and the two known fake PCM chunks;
+- `native_stdout_write_contract_test` now closes the anonymous-pipe read end
+  and verifies a failed `WriteFile` returns zero progress, a non-success
+  Win32 error, and no handle/liveness regression.
+
+The focused MinGW run passed:
+
+```text
+native_stdout_write_contract_test       Passed
+native_stdout_pipe_integrity_test      Passed (10 timing repetitions)
+2/2 tests passed
+```
+
+The configured MinGW CTest suite also passed after the corrective:
+
+```text
+17/17 tests passed, 0 failed
+Total Test time: 90.27 s
+```
+
+For direct regression relevance, the diagnostic worker at the pre-`WriteFile`
+revision was run with the exact same capture sequence ten times. Strict raw
+stdout validation produced:
+
+| implementation | valid raw streams | valid publication records | raw equals publication |
+| --- | ---: | ---: | ---: |
+| old iostream writer | 1/10 | 10/10 | 0/10 |
+| diagnostic `WriteFile` writer | 10/10 | 10/10 | 10/10 |
+
+Thus the bounded integration test exercises the timing that reproduced the
+old defect and fails closed on the same malformed stream class; the historical
+diagnostic comparison demonstrates that the old iostream implementation does
+not pass that sequence reliably. The comparison artifacts remain local under
+`.tmp/native-stdout-writefile-corrective-comparison/` and are not release
+evidence.
+
 ## Verification
 
 Configuration and build used the MinGW Windows toolchain:
@@ -53,7 +105,7 @@ native_stdout_pipe_integrity_test      Passed
 
 The existing `qwen_tts_native_worker_test` also completed successfully on the
 same worker and fake runtime (`25.21 s`). The complete configured CTest set
-completed successfully after the corrective:
+completed successfully in the initial documentation-only pass:
 
 ```text
 17/17 tests passed, 0 failed

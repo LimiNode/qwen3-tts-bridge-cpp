@@ -139,44 +139,39 @@ std::vector<std::byte> control_frame(RequestId request_id, const ControlMessage&
     return frame ? frame.bytes : std::vector<std::byte>{};
 }
 
-std::size_t terminal_frame_count(const std::vector<std::byte>& bytes) {
+bool parser_rejects_incomplete(const std::vector<std::byte>& bytes) {
     FrameParser parser;
     parser.append(bytes);
-    std::size_t count = 0;
-    for (;;) {
-        const auto result = parser.parse_next();
-        if (result.status != ParseStatus::FrameReady) {
-            break;
-        }
-        if (result.frame.header.request_id != 100 && result.frame.header.request_id != 101) {
-            continue;
-        }
-        const auto decoded = decode_control_message(
-            result.frame.payload,
-            ControlMessageDirection::WorkerToClient);
-        if (decoded &&
-            (control_message_type(decoded.message) == ControlMessageType::Completed ||
-             control_message_type(decoded.message) == ControlMessageType::Cancelled)) {
-            ++count;
-        }
-    }
-    return count;
+    const auto result = parser.parse_next();
+    return result.status == ParseStatus::NeedMoreData && parser.buffered_size() != 0;
 }
 
-bool wait_for_terminal_frames(ByteCapture& capture) {
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    std::unique_lock<std::mutex> lock(capture.mutex);
-    for (;;) {
-        const auto snapshot = capture.bytes;
-        lock.unlock();
-        if (terminal_frame_count(snapshot) >= 2) {
-            return true;
-        }
-        lock.lock();
-        if (capture.changed.wait_until(lock, deadline) == std::cv_status::timeout) {
-            return terminal_frame_count(capture.bytes) >= 2;
-        }
-    }
+int run_parser_eof_regressions() {
+    const auto payload = encode_control_message(
+        ControlMessage{HelloMessage{"eof-regression", "0.2.0"}});
+    CHECK(static_cast<bool>(payload));
+    const auto encoded = encode_frame(FrameType::ControlJson, 0, payload.payload);
+    CHECK(static_cast<bool>(encoded));
+    CHECK(encoded.bytes.size() > ProtocolLimits::min_header_size);
+
+    std::vector<std::byte> truncated_header(
+        encoded.bytes.begin(),
+        encoded.bytes.begin() + static_cast<std::ptrdiff_t>(ProtocolLimits::min_header_size - 1));
+    CHECK(parser_rejects_incomplete(truncated_header));
+
+    std::vector<std::byte> truncated_payload(
+        encoded.bytes.begin(),
+        encoded.bytes.end() - 1);
+    CHECK(parser_rejects_incomplete(truncated_payload));
+
+    auto trailing_data = encoded.bytes;
+    trailing_data.push_back(std::byte{0x7f});
+    FrameParser parser;
+    parser.append(trailing_data);
+    CHECK(parser.parse_next().status == ParseStatus::FrameReady);
+    CHECK(parser.parse_next().status == ParseStatus::NeedMoreData);
+    CHECK(parser.buffered_size() == 1);
+    return 0;
 }
 
 void drain_pipe(HANDLE handle, ByteCapture* output) {
@@ -200,7 +195,7 @@ void drain_pipe(HANDLE handle, ByteCapture* output) {
 
 } // namespace
 
-int main() {
+int run_pipe_integrity_case(int iteration) {
     ByteCapture stdout_capture;
     ByteCapture stderr_capture;
     TestResources resources;
@@ -275,12 +270,17 @@ int main() {
     CHECK(write_all(
         resources.child_stdin_write.get(),
         control_frame(0, ControlMessage{HelloMessage{"stdout-integrity", "0.2.0"}})));
+    // This is the original timing-sensitive sequence: two requests are sent
+    // back-to-back, then the late cancel and shutdown are sent on a bounded
+    // delay without waiting for terminal events first.
+    std::this_thread::sleep_for(std::chrono::milliseconds(350));
     SynthesizeMessage synthesis;
     synthesis.text = "native stdout integrity";
     CHECK(write_all(resources.child_stdin_write.get(), control_frame(100, ControlMessage{synthesis})));
     CHECK(write_all(resources.child_stdin_write.get(), control_frame(101, ControlMessage{synthesis})));
-    CHECK(wait_for_terminal_frames(stdout_capture));
+    std::this_thread::sleep_for(std::chrono::milliseconds(350));
     CHECK(write_all(resources.child_stdin_write.get(), control_frame(100, ControlMessage{CancelMessage{}})));
+    std::this_thread::sleep_for(std::chrono::milliseconds(350));
     CHECK(write_all(resources.child_stdin_write.get(), control_frame(0, ControlMessage{ShutdownMessage{}})));
     resources.child_stdin_write.reset();
 
@@ -319,50 +319,110 @@ int main() {
         if (result.status == ParseStatus::NeedMoreData) {
             break;
         }
+        if (result.status != ParseStatus::FrameReady) {
+            std::cerr << "iteration " << iteration << " parser error: " << result.message << '\n';
+        }
         CHECK(result.status == ParseStatus::FrameReady);
         frames.push_back(result.frame);
     }
+    CHECK(parser.buffered_size() == 0);
 
-    if (frames.size() != 12) {
-        std::cerr << "native worker frame count: " << frames.size() << '\n';
-        for (const auto& frame : frames) {
-            std::cerr << "  type=" << static_cast<int>(frame.header.frame_type)
-                      << " request_id=" << frame.header.request_id
-                      << " payload=" << frame.payload.size();
-            if (frame.header.frame_type == FrameType::ControlJson) {
-                const auto decoded = decode_control_message(
-                    frame.payload,
-                    ControlMessageDirection::WorkerToClient);
-                if (decoded) {
-                    std::cerr << " control_type="
-                              << static_cast<int>(control_message_type(decoded.message));
-                }
-            }
-            std::cerr << '\n';
-        }
-    }
-    CHECK(frames.size() == 12);
-    CHECK(frames.front().header.request_id == 0);
-    CHECK(frames.back().header.request_id == 0);
-    CHECK(frames.back().header.frame_type == FrameType::ControlJson);
+    const std::array<std::byte, 8> expected_chunk_a{
+        std::byte{0x00}, std::byte{0x80}, std::byte{0x00}, std::byte{0xc0},
+        std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x40}};
+    const std::array<std::byte, 8> expected_chunk_b{
+        std::byte{0x00}, std::byte{0x60}, std::byte{0xff}, std::byte{0x7f},
+        std::byte{0x00}, std::byte{0x20}, std::byte{0x00}, std::byte{0x00}};
+    std::array<std::size_t, 2> queued_counts{};
+    std::array<std::size_t, 2> started_counts{};
+    std::array<std::size_t, 2> terminal_counts{};
+    std::size_t ready_count = 0;
+    std::size_t shutdown_ack_count = 0;
     std::size_t audio_frames = 0;
-    std::size_t terminal_frames = 0;
     for (const auto& frame : frames) {
-        CHECK(frame.header.frame_type != FrameType::ErrorJson);
+        const auto request_index = [](RequestId request_id) -> std::size_t {
+            return request_id == 100 ? 0u : 1u;
+        };
         if (frame.header.frame_type == FrameType::AudioPcm) {
+            CHECK(frame.header.request_id == 100 || frame.header.request_id == 101);
+            CHECK(frame.payload.size() == expected_chunk_a.size());
+            const bool expected_pcm =
+                std::equal(frame.payload.begin(), frame.payload.end(), expected_chunk_a.begin()) ||
+                std::equal(frame.payload.begin(), frame.payload.end(), expected_chunk_b.begin());
+            CHECK(expected_pcm);
             ++audio_frames;
+            continue;
         }
-        if (frame.header.request_id == 100 || frame.header.request_id == 101) {
-            const auto decoded = decode_control_message(
-                frame.payload,
-                ControlMessageDirection::WorkerToClient);
-            if (decoded && (control_message_type(decoded.message) == ControlMessageType::Completed ||
-                            control_message_type(decoded.message) == ControlMessageType::Cancelled)) {
-                ++terminal_frames;
+        if (frame.header.frame_type == FrameType::ErrorJson) {
+            const auto decoded = decode_error_message(frame.payload);
+            CHECK(static_cast<bool>(decoded));
+            CHECK(decoded.message.category == "request_error");
+            CHECK(decoded.message.code == "unknown_request_id");
+            CHECK(frame.header.request_id == 100);
+            continue;
+        }
+        CHECK(frame.header.frame_type == FrameType::ControlJson);
+        const auto decoded = decode_control_message(
+            frame.payload,
+            ControlMessageDirection::WorkerToClient);
+        CHECK(static_cast<bool>(decoded));
+        const auto type = control_message_type(decoded.message);
+        if (type == ControlMessageType::Ready) {
+            CHECK(frame.header.request_id == 0);
+            const auto* ready = std::get_if<ReadyMessage>(&decoded.message);
+            CHECK(ready != nullptr);
+            CHECK(ready->capabilities.streaming);
+            CHECK(ready->capabilities.cancellation);
+            ++ready_count;
+        } else if (type == ControlMessageType::ShutdownAck) {
+            CHECK(frame.header.request_id == 0);
+            CHECK(std::get_if<ShutdownAckMessage>(&decoded.message) != nullptr);
+            ++shutdown_ack_count;
+        } else {
+            CHECK(frame.header.request_id == 100 || frame.header.request_id == 101);
+            const auto index = request_index(frame.header.request_id);
+            if (type == ControlMessageType::Queued) {
+                CHECK(std::get_if<QueuedMessage>(&decoded.message) != nullptr);
+                ++queued_counts[index];
+            } else if (type == ControlMessageType::Started) {
+                const auto* started = std::get_if<StartedMessage>(&decoded.message);
+                CHECK(started != nullptr);
+                CHECK(started->audio_format.sample_format == "s16le");
+                CHECK(started->audio_format.sample_rate == 24000);
+                CHECK(started->audio_format.channels == 1);
+                ++started_counts[index];
+            } else if (type == ControlMessageType::Completed) {
+                const auto* completed = std::get_if<CompletedMessage>(&decoded.message);
+                CHECK(completed != nullptr);
+                CHECK(completed->has_execution_outcome);
+                CHECK(completed->execution_outcome == "natural_eos");
+                ++terminal_counts[index];
+            } else if (type == ControlMessageType::Cancelled) {
+                CHECK(std::get_if<CancelledMessage>(&decoded.message) != nullptr);
+                ++terminal_counts[index];
+            } else {
+                CHECK(false);
             }
         }
     }
-    CHECK(audio_frames == 4);
-    CHECK(terminal_frames == 2);
+    CHECK(ready_count == 1);
+    CHECK(shutdown_ack_count == 1);
+    CHECK(queued_counts[0] == 1);
+    CHECK(queued_counts[1] == 1);
+    CHECK(terminal_counts[0] == 1);
+    CHECK(terminal_counts[1] == 1);
+    CHECK(started_counts[0] <= 1);
+    CHECK(started_counts[1] <= 1);
+    CHECK(audio_frames <= 4);
+    return 0;
+}
+
+int main() {
+    CHECK(run_parser_eof_regressions() == 0);
+    for (int iteration = 0; iteration < 10; ++iteration) {
+        if (run_pipe_integrity_case(iteration) != 0) {
+            return 1;
+        }
+    }
     return 0;
 }
