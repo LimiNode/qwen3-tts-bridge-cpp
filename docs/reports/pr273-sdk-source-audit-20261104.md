@@ -140,3 +140,39 @@ tracked summary above distinguishes results from unresolved diagnosis.
 No runtime bodies, DTO layouts, namespaces, PCM bytes, JSON schema, callbacks,
 worker lifecycle, model pins or release gates changed. Keep PR #273 Draft;
 the final exact-head MSVC run and revision are recorded in its PR description.
+
+## Post-#274 wrapper-guard corrective (2026-11-06)
+
+After native stdout PR #274 was merged, this branch was rebased onto
+`origin/main` at `859b346f81ea91c23613afb8db69aa1fe96ae6f3`. The architecture
+diff remains limited to the domain translation units, umbrella/include policy,
+and the CMake source-mapping guard. The guard validates every target that owns
+domain wrappers: each wrapper includes exactly one library-qualified
+implementation, that implementation exists, and the same implementation is
+not also listed as a compiled source or mapped by another wrapper in that
+target.
+
+The guard has deterministic configure-time fixtures:
+
+- `wrapper_source_guard_negative` intentionally lists a wrapper and its
+  included implementation together and passes only when configuration rejects
+  the duplicate mapping;
+- `wrapper_source_guard_positive` configures two independent targets that use
+  the same wrapper without treating that as a duplicate.
+
+Local MSVC 19.44 / Visual Studio 2022 validation after the rebase:
+
+- core feature-disabled configuration: configure/build PASS; selected CTest
+  5/5 PASS, including both wrapper fixtures;
+- core configuration with frontend disabled: configure/build PASS; selected
+  CTest 4/4 PASS, including both wrapper fixtures;
+- frontend-enabled configuration: bridge and `tts-front-cpp` adapter build
+  PASS;
+- frontend + WinMM configuration: bridge, WinMM and frontend targets build
+  PASS;
+- installed core consumer: configure/build PASS, including an independent
+  installed `transport/stdio.hpp` translation unit.
+
+The existing MinGW native-worker result remains INCONCLUSIVE as recorded
+above; this structural corrective does not change that scope or claim native
+runtime acceptance.
