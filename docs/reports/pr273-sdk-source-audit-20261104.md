@@ -173,6 +173,53 @@ Local MSVC 19.44 / Visual Studio 2022 validation after the rebase:
 - installed core consumer: configure/build PASS, including an independent
   installed `transport/stdio.hpp` translation unit.
 
-The existing MinGW native-worker result remains INCONCLUSIVE as recorded
-above; this structural corrective does not change that scope or claim native
-runtime acceptance.
+The earlier pre-#274 MinGW native-worker result remains INCONCLUSIVE as
+historical evidence recorded above; the final post-#274 rerun is recorded
+below and does not claim native runtime or hardware acceptance.
+
+## Final post-#274 MinGW gate (2026-11-06)
+
+The exact PR HEAD `3871120d780b05dd3703922bace65e70a5e6b9b7` was checked with
+MinGW GCC 15.2.0 (x86_64-posix-seh-msvcrt), CMake/Ninja Release builds, after
+initializing the pinned recursive submodules. This is a new run on the
+post-#274 base, not a reinterpretation of the historical pre-#274 failure.
+
+Full enabled configuration:
+
+```text
+QWEN_TTS_BRIDGE_BUILD_EXAMPLES=ON
+QWEN_TTS_BRIDGE_BUILD_TESTS=ON
+QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER=ON
+QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND=ON
+QWEN_TTS_BRIDGE_BUILD_TTS_FRONT=ON
+QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION=ON
+QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK=ON
+```
+
+Configure and build passed. Complete CTest with the repository's existing test
+timeouts passed **46/46** in 233.04 seconds, including the native worker,
+stdout pipe-integrity test, both wrapper fixtures, frontend, WinMM,
+speech-animation and mock/example checks. No test was excluded or given a
+larger timeout.
+
+Feature-disabled configuration (`EXAMPLES`, `QWENTTS_WORKER`, native backend,
+tts-front, speech-animation and WinMM all OFF; tests ON) also configured and
+built successfully. Complete CTest passed **14/14** in 68.55 seconds,
+including both wrapper fixtures and the public header checks.
+
+Installed-consumer validation passed for both configurations:
+
+- full install: consumer configured, built and ran with the installed stdio
+  entry point, both WinMM entry points and the installed tts-front target;
+- minimal install: consumer configured, built and ran with optional targets
+  disabled.
+
+The full run confirms that the prior native-worker failure is not reproduced on
+the corrected post-#274 base. This is a build/test compatibility result only;
+it does not promote a GPU/model or hardware acceptance gate.
+
+The wrapper guard intentionally inspects only explicit target source entries.
+It skips generator-expression entries (`$<...>`), which is documented scope for
+the current explicit CMake source lists rather than a claim to validate every
+possible generated source mapping. The negative and positive fixtures exercise
+the guard's supported explicit-source contract.
