@@ -8,6 +8,7 @@ project(QwenTTSBridge
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include(cmake/qwen_tts_bridge_wrapper_guard.cmake)
 
 option(QWEN_TTS_BRIDGE_BUILD_EXAMPLES "Build QwenTTSBridge examples" ON)
 option(QWEN_TTS_BRIDGE_BUILD_TESTS "Build QwenTTSBridge tests" ON)
@@ -155,6 +156,9 @@ add_library(qwen_tts_bridge
     src/qwen_tts_bridge/transport/stdio_domain/std_io_transport.cpp
 )
 add_library(QwenTTSBridge::qwen_tts_bridge ALIAS qwen_tts_bridge)
+qwen_tts_bridge_validate_wrapper_sources(
+    qwen_tts_bridge
+    "${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_compile_features(qwen_tts_bridge PUBLIC cxx_std_17)
 
@@ -181,6 +185,9 @@ if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_winmm_playback ALIAS
         qwen_tts_bridge_winmm_playback)
+    qwen_tts_bridge_validate_wrapper_sources(
+        qwen_tts_bridge_winmm_playback
+        "${CMAKE_CURRENT_SOURCE_DIR}")
     target_compile_features(qwen_tts_bridge_winmm_playback PUBLIC cxx_std_17)
     target_include_directories(qwen_tts_bridge_winmm_playback
         PUBLIC
@@ -279,6 +286,9 @@ if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         src/qwen_tts_bridge/text_domain/tts_front_text_preparer.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_tts_front ALIAS qwen_tts_bridge_tts_front)
+    qwen_tts_bridge_validate_wrapper_sources(
+        qwen_tts_bridge_tts_front
+        "${CMAKE_CURRENT_SOURCE_DIR}")
     target_compile_features(qwen_tts_bridge_tts_front PUBLIC cxx_std_17)
     target_include_directories(qwen_tts_bridge_tts_front
         PUBLIC
@@ -299,6 +309,9 @@ if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_speech_animation ALIAS
         qwen_tts_bridge_speech_animation)
+    qwen_tts_bridge_validate_wrapper_sources(
+        qwen_tts_bridge_speech_animation
+        "${CMAKE_CURRENT_SOURCE_DIR}")
     target_compile_features(qwen_tts_bridge_speech_animation PUBLIC cxx_std_17)
     target_include_directories(qwen_tts_bridge_speech_animation
         PUBLIC
@@ -548,6 +561,23 @@ endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     enable_testing()
+
+    add_test(
+        NAME wrapper_source_guard_negative
+        COMMAND "${CMAKE_COMMAND}"
+            -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/wrapper_guard_duplicate"
+            -B "${CMAKE_CURRENT_BINARY_DIR}/wrapper_guard_negative"
+            "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(wrapper_source_guard_negative PROPERTIES
+        WILL_FAIL TRUE
+        PASS_REGULAR_EXPRESSION "compiles wrapper and included implementation together")
+
+    add_test(
+        NAME wrapper_source_guard_positive
+        COMMAND "${CMAKE_COMMAND}"
+            -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/wrapper_guard_independent"
+            -B "${CMAKE_CURRENT_BINARY_DIR}/wrapper_guard_positive"
+            "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}")
 
     add_executable(example_cli_parsing_test
         tests/example_cli_parsing_test.cpp
