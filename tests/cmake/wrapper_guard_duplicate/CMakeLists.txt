@@ -12,4 +12,4 @@ add_library(duplicate_wrapper STATIC
     src/qwen_tts_bridge/fixture_impl.cpp)
 qwen_tts_bridge_validate_wrapper_sources(
     duplicate_wrapper
-    "${QWEN_TTS_BRIDGE_SOURCE_ROOT}")
+    "${CMAKE_CURRENT_SOURCE_DIR}")
