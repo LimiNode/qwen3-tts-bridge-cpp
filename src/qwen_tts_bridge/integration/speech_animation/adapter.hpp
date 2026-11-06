@@ -1,0 +1,90 @@
+#pragma once
+
+/// \file adapter.hpp
+/// \brief Optional adapter from Qwen bridge callbacks to speech-animation.
+
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace qwen_tts_bridge::speech_animation {
+
+/// \brief Connects bridge PCM/lifecycle callbacks to a speech-animation pipeline.
+///
+/// The adapter is intentionally optional. It preserves the bridge's audio
+/// callback for playback and only enqueues a converted float PCM copy into the
+/// bounded speech-animation pipeline. Analyzer work runs when
+/// process_available() is called by the consumer, never in the audio callback.
+class SpeechAnimationAdapter final {
+public:
+    using Pipeline = ::speech_animation::integration::SpeechAnimationPipeline;
+    using Receipt = ::speech_animation::integration::SpeechAnimationReceipt;
+    using QueuePushResult = ::speech_animation::integration::QueuePushResult;
+    using ReceiptHandler = std::function<void(const Receipt&)>;
+
+    /// \brief Describes a degradation isolated to the optional animation path.
+    ///
+    /// This is deliberately separate from TtsError: an animation queue or
+    /// format problem must not turn a successful bridge synthesis into a TTS
+    /// failure.
+    struct AdapterDiagnostic {
+        RequestId request_id = 0;
+        std::string code;
+        std::string message;
+    };
+    using AdapterDiagnosticHandler = std::function<void(const AdapterDiagnostic&)>;
+
+    /// \brief Creates an adapter for an already configured pipeline.
+    /// \param pipeline Shared pipeline owned by the integration/application layer.
+    /// \param on_receipt Optional consumer callback invoked by process_available().
+    /// \param on_diagnostic Optional callback for one-time animation-only
+    /// degradation diagnostics. It never replaces a bridge TtsError callback.
+    explicit SpeechAnimationAdapter(
+        std::shared_ptr<Pipeline> pipeline,
+        ReceiptHandler on_receipt = {},
+        AdapterDiagnosticHandler on_diagnostic = {});
+
+    /// \brief Establishes request metadata before synthesis begins.
+    ///
+    /// Call this immediately after assigning an explicit request ID and before
+    /// submitting the request when an utterance may complete without PCM.
+    QueuePushResult begin(
+        RequestId request_id,
+        std::uint64_t first_sample,
+        std::uint32_t sample_rate);
+
+    /// \brief Wraps bridge callbacks while preserving playback callbacks.
+    ///
+    /// The returned callbacks forward on_audio/on_timing/text/terminal events
+    /// to `downstream`. PCM is also copied into the speech-animation queue.
+    TtsCallbacks make_callbacks(
+        TtsCallbacks downstream = {},
+        bool observe_audio = true) const;
+
+    /// \\brief Pushes a post-processed PCM chunk into the animation queue.
+    ///
+    /// This is useful when the playback sink receives PCM after an application
+    /// post-processing chain. The chunk must describe the exact PCM sent to
+    /// that sink; the operation never invokes downstream TTS callbacks.
+    void push_audio(const PcmChunk& chunk) const;
+
+    /// \brief Runs analyzer work on the consumer side and returns receipts.
+    ///
+    /// Call this from the integration/animation consumer thread, not from the
+    /// bridge audio callback. At most one consumer may call this concurrently.
+    std::vector<Receipt> process_available() const;
+
+    /// \brief Returns whether the underlying pipeline reached a terminal state.
+    bool terminal() const noexcept;
+
+private:
+    struct State;
+    static void push_audio_to_state(
+        const std::shared_ptr<State>& state,
+        const PcmChunk& chunk);
+    std::shared_ptr<State> state_;
+};
+
+} // namespace qwen_tts_bridge::speech_animation

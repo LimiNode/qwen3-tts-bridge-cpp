@@ -1,3 +1,5 @@
+#include "control_codec.hpp"
+
 #include "control_codec_internal.hpp"
 
 #include <string>

@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/protocol/framing/frame_codec.hpp>
+#include "frame_codec.hpp"
 
 #include <limits>
 #include <utility>

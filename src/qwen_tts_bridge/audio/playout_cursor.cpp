@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/audio/playout_cursor.hpp>
+#include "playout_cursor.hpp"
 
 #include <algorithm>
 #include <cmath>

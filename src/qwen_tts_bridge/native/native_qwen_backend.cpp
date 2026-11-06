@@ -1,4 +1,4 @@
-#include "qwen_tts_bridge/native/native_qwen_backend.hpp"
+#include "native_qwen_backend.hpp"
 
 #include <qwen.h>
 

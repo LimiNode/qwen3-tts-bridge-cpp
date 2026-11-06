@@ -1,7 +1,5 @@
 #include "playback_interruption_diagnostics.hpp"
 
-#include "winmm_playback.hpp"
-
 #include <iomanip>
 #include <sstream>
 

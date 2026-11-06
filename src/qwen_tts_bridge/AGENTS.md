@@ -5,6 +5,20 @@ should be the connection points between domains; use local quoted includes
 inside those umbrellas. Keep implementation-private helpers in their owning
 subdomain rather than adding `utils` or generic `helpers` directories.
 
+Umbrellas are dependency boundaries, not only convenience aggregators. An
+umbrella includes lower-level or sibling umbrellas first and then its own leaf
+headers. Public umbrellas are independently compilable. Internal leaves may
+obtain cross-domain declarations transitively from the enclosing umbrella.
+Keep standard-library includes in leaves, avoid duplicate cross-domain
+includes, and do not introduce umbrella cycles. When context is needed, a
+per-source domain-owned translation unit supplies the umbrella before including
+exactly one implementation source. Both paths are library-qualified, without
+`../`. The implementation starts with its own local header, or the existing
+private header for source-only splits. Standalone/compatibility entry headers
+can supply the context directly; do not add unnecessary wrappers.
+Public consumers should include the domain umbrella instead of
+reaching into internal leaves.
+
 `QwenTtsClient` is async-first and owns request callbacks. `WorkerSession`
 owns process/session state. `ITransport` moves bytes only. The protocol layer
 validates framing and control messages without importing process or model code.

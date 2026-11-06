@@ -3,12 +3,10 @@
 /// \file post_processor.hpp
 /// \brief Streaming PCM post-processing interfaces and callback adapter.
 
+#include <cstddef>
 #include <memory>
 #include <mutex>
 #include <vector>
-
-#include <qwen_tts_bridge/data/audio_types.hpp>
-#include <qwen_tts_bridge/client/client_types.hpp>
 
 namespace qwen_tts_bridge::audio {
 

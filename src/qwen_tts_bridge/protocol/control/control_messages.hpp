@@ -10,8 +10,6 @@
 #include <variant>
 #include <vector>
 
-#include <qwen_tts_bridge/data/audio_types.hpp>
-
 namespace qwen_tts_bridge {
 
 /// \enum ControlMessageDirection

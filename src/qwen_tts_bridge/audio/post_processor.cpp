@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/audio/post_processor.hpp>
+#include "post_processor.hpp"
 
 #include <deque>
 #include <exception>

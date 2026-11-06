@@ -1,4 +1,4 @@
-#include <qwen_tts_bridge/audio/wav_writer.hpp>
+#include "wav_writer.hpp"
 
 #include <array>
 #include <filesystem>

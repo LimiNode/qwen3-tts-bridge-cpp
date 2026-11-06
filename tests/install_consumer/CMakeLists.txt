@@ -27,3 +27,18 @@ if(QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_TTS_FRONT)
     target_link_libraries(qwen_tts_bridge_install_consumer
         PRIVATE QwenTTSBridge::qwen_tts_bridge_tts_front)
 endif()
+
+# Compile the new installed entry points separately, not after main.cpp's
+# other umbrellas; missing installed dependencies must not be masked.
+set(_entry_headers qwen_tts_bridge/transport/stdio.hpp)
+if(QWEN_TTS_BRIDGE_INSTALL_CONSUMER_USE_WINMM)
+    list(APPEND _entry_headers
+        qwen_tts_bridge/playback/winmm.hpp
+        qwen_tts_bridge/playback/winmm_playback.hpp)
+endif()
+foreach(_header IN LISTS _entry_headers)
+    string(REPLACE "/" "_" _stem "${_header}")
+    set(_source "${CMAKE_CURRENT_BINARY_DIR}/${_stem}.cpp")
+    file(WRITE "${_source}" "#include <${_header}>\n")
+    target_sources(qwen_tts_bridge_install_consumer PRIVATE "${_source}")
+endforeach()

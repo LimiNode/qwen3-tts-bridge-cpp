@@ -8,7 +8,8 @@
 #include <string>
 #include <vector>
 
-#include <qwen_tts_bridge/data/protocol_types.hpp>
+// Supported standalone value-type entry point; this dependency stays in data.
+#include "protocol_types.hpp"
 
 namespace qwen_tts_bridge {
 
