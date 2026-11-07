@@ -300,13 +300,17 @@ try {
             @{ label = 'serena-russian'; speaker = 'serena'; language = 'Russian'; text = 'Проверка слухового образца релизной сборки для Серены.' }
         )) {
             $caseRoot = Join-Path $runDirectory ("playback-" + $case.label)
+            $capturePath = Join-Path $caseRoot 'voice.wav'
+            New-Item -ItemType Directory -Path $caseRoot -Force | Out-Null
             & (Join-Path $PSScriptRoot 'run-cmp50hx-playback-etw-soak.ps1') `
                 -Attempts 1 -PlayerPath $player -PythonPath $python -ModelPath $customVoiceModel `
                 -RuntimeCachePath $runtimeCache -FasterSourcePath $fasterSource `
                 -OutputRoot $caseRoot -Text $case.text -Speaker $case.speaker `
                 -Language $case.language -PlaybackPrebufferChunks 2 `
+                -PcmCaptureFile $capturePath `
                 -WorkerSynthesisWarmup -WorkerWarmupUnboundedPasses 1 `
                 -WorkerWarmupMaxOutputChunks 2 -EmitEveryFrames 16 `
+                -CollectGenerationTrace `
                 -CodecRightPaddedDecode -CodecRightPaddedCudaGraph `
                 -CodecRightPaddedWindowFrames 48 -SkipEtwFollowup
             if ($LASTEXITCODE -ne 0) {
@@ -321,7 +325,11 @@ try {
             if ([int]$summary.outlier_count -ne 0) {
                 throw "C++ CLI playback acceptance observed an outlier for $($case.label)."
             }
-            $physicalPlayback += [ordered]@{ label = $case.label; summary_json = $summaryPath }
+            $physicalPlayback += [ordered]@{
+                label = $case.label
+                summary_json = $summaryPath
+                pcm_capture_file = $capturePath
+            }
             }
         }
         elseif ($baseProfileRequested) {
@@ -330,14 +338,18 @@ try {
                 @{ label = 'base-profile-russian'; language = 'Russian'; text = 'Base voice profile listening sample.' }
             )) {
                 $caseRoot = Join-Path $runDirectory ("playback-" + $case.label)
+                $capturePath = Join-Path $caseRoot 'voice.wav'
+                New-Item -ItemType Directory -Path $caseRoot -Force | Out-Null
                 & (Join-Path $PSScriptRoot 'run-cmp50hx-playback-etw-soak.ps1') `
                     -Attempts 1 -PlayerPath $player -PythonPath $python -ModelPath $baseModel `
                     -RuntimeCachePath $runtimeCache -FasterSourcePath $fasterSource `
                     -OutputRoot $caseRoot -Text $case.text -Language $case.language `
                     -VoiceRegistryPath $voiceRegistry -VoiceId $VoiceId `
+                    -PcmCaptureFile $capturePath `
                     -WorkerWarmupVoiceId $VoiceId -PlaybackPrebufferChunks 2 `
                     -WorkerSynthesisWarmup -WorkerWarmupUnboundedPasses 1 `
                     -WorkerWarmupMaxOutputChunks 2 -EmitEveryFrames 16 `
+                    -CollectGenerationTrace `
                     -CodecRightPaddedDecode -CodecRightPaddedCudaGraph `
                     -CodecRightPaddedWindowFrames 48 -SkipEtwFollowup
                 if ($LASTEXITCODE -ne 0) {
@@ -352,7 +364,11 @@ try {
                 if ([int]$summary.outlier_count -ne 0) {
                     throw "C++ CLI Base-profile playback acceptance observed an outlier for $($case.label)."
                 }
-                $physicalPlayback += [ordered]@{ label = $case.label; summary_json = $summaryPath }
+                $physicalPlayback += [ordered]@{
+                    label = $case.label
+                    summary_json = $summaryPath
+                    pcm_capture_file = $capturePath
+                }
             }
         }
     }
