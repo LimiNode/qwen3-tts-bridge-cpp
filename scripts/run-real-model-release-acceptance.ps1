@@ -6,8 +6,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$PythonPath,
 
-    [Parameter(Mandatory = $true)]
-    [string]$CustomVoiceModelPath,
+    [string]$CustomVoiceModelPath = '',
 
     [Parameter(Mandatory = $true)]
     [string]$RuntimeCachePath,
@@ -156,7 +155,12 @@ function Assert-CompletedAudioRequests {
 
 $player = Resolve-ExistingPath $PlayerPath 'Playback client'
 $python = Resolve-ExistingPath $PythonPath 'Python runtime'
-$customVoiceModel = Resolve-ExistingPath $CustomVoiceModelPath 'CustomVoice model'
+$customVoiceModel = if ($CustomVoiceModelPath) {
+    Resolve-ExistingPath $CustomVoiceModelPath 'CustomVoice model'
+}
+else {
+    ''
+}
 $runtimeCache = Resolve-ExistingPath $RuntimeCachePath 'Runtime cache'
 $fasterSource = Resolve-ExistingPath $FasterSourcePath 'Faster source'
 
@@ -166,6 +170,10 @@ if ($baseProfileRequested -and (-not $BaseModelPath -or -not $VoiceRegistryPath 
 }
 $baseModel = if ($BaseModelPath) { Resolve-ExistingPath $BaseModelPath 'Base model' } else { '' }
 $voiceRegistry = if ($VoiceRegistryPath) { Resolve-ExistingPath $VoiceRegistryPath 'Voice registry' } else { '' }
+
+if (-not $customVoiceModel -and -not $baseProfileRequested) {
+    throw 'Provide -CustomVoiceModelPath or the complete Base profile tuple (-BaseModelPath, -VoiceRegistryPath, -VoiceId).'
+}
 
 $outputDirectory = if ([IO.Path]::IsPathRooted($OutputRoot)) {
     $OutputRoot
@@ -232,7 +240,9 @@ try {
         }
     }
 
-    $customShapesPath = Join-Path $runDirectory 'customvoice-persistent-shapes.jsonl'
+    $profileRejectionObserved = $null
+    if ($customVoiceModel) {
+        $customShapesPath = Join-Path $runDirectory 'customvoice-persistent-shapes.jsonl'
     @(
         [ordered]@{
             label = 'customvoice-ryan-english'
@@ -260,7 +270,7 @@ try {
         language = 'English'
         voice_id = 'not-a-customvoice-speaker'
     } | ConvertTo-Json -Compress | Set-Content -LiteralPath $profileRejectionPath -Encoding utf8
-    $profileRejectionObserved = $false
+        $profileRejectionObserved = $false
     try {
         Invoke-WorkerBenchmark -Model $customVoiceModel -RequestShapesPath $profileRejectionPath `
             -Label 'CustomVoice Base-profile rejection' | Out-Null
@@ -273,13 +283,15 @@ try {
             throw
         }
     }
-    if (-not $profileRejectionObserved) {
-        throw 'CustomVoice incorrectly accepted a Base voice-profile request.'
+        if (-not $profileRejectionObserved) {
+            throw 'CustomVoice incorrectly accepted a Base voice-profile request.'
+        }
     }
 
     $physicalPlayback = @()
     if (-not $SkipPhysicalPlayback) {
-        foreach ($case in @(
+        if ($customVoiceModel) {
+            foreach ($case in @(
             @{ label = 'ryan-english'; speaker = 'ryan'; language = 'English'; text = 'Release acceptance listening sample for Ryan.' },
             @{ label = 'serena-russian'; speaker = 'serena'; language = 'Russian'; text = 'Проверка слухового образца релизной сборки для Серены.' }
         )) {
@@ -306,6 +318,38 @@ try {
                 throw "C++ CLI playback acceptance observed an outlier for $($case.label)."
             }
             $physicalPlayback += [ordered]@{ label = $case.label; summary_json = $summaryPath }
+            }
+        }
+        elseif ($baseProfileRequested) {
+            foreach ($case in @(
+                @{ label = 'base-profile-english'; language = 'English'; text = 'Release acceptance listening sample for the registered Base voice.' },
+                @{ label = 'base-profile-russian'; language = 'Russian'; text = 'Base voice profile listening sample.' }
+            )) {
+                $caseRoot = Join-Path $runDirectory ("playback-" + $case.label)
+                & (Join-Path $PSScriptRoot 'run-cmp50hx-playback-etw-soak.ps1') `
+                    -Attempts 1 -PlayerPath $player -PythonPath $python -ModelPath $baseModel `
+                    -RuntimeCachePath $runtimeCache -FasterSourcePath $fasterSource `
+                    -OutputRoot $caseRoot -Text $case.text -Language $case.language `
+                    -VoiceRegistryPath $voiceRegistry -VoiceId $VoiceId `
+                    -WorkerWarmupVoiceId $VoiceId -PlaybackPrebufferChunks 2 `
+                    -WorkerSynthesisWarmup -WorkerWarmupUnboundedPasses 1 `
+                    -WorkerWarmupMaxOutputChunks 2 -EmitEveryFrames 16 `
+                    -CodecRightPaddedDecode -CodecRightPaddedCudaGraph `
+                    -CodecRightPaddedWindowFrames 48 -SkipEtwFollowup
+                if ($LASTEXITCODE -ne 0) {
+                    throw "C++ CLI Base-profile playback acceptance failed for $($case.label)."
+                }
+                $summaryPath = Get-ChildItem -LiteralPath $caseRoot -Recurse -Filter summary.json |
+                    Select-Object -ExpandProperty FullName -First 1
+                if (-not $summaryPath) {
+                    throw "C++ CLI Base-profile playback acceptance did not produce summary.json for $($case.label)."
+                }
+                $summary = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+                if ([int]$summary.outlier_count -ne 0) {
+                    throw "C++ CLI Base-profile playback acceptance observed an outlier for $($case.label)."
+                }
+                $physicalPlayback += [ordered]@{ label = $case.label; summary_json = $summaryPath }
+            }
         }
     }
 
@@ -338,7 +382,7 @@ try {
         generated_at_utc = [DateTime]::UtcNow.ToString('o')
         scope = 'real_model_release_acceptance'
         cli_help = 'passed'
-        customvoice_preset_speakers = 'passed'
+        customvoice_preset_speakers = if ($customVoiceModel) { 'passed' } else { 'not_run' }
         customvoice_rejects_base_voice_profiles = $profileRejectionObserved
         physical_playback = if ($SkipPhysicalPlayback) { 'skipped' } else { $physicalPlayback }
         base_voice_profile = $baseProfile
