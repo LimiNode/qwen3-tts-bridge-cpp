@@ -3,7 +3,7 @@ if(NOT DEFINED QWEN_TTS_BRIDGE_SOURCE_ROOT)
 endif()
 
 set(source_files)
-foreach(source_dir IN ITEMS src examples tests)
+foreach(source_dir IN ITEMS src examples tests worker/native)
     foreach(extension IN ITEMS cpp cxx cc hpp hxx h)
         file(GLOB_RECURSE matches
             "${QWEN_TTS_BRIDGE_SOURCE_ROOT}/${source_dir}/*.${extension}")
