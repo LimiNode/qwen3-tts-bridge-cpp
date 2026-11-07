@@ -69,6 +69,53 @@ function Write-Json {
     $Value | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $Path -Encoding utf8
 }
 
+function Convert-RawPcmToWave {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PcmPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$WavePath,
+
+        [Parameter(Mandatory = $true)]
+        [int]$SampleRate,
+
+        [Parameter(Mandatory = $true)]
+        [int]$Channels
+    )
+
+    $pcm = [IO.File]::ReadAllBytes($PcmPath)
+    $bitsPerSample = 16
+    $blockAlign = [uint16]($Channels * ($bitsPerSample / 8))
+    $byteRate = [uint32]($SampleRate * $blockAlign)
+    $stream = [IO.File]::Open(
+        $WavePath,
+        [IO.FileMode]::Create,
+        [IO.FileAccess]::Write,
+        [IO.FileShare]::None)
+    $writer = [IO.BinaryWriter]::new($stream)
+    try {
+        $writer.Write([Text.Encoding]::ASCII.GetBytes('RIFF'))
+        $writer.Write([uint32](36 + $pcm.Length))
+        $writer.Write([Text.Encoding]::ASCII.GetBytes('WAVE'))
+        $writer.Write([Text.Encoding]::ASCII.GetBytes('fmt '))
+        $writer.Write([uint32]16)
+        $writer.Write([uint16]1)
+        $writer.Write([uint16]$Channels)
+        $writer.Write([uint32]$SampleRate)
+        $writer.Write($byteRate)
+        $writer.Write($blockAlign)
+        $writer.Write([uint16]$bitsPerSample)
+        $writer.Write([Text.Encoding]::ASCII.GetBytes('data'))
+        $writer.Write([uint32]$pcm.Length)
+        $writer.Write($pcm)
+    }
+    finally {
+        $writer.Dispose()
+        $stream.Dispose()
+    }
+}
+
 function Invoke-WorkerBenchmark {
     param(
         [Parameter(Mandatory = $true)]
@@ -300,7 +347,8 @@ try {
             @{ label = 'serena-russian'; speaker = 'serena'; language = 'Russian'; text = 'Проверка слухового образца релизной сборки для Серены.' }
         )) {
             $caseRoot = Join-Path $runDirectory ("playback-" + $case.label)
-            $capturePath = Join-Path $caseRoot 'voice.wav'
+            $capturePath = Join-Path $caseRoot 'voice.pcm'
+            $wavePath = Join-Path $caseRoot 'voice.wav'
             New-Item -ItemType Directory -Path $caseRoot -Force | Out-Null
             & (Join-Path $PSScriptRoot 'run-cmp50hx-playback-etw-soak.ps1') `
                 -Attempts 1 -PlayerPath $player -PythonPath $python -ModelPath $customVoiceModel `
@@ -325,10 +373,13 @@ try {
             if ([int]$summary.outlier_count -ne 0) {
                 throw "C++ CLI playback acceptance observed an outlier for $($case.label)."
             }
+            Convert-RawPcmToWave -PcmPath $capturePath -WavePath $wavePath `
+                -SampleRate 24000 -Channels 1
             $physicalPlayback += [ordered]@{
                 label = $case.label
                 summary_json = $summaryPath
                 pcm_capture_file = $capturePath
+                wav_file = $wavePath
             }
             }
         }
@@ -338,7 +389,8 @@ try {
                 @{ label = 'base-profile-russian'; language = 'Russian'; text = 'Base voice profile listening sample.' }
             )) {
                 $caseRoot = Join-Path $runDirectory ("playback-" + $case.label)
-                $capturePath = Join-Path $caseRoot 'voice.wav'
+                $capturePath = Join-Path $caseRoot 'voice.pcm'
+                $wavePath = Join-Path $caseRoot 'voice.wav'
                 New-Item -ItemType Directory -Path $caseRoot -Force | Out-Null
                 & (Join-Path $PSScriptRoot 'run-cmp50hx-playback-etw-soak.ps1') `
                     -Attempts 1 -PlayerPath $player -PythonPath $python -ModelPath $baseModel `
@@ -364,10 +416,13 @@ try {
                 if ([int]$summary.outlier_count -ne 0) {
                     throw "C++ CLI Base-profile playback acceptance observed an outlier for $($case.label)."
                 }
+                Convert-RawPcmToWave -PcmPath $capturePath -WavePath $wavePath `
+                    -SampleRate 24000 -Channels 1
                 $physicalPlayback += [ordered]@{
                     label = $case.label
                     summary_json = $summaryPath
                     pcm_capture_file = $capturePath
+                    wav_file = $wavePath
                 }
             }
         }
