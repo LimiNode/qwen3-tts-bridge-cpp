@@ -307,6 +307,7 @@ try {
                 -Language $case.language -PlaybackPrebufferChunks 2 `
                 -WorkerSynthesisWarmup -WorkerWarmupUnboundedPasses 1 `
                 -WorkerWarmupMaxOutputChunks 2 -EmitEveryFrames 16 `
+                -CollectGenerationTrace `
                 -CodecRightPaddedDecode -CodecRightPaddedCudaGraph `
                 -CodecRightPaddedWindowFrames 48 -SkipEtwFollowup
             if ($LASTEXITCODE -ne 0) {
@@ -338,6 +339,7 @@ try {
                     -WorkerWarmupVoiceId $VoiceId -PlaybackPrebufferChunks 2 `
                     -WorkerSynthesisWarmup -WorkerWarmupUnboundedPasses 1 `
                     -WorkerWarmupMaxOutputChunks 2 -EmitEveryFrames 16 `
+                    -CollectGenerationTrace `
                     -CodecRightPaddedDecode -CodecRightPaddedCudaGraph `
                     -CodecRightPaddedWindowFrames 48 -SkipEtwFollowup
                 if ($LASTEXITCODE -ne 0) {
