@@ -1,4 +1,4 @@
-#include "../examples/qwen_tts_play_completion_policy.hpp"
+#include "qwen_tts_play_completion_policy.hpp"
 
 #include <iostream>
 

@@ -579,6 +579,12 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             -B "${CMAKE_CURRENT_BINARY_DIR}/wrapper_guard_positive"
             "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}")
 
+    add_test(
+        NAME parent_relative_include_guard
+        COMMAND "${CMAKE_COMMAND}"
+            "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/no_parent_relative_includes.cmake")
+
     add_executable(example_cli_parsing_test
         tests/example_cli_parsing_test.cpp
     )
@@ -940,6 +946,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
     add_executable(qwen_tts_play_completion_policy_test
         tests/qwen_tts_play_completion_policy_test.cpp
+    )
+
+    target_include_directories(qwen_tts_play_completion_policy_test
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/examples"
     )
 
     target_link_libraries(qwen_tts_play_completion_policy_test
