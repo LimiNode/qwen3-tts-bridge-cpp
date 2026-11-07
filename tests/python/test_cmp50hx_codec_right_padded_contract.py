@@ -57,9 +57,13 @@ class Cmp50hxCodecRightPaddedContractTest(unittest.TestCase):
                 r"\+ \$largestEmitChunk\)\""
             ),
         )
-        self.assertIn("$pcmCaptureDirectory = Split-Path -Parent $pcmCapture", launcher)
+        self.assertIn("[string]$WavCaptureFile = ''", launcher)
+        self.assertIn("foreach ($capture in @(", launcher)
         self.assertIn(
-            "New-Item -ItemType Directory -Path $pcmCaptureDirectory -Force",
+            "$captureDirectory = Split-Path -Parent $capture.Path", launcher
+        )
+        self.assertIn(
+            "New-Item -ItemType Directory -Path $captureDirectory -Force",
             launcher,
         )
         self.assertIn(
