@@ -81,6 +81,8 @@ function Invoke-WorkerBenchmark {
 
         [string]$WarmupVoiceId = '',
 
+        [string]$WarmupSpeaker = 'ryan',
+
         [string]$Label
     )
 
@@ -96,10 +98,12 @@ function Invoke-WorkerBenchmark {
         '--warmup-synthesis', '--warmup-synthesis-passes', '1',
         '--warmup-unbounded-passes', '1', '--warmup-max-output-chunks', '2',
         '--warmup-text', 'Warmup.', '--warmup-language', 'auto',
-        '--warmup-speaker', 'ryan',
         '--timeout-seconds', '900', '--requests', "$PersistentRequests",
         '--request-shapes-jsonl', $RequestShapesPath
     )
+    if ($WarmupSpeaker) {
+        $arguments += @('--warmup-speaker', $WarmupSpeaker)
+    }
     if ($Registry) {
         $arguments += @('--voice-registry-path', $Registry)
     }
@@ -361,10 +365,12 @@ try {
             [ordered]@{ label = 'base-profile-second'; text = 'The same persistent worker reuses the registered Base voice profile.'; language = 'English'; voice_id = $VoiceId }
         ) | ForEach-Object { $_ | ConvertTo-Json -Compress } | Set-Content -LiteralPath $baseShapesPath -Encoding utf8
         $firstProcess = Invoke-WorkerBenchmark -Model $baseModel -RequestShapesPath $baseShapesPath `
-            -Registry $voiceRegistry -WarmupVoiceId $VoiceId -Label 'Base profile first process'
+            -Registry $voiceRegistry -WarmupVoiceId $VoiceId -WarmupSpeaker '' `
+            -Label 'Base profile first process'
         Assert-CompletedAudioRequests -Report $firstProcess -Label 'Base profile first process'
         $restartedProcess = Invoke-WorkerBenchmark -Model $baseModel -RequestShapesPath $baseShapesPath `
-            -Registry $voiceRegistry -WarmupVoiceId $VoiceId -Label 'Base profile restarted process'
+            -Registry $voiceRegistry -WarmupVoiceId $VoiceId -WarmupSpeaker '' `
+            -Label 'Base profile restarted process'
         Assert-CompletedAudioRequests -Report $restartedProcess -Label 'Base profile restarted process'
         $baseProfile = [ordered]@{
             status = 'passed'
