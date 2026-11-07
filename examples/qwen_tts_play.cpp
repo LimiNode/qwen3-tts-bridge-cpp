@@ -5,6 +5,7 @@
 
 #include "common/cli_parsing.hpp"
 #include "common/pcm_capture.hpp"
+#include "common/wav_capture.hpp"
 #include "qwen_tts_play_completion_policy.hpp"
 
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
@@ -76,6 +77,7 @@ using qwen_tts_examples::cli::parse_int;
 using qwen_tts_examples::cli::parse_u32;
 using qwen_tts_examples::cli::parse_u64;
 using qwen_tts_examples::PcmCapture;
+using qwen_tts_examples::WavCapture;
 using qwen_tts_bridge::playback::MockPlaybackFailureStage;
 using qwen_tts_bridge::playback::PlaybackInterruptionDiagnostic;
 using qwen_tts_bridge::playback::PlaybackMetrics;
@@ -128,6 +130,7 @@ struct ProgramOptions {
     std::string playback_animation_receipts_file;
     std::uint32_t playback_animation_fps = 60;
     std::string pcm_capture_file;
+    std::string wav_capture_file;
     std::size_t playback_prebuffer_chunks = 1;
     bool etw_playback_markers = false;
     bool auto_profile = false;
@@ -348,6 +351,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --playback-animation-receipts-file <path> Write playback-locked animation selections as JSONL.\n"
         << "  --playback-animation-fps <n> Presentation tick rate for animation receipts, default: 60.\n"
         << "  --pcm-capture-file <path>      Write opt-in one-shot raw s16le PCM plus JSON metadata.\n"
+        << "  --wav-capture-file <path>      Write opt-in one-shot post-processed PCM as RIFF/WAVE.\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
         << "  --tail                         Enable terminal fade and padding (default).\n"
         << "  --no-tail                      Disable terminal fade and padding.\n"
@@ -526,6 +530,10 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
                  arg.rfind("--pcm-capture-file=", 0) == 0) {
             options.pcm_capture_file = require_value(index, argc, argv, "--pcm-capture-file");
         }
+        else if (arg == "--wav-capture-file" ||
+                 arg.rfind("--wav-capture-file=", 0) == 0) {
+            options.wav_capture_file = require_value(index, argc, argv, "--wav-capture-file");
+        }
         else if (arg == "--playback-prebuffer-chunks" ||
                  arg.rfind("--playback-prebuffer-chunks=", 0) == 0) {
             options.playback_prebuffer_chunks = parse_u32(
@@ -685,6 +693,14 @@ void validate_options(const ProgramOptions& options) {
     }
     if (!options.pcm_capture_file.empty() && options.text.empty()) {
         throw std::runtime_error("--pcm-capture-file requires one-shot --text playback");
+    }
+    if (!options.wav_capture_file.empty() && options.text.empty()) {
+        throw std::runtime_error("--wav-capture-file requires one-shot --text playback");
+    }
+    if (!options.pcm_capture_file.empty() &&
+        options.pcm_capture_file == options.wav_capture_file) {
+        throw std::runtime_error(
+            "--pcm-capture-file and --wav-capture-file must use different paths");
     }
 }
 
@@ -1140,6 +1156,7 @@ RequestId submit_request(
     OneShotState* one_shot_state = nullptr,
     OneShotCompletionState* completion_state = nullptr,
     PcmCapture* pcm_capture = nullptr,
+    WavCapture* wav_capture = nullptr,
     std::optional<std::uint64_t> playback_epoch_override = std::nullopt
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
     , qwen_tts_bridge::speech_animation::PlaybackAnimationRuntime* animation_runtime = nullptr
@@ -1196,7 +1213,7 @@ RequestId submit_request(
     TtsCallbacks callbacks;
     const bool require_natural_eos = options.require_natural_eos;
     callbacks.on_audio = [&player, &active_state, processors, playback_epoch, request_id,
-        one_shot_state, pcm_capture
+        one_shot_state, pcm_capture, wav_capture
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
         , animation_runtime, animation_generation
 #endif
@@ -1209,6 +1226,9 @@ RequestId submit_request(
                 pcm_capture->append(chunk);
             }
             for (const PcmChunk& processed : processors->process(chunk)) {
+                if (wav_capture != nullptr) {
+                    wav_capture->append(processed);
+                }
                 player.enqueue(playback_epoch, processed);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                 if (animation_runtime != nullptr) {
@@ -1231,7 +1251,7 @@ RequestId submit_request(
         }
     };
     callbacks.on_completed = [&player, &active_state, processors, playback_epoch,
-        one_shot_state, completion_state, require_natural_eos, request_id
+        one_shot_state, completion_state, require_natural_eos, request_id, wav_capture
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
         , animation_runtime, animation_generation
 #endif
@@ -1261,6 +1281,9 @@ RequestId submit_request(
         try {
             for (const PcmChunk& processed :
                  processors->finish(AudioTerminalReason::Completed)) {
+                if (wav_capture != nullptr) {
+                    wav_capture->append(processed);
+                }
                 player.enqueue(playback_epoch, processed);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                 if (animation_runtime != nullptr) {
@@ -1769,6 +1792,10 @@ int wmain(int argc, wchar_t** argv) {
         if (!options.pcm_capture_file.empty()) {
             pcm_capture = std::make_unique<PcmCapture>(options.pcm_capture_file);
         }
+        std::unique_ptr<WavCapture> wav_capture;
+        if (!options.wav_capture_file.empty()) {
+            wav_capture = std::make_unique<WavCapture>(options.wav_capture_file);
+        }
         std::optional<MockPlaybackFailureStage> mock_failure_stage;
         if (options.mock_playback_fail_stage.has_value()) {
             mock_failure_stage = options.mock_playback_fail_stage.value() == "prepare"
@@ -1892,6 +1919,7 @@ int wmain(int argc, wchar_t** argv) {
                 &state,
                 &completion_state,
                 pcm_capture.get(),
+                wav_capture.get(),
                 std::nullopt
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                 , animation_runtime.get(), animation_context.get()
@@ -1923,6 +1951,9 @@ int wmain(int argc, wchar_t** argv) {
             player.wait_until_idle(options.request_timeout);
             if (pcm_capture != nullptr) {
                 pcm_capture->finalize();
+            }
+            if (wav_capture != nullptr) {
+                wav_capture->finalize();
             }
             if (playback_metrics != nullptr) {
                 playback_metrics->mark_playback_completed();
@@ -2003,6 +2034,7 @@ int wmain(int argc, wchar_t** argv) {
                 active_state,
                 options,
                 std::move(prepared_request),
+                nullptr,
                 nullptr,
                 nullptr,
                 nullptr,

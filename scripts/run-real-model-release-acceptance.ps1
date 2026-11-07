@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [string]$PlayerPath,
@@ -67,53 +67,6 @@ function Write-Json {
     )
 
     $Value | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $Path -Encoding utf8
-}
-
-function Convert-RawPcmToWave {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$PcmPath,
-
-        [Parameter(Mandatory = $true)]
-        [string]$WavePath,
-
-        [Parameter(Mandatory = $true)]
-        [int]$SampleRate,
-
-        [Parameter(Mandatory = $true)]
-        [int]$Channels
-    )
-
-    $pcm = [IO.File]::ReadAllBytes($PcmPath)
-    $bitsPerSample = 16
-    $blockAlign = [uint16]($Channels * ($bitsPerSample / 8))
-    $byteRate = [uint32]($SampleRate * $blockAlign)
-    $stream = [IO.File]::Open(
-        $WavePath,
-        [IO.FileMode]::Create,
-        [IO.FileAccess]::Write,
-        [IO.FileShare]::None)
-    $writer = [IO.BinaryWriter]::new($stream)
-    try {
-        $writer.Write([Text.Encoding]::ASCII.GetBytes('RIFF'))
-        $writer.Write([uint32](36 + $pcm.Length))
-        $writer.Write([Text.Encoding]::ASCII.GetBytes('WAVE'))
-        $writer.Write([Text.Encoding]::ASCII.GetBytes('fmt '))
-        $writer.Write([uint32]16)
-        $writer.Write([uint16]1)
-        $writer.Write([uint16]$Channels)
-        $writer.Write([uint32]$SampleRate)
-        $writer.Write($byteRate)
-        $writer.Write($blockAlign)
-        $writer.Write([uint16]$bitsPerSample)
-        $writer.Write([Text.Encoding]::ASCII.GetBytes('data'))
-        $writer.Write([uint32]$pcm.Length)
-        $writer.Write($pcm)
-    }
-    finally {
-        $writer.Dispose()
-        $stream.Dispose()
-    }
 }
 
 function Invoke-WorkerBenchmark {
@@ -204,6 +157,24 @@ function Assert-CompletedAudioRequests {
     }
 }
 
+function Verify-WavCapture {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $verification = @(& $python (Join-Path $repoRoot 'tests/python/verify_wav.py') `
+        $Path --sample-rate 24000 --channels 1 --bits-per-sample 16 --min-data-bytes 1 2>&1)
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        throw "$Label WAV verification failed with exit code $exitCode.`n$($verification -join [Environment]::NewLine)"
+    }
+    return ($verification -join [Environment]::NewLine)
+}
+
 $player = Resolve-ExistingPath $PlayerPath 'Playback client'
 $python = Resolve-ExistingPath $PythonPath 'Python runtime'
 $customVoiceModel = if ($CustomVoiceModelPath) {
@@ -285,7 +256,8 @@ try {
         throw "qwen_tts_play --help failed with exit code $LASTEXITCODE."
     }
     $helpText = $help -join [Environment]::NewLine
-    foreach ($requiredOption in '--worker', '--text', '--speaker', '--voice-id', '/voices', '/cancel') {
+    foreach ($requiredOption in '--worker', '--text', '--speaker', '--voice-id',
+            '--wav-capture-file', '/voices', '/cancel') {
         if (-not $helpText.Contains($requiredOption)) {
             throw "qwen_tts_play --help does not document $requiredOption."
         }
@@ -344,18 +316,17 @@ try {
         if ($customVoiceModel) {
             foreach ($case in @(
             @{ label = 'ryan-english'; speaker = 'ryan'; language = 'English'; text = 'Release acceptance listening sample for Ryan.' },
-            @{ label = 'serena-russian'; speaker = 'serena'; language = 'Russian'; text = 'Проверка слухового образца релизной сборки для Серены.' }
+            @{ label = 'serena-russian'; speaker = 'serena'; language = 'Russian'; text = 'Проверка русского CustomVoice-профиля: естественная дикция и чистое окончание.' }
         )) {
             $caseRoot = Join-Path $runDirectory ("playback-" + $case.label)
-            $capturePath = Join-Path $caseRoot 'voice.pcm'
-            $wavePath = Join-Path $caseRoot 'voice.wav'
+            $capturePath = Join-Path $caseRoot 'voice.wav'
             New-Item -ItemType Directory -Path $caseRoot -Force | Out-Null
             & (Join-Path $PSScriptRoot 'run-cmp50hx-playback-etw-soak.ps1') `
                 -Attempts 1 -PlayerPath $player -PythonPath $python -ModelPath $customVoiceModel `
                 -RuntimeCachePath $runtimeCache -FasterSourcePath $fasterSource `
                 -OutputRoot $caseRoot -Text $case.text -Speaker $case.speaker `
                 -Language $case.language -PlaybackPrebufferChunks 2 `
-                -PcmCaptureFile $capturePath `
+                -WavCaptureFile $capturePath `
                 -WorkerSynthesisWarmup -WorkerWarmupUnboundedPasses 1 `
                 -WorkerWarmupMaxOutputChunks 2 -EmitEveryFrames 16 `
                 -CollectGenerationTrace `
@@ -373,31 +344,30 @@ try {
             if ([int]$summary.outlier_count -ne 0) {
                 throw "C++ CLI playback acceptance observed an outlier for $($case.label)."
             }
-            Convert-RawPcmToWave -PcmPath $capturePath -WavePath $wavePath `
-                -SampleRate 24000 -Channels 1
+            $wavVerification = Verify-WavCapture -Path $capturePath -Label $case.label
             $physicalPlayback += [ordered]@{
                 label = $case.label
                 summary_json = $summaryPath
-                pcm_capture_file = $capturePath
-                wav_file = $wavePath
+                wav_capture_file = $capturePath
+                capture_kind = 'post_processed_pcm16le_wave'
+                wav_verification = $wavVerification
             }
             }
         }
         elseif ($baseProfileRequested) {
             foreach ($case in @(
                 @{ label = 'base-profile-english'; language = 'English'; text = 'Release acceptance listening sample for the registered Base voice.' },
-                @{ label = 'base-profile-russian'; language = 'Russian'; text = 'Base voice profile listening sample.' }
+                @{ label = 'base-profile-russian'; language = 'Russian'; text = 'Проверка русского Base-профиля: хороший естественный тембр и чёткая дикция.' }
             )) {
                 $caseRoot = Join-Path $runDirectory ("playback-" + $case.label)
-                $capturePath = Join-Path $caseRoot 'voice.pcm'
-                $wavePath = Join-Path $caseRoot 'voice.wav'
+                $capturePath = Join-Path $caseRoot 'voice.wav'
                 New-Item -ItemType Directory -Path $caseRoot -Force | Out-Null
                 & (Join-Path $PSScriptRoot 'run-cmp50hx-playback-etw-soak.ps1') `
                     -Attempts 1 -PlayerPath $player -PythonPath $python -ModelPath $baseModel `
                     -RuntimeCachePath $runtimeCache -FasterSourcePath $fasterSource `
                     -OutputRoot $caseRoot -Text $case.text -Language $case.language `
                     -VoiceRegistryPath $voiceRegistry -VoiceId $VoiceId `
-                    -PcmCaptureFile $capturePath `
+                    -WavCaptureFile $capturePath `
                     -WorkerWarmupVoiceId $VoiceId -PlaybackPrebufferChunks 2 `
                     -WorkerSynthesisWarmup -WorkerWarmupUnboundedPasses 1 `
                     -WorkerWarmupMaxOutputChunks 2 -EmitEveryFrames 16 `
@@ -416,13 +386,13 @@ try {
                 if ([int]$summary.outlier_count -ne 0) {
                     throw "C++ CLI Base-profile playback acceptance observed an outlier for $($case.label)."
                 }
-                Convert-RawPcmToWave -PcmPath $capturePath -WavePath $wavePath `
-                    -SampleRate 24000 -Channels 1
+                $wavVerification = Verify-WavCapture -Path $capturePath -Label $case.label
                 $physicalPlayback += [ordered]@{
                     label = $case.label
                     summary_json = $summaryPath
-                    pcm_capture_file = $capturePath
-                    wav_file = $wavePath
+                    wav_capture_file = $capturePath
+                    capture_kind = 'post_processed_pcm16le_wave'
+                    wav_verification = $wavVerification
                 }
             }
         }

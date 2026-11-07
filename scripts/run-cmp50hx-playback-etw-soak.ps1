@@ -35,6 +35,8 @@ param(
 
     [string]$PcmCaptureFile = '',
 
+    [string]$WavCaptureFile = '',
+
     [string]$WprProfilePath = '',
 
     [ValidateSet('CMP50HX-DxgKrnl-Scheduler', 'CMP50HX-DxgKrnl-Execution')]
@@ -148,6 +150,15 @@ if ($PcmCaptureFile -and $Attempts -ne 1) {
 }
 if ($PcmCaptureFile -and -not $SkipEtwFollowup) {
     throw '-PcmCaptureFile requires -SkipEtwFollowup; capture runs are not ETW or performance evidence.'
+}
+if ($WavCaptureFile -and $Attempts -ne 1) {
+    throw '-WavCaptureFile requires -Attempts 1 so one capture maps to one request.'
+}
+if ($WavCaptureFile -and -not $SkipEtwFollowup) {
+    throw '-WavCaptureFile requires -SkipEtwFollowup; capture runs are not ETW or performance evidence.'
+}
+if ($PcmCaptureFile -and $WavCaptureFile) {
+    throw '-PcmCaptureFile and -WavCaptureFile cannot be used together.'
 }
 if ($CodecRightPaddedCudaGraph -and -not $CodecRightPaddedDecode) {
     throw '-CodecRightPaddedCudaGraph requires -CodecRightPaddedDecode.'
@@ -283,13 +294,29 @@ $pcmCapture = if ($PcmCaptureFile) {
 else {
     $null
 }
-if ($null -ne $pcmCapture) {
-    $pcmCaptureDirectory = Split-Path -Parent $pcmCapture
-    if ([string]::IsNullOrWhiteSpace($pcmCaptureDirectory)) {
-        throw "PCM capture path has no parent directory: $pcmCapture"
+$wavCapture = if ($WavCaptureFile) {
+    if ([IO.Path]::IsPathRooted($WavCaptureFile)) {
+        $WavCaptureFile
     }
-    New-Item -ItemType Directory -Path $pcmCaptureDirectory -Force -ErrorAction Stop |
-        Out-Null
+    else {
+        Join-Path $repo $WavCaptureFile
+    }
+}
+else {
+    $null
+}
+foreach ($capture in @(
+    @{ Path = $pcmCapture; Label = 'PCM' },
+    @{ Path = $wavCapture; Label = 'WAV' }
+)) {
+    if ($null -ne $capture.Path) {
+        $captureDirectory = Split-Path -Parent $capture.Path
+        if ([string]::IsNullOrWhiteSpace($captureDirectory)) {
+            throw "$($capture.Label) capture path has no parent directory: $($capture.Path)"
+        }
+        New-Item -ItemType Directory -Path $captureDirectory -Force -ErrorAction Stop |
+            Out-Null
+    }
 }
 
 $environmentNames = @(
@@ -558,6 +585,9 @@ function Invoke-PlaybackRun {
     if ($null -ne $pcmCapture) {
         $arguments += @('--pcm-capture-file', $pcmCapture)
     }
+    if ($null -ne $wavCapture) {
+        $arguments += @('--wav-capture-file', $wavCapture)
+    }
     if ($MatmulPrecision) {
         $arguments += @(
             '--worker-arg', '--matmul-precision', '--worker-arg', $MatmulPrecision
@@ -696,6 +726,31 @@ function Invoke-PlaybackRun {
             throw 'PCM capture metadata failed completion or byte-count validation.'
         }
     }
+    $wavCaptureValid = $null
+    $wavCaptureSizeBytes = $null
+    if ($null -ne $wavCapture) {
+        if (-not (Test-Path -LiteralPath $wavCapture -PathType Leaf)) {
+            throw 'Playback run completed without the requested WAV capture.'
+        }
+        $wavCaptureSizeBytes = [int64](Get-Item -LiteralPath $wavCapture).Length
+        if ($wavCaptureSizeBytes -lt 45) {
+            throw 'WAV capture is too small to contain a RIFF/WAVE header and PCM data.'
+        }
+        $wavBytes = [IO.File]::ReadAllBytes($wavCapture)
+        $riff = [Text.Encoding]::ASCII.GetString($wavBytes, 0, 4)
+        $wave = [Text.Encoding]::ASCII.GetString($wavBytes, 8, 4)
+        $dataTag = [Text.Encoding]::ASCII.GetString($wavBytes, 36, 4)
+        if ($riff -ne 'RIFF' -or $wave -ne 'WAVE' -or $dataTag -ne 'data') {
+            throw 'WAV capture does not contain the expected RIFF/WAVE PCM layout.'
+        }
+        $wavRiffSize = [BitConverter]::ToUInt32($wavBytes, 4)
+        $wavDataSize = [BitConverter]::ToUInt32($wavBytes, 40)
+        if ($wavRiffSize -ne $wavCaptureSizeBytes - 8 -or
+            $wavDataSize -ne $wavCaptureSizeBytes - 44) {
+            throw 'WAV capture header sizes do not match the file size.'
+        }
+        $wavCaptureValid = $true
+    }
     $expectedPlaybackMarkerCount = $null
     if ($CaptureEtw -and -not $result.etw_playback_markers_enabled) {
         throw 'ETW follow-up completed without requested playback marker instrumentation.'
@@ -772,6 +827,10 @@ function Invoke-PlaybackRun {
         pcm_capture_valid = if ($null -ne $pcmCapture) { $true } else { $null }
         pcm_capture_byte_count = if ($null -ne $pcmCapture) { [int64]$pcmCaptureMetadata.byte_count } else { $null }
         pcm_capture_chunk_count = if ($null -ne $pcmCapture) { [int]$pcmCaptureMetadata.audio_chunk_count } else { $null }
+        wav_capture_path = $wavCapture
+        wav_capture_kind = if ($null -ne $wavCapture) { 'post_processed_pcm16le_wave' } else { $null }
+        wav_capture_valid = $wavCaptureValid
+        wav_capture_size_bytes = $wavCaptureSizeBytes
     }
 }
 
@@ -864,6 +923,7 @@ try {
             codec_right_padded_cuda_graph = [bool]$CodecRightPaddedCudaGraph
             base_reference_context_bootstrap = [bool]$BaseReferenceContextBootstrap
             pcm_capture_enabled = ($null -ne $pcmCapture)
+            wav_capture_enabled = ($null -ne $wavCapture)
             tts_cpu_priority = $TtsCpuPriority
             managed_process_launcher = [bool]$UseManagedProcessLauncher
             tts_client_priority_application = if ($UseManagedProcessLauncher -or $TtsCpuPriority -ne 'Normal') {

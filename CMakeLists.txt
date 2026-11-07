@@ -493,6 +493,7 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         add_executable(qwen_tts_play
             examples/qwen_tts_play.cpp
             examples/common/pcm_capture.cpp
+            examples/common/wav_capture.cpp
         )
     endif()
 
