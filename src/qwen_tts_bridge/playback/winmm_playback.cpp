@@ -863,33 +863,55 @@ void WaveOutPlayer::close_noexcept() noexcept {
         reset_succeeded = false;
     }
 
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (sink_mode_ == PlaybackSinkMode::Mock &&
-        should_inject_mock_failure(MockPlaybackFailureStage::Close)) {
-        unhealthy_ = true;
-        unhealthy_reason_ = "injected mock waveOutClose failure";
-    }
-    if (!reset_succeeded) {
-        unhealthy_ = true;
-        if (unhealthy_reason_.empty()) {
-            unhealthy_reason_ = "default audio playback teardown failed";
-        }
-    }
-    if (unhealthy_) {
-        abandon_driver_owned_resources_locked();
-        return;
-    }
-    if (m_handle != nullptr) {
-        const MMRESULT result = waveOutClose(m_handle);
-        if (result != MMSYSERR_NOERROR) {
+    std::unique_lock<std::mutex> lock;
+    try {
+        lock = std::unique_lock<std::mutex>(mutex_);
+        if (sink_mode_ == PlaybackSinkMode::Mock &&
+            should_inject_mock_failure(MockPlaybackFailureStage::Close)) {
             unhealthy_ = true;
-            char message[MAXERRORLENGTH]{};
-            waveOutGetErrorTextA(result, message, static_cast<UINT>(sizeof(message)));
-            unhealthy_reason_ = std::string("waveOutClose failed: ") + message;
+            unhealthy_reason_ = "injected mock waveOutClose failure";
+        }
+        if (!reset_succeeded) {
+            unhealthy_ = true;
+            if (unhealthy_reason_.empty()) {
+                unhealthy_reason_ = "default audio playback teardown failed";
+            }
+        }
+        if (unhealthy_) {
             abandon_driver_owned_resources_locked();
             return;
         }
-        m_handle = nullptr;
+        if (m_handle != nullptr) {
+            const MMRESULT result = waveOutClose(m_handle);
+            if (result != MMSYSERR_NOERROR) {
+                unhealthy_ = true;
+                char message[MAXERRORLENGTH]{};
+                waveOutGetErrorTextA(
+                    result,
+                    message,
+                    static_cast<UINT>(sizeof(message)));
+                unhealthy_reason_ = std::string("waveOutClose failed: ") + message;
+                abandon_driver_owned_resources_locked();
+                return;
+            }
+            m_handle = nullptr;
+        }
+    }
+    catch (...) {
+        // Teardown must remain non-throwing. If diagnostic string construction
+        // or any other cleanup-side operation fails, abandon driver-owned
+        // buffers while their ownership is still unconfirmed.
+        try {
+            if (!lock.owns_lock()) {
+                lock.lock();
+            }
+            unhealthy_ = true;
+            abandon_driver_owned_resources_locked();
+        }
+        catch (...) {
+            // A mutex failure is not recoverable from a destructor. Do not
+            // allow it to escape the noexcept teardown boundary.
+        }
     }
 }
 

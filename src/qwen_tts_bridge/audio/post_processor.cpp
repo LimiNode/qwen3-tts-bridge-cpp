@@ -78,7 +78,7 @@ void dispatch_event(
     }
 }
 
-std::string exception_message(std::exception_ptr exception) noexcept {
+std::string exception_message(std::exception_ptr exception) {
     try {
         if (exception) {
             std::rethrow_exception(exception);

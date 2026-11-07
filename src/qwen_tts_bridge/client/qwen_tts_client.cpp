@@ -1059,20 +1059,25 @@ void QwenTtsClient::invoke_user_callback(
 
 void QwenTtsClient::report_callback_exception(
     std::exception_ptr exception) noexcept {
-    std::function<void(std::exception_ptr)> handler;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        handler = options_.on_callback_exception;
-    }
-
-    if (!handler) {
-        return;
-    }
-
     try {
-        handler(std::move(exception));
+        std::function<void(std::exception_ptr)> handler;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            handler = options_.on_callback_exception;
+        }
+
+        if (handler) {
+            try {
+                handler(std::move(exception));
+            }
+            catch (...) {
+            }
+        }
     }
     catch (...) {
+        // Copying a std::function may invoke a user target's throwing copy
+        // constructor. Diagnostics must never turn callback isolation into
+        // std::terminate because this function is noexcept.
     }
 }
 

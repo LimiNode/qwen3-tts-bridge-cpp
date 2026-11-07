@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -225,6 +226,27 @@ QwenTtsClientOptions make_client_options() {
     options.session.startup_timeout = std::chrono::seconds(5);
     return options;
 }
+
+struct ThrowingCopyCallback {
+    std::shared_ptr<std::atomic<bool>> throw_on_copy;
+
+    ThrowingCopyCallback(
+        std::shared_ptr<std::atomic<bool>> throw_on_copy_value)
+        : throw_on_copy(std::move(throw_on_copy_value)) {}
+
+    ThrowingCopyCallback(const ThrowingCopyCallback& other)
+        : throw_on_copy(other.throw_on_copy) {
+        if (throw_on_copy && throw_on_copy->load()) {
+            throw std::runtime_error("callback diagnostic copy failed");
+        }
+    }
+
+    ThrowingCopyCallback(ThrowingCopyCallback&&) noexcept = default;
+    ThrowingCopyCallback& operator=(const ThrowingCopyCallback&) = default;
+    ThrowingCopyCallback& operator=(ThrowingCopyCallback&&) noexcept = default;
+
+    void operator()(std::exception_ptr) const {}
+};
 
 TtsCallbacks make_callbacks(RequestProbe& probe) {
     TtsCallbacks callbacks;
@@ -563,6 +585,35 @@ void test_callback_exception_is_reported_and_swallowed() {
         CHECK(probe.errors.empty());
     }
 
+    client.stop();
+}
+
+void test_callback_exception_diagnostic_copy_failure_is_swallowed() {
+    QwenTtsClient client;
+    QwenTtsClientOptions options = make_client_options();
+    const auto throw_on_copy = std::make_shared<std::atomic<bool>>(false);
+    options.on_callback_exception = ThrowingCopyCallback{throw_on_copy};
+    throw_on_copy->store(true);
+
+    CHECK(client.start(make_worker_options(1), std::move(options)));
+
+    RequestProbe probe;
+    TtsCallbacks callbacks = make_callbacks(probe);
+    callbacks.on_audio = [](const PcmChunk&) {
+        throw std::runtime_error("audio callback failed before diagnostic copy");
+    };
+
+    CHECK(client.synthesize_async(
+        "Swallow a diagnostic callback copy failure.",
+        std::move(callbacks)) != 0);
+    CHECK(wait_for_probe(probe, [](const RequestProbe& state) {
+        return state.completed || !state.errors.empty();
+    }));
+    {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        CHECK(probe.completed);
+        CHECK(probe.errors.empty());
+    }
     client.stop();
 }
 
@@ -1171,6 +1222,7 @@ int main() {
     test_stop_from_audio_callback_allows_restart();
     test_stop_from_completed_callback_then_destruct_outside();
     test_callback_exception_is_reported_and_swallowed();
+    test_callback_exception_diagnostic_copy_failure_is_swallowed();
     test_error_callback_exception_is_reported_once();
     test_outbound_count_overflow_is_rejected();
     test_outbound_byte_overflow_is_rejected();
