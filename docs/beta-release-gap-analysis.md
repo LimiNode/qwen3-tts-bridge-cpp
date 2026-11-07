@@ -64,23 +64,20 @@ committed exact-baseline receipt; CustomVoice 1.7B, Base 0.6B and VoiceDesign
 * Acceptance: the matrix names exact model revision, runtime, voice/instruction,
   seed, device and report path for each advertised variant.
 
-### B3. tts-front revision (P1)
+### B3. tts-front revision (P1) — dependency update complete
 
-The submodule is pinned to annotated v0.2.2 (`f828893b46728544041ab577215640338756a9d4`),
-while upstream v0.2.3 points to `52383911290aabe6e2963ec434d195fdeaac0aad` and contains
-substantial Russian genitive, numeric, currency and combining-mark admission
-fixes.
+The submodule is now pinned to v0.2.5 (`d1b6a6e18e7f51f8c51fff548bb84f10e749004a`).
+The bridge-level v0.2.2-to-v0.2.5 comparison is recorded in
+`docs/reports/tts-front-v022-v025-effective-text.md`.
 
 * Owner: `external/cpp/tts-front-cpp` and the bridge adapter.
-* Smallest corrective: update the pin in a separate dependency PR, run the
-  prepared-text and adapter tests, and compare effective UTF-8 text on a fixed
-  corpus before/after the update. Do not automatically repeat every listening
-  case: listen again for changed or affected stress, number, currency and
-  agreement cases.
-* Acceptance: exact v0.2.3 tag/provenance is recorded; unchanged effective
-  text remains unchanged; changed cases have a recorded expected result and
-  targeted listening evidence; all existing frontend regressions remain green.
-  Do not mix this with worker hardening.
+* Completed corrective: update the pin, run the prepared-text and adapter
+  tests, and compare effective UTF-8 text and diagnostics on the fixed corpus.
+  The comparison found 12 unchanged cases, three intended effective-text
+  changes, one intended diagnostic-only change, and no regressions.
+* Acceptance: exact v0.2.5 tag/provenance and the comparison receipt are
+  recorded. Targeted listening for the three changed text surfaces remains a
+  separate release gate. Do not mix that gate with worker hardening.
 
 ### B4. Native promotion boundary (P1/P2)
 
@@ -148,7 +145,7 @@ threat model.
 
 | Item | Why it is deferred |
 |---|---|
-| `tts-front` v0.2.3 update if beta text normalization is frozen elsewhere | It is a focused dependency update, not a reason to redesign the bridge. Compare effective UTF-8 on a fixed corpus first, then target listening only at changed/affected cases. |
+| Targeted listening for the v0.2.5 frontend delta | The dependency pin and 16-case comparison are complete with no regressions. Listen only to the leading-zero year, contextual year-agreement, and genitive-decimal cases before making those changes part of a release claim. |
 | Shared CLI parsing helpers | Four examples duplicate parsing/JSON helpers, but no correctness drift was demonstrated. Extract only after a concrete option bug or during a small P2 cleanup. |
 | Save-WAV direct reference-audio/seed/sampling options | Registered Base `voice_id` is the release-facing clone path. Keep this an explicit B2-0 scope decision; add fields only if direct reference input is a beta requirement. |
 | Full audio effects rack (EQ, compressor, limiter, denoise, reverb, pitch, speed) | Only terminal fade/padding and the generic postprocessor chain exist. Keep the minimum DSP surface as an explicit B2-0 scope decision; do not add presets before a product requirement. |
@@ -195,9 +192,8 @@ rewritten as current failures or current passes.
 1. B2-0: decide the advertised model matrix, backend policy, required CLI
    commands and minimum DSP surface; update the release-facing changelog to
    match it.
-2. Update `tts-front-cpp` to v0.2.3 in an isolated dependency PR, compare
-   effective text on a fixed corpus, and rerun
-   adapter/Russian stress regressions.
+2. Complete the targeted listening gate for the v0.2.5 frontend delta, then
+   keep the comparison receipt as the dependency provenance.
 3. Apply the selected strict acceptance-order terminal-ID/late-cancel
    contract, then verify bounded history in Python and native workers.
 4. Define and implement bounded pending-request admission covering queued and

@@ -84,7 +84,7 @@ compatible with the native split loader without the documented conversion.
 
 ### Text preparation and playback/animation plumbing
 
-`tts-front-cpp` v0.2.2 is integrated as a model-neutral preparation boundary:
+`tts-front-cpp` v0.2.5 is integrated as a model-neutral preparation boundary:
 
 ```text
 raw text -> TextFrontend -> PreparedText -> QwenTtsClient
@@ -95,7 +95,12 @@ decisions, warnings, and uncertainty. The Qwen adapter renders U+0301 only for
 an explicitly compatible stress capability; the bridge does not guess from a
 profile name.
 The bridge pins the frontend at commit
-`f828893b46728544041ab577215640338756a9d4` (tag `v0.2.2`).
+`d1b6a6e18e7f51f8c51fff548bb84f10e749004a` (tag `v0.2.5`). The bridge-level
+comparison against v0.2.2 is recorded in
+[`tts-front-v022-v025-effective-text.md`](reports/tts-front-v022-v025-effective-text.md);
+three intended effective-text changes and one diagnostic-only change were
+found, with no regression in the 16-case corpus. Targeted listening for the
+three changed text surfaces remains outside this dependency-only checkout.
 
 The bridge also has a verified optional speech-animation adapter. It forwards
 playback PCM first, maps the canonical sample clock to animation-neutral timing,
@@ -114,7 +119,7 @@ See [`tts-front-integration.md`](tts-front-integration.md),
 ```text
 Application
     |
-    +--> optional tts-front-cpp v0.2.2
+    +--> optional tts-front-cpp v0.2.5
     |        |
     |        v
     |     PreparedText / pronunciation evidence
@@ -161,7 +166,7 @@ The dependency direction is deliberate:
 | Persistent Python worker | Accepted production/packaging route | Continue release validation on the selected model and hardware |
 | Native worker and `qwen.dll` | Working, opt-in experimental | Close promotion gates before changing the default |
 | RU-stress + Kraftwerk profile | Hardware/listening validated, opt-in experimental | Expand long-run, cancellation, and packaging evidence |
-| `tts-front-cpp` v0.2.2 | Integrated preparation contract | Keep frontend model-neutral |
+| `tts-front-cpp` v0.2.5 | Integrated preparation contract; 16-case v0.2.2 comparison has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |
 | Avatar presentation | Not yet complete | Add a separate VRM/Unity/Godot adapter after playback-locked cues are stable |
 

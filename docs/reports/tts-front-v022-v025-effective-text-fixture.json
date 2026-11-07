@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "baseline": {
+    "version": "0.2.2",
+    "commit": "f828893b46728544041ab577215640338756a9d4"
+  },
+  "candidate": {
+    "version": "0.2.5",
+    "commit": "d1b6a6e18e7f51f8c51fff548bb84f10e749004a"
+  },
+  "warning_order": "canonicalized by code, offset, length",
+  "changed_cases": [
+    {
+      "id": "ru_leading_zero_year",
+      "baseline": {
+        "normalized_text": "В двадцать шесть году",
+        "pronunciation_text": "В двадцать шесть году",
+        "effective_text": "В двадцать шесть году",
+        "uncertain": false,
+        "warnings": []
+      },
+      "candidate": {
+        "normalized_text": "В 0026 году",
+        "pronunciation_text": "В 0026 году",
+        "effective_text": "В 0026 году",
+        "uncertain": true,
+        "warnings": [
+          {"code": "unresolved_number", "offset": 3, "length": 4}
+        ]
+      },
+      "classification": "intended fail-closed behavior"
+    },
+    {
+      "id": "ru_numbers",
+      "baseline": {
+        "normalized_text": "В две тысячи двадцать шесть году два книги и пять домов.",
+        "pronunciation_text": "В две тысячи двадцать шесть году два книги и пять домов.",
+        "effective_text": "В две тысячи двадцать шесть году два книги и пять домов.",
+        "uncertain": false,
+        "warnings": []
+      },
+      "candidate": {
+        "normalized_text": "В две тысячи двадцать шестом году два книги и пять домов.",
+        "pronunciation_text": "В две тысячи двадцать шестом году два книги и пять домов.",
+        "effective_text": "В две тысячи двадцать шестом году два книги и пять домов.",
+        "uncertain": false,
+        "warnings": []
+      },
+      "classification": "intended Russian contextual year agreement"
+    },
+    {
+      "id": "ru_genitive_decimal",
+      "baseline": {
+        "normalized_text": "После одна целая пять десятых попыток и две целых двадцать пять сотых часа.",
+        "pronunciation_text": "После одна целая пять десятых попыток и две целых двадцать пять сотых часа.",
+        "effective_text": "После одна целая пять десятых попыток и две целых двадцать пять сотых часа.",
+        "uncertain": false,
+        "warnings": []
+      },
+      "candidate": {
+        "normalized_text": "После 1,5 попыток и две целых двадцать пять сотых часа.",
+        "pronunciation_text": "После 1,5 попыток и две целых двадцать пять сотых часа.",
+        "effective_text": "После 1,5 попыток и две целых двадцать пять сотых часа.",
+        "uncertain": true,
+        "warnings": [
+          {"code": "unresolved_number", "offset": 11, "length": 3}
+        ]
+      },
+      "classification": "intended fail-closed behavior"
+    },
+    {
+      "id": "ru_currency",
+      "baseline": {
+        "normalized_text": "Цена: 1 234,50 ₽ и пятьдесят евро.",
+        "pronunciation_text": "Цена: 1 234,50 ₽ и пятьдесят евро.",
+        "effective_text": "Цена: 1 234,50 ₽ и пятьдесят евро.",
+        "uncertain": true,
+        "warnings": [
+          {"code": "unresolved_number", "offset": 10, "length": 8}
+        ]
+      },
+      "candidate": {
+        "normalized_text": "Цена: 1 234,50 ₽ и пятьдесят евро.",
+        "pronunciation_text": "Цена: 1 234,50 ₽ и пятьдесят евро.",
+        "effective_text": "Цена: 1 234,50 ₽ и пятьдесят евро.",
+        "uncertain": true,
+        "warnings": [
+          {"code": "unresolved_number", "offset": 10, "length": 12}
+        ]
+      },
+      "classification": "intended diagnostic-boundary correction"
+    }
+  ]
+}
