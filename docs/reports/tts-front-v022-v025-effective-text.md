@@ -8,6 +8,7 @@ the exact UTF-8 text and diagnostics produced by `PreparedText`.
 | Item | Revision or value |
 | --- | --- |
 | Bridge revision | `cf66be08` (`docs(frontend): record v0.2.5 comparison`) |
+| Corrective oracle commit | `b31228d5712c6a6e39e445de84b6fd3e014dd241` |
 | Baseline frontend | `f828893b46728544041ab577215640338756a9d4` (v0.2.2) |
 | Candidate frontend | `d1b6a6e18e7f51f8c51fff548bb84f10e749004a` (v0.2.5) |
 | Compiler | MinGW GCC 15.2.0, C++17 |
