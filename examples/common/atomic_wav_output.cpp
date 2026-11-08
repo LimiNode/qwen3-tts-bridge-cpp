@@ -53,12 +53,20 @@ AtomicWavOutput::AtomicWavOutput(
     }
     try {
         reserve_temporary_path(temporary_);
+        temporary_owned_ = true;
         writer_ = std::make_unique<qwen_tts_bridge::audio::WavWriter>(
-            temporary_.u8string(), sample_rate, channels, bits_per_sample);
+            temporary_.u8string(),
+            sample_rate,
+            channels,
+            bits_per_sample,
+            qwen_tts_bridge::audio::WavOpenMode::open_existing);
     }
     catch (...) {
-        std::error_code ignored;
-        std::filesystem::remove(temporary_, ignored);
+        if (temporary_owned_) {
+            std::error_code ignored;
+            std::filesystem::remove(temporary_, ignored);
+            temporary_owned_ = false;
+        }
         throw;
     }
 }
@@ -67,9 +75,10 @@ AtomicWavOutput::~AtomicWavOutput() noexcept {
     if (writer_ != nullptr) {
         writer_.reset();
     }
-    if (!published_) {
+    if (!published_ && temporary_owned_) {
         std::error_code ignored;
         std::filesystem::remove(temporary_, ignored);
+        temporary_owned_ = false;
     }
 }
 
@@ -105,6 +114,7 @@ void AtomicWavOutput::publish() {
     std::filesystem::rename(temporary_, target_);
 #endif
     published_ = true;
+    temporary_owned_ = false;
 }
 
 void AtomicWavOutput::rollback() noexcept {
@@ -116,7 +126,10 @@ void AtomicWavOutput::rollback() noexcept {
         std::filesystem::remove(target_, ignored);
         published_ = false;
     }
-    std::filesystem::remove(temporary_, ignored);
+    if (temporary_owned_) {
+        std::filesystem::remove(temporary_, ignored);
+        temporary_owned_ = false;
+    }
 }
 
 bool AtomicWavOutput::paths_alias(

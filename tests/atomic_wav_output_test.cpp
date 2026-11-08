@@ -70,10 +70,34 @@ void test_aliasing_paths_are_rejected() {
         "equivalent output paths were not recognized");
 }
 
-void test_temporary_reservation_is_exclusive() {
+void test_existing_temporary_wav_is_preserved_after_failed_reservation() {
     DirectoryCleanup cleanup{test_directory()};
-    const auto temporary = cleanup.path / "reserved.tmp";
-    qwen_tts_examples::AtomicWavOutput::reserve_temporary_path(temporary);
+    const auto temporary = cleanup.path / "reserved.wav";
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        output << "wav-sentinel";
+    }
+    bool collision_rejected = false;
+    try {
+        qwen_tts_examples::AtomicWavOutput::reserve_temporary_path(temporary);
+    }
+    catch (const std::exception&) {
+        collision_rejected = true;
+    }
+    expect(collision_rejected, "WAV temporary reservation accepted a collision");
+    std::ifstream input(temporary, std::ios::binary);
+    const std::string contents(
+        (std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    expect(contents == "wav-sentinel", "pre-existing WAV temporary was modified");
+}
+
+void test_existing_temporary_json_is_preserved_after_failed_reservation() {
+    DirectoryCleanup cleanup{test_directory()};
+    const auto temporary = cleanup.path / "reserved.json";
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        output << "json-sentinel";
+    }
     bool collision_rejected = false;
     try {
         qwen_tts_examples::AtomicWavOutput::reserve_temporary_path(temporary);
@@ -82,7 +106,10 @@ void test_temporary_reservation_is_exclusive() {
         collision_rejected = true;
     }
     expect(collision_rejected, "temporary reservation was not exclusive");
-    expect(std::filesystem::is_regular_file(temporary), "reserved file disappeared");
+    std::ifstream input(temporary, std::ios::binary);
+    const std::string contents(
+        (std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    expect(contents == "json-sentinel", "pre-existing temporary file was modified");
 }
 
 void test_concurrent_outputs_preserve_first_publication() {
@@ -169,7 +196,8 @@ int main() {
     try {
         test_existing_target_is_preserved();
         test_aliasing_paths_are_rejected();
-        test_temporary_reservation_is_exclusive();
+        test_existing_temporary_wav_is_preserved_after_failed_reservation();
+        test_existing_temporary_json_is_preserved_after_failed_reservation();
         test_concurrent_outputs_preserve_first_publication();
         test_json_publication_collision_preserves_target();
         test_unpublished_output_is_removed_and_publish_is_complete();

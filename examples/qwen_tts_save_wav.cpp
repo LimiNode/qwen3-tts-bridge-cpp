@@ -170,6 +170,14 @@ void write_result_json(
     if (!output) {
         throw std::runtime_error("failed to write --result-json output");
     }
+    output.flush();
+    if (!output) {
+        throw std::runtime_error("failed to flush --result-json output");
+    }
+    output.close();
+    if (output.fail()) {
+        throw std::runtime_error("failed to close --result-json output");
+    }
 }
 
 ProgramOptions parse_options(int argc, char** argv) {
@@ -472,11 +480,13 @@ int run_program(int argc, char** argv) {
         }
 
         std::filesystem::path result_temporary;
+        bool result_temporary_owned = false;
         try {
             if (!options.result_json_path.empty()) {
                 const auto result_path = std::filesystem::u8path(options.result_json_path);
                 result_temporary = AtomicWavOutput::temporary_sibling(result_path);
                 AtomicWavOutput::reserve_temporary_path(result_temporary);
+                result_temporary_owned = true;
                 write_result_json(
                     result_temporary,
                     request_id,
@@ -489,11 +499,12 @@ int run_program(int argc, char** argv) {
                 AtomicWavOutput::publish_temporary_path(
                     result_temporary,
                     std::filesystem::u8path(options.result_json_path));
+                result_temporary_owned = false;
             }
         }
         catch (...) {
             output.rollback();
-            if (!result_temporary.empty()) {
+            if (result_temporary_owned) {
                 std::error_code ignored;
                 std::filesystem::remove(result_temporary, ignored);
             }

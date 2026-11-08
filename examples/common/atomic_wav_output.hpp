@@ -55,6 +55,7 @@ private:
     std::filesystem::path target_;
     std::filesystem::path temporary_;
     std::unique_ptr<qwen_tts_bridge::audio::WavWriter> writer_;
+    bool temporary_owned_ = false;
     bool published_ = false;
 };
 

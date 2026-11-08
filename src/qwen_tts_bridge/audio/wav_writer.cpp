@@ -53,11 +53,13 @@ WavWriter::WavWriter(
     std::string path,
     std::uint32_t sample_rate,
     std::uint16_t channels,
-    std::uint16_t bits_per_sample)
+    std::uint16_t bits_per_sample,
+    WavOpenMode open_mode)
     : path_(std::move(path)),
       sample_rate_(sample_rate),
       channels_(channels),
-      bits_per_sample_(bits_per_sample) {
+      bits_per_sample_(bits_per_sample),
+      open_mode_(open_mode) {
     if (path_.empty()) {
         throw std::runtime_error("output WAV path is empty");
     }
@@ -79,9 +81,11 @@ WavWriter::WavWriter(
     }
     block_align_ = static_cast<std::uint16_t>(block_align);
 
-    file_.open(
-        std::filesystem::u8path(path_),
-        std::ios::binary | std::ios::trunc);
+    auto open_flags = std::ios::binary;
+    if (open_mode_ == WavOpenMode::truncate_existing) {
+        open_flags |= std::ios::trunc;
+    }
+    file_.open(std::filesystem::u8path(path_), open_flags);
     if (!file_.is_open()) {
         throw std::runtime_error("failed to open WAV file: " + path_);
     }
