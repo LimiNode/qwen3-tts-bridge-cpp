@@ -119,33 +119,31 @@ set.
 
 ### C2. Bound pending request admission (P1) — B2-3 corrective
 
-Both workers append accepted work to an unbounded pending deque:
-Python `StdioWorkerServer._pending` and native `StdioServer::pending_`. Output
-and client callback queues are bounded, but normal trusted application traffic,
-an integration bug, or a direct QTB client can enqueue requests indefinitely
-before the engine drains them. This is not dependent on an “untrusted client”
-threat model.
+The former unbounded pending deques in Python `StdioWorkerServer._pending` and
+native `StdioServer::pending_` are now protected by a shared admission contract.
+The cap covers queued and physically running requests; output and callback
+queues remain separate concerns.
 
-* Impact: memory growth and poor failure behavior under load; this is distinct
-  from the already bounded output queues.
+* Impact addressed: memory growth and poor failure behavior under load were
+  distinct from the already bounded output queues.
 * Owner: both worker implementations and protocol tests.
-* Smallest corrective: define an admission cap covering queued **and running**
+* Implemented corrective: define an admission cap covering queued **and running**
   request accounting, reject excess work with `resource_error/resource_exhausted`,
-  and expose the effective limit in diagnostics. Keep cancellation of queued
-  requests deterministic.
+  and expose the effective limit in diagnostics. Queued cancellation releases
+  capacity deterministically.
 * Acceptance: fill the queue to the cap, observe exact rejection and no growth
   beyond the cap, cancel queued work, admit a replacement after cancellation or
   completion, and verify both Python and native paths.
-* Implementation status: B2-3 defines a default limit of 16, exposes a
-  runtime override in both workers, and covers queued plus physically running
-  occupancy. Exact-head CI and direct QTB-frame tests remain the acceptance
-  gate for the corrective PR.
+* Implementation status: B2-3 defines a default limit of 16, exposes a runtime
+  override in both workers, and covers queued plus physically running
+  occupancy. Exact-head CI and direct QTB-frame tests passed for the corrective
+  implementation.
 
 ## D — optional or deferred
 
 | Item | Why it is deferred |
 |---|---|
-| Targeted listening for the v0.2.5 frontend delta | The dependency pin and 16-case comparison are complete with no regressions. Listen only to the leading-zero year, contextual year-agreement, and genitive-decimal cases before making those changes part of a release claim. |
+| Targeted listening for the v0.2.5 frontend delta | The dependency pin and 17-case comparison (13 unchanged cases) are complete with no regressions. Listen only to the leading-zero year, contextual year-agreement, and genitive-decimal cases before making those changes part of a release claim. |
 | Shared CLI parsing helpers | Four examples duplicate parsing/JSON helpers, but no correctness drift was demonstrated. Extract only after a concrete option bug or during a small P2 cleanup. |
 | Save-WAV direct reference-audio/seed/sampling options | Registered Base `voice_id` is the release-facing clone path. Keep this an explicit B2-0 scope decision; add fields only if direct reference input is a beta requirement. |
 | Full audio effects rack (EQ, compressor, limiter, denoise, reverb, pitch, speed) | Only terminal fade/padding and the generic postprocessor chain exist. Keep the minimum DSP surface as an explicit B2-0 scope decision; do not add presets before a product requirement. |
@@ -157,9 +155,9 @@ threat model.
 
 ### Verified findings
 
-* **Persistent worker resource growth:** the terminal tombstones and pending
-  queues described in C1/C2 are visible in both implementations and have
-  reproducible unbounded-growth scenarios.
+* **Persistent worker resource growth:** C1 terminal-ID retention is bounded,
+  and C2 pending admission is capped in both implementations. Earlier
+  unbounded-growth observations remain historical evidence, not current status.
 * **CLI surface drift:** `qwen_tts_play` and the benchmark expose reference
   audio, seed and sampling controls that `qwen_tts_save_wav` does not. This is a
   documented capability difference, not yet a demonstrated bug.

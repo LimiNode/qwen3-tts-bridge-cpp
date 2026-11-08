@@ -99,7 +99,7 @@ The bridge pins the frontend at commit
 comparison against v0.2.2 is recorded in
 [`tts-front-v022-v025-effective-text.md`](reports/tts-front-v022-v025-effective-text.md);
 three intended effective-text changes and one diagnostic-only change were
-found, with no regression in the 16-case corpus. Targeted listening for the
+found, with 13 unchanged cases and no regression in the 17-case corpus. Targeted listening for the
 three changed text surfaces remains outside this dependency-only checkout.
 
 The bridge also has a verified optional speech-animation adapter. It forwards
@@ -166,7 +166,7 @@ The dependency direction is deliberate:
 | Persistent Python worker | Accepted production/packaging route | Continue release validation on the selected model and hardware |
 | Native worker and `qwen.dll` | Working, opt-in experimental | Close promotion gates before changing the default |
 | RU-stress + Kraftwerk profile | Hardware/listening validated, opt-in experimental | Expand long-run, cancellation, and packaging evidence |
-| `tts-front-cpp` v0.2.5 | Integrated preparation contract; 16-case v0.2.2 comparison has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims |
+| `tts-front-cpp` v0.2.5 | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |
 | Avatar presentation | Not yet complete | Add a separate VRM/Unity/Godot adapter after playback-locked cues are stable |
 
