@@ -61,6 +61,11 @@ Use `--allow-non-natural-eos` only as an explicit diagnostic opt-out. The
 command never downloads a model, creates or changes a registry entry, falls
 back to a direct WAV, or silently switches backend/model family.
 
+The worker compute dtype follows the same precedence through `--dtype` and
+`runtime.dtype`, and defaults to `float16` to match the validated CMP 50HX
+baseline. `auto` is an explicit diagnostic choice because FasterQwen resolves
+it to `bfloat16`.
+
 Prepare a model-bound native reference through the authoritative native worker:
 
 ```powershell

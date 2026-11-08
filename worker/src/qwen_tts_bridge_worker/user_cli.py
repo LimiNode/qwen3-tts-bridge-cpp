@@ -38,6 +38,16 @@ from qwen_tts_bridge_worker.voice_library import (
 _DEFAULT_STARTUP_TIMEOUT_MS = 120_000
 _DEFAULT_REQUEST_TIMEOUT_MS = 300_000
 _DEFAULT_DEVICE = "cuda"
+_DEFAULT_DTYPE = "float16"
+_SUPPORTED_USER_DTYPES = {
+    "auto",
+    "float16",
+    "fp16",
+    "bfloat16",
+    "bf16",
+    "float32",
+    "fp32",
+}
 _MAX_TIMEOUT_MS = 4_294_967_295
 _DIAGNOSTIC_TAIL_BYTES = 8 * 1024
 _DIAGNOSTIC_READ_CHUNK_BYTES = 4 * 1024
@@ -115,6 +125,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "Defaults to runtime.device or cuda.",
     )
     design.add_argument(
+        "--dtype",
+        help="Worker compute dtype. Defaults to runtime.dtype or float16.",
+    )
+    design.add_argument(
         "--runtime-backend", choices=("faster", "upstream"), default="faster"
     )
 
@@ -132,6 +146,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Worker device, for example cuda, cuda:0, or cuda:1. "
         "Defaults to runtime.device or cuda.",
     )
+    synth.add_argument(
+        "--dtype",
+        help="Worker compute dtype. Defaults to runtime.dtype or float16.",
+    )
 
     play = commands.add_parser(
         "play",
@@ -145,6 +163,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--device",
         help="Worker device, for example cuda, cuda:0, or cuda:1. "
         "Defaults to runtime.device or cuda.",
+    )
+    play.add_argument(
+        "--dtype",
+        help="Worker compute dtype. Defaults to runtime.dtype or float16.",
     )
     play.add_argument(
         "--runtime-backend", choices=("faster", "upstream"), default="faster"
@@ -486,7 +508,7 @@ def _run_design(args: argparse.Namespace) -> int:
         "--device",
         _resolve_device(args.device, runtime.get("device")),
         "--dtype",
-        "auto",
+        _resolve_dtype(args.dtype, runtime.get("dtype")),
     )
     if args.runtime_backend == "faster":
         worker_arguments += ("--collect-generation-trace",)
@@ -530,7 +552,7 @@ def _run_synth(args: argparse.Namespace) -> int:
         "--device",
         _resolve_device(args.device, runtime.get("device")),
         "--dtype",
-        "auto",
+        _resolve_dtype(args.dtype, runtime.get("dtype")),
         "--collect-generation-trace",
         "--voice-registry-path",
         str(registry_path),
@@ -618,7 +640,7 @@ def _run_play(args: argparse.Namespace) -> int:
         "--device",
         _resolve_device(args.device, runtime.get("device")),
         "--dtype",
-        "auto",
+        _resolve_dtype(args.dtype, runtime.get("dtype")),
         "--voice-registry-path",
         str(registry_path),
     )
@@ -996,6 +1018,20 @@ def _resolve_device(explicit: str | None, configured: object) -> str:
         source = "--device" if explicit is not None else "runtime.device"
         raise ValueError(f"{source} must be a non-empty device string")
     return value.strip()
+
+def _resolve_dtype(explicit: str | None, configured: object) -> str:
+    value: object = explicit if explicit is not None else configured
+    if value is None:
+        return _DEFAULT_DTYPE
+    if not isinstance(value, str) or not value.strip():
+        source = "--dtype" if explicit is not None else "runtime.dtype"
+        raise ValueError(f"{source} must be a non-empty dtype string")
+    normalized = value.strip().lower()
+    if normalized not in _SUPPORTED_USER_DTYPES:
+        source = "--dtype" if explicit is not None else "runtime.dtype"
+        supported = ", ".join(sorted(_SUPPORTED_USER_DTYPES))
+        raise ValueError(f"{source} must be one of: {supported}")
+    return normalized
 
 
 def _output_path(path: Path) -> Path:

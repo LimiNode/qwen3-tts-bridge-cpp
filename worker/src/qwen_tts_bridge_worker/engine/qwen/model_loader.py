@@ -197,9 +197,21 @@ def _torch_dtype(dtype_name: str) -> Any | None:
 
 
 def _faster_dtype(config: QwenEngineConfig) -> str:
-    if config.dtype == "auto":
+    normalized = config.dtype.strip().lower()
+    if normalized == "auto":
         return "bfloat16"
-    return config.dtype
+    aliases = {
+        "float16": "float16",
+        "fp16": "float16",
+        "bfloat16": "bfloat16",
+        "bf16": "bfloat16",
+        "float32": "float32",
+        "fp32": "float32",
+    }
+    canonical = aliases.get(normalized)
+    if canonical is None:
+        raise QwenModelLoadError(f"unsupported qwen dtype: {config.dtype}")
+    return canonical
 
 
 def _set_matmul_precision(config: QwenEngineConfig) -> None:
