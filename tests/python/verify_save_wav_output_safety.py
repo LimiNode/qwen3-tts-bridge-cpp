@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
-import tempfile
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -62,7 +62,8 @@ def main() -> int:
         )
         if successful.returncode != 0:
             raise AssertionError(
-                f"successful mock synthesis failed:\n{successful.stdout}\n{successful.stderr}"
+                "successful mock synthesis failed:\n"
+                f"{successful.stdout}\n{successful.stderr}"
             )
         header = success_wav.read_bytes()[:12]
         if header[:4] != b"RIFF" or header[8:12] != b"WAVE":
@@ -140,7 +141,11 @@ def main() -> int:
                 "--worker",
                 sys.executable,
                 "--worker-arg",
-                str(Path(__file__).parents[1] / "acceptance" / "generation_trace_worker.py"),
+                str(
+                    Path(__file__).parents[1]
+                    / "acceptance"
+                    / "generation_trace_worker.py"
+                ),
                 "--worker-arg",
                 "max_new_tokens",
                 "--output",
