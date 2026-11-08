@@ -3,6 +3,7 @@
 #include <qwen_tts_bridge/transport.hpp>
 
 #include "common/cli_parsing.hpp"
+#include "common/atomic_wav_output.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -46,12 +47,12 @@ using qwen_tts_bridge::audio::AudioPostProcessorChain;
 using qwen_tts_bridge::audio::SaveWavState;
 using qwen_tts_bridge::audio::TerminalFadeOptions;
 using qwen_tts_bridge::audio::TerminalFadePostProcessor;
-using qwen_tts_bridge::audio::WavWriter;
 using qwen_tts_bridge::audio::make_save_wav_callbacks;
 using qwen_tts_bridge::audio::wait_for_save_wav_terminal;
 using qwen_tts_examples::cli::parse_double;
 using qwen_tts_examples::cli::parse_int;
 using qwen_tts_examples::cli::parse_u32;
+using qwen_tts_examples::AtomicWavOutput;
 
 struct ProgramOptions {
     bool help = false;
@@ -90,6 +91,7 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --output <path>                Output WAV path.\n"
         << "  --result-json <path>           Write machine-readable terminal evidence.\n"
+        << "                                 Existing output paths are rejected.\n"
         << "  --text <utf8>                  Text to synthesize.\n"
         << "  --language <name>              Request language, default: auto.\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
@@ -133,17 +135,13 @@ std::string escape_json_string(const std::string& value) {
 }
 
 void write_result_json(
-    const ProgramOptions& options,
+    const std::filesystem::path& output_path,
     RequestId request_id,
     const SaveWavState& state,
     const TtsCompletion& completion,
     bool completion_metadata_received) {
-    if (options.result_json_path.empty()) {
-        return;
-    }
-
     std::ofstream output(
-        std::filesystem::u8path(options.result_json_path),
+        output_path,
         std::ios::binary | std::ios::trunc);
     if (!output) {
         throw std::runtime_error("failed to open --result-json output");
@@ -299,6 +297,23 @@ void validate_options(const ProgramOptions& options) {
     if (options.text.empty()) {
         throw std::runtime_error("--text is required");
     }
+    const auto output_path = std::filesystem::u8path(options.output_path);
+    if (std::filesystem::exists(output_path)) {
+        throw std::runtime_error(
+            "refusing to overwrite existing --output file: " + options.output_path);
+    }
+    if (!options.result_json_path.empty()) {
+        const auto result_path = std::filesystem::u8path(options.result_json_path);
+        if (AtomicWavOutput::paths_alias(output_path, result_path)) {
+            throw std::runtime_error(
+                "--output and --result-json must refer to different files");
+        }
+        if (std::filesystem::exists(result_path)) {
+            throw std::runtime_error(
+                "refusing to overwrite existing --result-json file: " +
+                options.result_json_path);
+        }
+    }
     if (!options.use_mock_worker && options.worker_executable.empty()) {
         throw std::runtime_error("--worker is required unless --mock is used");
     }
@@ -386,7 +401,7 @@ int run_program(int argc, char** argv) {
         }
 
         const AudioFormat audio_format = requested_audio_format(options);
-        WavWriter writer(
+        AtomicWavOutput output(
             options.output_path,
             audio_format.sample_rate,
             static_cast<std::uint16_t>(audio_format.channels),
@@ -419,7 +434,7 @@ int run_program(int argc, char** argv) {
         }
         auto callbacks = make_save_wav_callbacks(
             state,
-            writer,
+            output.writer(),
             audio_format,
             std::move(processors));
         callbacks.on_completion_metadata = [&](const TtsCompletion& value) {
@@ -456,12 +471,33 @@ int run_program(int argc, char** argv) {
             throw std::runtime_error("synthesis did not report natural EOS");
         }
 
-        write_result_json(
-            options,
-            request_id,
-            state,
-            completion,
-            completion_metadata_received);
+        std::filesystem::path result_temporary;
+        if (!options.result_json_path.empty()) {
+            const auto result_path = std::filesystem::u8path(options.result_json_path);
+            result_temporary = AtomicWavOutput::temporary_sibling(result_path);
+            write_result_json(
+                result_temporary,
+                request_id,
+                state,
+                completion,
+                completion_metadata_received);
+        }
+        try {
+            output.publish();
+            if (!result_temporary.empty()) {
+                std::filesystem::rename(
+                    result_temporary,
+                    std::filesystem::u8path(options.result_json_path));
+            }
+        }
+        catch (...) {
+            output.rollback();
+            if (!result_temporary.empty()) {
+                std::error_code ignored;
+                std::filesystem::remove(result_temporary, ignored);
+            }
+            throw;
+        }
 
         std::cout << "Wrote " << state.audio_bytes
                   << " PCM bytes in " << state.audio_chunks
