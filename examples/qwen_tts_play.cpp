@@ -22,6 +22,7 @@
 #include <atomic>
 #include <chrono>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
@@ -591,6 +592,34 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
     return options;
 }
 
+bool capture_paths_alias(const std::string& left, const std::string& right) {
+    const auto normalized = [](const std::string& value) {
+        auto result = std::filesystem::absolute(
+            std::filesystem::u8path(value)).lexically_normal().generic_u8string();
+#ifdef _WIN32
+        std::transform(result.begin(), result.end(), result.begin(), [](char character) {
+            return static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+        });
+#endif
+        return result;
+    };
+    if (normalized(left) == normalized(right)) {
+        return true;
+    }
+    const auto left_path = std::filesystem::u8path(left);
+    const auto right_path = std::filesystem::u8path(right);
+    std::error_code error;
+    if (!std::filesystem::exists(left_path, error) || error) {
+        return false;
+    }
+    error.clear();
+    if (!std::filesystem::exists(right_path, error) || error) {
+        return false;
+    }
+    error.clear();
+    return std::filesystem::equivalent(left_path, right_path, error) && !error;
+}
+
 void validate_options(const ProgramOptions& options) {
     if (options.help || options.self_test_playback_lifecycle) {
         return;
@@ -713,7 +742,7 @@ void validate_options(const ProgramOptions& options) {
         }
     }
     if (!options.pcm_capture_file.empty() &&
-        options.pcm_capture_file == options.wav_capture_file) {
+        capture_paths_alias(options.pcm_capture_file, options.wav_capture_file)) {
         throw std::runtime_error(
             "--pcm-capture-file and --wav-capture-file must use different paths");
     }
