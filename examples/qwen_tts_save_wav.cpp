@@ -472,20 +472,21 @@ int run_program(int argc, char** argv) {
         }
 
         std::filesystem::path result_temporary;
-        if (!options.result_json_path.empty()) {
-            const auto result_path = std::filesystem::u8path(options.result_json_path);
-            result_temporary = AtomicWavOutput::temporary_sibling(result_path);
-            write_result_json(
-                result_temporary,
-                request_id,
-                state,
-                completion,
-                completion_metadata_received);
-        }
         try {
+            if (!options.result_json_path.empty()) {
+                const auto result_path = std::filesystem::u8path(options.result_json_path);
+                result_temporary = AtomicWavOutput::temporary_sibling(result_path);
+                AtomicWavOutput::reserve_temporary_path(result_temporary);
+                write_result_json(
+                    result_temporary,
+                    request_id,
+                    state,
+                    completion,
+                    completion_metadata_received);
+            }
             output.publish();
             if (!result_temporary.empty()) {
-                std::filesystem::rename(
+                AtomicWavOutput::publish_temporary_path(
                     result_temporary,
                     std::filesystem::u8path(options.result_json_path));
             }

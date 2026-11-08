@@ -46,6 +46,10 @@ public:
         const std::filesystem::path& right);
     static std::filesystem::path temporary_sibling(
         const std::filesystem::path& target);
+    static void reserve_temporary_path(const std::filesystem::path& path);
+    static void publish_temporary_path(
+        const std::filesystem::path& temporary,
+        const std::filesystem::path& target);
 
 private:
     std::filesystem::path target_;

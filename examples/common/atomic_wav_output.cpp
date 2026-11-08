@@ -1,9 +1,25 @@
 #include "atomic_wav_output.hpp"
 
 #include <algorithm>
-#include <atomic>
+#include <array>
 #include <cctype>
+#include <chrono>
+#include <iomanip>
+#include <random>
+#include <sstream>
 #include <stdexcept>
+#include <thread>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 namespace qwen_tts_examples {
 namespace {
@@ -30,15 +46,13 @@ AtomicWavOutput::AtomicWavOutput(
     if (target_.empty()) {
         throw std::runtime_error("output WAV path is empty");
     }
-    if (std::filesystem::exists(target_)) {
+    if (std::filesystem::symlink_status(target_).type() !=
+        std::filesystem::file_type::not_found) {
         throw std::runtime_error(
             "refusing to overwrite existing WAV output: " + target_.u8string());
     }
-    if (std::filesystem::exists(temporary_)) {
-        throw std::runtime_error(
-            "WAV output temporary path already exists: " + temporary_.u8string());
-    }
     try {
+        reserve_temporary_path(temporary_);
         writer_ = std::make_unique<qwen_tts_bridge::audio::WavWriter>(
             temporary_.u8string(), sample_rate, channels, bits_per_sample);
     }
@@ -72,7 +86,24 @@ void AtomicWavOutput::publish() {
     }
     writer_->close();
     writer_.reset();
+#ifdef _WIN32
+    if (!MoveFileExW(
+            temporary_.c_str(),
+            target_.c_str(),
+            MOVEFILE_WRITE_THROUGH)) {
+        throw std::runtime_error(
+            "failed to publish WAV without replacing an existing target: " +
+            target_.u8string());
+    }
+#else
+    if (std::filesystem::symlink_status(target_).type() !=
+        std::filesystem::file_type::not_found) {
+        throw std::runtime_error(
+            "refusing to replace target created during WAV publication: " +
+            target_.u8string());
+    }
     std::filesystem::rename(temporary_, target_);
+#endif
     published_ = true;
 }
 
@@ -107,10 +138,68 @@ bool AtomicWavOutput::paths_alias(
 
 std::filesystem::path AtomicWavOutput::temporary_sibling(
     const std::filesystem::path& target) {
-    static std::atomic<std::uint64_t> sequence{0};
-    const auto suffix = std::string(".tmp.qwen-wav.") +
-        std::to_string(sequence.fetch_add(1, std::memory_order_relaxed));
-    return std::filesystem::u8path(target.u8string() + suffix);
+    std::random_device random;
+    const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+    const auto thread_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
+    const std::array<unsigned int, 4> values{
+        random(), random(), static_cast<unsigned int>(now),
+        static_cast<unsigned int>(thread_id)};
+    std::ostringstream suffix;
+    suffix << ".tmp.qwen-wav." << std::hex << std::setfill('0');
+    for (const auto value : values) {
+        suffix << std::setw(8) << value;
+    }
+    suffix << ".wav";
+    return std::filesystem::u8path(target.u8string() + suffix.str());
+}
+
+void AtomicWavOutput::reserve_temporary_path(
+    const std::filesystem::path& path) {
+#ifdef _WIN32
+    const auto handle = CreateFileW(
+        path.c_str(),
+        GENERIC_WRITE,
+        0,
+        nullptr,
+        CREATE_NEW,
+        FILE_ATTRIBUTE_TEMPORARY,
+        nullptr);
+    if (handle == INVALID_HANDLE_VALUE) {
+        throw std::runtime_error(
+            "failed to reserve temporary output: " + path.u8string());
+    }
+    CloseHandle(handle);
+#else
+    const int descriptor = ::open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0600);
+    if (descriptor == -1) {
+        throw std::runtime_error(
+            "failed to reserve temporary output: " + path.u8string());
+    }
+    ::close(descriptor);
+#endif
+}
+
+void AtomicWavOutput::publish_temporary_path(
+    const std::filesystem::path& temporary,
+    const std::filesystem::path& target) {
+#ifdef _WIN32
+    if (!MoveFileExW(
+            temporary.c_str(),
+            target.c_str(),
+            MOVEFILE_WRITE_THROUGH)) {
+        throw std::runtime_error(
+            "failed to publish temporary output without replacement: " +
+            target.u8string());
+    }
+#else
+    if (std::filesystem::symlink_status(target).type() !=
+        std::filesystem::file_type::not_found) {
+        throw std::runtime_error(
+            "refusing to replace target created during publication: " +
+            target.u8string());
+    }
+    std::filesystem::rename(temporary, target);
+#endif
 }
 
 } // namespace qwen_tts_examples

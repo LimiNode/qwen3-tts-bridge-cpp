@@ -70,6 +70,75 @@ void test_aliasing_paths_are_rejected() {
         "equivalent output paths were not recognized");
 }
 
+void test_temporary_reservation_is_exclusive() {
+    DirectoryCleanup cleanup{test_directory()};
+    const auto temporary = cleanup.path / "reserved.tmp";
+    qwen_tts_examples::AtomicWavOutput::reserve_temporary_path(temporary);
+    bool collision_rejected = false;
+    try {
+        qwen_tts_examples::AtomicWavOutput::reserve_temporary_path(temporary);
+    }
+    catch (const std::exception&) {
+        collision_rejected = true;
+    }
+    expect(collision_rejected, "temporary reservation was not exclusive");
+    expect(std::filesystem::is_regular_file(temporary), "reserved file disappeared");
+}
+
+void test_concurrent_outputs_preserve_first_publication() {
+    DirectoryCleanup cleanup{test_directory()};
+    const auto target = cleanup.path / "concurrent.wav";
+    qwen_tts_examples::AtomicWavOutput first(target.u8string(), 24'000, 1, 16);
+    qwen_tts_examples::AtomicWavOutput second(target.u8string(), 24'000, 1, 16);
+    expect(
+        first.temporary_path() != second.temporary_path(),
+        "concurrent outputs reused a temporary path");
+    const std::byte sample[]{std::byte{0x01}, std::byte{0x00}};
+    first.writer().write_pcm(sample, sizeof(sample));
+    second.writer().write_pcm(sample, sizeof(sample));
+    first.publish();
+    const auto first_size = std::filesystem::file_size(target);
+    bool second_rejected = false;
+    try {
+        second.publish();
+    }
+    catch (const std::exception&) {
+        second_rejected = true;
+    }
+    expect(second_rejected, "concurrent publication replaced the first WAV");
+    expect(
+        std::filesystem::file_size(target) == first_size,
+        "first published WAV was modified by a concurrent writer");
+}
+
+void test_json_publication_collision_preserves_target() {
+    DirectoryCleanup cleanup{test_directory()};
+    const auto temporary = cleanup.path / "result.tmp";
+    const auto target = cleanup.path / "result.json";
+    qwen_tts_examples::AtomicWavOutput::reserve_temporary_path(temporary);
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        output << "new";
+    }
+    {
+        std::ofstream output(target, std::ios::binary | std::ios::trunc);
+        output << "old";
+    }
+    bool rejected = false;
+    try {
+        qwen_tts_examples::AtomicWavOutput::publish_temporary_path(
+            temporary, target);
+    }
+    catch (const std::exception&) {
+        rejected = true;
+    }
+    expect(rejected, "JSON publication replaced a concurrent target");
+    std::ifstream input(target, std::ios::binary);
+    const std::string contents(
+        (std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    expect(contents == "old", "JSON publication changed the existing target");
+}
+
 void test_unpublished_output_is_removed_and_publish_is_complete() {
     DirectoryCleanup cleanup{test_directory()};
     const auto target = cleanup.path / "published.wav";
@@ -100,6 +169,9 @@ int main() {
     try {
         test_existing_target_is_preserved();
         test_aliasing_paths_are_rejected();
+        test_temporary_reservation_is_exclusive();
+        test_concurrent_outputs_preserve_first_publication();
+        test_json_publication_collision_preserves_target();
         test_unpublished_output_is_removed_and_publish_is_complete();
         return 0;
     }
