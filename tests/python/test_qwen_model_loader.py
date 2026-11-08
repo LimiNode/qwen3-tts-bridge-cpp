@@ -309,9 +309,12 @@ class QwenModelLoaderTests(unittest.TestCase):
             with self.subTest(alias=alias):
                 fake_faster = _FakeFasterQwen()
 
-                def import_module(name: str) -> object:
+                def import_module(
+                    name: str,
+                    fake: _FakeFasterQwen = fake_faster,
+                ) -> object:
                     if name == "faster_qwen3_tts":
-                        return _FakeFasterModule(fake_faster)
+                        return _FakeFasterModule(fake)
                     raise AssertionError(f"unexpected import: {name}")
 
                 with patch(
