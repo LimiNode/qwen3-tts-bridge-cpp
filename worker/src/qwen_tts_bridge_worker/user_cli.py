@@ -37,6 +37,7 @@ from qwen_tts_bridge_worker.voice_library import (
 
 _DEFAULT_STARTUP_TIMEOUT_MS = 120_000
 _DEFAULT_REQUEST_TIMEOUT_MS = 300_000
+_DEFAULT_DEVICE = "cuda"
 _MAX_TIMEOUT_MS = 4_294_967_295
 _DIAGNOSTIC_TAIL_BYTES = 8 * 1024
 _DIAGNOSTIC_READ_CHUNK_BYTES = 4 * 1024
@@ -109,6 +110,11 @@ def _build_parser() -> argparse.ArgumentParser:
     design.add_argument("--model", type=Path)
     design.add_argument("--language", default="Russian")
     design.add_argument(
+        "--device",
+        help="Worker device, for example cuda, cuda:0, or cuda:1. "
+        "Defaults to runtime.device or cuda.",
+    )
+    design.add_argument(
         "--runtime-backend", choices=("faster", "upstream"), default="faster"
     )
 
@@ -121,6 +127,11 @@ def _build_parser() -> argparse.ArgumentParser:
     synth.add_argument("--result-json", type=Path)
     synth.add_argument("--model", type=Path)
     synth.add_argument("--language", default="Russian")
+    synth.add_argument(
+        "--device",
+        help="Worker device, for example cuda, cuda:0, or cuda:1. "
+        "Defaults to runtime.device or cuda.",
+    )
 
     play = commands.add_parser(
         "play",
@@ -130,6 +141,11 @@ def _build_parser() -> argparse.ArgumentParser:
     play.add_argument("--text", required=True)
     play.add_argument("--model", type=Path)
     play.add_argument("--language", default="Russian")
+    play.add_argument(
+        "--device",
+        help="Worker device, for example cuda, cuda:0, or cuda:1. "
+        "Defaults to runtime.device or cuda.",
+    )
     play.add_argument(
         "--runtime-backend", choices=("faster", "upstream"), default="faster"
     )
@@ -454,6 +470,7 @@ def _run_voices(args: argparse.Namespace) -> int:
 
 def _run_design(args: argparse.Namespace) -> int:
     root = _portable_root(args.portable_root)
+    runtime = _runtime_config(args.config)
     model = resolve_model(
         "voice-design",
         explicit_path=args.model,
@@ -467,7 +484,7 @@ def _run_design(args: argparse.Namespace) -> int:
         "--runtime-backend",
         args.runtime_backend,
         "--device",
-        "cuda",
+        _resolve_device(args.device, runtime.get("device")),
         "--dtype",
         "auto",
     )
@@ -484,6 +501,7 @@ def _run_design(args: argparse.Namespace) -> int:
 
 def _run_synth(args: argparse.Namespace) -> int:
     root = _portable_root(args.portable_root)
+    runtime = _runtime_config(args.config)
     registry_path = default_voice_registry_path(args.config).expanduser().resolve()
     verification = verify_voice(
         registry_path,
@@ -510,7 +528,7 @@ def _run_synth(args: argparse.Namespace) -> int:
         "--runtime-backend",
         "faster",
         "--device",
-        "cuda",
+        _resolve_device(args.device, runtime.get("device")),
         "--dtype",
         "auto",
         "--collect-generation-trace",
@@ -549,11 +567,7 @@ def _run_play(args: argparse.Namespace) -> int:
         config_path=args.config,
         portable_root=root,
     )
-    config = load_user_config(args.config)
-    runtime_value = config.get("runtime")
-    runtime: dict[str, object] = (
-        runtime_value if isinstance(runtime_value, dict) else {}
-    )
+    runtime = _runtime_config(args.config)
     config_directory = _selected_config_path(args.config).parent
     player = _resolve_executable(
         args.play_executable,
@@ -602,7 +616,7 @@ def _run_play(args: argparse.Namespace) -> int:
         "--runtime-backend",
         args.runtime_backend,
         "--device",
-        "cuda",
+        _resolve_device(args.device, runtime.get("device")),
         "--dtype",
         "auto",
         "--voice-registry-path",
@@ -663,11 +677,7 @@ def _run_synthesis(
     request_arguments: tuple[str, ...],
     output_description: str,
 ) -> int:
-    config = load_user_config(args.config)
-    runtime_value = config.get("runtime")
-    runtime: dict[str, object] = (
-        runtime_value if isinstance(runtime_value, dict) else {}
-    )
+    runtime = _runtime_config(args.config)
     config_directory = _selected_config_path(args.config).parent
     save_wav = _resolve_executable(
         args.save_wav_executable,
@@ -970,6 +980,22 @@ def _resolve_timeout(
     if configured is None:
         return default
     return _validate_timeout(configured, name)
+
+
+def _runtime_config(config_path: Path | None) -> dict[str, object]:
+    config = load_user_config(config_path)
+    runtime_value = config.get("runtime")
+    return runtime_value if isinstance(runtime_value, dict) else {}
+
+
+def _resolve_device(explicit: str | None, configured: object) -> str:
+    value: object = explicit if explicit is not None else configured
+    if value is None:
+        return _DEFAULT_DEVICE
+    if not isinstance(value, str) or not value.strip():
+        source = "--device" if explicit is not None else "runtime.device"
+        raise ValueError(f"{source} must be a non-empty device string")
+    return value.strip()
 
 
 def _output_path(path: Path) -> Path:
