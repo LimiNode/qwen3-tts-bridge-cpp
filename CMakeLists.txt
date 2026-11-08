@@ -493,6 +493,7 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         add_executable(qwen_tts_play
             examples/qwen_tts_play.cpp
             examples/common/pcm_capture.cpp
+            examples/common/wav_capture.cpp
         )
     endif()
 
@@ -700,6 +701,18 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_link_libraries(pcm_capture_test
             PRIVATE QwenTTSBridge::qwen_tts_bridge)
         add_test(NAME pcm_capture_test COMMAND pcm_capture_test)
+
+        add_executable(wav_capture_test
+            tests/wav_capture_test.cpp
+            examples/common/wav_capture.cpp
+        )
+        target_include_directories(wav_capture_test
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}"
+        )
+        target_link_libraries(wav_capture_test
+            PRIVATE QwenTTSBridge::qwen_tts_bridge)
+        add_test(NAME wav_capture_test COMMAND wav_capture_test)
     endif()
 
     add_executable(playback_receipt_probe_test
@@ -1175,6 +1188,13 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                         --player "$<TARGET_FILE:qwen_tts_play>"
                 )
                 add_test(
+                    NAME qwen_tts_play_mock_wav_capture_failure
+                    COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_wav_capture_failure.py"
+                        --player "$<TARGET_FILE:qwen_tts_play>"
+                        --output "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_play_mock_failed_capture.wav"
+                )
+                add_test(
                     NAME qwen_tts_playback_lifecycle_self_test
                     COMMAND qwen_tts_play --self-test-playback-lifecycle
                 )
@@ -1192,6 +1212,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                     qwen_tts_play_mock_playback_metrics
                     qwen_tts_play_mock_pcm_capture
                     qwen_tts_play_mock_playback_failure
+                    qwen_tts_play_mock_wav_capture_failure
                     qwen_tts_playback_lifecycle_self_test
                     PROPERTIES RESOURCE_LOCK default_audio_playback
                 )
