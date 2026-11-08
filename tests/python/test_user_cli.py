@@ -1051,6 +1051,15 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual('{"previous": true}', result_json.read_text())
             self.assertEqual([], list(root.glob(".*.qtb-tmp")))
 
+    def test_child_output_reservations_are_absent_before_launch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = user_cli._temporary_output_paths(
+                root / "voice.wav", root / "voice.json"
+            )
+            self.assertTrue(all(not path.exists() for path in paths))
+            self.assertEqual([], list(root.glob(".*.qtb-tmp")))
+
     def test_design_success_replaces_previous_outputs_after_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
