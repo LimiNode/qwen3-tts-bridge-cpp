@@ -6,6 +6,7 @@ import argparse
 import json
 import subprocess
 import sys
+import wave
 from pathlib import Path
 
 
@@ -101,6 +102,88 @@ def main() -> int:
         check=True,
         timeout=30,
     )
+
+    no_tail_wav = args.output.with_name("no-tail.wav")
+    no_tail_wav.unlink(missing_ok=True)
+    no_tail_command = [
+        str(args.player),
+        "--mock",
+        "--no-playback",
+        "--text",
+        "No-tail WAV capture smoke.",
+        "--mock-chunks",
+        "4",
+        "--mock-chunk-ms",
+        "150",
+        "--no-tail",
+        "--wav-capture-file",
+        str(no_tail_wav),
+    ]
+    subprocess.run(no_tail_command, check=True, timeout=30)
+    subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).with_name("verify_wav.py")),
+            str(no_tail_wav),
+            "--sample-rate",
+            "24000",
+            "--channels",
+            "1",
+            "--bits-per-sample",
+            "16",
+            "--min-data-bytes",
+            str(expected_bytes),
+        ],
+        check=True,
+        timeout=30,
+    )
+    with wave.open(str(no_tail_wav), "rb") as reader:
+        no_tail_pcm = reader.readframes(reader.getnframes())
+    assert no_tail_pcm == args.output.read_bytes()
+
+    tail_wav = args.output.with_name("tail.wav")
+    tail_wav.unlink(missing_ok=True)
+    tail_command = [
+        str(args.player),
+        "--mock",
+        "--no-playback",
+        "--text",
+        "Tail WAV capture smoke.",
+        "--mock-chunks",
+        "4",
+        "--mock-chunk-ms",
+        "150",
+        "--tail",
+        "--wav-capture-file",
+        str(tail_wav),
+    ]
+    subprocess.run(tail_command, check=True, timeout=30)
+    subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).with_name("verify_wav.py")),
+            str(tail_wav),
+            "--sample-rate",
+            "24000",
+            "--channels",
+            "1",
+            "--bits-per-sample",
+            "16",
+            "--min-data-bytes",
+            str(expected_bytes),
+        ],
+        check=True,
+        timeout=30,
+    )
+    with wave.open(str(tail_wav), "rb") as reader:
+        tail_pcm = reader.readframes(reader.getnframes())
+    raw_frames = expected_bytes // 2
+    fade_frames = 24_000 * 15 // 1_000
+    silence_frames = 24_000 * 85 // 1_000
+    assert len(tail_pcm) == (raw_frames + silence_frames) * 2
+    assert tail_pcm[: (raw_frames - fade_frames) * 2] == args.output.read_bytes()[:
+        (raw_frames - fade_frames) * 2
+    ]
 
     duplicate_wav = subprocess.run(wav_command, capture_output=True, text=True)
     assert duplicate_wav.returncode != 0

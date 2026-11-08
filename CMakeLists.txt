@@ -701,6 +701,18 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_link_libraries(pcm_capture_test
             PRIVATE QwenTTSBridge::qwen_tts_bridge)
         add_test(NAME pcm_capture_test COMMAND pcm_capture_test)
+
+        add_executable(wav_capture_test
+            tests/wav_capture_test.cpp
+            examples/common/wav_capture.cpp
+        )
+        target_include_directories(wav_capture_test
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}"
+        )
+        target_link_libraries(wav_capture_test
+            PRIVATE QwenTTSBridge::qwen_tts_bridge)
+        add_test(NAME wav_capture_test COMMAND wav_capture_test)
     endif()
 
     add_executable(playback_receipt_probe_test
