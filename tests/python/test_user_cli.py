@@ -19,6 +19,135 @@ from qwen_tts_bridge_worker import user_cli
 
 
 class UserCliTests(unittest.TestCase):
+    def test_synthesis_commands_forward_cmp50hx_dtype_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                self.assertEqual(
+                    0,
+                    user_cli.main(
+                        [
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--out",
+                            str(root / "default.wav"),
+                        ]
+                    ),
+                )
+            worker_args = _worker_argument_values(run.call_args.args[0])
+            self.assertEqual("float16", worker_args[worker_args.index("--dtype") + 1])
+
+            config = root / "config.json"
+            config.write_text(
+                json.dumps({"schema_version": 1, "runtime": {"dtype": "bfloat16"}}),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                self.assertEqual(
+                    0,
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--out",
+                            str(root / "configured.wav"),
+                        ]
+                    ),
+                )
+            worker_args = _worker_argument_values(run.call_args.args[0])
+            self.assertEqual("bfloat16", worker_args[worker_args.index("--dtype") + 1])
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                self.assertEqual(
+                    0,
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--dtype",
+                            "float32",
+                            "--out",
+                            str(root / "explicit.wav"),
+                        ]
+                    ),
+                )
+            worker_args = _worker_argument_values(run.call_args.args[0])
+            self.assertEqual("float32", worker_args[worker_args.index("--dtype") + 1])
+
+    def test_synthesis_rejects_unsupported_dtype(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            with redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as error:
+                    user_cli.main(
+                        [
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--dtype",
+                            "int8",
+                            "--out",
+                            str(root / "voice.wav"),
+                        ]
+                    )
+            self.assertEqual(2, error.exception.code)
+            self.assertIn("--dtype", stderr.getvalue())
+
     def test_play_uses_existing_streaming_player_and_is_quiet(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

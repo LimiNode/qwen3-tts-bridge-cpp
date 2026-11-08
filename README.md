@@ -106,6 +106,11 @@ device at startup and cannot move an already loaded model. `CUDA_VISIBLE_DEVICES
 may further remap physical GPU numbers before the worker starts, so `cuda:0`
 inside the worker means the first device visible to that process. The native
 worker has no equivalent explicit device option yet.
+The user CLI defaults the worker compute dtype to `float16`, matching the
+validated CMP 50HX baseline. Use `--dtype` for an explicit override, or set
+`runtime.dtype` in the schema-1 configuration; the command-line value has
+priority. `auto` remains available as an explicit choice, but is not the
+release default because the Faster backend resolves it to `bfloat16`.
 
 `synth` validates the existing managed profile, resolves only Base 1.7B, and
 passes the authoritative registry to the persistent Python worker. It does not
