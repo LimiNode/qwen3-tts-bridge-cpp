@@ -255,6 +255,7 @@ def main() -> int:
     assert "requires one-shot --text playback" in interactive_wav.stderr
 
     alias_target = args.output.parent / "nested" / ".." / "alias.wav"
+    alias_wav = args.output.with_name("alias.wav")
     alias_command = [
         str(args.player),
         "--mock",
@@ -264,7 +265,7 @@ def main() -> int:
         "--pcm-capture-file",
         str(alias_target),
         "--wav-capture-file",
-        str(alias_target),
+        str(alias_wav),
     ]
     aliased = subprocess.run(alias_command, capture_output=True, text=True)
     assert aliased.returncode != 0
