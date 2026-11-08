@@ -30,6 +30,9 @@ public:
     /// \param sample_rate PCM sample rate in Hz.
     /// \param channels Number of PCM channels.
     /// \param bits_per_sample Bits per sample, for example 16 for s16le.
+    /// \param open_mode Whether to truncate the destination or open an empty
+    /// previously reserved file. Reservation is a name-level check; it does
+    /// not provide continuous ownership if another process replaces the path.
     WavWriter(
         std::string path,
         std::uint32_t sample_rate,

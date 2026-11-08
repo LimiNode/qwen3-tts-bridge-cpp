@@ -140,11 +140,25 @@ void write_result_json(
     const SaveWavState& state,
     const TtsCompletion& completion,
     bool completion_metadata_received) {
-    std::ofstream output(
-        output_path,
-        std::ios::binary | std::ios::trunc);
+    std::fstream output;
+    output.open(output_path, std::ios::in | std::ios::out | std::ios::binary);
+    if (!output.is_open()) {
+        throw std::runtime_error("failed to open reserved --result-json output");
+    }
+    output.seekp(0, std::ios::end);
+    const auto size = output.tellp();
+    if (size == std::streampos(-1)) {
+        output.close();
+        throw std::runtime_error("failed to inspect reserved --result-json output");
+    }
+    if (size != std::streampos(0)) {
+        output.close();
+        throw std::runtime_error("reserved --result-json file is not empty");
+    }
+    output.seekp(0, std::ios::beg);
     if (!output) {
-        throw std::runtime_error("failed to open --result-json output");
+        output.close();
+        throw std::runtime_error("failed to position reserved --result-json output");
     }
     output << "{\n"
            << "  \"schema_version\": 1,\n"
