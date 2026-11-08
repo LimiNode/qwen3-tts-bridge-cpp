@@ -131,6 +131,7 @@ struct ProgramOptions {
     std::uint32_t playback_animation_fps = 60;
     std::string pcm_capture_file;
     std::string wav_capture_file;
+    bool mock_wav_capture_failure = false;
     std::size_t playback_prebuffer_chunks = 1;
     bool etw_playback_markers = false;
     bool auto_profile = false;
@@ -352,6 +353,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --playback-animation-fps <n> Presentation tick rate for animation receipts, default: 60.\n"
         << "  --pcm-capture-file <path>      Write opt-in one-shot raw s16le PCM plus JSON metadata.\n"
         << "  --wav-capture-file <path>      Write opt-in one-shot post-processed PCM as RIFF/WAVE.\n"
+        << "  --mock-wav-capture-failure    Inject an optional WAV capture writer failure (test only).\n"
         << "  --playback-prebuffer-chunks <n> Delay sink start until n PCM chunks arrive, default: 1.\n"
         << "  --tail                         Enable terminal fade and padding (default).\n"
         << "  --no-tail                      Disable terminal fade and padding.\n"
@@ -534,6 +536,9 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
                  arg.rfind("--wav-capture-file=", 0) == 0) {
             options.wav_capture_file = require_value(index, argc, argv, "--wav-capture-file");
         }
+        else if (arg == "--mock-wav-capture-failure") {
+            options.mock_wav_capture_failure = true;
+        }
         else if (arg == "--playback-prebuffer-chunks" ||
                  arg.rfind("--playback-prebuffer-chunks=", 0) == 0) {
             options.playback_prebuffer_chunks = parse_u32(
@@ -696,6 +701,16 @@ void validate_options(const ProgramOptions& options) {
     }
     if (!options.wav_capture_file.empty() && options.text.empty()) {
         throw std::runtime_error("--wav-capture-file requires one-shot --text playback");
+    }
+    if (options.mock_wav_capture_failure) {
+        if (!uses_mock_worker(options) || !options.use_mock_playback_sink) {
+            throw std::runtime_error(
+                "--mock-wav-capture-failure requires --mock and --mock-playback-sink");
+        }
+        if (options.wav_capture_file.empty()) {
+            throw std::runtime_error(
+                "--mock-wav-capture-failure requires --wav-capture-file");
+        }
     }
     if (!options.pcm_capture_file.empty() &&
         options.pcm_capture_file == options.wav_capture_file) {
@@ -1812,7 +1827,15 @@ int wmain(int argc, wchar_t** argv) {
         }
         std::unique_ptr<WavCapture> wav_capture;
         if (!options.wav_capture_file.empty()) {
-            wav_capture = std::make_unique<WavCapture>(options.wav_capture_file);
+            std::function<void()> before_write_hook;
+            if (options.mock_wav_capture_failure) {
+                before_write_hook = [] {
+                    throw std::runtime_error("injected WAV capture writer failure");
+                };
+            }
+            wav_capture = std::make_unique<WavCapture>(
+                options.wav_capture_file,
+                std::move(before_write_hook));
         }
         std::optional<MockPlaybackFailureStage> mock_failure_stage;
         if (options.mock_playback_fail_stage.has_value()) {
@@ -1970,12 +1993,12 @@ int wmain(int argc, wchar_t** argv) {
             if (pcm_capture != nullptr) {
                 pcm_capture->finalize();
             }
-            if (wav_capture != nullptr) {
-                wav_capture->finalize();
-            }
             if (playback_metrics != nullptr) {
                 playback_metrics->mark_playback_completed();
                 playback_metrics->write_json_file(options.playback_metrics_file);
+            }
+            if (wav_capture != nullptr) {
+                wav_capture->finalize();
             }
             client.stop();
             if (safe_client != nullptr) {
