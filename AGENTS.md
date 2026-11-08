@@ -306,22 +306,20 @@ Umbrella ordering must be explicit and must not form cycles.
 
 Leaf-header contract:
 
-- public domain umbrellas and documented public entry headers must compile on
-  their own; the existing `data/audio_types.hpp` and
+- every public domain umbrella and documented public entry header must compile
+  on its own; the existing `data/audio_types.hpp` and
   `playback/playback_cursor.hpp` value-type entry points remain supported
   standalone exceptions;
-- internal leaf headers may rely on definitions supplied by their enclosing
-  umbrella and are not required to compile independently;
+- documented SDK leaf headers are self-contained for the declarations they
+  expose. Umbrellas still own the cross-domain dependency graph, but they do
+  not provide missing declarations to an implementation by transitive magic;
 - an implementation starts with its own neighbouring header, or the shared
   private header for source-only implementation splits;
-- if the implementation needs umbrella context, a per-source domain-owned TU
-  includes that umbrella and exactly one implementation, using library-qualified
-  paths; CMake compiles the wrapper, never the included implementation as well;
-- standalone and compatibility headers can provide the context directly without
-  another wrapper; audit that need instead of wrapping every source;
+- CMake compiles each real implementation `.cpp` directly and exactly once;
+- first-party `.cpp` inclusion is forbidden. Do not create domain wrappers,
+  forced includes, PCHs, unity-build context, or fake declarations to make a
+  source compile;
 - standard-library includes needed by a leaf remain in that leaf;
-- do not duplicate cross-domain includes in leaves merely to preserve
-  standalone compilation;
 - implementation-private headers such as `control_codec_internal.hpp` must not
   be installed as public SDK headers.
 
@@ -330,10 +328,9 @@ surface is the umbrella hierarchy, while leaf-to-leaf includes remain limited to
 same-domain implementation details.
 
 For clangd, export CMake's compile database and select its directory explicitly.
-The repository `.clangd` supplies editor-only umbrella context when opening an
-included implementation directly. It does not change compiler commands, enable
-PCH, or make internal leaves standalone API. See the architecture document for
-the source classification and tooling limitations.
+The editor must use the same direct-compilation context as CMake; do not add a
+forced include or project-wide PCH to hide a missing dependency. See the
+architecture document for the source and header contract.
 
 The current domain graph, compatibility entry points, and header compilation
 contract are documented in

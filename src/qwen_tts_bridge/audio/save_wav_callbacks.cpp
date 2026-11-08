@@ -1,5 +1,7 @@
 #include "save_wav_callbacks.hpp"
 
+#include "wav_writer.hpp"
+
 #include <stdexcept>
 #include <utility>
 

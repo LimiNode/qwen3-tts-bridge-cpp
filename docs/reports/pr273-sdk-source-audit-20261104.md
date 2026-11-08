@@ -1,5 +1,12 @@
 # PR #273: complete SDK source and translation-unit audit
 
+> Historical report. The wrapper-based translation-unit experiment described
+> below was rolled back. Current policy is documented in
+> `docs/architecture/header-dependencies.md`: real `.cpp` files are compiled
+> directly, first-party `.cpp` inclusion is forbidden, and documented headers
+> are self-contained. This report is retained as provenance for PR #273, not
+> as the current build contract.
+
 Scope: all first-party `.cpp` files under `src/qwen_tts_bridge/`. This covers
 the SDK and optional adapters, not the separate worker or example source trees.
 The implementation policy is applied throughout that scope, not only audio.

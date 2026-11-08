@@ -10,6 +10,9 @@
 #include <string>
 #include <vector>
 
+#include <qwen_tts_bridge/data.hpp>
+#include <qwen_tts_bridge/protocol/control.hpp>
+
 namespace qwen_tts_bridge {
 
 /// \struct TextPreparationWarning

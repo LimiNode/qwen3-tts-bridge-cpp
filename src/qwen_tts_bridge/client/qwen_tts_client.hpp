@@ -17,6 +17,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include <qwen_tts_bridge/protocol/control.hpp>
+#include <qwen_tts_bridge/session.hpp>
+#include <qwen_tts_bridge/transport.hpp>
+
 #include "client_types.hpp"
 
 namespace qwen_tts_bridge {
