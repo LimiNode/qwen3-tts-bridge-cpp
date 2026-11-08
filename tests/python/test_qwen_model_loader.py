@@ -6,6 +6,7 @@ from qwen_tts_bridge_worker.config import QwenEngineConfig
 from qwen_tts_bridge_worker.engine.qwen.model_loader import (
     QwenModelLoadError,
     _configure_code_predictor_compute_dtype,
+    _faster_dtype,
     load_qwen_model,
 )
 
@@ -16,6 +17,30 @@ class _FakeConfig:
 
 class _FakeProcessor:
     pass
+
+
+class FasterDtypeTests(unittest.TestCase):
+    def test_faster_dtype_normalizes_cli_aliases(self) -> None:
+        for alias, expected in {
+            "float16": "float16",
+            "fp16": "float16",
+            "bfloat16": "bfloat16",
+            "bf16": "bfloat16",
+            "float32": "float32",
+            "fp32": "float32",
+            "auto": "bfloat16",
+        }.items():
+            with self.subTest(alias=alias):
+                self.assertEqual(
+                    expected,
+                    _faster_dtype(
+                        QwenEngineConfig(model_path="models/qwen", dtype=alias)
+                    ),
+                )
+
+    def test_faster_dtype_rejects_unknown_value(self) -> None:
+        with self.assertRaisesRegex(QwenModelLoadError, "unsupported qwen dtype"):
+            _faster_dtype(QwenEngineConfig(model_path="models/qwen", dtype="fp8"))
 
 
 class _FakeAutoConfig:
@@ -274,6 +299,34 @@ class QwenModelLoaderTests(unittest.TestCase):
             },
             fake_faster.calls[0][1],
         )
+
+    def test_faster_loader_receives_canonical_dtype_aliases(self) -> None:
+        for alias, expected in {
+            "fp16": "float16",
+            "bf16": "bfloat16",
+            "fp32": "float32",
+        }.items():
+            with self.subTest(alias=alias):
+                fake_faster = _FakeFasterQwen()
+
+                def import_module(name: str) -> object:
+                    if name == "faster_qwen3_tts":
+                        return _FakeFasterModule(fake_faster)
+                    raise AssertionError(f"unexpected import: {name}")
+
+                with patch(
+                    "qwen_tts_bridge_worker.engine.qwen.model_loader.importlib.import_module",
+                    side_effect=import_module,
+                ):
+                    load_qwen_model(
+                        QwenEngineConfig(
+                            model_path="models/qwen",
+                            runtime_backend="faster",
+                            dtype=alias,
+                        )
+                    )
+
+                self.assertEqual(expected, fake_faster.calls[0][1]["dtype"])
 
     def test_faster_backend_forwards_prefill_compile_compat_mode(self) -> None:
         fake_faster = _FakeFasterQwen()
