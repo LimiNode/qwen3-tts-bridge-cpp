@@ -856,6 +856,24 @@ void fail_playback_request(
     }
 }
 
+void append_optional_wav_capture(
+    WavCapture* wav_capture,
+    const PcmChunk& chunk) noexcept {
+    if (wav_capture == nullptr || wav_capture->has_failed()) {
+        return;
+    }
+    try {
+        wav_capture->append(chunk);
+    }
+    catch (const std::exception& error) {
+        std::cerr << "WAV capture failed; continuing synthesis/playback: "
+                  << error.what() << '\n';
+    }
+    catch (...) {
+        std::cerr << "WAV capture failed; continuing synthesis/playback\n";
+    }
+}
+
 int run_playback_lifecycle_self_test() {
     WaveOutPlayer player(PlaybackSinkMode::Mock);
     const auto initial_epoch = player.playback_epoch();
@@ -1227,7 +1245,7 @@ RequestId submit_request(
             }
             for (const PcmChunk& processed : processors->process(chunk)) {
                 if (wav_capture != nullptr) {
-                    wav_capture->append(processed);
+                    append_optional_wav_capture(wav_capture, processed);
                 }
                 player.enqueue(playback_epoch, processed);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
@@ -1282,7 +1300,7 @@ RequestId submit_request(
             for (const PcmChunk& processed :
                  processors->finish(AudioTerminalReason::Completed)) {
                 if (wav_capture != nullptr) {
-                    wav_capture->append(processed);
+                    append_optional_wav_capture(wav_capture, processed);
                 }
                 player.enqueue(playback_epoch, processed);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION

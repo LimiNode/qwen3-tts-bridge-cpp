@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <deque>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -33,7 +34,9 @@ namespace qwen_tts_examples {
 /// output or an unbiased playback-performance measurement.
 class WavCapture final {
 public:
-    explicit WavCapture(const std::string& file_name);
+    explicit WavCapture(
+        const std::string& file_name,
+        std::function<void()> before_write_hook = {});
     ~WavCapture();
 
     WavCapture(const WavCapture&) = delete;
@@ -42,6 +45,7 @@ public:
     void append(const qwen_tts_bridge::PcmChunk& chunk);
     void finalize();
     void discard() noexcept;
+    [[nodiscard]] bool has_failed() const noexcept;
 
 private:
     struct PendingChunk {
@@ -68,6 +72,7 @@ private:
     std::size_t queued_bytes_ = 0;
     std::filesystem::path target_;
     std::filesystem::path temporary_;
+    std::function<void()> before_write_hook_;
     std::unique_ptr<qwen_tts_bridge::audio::WavWriter> writer_;
     std::optional<qwen_tts_bridge::AudioFormat> format_;
     std::string failure_message_;

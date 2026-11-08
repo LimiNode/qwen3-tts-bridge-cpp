@@ -11,6 +11,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <initializer_list>
 #include <iostream>
 #include <iterator>
@@ -222,6 +223,56 @@ void test_writer_failure_does_not_publish() {
     expect(!std::filesystem::exists(target), "failed WAV was published");
 }
 
+void test_queue_overflow_does_not_affect_playback_capture_contract() {
+    TemporaryDirectory directory;
+    const auto target = directory.path() / "overflow.wav";
+    std::promise<void> writer_entered;
+    auto writer_entered_future = writer_entered.get_future();
+    std::promise<void> release_writer;
+    auto release_writer_future = release_writer.get_future().share();
+    bool first_write = true;
+    WavCapture capture(
+        target.u8string(),
+        [&writer_entered, &release_writer_future, &first_write] {
+            if (first_write) {
+                first_write = false;
+                writer_entered.set_value();
+                release_writer_future.wait();
+            }
+        });
+
+    capture.append(chunk({0x01, 0x00}));
+    const bool writer_stalled = writer_entered_future.wait_for(std::chrono::seconds(2)) ==
+        std::future_status::ready;
+    if (!writer_stalled) {
+        release_writer.set_value();
+        throw std::runtime_error("WAV writer did not enter the controlled stall");
+    }
+    for (std::size_t index = 0; index != 32; ++index) {
+        capture.append(chunk({0x02, 0x00}));
+    }
+
+    bool overflow_failed = false;
+    try {
+        capture.append(chunk({0x03, 0x00}));
+    }
+    catch (const std::exception&) {
+        overflow_failed = true;
+    }
+    release_writer.set_value();
+    expect(overflow_failed, "WAV queue overflow was not reported");
+
+    bool finalize_failed = false;
+    try {
+        capture.finalize();
+    }
+    catch (const std::exception&) {
+        finalize_failed = true;
+    }
+    expect(finalize_failed, "overflowed WAV capture finalized successfully");
+    expect(!std::filesystem::exists(target), "overflowed WAV was published");
+}
+
 void test_rejects_existing_target_and_format_mismatch() {
     TemporaryDirectory directory;
     const auto target = directory.path() / "existing.wav";
@@ -264,6 +315,7 @@ int main() {
         test_no_tail_capture_preserves_pcm();
         test_incomplete_capture_is_removed();
         test_writer_failure_does_not_publish();
+        test_queue_overflow_does_not_affect_playback_capture_contract();
         test_rejects_existing_target_and_format_mismatch();
         return 0;
     }

@@ -13,9 +13,12 @@
 
 namespace qwen_tts_examples {
 
-WavCapture::WavCapture(const std::string& file_name)
+WavCapture::WavCapture(
+    const std::string& file_name,
+    std::function<void()> before_write_hook)
     : target_(std::filesystem::u8path(file_name)),
-      temporary_(temporary_path(target_)) {
+      temporary_(temporary_path(target_)),
+      before_write_hook_(std::move(before_write_hook)) {
     if (std::filesystem::exists(target_)) {
         throw std::runtime_error("refusing to overwrite existing WAV capture file: " + file_name);
     }
@@ -34,13 +37,6 @@ void WavCapture::append(const qwen_tts_bridge::PcmChunk& chunk) {
     if (chunk.bytes.empty()) {
         return;
     }
-    if (chunk.format.sample_format != "s16le" ||
-        chunk.format.sample_rate == 0 || chunk.format.channels == 0) {
-        throw std::runtime_error(
-            "WAV capture requires non-empty s16le audio format metadata");
-    }
-
-    PendingChunk pending{chunk.format, chunk.bytes};
     std::unique_lock<std::mutex> lock(mutex_);
     if (!accepting_ || finalized_) {
         throw std::runtime_error(
@@ -51,23 +47,40 @@ void WavCapture::append(const qwen_tts_bridge::PcmChunk& chunk) {
     if (!failure_message_.empty()) {
         throw std::runtime_error(failure_message_);
     }
+    if (chunk.format.sample_format != "s16le" ||
+        chunk.format.sample_rate == 0 || chunk.format.channels == 0) {
+        fail_locked("WAV capture requires non-empty s16le audio format metadata");
+        throw std::runtime_error(failure_message_);
+    }
     if (!format_.has_value()) {
-        format_ = pending.format;
+        format_ = chunk.format;
     }
-    else if (!formats_match(format_.value(), pending.format)) {
-        throw std::runtime_error(
-            "WAV capture cannot combine chunks with different audio formats");
+    else if (!formats_match(format_.value(), chunk.format)) {
+        fail_locked("WAV capture cannot combine chunks with different audio formats");
+        throw std::runtime_error(failure_message_);
     }
-    const std::size_t available_bytes = queued_bytes_ < kMaxQueuedBytes
-        ? kMaxQueuedBytes - queued_bytes_
-        : 0;
-    if (queue_.size() >= kMaxQueuedChunks || pending.bytes.size() > available_bytes) {
+    if (chunk.bytes.size() > kMaxQueuedBytes) {
         fail_locked(
             "WAV capture queue overflow; capture failed closed without publishing");
         throw std::runtime_error(failure_message_);
     }
-    queued_bytes_ += pending.bytes.size();
-    queue_.push_back(std::move(pending));
+    const std::size_t available_bytes = queued_bytes_ < kMaxQueuedBytes
+        ? kMaxQueuedBytes - queued_bytes_
+        : 0;
+    if (queue_.size() >= kMaxQueuedChunks || chunk.bytes.size() > available_bytes) {
+        fail_locked(
+            "WAV capture queue overflow; capture failed closed without publishing");
+        throw std::runtime_error(failure_message_);
+    }
+    try {
+        PendingChunk pending{chunk.format, chunk.bytes};
+        queued_bytes_ += pending.bytes.size();
+        queue_.push_back(std::move(pending));
+    }
+    catch (...) {
+        fail_locked("WAV capture append allocation failed; capture failed closed without publishing");
+        throw;
+    }
     lock.unlock();
     condition_.notify_one();
 }
@@ -156,16 +169,35 @@ void WavCapture::writer_loop() noexcept {
                     static_cast<std::uint16_t>(pending.format.channels),
                     16);
             }
+            if (before_write_hook_) {
+                before_write_hook_();
+            }
             writer_->write_pcm(pending.bytes.data(), pending.bytes.size());
         }
     }
     catch (const std::exception& error) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        fail_locked(std::string("WAV capture writer failed: ") + error.what());
+        std::string message = "WAV capture writer failed";
+        try {
+            message += ": ";
+            message += error.what();
+        }
+        catch (...) {
+        }
+        try {
+            std::lock_guard<std::mutex> lock(mutex_);
+            fail_locked(std::move(message));
+        }
+        catch (...) {
+            // A failing worker thread must never escape its noexcept boundary.
+        }
     }
     catch (...) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        fail_locked("WAV capture writer failed");
+        try {
+            std::lock_guard<std::mutex> lock(mutex_);
+            fail_locked("WAV capture writer failed");
+        }
+        catch (...) {
+        }
     }
 }
 
@@ -193,6 +225,11 @@ void WavCapture::fail_locked(std::string message) noexcept {
     queue_.clear();
     queued_bytes_ = 0;
     condition_.notify_all();
+}
+
+bool WavCapture::has_failed() const noexcept {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return !failure_message_.empty();
 }
 
 bool WavCapture::formats_match(
