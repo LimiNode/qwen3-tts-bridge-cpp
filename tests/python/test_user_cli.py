@@ -25,7 +25,11 @@ class UserCliTests(unittest.TestCase):
             model = _write_model(root / "model", model_type="base")
             player = _write_executable(root / "bin" / "qwen_tts_play.exe")
             worker = _write_executable(root / "bin" / "worker.exe")
-            config, registry = _write_voice_library(root, voice_id="voice")
+            config, registry = _write_voice_library(
+                root,
+                voice_id="voice",
+                extra_config={"runtime": {"device": "cuda:0"}},
+            )
             stdout = io.StringIO()
             stderr = io.StringIO()
             with mock.patch(
@@ -50,6 +54,8 @@ class UserCliTests(unittest.TestCase):
                             str(worker),
                             "--request-timeout-ms",
                             "12345",
+                            "--device",
+                            "cuda:1",
                         ]
                     )
 
@@ -66,6 +72,7 @@ class UserCliTests(unittest.TestCase):
             worker_args = _worker_argument_values(command)
             self.assertEqual("qwen", worker_args[0])
             self.assertIn("--collect-generation-trace", worker_args)
+            self.assertEqual("cuda:1", worker_args[worker_args.index("--device") + 1])
             self.assertEqual(
                 str(registry.resolve()),
                 worker_args[worker_args.index("--voice-registry-path") + 1],
@@ -215,6 +222,7 @@ class UserCliTests(unittest.TestCase):
                     "runtime": {
                         "save_wav_executable": str(save_wav),
                         "worker": str(worker),
+                        "device": "cuda:1",
                         "startup_timeout_ms": 180000,
                         "request_timeout_ms": 600000,
                     },
@@ -249,6 +257,131 @@ class UserCliTests(unittest.TestCase):
                 "720000", command[command.index("--request-timeout-ms") + 1]
             )
             self.assertIn(str(model.resolve()), _worker_argument_values(command))
+            worker_args = _worker_argument_values(command)
+            self.assertEqual("cuda:1", worker_args[worker_args.index("--device") + 1])
+
+    def test_synth_cli_device_overrides_configured_device(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _write_model(root / "models" / "base", model_type="base")
+            save_wav = _write_executable(root / "bin" / "save.exe")
+            worker = _write_executable(root / "bin" / "worker.exe")
+            config, _ = _write_voice_library(
+                root,
+                voice_id="voice",
+                extra_config={
+                    "models": {"base-1.7b": {"path": "models/base"}},
+                    "runtime": {
+                        "save_wav_executable": str(save_wav),
+                        "worker": str(worker),
+                        "device": "cuda:0",
+                    },
+                },
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "synth",
+                        "--voice-id",
+                        "voice",
+                        "--text",
+                        "Test",
+                        "--out",
+                        str(root / "speech.wav"),
+                        "--device",
+                        "cuda:1",
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            worker_args = _worker_argument_values(run.call_args.args[0])
+            self.assertEqual("cuda:1", worker_args[worker_args.index("--device") + 1])
+
+    def test_design_forwards_explicit_device(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "design",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--text",
+                        "Test",
+                        "--instruction",
+                        "Voice",
+                        "--out",
+                        str(root / "voice.wav"),
+                        "--device",
+                        "cuda:1",
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            worker_args = _worker_argument_values(run.call_args.args[0])
+            self.assertEqual("cuda:1", worker_args[worker_args.index("--device") + 1])
+
+    def test_design_uses_configured_device_when_cli_omits_it(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model")
+            save_wav = _write_executable(root / "qwen_tts_save_wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(
+                root,
+                voice_id="voice",
+                extra_config={"runtime": {"device": "cuda:2"}},
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "design",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--text",
+                        "Test",
+                        "--instruction",
+                        "Voice",
+                        "--out",
+                        str(root / "voice.wav"),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            worker_args = _worker_argument_values(run.call_args.args[0])
+            self.assertEqual("cuda:2", worker_args[worker_args.index("--device") + 1])
+
+    def test_device_rejects_blank_cli_and_config_values(self) -> None:
+        with self.assertRaisesRegex(ValueError, r"--device must be a non-empty"):
+            user_cli._resolve_device("  ", None)
+        with self.assertRaisesRegex(
+            ValueError, r"runtime\.device must be a non-empty"
+        ):
+            user_cli._resolve_device(None, "")
 
     def test_synth_resolves_base_model_from_portable_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -45,6 +45,14 @@ qwen-tts synth --voice-id kraftwerk-ru `
   --language English --out .\speech.wav
 ```
 
+Pass `--device cuda:1` (or another worker device string) to select the CUDA
+device for this invocation. Without it, `runtime.device` in the schema-1 CLI
+config is used, with `cuda` as the default. The command-line value takes
+precedence over the config. Device selection happens when the Python worker is
+started; it does not move a loaded model. `CUDA_VISIBLE_DEVICES` can remap the
+physical devices visible to the worker, so its `cuda:0` is the first visible
+device rather than necessarily physical GPU zero.
+
 `synth` requires an existing Python-compatible managed profile. It passes the
 authoritative registry path and `voice_id` to `qwen_tts_save_wav` and the
 persistent worker, requires natural EOS by default, and validates the non-empty
