@@ -1053,7 +1053,12 @@ def _temporary_output_paths(output_path: Path, result_json: Path) -> tuple[Path,
                 prefix=f".{target.name}.", suffix=".qtb-tmp", dir=target.parent
             )
             os.close(descriptor)
-            paths.append(Path(name))
+            temporary = Path(name)
+            # qwen_tts_save_wav rejects pre-existing output targets. mkstemp
+            # still gives us a secure, unique name; remove only that owned
+            # reservation before handing the path to the child process.
+            temporary.unlink()
+            paths.append(temporary)
         return paths[0], paths[1]
     except OSError:
         for path in paths:

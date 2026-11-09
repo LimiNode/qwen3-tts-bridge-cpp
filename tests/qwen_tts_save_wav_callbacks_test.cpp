@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -34,6 +35,7 @@ using qwen_tts_bridge::audio::AudioPostProcessorChain;
 using qwen_tts_bridge::audio::SaveWavState;
 using qwen_tts_bridge::audio::TerminalFadeOptions;
 using qwen_tts_bridge::audio::TerminalFadePostProcessor;
+using qwen_tts_bridge::audio::WavOpenMode;
 using qwen_tts_bridge::audio::WavWriter;
 using qwen_tts_bridge::audio::make_save_wav_callbacks;
 using qwen_tts_bridge::audio::wait_for_save_wav_terminal;
@@ -55,6 +57,12 @@ std::vector<std::int16_t> read_wav_samples(const std::string& path) {
         samples.push_back(sample);
     }
     return samples;
+}
+
+std::string read_bytes(const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    return std::string(
+        (std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
 }
 
 void remove_file(const std::string& path) {
@@ -223,6 +231,68 @@ void test_unicode_output_path() {
     remove_file(path);
 }
 
+void test_open_existing_rejects_non_empty_reserved_file() {
+    const std::string path = output_path("save_wav_reserved_non_empty.wav");
+    remove_file(path);
+    {
+        std::ofstream output(path, std::ios::binary | std::ios::trunc);
+        output << "sentinel";
+    }
+
+    bool rejected = false;
+    try {
+        WavWriter writer(
+            path,
+            24'000,
+            1,
+            16,
+            WavOpenMode::open_existing);
+    }
+    catch (const std::exception&) {
+        rejected = true;
+    }
+    CHECK(rejected);
+    CHECK(read_bytes(path) == "sentinel");
+    remove_file(path);
+}
+
+void test_open_existing_writes_empty_reserved_file_without_truncating() {
+    const std::string path = output_path("save_wav_reserved_empty.wav");
+    remove_file(path);
+    {
+        std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    }
+    {
+        WavWriter writer(
+            path,
+            24'000,
+            1,
+            16,
+            WavOpenMode::open_existing);
+        const auto bytes = pcm_bytes(2);
+        writer.write_pcm(bytes.data(), bytes.size());
+        writer.close();
+    }
+    CHECK(read_bytes(path).compare(0, 4, "RIFF") == 0);
+    CHECK(std::filesystem::file_size(std::filesystem::u8path(path)) == 46);
+    remove_file(path);
+}
+
+void test_default_wav_open_mode_retains_truncation() {
+    const std::string path = output_path("save_wav_default_truncation.wav");
+    remove_file(path);
+    {
+        std::ofstream output(path, std::ios::binary | std::ios::trunc);
+        output << "sentinel";
+    }
+    {
+        WavWriter writer(path, 24'000, 1, 16);
+        writer.close();
+    }
+    CHECK(std::filesystem::file_size(std::filesystem::u8path(path)) == 44);
+    remove_file(path);
+}
+
 } // namespace
 
 int main() {
@@ -231,5 +301,8 @@ int main() {
     test_optional_tail_fades_completion_and_appends_silence();
     test_optional_tail_fades_cancellation_without_default_pause();
     test_unicode_output_path();
+    test_open_existing_rejects_non_empty_reserved_file();
+    test_open_existing_writes_empty_reserved_file_without_truncating();
+    test_default_wav_open_mode_retains_truncation();
     return EXIT_SUCCESS;
 }

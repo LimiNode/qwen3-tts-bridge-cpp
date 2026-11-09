@@ -466,6 +466,7 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
 
     add_executable(qwen_tts_save_wav
         examples/qwen_tts_save_wav.cpp
+        examples/common/atomic_wav_output.cpp
     )
 
     add_executable(qwen_tts_latency_benchmark
@@ -1017,6 +1018,20 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         COMMAND qwen_tts_save_wav_callbacks_test
     )
 
+    add_executable(atomic_wav_output_test
+        tests/atomic_wav_output_test.cpp
+        examples/common/atomic_wav_output.cpp
+    )
+    target_include_directories(atomic_wav_output_test
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+    target_link_libraries(atomic_wav_output_test
+        PRIVATE
+            QwenTTSBridge::qwen_tts_bridge
+    )
+    add_test(NAME atomic_wav_output_test COMMAND atomic_wav_output_test)
+
     if(Python3_Interpreter_FOUND)
         file(TO_CMAKE_PATH
             "${Python3_EXECUTABLE}"
@@ -1093,6 +1108,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
             add_test(
+                NAME qwen_tts_save_wav_mock_cleanup
+                COMMAND "${CMAKE_COMMAND}" -E rm -f
+                    "${CMAKE_CURRENT_BINARY_DIR}/qwen_tts_save_wav_mock.wav"
+            )
+            add_test(
                 NAME qwen_tts_save_wav_mock_example
                 COMMAND qwen_tts_save_wav
                     --mock
@@ -1100,6 +1120,10 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                     --text "Example synthesis request"
                     --mock-chunks 2
                     --request-timeout-ms 10000
+            )
+            set_tests_properties(qwen_tts_save_wav_mock_example
+                PROPERTIES
+                    DEPENDS qwen_tts_save_wav_mock_cleanup
             )
             add_test(
                 NAME qwen_tts_save_wav_mock_verify
@@ -1126,6 +1150,14 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             )
             set_tests_properties(qwen_tts_save_wav_generation_trace_receipts
                 PROPERTIES TIMEOUT 60)
+            add_test(
+                NAME qwen_tts_save_wav_output_safety
+                COMMAND "${Python3_EXECUTABLE}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_save_wav_output_safety.py"
+                    --save-wav "$<TARGET_FILE:qwen_tts_save_wav>"
+            )
+            set_tests_properties(qwen_tts_save_wav_output_safety
+                PROPERTIES TIMEOUT 120)
             if(WIN32)
                 add_test(
                     NAME qwen_tts_voice_design_wrapper_mock

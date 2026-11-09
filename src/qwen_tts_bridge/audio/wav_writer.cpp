@@ -53,11 +53,13 @@ WavWriter::WavWriter(
     std::string path,
     std::uint32_t sample_rate,
     std::uint16_t channels,
-    std::uint16_t bits_per_sample)
+    std::uint16_t bits_per_sample,
+    WavOpenMode open_mode)
     : path_(std::move(path)),
       sample_rate_(sample_rate),
       channels_(channels),
-      bits_per_sample_(bits_per_sample) {
+      bits_per_sample_(bits_per_sample),
+      open_mode_(open_mode) {
     if (path_.empty()) {
         throw std::runtime_error("output WAV path is empty");
     }
@@ -79,11 +81,33 @@ WavWriter::WavWriter(
     }
     block_align_ = static_cast<std::uint16_t>(block_align);
 
-    file_.open(
-        std::filesystem::u8path(path_),
-        std::ios::binary | std::ios::trunc);
+    const auto open_flags = open_mode_ == WavOpenMode::truncate_existing
+        ? std::ios::binary | std::ios::trunc
+        : std::ios::in | std::ios::out | std::ios::binary;
+    file_.open(std::filesystem::u8path(path_), open_flags);
     if (!file_.is_open()) {
         throw std::runtime_error("failed to open WAV file: " + path_);
+    }
+
+    if (open_mode_ == WavOpenMode::open_existing) {
+        file_.seekp(0, std::ios::end);
+        const auto size = file_.tellp();
+        if (size == std::streampos(-1)) {
+            file_.close();
+            throw std::runtime_error(
+                "failed to inspect reserved WAV file: " + path_);
+        }
+        if (size != std::streampos(0)) {
+            file_.close();
+            throw std::runtime_error(
+                "reserved WAV file is not empty: " + path_);
+        }
+        file_.seekp(0, std::ios::beg);
+        if (!file_) {
+            file_.close();
+            throw std::runtime_error(
+                "failed to position reserved WAV file: " + path_);
+        }
     }
 
     closed_ = false;
@@ -136,7 +160,11 @@ void WavWriter::close() {
     file_.flush();
     ensure_stream_ok("flush WAV file");
     file_.close();
+    const bool close_failed = file_.fail();
     closed_ = true;
+    if (close_failed) {
+        throw std::runtime_error("failed to close WAV file: " + path_);
+    }
 }
 
 std::uint64_t WavWriter::data_size() const noexcept {
