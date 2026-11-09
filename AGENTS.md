@@ -115,6 +115,18 @@ transfer a verdict between model families, backends, revisions, or candidates.
 Do not report that a verdict was recorded when only an ignored `.tmp` file was
 changed. Preserve older reports and link a new receipt with `supersedes`.
 
+For repository-local model storage, use the ignored `models/` directory. This
+is the canonical model root for the portable CLI and packaged layout. Keep
+model families and conversion variants in clearly named subdirectories, and
+record their exact source, revision, and SHA-256 in the accompanying local
+acceptance manifest. Do not scatter new model copies through `.tmp/`, `dist/`,
+sibling worktrees, or the repository root. The user-facing resolver discovers
+portable models below `models/`; otherwise use an explicit model path, user
+configuration, or the documented Hugging Face cache variables.
+
+`.models/` is retained only as a legacy ignored local cache during migration.
+Do not add new model files there or treat it as a second CLI discovery root.
+
 ## Architecture Preflight
 
 Before changing a cross-cutting subsystem, read the nearest applicable ADR and

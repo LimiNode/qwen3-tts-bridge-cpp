@@ -19,6 +19,8 @@
 # Local model weights and downloaded assets
 /models/*
 !/models/.gitkeep
+# Legacy local model cache. Do not add new model copies here; use /models/.
+/.models/
 
 # Python local environments and caches
 /.venv/
