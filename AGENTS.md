@@ -115,6 +115,14 @@ transfer a verdict between model families, backends, revisions, or candidates.
 Do not report that a verdict was recorded when only an ignored `.tmp` file was
 changed. Preserve older reports and link a new receipt with `supersedes`.
 
+For the canonical local checkout on the primary development machine, downloaded
+Hugging Face checkpoints and GGUF model files should be kept under the ignored
+repository-local `.models/` directory. Keep model families and conversion
+variants in clearly named subdirectories, and record their exact source,
+revision, and SHA-256 in the accompanying local acceptance manifest. Do not
+scatter model copies through `.tmp/`, `dist/`, sibling worktrees, or the
+repository root.
+
 ## Architecture Preflight
 
 Before changing a cross-cutting subsystem, read the nearest applicable ADR and
