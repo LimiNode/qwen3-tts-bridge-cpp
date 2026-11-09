@@ -7,15 +7,17 @@ subdomain rather than adding `utils` or generic `helpers` directories.
 
 Umbrellas are dependency boundaries, not only convenience aggregators. An
 umbrella includes lower-level or sibling umbrellas first and then its own leaf
-headers. Public umbrellas are independently compilable. Internal leaves may
-obtain cross-domain declarations transitively from the enclosing umbrella.
-Keep standard-library includes in leaves, avoid duplicate cross-domain
-includes, and do not introduce umbrella cycles. When context is needed, a
-per-source domain-owned translation unit supplies the umbrella before including
-exactly one implementation source. Both paths are library-qualified, without
-`../`. The implementation starts with its own local header, or the existing
-private header for source-only splits. Standalone/compatibility entry headers
-can supply the context directly; do not add unnecessary wrappers.
+headers. Public umbrellas and documented leaf entry points are independently
+compilable. Umbrellas own cross-domain visibility, but a leaf must include the
+declarations required by its own public declarations; it may not depend on an
+accidental umbrella include order. Keep standard-library includes in leaves and
+express cross-domain dependencies through the corresponding umbrella; same-domain
+and implementation-private dependencies may use local leaf includes. Do not
+introduce umbrella cycles. Every real implementation is compiled
+directly and starts with its own header (or the existing private shared header).
+First-party `.cpp` inclusion, wrapper translation units, forced includes, PCH,
+and unity-build context are forbidden. Standalone/compatibility entry headers
+remain explicit supported entry points.
 Public consumers should include the domain umbrella instead of
 reaching into internal leaves.
 

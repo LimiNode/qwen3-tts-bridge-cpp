@@ -3,7 +3,11 @@
 /// \file tts_front_text_preparer.hpp
 /// \brief Adapter from the released tts-front-cpp frontend to PreparedText.
 
+#include <tts_front.hpp>
+
 #include <string>
+
+#include <qwen_tts_bridge/client.hpp>
 
 namespace qwen_tts_bridge {
 

@@ -1,26 +1,23 @@
-# Hierarchical header dependencies
+# Header dependency architecture
 
-The domain umbrella owns first-party cross-domain dependencies. It includes
-dependency umbrellas before its own leaves. Internal leaves keep their required
-standard-library headers, but need not compile without the enclosing umbrella.
-Where context is needed, per-source domain-owned translation units provide that
-umbrella before including exactly one implementation; each implementation starts
-with its own local header (or the private shared header for a source-only split).
-Sources whose standalone or compatibility header already supplies the context
-compile directly. This changes include ownership, not namespaces, DTO layouts, protocol,
-callbacks, or runtime policy.
+The bridge uses hierarchical umbrella headers to make the dependency graph
+visible at domain boundaries. An umbrella owns the first-party cross-domain
+includes for its domain, then includes the domain's own headers with local
+quoted paths. The graph is directed and acyclic; lower-level domains never
+depend on their higher-level consumers.
 
-Includes reaching outside the current directory use library-qualified paths,
-not parent traversal: `<qwen_tts_bridge/audio.hpp>`. Umbrellas still include their
-own leaves with local quoted paths, and implementations use short local header
-names. This distinction does not authorize cross-domain leaf dependencies.
+This is an include-ownership rule, not a C++ translation-unit mechanism.
+Every documented SDK header is self-contained and can be compiled at its
+documented include path. CMake compiles the real implementation `.cpp` files
+directly. A first-party `.cpp` must never be included from another source file,
+and no wrapper, forced include, PCH, or unity-build trick supplies a missing
+header dependency.
 
-## Domain and subdomain graph
+## Domain graph
 
-Umbrella and dependency paths below are relative to `src/qwen_tts_bridge/`;
-own-header paths are relative to the umbrella's directory. Each row lists direct
-dependencies in include order. Dependencies inherited through another umbrella
-are not repeated in a leaf. No edge leads back to a higher-level consumer.
+Paths below are relative to `src/qwen_tts_bridge/`. Dependencies inherited
+through another umbrella are intentionally not repeated in leaf headers, but
+each leaf still includes what its own declarations require.
 
 | Umbrella | Dependency umbrellas | Own headers, in order |
 | --- | --- | --- |
@@ -35,19 +32,39 @@ are not repeated in a leaf. No edge leads back to a higher-level consumer.
 | `playback.hpp` | `data.hpp` | `playback/{playback_cursor,playback_receipt}.hpp` |
 | `text.hpp` (optional) | `client.hpp`, external `tts_front.hpp` | `text/tts_front_text_preparer.hpp` |
 | `playback/winmm.hpp` (optional) | `audio.hpp`, `playback.hpp` | `winmm/wave_out_player.hpp` |
-| `integration/speech_animation.hpp` (optional) | `client.hpp`, external `speech_animation/{integration,playback}.hpp` | `speech_animation/{adapter,playback_runtime}.hpp` |
-| `native.hpp` (opt-in adapter) | none | `native/native_qwen_backend.hpp` |
+| `integration/speech_animation.hpp` (optional) | `client.hpp`, external speech-animation headers | `speech_animation/{adapter,playback_runtime}.hpp` |
+| `native.hpp` (opt-in) | none | `native/native_qwen_backend.hpp` |
 
-`transport/stdio.hpp` supplies the byte-transport interface before the stdio
-implementation; it must not include `transport.hpp` and create a parent cycle.
-`native.hpp` does not import GGML/CUDA or make the normal SDK depend on the
-native engine. Speech-animation remains build-tree-only; this refactor does
-not add it to the installed SDK.
+The root umbrella is optional. `transport/stdio.hpp` is the public connection
+point for the stdio subdomain and must not include its parent `transport.hpp`.
+Optional native and speech-animation umbrellas do not make their external
+runtime dependencies part of the normal SDK.
+
+## Include and implementation rules
+
+- Public code includes a stable domain umbrella such as
+  `<qwen_tts_bridge/client.hpp>` or `<qwen_tts_bridge/protocol/framing.hpp>`.
+- Umbrellas include their own leaves with local quoted paths.
+- A public or documented leaf header includes all declarations needed by its
+  own public declarations. A cross-domain dependency is expressed through the
+  corresponding domain umbrella; same-domain and implementation-private
+  dependencies may use local leaf includes.
+- Each implementation starts with its own header (or its existing private
+  shared header for a source-only split), followed by other implementation
+  dependencies as needed. The implementation is compiled directly by CMake.
+- First-party `.cpp` inclusion is forbidden. The source tree is not a set of
+  include fragments, and there are no domain translation-unit wrappers.
+- No `.clangd` forced include, PCH, unity build, or fake declaration may be
+  used to hide a missing header dependency.
+
+The distinction between a domain dependency and a translation unit is
+intentional: umbrellas govern visibility between domains, while normal C++
+compilation governs each source file independently.
 
 ## Supported entry points and exceptions
 
-All public umbrellas compile independently. Existing public entry paths remain
-available as thin wrappers around the new owning umbrella:
+All public umbrellas compile independently. Existing compatibility paths remain
+thin wrappers around their owning umbrella:
 
 - `playback/winmm_playback.hpp` -> `playback/winmm.hpp`;
 - `integration/speech_animation/speech_animation_adapter.hpp` ->
@@ -55,103 +72,33 @@ available as thin wrappers around the new owning umbrella:
 - `integration/speech_animation/playback_animation_runtime.hpp` ->
   `integration/speech_animation.hpp`.
 
-Two existing value-type entry points intentionally remain standalone:
+Two value-type entry points intentionally remain standalone:
 
-- `data/audio_types.hpp` retains a same-domain `protocol_types.hpp` include
+- `data/audio_types.hpp` retains its same-domain `protocol_types.hpp` include
   for `RequestId`;
-- `playback/playback_cursor.hpp` obtains `RequestId` through `data.hpp`, not a
-  cross-domain leaf include.
+- `playback/playback_cursor.hpp` obtains `RequestId` through `data.hpp`.
 
-These are explicit compatibility exceptions, not a requirement to make every
-internal leaf self-contained. Same-domain leaf edges remain for
-`data/protocol_types -> enums`, `data/audio_types -> protocol_types`,
-`client/qwen_tts_client -> client_types`, `protocol/control/control_codec ->
-control_messages`, `audio/save_wav_callbacks -> post_processor`,
-`audio/terminal_fade_post_processor -> post_processor`, and
-`playback/playback_receipt -> playback_cursor`. The private
-`control_codec_internal.hpp` includes same-directory codec/message headers and
-private nlohmann JSON; it is not installed.
-
-## Removed cross-domain leaf dependencies
-
-The following dependency responsibilities moved to the owning umbrellas:
-
-| Former leaf | Removed dependency paths (relative to `qwen_tts_bridge/`) |
-| --- | --- |
-| `protocol/control/control_messages.hpp` | `data/audio_types.hpp` |
-| `protocol/framing/{frame_codec,frame_parser}.hpp` | `data/protocol_types.hpp` |
-| `client/client_types.hpp` | `data/audio_types.hpp`, `data/protocol_types.hpp`, `protocol/control/control_messages.hpp` |
-| `client/qwen_tts_client.hpp` | `protocol/control/control_messages.hpp`, `session/worker_session.hpp`, `transport/stdio/std_io_transport.hpp` |
-| `session/worker_session.hpp` | `data/protocol_types.hpp`, `protocol/control/control_messages.hpp`, `protocol/framing/frame_parser.hpp`, `transport/i_transport.hpp` |
-| `audio/playout_cursor.hpp` | `data/audio_types.hpp` |
-| `audio/post_processor.hpp` | `data/audio_types.hpp`, `client/client_types.hpp` |
-| `audio/save_wav_callbacks.hpp` | `client/client_types.hpp`, `data/audio_types.hpp`, `protocol/control/control_messages.hpp` |
-| `playback/playback_receipt.hpp` | `data/audio_types.hpp` |
-| `text/tts_front_text_preparer.hpp` | `client/client_types.hpp`, external `tts_front.hpp` |
-| former `playback/winmm_playback.hpp` implementation | `audio.hpp`, `data.hpp`, `playback_cursor.hpp` supplied through the new umbrella |
-| former `integration/speech_animation/speech_animation_adapter.hpp` implementation | `data/audio_types.hpp`, `client/client_types.hpp`, external `speech_animation/integration.hpp` |
-| former `integration/speech_animation/playback_animation_runtime.hpp` implementation | sibling adapter and external `speech_animation/playback.hpp` |
-
-Additionally, `transport/stdio/std_io_transport.hpp` no longer includes its
-parent-domain `transport/i_transport.hpp`: the stdio umbrella supplies it.
-The standalone playback-cursor exception replaces its former
-`data/protocol_types.hpp` dependency with `data.hpp`.
+These are documented compatibility entry points, not a requirement to make
+every internal implementation detail public. The private
+`control_codec_internal.hpp` remains outside the installed API and may include
+same-directory control codec headers and private nlohmann JSON.
 
 ## Verification contract
 
-`public_header_self_contained` compiles each supported entry point in a separate
-translation unit, including optional umbrellas and compatibility paths when
-enabled. Two more translation units include the complete list in forward and
-reverse order. Internal leaves are not separately tested as public API.
+`public_header_self_contained` compiles every `.hpp` under
+`src/qwen_tts_bridge/` directly in the configuration that owns it, including
+optional and implementation-private headers when their feature is enabled.
+Those private checks validate the active build without promoting the headers to
+the installed API. Public umbrellas and documented compatibility headers are
+also checked through separate entry-point translation units. Forward- and
+reverse-order consumer fixtures cover the complete public list. CMake source
+lists include each real implementation exactly once; a source guard rejects
+any first-party `.cpp` include under `src/qwen_tts_bridge/`.
 
-The installed CMake consumer independently compiles the stdio entry point and,
-when requested, both WinMM entry paths, so a missing installed leaf cannot be
-masked by another umbrella. Feature-disabled installs must not acquire optional
-dependencies. Full CTest, mock playback, and optional native-worker and
-speech-animation configurations remain the behavior regression gates.
+The installed consumer independently compiles the stdio entry point and, when
+requested, both WinMM entry paths. Feature-disabled installs must not acquire
+optional dependencies. Full CTest, mock playback, and optional native-worker
+and speech-animation configurations remain the behavior regression gates.
 
-## Domain translation units
-
-The audio prototype established the two-level contract. Its five implementation
-sources retain local includes such as `"playout_cursor.hpp"`; wrappers use:
-
-```cpp
-#include <qwen_tts_bridge/audio.hpp>
-#include <qwen_tts_bridge/audio/playout_cursor.cpp>
-```
-
-The contract now covers every implementation under `src/qwen_tts_bridge/`,
-including the optional components. The [source audit](../reports/pr273-sdk-source-audit-20261104.md)
-lists all 23 implementation files, their classification and CMake mapping.
-There are 18 wrappers and five direct-compilation entries. CMake compiles
-wrappers instead of their included implementations, never both in one target.
-Source-only control codec splits retain `control_codec_internal.hpp`; no
-artificial public headers were added.
-
-A single unity TU was intentionally rejected:
-`playout_cursor.cpp` and `terminal_fade_post_processor.cpp` both define an
-anonymous-namespace `formats_match`, which collides when their sources share one
-translation unit. Per-source wrappers preserve symbol isolation and incremental
-rebuild granularity without renaming helpers.
-
-## Tooling context
-
-CMake's `compile_commands.json` describes the actual wrapper TUs. Included
-implementations intentionally have no separate build command. Compiler
-diagnostics still refer to the original implementation, and generated dependency
-information rebuilds the wrapper when that implementation changes.
-
-clangd can infer flags from the wrapper but cannot infer its preceding umbrella
-include. The repository `.clangd` supplies this context only for editor parsing
-of the corresponding implementation paths; CMake uses neither forced includes
-nor PCH. Configure Ninja with `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`, then start
-clangd with `--compile-commands-dir=<build-directory>`. Allow the trusted local
-MinGW driver through `--query-driver` when using clangd's Windows build.
-
-The selected database must come from a configuration enabling the optional
-component being edited. The native adapter needs its qwen C ABI include path;
-the audit checks it separately against the test ABI without loading GGML/CUDA.
-For whole-file `--check` diagnostics, `--tweaks=NoTweaks` disables clangd's
-developer refactoring probes; it does not disable parsing or semantic diagnostics.
-This avoids the unrelated clangd 22.1.4 ExtractFunction break/continue probe
-failure recorded during the audit.
+The architecture change does not alter namespaces, DTO layouts, protocol
+semantics, callbacks, worker behavior, or runtime policy.

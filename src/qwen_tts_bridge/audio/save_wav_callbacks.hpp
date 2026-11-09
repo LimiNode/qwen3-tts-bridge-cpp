@@ -11,6 +11,10 @@
 #include <memory>
 #include <string>
 
+#include <qwen_tts_bridge/data.hpp>
+#include <qwen_tts_bridge/client.hpp>
+#include <qwen_tts_bridge/protocol/control.hpp>
+
 #include "post_processor.hpp"
 
 namespace qwen_tts_bridge::audio {

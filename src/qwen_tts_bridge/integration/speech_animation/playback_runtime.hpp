@@ -4,6 +4,12 @@
 #include <cstdint>
 #include <memory>
 
+#include <qwen_tts_bridge/client.hpp>
+#include <speech_animation/integration.hpp>
+#include <speech_animation/playback.hpp>
+
+#include "adapter.hpp"
+
 namespace qwen_tts_bridge::speech_animation {
 
 /// \brief Presentation-side consumer for playback-locked animation.

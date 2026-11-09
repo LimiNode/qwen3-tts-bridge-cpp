@@ -8,7 +8,6 @@ project(QwenTTSBridge
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
-include(cmake/qwen_tts_bridge_wrapper_guard.cmake)
 
 option(QWEN_TTS_BRIDGE_BUILD_EXAMPLES "Build QwenTTSBridge examples" ON)
 option(QWEN_TTS_BRIDGE_BUILD_TESTS "Build QwenTTSBridge tests" ON)
@@ -137,28 +136,25 @@ if(WIN32)
 endif()
 
 add_library(qwen_tts_bridge
-    src/qwen_tts_bridge/audio_domain/playout_cursor.cpp
-    src/qwen_tts_bridge/audio_domain/post_processor.cpp
-    src/qwen_tts_bridge/audio_domain/save_wav_callbacks.cpp
-    src/qwen_tts_bridge/audio_domain/terminal_fade_post_processor.cpp
-    src/qwen_tts_bridge/audio_domain/wav_writer.cpp
-    src/qwen_tts_bridge/client_domain/qwen_tts_client.cpp
+    src/qwen_tts_bridge/audio/playout_cursor.cpp
+    src/qwen_tts_bridge/audio/post_processor.cpp
+    src/qwen_tts_bridge/audio/save_wav_callbacks.cpp
+    src/qwen_tts_bridge/audio/terminal_fade_post_processor.cpp
+    src/qwen_tts_bridge/audio/wav_writer.cpp
+    src/qwen_tts_bridge/client/qwen_tts_client.cpp
     src/qwen_tts_bridge/playback/playback_receipt.cpp
-    src/qwen_tts_bridge/protocol/control_domain/control_codec.cpp
-    src/qwen_tts_bridge/protocol/control_domain/control_decode.cpp
-    src/qwen_tts_bridge/protocol/control_domain/control_encode.cpp
-    src/qwen_tts_bridge/protocol/control_domain/control_json.cpp
-    src/qwen_tts_bridge/protocol/control_domain/control_validation.cpp
-    src/qwen_tts_bridge/protocol/control_domain/error_codec.cpp
-    src/qwen_tts_bridge/protocol/framing_domain/frame_codec.cpp
-    src/qwen_tts_bridge/protocol/framing_domain/frame_parser.cpp
-    src/qwen_tts_bridge/session_domain/worker_session.cpp
-    src/qwen_tts_bridge/transport/stdio_domain/std_io_transport.cpp
+    src/qwen_tts_bridge/protocol/control/control_codec.cpp
+    src/qwen_tts_bridge/protocol/control/control_decode.cpp
+    src/qwen_tts_bridge/protocol/control/control_encode.cpp
+    src/qwen_tts_bridge/protocol/control/control_json.cpp
+    src/qwen_tts_bridge/protocol/control/control_validation.cpp
+    src/qwen_tts_bridge/protocol/control/error_codec.cpp
+    src/qwen_tts_bridge/protocol/framing/frame_codec.cpp
+    src/qwen_tts_bridge/protocol/framing/frame_parser.cpp
+    src/qwen_tts_bridge/session/worker_session.cpp
+    src/qwen_tts_bridge/transport/stdio/std_io_transport.cpp
 )
 add_library(QwenTTSBridge::qwen_tts_bridge ALIAS qwen_tts_bridge)
-qwen_tts_bridge_validate_wrapper_sources(
-    qwen_tts_bridge
-    "${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_compile_features(qwen_tts_bridge PUBLIC cxx_std_17)
 
@@ -181,13 +177,10 @@ if(QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK)
     endif()
     add_library(qwen_tts_bridge_winmm_playback STATIC
         src/qwen_tts_bridge/playback/winmm_playback.cpp
-        src/qwen_tts_bridge/playback_domain/playback_interruption_diagnostics.cpp
+        src/qwen_tts_bridge/playback/playback_interruption_diagnostics.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_winmm_playback ALIAS
         qwen_tts_bridge_winmm_playback)
-    qwen_tts_bridge_validate_wrapper_sources(
-        qwen_tts_bridge_winmm_playback
-        "${CMAKE_CURRENT_SOURCE_DIR}")
     target_compile_features(qwen_tts_bridge_winmm_playback PUBLIC cxx_std_17)
     target_include_directories(qwen_tts_bridge_winmm_playback
         PUBLIC
@@ -283,12 +276,9 @@ endif()
 
 if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
     add_library(qwen_tts_bridge_tts_front STATIC
-        src/qwen_tts_bridge/text_domain/tts_front_text_preparer.cpp
+        src/qwen_tts_bridge/text/tts_front_text_preparer.cpp
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_tts_front ALIAS qwen_tts_bridge_tts_front)
-    qwen_tts_bridge_validate_wrapper_sources(
-        qwen_tts_bridge_tts_front
-        "${CMAKE_CURRENT_SOURCE_DIR}")
     target_compile_features(qwen_tts_bridge_tts_front PUBLIC cxx_std_17)
     target_include_directories(qwen_tts_bridge_tts_front
         PUBLIC
@@ -309,9 +299,6 @@ if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
     )
     add_library(QwenTTSBridge::qwen_tts_bridge_speech_animation ALIAS
         qwen_tts_bridge_speech_animation)
-    qwen_tts_bridge_validate_wrapper_sources(
-        qwen_tts_bridge_speech_animation
-        "${CMAKE_CURRENT_SOURCE_DIR}")
     target_compile_features(qwen_tts_bridge_speech_animation PUBLIC cxx_std_17)
     target_include_directories(qwen_tts_bridge_speech_animation
         PUBLIC
@@ -564,27 +551,29 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     enable_testing()
 
     add_test(
-        NAME wrapper_source_guard_negative
-        COMMAND "${CMAKE_COMMAND}"
-            -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/wrapper_guard_duplicate"
-            -B "${CMAKE_CURRENT_BINARY_DIR}/wrapper_guard_negative"
-            "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}")
-    set_tests_properties(wrapper_source_guard_negative PROPERTIES
-        WILL_FAIL TRUE
-        PASS_REGULAR_EXPRESSION "compiles wrapper and included implementation together")
-
-    add_test(
-        NAME wrapper_source_guard_positive
-        COMMAND "${CMAKE_COMMAND}"
-            -S "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/wrapper_guard_independent"
-            -B "${CMAKE_CURRENT_BINARY_DIR}/wrapper_guard_positive"
-            "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}")
-
-    add_test(
         NAME parent_relative_include_guard
         COMMAND "${CMAKE_COMMAND}"
             "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/no_parent_relative_includes.cmake")
+
+    add_test(
+        NAME first_party_cpp_include_guard
+        COMMAND "${CMAKE_COMMAND}"
+            "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/no_first_party_cpp_includes.cmake")
+
+    foreach(_cpp_include_fixture IN ITEMS
+            first_party_cpp_include_in_cpp
+            first_party_cpp_include_in_header)
+        add_test(
+            NAME "first_party_cpp_include_guard_${_cpp_include_fixture}"
+            COMMAND "${CMAKE_COMMAND}"
+                "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/${_cpp_include_fixture}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/no_first_party_cpp_includes.cmake")
+        set_tests_properties("first_party_cpp_include_guard_${_cpp_include_fixture}"
+            PROPERTIES
+                WILL_FAIL TRUE)
+    endforeach()
 
     add_executable(example_cli_parsing_test
         tests/example_cli_parsing_test.cpp
@@ -595,11 +584,9 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     )
     add_test(NAME example_cli_parsing_test COMMAND example_cli_parsing_test)
 
-    # Compile each supported public umbrella as its own translation unit.
-    # Domain leaf headers are implementation details of their umbrella unless
-    # explicitly documented as independently usable. Optional compatibility
-    # entry points remain checked too. Keeping this list aligned with the contract
-    # avoids turning incidental leaf include order into public API.
+    # Compile each supported public umbrella and documented compatibility entry
+    # point as its own translation unit. Keep this list aligned with the public
+    # header contract; it is not an include-order workaround for implementations.
     set(_qwen_tts_public_headers
         qwen_tts_bridge/audio.hpp
         qwen_tts_bridge/client.hpp
@@ -635,16 +622,50 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             qwen_tts_bridge/playback/winmm_playback.hpp
         )
     endif()
+    # Compile every SDK header directly in the configuration that owns it.
+    # This includes implementation-private headers for their active optional
+    # configuration, but does not install or promote them to the public API.
+    file(GLOB_RECURSE _qwen_tts_all_headers CONFIGURE_DEPENDS
+        RELATIVE "${QWEN_TTS_BRIDGE_SRC_DIR}"
+        "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/*.hpp")
     set(_qwen_tts_header_check_sources)
-    foreach(_header IN LISTS _qwen_tts_public_headers)
+    foreach(_header IN LISTS _qwen_tts_all_headers)
+        if(NOT QWEN_TTS_BRIDGE_BUILD_TTS_FRONT AND
+           (_header STREQUAL "qwen_tts_bridge/text.hpp" OR
+            _header MATCHES "^qwen_tts_bridge/text/"))
+            continue()
+        endif()
+        if(NOT QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION AND
+           _header MATCHES "^qwen_tts_bridge/integration/speech_animation")
+            continue()
+        endif()
+        if(NOT (WIN32 AND QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK) AND
+           (_header STREQUAL "qwen_tts_bridge/playback/winmm.hpp" OR
+            _header STREQUAL "qwen_tts_bridge/playback/winmm_playback.hpp" OR
+            _header MATCHES "^qwen_tts_bridge/playback/winmm/"))
+            continue()
+        endif()
         string(REPLACE "/" "_" _header_stem "${_header}")
-        set(_header_source "${CMAKE_CURRENT_BINARY_DIR}/header-check/${_header_stem}.cpp")
+        set(_header_source
+            "${CMAKE_CURRENT_BINARY_DIR}/header-check/all_${_header_stem}.cpp")
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/header-check")
         file(WRITE "${_header_source}" "#include <${_header}>\n")
         list(APPEND _qwen_tts_header_check_sources "${_header_source}")
     endforeach()
-    # Also compile all entry points together in both orders. Compatibility
-    # wrappers must not make umbrella definitions depend on a previous include.
+
+    # Keep separate checks for the documented public entry points. These make
+    # the supported surface explicit even when an internal header happens to
+    # be included by another umbrella.
+    foreach(_header IN LISTS _qwen_tts_public_headers)
+        string(REPLACE "/" "_" _header_stem "${_header}")
+        set(_header_source
+            "${CMAKE_CURRENT_BINARY_DIR}/header-check/entry_${_header_stem}.cpp")
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/header-check")
+        file(WRITE "${_header_source}" "#include <${_header}>\n")
+        list(APPEND _qwen_tts_header_check_sources "${_header_source}")
+    endforeach()
+    # Also compile all entry points together in both orders. Public umbrellas
+    # must not make definitions depend on a previous include.
     foreach(_order forward reverse)
         set(_ordered_headers ${_qwen_tts_public_headers})
         if(_order STREQUAL "reverse")
@@ -660,6 +681,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     add_library(public_header_self_contained OBJECT ${_qwen_tts_header_check_sources})
     target_include_directories(public_header_self_contained PRIVATE
         "${QWEN_TTS_BRIDGE_SRC_DIR}"
+        "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/nlohmann-json/include"
         "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src")
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         target_include_directories(public_header_self_contained PRIVATE
