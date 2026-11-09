@@ -3,7 +3,8 @@ if(NOT DEFINED QWEN_TTS_BRIDGE_SOURCE_ROOT)
 endif()
 
 file(GLOB_RECURSE source_files
-    "${QWEN_TTS_BRIDGE_SOURCE_ROOT}/src/qwen_tts_bridge/*.cpp")
+    "${QWEN_TTS_BRIDGE_SOURCE_ROOT}/src/qwen_tts_bridge/*.cpp"
+    "${QWEN_TTS_BRIDGE_SOURCE_ROOT}/src/qwen_tts_bridge/*.hpp")
 
 set(offenders)
 foreach(source_file IN LISTS source_files)
@@ -18,5 +19,6 @@ endforeach()
 if(offenders)
     list(JOIN offenders "\\n" offender_text)
     message(FATAL_ERROR
-        "first-party .cpp includes are forbidden under src/qwen_tts_bridge/:\\n${offender_text}")
+        "first-party .cpp includes are forbidden under src/qwen_tts_bridge/\\n"
+        "(from .cpp or .hpp):\\n${offender_text}")
 endif()

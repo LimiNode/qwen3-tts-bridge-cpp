@@ -562,6 +562,19 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/no_first_party_cpp_includes.cmake")
 
+    foreach(_cpp_include_fixture IN ITEMS
+            first_party_cpp_include_in_cpp
+            first_party_cpp_include_in_header)
+        add_test(
+            NAME "first_party_cpp_include_guard_${_cpp_include_fixture}"
+            COMMAND "${CMAKE_COMMAND}"
+                "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/${_cpp_include_fixture}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/no_first_party_cpp_includes.cmake")
+        set_tests_properties("first_party_cpp_include_guard_${_cpp_include_fixture}"
+            PROPERTIES
+                WILL_FAIL TRUE)
+    endforeach()
+
     add_executable(example_cli_parsing_test
         tests/example_cli_parsing_test.cpp
     )
