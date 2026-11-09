@@ -103,6 +103,45 @@ def main() -> int:
         timeout=30,
     )
 
+    both_pcm = args.output.with_name("both.pcm")
+    both_wav = args.output.with_name("both.wav")
+    remove_capture(both_pcm)
+    both_wav.unlink(missing_ok=True)
+    both_command = [
+        str(args.player),
+        "--mock",
+        "--no-playback",
+        "--text",
+        "PCM and WAV capture smoke.",
+        "--mock-chunks",
+        "4",
+        "--mock-chunk-ms",
+        "150",
+        "--pcm-capture-file",
+        str(both_pcm),
+        "--wav-capture-file",
+        str(both_wav),
+    ]
+    subprocess.run(both_command, check=True, timeout=30)
+    assert both_pcm.stat().st_size == expected_bytes
+    subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).with_name("verify_wav.py")),
+            str(both_wav),
+            "--sample-rate",
+            "24000",
+            "--channels",
+            "1",
+            "--bits-per-sample",
+            "16",
+            "--min-data-bytes",
+            "1",
+        ],
+        check=True,
+        timeout=30,
+    )
+
     no_tail_wav = args.output.with_name("no-tail.wav")
     no_tail_wav.unlink(missing_ok=True)
     no_tail_command = [
