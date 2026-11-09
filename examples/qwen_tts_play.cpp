@@ -742,6 +742,7 @@ void validate_options(const ProgramOptions& options) {
         }
     }
     if (!options.pcm_capture_file.empty() &&
+        !options.wav_capture_file.empty() &&
         capture_paths_alias(options.pcm_capture_file, options.wav_capture_file)) {
         throw std::runtime_error(
             "--pcm-capture-file and --wav-capture-file must use different paths");
