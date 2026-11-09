@@ -9,6 +9,9 @@
 #include <string>
 #include <vector>
 
+#include <qwen_tts_bridge/client.hpp>
+#include <speech_animation/integration.hpp>
+
 namespace qwen_tts_bridge::speech_animation {
 
 /// \brief Connects bridge PCM/lifecycle callbacks to a speech-animation pipeline.

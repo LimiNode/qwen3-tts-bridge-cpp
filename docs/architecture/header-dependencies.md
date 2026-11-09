@@ -85,11 +85,15 @@ same-directory control codec headers and private nlohmann JSON.
 
 ## Verification contract
 
-`public_header_self_contained` compiles each supported umbrella and documented
-compatibility header in a separate translation unit. Forward- and reverse-order
-consumer fixtures cover the complete public list. CMake source lists include
-each real implementation exactly once; a source guard rejects any first-party
-`.cpp` include under `src/qwen_tts_bridge/`.
+`public_header_self_contained` compiles every `.hpp` under
+`src/qwen_tts_bridge/` directly in the configuration that owns it, including
+optional and implementation-private headers when their feature is enabled.
+Those private checks validate the active build without promoting the headers to
+the installed API. Public umbrellas and documented compatibility headers are
+also checked through separate entry-point translation units. Forward- and
+reverse-order consumer fixtures cover the complete public list. CMake source
+lists include each real implementation exactly once; a source guard rejects
+any first-party `.cpp` include under `src/qwen_tts_bridge/`.
 
 The installed consumer independently compiles the stdio entry point and, when
 requested, both WinMM entry paths. Feature-disabled installs must not acquire

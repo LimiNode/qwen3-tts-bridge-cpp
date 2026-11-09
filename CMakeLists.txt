@@ -609,10 +609,44 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             qwen_tts_bridge/playback/winmm_playback.hpp
         )
     endif()
+    # Compile every SDK header directly in the configuration that owns it.
+    # This includes implementation-private headers for their active optional
+    # configuration, but does not install or promote them to the public API.
+    file(GLOB_RECURSE _qwen_tts_all_headers CONFIGURE_DEPENDS
+        RELATIVE "${QWEN_TTS_BRIDGE_SRC_DIR}"
+        "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/*.hpp")
     set(_qwen_tts_header_check_sources)
+    foreach(_header IN LISTS _qwen_tts_all_headers)
+        if(NOT QWEN_TTS_BRIDGE_BUILD_TTS_FRONT AND
+           (_header STREQUAL "qwen_tts_bridge/text.hpp" OR
+            _header MATCHES "^qwen_tts_bridge/text/"))
+            continue()
+        endif()
+        if(NOT QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION AND
+           _header MATCHES "^qwen_tts_bridge/integration/speech_animation")
+            continue()
+        endif()
+        if(NOT (WIN32 AND QWEN_TTS_BRIDGE_BUILD_WINMM_PLAYBACK) AND
+           (_header STREQUAL "qwen_tts_bridge/playback/winmm.hpp" OR
+            _header STREQUAL "qwen_tts_bridge/playback/winmm_playback.hpp" OR
+            _header MATCHES "^qwen_tts_bridge/playback/winmm/"))
+            continue()
+        endif()
+        string(REPLACE "/" "_" _header_stem "${_header}")
+        set(_header_source
+            "${CMAKE_CURRENT_BINARY_DIR}/header-check/all_${_header_stem}.cpp")
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/header-check")
+        file(WRITE "${_header_source}" "#include <${_header}>\n")
+        list(APPEND _qwen_tts_header_check_sources "${_header_source}")
+    endforeach()
+
+    # Keep separate checks for the documented public entry points. These make
+    # the supported surface explicit even when an internal header happens to
+    # be included by another umbrella.
     foreach(_header IN LISTS _qwen_tts_public_headers)
         string(REPLACE "/" "_" _header_stem "${_header}")
-        set(_header_source "${CMAKE_CURRENT_BINARY_DIR}/header-check/${_header_stem}.cpp")
+        set(_header_source
+            "${CMAKE_CURRENT_BINARY_DIR}/header-check/entry_${_header_stem}.cpp")
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/header-check")
         file(WRITE "${_header_source}" "#include <${_header}>\n")
         list(APPEND _qwen_tts_header_check_sources "${_header_source}")
@@ -634,6 +668,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     add_library(public_header_self_contained OBJECT ${_qwen_tts_header_check_sources})
     target_include_directories(public_header_self_contained PRIVATE
         "${QWEN_TTS_BRIDGE_SRC_DIR}"
+        "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/nlohmann-json/include"
         "${QWEN_TTS_BRIDGE_EXTERNAL_CPP_DIR}/qwentts.cpp/src")
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         target_include_directories(public_header_self_contained PRIVATE
