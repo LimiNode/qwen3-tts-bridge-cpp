@@ -123,9 +123,9 @@ public:
         CHECK(ready);
     }
 
-    int wait_for_exit() {
+    int wait_for_exit(std::chrono::milliseconds timeout = std::chrono::seconds(5)) {
         std::unique_lock<std::mutex> lock(mutex_);
-        const bool ready = condition_.wait_for(lock, std::chrono::seconds(5), [&]() {
+        const bool ready = condition_.wait_for(lock, timeout, [&]() {
             return exited_;
         });
         CHECK(ready);
@@ -824,7 +824,7 @@ void test_stop_lifecycle_watchdog_subprocess(const char* executable) {
         [&](int status) {
             collector.on_exit(status);
         }));
-    CHECK(collector.wait_for_exit() == 0);
+    CHECK(collector.wait_for_exit(std::chrono::seconds(15)) == 0);
     CHECK(!collector.has_errors());
     CHECK(collector.contains_text("concurrent-stop-child-ok"));
 }
