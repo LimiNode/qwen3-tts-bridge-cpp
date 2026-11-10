@@ -652,7 +652,12 @@ void test_stop_racing_callback_exception_does_not_deadlock() {
         transport.stop();
         stop_finished = true;
     });
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // The worker remains alive until stop() acts, so this state transition
+    // confirms the external stopper has entered its shutdown path.
+    for (int attempt = 0; attempt < 500 && transport.is_running(); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(!transport.is_running());
     release_callback = true;
 
     for (int attempt = 0; attempt < 500 && !stop_finished.load(); ++attempt) {
