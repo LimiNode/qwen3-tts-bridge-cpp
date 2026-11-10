@@ -360,12 +360,14 @@ class StdioWorkerServer:
             # stdout already unusable there is no recoverable protocol path,
             # so the real worker must terminate independently of that read.
             # Do not touch a descriptor owned by the caller.
-            threading.Thread(
-                target=report_failure,
-                name="qtb-stdout-failure-diagnostic",
-                daemon=True,
-            ).start()
-            os._exit(1)
+            try:
+                threading.Thread(
+                    target=report_failure,
+                    name="qtb-stdout-failure-diagnostic",
+                    daemon=True,
+                ).start()
+            finally:
+                os._exit(1)
 
         # Embedded callers retain ownership of input_stream. They observe the
         # fatal state through run() and are responsible for unblocking their
