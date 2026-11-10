@@ -127,6 +127,13 @@ configuration, or the documented Hugging Face cache variables.
 `.models/` is retained only as a legacy ignored local cache during migration.
 Do not add new model files there or treat it as a second CLI discovery root.
 
+When a task requires machine-local paths, explicitly check for
+`AGENTS.local.md` in the current checkout. That file is intentionally not
+versioned and may be absent on another workstation. Do not guess a local
+archive path: if the local file is absent, ask the user before attempting
+restoration or deletion. A local rollback archive is not a runtime model
+root, portable package, or substitute for an off-machine backup.
+
 ## Architecture Preflight
 
 Before changing a cross-cutting subsystem, read the nearest applicable ADR and
