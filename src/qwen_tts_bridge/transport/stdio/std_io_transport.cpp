@@ -282,6 +282,13 @@ public:
         ReceiveHandler receive_handler,
         ErrorHandler error_handler,
         ExitHandler exit_handler) {
+        // An external stop may hold lifecycle_mutex_ while joining this
+        // callback thread. Reject reentrant start before waiting on that lock.
+        if (is_callback_thread()) {
+            call_error(error_handler, "stdio transport cannot be started from a transport callback");
+            return false;
+        }
+
         std::unique_lock<std::mutex> lifecycle_lock(lifecycle_mutex_);
 
         if (options_.arguments.empty()) {
@@ -293,12 +300,6 @@ public:
         if (options_.max_callback_queue_events == 0 || options_.max_callback_queue_bytes == 0) {
             lifecycle_lock.unlock();
             call_error(error_handler, "stdio transport callback queue limits must be greater than zero");
-            return false;
-        }
-
-        if (is_callback_thread()) {
-            lifecycle_lock.unlock();
-            call_error(error_handler, "stdio transport cannot be started from a transport callback");
             return false;
         }
 
@@ -327,6 +328,7 @@ public:
             exit_status_ = -1;
         }
 
+        std::string startup_error;
         try {
             start_callback_thread();
 
@@ -370,10 +372,7 @@ public:
             }
 
             if (!is_started_process_id(process->get_id())) {
-                const auto handler = fail_start();
-                lifecycle_lock.unlock();
-                call_error(handler, "failed to start stdio worker process");
-                return false;
+                throw std::runtime_error("failed to start stdio worker process");
             }
 
             bool stop_on_registration = false;
@@ -404,17 +403,17 @@ public:
             return !stop_on_registration;
         }
         catch (const std::exception& exc) {
-            const auto handler = fail_start();
-            lifecycle_lock.unlock();
-            call_error(handler, exc.what());
-            return false;
+            startup_error = exc.what();
         }
         catch (...) {
-            const auto handler = fail_start();
-            lifecycle_lock.unlock();
-            call_error(handler, "unknown stdio transport startup error");
-            return false;
+            startup_error = "unknown stdio transport startup error";
         }
+
+        const auto handler = fail_start();
+        lifecycle_lock.unlock();
+        // User exceptions must not be mistaken for another startup failure.
+        call_error(handler, startup_error);
+        return false;
     }
 
     SendResult send(const std::byte* data, std::size_t size) {
@@ -631,7 +630,9 @@ private:
         }
 
         callback_thread_ = std::thread([this]() {
+            callback_transport_ = this;
             callback_loop();
+            callback_transport_ = nullptr;
         });
     }
 
@@ -895,8 +896,7 @@ private:
     }
 
     bool is_callback_thread() const {
-        return callback_thread_.joinable()
-            && callback_thread_.get_id() == std::this_thread::get_id();
+        return callback_transport_ == this;
     }
 
     void join_callback_thread_if_needed() {
@@ -927,6 +927,8 @@ private:
     std::shared_ptr<TinyProcessLib::Process> process_;
     std::thread exit_thread_;
     std::thread callback_thread_;
+    // Thread-local identity never reads callback_thread_ concurrently with join.
+    inline static thread_local const Impl* callback_transport_ = nullptr;
 
     std::mutex callback_mutex_;
     std::condition_variable callback_condition_;

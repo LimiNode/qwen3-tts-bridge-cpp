@@ -496,10 +496,47 @@ void run_start_error_reentrancy_child() {
             [](int) {}));
         CHECK(error_count == 1);
         CHECK(!transport.is_running());
+
+        try {
+            transport.start(
+                [](ITransport::Bytes) {},
+                [&](std::string) {
+                    ++error_count;
+                    transport.stop();
+                    throw std::runtime_error("startup callback exception");
+                },
+                [](int) {});
+            CHECK(false);
+        }
+        catch (const std::runtime_error& exc) {
+            CHECK(std::string(exc.what()) == "startup callback exception");
+        }
+        CHECK(error_count == 2);
+        CHECK(!transport.is_running());
     }
 #endif
 
-    std::cout << "startup-error-child-ok\n";
+    {
+        StdIoTransport transport(make_python_options(
+            "import time; time.sleep(60)", std::chrono::milliseconds(100)));
+        CHECK(transport.start([](ITransport::Bytes) {}, [](std::string) {}, [](int) {}));
+        std::size_t error_count = 0;
+        CHECK(!transport.start(
+            [](ITransport::Bytes) {},
+            [&](std::string message) {
+                ++error_count;
+                CHECK(message == "stdio transport is already started");
+                CHECK(transport.is_running());
+                transport.stop();
+            },
+            [](int) {}));
+        CHECK(error_count == 1);
+        CHECK(!transport.is_running());
+
+        // The rejected start and reentrant stop must not prevent a later start.
+        CHECK(transport.start([](ITransport::Bytes) {}, [](std::string) {}, [](int) {}));
+        transport.stop();
+    }
 }
 
 void test_second_start_is_rejected() {
@@ -745,7 +782,7 @@ bool wait_until_not_running(
     return !transport.is_running();
 }
 
-void run_callback_reentrant_stop_child() {
+void run_callback_reentrant_lifecycle_child(bool start_from_callback) {
     StdIoTransport transport(make_python_options(
         "import sys, time; sys.stdout.buffer.write(b'reentrant'); "
         "sys.stdout.flush(); time.sleep(60)",
@@ -755,8 +792,10 @@ void run_callback_reentrant_stop_child() {
     std::condition_variable condition;
     bool callback_entered = false;
     bool release_callback = false;
-    bool callback_stop_finished = false;
+    bool callback_finished = false;
     bool external_stop_finished = false;
+    std::size_t start_errors = 0;
+    RawCollector collector;
 
     CHECK(transport.start(
         [&](ITransport::Bytes) {
@@ -773,15 +812,30 @@ void run_callback_reentrant_stop_child() {
                 }));
             }
 
-            transport.stop();
+            if (start_from_callback) {
+                const auto began = std::chrono::steady_clock::now();
+                CHECK(!transport.start(
+                    [](ITransport::Bytes) {},
+                    [&](std::string message) {
+                        ++start_errors;
+                        CHECK(message == "stdio transport cannot be started from a transport callback");
+                        CHECK(!transport.is_running());
+                        transport.stop();
+                    },
+                    [](int) {}));
+                CHECK(std::chrono::steady_clock::now() - began < std::chrono::seconds(5));
+            }
+            else {
+                transport.stop();
+            }
             {
                 std::lock_guard<std::mutex> lock(mutex);
-                callback_stop_finished = true;
+                callback_finished = true;
             }
             condition.notify_all();
         },
-        [](std::string) {},
-        [](int) {}));
+        [&](std::string message) { collector.on_error(std::move(message)); },
+        [&](int status) { collector.on_exit(status); }));
 
     // The worker writes immediately; wait until the callback reaches its
     // handshake before allowing external shutdown to proceed.
@@ -813,11 +867,38 @@ void run_callback_reentrant_stop_child() {
     {
         std::unique_lock<std::mutex> lock(mutex);
         CHECK(condition.wait_for(lock, std::chrono::seconds(5), [&]() {
-            return callback_stop_finished && external_stop_finished;
+            return callback_finished && external_stop_finished;
         }));
     }
     external_stopper.join();
     CHECK(!transport.is_running());
+    CHECK(start_errors == (start_from_callback ? 1u : 0u));
+    CHECK(collector.has_exit());
+    CHECK(!collector.has_errors());
+
+    if (start_from_callback) {
+        // Repeat on the same transport to exercise callback identity after join
+        // and restart, including the non-contended callback-start rejection.
+        RawCollector restarted;
+        CHECK(transport.start(
+            [&](ITransport::Bytes) {
+                CHECK(!transport.start(
+                    [](ITransport::Bytes) {},
+                    [&](std::string message) {
+                        ++start_errors;
+                        CHECK(message == "stdio transport cannot be started from a transport callback");
+                        transport.stop();
+                    },
+                    [](int) {}));
+            },
+            [&](std::string message) { restarted.on_error(std::move(message)); },
+            [&](int status) { restarted.on_exit(status); }));
+        restarted.wait_for_exit();
+        transport.stop();
+        CHECK(!transport.is_running());
+        CHECK(start_errors == 2);
+        CHECK(!restarted.has_errors());
+    }
 }
 
 void run_two_external_stops_child() {
@@ -853,12 +934,15 @@ void run_two_external_stops_child() {
     CHECK(!transport.is_running());
 }
 
-void test_stop_lifecycle_watchdog_subprocess(const char* executable) {
+void test_lifecycle_watchdog_subprocess(
+    const char* executable,
+    const char* child_mode,
+    const char* success_marker) {
     // The parent Python process owns the timeout and kills a wedged child;
     // this test cannot hang merely because the child has deadlocked threads.
     constexpr const char* watchdog_script =
         "import subprocess, sys\n"
-        "child = subprocess.Popen([sys.argv[1], '--concurrent-stop-child'],\n"
+        "child = subprocess.Popen([sys.argv[1], sys.argv[2]],\n"
         "                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n"
         "try:\n"
         "    stdout, stderr = child.communicate(timeout=10)\n"
@@ -875,6 +959,8 @@ void test_stop_lifecycle_watchdog_subprocess(const char* executable) {
     RawCollector collector;
     StdIoTransportOptions options = make_python_options(watchdog_script);
     options.arguments.push_back(executable);
+    options.arguments.push_back(child_mode);
+    options.stderr_handler = [](std::string message) { std::cerr << message; };
     StdIoTransport transport(options);
     CHECK(transport.start(
         [&](ITransport::Bytes bytes) {
@@ -888,45 +974,7 @@ void test_stop_lifecycle_watchdog_subprocess(const char* executable) {
         }));
     CHECK(collector.wait_for_exit(std::chrono::seconds(15)) == 0);
     CHECK(!collector.has_errors());
-    CHECK(collector.contains_text("concurrent-stop-child-ok"));
-}
-
-void test_start_error_reentrancy_watchdog_subprocess(const char* executable) {
-    // The parent Python process owns the timeout and kills a wedged child;
-    // this test cannot hang merely because start() retained lifecycle_mutex_.
-    constexpr const char* watchdog_script =
-        "import subprocess, sys\n"
-        "child = subprocess.Popen([sys.argv[1], '--startup-error-child'],\n"
-        "                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n"
-        "try:\n"
-        "    stdout, stderr = child.communicate(timeout=10)\n"
-        "except subprocess.TimeoutExpired:\n"
-        "    child.kill()\n"
-        "    stdout, stderr = child.communicate()\n"
-        "    sys.stderr.buffer.write(stderr)\n"
-        "    print('watchdog-timeout', flush=True)\n"
-        "    raise SystemExit(124)\n"
-        "sys.stdout.buffer.write(stdout)\n"
-        "sys.stderr.buffer.write(stderr)\n"
-        "raise SystemExit(child.returncode)\n";
-
-    RawCollector collector;
-    StdIoTransportOptions options = make_python_options(watchdog_script);
-    options.arguments.push_back(executable);
-    StdIoTransport transport(options);
-    CHECK(transport.start(
-        [&](ITransport::Bytes bytes) {
-            collector.on_bytes(std::move(bytes));
-        },
-        [&](std::string message) {
-            collector.on_error(std::move(message));
-        },
-        [&](int status) {
-            collector.on_exit(status);
-        }));
-    CHECK(collector.wait_for_exit(std::chrono::seconds(15)) == 0);
-    CHECK(!collector.has_errors());
-    CHECK(collector.contains_text("startup-error-child-ok"));
+    CHECK(collector.contains_text(success_marker));
 }
 
 void test_stop_can_kill_worker_while_send_is_blocked() {
@@ -1162,13 +1210,15 @@ void test_environment_overrides_replace_path_case_insensitively_on_windows() {
 
 int main(int argc, char** argv) {
     if (argc == 2 && std::string(argv[1]) == "--concurrent-stop-child") {
-        run_callback_reentrant_stop_child();
+        run_callback_reentrant_lifecycle_child(false);
         run_two_external_stops_child();
         std::cout << "concurrent-stop-child-ok\n";
         return 0;
     }
     if (argc == 2 && std::string(argv[1]) == "--startup-error-child") {
         run_start_error_reentrancy_child();
+        run_callback_reentrant_lifecycle_child(true);
+        std::cout << "startup-error-child-ok\n";
         return 0;
     }
 
@@ -1182,8 +1232,10 @@ int main(int argc, char** argv) {
     test_stop_from_receive_callback();
     test_receive_callback_exception_fails_closed();
     test_stop_racing_callback_exception_does_not_deadlock();
-    test_stop_lifecycle_watchdog_subprocess(argv[0]);
-    test_start_error_reentrancy_watchdog_subprocess(argv[0]);
+    test_lifecycle_watchdog_subprocess(
+        argv[0], "--concurrent-stop-child", "concurrent-stop-child-ok");
+    test_lifecycle_watchdog_subprocess(
+        argv[0], "--startup-error-child", "startup-error-child-ok");
     test_stop_can_kill_worker_while_send_is_blocked();
     test_stdout_is_delivered_before_exit_callback();
     test_invalid_callback_queue_limits_reject_start();
