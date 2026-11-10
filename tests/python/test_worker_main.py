@@ -33,12 +33,14 @@ class _CapturingServer:
         max_admitted_requests: int,
         engine_startup_mode: str,
         canary_runtime_provenance: object | None,
+        abort_process_on_output_failure: bool,
     ) -> None:
         self.input_stream = input_stream
         self.output_stream = output_stream
         self.error_stream = error_stream
         self.engine_startup_mode = engine_startup_mode
         self.canary_runtime_provenance = canary_runtime_provenance
+        self.abort_process_on_output_failure = abort_process_on_output_failure
         self.stdout_during_run: object | None = None
         _CapturingServer.instances.append(self)
 
@@ -70,6 +72,7 @@ class WorkerMainTests(unittest.TestCase):
             server = _CapturingServer.instances[0]
             self.assertIs(stdout.buffer, server.output_stream)
             self.assertIs(stderr, server.stdout_during_run)
+            self.assertTrue(server.abort_process_on_output_failure)
             self.assertEqual(b"", stdout.buffer.getvalue())
             self.assertIn("third-party stdout noise", stderr.text.getvalue())
 
