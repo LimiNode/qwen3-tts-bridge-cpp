@@ -11,7 +11,7 @@ import uuid
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, BinaryIO, Deque, Optional, TextIO, cast
+from typing import Any, BinaryIO, Callable, Deque, Optional, TextIO, cast
 
 from qwen_tts_bridge_worker.config import CanaryRuntimeProvenance
 from qwen_tts_bridge_worker.engine import (
@@ -152,6 +152,10 @@ class _OutputFrame:
     first_audio_frame: bool = False
 
 
+class _OutputWriterFailure(RuntimeError):
+    """Raised when the protocol stdout stream can no longer be published."""
+
+
 class _OutputWriter:
     """Single writer thread that serializes all worker stdout frames."""
 
@@ -160,13 +164,17 @@ class _OutputWriter:
         output: BinaryIO,
         max_queue_size: int,
         metrics: MetricsWriter,
+        on_failure: Callable[[BaseException], None],
     ) -> None:
         self._output = output
         self._metrics = metrics
+        self._on_failure = on_failure
         self._queue: queue.Queue[Optional[_OutputFrame]] = queue.Queue(
             maxsize=max_queue_size
         )
         self._thread = threading.Thread(target=self._run, name="qtb-stdout-writer")
+        self._failure: BaseException | None = None
+        self._failure_lock = threading.Lock()
 
     def start(self) -> None:
         self._thread.start()
@@ -178,51 +186,85 @@ class _OutputWriter:
         request_id: int | None = None,
         first_audio_frame: bool = False,
     ) -> None:
-        self._queue.put(
-            _OutputFrame(
-                payload=frame,
-                enqueued_at=monotonic_seconds(),
-                request_id=request_id,
-                first_audio_frame=first_audio_frame,
-            )
+        output_frame = _OutputFrame(
+            payload=frame,
+            enqueued_at=monotonic_seconds(),
+            request_id=request_id,
+            first_audio_frame=first_audio_frame,
         )
+        while True:
+            failure = self.failure()
+            if failure is not None:
+                raise _OutputWriterFailure(
+                    "protocol stdout writer failed"
+                ) from failure
+            try:
+                self._queue.put(output_frame, timeout=0.1)
+                return
+            except queue.Full:
+                continue
 
     def stop_when_drained(self) -> None:
-        self._queue.put(None)
+        while self.failure() is None:
+            try:
+                self._queue.put(None, timeout=0.1)
+                break
+            except queue.Full:
+                continue
         self._thread.join()
 
+    def failure(self) -> BaseException | None:
+        with self._failure_lock:
+            return self._failure
+
     def _run(self) -> None:
-        while True:
-            output_frame = self._queue.get()
-            if output_frame is None:
-                return
-            write_started_at = monotonic_seconds()
-            if output_frame.first_audio_frame and output_frame.request_id is not None:
-                self._metrics.emit(
-                    "request_first_frame_write_started",
-                    request_id=output_frame.request_id,
-                    output_queue_ms=elapsed_milliseconds(
-                        output_frame.enqueued_at,
-                        write_started_at,
-                    ),
-                )
-            self._output.write(output_frame.payload)
-            self._output.flush()
-            flushed_at = monotonic_seconds()
-            if output_frame.first_audio_frame and output_frame.request_id is not None:
-                self._metrics.emit(
-                    "request_first_frame_flushed",
-                    request_id=output_frame.request_id,
-                    output_queue_ms=elapsed_milliseconds(
-                        output_frame.enqueued_at,
-                        write_started_at,
-                    ),
-                    flush_ms=elapsed_milliseconds(write_started_at, flushed_at),
-                    output_writer_ms=elapsed_milliseconds(
-                        output_frame.enqueued_at,
-                        flushed_at,
-                    ),
-                )
+        try:
+            while True:
+                output_frame = self._queue.get()
+                if output_frame is None:
+                    return
+                write_started_at = monotonic_seconds()
+                if (
+                    output_frame.first_audio_frame
+                    and output_frame.request_id is not None
+                ):
+                    self._metrics.emit(
+                        "request_first_frame_write_started",
+                        request_id=output_frame.request_id,
+                        output_queue_ms=elapsed_milliseconds(
+                            output_frame.enqueued_at,
+                            write_started_at,
+                        ),
+                    )
+                written = self._output.write(output_frame.payload)
+                if written is not None and written != len(output_frame.payload):
+                    raise OSError(
+                        f"short protocol stdout write: {written} of "
+                        f"{len(output_frame.payload)} bytes"
+                    )
+                self._output.flush()
+                flushed_at = monotonic_seconds()
+                if (
+                    output_frame.first_audio_frame
+                    and output_frame.request_id is not None
+                ):
+                    self._metrics.emit(
+                        "request_first_frame_flushed",
+                        request_id=output_frame.request_id,
+                        output_queue_ms=elapsed_milliseconds(
+                            output_frame.enqueued_at,
+                            write_started_at,
+                        ),
+                        flush_ms=elapsed_milliseconds(write_started_at, flushed_at),
+                        output_writer_ms=elapsed_milliseconds(
+                            output_frame.enqueued_at,
+                            flushed_at,
+                        ),
+                    )
+        except BaseException as exc:
+            with self._failure_lock:
+                self._failure = exc
+            self._on_failure(exc)
 
 
 class StdioWorkerServer:
@@ -240,6 +282,7 @@ class StdioWorkerServer:
         read_chunk_size: int = 4096,
         engine_startup_mode: str = "main",
         canary_runtime_provenance: CanaryRuntimeProvenance | None = None,
+        abort_process_on_output_failure: bool = False,
     ) -> None:
         self._input = input_stream
         self._error = error_stream
@@ -251,9 +294,15 @@ class StdioWorkerServer:
         self._read_chunk_size = read_chunk_size
         self._engine_startup_mode = engine_startup_mode
         self._canary_runtime_provenance = canary_runtime_provenance
+        self._abort_process_on_output_failure = abort_process_on_output_failure
         self._metrics = MetricsWriter(error_stream)
 
-        self._writer = _OutputWriter(output_stream, output_queue_size, self._metrics)
+        self._writer = _OutputWriter(
+            output_stream,
+            output_queue_size,
+            self._metrics,
+            self._handle_output_failure,
+        )
         self._parser = FrameParser()
         self._session_id = uuid.uuid4().hex
 
@@ -286,6 +335,45 @@ class StdioWorkerServer:
             target=self._run_engine_loop,
             name="qtb-engine",
         )
+
+    def _handle_output_failure(self, failure: BaseException) -> None:
+        """Stop the session when protocol stdout can no longer be published."""
+
+        self._fatal_error = True
+        self._shutdown_requested = True
+
+        def report_failure() -> None:
+            try:
+                print(
+                    f"[worker:error] protocol stdout writer failed: {failure}",
+                    file=self._error,
+                    flush=True,
+                )
+            except BaseException:
+                # Diagnostics must never prevent the failure path from
+                # terminating the worker.
+                pass
+
+        if self._abort_process_on_output_failure:
+            # A Windows BufferedReader can remain blocked in read1() even
+            # after an input stream is closed from another thread. With
+            # stdout already unusable there is no recoverable protocol path,
+            # so the real worker must terminate independently of that read.
+            # Diagnostics are best-effort and may not run before process exit.
+            # Do not touch a descriptor owned by the caller.
+            try:
+                threading.Thread(
+                    target=report_failure,
+                    name="qtb-stdout-failure-diagnostic",
+                    daemon=True,
+                ).start()
+            finally:
+                os._exit(1)
+
+        # Embedded callers retain ownership of input_stream. They observe the
+        # fatal state through run() and are responsible for unblocking their
+        # own input source if it is not EOF-terminated.
+        report_failure()
 
     def run(self) -> int:
         """Run the server until shutdown, EOF, or a fatal framing error."""

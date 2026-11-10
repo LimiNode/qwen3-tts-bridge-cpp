@@ -1,9 +1,14 @@
 import io
 import json
+import os
+import subprocess
+import sys
 import threading
 import unittest
 from collections.abc import Iterable
+from pathlib import Path
 from typing import BinaryIO, cast
+from unittest.mock import patch
 
 from qwen_tts_bridge_worker.config import CanaryRuntimeProvenance
 from qwen_tts_bridge_worker.engine import (
@@ -72,6 +77,32 @@ class _RecordingWriter:
 
     def send(self, frame: bytes, **_: object) -> None:
         self.frames.append(frame)
+
+
+class _FailingOutput(io.BytesIO):
+    def write(self, data: bytes) -> int:
+        del data
+        raise OSError("simulated broken stdout")
+
+
+class _ShortWriteOutput(io.BytesIO):
+    def write(self, data: bytes) -> int:
+        super().write(data[:1])
+        return max(0, len(data) - 1)
+
+
+class _FailingFlushOutput(io.BytesIO):
+    def flush(self) -> None:
+        raise OSError("simulated stdout flush failure")
+
+
+class _FailingErrorStream(io.StringIO):
+    def write(self, value: str) -> int:
+        del value
+        raise OSError("simulated stderr failure")
+
+    def flush(self) -> None:
+        raise OSError("simulated stderr flush failure")
 
 
 class FailingWarmupEngine:
@@ -740,6 +771,142 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertTrue(engine.close_called)
         self.assertIn("load failed", stderr.getvalue())
         self.assertNotIn("cannot join thread before it is started", stderr.getvalue())
+
+    def test_stdout_writer_failure_fails_closed_and_stops_input(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+        )
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=_FailingOutput(),
+            error_stream=stderr,
+            engine=NoopWarmupEngine(),
+        )
+
+        self.assertEqual(1, server.run())
+        self.assertIn("protocol stdout writer failed", stderr.getvalue())
+
+    def test_stdout_short_write_fails_closed(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(
+                _control_frame(
+                    0,
+                    {
+                        "message_type": "hello",
+                        "client_name": "test-client",
+                        "client_version": "0.2.0",
+                    },
+                )
+            ),
+            output_stream=_ShortWriteOutput(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+        )
+
+        self.assertEqual(1, server.run())
+
+    def test_stdout_flush_failure_fails_closed(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(
+                _control_frame(
+                    0,
+                    {
+                        "message_type": "hello",
+                        "client_name": "test-client",
+                        "client_version": "0.2.0",
+                    },
+                )
+            ),
+            output_stream=_FailingFlushOutput(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+        )
+
+        self.assertEqual(1, server.run())
+
+    def test_stdout_failure_is_not_masked_by_stderr_failure(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=_FailingErrorStream(),
+            engine=NoopWarmupEngine(),
+        )
+
+        server._handle_output_failure(OSError("simulated stdout failure"))
+        self.assertTrue(server._fatal_error)
+
+    def test_abort_survives_diagnostic_thread_creation_and_start_failure(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+            abort_process_on_output_failure=True,
+        )
+        module = "qwen_tts_bridge_worker.server.stdio_server"
+        for target in (
+            f"{module}.threading.Thread",
+            f"{module}.threading.Thread.start",
+        ):
+            with (
+                self.subTest(target=target),
+                patch(target, side_effect=RuntimeError("cannot start diagnostic")),
+                patch(f"{module}.os._exit", side_effect=SystemExit(1)) as abort,
+                self.assertRaises(SystemExit) as raised,
+            ):
+                server._handle_output_failure(OSError("stdout failure"))
+            self.assertEqual(1, raised.exception.code)
+            abort.assert_called_once_with(1)
+
+    def test_real_pipe_stdout_failure_interrupts_open_stdin(self) -> None:
+        source_root = os.environ.get("PYTHONPATH", "")
+        worker_source = str(Path(__file__).parents[2] / "worker" / "src")
+        environment = os.environ.copy()
+        environment["PYTHONPATH"] = os.pathsep.join(
+            part for part in (worker_source, source_root) if part
+        )
+        process = subprocess.Popen(
+            [sys.executable, "-m", "qwen_tts_bridge_worker", "mock"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=environment,
+        )
+        assert process.stdin is not None
+        assert process.stdout is not None
+        assert process.stderr is not None
+        process.stdin.write(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "pipe-test",
+                    "client_version": "0.2.0",
+                },
+            )
+        )
+        process.stdin.flush()
+        process.stdout.close()
+
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+            self.fail("worker remained blocked on stdin after stdout failure")
+        finally:
+            process.stdin.close()
+        self.assertNotEqual(0, process.returncode)
+        process.stderr.read()
+        process.stderr.close()
 
     def test_warmup_failure_does_not_join_unstarted_engine_thread(self) -> None:
         engine = FailingWarmupEngine()

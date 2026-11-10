@@ -36,6 +36,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         max_admitted_requests=config.max_admitted_requests,
         engine_startup_mode=config.engine_startup_mode,
         canary_runtime_provenance=config.canary_runtime_provenance,
+        abort_process_on_output_failure=True,
     )
     return server.run()
 
