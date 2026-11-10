@@ -205,8 +205,12 @@ class _OutputWriter:
                 continue
 
     def stop_when_drained(self) -> None:
-        if self.failure() is None:
-            self._queue.put(None)
+        while self.failure() is None:
+            try:
+                self._queue.put(None, timeout=0.1)
+                break
+            except queue.Full:
+                continue
         self._thread.join()
 
     def failure(self) -> BaseException | None:
