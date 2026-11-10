@@ -359,6 +359,7 @@ class StdioWorkerServer:
             # after an input stream is closed from another thread. With
             # stdout already unusable there is no recoverable protocol path,
             # so the real worker must terminate independently of that read.
+            # Diagnostics are best-effort and may not run before process exit.
             # Do not touch a descriptor owned by the caller.
             try:
                 threading.Thread(

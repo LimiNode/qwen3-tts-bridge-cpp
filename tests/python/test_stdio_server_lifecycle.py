@@ -8,6 +8,7 @@ import unittest
 from collections.abc import Iterable
 from pathlib import Path
 from typing import BinaryIO, cast
+from unittest.mock import patch
 
 from qwen_tts_bridge_worker.config import CanaryRuntimeProvenance
 from qwen_tts_bridge_worker.engine import (
@@ -841,6 +842,29 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
 
         server._handle_output_failure(OSError("simulated stdout failure"))
         self.assertTrue(server._fatal_error)
+
+    def test_abort_survives_diagnostic_thread_creation_and_start_failure(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=NoopWarmupEngine(),
+            abort_process_on_output_failure=True,
+        )
+        module = "qwen_tts_bridge_worker.server.stdio_server"
+        for target in (
+            f"{module}.threading.Thread",
+            f"{module}.threading.Thread.start",
+        ):
+            with (
+                self.subTest(target=target),
+                patch(target, side_effect=RuntimeError("cannot start diagnostic")),
+                patch(f"{module}.os._exit", side_effect=SystemExit(1)) as abort,
+                self.assertRaises(SystemExit) as raised,
+            ):
+                server._handle_output_failure(OSError("stdout failure"))
+            self.assertEqual(1, raised.exception.code)
+            abort.assert_called_once_with(1)
 
     def test_real_pipe_stdout_failure_interrupts_open_stdin(self) -> None:
         source_root = os.environ.get("PYTHONPATH", "")
