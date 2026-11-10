@@ -74,6 +74,12 @@ class _RecordingWriter:
         self.frames.append(frame)
 
 
+class _FailingOutput(io.BytesIO):
+    def write(self, data: bytes) -> int:
+        del data
+        raise OSError("simulated broken stdout")
+
+
 class FailingWarmupEngine:
     def __init__(self) -> None:
         self.close_called = False
@@ -740,6 +746,28 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertTrue(engine.close_called)
         self.assertIn("load failed", stderr.getvalue())
         self.assertNotIn("cannot join thread before it is started", stderr.getvalue())
+
+    def test_stdout_writer_failure_fails_closed_and_stops_input(self) -> None:
+        input_stream = io.BytesIO(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "test-client",
+                    "client_version": "0.2.0",
+                },
+            )
+        )
+        stderr = io.StringIO()
+        server = StdioWorkerServer(
+            input_stream=input_stream,
+            output_stream=_FailingOutput(),
+            error_stream=stderr,
+            engine=NoopWarmupEngine(),
+        )
+
+        self.assertEqual(1, server.run())
+        self.assertIn("protocol stdout writer failed", stderr.getvalue())
 
     def test_warmup_failure_does_not_join_unstarted_engine_thread(self) -> None:
         engine = FailingWarmupEngine()
