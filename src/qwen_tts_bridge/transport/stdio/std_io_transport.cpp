@@ -364,10 +364,42 @@ public:
                 return false;
             }
 
+            bool abort_start = false;
             {
-                std::lock_guard<std::mutex> lock(state_mutex_);
-                process_ = process;
-                state_ = ProcessState::Running;
+                std::lock_guard<std::mutex> callback_lock(callback_mutex_);
+                std::lock_guard<std::mutex> state_lock(state_mutex_);
+                if (callback_failed_ || state_ != ProcessState::Starting) {
+                    abort_start = true;
+                }
+                else {
+                    process_ = process;
+                    state_ = ProcessState::Running;
+                }
+            }
+
+            if (abort_start) {
+                try {
+                    process->kill(true);
+                }
+                catch (...) {
+                    // get_exit_status below still performs the reader cleanup.
+                }
+                try {
+                    process->get_exit_status();
+                }
+                catch (...) {
+                    // The startup failure is already recorded by the callback path.
+                }
+                request_callback_thread_stop();
+                join_callback_thread_if_needed();
+                {
+                    std::lock_guard<std::mutex> lock(state_mutex_);
+                    process_.reset();
+                    state_ = ProcessState::Stopped;
+                    exited_ = false;
+                    clear_handlers_locked();
+                }
+                return false;
             }
 
             exit_thread_ = std::thread([this, process]() {
@@ -628,40 +660,55 @@ private:
     }
 
     void fail_callback_dispatch() noexcept {
-        {
-            std::lock_guard<std::mutex> lock(callback_mutex_);
-            callback_accepting_events_ = false;
-            callback_failed_ = true;
-            // Discard ordinary events, but retain an Exit that was already
-            // queued before the failing callback. The exit watcher may have
-            // completed before this method runs, so dropping it would leave
-            // the callback thread waiting forever for an event that cannot be
-            // published again.
-            std::deque<CallbackEvent> terminal_events;
-            for (auto& event : callback_events_) {
-                if (event.type == CallbackEventType::Exit) {
-                    terminal_events.push_back(std::move(event));
-                }
-            }
-            callback_events_ = std::move(terminal_events);
-            callback_queued_bytes_ = 0;
-            for (const auto& event : callback_events_) {
-                callback_queued_bytes_ += callback_event_payload_size(event);
-            }
-        }
-        callback_condition_.notify_all();
-
         std::shared_ptr<TinyProcessLib::Process> process;
         try {
-            std::lock_guard<std::mutex> lock(state_mutex_);
-            process = process_;
-            if (state_ == ProcessState::Running || state_ == ProcessState::Starting) {
-                state_ = ProcessState::Stopping;
+            {
+                std::lock_guard<std::mutex> callback_lock(callback_mutex_);
+                callback_accepting_events_ = false;
+                callback_failed_ = true;
+                // Discard ordinary events, but retain an Exit that was already
+                // queued before the failing callback. The exit watcher may have
+                // completed before this method runs, so dropping it would leave
+                // the callback thread waiting forever for an event that cannot be
+                // published again.
+                auto exit_event = callback_events_.end();
+                for (auto it = callback_events_.begin(); it != callback_events_.end(); ++it) {
+                    if (it->type == CallbackEventType::Exit) {
+                        exit_event = it;
+                        break;
+                    }
+                }
+                if (exit_event == callback_events_.end()) {
+                    callback_events_.clear();
+                }
+                else {
+                    if (exit_event != callback_events_.begin()) {
+                        callback_events_.front() = std::move(*exit_event);
+                    }
+                    while (callback_events_.size() > 1) {
+                        callback_events_.pop_back();
+                    }
+                }
+                callback_queued_bytes_ = 0;
+                for (const auto& event : callback_events_) {
+                    callback_queued_bytes_ += callback_event_payload_size(event);
+                }
+
+                // Keep callback failure publication and startup registration in
+                // one lock order. This prevents start() from restoring Running
+                // after a failure has already moved the state to Stopping.
+                std::lock_guard<std::mutex> state_lock(state_mutex_);
+                process = process_;
+                if (state_ == ProcessState::Running || state_ == ProcessState::Starting) {
+                    state_ = ProcessState::Stopping;
+                }
             }
         }
         catch (...) {
+            callback_condition_.notify_all();
             return;
         }
+        callback_condition_.notify_all();
 
         if (process != nullptr) {
             try {
