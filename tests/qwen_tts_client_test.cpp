@@ -359,6 +359,34 @@ void test_synthesize_async_delivers_audio_and_completed() {
     CHECK(!client.is_running());
 }
 
+void test_transport_callback_failure_terminates_active_request_once() {
+    auto options = make_worker_options(1000, 0.01);
+    std::string diagnostics;
+    std::atomic<bool> callback_failed{false};
+    options.stderr_handler = [&](std::string message) {
+        diagnostics += message;
+        if (diagnostics.find("request_queued") != std::string::npos) {
+            callback_failed = true;
+            throw std::runtime_error("transport stderr callback failed");
+        }
+    };
+
+    QwenTtsClient client;
+    CHECK(client.start(std::move(options), make_client_options()));
+    RequestProbe probe;
+    CHECK(client.synthesize_async("Fail this active request.", make_callbacks(probe)) != 0);
+    CHECK(wait_for_probe(probe, [](const RequestProbe& state) {
+        return !state.errors.empty() || state.completed || state.cancelled;
+    }));
+    client.stop();
+
+    CHECK(callback_failed.load());
+    std::lock_guard<std::mutex> lock(probe.mutex);
+    CHECK(probe.errors.size() == 1);
+    CHECK(probe.completed_count == 0);
+    CHECK(probe.cancelled_count == 0);
+}
+
 void test_available_voice_ids_snapshot() {
     QwenTtsClient client;
     CHECK(client.available_voice_ids().empty());
@@ -1215,6 +1243,7 @@ void test_transport_send_failure_fails_request_once() {
 
 int main() {
     test_synthesize_async_delivers_audio_and_completed();
+    test_transport_callback_failure_terminates_active_request_once();
     test_available_voice_ids_snapshot();
     test_multiple_async_requests_complete();
     test_cancel_queued_request();

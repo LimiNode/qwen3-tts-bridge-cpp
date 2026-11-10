@@ -73,7 +73,9 @@ struct StdIoTransportOptions {
 /// start() and stop() are serialized internally. send() may be called from
 /// multiple threads after a successful start. stop() is idempotent and may be
 /// called from a transport callback, but object destruction from a callback is
-/// not supported.
+/// not supported. If an internal callback throws, the transport catches the
+/// exception, terminates the worker, and fails closed; callback exceptions must
+/// not escape the transport thread.
 class StdIoTransport final : public ITransport {
 public:
     /// \brief Creates a stdio transport with process launch options.

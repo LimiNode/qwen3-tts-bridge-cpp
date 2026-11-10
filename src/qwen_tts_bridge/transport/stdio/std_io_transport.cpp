@@ -11,6 +11,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 #if defined(_WIN32)
@@ -47,6 +48,9 @@ struct CallbackEvent {
     std::string message;
     int exit_status = -1;
 };
+
+static_assert(std::is_nothrow_move_assignable<CallbackEvent>::value,
+    "Retaining Exit during callback failure must not allocate or throw");
 
 std::size_t callback_event_payload_size(const CallbackEvent& event) {
     return event.bytes.size() + event.message.size();
@@ -364,17 +368,32 @@ public:
                 return false;
             }
 
+            bool stop_on_registration = false;
             {
                 std::lock_guard<std::mutex> lock(state_mutex_);
                 process_ = process;
-                state_ = ProcessState::Running;
+                stop_on_registration = state_ != ProcessState::Starting;
+                if (!stop_on_registration) {
+                    state_ = ProcessState::Running;
+                }
             }
 
             exit_thread_ = std::thread([this, process]() {
                 watch_process_exit(std::move(process));
             });
 
-            return true;
+            // Readers may enqueue stdout during the Process constructor, but
+            // callbacks must not run until both process ownership and the
+            // terminal-event producer are registered.
+            {
+                std::lock_guard<std::mutex> lock(callback_mutex_);
+                callback_dispatch_ready_ = true;
+            }
+            callback_condition_.notify_all();
+            if (stop_on_registration) {
+                process->kill(true);
+            }
+            return !stop_on_registration;
         }
         catch (const std::exception& exc) {
             fail_start(exc.what());
@@ -578,6 +597,8 @@ private:
             callback_queue_overflowed_ = false;
             callback_stop_requested_ = false;
             callback_accepting_events_ = true;
+            callback_failed_ = false;
+            callback_dispatch_ready_ = false;
         }
 
         callback_thread_ = std::thread([this]() {
@@ -592,10 +613,12 @@ private:
             {
                 std::unique_lock<std::mutex> lock(callback_mutex_);
                 callback_condition_.wait(lock, [this]() {
-                    return callback_stop_requested_ || !callback_events_.empty();
+                    return callback_stop_requested_
+                        || (callback_dispatch_ready_ && !callback_events_.empty());
                 });
 
-                if (callback_events_.empty() && callback_stop_requested_) {
+                if (callback_stop_requested_
+                    && (!callback_dispatch_ready_ || callback_events_.empty())) {
                     break;
                 }
 
@@ -604,7 +627,84 @@ private:
                 callback_queued_bytes_ -= callback_event_payload_size(event);
             }
 
-            dispatch_event(std::move(event));
+            const bool is_exit = event.type == CallbackEventType::Exit;
+            try {
+                dispatch_event(std::move(event));
+            }
+            catch (...) {
+                // Transport callbacks are internal session hooks, but they
+                // still cross a user-owned boundary indirectly.  Letting an
+                // exception escape this thread would terminate the process.
+                // Fail closed instead and make the worker lifecycle stop.
+                fail_callback_dispatch();
+                if (is_exit) {
+                    break;
+                }
+                continue;
+            }
+
+            if (is_exit) {
+                break;
+            }
+        }
+    }
+
+    void fail_callback_dispatch() noexcept {
+        std::shared_ptr<TinyProcessLib::Process> process;
+        try {
+            {
+                std::lock_guard<std::mutex> callback_lock(callback_mutex_);
+                callback_accepting_events_ = false;
+                callback_failed_ = true;
+                // Discard ordinary events, but retain an Exit that was already
+                // queued before the failing callback. The exit watcher may have
+                // completed before this method runs, so dropping it would leave
+                // the callback thread waiting forever for an event that cannot be
+                // published again.
+                auto exit_event = callback_events_.end();
+                for (auto it = callback_events_.begin(); it != callback_events_.end(); ++it) {
+                    if (it->type == CallbackEventType::Exit) {
+                        exit_event = it;
+                        break;
+                    }
+                }
+                if (exit_event == callback_events_.end()) {
+                    callback_events_.clear();
+                }
+                else {
+                    if (exit_event != callback_events_.begin()) {
+                        callback_events_.front() = std::move(*exit_event);
+                    }
+                    while (callback_events_.size() > 1) {
+                        callback_events_.pop_back();
+                    }
+                }
+                callback_queued_bytes_ = 0;
+                for (const auto& event : callback_events_) {
+                    callback_queued_bytes_ += callback_event_payload_size(event);
+                }
+            }
+            {
+                std::lock_guard<std::mutex> state_lock(state_mutex_);
+                process = process_;
+                if (state_ == ProcessState::Running || state_ == ProcessState::Starting) {
+                    state_ = ProcessState::Stopping;
+                }
+            }
+        }
+        catch (...) {
+            callback_condition_.notify_all();
+            return;
+        }
+        callback_condition_.notify_all();
+
+        if (process != nullptr) {
+            try {
+                process->kill(true);
+            }
+            catch (...) {
+                // The exit watcher still owns the final lifecycle cleanup.
+            }
         }
     }
 
@@ -652,7 +752,8 @@ private:
         bool should_stop = false;
         {
             std::lock_guard<std::mutex> lock(callback_mutex_);
-            if (!callback_accepting_events_) {
+            if (!callback_accepting_events_
+                && !(callback_failed_ && event.type == CallbackEventType::Exit)) {
                 return;
             }
 
@@ -803,6 +904,8 @@ private:
     std::size_t callback_queued_bytes_ = 0;
     bool callback_stop_requested_ = false;
     bool callback_accepting_events_ = false;
+    bool callback_failed_ = false;
+    bool callback_dispatch_ready_ = false;
     bool callback_queue_overflowed_ = false;
 
     ReceiveHandler receive_handler_;
