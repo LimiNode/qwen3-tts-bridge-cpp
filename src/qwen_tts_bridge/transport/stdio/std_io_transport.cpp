@@ -472,31 +472,48 @@ public:
     }
 
     void stop() {
-        std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
-
         const bool called_from_callback_thread = is_callback_thread();
+        // A callback may re-enter stop() while another thread is already
+        // shutting the transport down. That thread may hold lifecycle_mutex_
+        // while waiting for this callback thread to finish. Waiting for the
+        // same mutex here would deadlock the shutdown. External start/stop
+        // calls remain serialized by the lifecycle mutex; the callback path
+        // only performs the idempotent shutdown work below and never joins
+        // itself.
+        std::unique_lock<std::mutex> lifecycle_lock(lifecycle_mutex_, std::defer_lock);
+        if (!called_from_callback_thread) {
+            lifecycle_lock.lock();
+        }
 
-        std::shared_ptr<TinyProcessLib::Process> process;
         {
-            std::lock_guard<std::mutex> lock(state_mutex_);
-            process = process_;
-            if (state_ == ProcessState::Running || state_ == ProcessState::Starting) {
-                state_ = ProcessState::Stopping;
+            // Callback and external stop calls may overlap after the callback
+            // path bypasses lifecycle_mutex_. Serialize the actual process
+            // teardown separately, and release it before an external caller
+            // joins the callback thread.
+            std::lock_guard<std::mutex> shutdown_lock(shutdown_mutex_);
+
+            std::shared_ptr<TinyProcessLib::Process> process;
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                process = process_;
+                if (state_ == ProcessState::Running || state_ == ProcessState::Starting) {
+                    state_ = ProcessState::Stopping;
+                }
             }
-        }
 
-        if (process != nullptr) {
-            close_stdin_if_write_is_idle(process);
-            wait_for_process_or_kill(process);
-            join_exit_thread_if_needed();
-        }
-        {
-            std::lock_guard<std::mutex> lock(state_mutex_);
-            process_.reset();
-            state_ = ProcessState::Stopped;
-        }
+            if (process != nullptr) {
+                close_stdin_if_write_is_idle(process);
+                wait_for_process_or_kill(process);
+                join_exit_thread_if_needed();
+            }
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                process_.reset();
+                state_ = ProcessState::Stopped;
+            }
 
-        request_callback_thread_stop();
+            request_callback_thread_stop();
+        }
 
         if (!called_from_callback_thread) {
             join_callback_thread_if_needed();
@@ -891,6 +908,7 @@ private:
     StdIoTransportOptions options_;
 
     mutable std::mutex lifecycle_mutex_;
+    std::mutex shutdown_mutex_;
     mutable std::mutex state_mutex_;
     std::mutex write_mutex_;
     std::condition_variable exit_condition_;

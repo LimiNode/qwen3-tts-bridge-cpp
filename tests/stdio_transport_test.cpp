@@ -123,9 +123,9 @@ public:
         CHECK(ready);
     }
 
-    int wait_for_exit() {
+    int wait_for_exit(std::chrono::milliseconds timeout = std::chrono::seconds(5)) {
         std::unique_lock<std::mutex> lock(mutex_);
-        const bool ready = condition_.wait_for(lock, std::chrono::seconds(5), [&]() {
+        const bool ready = condition_.wait_for(lock, timeout, [&]() {
             return exited_;
         });
         CHECK(ready);
@@ -671,6 +671,164 @@ void test_stop_racing_callback_exception_does_not_deadlock() {
     CHECK(!transport.is_running());
 }
 
+bool wait_until_not_running(
+    StdIoTransport& transport,
+    std::chrono::milliseconds timeout) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (transport.is_running() && std::chrono::steady_clock::now() < deadline) {
+        // This only observes the state transition made after stop() acquires
+        // lifecycle_mutex_; the callback release itself is condition-based.
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    return !transport.is_running();
+}
+
+void run_callback_reentrant_stop_child() {
+    StdIoTransport transport(make_python_options(
+        "import sys, time; sys.stdout.buffer.write(b'reentrant'); "
+        "sys.stdout.flush(); time.sleep(60)",
+        std::chrono::milliseconds(100)));
+
+    std::mutex mutex;
+    std::condition_variable condition;
+    bool callback_entered = false;
+    bool release_callback = false;
+    bool callback_stop_finished = false;
+    bool external_stop_finished = false;
+
+    CHECK(transport.start(
+        [&](ITransport::Bytes) {
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                callback_entered = true;
+            }
+            condition.notify_all();
+
+            {
+                std::unique_lock<std::mutex> lock(mutex);
+                CHECK(condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+                    return release_callback;
+                }));
+            }
+
+            transport.stop();
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                callback_stop_finished = true;
+            }
+            condition.notify_all();
+        },
+        [](std::string) {},
+        [](int) {}));
+
+    // The worker writes immediately; wait until the callback reaches its
+    // handshake before allowing external shutdown to proceed.
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        CHECK(condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return callback_entered;
+        }));
+    }
+
+    std::thread external_stopper([&]() {
+        transport.stop();
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            external_stop_finished = true;
+        }
+        condition.notify_all();
+    });
+
+    // This state is published only after the external stop owns the lifecycle
+    // mutex and marks the process Stopping. Release the callback only then.
+    CHECK(wait_until_not_running(transport, std::chrono::seconds(5)));
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        release_callback = true;
+    }
+    condition.notify_all();
+
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        CHECK(condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return callback_stop_finished && external_stop_finished;
+        }));
+    }
+    external_stopper.join();
+    CHECK(!transport.is_running());
+}
+
+void run_two_external_stops_child() {
+    StdIoTransport transport(make_python_options(
+        "import time; time.sleep(60)",
+        std::chrono::milliseconds(100)));
+    CHECK(transport.start(
+        [](ITransport::Bytes) {},
+        [](std::string) {},
+        [](int) {}));
+
+    std::mutex mutex;
+    std::condition_variable condition;
+    int finished = 0;
+    auto stop = [&]() {
+        transport.stop();
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            ++finished;
+        }
+        condition.notify_all();
+    };
+    std::thread first(stop);
+    std::thread second(stop);
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        CHECK(condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return finished == 2;
+        }));
+    }
+    first.join();
+    second.join();
+    CHECK(!transport.is_running());
+}
+
+void test_stop_lifecycle_watchdog_subprocess(const char* executable) {
+    // The parent Python process owns the timeout and kills a wedged child;
+    // this test cannot hang merely because the child has deadlocked threads.
+    constexpr const char* watchdog_script =
+        "import subprocess, sys\n"
+        "child = subprocess.Popen([sys.argv[1], '--concurrent-stop-child'],\n"
+        "                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n"
+        "try:\n"
+        "    stdout, stderr = child.communicate(timeout=10)\n"
+        "except subprocess.TimeoutExpired:\n"
+        "    child.kill()\n"
+        "    stdout, stderr = child.communicate()\n"
+        "    sys.stderr.buffer.write(stderr)\n"
+        "    print('watchdog-timeout', flush=True)\n"
+        "    raise SystemExit(124)\n"
+        "sys.stdout.buffer.write(stdout)\n"
+        "sys.stderr.buffer.write(stderr)\n"
+        "raise SystemExit(child.returncode)\n";
+
+    RawCollector collector;
+    StdIoTransportOptions options = make_python_options(watchdog_script);
+    options.arguments.push_back(executable);
+    StdIoTransport transport(options);
+    CHECK(transport.start(
+        [&](ITransport::Bytes bytes) {
+            collector.on_bytes(std::move(bytes));
+        },
+        [&](std::string message) {
+            collector.on_error(std::move(message));
+        },
+        [&](int status) {
+            collector.on_exit(status);
+        }));
+    CHECK(collector.wait_for_exit(std::chrono::seconds(15)) == 0);
+    CHECK(!collector.has_errors());
+    CHECK(collector.contains_text("concurrent-stop-child-ok"));
+}
+
 void test_stop_can_kill_worker_while_send_is_blocked() {
     RawCollector collector;
     StdIoTransport transport(make_python_options(
@@ -902,7 +1060,14 @@ void test_environment_overrides_replace_path_case_insensitively_on_windows() {
 
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc == 2 && std::string(argv[1]) == "--concurrent-stop-child") {
+        run_callback_reentrant_stop_child();
+        run_two_external_stops_child();
+        std::cout << "concurrent-stop-child-ok\n";
+        return 0;
+    }
+
     test_mock_worker_handshake_over_stdio_transport();
     test_send_before_start_and_empty_send();
     test_missing_executable_start_failure();
@@ -913,6 +1078,7 @@ int main() {
     test_stop_from_receive_callback();
     test_receive_callback_exception_fails_closed();
     test_stop_racing_callback_exception_does_not_deadlock();
+    test_stop_lifecycle_watchdog_subprocess(argv[0]);
     test_stop_can_kill_worker_while_send_is_blocked();
     test_stdout_is_delivered_before_exit_callback();
     test_invalid_callback_queue_limits_reject_start();
