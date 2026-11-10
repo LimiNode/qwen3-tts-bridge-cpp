@@ -220,7 +220,10 @@ class _OutputWriter:
                 if output_frame is None:
                     return
                 write_started_at = monotonic_seconds()
-                if output_frame.first_audio_frame and output_frame.request_id is not None:
+                if (
+                    output_frame.first_audio_frame
+                    and output_frame.request_id is not None
+                ):
                     self._metrics.emit(
                         "request_first_frame_write_started",
                         request_id=output_frame.request_id,
@@ -237,7 +240,10 @@ class _OutputWriter:
                     )
                 self._output.flush()
                 flushed_at = monotonic_seconds()
-                if output_frame.first_audio_frame and output_frame.request_id is not None:
+                if (
+                    output_frame.first_audio_frame
+                    and output_frame.request_id is not None
+                ):
                     self._metrics.emit(
                         "request_first_frame_flushed",
                         request_id=output_frame.request_id,
