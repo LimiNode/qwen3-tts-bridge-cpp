@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <iostream>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
@@ -584,6 +585,30 @@ void test_stop_from_receive_callback() {
     CHECK(!transport.is_running());
 }
 
+void test_receive_callback_exception_fails_closed() {
+    StdIoTransport transport(make_python_options(
+        "import sys, time; sys.stdout.buffer.write(b'callback-failure'); "
+        "sys.stdout.flush(); time.sleep(60)",
+        std::chrono::milliseconds(100)));
+
+    std::atomic<bool> callback_called{false};
+    CHECK(transport.start(
+        [&](ITransport::Bytes) {
+            callback_called = true;
+            throw std::runtime_error("receive callback failed");
+        },
+        [](std::string) {},
+        [](int) {}));
+
+    for (int attempt = 0; attempt < 100 && transport.is_running(); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    CHECK(callback_called.load());
+    CHECK(!transport.is_running());
+    transport.stop();
+}
+
 void test_stop_can_kill_worker_while_send_is_blocked() {
     RawCollector collector;
     StdIoTransport transport(make_python_options(
@@ -824,6 +849,7 @@ int main() {
     test_stderr_is_delivered_separately();
     test_stop_forces_kill_after_timeout();
     test_stop_from_receive_callback();
+    test_receive_callback_exception_fails_closed();
     test_stop_can_kill_worker_while_send_is_blocked();
     test_stdout_is_delivered_before_exit_callback();
     test_invalid_callback_queue_limits_reject_start();

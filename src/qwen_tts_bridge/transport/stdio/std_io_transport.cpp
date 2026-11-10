@@ -604,7 +604,49 @@ private:
                 callback_queued_bytes_ -= callback_event_payload_size(event);
             }
 
-            dispatch_event(std::move(event));
+            try {
+                dispatch_event(std::move(event));
+            }
+            catch (...) {
+                // Transport callbacks are internal session hooks, but they
+                // still cross a user-owned boundary indirectly.  Letting an
+                // exception escape this thread would terminate the process.
+                // Fail closed instead and make the worker lifecycle stop.
+                fail_callback_dispatch();
+                return;
+            }
+        }
+    }
+
+    void fail_callback_dispatch() noexcept {
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            callback_accepting_events_ = false;
+            callback_stop_requested_ = true;
+            callback_events_.clear();
+            callback_queued_bytes_ = 0;
+        }
+        callback_condition_.notify_all();
+
+        std::shared_ptr<TinyProcessLib::Process> process;
+        try {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            process = process_;
+            if (state_ == ProcessState::Running || state_ == ProcessState::Starting) {
+                state_ = ProcessState::Stopping;
+            }
+        }
+        catch (...) {
+            return;
+        }
+
+        if (process != nullptr) {
+            try {
+                process->kill(true);
+            }
+            catch (...) {
+                // The exit watcher still owns the final lifecycle cleanup.
+            }
         }
     }
 
