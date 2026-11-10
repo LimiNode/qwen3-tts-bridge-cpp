@@ -206,7 +206,7 @@ class ModelResolverTests(unittest.TestCase):
 
             def fake_download(**kwargs: object) -> str:
                 local = Path(str(kwargs["local_dir"]))
-                self.assertTrue(local.name.endswith(".incomplete"))
+                self.assertTrue(local.name.startswith(".Qwen3-TTS-12Hz-1.7B-VoiceDesign.incomplete-"))
                 _write_model(local, "voice_design", "1b7")
                 return str(local)
 
@@ -217,7 +217,10 @@ class ModelResolverTests(unittest.TestCase):
             )
             self.assertTrue(result.path.is_dir())
             self.assertFalse(
-                (result.path.parent / f".{result.path.name}.incomplete").exists()
+                any(result.path.parent.glob(f".{result.path.name}.incomplete-*"))
+            )
+            self.assertFalse(
+                (result.path.parent / f".{result.path.name}.download.lock").exists()
             )
 
     def test_hf_local_dir_metadata_is_not_model_payload(self) -> None:
@@ -260,7 +263,33 @@ class ModelResolverTests(unittest.TestCase):
                 )
             target = package / "models" / MODEL_CATALOG["voice-design"].directory_name
             self.assertFalse(target.exists())
-            self.assertFalse((target.parent / f".{target.name}.incomplete").exists())
+            self.assertFalse(any(target.parent.glob(f".{target.name}.incomplete-*")))
+            self.assertFalse(
+                (target.parent / f".{target.name}.download.lock").exists()
+            )
+
+    def test_concurrent_download_lock_rejects_without_touching_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / "package"
+            target = package / "models" / MODEL_CATALOG["voice-design"].directory_name
+            target.parent.mkdir(parents=True)
+            lock = target.parent / f".{target.name}.download.lock"
+            lock.write_text("another downloader", encoding="ascii")
+            called = False
+
+            def fake_download(**_kwargs: object) -> str:
+                nonlocal called
+                called = True
+                return "unused"
+
+            with self.assertRaisesRegex(ValueError, "download already in progress"):
+                download_model(
+                    "voice-design",
+                    portable_root=package,
+                    downloader=fake_download,
+                )
+            self.assertFalse(called)
+            self.assertTrue(lock.exists())
 
     def test_existing_download_target_is_not_modified(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -364,24 +364,52 @@ def download_model(
         if portable_root is not None
         else destination.expanduser().resolve() / spec.directory_name  # type: ignore[union-attr]
     )
-    if target.exists():
-        raise ValueError(f"download target already exists: {target}")
     _assert_writable_parent(target.parent)
-    staging = target.parent / f".{target.name}.incomplete"
-    if staging.exists():
-        raise ValueError(f"incomplete download staging path already exists: {staging}")
+    lock_path = target.parent / f".{target.name}.download.lock"
     try:
-        selected_downloader(
-            repo_id=spec.repository,
-            revision=revision,
-            local_dir=str(staging),
+        lock_descriptor = os.open(
+            lock_path,
+            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
         )
-        integrity_verified = validate_python_model(staging, spec)
-        _remove_hugging_face_metadata(staging)
-        staging.replace(target)
-    except Exception:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
+    except FileExistsError as exc:
+        raise ValueError(f"download already in progress: {target}") from exc
+
+    staging: Path | None = None
+    try:
+        if target.exists():
+            raise ValueError(f"download target already exists: {target}")
+        staging = Path(
+            tempfile.mkdtemp(
+                prefix=f".{target.name}.incomplete-",
+                dir=target.parent,
+            )
+        )
+        try:
+            selected_downloader(
+                repo_id=spec.repository,
+                revision=revision,
+                local_dir=str(staging),
+            )
+            integrity_verified = validate_python_model(staging, spec)
+            _remove_hugging_face_metadata(staging)
+            # The lock prevents another invocation of this helper from
+            # publishing the same target while this directory is promoted.
+            # A failed promotion therefore cannot replace an existing model.
+            os.rename(staging, target)
+            staging = None
+        except FileExistsError as exc:
+            raise ValueError(
+                f"download target appeared during publication: {target}"
+            ) from exc
+        finally:
+            if staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
+    finally:
+        os.close(lock_descriptor)
+        try:
+            lock_path.unlink()
+        except FileNotFoundError:
+            pass
     return ResolvedModel(
         spec,
         target,
