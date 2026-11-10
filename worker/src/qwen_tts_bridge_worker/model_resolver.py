@@ -8,10 +8,16 @@ import json
 import os
 import shutil
 import tempfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast
+
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
 
 ModelFamily = Literal["voice-design", "base-1.7b", "base-0.6b"]
 
@@ -364,24 +370,39 @@ def download_model(
         if portable_root is not None
         else destination.expanduser().resolve() / spec.directory_name  # type: ignore[union-attr]
     )
-    if target.exists():
-        raise ValueError(f"download target already exists: {target}")
     _assert_writable_parent(target.parent)
-    staging = target.parent / f".{target.name}.incomplete"
-    if staging.exists():
-        raise ValueError(f"incomplete download staging path already exists: {staging}")
-    try:
-        selected_downloader(
-            repo_id=spec.repository,
-            revision=revision,
-            local_dir=str(staging),
+    lock_path = target.parent / f".{target.name}.download.lock"
+    staging: Path | None = None
+    with _download_lock(lock_path, target):
+        if target.exists():
+            raise ValueError(f"download target already exists: {target}")
+        staging = Path(
+            tempfile.mkdtemp(
+                prefix=f".{target.name}.incomplete-",
+                dir=target.parent,
+            )
         )
-        integrity_verified = validate_python_model(staging, spec)
-        _remove_hugging_face_metadata(staging)
-        staging.replace(target)
-    except Exception:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
+        try:
+            selected_downloader(
+                repo_id=spec.repository,
+                revision=revision,
+                local_dir=str(staging),
+            )
+            integrity_verified = validate_python_model(staging, spec)
+            _remove_hugging_face_metadata(staging)
+            # The OS-backed lock prevents another invocation of this helper
+            # from publishing the same target while this directory is
+            # promoted. A failed promotion cannot replace an existing model
+            # because the target is checked while the lock is held.
+            os.rename(staging, target)
+            staging = None
+        except FileExistsError as exc:
+            raise ValueError(
+                f"download target appeared during publication: {target}"
+            ) from exc
+        finally:
+            if staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
     return ResolvedModel(
         spec,
         target,
@@ -638,3 +659,47 @@ def _assert_writable_parent(path: Path) -> None:
         Path(probe).unlink()
     except OSError as exc:
         raise ValueError(f"download destination is not writable: {path}") from exc
+
+
+@contextmanager
+def _download_lock(lock_path: Path, target: Path) -> Iterator[None]:
+    """Hold an OS-backed, non-blocking lock for one model destination.
+
+    The lock file is deliberately retained as a harmless marker.  Ownership
+    is represented by the open descriptor and is released by closing it, so a
+    stale PID cannot cause another process to terminate or unlock anything.
+    """
+
+    descriptor = -1
+    try:
+        descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR)
+        if os.name == "nt":
+            if os.fstat(descriptor).st_size == 0:
+                os.write(descriptor, b"\0")
+            os.lseek(descriptor, 0, os.SEEK_SET)
+            try:
+                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise ValueError(f"download already in progress: {target}") from exc
+        else:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                raise ValueError(f"download already in progress: {target}") from exc
+    except BaseException:
+        if descriptor != -1:
+            os.close(descriptor)
+        raise
+
+    try:
+        yield
+    finally:
+        try:
+            if os.name == "nt":
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+        except OSError:
+            pass
+        os.close(descriptor)
