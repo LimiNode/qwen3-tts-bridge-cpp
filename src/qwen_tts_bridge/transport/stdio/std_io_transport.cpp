@@ -11,6 +11,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 #if defined(_WIN32)
@@ -47,6 +48,9 @@ struct CallbackEvent {
     std::string message;
     int exit_status = -1;
 };
+
+static_assert(std::is_nothrow_move_assignable<CallbackEvent>::value,
+    "Retaining Exit during callback failure must not allocate or throw");
 
 std::size_t callback_event_payload_size(const CallbackEvent& event) {
     return event.bytes.size() + event.message.size();
@@ -364,49 +368,32 @@ public:
                 return false;
             }
 
-            bool abort_start = false;
+            bool stop_on_registration = false;
             {
-                std::lock_guard<std::mutex> callback_lock(callback_mutex_);
-                std::lock_guard<std::mutex> state_lock(state_mutex_);
-                if (callback_failed_ || state_ != ProcessState::Starting) {
-                    abort_start = true;
-                }
-                else {
-                    process_ = process;
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                process_ = process;
+                stop_on_registration = state_ != ProcessState::Starting;
+                if (!stop_on_registration) {
                     state_ = ProcessState::Running;
                 }
-            }
-
-            if (abort_start) {
-                try {
-                    process->kill(true);
-                }
-                catch (...) {
-                    // get_exit_status below still performs the reader cleanup.
-                }
-                try {
-                    process->get_exit_status();
-                }
-                catch (...) {
-                    // The startup failure is already recorded by the callback path.
-                }
-                request_callback_thread_stop();
-                join_callback_thread_if_needed();
-                {
-                    std::lock_guard<std::mutex> lock(state_mutex_);
-                    process_.reset();
-                    state_ = ProcessState::Stopped;
-                    exited_ = false;
-                    clear_handlers_locked();
-                }
-                return false;
             }
 
             exit_thread_ = std::thread([this, process]() {
                 watch_process_exit(std::move(process));
             });
 
-            return true;
+            // Readers may enqueue stdout during the Process constructor, but
+            // callbacks must not run until both process ownership and the
+            // terminal-event producer are registered.
+            {
+                std::lock_guard<std::mutex> lock(callback_mutex_);
+                callback_dispatch_ready_ = true;
+            }
+            callback_condition_.notify_all();
+            if (stop_on_registration) {
+                process->kill(true);
+            }
+            return !stop_on_registration;
         }
         catch (const std::exception& exc) {
             fail_start(exc.what());
@@ -611,6 +598,7 @@ private:
             callback_stop_requested_ = false;
             callback_accepting_events_ = true;
             callback_failed_ = false;
+            callback_dispatch_ready_ = false;
         }
 
         callback_thread_ = std::thread([this]() {
@@ -625,10 +613,12 @@ private:
             {
                 std::unique_lock<std::mutex> lock(callback_mutex_);
                 callback_condition_.wait(lock, [this]() {
-                    return callback_stop_requested_ || !callback_events_.empty();
+                    return callback_stop_requested_
+                        || (callback_dispatch_ready_ && !callback_events_.empty());
                 });
 
-                if (callback_events_.empty() && callback_stop_requested_) {
+                if (callback_stop_requested_
+                    && (!callback_dispatch_ready_ || callback_events_.empty())) {
                     break;
                 }
 
@@ -693,10 +683,8 @@ private:
                 for (const auto& event : callback_events_) {
                     callback_queued_bytes_ += callback_event_payload_size(event);
                 }
-
-                // Keep callback failure publication and startup registration in
-                // one lock order. This prevents start() from restoring Running
-                // after a failure has already moved the state to Stopping.
+            }
+            {
                 std::lock_guard<std::mutex> state_lock(state_mutex_);
                 process = process_;
                 if (state_ == ProcessState::Running || state_ == ProcessState::Starting) {
@@ -917,6 +905,7 @@ private:
     bool callback_stop_requested_ = false;
     bool callback_accepting_events_ = false;
     bool callback_failed_ = false;
+    bool callback_dispatch_ready_ = false;
     bool callback_queue_overflowed_ = false;
 
     ReceiveHandler receive_handler_;

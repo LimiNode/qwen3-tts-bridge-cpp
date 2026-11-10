@@ -586,35 +586,41 @@ void test_stop_from_receive_callback() {
 }
 
 void test_receive_callback_exception_fails_closed() {
-    StdIoTransport transport(make_python_options(
-        "import sys; sys.stdout.buffer.write(b'callback-failure'); "
-        "sys.stdout.flush()",
-        std::chrono::milliseconds(100)));
+    for (const bool exit_queued_before_failure : {false, true}) {
+        RawCollector collector;
+        StdIoTransport transport(make_python_options(
+            "import sys, time; sys.stdout.buffer.write(b'callback-failure'); "
+            "sys.stdout.flush(); time.sleep(60)",
+            std::chrono::milliseconds(100)));
 
-    std::atomic<bool> callback_called{false};
-    std::atomic<bool> exit_called{false};
-    CHECK(transport.start(
-        [&](ITransport::Bytes) {
-            callback_called = true;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            throw std::runtime_error("receive callback failed");
-        },
-        [](std::string) {},
-        [&](int) {
-            exit_called = true;
-        }));
+        std::atomic<bool> callback_called{false};
+        std::atomic<int> exit_count{0};
+        CHECK(transport.start(
+            [&](ITransport::Bytes) {
+                // An immediately speaking worker must never dispatch before
+                // process registration, even if its readers run in start().
+                CHECK(transport.is_running());
+                callback_called = true;
+                if (exit_queued_before_failure) {
+                    // Callback-safe stop joins the exit watcher before it
+                    // returns. Exit is now queued and stop already requested;
+                    // neither may be lost by the failure below.
+                    transport.stop();
+                }
+                throw std::runtime_error("receive callback failed");
+            },
+            [](std::string) {},
+            [&](int status) {
+                ++exit_count;
+                collector.on_exit(status);
+            }));
 
-    for (int attempt = 0; attempt < 100 && transport.is_running(); ++attempt) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        collector.wait_for_exit();
+        CHECK(callback_called.load());
+        CHECK(!transport.is_running());
+        transport.stop();
+        CHECK(exit_count.load() == 1);
     }
-
-    CHECK(callback_called.load());
-    CHECK(!transport.is_running());
-    for (int attempt = 0; attempt < 100 && !exit_called.load(); ++attempt) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    CHECK(exit_called.load());
-    transport.stop();
 }
 
 void test_stop_racing_callback_exception_does_not_deadlock() {
