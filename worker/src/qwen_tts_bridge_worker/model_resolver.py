@@ -366,13 +366,7 @@ def download_model(
     )
     _assert_writable_parent(target.parent)
     lock_path = target.parent / f".{target.name}.download.lock"
-    try:
-        lock_descriptor = os.open(
-            lock_path,
-            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
-        )
-    except FileExistsError as exc:
-        raise ValueError(f"download already in progress: {target}") from exc
+    lock_descriptor = _acquire_download_lock(lock_path, target)
 
     staging: Path | None = None
     try:
@@ -666,3 +660,41 @@ def _assert_writable_parent(path: Path) -> None:
         Path(probe).unlink()
     except OSError as exc:
         raise ValueError(f"download destination is not writable: {path}") from exc
+
+
+def _acquire_download_lock(lock_path: Path, target: Path) -> int:
+    """Create a per-target lock and recover locks left by dead processes."""
+
+    while True:
+        try:
+            descriptor = os.open(
+                lock_path,
+                os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+            )
+            os.write(descriptor, str(os.getpid()).encode("ascii"))
+            return descriptor
+        except FileExistsError as exc:
+            try:
+                owner_pid = int(lock_path.read_text(encoding="ascii").strip())
+            except (OSError, ValueError):
+                raise ValueError(f"download already in progress: {target}") from exc
+            if _is_process_alive(owner_pid):
+                raise ValueError(f"download already in progress: {target}") from exc
+            try:
+                lock_path.unlink()
+            except FileNotFoundError:
+                continue
+
+
+def _is_process_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True

@@ -291,6 +291,27 @@ class ModelResolverTests(unittest.TestCase):
             self.assertFalse(called)
             self.assertTrue(lock.exists())
 
+    def test_stale_download_lock_is_recovered(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / "package"
+            target = package / "models" / MODEL_CATALOG["voice-design"].directory_name
+            target.parent.mkdir(parents=True)
+            lock = target.parent / f".{target.name}.download.lock"
+            lock.write_text("2147483647", encoding="ascii")
+
+            def fake_download(**kwargs: object) -> str:
+                local = Path(str(kwargs["local_dir"]))
+                _write_model(local, "voice_design", "1b7")
+                return str(local)
+
+            result = download_model(
+                "voice-design",
+                portable_root=package,
+                downloader=fake_download,
+            )
+            self.assertTrue(result.path.is_dir())
+            self.assertFalse(lock.exists())
+
     def test_existing_download_target_is_not_modified(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             package = Path(temporary) / "package"
