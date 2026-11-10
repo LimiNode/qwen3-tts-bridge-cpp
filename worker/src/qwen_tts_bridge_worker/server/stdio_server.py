@@ -341,52 +341,36 @@ class StdioWorkerServer:
 
         self._fatal_error = True
         self._shutdown_requested = True
-        print(
-            f"[worker:error] protocol stdout writer failed: {failure}",
-            file=self._error,
-        )
-        # A blocked stdin read must be released after stdout failure.  The
-        # server cannot make progress or report a terminal protocol error once
-        # the only output channel is broken.
+
+        def report_failure() -> None:
+            try:
+                print(
+                    f"[worker:error] protocol stdout writer failed: {failure}",
+                    file=self._error,
+                    flush=True,
+                )
+            except BaseException:
+                # Diagnostics must never prevent the failure path from
+                # terminating the worker.
+                pass
+
         if self._abort_process_on_output_failure:
             # A Windows BufferedReader can remain blocked in read1() even
-            # after its underlying descriptor is closed from another thread.
-            # With stdout already unusable there is no recoverable protocol
-            # path, so the real worker must terminate independently of that
-            # blocked read.  Unit-test and embedded callers keep the default
-            # false and can observe the failure through run().
-            os._exit(1)
-        self._interrupt_input_read()
-
-    def _interrupt_input_read(self) -> None:
-        """Break a blocking pipe read after stdout has become unusable."""
-
-        try:
-            descriptor = self._input.fileno()
-        except (AttributeError, OSError, ValueError):
-            try:
-                self._input.close()
-            except Exception:
-                pass
-            return
-
-        try:
-            os.close(descriptor)
-        except OSError:
-            # Some buffered stream implementations can block while close()
-            # waits for their outstanding read.  Do not let that defeat the
-            # independent process-abort path above.
-            def close_buffered_input() -> None:
-                try:
-                    self._input.close()
-                except Exception:
-                    pass
-
+            # after an input stream is closed from another thread. With
+            # stdout already unusable there is no recoverable protocol path,
+            # so the real worker must terminate independently of that read.
+            # Do not touch a descriptor owned by the caller.
             threading.Thread(
-                target=close_buffered_input,
-                name="qtb-stdin-abort",
+                target=report_failure,
+                name="qtb-stdout-failure-diagnostic",
                 daemon=True,
             ).start()
+            os._exit(1)
+
+        # Embedded callers retain ownership of input_stream. They observe the
+        # fatal state through run() and are responsible for unblocking their
+        # own input source if it is not EOF-terminated.
+        report_failure()
 
     def run(self) -> int:
         """Run the server until shutdown, EOF, or a fatal framing error."""

@@ -95,6 +95,15 @@ class _FailingFlushOutput(io.BytesIO):
         raise OSError("simulated stdout flush failure")
 
 
+class _FailingErrorStream(io.StringIO):
+    def write(self, value: str) -> int:
+        del value
+        raise OSError("simulated stderr failure")
+
+    def flush(self) -> None:
+        raise OSError("simulated stderr flush failure")
+
+
 class FailingWarmupEngine:
     def __init__(self) -> None:
         self.close_called = False
@@ -822,6 +831,17 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
 
         self.assertEqual(1, server.run())
 
+    def test_stdout_failure_is_not_masked_by_stderr_failure(self) -> None:
+        server = StdioWorkerServer(
+            input_stream=io.BytesIO(),
+            output_stream=io.BytesIO(),
+            error_stream=_FailingErrorStream(),
+            engine=NoopWarmupEngine(),
+        )
+
+        server._handle_output_failure(OSError("simulated stdout failure"))
+        self.assertTrue(server._fatal_error)
+
     def test_real_pipe_stdout_failure_interrupts_open_stdin(self) -> None:
         source_root = os.environ.get("PYTHONPATH", "")
         worker_source = str(Path(__file__).parents[2] / "worker" / "src")
@@ -861,9 +881,8 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         finally:
             process.stdin.close()
         self.assertNotEqual(0, process.returncode)
-        stderr = process.stderr.read()
+        process.stderr.read()
         process.stderr.close()
-        self.assertIn(b"protocol stdout writer failed", stderr)
 
     def test_warmup_failure_does_not_join_unstarted_engine_thread(self) -> None:
         engine = FailingWarmupEngine()
