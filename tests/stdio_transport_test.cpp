@@ -440,6 +440,68 @@ void test_missing_executable_start_failure() {
 #endif
 }
 
+void run_start_error_reentrancy_child() {
+    {
+        StdIoTransportOptions options;
+        RawCollector collector;
+        StdIoTransport transport(options);
+        std::size_t error_count = 0;
+
+        CHECK(!transport.start(
+            [](ITransport::Bytes) {},
+            [&](std::string message) {
+                ++error_count;
+                collector.on_error(std::move(message));
+                transport.stop();
+            },
+            [](int) {}));
+        CHECK(error_count == 1);
+        CHECK(!transport.is_running());
+    }
+
+    {
+        StdIoTransportOptions options = make_python_options("import time; time.sleep(60)");
+        options.max_callback_queue_events = 0;
+        RawCollector collector;
+        StdIoTransport transport(options);
+        std::size_t error_count = 0;
+
+        CHECK(!transport.start(
+            [](ITransport::Bytes) {},
+            [&](std::string message) {
+                ++error_count;
+                collector.on_error(std::move(message));
+                transport.stop();
+            },
+            [](int) {}));
+        CHECK(error_count == 1);
+        CHECK(!transport.is_running());
+    }
+
+#if defined(_WIN32)
+    {
+        StdIoTransportOptions options;
+        options.arguments = {"definitely_missing_qwen_tts_worker_reentrant_test.exe"};
+        RawCollector collector;
+        StdIoTransport transport(options);
+        std::size_t error_count = 0;
+
+        CHECK(!transport.start(
+            [](ITransport::Bytes) {},
+            [&](std::string message) {
+                ++error_count;
+                collector.on_error(std::move(message));
+                transport.stop();
+            },
+            [](int) {}));
+        CHECK(error_count == 1);
+        CHECK(!transport.is_running());
+    }
+#endif
+
+    std::cout << "startup-error-child-ok\n";
+}
+
 void test_second_start_is_rejected() {
     RawCollector collector;
     StdIoTransport transport(make_python_options(
@@ -829,6 +891,44 @@ void test_stop_lifecycle_watchdog_subprocess(const char* executable) {
     CHECK(collector.contains_text("concurrent-stop-child-ok"));
 }
 
+void test_start_error_reentrancy_watchdog_subprocess(const char* executable) {
+    // The parent Python process owns the timeout and kills a wedged child;
+    // this test cannot hang merely because start() retained lifecycle_mutex_.
+    constexpr const char* watchdog_script =
+        "import subprocess, sys\n"
+        "child = subprocess.Popen([sys.argv[1], '--startup-error-child'],\n"
+        "                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n"
+        "try:\n"
+        "    stdout, stderr = child.communicate(timeout=10)\n"
+        "except subprocess.TimeoutExpired:\n"
+        "    child.kill()\n"
+        "    stdout, stderr = child.communicate()\n"
+        "    sys.stderr.buffer.write(stderr)\n"
+        "    print('watchdog-timeout', flush=True)\n"
+        "    raise SystemExit(124)\n"
+        "sys.stdout.buffer.write(stdout)\n"
+        "sys.stderr.buffer.write(stderr)\n"
+        "raise SystemExit(child.returncode)\n";
+
+    RawCollector collector;
+    StdIoTransportOptions options = make_python_options(watchdog_script);
+    options.arguments.push_back(executable);
+    StdIoTransport transport(options);
+    CHECK(transport.start(
+        [&](ITransport::Bytes bytes) {
+            collector.on_bytes(std::move(bytes));
+        },
+        [&](std::string message) {
+            collector.on_error(std::move(message));
+        },
+        [&](int status) {
+            collector.on_exit(status);
+        }));
+    CHECK(collector.wait_for_exit(std::chrono::seconds(15)) == 0);
+    CHECK(!collector.has_errors());
+    CHECK(collector.contains_text("startup-error-child-ok"));
+}
+
 void test_stop_can_kill_worker_while_send_is_blocked() {
     RawCollector collector;
     StdIoTransport transport(make_python_options(
@@ -1067,6 +1167,10 @@ int main(int argc, char** argv) {
         std::cout << "concurrent-stop-child-ok\n";
         return 0;
     }
+    if (argc == 2 && std::string(argv[1]) == "--startup-error-child") {
+        run_start_error_reentrancy_child();
+        return 0;
+    }
 
     test_mock_worker_handshake_over_stdio_transport();
     test_send_before_start_and_empty_send();
@@ -1079,6 +1183,7 @@ int main(int argc, char** argv) {
     test_receive_callback_exception_fails_closed();
     test_stop_racing_callback_exception_does_not_deadlock();
     test_stop_lifecycle_watchdog_subprocess(argv[0]);
+    test_start_error_reentrancy_watchdog_subprocess(argv[0]);
     test_stop_can_kill_worker_while_send_is_blocked();
     test_stdout_is_delivered_before_exit_callback();
     test_invalid_callback_queue_limits_reject_start();
