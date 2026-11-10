@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +12,7 @@ from unittest import mock
 
 from qwen_tts_bridge_worker.model_resolver import (
     MODEL_CATALOG,
+    _download_lock,
     download_model,
     hugging_face_cache_root,
     list_models,
@@ -219,7 +223,7 @@ class ModelResolverTests(unittest.TestCase):
             self.assertFalse(
                 any(result.path.parent.glob(f".{result.path.name}.incomplete-*"))
             )
-            self.assertFalse(
+            self.assertTrue(
                 (result.path.parent / f".{result.path.name}.download.lock").exists()
             )
 
@@ -264,40 +268,58 @@ class ModelResolverTests(unittest.TestCase):
             target = package / "models" / MODEL_CATALOG["voice-design"].directory_name
             self.assertFalse(target.exists())
             self.assertFalse(any(target.parent.glob(f".{target.name}.incomplete-*")))
-            self.assertFalse(
+            self.assertTrue(
                 (target.parent / f".{target.name}.download.lock").exists()
             )
 
-    def test_concurrent_download_lock_rejects_without_touching_target(self) -> None:
+    def test_concurrent_process_cannot_break_download_lock(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             package = Path(temporary) / "package"
             target = package / "models" / MODEL_CATALOG["voice-design"].directory_name
-            target.parent.mkdir(parents=True)
             lock = target.parent / f".{target.name}.download.lock"
-            lock.write_text("another downloader", encoding="ascii")
-            called = False
+            package.mkdir(parents=True)
+            target.parent.mkdir(parents=True)
+            script = """
+import sys
+from pathlib import Path
+from qwen_tts_bridge_worker.model_resolver import download_model
 
-            def fake_download(**_kwargs: object) -> str:
-                nonlocal called
-                called = True
-                return "unused"
-
-            with self.assertRaisesRegex(ValueError, "download already in progress"):
-                download_model(
-                    "voice-design",
-                    portable_root=package,
-                    downloader=fake_download,
+package = Path(sys.argv[1])
+result = Path(sys.argv[2])
+try:
+    download_model(
+        "voice-design",
+        portable_root=package,
+        downloader=lambda **_kwargs: "unused",
+    )
+except ValueError as exc:
+    result.write_text(str(exc), encoding="utf-8")
+else:
+    result.write_text("unexpected success", encoding="utf-8")
+"""
+            child_result = package / "child-result.txt"
+            with _download_lock(lock, target):
+                completed = subprocess.run(
+                    [sys.executable, "-c", script, str(package), str(child_result)],
+                    env=os.environ.copy(),
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
-            self.assertFalse(called)
-            self.assertTrue(lock.exists())
+                self.assertEqual(0, completed.returncode, completed.stderr)
+                self.assertIn("download already in progress", child_result.read_text())
+                self.assertTrue(lock.exists())
+                self.assertFalse(target.exists())
+                self.assertFalse(any(target.parent.glob(f".{target.name}.incomplete-*")))
 
-    def test_stale_download_lock_is_recovered(self) -> None:
+    def test_lock_marker_is_reusable_when_not_held(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             package = Path(temporary) / "package"
             target = package / "models" / MODEL_CATALOG["voice-design"].directory_name
             target.parent.mkdir(parents=True)
             lock = target.parent / f".{target.name}.download.lock"
-            lock.write_text("2147483647", encoding="ascii")
+            lock.write_text("marker", encoding="ascii")
 
             def fake_download(**kwargs: object) -> str:
                 local = Path(str(kwargs["local_dir"]))
@@ -310,7 +332,7 @@ class ModelResolverTests(unittest.TestCase):
                 downloader=fake_download,
             )
             self.assertTrue(result.path.is_dir())
-            self.assertFalse(lock.exists())
+            self.assertTrue(lock.exists())
 
     def test_existing_download_target_is_not_modified(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

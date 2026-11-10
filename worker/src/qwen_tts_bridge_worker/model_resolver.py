@@ -8,10 +8,16 @@ import json
 import os
 import shutil
 import tempfile
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast
+
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
 
 ModelFamily = Literal["voice-design", "base-1.7b", "base-0.6b"]
 
@@ -366,10 +372,8 @@ def download_model(
     )
     _assert_writable_parent(target.parent)
     lock_path = target.parent / f".{target.name}.download.lock"
-    lock_descriptor = _acquire_download_lock(lock_path, target)
-
     staging: Path | None = None
-    try:
+    with _download_lock(lock_path, target):
         if target.exists():
             raise ValueError(f"download target already exists: {target}")
         staging = Path(
@@ -386,9 +390,10 @@ def download_model(
             )
             integrity_verified = validate_python_model(staging, spec)
             _remove_hugging_face_metadata(staging)
-            # The lock prevents another invocation of this helper from
-            # publishing the same target while this directory is promoted.
-            # A failed promotion therefore cannot replace an existing model.
+            # The OS-backed lock prevents another invocation of this helper
+            # from publishing the same target while this directory is
+            # promoted. A failed promotion cannot replace an existing model
+            # because the target is checked while the lock is held.
             os.rename(staging, target)
             staging = None
         except FileExistsError as exc:
@@ -398,12 +403,6 @@ def download_model(
         finally:
             if staging is not None:
                 shutil.rmtree(staging, ignore_errors=True)
-    finally:
-        os.close(lock_descriptor)
-        try:
-            lock_path.unlink()
-        except FileNotFoundError:
-            pass
     return ResolvedModel(
         spec,
         target,
@@ -662,39 +661,45 @@ def _assert_writable_parent(path: Path) -> None:
         raise ValueError(f"download destination is not writable: {path}") from exc
 
 
-def _acquire_download_lock(lock_path: Path, target: Path) -> int:
-    """Create a per-target lock and recover locks left by dead processes."""
+@contextmanager
+def _download_lock(lock_path: Path, target: Path) -> Iterator[None]:
+    """Hold an OS-backed, non-blocking lock for one model destination.
 
-    while True:
-        try:
-            descriptor = os.open(
-                lock_path,
-                os.O_CREAT | os.O_EXCL | os.O_WRONLY,
-            )
-            os.write(descriptor, str(os.getpid()).encode("ascii"))
-            return descriptor
-        except FileExistsError as exc:
-            try:
-                owner_pid = int(lock_path.read_text(encoding="ascii").strip())
-            except (OSError, ValueError):
-                raise ValueError(f"download already in progress: {target}") from exc
-            if _is_process_alive(owner_pid):
-                raise ValueError(f"download already in progress: {target}") from exc
-            try:
-                lock_path.unlink()
-            except FileNotFoundError:
-                continue
+    The lock file is deliberately retained as a harmless marker.  Ownership
+    is represented by the open descriptor and is released by closing it, so a
+    stale PID cannot cause another process to terminate or unlock anything.
+    """
 
-
-def _is_process_alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
+    descriptor = -1
     try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    except OSError:
-        return False
-    return True
+        descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR)
+        if os.name == "nt":
+            if os.fstat(descriptor).st_size == 0:
+                os.write(descriptor, b"\0")
+            os.lseek(descriptor, 0, os.SEEK_SET)
+            try:
+                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise ValueError(f"download already in progress: {target}") from exc
+        else:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                raise ValueError(f"download already in progress: {target}") from exc
+    except BaseException:
+        if descriptor != -1:
+            os.close(descriptor)
+        raise
+
+    try:
+        yield
+    finally:
+        try:
+            if os.name == "nt":
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+        except OSError:
+            pass
+        os.close(descriptor)
