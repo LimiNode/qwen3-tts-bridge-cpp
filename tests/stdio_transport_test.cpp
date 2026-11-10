@@ -587,8 +587,8 @@ void test_stop_from_receive_callback() {
 
 void test_receive_callback_exception_fails_closed() {
     StdIoTransport transport(make_python_options(
-        "import sys, time; sys.stdout.buffer.write(b'callback-failure'); "
-        "sys.stdout.flush(); time.sleep(60)",
+        "import sys; sys.stdout.buffer.write(b'callback-failure'); "
+        "sys.stdout.flush()",
         std::chrono::milliseconds(100)));
 
     std::atomic<bool> callback_called{false};
@@ -596,6 +596,7 @@ void test_receive_callback_exception_fails_closed() {
     CHECK(transport.start(
         [&](ITransport::Bytes) {
             callback_called = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             throw std::runtime_error("receive callback failed");
         },
         [](std::string) {},
@@ -614,6 +615,49 @@ void test_receive_callback_exception_fails_closed() {
     }
     CHECK(exit_called.load());
     transport.stop();
+}
+
+void test_stop_racing_callback_exception_does_not_deadlock() {
+    StdIoTransport transport(make_python_options(
+        "import sys, time; sys.stdout.buffer.write(b'race'); "
+        "sys.stdout.flush(); time.sleep(60)",
+        std::chrono::milliseconds(100)));
+
+    std::atomic<bool> callback_entered{false};
+    std::atomic<bool> release_callback{false};
+    std::atomic<bool> stop_finished{false};
+    CHECK(transport.start(
+        [&](ITransport::Bytes) {
+            callback_entered = true;
+            while (!release_callback.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            throw std::runtime_error("receive callback failed during stop");
+        },
+        [](std::string) {},
+        [](int) {}));
+
+    for (int attempt = 0; attempt < 500 && !callback_entered.load(); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(callback_entered.load());
+
+    std::thread stopper([&]() {
+        transport.stop();
+        stop_finished = true;
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    release_callback = true;
+
+    for (int attempt = 0; attempt < 500 && !stop_finished.load(); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    if (!stop_finished.load()) {
+        stopper.detach();
+        CHECK(false);
+    }
+    stopper.join();
+    CHECK(!transport.is_running());
 }
 
 void test_stop_can_kill_worker_while_send_is_blocked() {
@@ -857,6 +901,7 @@ int main() {
     test_stop_forces_kill_after_timeout();
     test_stop_from_receive_callback();
     test_receive_callback_exception_fails_closed();
+    test_stop_racing_callback_exception_does_not_deadlock();
     test_stop_can_kill_worker_while_send_is_blocked();
     test_stdout_is_delivered_before_exit_callback();
     test_invalid_callback_queue_limits_reject_start();

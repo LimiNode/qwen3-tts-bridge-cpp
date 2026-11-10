@@ -632,12 +632,22 @@ private:
             std::lock_guard<std::mutex> lock(callback_mutex_);
             callback_accepting_events_ = false;
             callback_failed_ = true;
-            // Keep this thread alive until the exit watcher publishes the
-            // terminal event. Ordinary events are discarded, while Exit is
-            // still admitted so sessions can close active requests.
-            callback_stop_requested_ = false;
-            callback_events_.clear();
+            // Discard ordinary events, but retain an Exit that was already
+            // queued before the failing callback. The exit watcher may have
+            // completed before this method runs, so dropping it would leave
+            // the callback thread waiting forever for an event that cannot be
+            // published again.
+            std::deque<CallbackEvent> terminal_events;
+            for (auto& event : callback_events_) {
+                if (event.type == CallbackEventType::Exit) {
+                    terminal_events.push_back(std::move(event));
+                }
+            }
+            callback_events_ = std::move(terminal_events);
             callback_queued_bytes_ = 0;
+            for (const auto& event : callback_events_) {
+                callback_queued_bytes_ += callback_event_payload_size(event);
+            }
         }
         callback_condition_.notify_all();
 
