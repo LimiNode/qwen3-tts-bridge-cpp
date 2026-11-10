@@ -282,6 +282,7 @@ class StdioWorkerServer:
         read_chunk_size: int = 4096,
         engine_startup_mode: str = "main",
         canary_runtime_provenance: CanaryRuntimeProvenance | None = None,
+        abort_process_on_output_failure: bool = False,
     ) -> None:
         self._input = input_stream
         self._error = error_stream
@@ -293,6 +294,7 @@ class StdioWorkerServer:
         self._read_chunk_size = read_chunk_size
         self._engine_startup_mode = engine_startup_mode
         self._canary_runtime_provenance = canary_runtime_provenance
+        self._abort_process_on_output_failure = abort_process_on_output_failure
         self._metrics = MetricsWriter(error_stream)
 
         self._writer = _OutputWriter(
@@ -346,10 +348,45 @@ class StdioWorkerServer:
         # A blocked stdin read must be released after stdout failure.  The
         # server cannot make progress or report a terminal protocol error once
         # the only output channel is broken.
+        if self._abort_process_on_output_failure:
+            # A Windows BufferedReader can remain blocked in read1() even
+            # after its underlying descriptor is closed from another thread.
+            # With stdout already unusable there is no recoverable protocol
+            # path, so the real worker must terminate independently of that
+            # blocked read.  Unit-test and embedded callers keep the default
+            # false and can observe the failure through run().
+            os._exit(1)
+        self._interrupt_input_read()
+
+    def _interrupt_input_read(self) -> None:
+        """Break a blocking pipe read after stdout has become unusable."""
+
         try:
-            self._input.close()
-        except Exception:
-            pass
+            descriptor = self._input.fileno()
+        except (AttributeError, OSError, ValueError):
+            try:
+                self._input.close()
+            except Exception:
+                pass
+            return
+
+        try:
+            os.close(descriptor)
+        except OSError:
+            # Some buffered stream implementations can block while close()
+            # waits for their outstanding read.  Do not let that defeat the
+            # independent process-abort path above.
+            def close_buffered_input() -> None:
+                try:
+                    self._input.close()
+                except Exception:
+                    pass
+
+            threading.Thread(
+                target=close_buffered_input,
+                name="qtb-stdin-abort",
+                daemon=True,
+            ).start()
 
     def run(self) -> int:
         """Run the server until shutdown, EOF, or a fatal framing error."""
