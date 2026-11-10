@@ -578,6 +578,7 @@ private:
             callback_queue_overflowed_ = false;
             callback_stop_requested_ = false;
             callback_accepting_events_ = true;
+            callback_failed_ = false;
         }
 
         callback_thread_ = std::thread([this]() {
@@ -604,6 +605,7 @@ private:
                 callback_queued_bytes_ -= callback_event_payload_size(event);
             }
 
+            const bool is_exit = event.type == CallbackEventType::Exit;
             try {
                 dispatch_event(std::move(event));
             }
@@ -613,7 +615,14 @@ private:
                 // exception escape this thread would terminate the process.
                 // Fail closed instead and make the worker lifecycle stop.
                 fail_callback_dispatch();
-                return;
+                if (is_exit) {
+                    break;
+                }
+                continue;
+            }
+
+            if (is_exit) {
+                break;
             }
         }
     }
@@ -622,7 +631,11 @@ private:
         {
             std::lock_guard<std::mutex> lock(callback_mutex_);
             callback_accepting_events_ = false;
-            callback_stop_requested_ = true;
+            callback_failed_ = true;
+            // Keep this thread alive until the exit watcher publishes the
+            // terminal event. Ordinary events are discarded, while Exit is
+            // still admitted so sessions can close active requests.
+            callback_stop_requested_ = false;
             callback_events_.clear();
             callback_queued_bytes_ = 0;
         }
@@ -694,7 +707,8 @@ private:
         bool should_stop = false;
         {
             std::lock_guard<std::mutex> lock(callback_mutex_);
-            if (!callback_accepting_events_) {
+            if (!callback_accepting_events_
+                && !(callback_failed_ && event.type == CallbackEventType::Exit)) {
                 return;
             }
 
@@ -845,6 +859,7 @@ private:
     std::size_t callback_queued_bytes_ = 0;
     bool callback_stop_requested_ = false;
     bool callback_accepting_events_ = false;
+    bool callback_failed_ = false;
     bool callback_queue_overflowed_ = false;
 
     ReceiveHandler receive_handler_;

@@ -592,13 +592,16 @@ void test_receive_callback_exception_fails_closed() {
         std::chrono::milliseconds(100)));
 
     std::atomic<bool> callback_called{false};
+    std::atomic<bool> exit_called{false};
     CHECK(transport.start(
         [&](ITransport::Bytes) {
             callback_called = true;
             throw std::runtime_error("receive callback failed");
         },
         [](std::string) {},
-        [](int) {}));
+        [&](int) {
+            exit_called = true;
+        }));
 
     for (int attempt = 0; attempt < 100 && transport.is_running(); ++attempt) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -606,6 +609,10 @@ void test_receive_callback_exception_fails_closed() {
 
     CHECK(callback_called.load());
     CHECK(!transport.is_running());
+    for (int attempt = 0; attempt < 100 && !exit_called.load(); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(exit_called.load());
     transport.stop();
 }
 
