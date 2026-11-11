@@ -317,6 +317,53 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(2, raised.exception.code)
             self.assertFalse((root / "voices" / "registry.json").exists())
 
+    def test_voices_create_publication_failure_does_not_leave_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voice_library": {"registry_path": "voices/registry.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_voice_creation,
+            ), mock.patch(
+                "qwen_tts_bridge_worker.user_cli.add_voice",
+                side_effect=user_cli.VoiceLibraryError("publication failed"),
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "voices",
+                            "create",
+                            "--id",
+                            "publication-failure",
+                            "--instruction",
+                            "A publication failure voice.",
+                            "--sample-text",
+                            "Reference",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertFalse((root / "voices" / "registry.json").exists())
+
     def test_play_uses_existing_streaming_player_and_is_quiet(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
