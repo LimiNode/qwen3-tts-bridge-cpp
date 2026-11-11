@@ -117,6 +117,7 @@ def add_voice(
     reference_text: str,
     x_vector_only: bool,
     preserve_reference_text_whitespace: bool,
+    provenance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Validate and atomically add a managed copy of a reference WAV."""
 
@@ -170,6 +171,8 @@ def add_voice(
                 "source_reference_audio_path": str(audio.path),
                 "reference_audio_sha256": audio.sha256,
             }
+            if provenance is not None:
+                row["provenance"] = dict(provenance)
             _atomic_write_registry(registry_path, rows + [row])
             return row
         except Exception:

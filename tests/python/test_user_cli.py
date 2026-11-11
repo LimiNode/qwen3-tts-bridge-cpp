@@ -148,6 +148,175 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(2, error.exception.code)
             self.assertIn("--dtype", stderr.getvalue())
 
+    def test_voices_create_generates_and_registers_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voice_library": {"registry_path": "voices/registry.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_voice_creation,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "voices",
+                        "create",
+                        "--id",
+                        "calm",
+                        "--instruction",
+                        "A calm warm voice.",
+                        "--sample-text",
+                        "This is the reference.",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            self.assertEqual(1, run.call_count)
+            registry = root / "voices" / "registry.json"
+            rows = json.loads(registry.read_text(encoding="utf-8"))["voices"]
+            self.assertEqual("calm", rows[0]["voice_id"])
+            self.assertEqual("voices create", rows[0]["provenance"]["operation"])
+            self.assertEqual("A calm warm voice.", rows[0]["provenance"]["instruction"])
+            self.assertEqual(
+                "This is the reference.", rows[0]["provenance"]["reference_text"]
+            )
+
+    def test_voices_create_rejects_duplicate_before_generation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config, _ = _write_voice_library(root, voice_id="calm")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "voices",
+                            "create",
+                            "--id",
+                            "calm",
+                            "--instruction",
+                            "A calm voice.",
+                            "--sample-text",
+                            "Reference",
+                            "--model",
+                            str(root / "missing-model"),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("voice_id already exists", stderr.getvalue())
+            run.assert_not_called()
+
+    def test_voices_create_generation_failure_does_not_publish_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voice_library": {"registry_path": "voices/registry.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=17),
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "voices",
+                        "create",
+                        "--id",
+                        "failed",
+                        "--instruction",
+                        "A failed voice.",
+                        "--sample-text",
+                        "Reference",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                    ]
+                )
+            self.assertEqual(17, result)
+            self.assertFalse((root / "voices" / "registry.json").exists())
+            run.assert_called_once()
+
+    def test_voices_create_invalid_reference_does_not_publish_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voice_library": {"registry_path": "voices/registry.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_invalid_voice_creation,
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "voices",
+                            "create",
+                            "--id",
+                            "invalid",
+                            "--instruction",
+                            "An invalid voice.",
+                            "--sample-text",
+                            "Reference",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertFalse((root / "voices" / "registry.json").exists())
+
     def test_play_uses_existing_streaming_player_and_is_quiet(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1757,6 +1926,43 @@ def _successful_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
                 "terminal_state": "completed",
                 "audio_chunks": 1,
                 "audio_bytes": 32,
+                "completion_metadata_received": True,
+                "generation_trace_available": True,
+                "termination_reason": "eos",
+                "hit_eos": True,
+                "hit_max_seq_len": False,
+                "hit_max_new_tokens": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return mock.Mock(returncode=0)
+
+
+def _successful_voice_creation(command: list[str], **_kwargs: object) -> mock.Mock:
+    return _write_voice_creation_result(command, frames=48_000)
+
+
+def _invalid_voice_creation(command: list[str], **_kwargs: object) -> mock.Mock:
+    return _write_voice_creation_result(command, frames=24_000)
+
+
+def _write_voice_creation_result(command: list[str], *, frames: int) -> mock.Mock:
+    output = Path(command[command.index("--output") + 1])
+    result = Path(command[command.index("--result-json") + 1])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(output), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x10" * frames)
+    result.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "terminal_state": "completed",
+                "audio_chunks": 1,
+                "audio_bytes": frames * 2,
                 "completion_metadata_received": True,
                 "generation_trace_available": True,
                 "termination_reason": "eos",
