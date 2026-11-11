@@ -151,7 +151,9 @@ class UserCliTests(unittest.TestCase):
     def test_synth_supports_custom_voice_family_and_speaker(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            model = _write_model(root / "model", model_type="custom_voice", model_size="0b6")
+            model = _write_model(
+                root / "model", model_type="custom_voice", model_size="0b6"
+            )
             save_wav = _write_executable(root / "save-wav.exe")
             worker = _write_executable(root / "worker.exe")
             output = root / "custom.wav"
@@ -189,7 +191,10 @@ class UserCliTests(unittest.TestCase):
             self.assertIn("--instruction", command)
             self.assertNotIn("--voice-id", command)
             worker_args = _worker_argument_values(command)
-            self.assertEqual(str(model.resolve()), worker_args[worker_args.index("--model-path") + 1])
+            self.assertEqual(
+                str(model.resolve()),
+                worker_args[worker_args.index("--model-path") + 1],
+            )
 
     def test_synth_supports_voice_design_family(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

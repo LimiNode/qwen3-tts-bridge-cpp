@@ -135,7 +135,9 @@ def _build_parser() -> argparse.ArgumentParser:
     synth = commands.add_parser(
         "synth", help="Synthesize with the selected Qwen3-TTS model family."
     )
-    synth.add_argument("--model-family", choices=tuple(MODEL_CATALOG), default="base-1.7b")
+    synth.add_argument(
+        "--model-family", choices=tuple(MODEL_CATALOG), default="base-1.7b"
+    )
     synth.add_argument("--voice-id")
     synth.add_argument("--speaker")
     synth.add_argument("--instruction")
@@ -161,7 +163,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "play",
         help="Stream one Qwen3-TTS request to the default audio device.",
     )
-    play.add_argument("--model-family", choices=tuple(MODEL_CATALOG), default="base-1.7b")
+    play.add_argument(
+        "--model-family", choices=tuple(MODEL_CATALOG), default="base-1.7b"
+    )
     play.add_argument("--voice-id")
     play.add_argument("--speaker")
     play.add_argument("--instruction")
@@ -567,7 +571,8 @@ def _run_synth(args: argparse.Namespace) -> int:
             detail = verification.get("error")
             suffix = f": {detail}" if isinstance(detail, str) and detail else ""
             raise VoiceLibraryError(
-                f"voice {args.voice_id} is not compatible with the Python backend{suffix}"
+                "voice "
+                f"{args.voice_id} is not compatible with the Python backend{suffix}"
             )
         worker_arguments += ("--voice-registry-path", str(registry_path))
         request_arguments = ("--voice-id", args.voice_id)
@@ -661,7 +666,6 @@ def _run_play(args: argparse.Namespace) -> int:
         "--dtype",
         _resolve_dtype(args.dtype, runtime.get("dtype")),
     )
-    request_arguments: tuple[str, ...]
     if family.startswith("base-"):
         if not args.voice_id:
             raise ValueError("--voice-id is required for Base model families")
@@ -677,7 +681,8 @@ def _run_play(args: argparse.Namespace) -> int:
             detail = verification.get("error")
             suffix = f": {detail}" if isinstance(detail, str) and detail else ""
             raise VoiceLibraryError(
-                f"voice {args.voice_id} is not compatible with the Python backend{suffix}"
+                "voice "
+                f"{args.voice_id} is not compatible with the Python backend{suffix}"
             )
         worker_arguments += ("--voice-registry-path", str(registry_path))
         command.extend(("--voice-id", args.voice_id))
