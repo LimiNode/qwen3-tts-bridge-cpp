@@ -79,6 +79,8 @@ Two value-type entry points intentionally remain standalone:
 - `data/audio_types.hpp` retains its same-domain `protocol_types.hpp` include
   for `RequestId`;
 - `playback/playback_cursor.hpp` obtains `RequestId` through `data.hpp`.
+- `playback/playback_receipt.hpp` is an installed playback timeline entry point
+  and retains its direct `data.hpp` and cursor dependencies.
 
 These are documented compatibility entry points, not a requirement to make
 every internal implementation detail public. The private

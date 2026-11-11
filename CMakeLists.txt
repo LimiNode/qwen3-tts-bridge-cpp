@@ -609,6 +609,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         # part of the ownership/include contract.
         qwen_tts_bridge/data/audio_types.hpp
         qwen_tts_bridge/playback/playback_cursor.hpp
+        qwen_tts_bridge/playback/playback_receipt.hpp
     )
     if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
         list(APPEND _qwen_tts_public_headers
