@@ -6,8 +6,11 @@
 
 ## Boundary and ownership
 
-The repository has two CLI levels. They are complementary, not competing
-implementations:
+The repository currently has a Python user CLI plus directly runnable C++
+execution tools. They are complementary, not competing implementations. The
+long-term user surface has two equivalent frontends: the current Python
+`qwen-tts` reference implementation and a future standalone C++17
+`qwen-tts-cpp.exe`.
 
 ```text
 qwen-tts (Python)
@@ -17,18 +20,30 @@ qwen-tts (Python)
 qwen_tts_save_wav.exe / qwen_tts_play.exe (C++)
     QTB client execution, PCM delivery, WAV capture, playback, and shutdown
 
+qwen-tts-cpp.exe (future)
+    the same command semantics and persisted formats, implemented without
+    copying the Python runtime or introducing a second synthesis engine
+
 qwen_tts_worker / qwen_tts_native_worker.exe
     model-specific backend execution behind the existing worker boundary
 ```
 
 The Python CLI must not reimplement framing, synthesis callbacks, WAV encoding,
-or playback. The C++ examples must remain directly runnable for applications
-that already have a resolved worker and model configuration; they are not a
-second user-facing model and voice registry.
+or playback. The future C++ CLI must use the same execution components and
+command contract, but its implementation is deferred until the current
+functional and manual acceptance is complete. The C++ examples must remain
+directly runnable for applications that already have a resolved worker and
+model configuration; they are not a second user-facing model and voice
+registry.
 
 The native and Python workers remain independent backend implementations. A
 user command selects a backend/profile through normalized configuration; it
 does not change the QTB protocol or create a parallel engine.
+
+Both user frontends must preserve the command meanings, compatible registry and
+configuration formats, explicit-download policy, and acceptance behavior. A
+future C++ frontend requires a separate ADR for detailed ownership and parity;
+this document does not authorize implementing it in this batch.
 
 ## Command matrix
 
