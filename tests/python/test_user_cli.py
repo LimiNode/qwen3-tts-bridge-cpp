@@ -148,6 +148,87 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(2, error.exception.code)
             self.assertIn("--dtype", stderr.getvalue())
 
+    def test_synth_supports_custom_voice_family_and_speaker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="custom_voice", model_size="0b6")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "custom.wav"
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "synth",
+                        "--model-family",
+                        "custom-0.6b",
+                        "--speaker",
+                        "Alice",
+                        "--instruction",
+                        "Speak warmly.",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--text",
+                        "Hello",
+                        "--out",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            self.assertIn("--speaker", command)
+            self.assertEqual("Alice", command[command.index("--speaker") + 1])
+            self.assertIn("--instruction", command)
+            self.assertNotIn("--voice-id", command)
+            worker_args = _worker_argument_values(command)
+            self.assertEqual(str(model.resolve()), worker_args[worker_args.index("--model-path") + 1])
+
+    def test_synth_supports_voice_design_family(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "synth",
+                        "--model-family",
+                        "voice-design",
+                        "--instruction",
+                        "A calm voice.",
+                        "--model",
+                        str(model),
+                        "--save-wav-executable",
+                        str(save_wav),
+                        "--worker",
+                        str(worker),
+                        "--text",
+                        "Hello",
+                        "--out",
+                        str(root / "design.wav"),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            self.assertEqual(
+                "A calm voice.", command[command.index("--instruction") + 1]
+            )
+            self.assertNotIn("--voice-id", command)
+
     def test_play_uses_existing_streaming_player_and_is_quiet(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
