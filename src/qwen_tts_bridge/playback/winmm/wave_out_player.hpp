@@ -10,9 +10,6 @@
 #include <windows.h>
 #include <mmsystem.h>
 
-#include <qwen_tts_bridge/audio.hpp>
-#include <qwen_tts_bridge/playback.hpp>
-
 #include <algorithm>
 #include <array>
 #include <chrono>

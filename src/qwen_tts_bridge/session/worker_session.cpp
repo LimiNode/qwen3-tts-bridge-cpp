@@ -1,7 +1,5 @@
-#include "worker_session.hpp"
+#include <qwen_tts_bridge/session.hpp>
 
-#include <qwen_tts_bridge/protocol/control.hpp>
-#include <qwen_tts_bridge/protocol/framing.hpp>
 
 #include <algorithm>
 #include <type_traits>

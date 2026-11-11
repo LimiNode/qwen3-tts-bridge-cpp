@@ -325,15 +325,16 @@ Umbrella ordering must be explicit and must not form cycles.
 
 Leaf-header contract:
 
-- every public domain umbrella and documented public entry header must compile
-  on its own; the existing `data/audio_types.hpp` and
+- every public domain umbrella and documented compatibility entry header must
+  compile on its own; the existing `data/audio_types.hpp` and
   `playback/playback_cursor.hpp` value-type entry points remain supported
-  standalone exceptions;
-- documented SDK leaf headers are self-contained for the declarations they
-  expose. Umbrellas still own the cross-domain dependency graph, but they do
-  not provide missing declarations to an implementation by transitive magic;
-- an implementation starts with its own neighbouring header, or the shared
-  private header for source-only implementation splits;
+  standalone entries;
+- internal leaf headers inherit the dependency context of their owning
+  umbrella and are not required to compile independently. Keep standard-library
+  and genuinely local implementation dependencies in the leaf;
+- an implementation starts with its owning domain/subdomain umbrella, or a
+  documented compatibility umbrella, followed by private implementation
+  headers when needed;
 - CMake compiles each real implementation `.cpp` directly and exactly once;
 - first-party `.cpp` inclusion is forbidden. Do not create domain wrappers,
   forced includes, PCHs, unity-build context, or fake declarations to make a

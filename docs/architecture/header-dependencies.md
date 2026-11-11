@@ -7,17 +7,18 @@ quoted paths. The graph is directed and acyclic; lower-level domains never
 depend on their higher-level consumers.
 
 This is an include-ownership rule, not a C++ translation-unit mechanism.
-Every documented SDK header is self-contained and can be compiled at its
-documented include path. CMake compiles the real implementation `.cpp` files
-directly. A first-party `.cpp` must never be included from another source file,
-and no wrapper, forced include, PCH, or unity-build trick supplies a missing
-header dependency.
+Public umbrellas and documented compatibility entry points are independently
+compilable. Internal leaf headers inherit the context of their owning umbrella
+and are not required to compile as standalone public headers. CMake compiles
+the real implementation `.cpp` files directly. A first-party `.cpp` must never
+be included from another source file, and no wrapper, forced include, PCH, or
+unity-build trick supplies a missing header dependency.
 
 ## Domain graph
 
-Paths below are relative to `src/qwen_tts_bridge/`. Dependencies inherited
-through another umbrella are intentionally not repeated in leaf headers, but
-each leaf still includes what its own declarations require.
+Paths below are relative to `src/qwen_tts_bridge/`. An owning umbrella provides
+the dependency context for its internal leaves; supported standalone entry
+points are listed explicitly below.
 
 | Umbrella | Dependency umbrellas | Own headers, in order |
 | --- | --- | --- |
@@ -45,13 +46,14 @@ runtime dependencies part of the normal SDK.
 - Public code includes a stable domain umbrella such as
   `<qwen_tts_bridge/client.hpp>` or `<qwen_tts_bridge/protocol/framing.hpp>`.
 - Umbrellas include their own leaves with local quoted paths.
-- A public or documented leaf header includes all declarations needed by its
-  own public declarations. A cross-domain dependency is expressed through the
-  corresponding domain umbrella; same-domain and implementation-private
-  dependencies may use local leaf includes.
-- Each implementation starts with its own header (or its existing private
-  shared header for a source-only split), followed by other implementation
-  dependencies as needed. The implementation is compiled directly by CMake.
+- Internal leaf headers may rely on the owning umbrella for cross-domain
+  declarations. Same-domain and implementation-private dependencies may use
+  local leaf includes. A documented standalone entry point remains
+  self-contained by contract.
+- Each implementation starts with its owning domain/subdomain umbrella (or a
+  documented compatibility umbrella), followed by standard-library and
+  implementation-private dependencies. The implementation is compiled
+  directly by CMake as its own translation unit.
 - First-party `.cpp` inclusion is forbidden. The source tree is not a set of
   include fragments, and there are no domain translation-unit wrappers.
 - No `.clangd` forced include, PCH, unity build, or fake declaration may be
@@ -85,15 +87,12 @@ same-directory control codec headers and private nlohmann JSON.
 
 ## Verification contract
 
-`public_header_self_contained` compiles every `.hpp` under
-`src/qwen_tts_bridge/` directly in the configuration that owns it, including
-optional and implementation-private headers when their feature is enabled.
-Those private checks validate the active build without promoting the headers to
-the installed API. Public umbrellas and documented compatibility headers are
-also checked through separate entry-point translation units. Forward- and
-reverse-order consumer fixtures cover the complete public list. CMake source
-lists include each real implementation exactly once; a source guard rejects
-any first-party `.cpp` include under `src/qwen_tts_bridge/`.
+`public_header_contract` compiles each public umbrella and documented
+compatibility entry point in its own translation unit. Internal leaf headers
+are intentionally not generated through a recursive standalone-header check.
+Forward- and reverse-order consumer fixtures cover the complete public list.
+CMake source lists include each real implementation exactly once; a source
+guard rejects any first-party `.cpp` include under `src/qwen_tts_bridge/`.
 
 The installed consumer independently compiles the stdio entry point and, when
 requested, both WinMM entry paths. Feature-disabled installs must not acquire

@@ -7,7 +7,6 @@
 #include <cstdint>
 #include <vector>
 
-#include <qwen_tts_bridge/data.hpp>
 
 namespace qwen_tts_bridge {
 

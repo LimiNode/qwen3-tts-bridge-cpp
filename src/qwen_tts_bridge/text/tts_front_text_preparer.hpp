@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <qwen_tts_bridge/client.hpp>
 
 namespace qwen_tts_bridge {
 

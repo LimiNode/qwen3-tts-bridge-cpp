@@ -1,4 +1,4 @@
-#include "playback_animation_runtime.hpp"
+#include <qwen_tts_bridge/integration/speech_animation.hpp>
 
 #include <mutex>
 #include <stdexcept>
