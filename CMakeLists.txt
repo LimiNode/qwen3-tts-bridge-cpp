@@ -469,8 +469,15 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         examples/common/atomic_wav_output.cpp
     )
 
+    set(_latency_benchmark_sources
+        examples/latency_benchmark_options.cpp
+        examples/latency_benchmark_manifest.cpp
+        examples/latency_benchmark_evaluation.cpp
+        examples/latency_benchmark_report.cpp
+    )
     add_executable(qwen_tts_latency_benchmark
         examples/qwen_tts_latency_benchmark.cpp
+        ${_latency_benchmark_sources}
     )
 
     add_executable(basic_synthesis examples/basic_synthesis.cpp)
@@ -597,6 +604,21 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             "${CMAKE_CURRENT_SOURCE_DIR}"
     )
     add_test(NAME example_cli_parsing_test COMMAND example_cli_parsing_test)
+
+    if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
+        add_executable(latency_benchmark_boundaries_test
+            tests/latency_benchmark_boundaries_test.cpp
+            ${_latency_benchmark_sources}
+        )
+        target_include_directories(latency_benchmark_boundaries_test
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/examples")
+        target_link_libraries(latency_benchmark_boundaries_test
+            PRIVATE QwenTTSBridge::qwen_tts_bridge nlohmann_json::nlohmann_json)
+        add_test(NAME latency_benchmark_boundaries_test
+            COMMAND latency_benchmark_boundaries_test
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/acceptance/matrix-mock.jsonl"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/acceptance/invalid-benchmark-contract.jsonl")
+    endif()
 
     # Compile each supported public umbrella and documented compatibility entry
     # point as its own translation unit. Keep this list aligned with the public
