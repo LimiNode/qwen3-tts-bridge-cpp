@@ -481,6 +481,116 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(19, result)
             self.assertEqual(b"previous wav", output.read_bytes())
 
+    def test_play_rejects_output_and_log_file_collision_before_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "speech.wav"
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "play",
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test playback",
+                            "--model",
+                            str(model),
+                            "--play-executable",
+                            str(player),
+                            "--worker",
+                            str(worker),
+                            "--out",
+                            str(output),
+                            "--log-file",
+                            str(output),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("different files", stderr.getvalue())
+            run.assert_not_called()
+
+    def test_publish_output_backup_failure_preserves_existing_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "speech.wav"
+            temporary_output = root / ".speech.wav.qtb-tmp"
+            target.write_bytes(b"previous wav")
+            temporary_output.write_bytes(b"new wav")
+            real_replace = user_cli.os.replace
+
+            def fail_backup(source: str | bytes, destination: str | bytes) -> None:
+                if Path(source) == target:
+                    raise OSError("backup failure")
+                real_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace", side_effect=fail_backup
+            ):
+                with self.assertRaises(ValueError):
+                    user_cli._publish_output(temporary_output, target)
+            self.assertEqual(b"previous wav", target.read_bytes())
+            self.assertEqual(b"new wav", temporary_output.read_bytes())
+
+    def test_publish_output_publish_failure_restores_existing_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "speech.wav"
+            temporary_output = root / ".speech.wav.qtb-tmp"
+            target.write_bytes(b"previous wav")
+            temporary_output.write_bytes(b"new wav")
+            real_replace = user_cli.os.replace
+
+            def fail_publish(source: str | bytes, destination: str | bytes) -> None:
+                if Path(source) == temporary_output:
+                    raise OSError("publish failure")
+                real_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace", side_effect=fail_publish
+            ):
+                with self.assertRaises(ValueError):
+                    user_cli._publish_output(temporary_output, target)
+            self.assertEqual(b"previous wav", target.read_bytes())
+            self.assertEqual(b"new wav", temporary_output.read_bytes())
+
+    def test_publish_output_rollback_failure_retains_backup(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "speech.wav"
+            temporary_output = root / ".speech.wav.qtb-tmp"
+            target.write_bytes(b"previous wav")
+            temporary_output.write_bytes(b"new wav")
+            real_replace = user_cli.os.replace
+            calls = 0
+
+            def fail_rollback(source: str | bytes, destination: str | bytes) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("publish failure")
+                if calls == 3:
+                    raise OSError("rollback failure")
+                real_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace", side_effect=fail_rollback
+            ):
+                with self.assertRaisesRegex(ValueError, "backup retained"):
+                    user_cli._publish_output(temporary_output, target)
+            self.assertFalse(target.exists())
+            backups = list(root.glob(".speech.wav.*.qtb-backup"))
+            self.assertEqual(1, len(backups))
+            self.assertEqual(b"previous wav", backups[0].read_bytes())
+
     def test_play_failure_preserves_bounded_diagnostics_and_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
