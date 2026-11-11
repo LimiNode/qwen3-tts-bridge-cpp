@@ -282,29 +282,36 @@ public:
         ReceiveHandler receive_handler,
         ErrorHandler error_handler,
         ExitHandler exit_handler) {
-        std::lock_guard<std::mutex> lifecycle_lock(lifecycle_mutex_);
-
-        if (options_.arguments.empty()) {
-            call_error(error_handler, "stdio transport requires at least one process argument");
-            return false;
-        }
-
-        if (options_.max_callback_queue_events == 0 || options_.max_callback_queue_bytes == 0) {
-            call_error(error_handler, "stdio transport callback queue limits must be greater than zero");
-            return false;
-        }
-
+        // An external stop may hold lifecycle_mutex_ while joining this
+        // callback thread. Reject reentrant start before waiting on that lock.
         if (is_callback_thread()) {
             call_error(error_handler, "stdio transport cannot be started from a transport callback");
             return false;
         }
 
+        std::unique_lock<std::mutex> lifecycle_lock(lifecycle_mutex_);
+
+        if (options_.arguments.empty()) {
+            lifecycle_lock.unlock();
+            call_error(error_handler, "stdio transport requires at least one process argument");
+            return false;
+        }
+
+        if (options_.max_callback_queue_events == 0 || options_.max_callback_queue_bytes == 0) {
+            lifecycle_lock.unlock();
+            call_error(error_handler, "stdio transport callback queue limits must be greater than zero");
+            return false;
+        }
+
+        bool already_started = false;
         {
             std::lock_guard<std::mutex> lock(state_mutex_);
-            if (state_ != ProcessState::Stopped || process_ != nullptr) {
-                call_error(error_handler, "stdio transport is already started");
-                return false;
-            }
+            already_started = state_ != ProcessState::Stopped || process_ != nullptr;
+        }
+        if (already_started) {
+            lifecycle_lock.unlock();
+            call_error(error_handler, "stdio transport is already started");
+            return false;
         }
 
         join_exit_thread_if_needed();
@@ -321,6 +328,7 @@ public:
             exit_status_ = -1;
         }
 
+        std::string startup_error;
         try {
             start_callback_thread();
 
@@ -364,8 +372,7 @@ public:
             }
 
             if (!is_started_process_id(process->get_id())) {
-                fail_start("failed to start stdio worker process");
-                return false;
+                throw std::runtime_error("failed to start stdio worker process");
             }
 
             bool stop_on_registration = false;
@@ -396,13 +403,17 @@ public:
             return !stop_on_registration;
         }
         catch (const std::exception& exc) {
-            fail_start(exc.what());
-            return false;
+            startup_error = exc.what();
         }
         catch (...) {
-            fail_start("unknown stdio transport startup error");
-            return false;
+            startup_error = "unknown stdio transport startup error";
         }
+
+        const auto handler = fail_start();
+        lifecycle_lock.unlock();
+        // User exceptions must not be mistaken for another startup failure.
+        call_error(handler, startup_error);
+        return false;
     }
 
     SendResult send(const std::byte* data, std::size_t size) {
@@ -524,10 +535,10 @@ public:
     }
 
 private:
-    void fail_start(const std::string& message) {
+    ErrorHandler fail_start() {
         ErrorHandler handler;
         std::shared_ptr<TinyProcessLib::Process> process;
-        if (process == nullptr) {
+        {
             std::lock_guard<std::mutex> lock(state_mutex_);
             process = process_;
             handler = error_handler_;
@@ -549,7 +560,7 @@ private:
             clear_handlers_locked();
         }
 
-        call_error(handler, message);
+        return handler;
     }
 
     void watch_process_exit(std::shared_ptr<TinyProcessLib::Process> process) {
@@ -619,7 +630,9 @@ private:
         }
 
         callback_thread_ = std::thread([this]() {
+            callback_transport_ = this;
             callback_loop();
+            callback_transport_ = nullptr;
         });
     }
 
@@ -883,8 +896,7 @@ private:
     }
 
     bool is_callback_thread() const {
-        return callback_thread_.joinable()
-            && callback_thread_.get_id() == std::this_thread::get_id();
+        return callback_transport_ == this;
     }
 
     void join_callback_thread_if_needed() {
@@ -915,6 +927,8 @@ private:
     std::shared_ptr<TinyProcessLib::Process> process_;
     std::thread exit_thread_;
     std::thread callback_thread_;
+    // Thread-local identity never reads callback_thread_ concurrently with join.
+    inline static thread_local const Impl* callback_transport_ = nullptr;
 
     std::mutex callback_mutex_;
     std::condition_variable callback_condition_;
