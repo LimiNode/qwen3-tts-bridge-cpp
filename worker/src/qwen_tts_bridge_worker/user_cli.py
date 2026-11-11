@@ -620,6 +620,9 @@ def _run_play(args: argparse.Namespace) -> int:
         _DEFAULT_REQUEST_TIMEOUT_MS,
     )
     output_path = _output_path(args.out) if args.out is not None else None
+    log_file = _output_path(args.log_file) if args.log_file else None
+    if log_file is not None and output_path is not None and log_file == output_path:
+        raise ValueError("--out and --log-file must refer to different files")
     temporary_output: Path | None = None
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -675,7 +678,6 @@ def _run_play(args: argparse.Namespace) -> int:
     environment = os.environ.copy()
     if root is not None and worker.executable == Path(sys.executable).resolve():
         environment["PYTHONNOUSERSITE"] = "1"
-    log_file = _output_path(args.log_file) if args.log_file else None
     diagnostics = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
     try:
         try:
@@ -1111,9 +1113,20 @@ def _validate_wav_output(path: Path | None) -> None:
         raise ValueError("playback completed but WAV capture was not created")
     try:
         with wave.open(str(path), "rb") as wav:
-            if wav.getnchannels() <= 0 or wav.getsampwidth() <= 0:
+            channels = wav.getnchannels()
+            sample_width = wav.getsampwidth()
+            sample_rate = wav.getframerate()
+            frame_count = wav.getnframes()
+            if (
+                channels != 1
+                or sample_width != 2
+                or sample_rate != 24000
+                or frame_count <= 0
+                or wav.getcomptype() != "NONE"
+            ):
                 raise ValueError("WAV capture has invalid audio format")
-            if wav.getframerate() <= 0 or wav.getnframes() <= 0:
+            audio = wav.readframes(frame_count)
+            if len(audio) != frame_count * channels * sample_width:
                 raise ValueError("WAV capture contains no audio frames")
     except (OSError, wave.Error) as exc:
         raise ValueError(f"WAV capture is invalid: {path}") from exc
@@ -1124,19 +1137,28 @@ def _publish_output(temporary: Path | None, target: Path) -> None:
         raise ValueError("missing temporary playback output")
     _reject_output_target(target)
     backup: Path | None = None
+    backup_created = False
+    published = False
     try:
         if target.exists():
             backup = _temporary_backup_path(target)
             os.replace(target, backup)
+            backup_created = True
         os.replace(temporary, target)
+        published = True
     except OSError as exc:
-        _remove_owned_temporary(target)
-        if backup is not None:
+        if published:
+            _remove_owned_temporary(target)
+        rollback_error: OSError | None = None
+        if backup_created and backup is not None and backup.exists():
             try:
                 os.replace(backup, target)
-            except OSError:
-                pass
-        raise ValueError(f"could not publish playback WAV: {exc}") from exc
+            except OSError as restore_exc:
+                rollback_error = restore_exc
+        detail = f"could not publish playback WAV: {exc}"
+        if rollback_error is not None and backup is not None:
+            detail += f"; backup retained at {backup}: {rollback_error}"
+        raise ValueError(detail) from exc
     else:
         if backup is not None:
             _remove_owned_temporary(backup)
