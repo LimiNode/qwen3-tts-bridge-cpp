@@ -527,7 +527,9 @@ class UserCliTests(unittest.TestCase):
             temporary_output.write_bytes(b"new wav")
             real_replace = user_cli.os.replace
 
-            def fail_backup(source: str | bytes, destination: str | bytes) -> None:
+            def fail_backup(
+                source: str | os.PathLike[str], destination: str | os.PathLike[str]
+            ) -> None:
                 if Path(source) == target:
                     raise OSError("backup failure")
                 real_replace(source, destination)
@@ -549,7 +551,9 @@ class UserCliTests(unittest.TestCase):
             temporary_output.write_bytes(b"new wav")
             real_replace = user_cli.os.replace
 
-            def fail_publish(source: str | bytes, destination: str | bytes) -> None:
+            def fail_publish(
+                source: str | os.PathLike[str], destination: str | os.PathLike[str]
+            ) -> None:
                 if Path(source) == temporary_output:
                     raise OSError("publish failure")
                 real_replace(source, destination)
@@ -572,7 +576,9 @@ class UserCliTests(unittest.TestCase):
             real_replace = user_cli.os.replace
             calls = 0
 
-            def fail_rollback(source: str | bytes, destination: str | bytes) -> None:
+            def fail_rollback(
+                source: str | os.PathLike[str], destination: str | os.PathLike[str]
+            ) -> None:
                 nonlocal calls
                 calls += 1
                 if calls == 2:
