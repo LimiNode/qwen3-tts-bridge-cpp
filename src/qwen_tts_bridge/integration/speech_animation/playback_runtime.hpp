@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <memory>
 
-#include <qwen_tts_bridge/client.hpp>
 #include <speech_animation/integration.hpp>
 #include <speech_animation/playback.hpp>
 

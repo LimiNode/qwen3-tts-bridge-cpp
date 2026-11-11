@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <qwen_tts_bridge/client.hpp>
-
 namespace qwen_tts_bridge {
 
 /// \brief Model-facing rendering capability selected by an application.
