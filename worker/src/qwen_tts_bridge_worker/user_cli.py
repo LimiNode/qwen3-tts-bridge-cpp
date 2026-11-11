@@ -170,6 +170,11 @@ def _build_parser() -> argparse.ArgumentParser:
     play.add_argument("--speaker")
     play.add_argument("--instruction")
     play.add_argument("--text", required=True)
+    play.add_argument(
+        "--out",
+        type=Path,
+        help="Optionally capture the post-processed playback stream as a WAV.",
+    )
     play.add_argument("--model", type=Path)
     play.add_argument("--language", default="Russian")
     play.add_argument(
@@ -640,6 +645,15 @@ def _run_play(args: argparse.Namespace) -> int:
         "runtime.request_timeout_ms",
         _DEFAULT_REQUEST_TIMEOUT_MS,
     )
+    output_path = _output_path(args.out) if args.out is not None else None
+    temporary_output: Path | None = None
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        _reject_output_target(output_path)
+        try:
+            temporary_output = _temporary_output_path(output_path)
+        except OSError as exc:
+            raise ValueError(f"could not create temporary playback output: {exc}") from exc
     command = [
         str(player),
         "--worker",
@@ -653,6 +667,8 @@ def _run_play(args: argparse.Namespace) -> int:
         "--request-timeout-ms",
         str(request_timeout_ms),
     ]
+    if temporary_output is not None:
+        command.extend(("--wav-capture-file", str(temporary_output)))
     for value in worker.prefix_arguments:
         command.extend(("--worker-arg", value))
     worker_arguments = (
@@ -742,8 +758,13 @@ def _run_play(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
             return completed.returncode
+        if output_path is not None:
+            _validate_wav_output(temporary_output)
+            _publish_output(temporary_output, output_path)
     finally:
         diagnostics.close()
+        if temporary_output is not None:
+            _remove_owned_temporary(temporary_output)
     return 0
 
 
@@ -1122,11 +1143,57 @@ def _temporary_output_paths(output_path: Path, result_json: Path) -> tuple[Path,
         raise
 
 
+def _temporary_output_path(output_path: Path) -> Path:
+    descriptor, name = tempfile.mkstemp(
+        prefix=f".{output_path.name}.", suffix=".qtb-tmp", dir=output_path.parent
+    )
+    os.close(descriptor)
+    temporary = Path(name)
+    temporary.unlink()
+    return temporary
+
+
 def _remove_owned_temporary(path: Path) -> None:
     try:
         path.unlink(missing_ok=True)
     except OSError:
         pass
+
+
+def _validate_wav_output(path: Path | None) -> None:
+    if path is None or not path.is_file():
+        raise ValueError("playback completed but WAV capture was not created")
+    try:
+        with wave.open(str(path), "rb") as wav:
+            if wav.getnchannels() <= 0 or wav.getsampwidth() <= 0:
+                raise ValueError("WAV capture has invalid audio format")
+            if wav.getframerate() <= 0 or wav.getnframes() <= 0:
+                raise ValueError("WAV capture contains no audio frames")
+    except (OSError, wave.Error) as exc:
+        raise ValueError(f"WAV capture is invalid: {path}") from exc
+
+
+def _publish_output(temporary: Path | None, target: Path) -> None:
+    if temporary is None:
+        raise ValueError("missing temporary playback output")
+    _reject_output_target(target)
+    backup: Path | None = None
+    try:
+        if target.exists():
+            backup = _temporary_backup_path(target)
+            os.replace(target, backup)
+        os.replace(temporary, target)
+    except OSError as exc:
+        _remove_owned_temporary(target)
+        if backup is not None:
+            try:
+                os.replace(backup, target)
+            except OSError:
+                pass
+        raise ValueError(f"could not publish playback WAV: {exc}") from exc
+    else:
+        if backup is not None:
+            _remove_owned_temporary(backup)
 
 
 def _publish_design_outputs(
