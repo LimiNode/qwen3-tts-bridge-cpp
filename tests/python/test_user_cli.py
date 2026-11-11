@@ -196,6 +196,116 @@ class UserCliTests(unittest.TestCase):
                 worker_args[worker_args.index("--model-path") + 1],
             )
 
+    def test_synth_supports_custom_voice_1_7b_family(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(
+                root / "model", model_type="custom_voice", model_size="1b7"
+            )
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ) as run:
+                self.assertEqual(
+                    0,
+                    user_cli.main(
+                        [
+                            "synth",
+                            "--model-family",
+                            "custom-1.7b",
+                            "--speaker",
+                            "Ryan",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Hello",
+                            "--out",
+                            str(root / "custom.wav"),
+                        ]
+                    ),
+                )
+            command = run.call_args.args[0]
+            self.assertEqual("Ryan", command[command.index("--speaker") + 1])
+            self.assertNotIn("--voice-id", command)
+
+    def test_synth_rejects_incompatible_voice_sources_without_starting_worker(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(
+                root / "model", model_type="custom_voice", model_size="1b7"
+            )
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            common = [
+                "synth",
+                "--model-family",
+                "custom-1.7b",
+                "--model",
+                str(model),
+                "--save-wav-executable",
+                str(save_wav),
+                "--worker",
+                str(worker),
+                "--text",
+                "Hello",
+                "--out",
+                str(root / "custom.wav"),
+            ]
+            for extra, message in (
+                (["--voice-id", "voice", "--speaker", "Ryan"], "--voice-id"),
+                (["--instruction", "Speak warmly."], "--speaker"),
+            ):
+                with self.subTest(message=message):
+                    with mock.patch(
+                        "qwen_tts_bridge_worker.user_cli.subprocess.run"
+                    ) as run, redirect_stderr(io.StringIO()) as stderr:
+                        with self.assertRaises(SystemExit) as raised:
+                            user_cli.main(common + extra)
+                    self.assertEqual(2, raised.exception.code)
+                    self.assertIn(message, stderr.getvalue())
+                    run.assert_not_called()
+
+    def test_synth_rejects_family_checkpoint_mismatch_without_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "synth",
+                            "--model-family",
+                            "custom-1.7b",
+                            "--speaker",
+                            "Ryan",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Hello",
+                            "--out",
+                            str(root / "custom.wav"),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("model family mismatch", stderr.getvalue())
+            run.assert_not_called()
+
     def test_synth_supports_voice_design_family(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
