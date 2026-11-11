@@ -207,6 +207,84 @@ class UserCliTests(unittest.TestCase):
                 worker_args[worker_args.index("--voice-registry-path") + 1],
             )
 
+    def test_play_out_captures_and_publishes_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "nested" / "speech.wav"
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_play,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "play",
+                        "--voice-id",
+                        "voice",
+                        "--text",
+                        "Test playback",
+                        "--model",
+                        str(model),
+                        "--play-executable",
+                        str(player),
+                        "--worker",
+                        str(worker),
+                        "--out",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            capture = Path(command[command.index("--wav-capture-file") + 1])
+            self.assertFalse(capture.exists())
+            with wave.open(str(output), "rb") as wav:
+                self.assertEqual(1, wav.getnchannels())
+                self.assertEqual(16, wav.getnframes())
+
+    def test_play_out_failure_preserves_previous_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "speech.wav"
+            output.write_bytes(b"previous wav")
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=19),
+            ):
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "play",
+                        "--voice-id",
+                        "voice",
+                        "--text",
+                        "Test playback",
+                        "--model",
+                        str(model),
+                        "--play-executable",
+                        str(player),
+                        "--worker",
+                        str(worker),
+                        "--out",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(19, result)
+            self.assertEqual(b"previous wav", output.read_bytes())
+
     def test_play_failure_preserves_bounded_diagnostics_and_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1767,6 +1845,17 @@ def _successful_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
         ),
         encoding="utf-8",
     )
+    return mock.Mock(returncode=0)
+
+
+def _successful_play(command: list[str], **_kwargs: object) -> mock.Mock:
+    output = Path(command[command.index("--wav-capture-file") + 1])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(output), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x00" * 16)
     return mock.Mock(returncode=0)
 
 
