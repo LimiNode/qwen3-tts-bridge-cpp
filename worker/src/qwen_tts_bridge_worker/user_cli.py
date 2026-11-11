@@ -653,7 +653,9 @@ def _run_play(args: argparse.Namespace) -> int:
         try:
             temporary_output = _temporary_output_path(output_path)
         except OSError as exc:
-            raise ValueError(f"could not create temporary playback output: {exc}") from exc
+            raise ValueError(
+                f"could not create temporary playback output: {exc}"
+            ) from exc
     command = [
         str(player),
         "--worker",
