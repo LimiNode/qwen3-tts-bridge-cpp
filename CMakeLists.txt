@@ -487,6 +487,11 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
     if(WIN32)
         add_executable(qwen_tts_play
             examples/qwen_tts_play.cpp
+            examples/play_options.cpp
+            examples/play_interactive.cpp
+            examples/play_console.cpp
+            examples/play_request_state.cpp
+            examples/play_lifecycle_self_test.cpp
             examples/common/pcm_capture.cpp
             examples/common/wav_capture.cpp
         )
@@ -618,6 +623,24 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             COMMAND latency_benchmark_boundaries_test
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/acceptance/matrix-mock.jsonl"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/acceptance/invalid-benchmark-contract.jsonl")
+    endif()
+
+    if(WIN32 AND QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
+        add_executable(qwen_tts_play_options_test
+            tests/qwen_tts_play_options_test.cpp
+            examples/play_options.cpp
+            examples/play_interactive.cpp
+            examples/play_console.cpp
+        )
+        target_include_directories(qwen_tts_play_options_test
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/examples")
+        target_link_libraries(qwen_tts_play_options_test
+            PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
+        if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
+            target_compile_definitions(qwen_tts_play_options_test
+                PRIVATE QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION=1)
+        endif()
+        add_test(NAME qwen_tts_play_options_test COMMAND qwen_tts_play_options_test)
     endif()
 
     # Compile each supported public umbrella and documented compatibility entry
