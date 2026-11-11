@@ -10,7 +10,6 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 RUNNER = ROOT / "scripts" / "run-native-python-matrix.ps1"
-BENCHMARK = ROOT / "examples" / "qwen_tts_latency_benchmark.cpp"
 FULL_TEMPLATE = ROOT / "docs" / "acceptance" / "native-python-full.template.jsonl"
 
 
@@ -156,22 +155,21 @@ exit 0
             source,
         )
 
-    def test_benchmark_accepts_explicit_negative_outcomes(self) -> None:
-        source = BENCHMARK.read_text(encoding="utf-8")
-        template = FULL_TEMPLATE.read_text(encoding="utf-8")
-        self.assertIn("allowed_terminal_outcomes", source)
-        self.assertIn("allowed_errors", source)
-        self.assertIn("cancel_after_first_pcm", source)
-        self.assertIn("completion_metadata", source)
-        self.assertIn("natural_eos", source)
-        self.assertIn("late_audio_after_terminal_count", source)
-        self.assertIn("terminal_quiet", source)
-        self.assertIn("warmup_reference_audio", source)
-        self.assertIn("warmup_reference_text", source)
-        self.assertIn("self-test-eos-contract", source)
-        self.assertIn('"request_error"', template)
-        self.assertIn('"resource_error"', template)
-        self.assertIn("allowed_errors", template)
+    def test_full_template_declares_explicit_negative_outcomes(self) -> None:
+        # Executable benchmark parser/evaluation/report checks live in
+        # latency_benchmark_boundaries_test, not source-text assertions.
+        rows = [
+            json.loads(line)
+            for line in FULL_TEMPLATE.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        categories = {
+            error["category"]
+            for row in rows
+            for error in row.get("allowed_errors", [])
+        }
+        self.assertIn("request_error", categories)
+        self.assertIn("resource_error", categories)
 
 
 if __name__ == "__main__":
