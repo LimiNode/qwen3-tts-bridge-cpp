@@ -4,8 +4,8 @@
 #include <qwen_tts_bridge/transport.hpp>
 #include <qwen_tts_bridge/playback/winmm_playback.hpp>
 
-#include "play/options.hpp"
-#include "play/request_state.hpp"
+#include "play_options.hpp"
+#include "play_request_state.hpp"
 
 #include <iosfwd>
 
