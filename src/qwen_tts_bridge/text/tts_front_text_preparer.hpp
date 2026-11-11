@@ -7,7 +7,6 @@
 
 #include <string>
 
-
 namespace qwen_tts_bridge {
 
 /// \brief Model-facing rendering capability selected by an application.

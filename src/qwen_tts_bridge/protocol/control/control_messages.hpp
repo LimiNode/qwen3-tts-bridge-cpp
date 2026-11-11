@@ -10,7 +10,6 @@
 #include <variant>
 #include <vector>
 
-
 namespace qwen_tts_bridge {
 
 /// \enum ControlMessageDirection

@@ -74,7 +74,7 @@ thin wrappers around their owning umbrella:
 - `integration/speech_animation/playback_animation_runtime.hpp` ->
   `integration/speech_animation.hpp`.
 
-Two value-type entry points intentionally remain standalone:
+Supported standalone leaf entry points are:
 
 - `data/audio_types.hpp` retains its same-domain `protocol_types.hpp` include
   for `RequestId`;

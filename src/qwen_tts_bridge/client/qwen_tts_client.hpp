@@ -17,7 +17,6 @@
 #include <unordered_map>
 #include <vector>
 
-
 #include "client_types.hpp"
 
 namespace qwen_tts_bridge {

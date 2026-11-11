@@ -568,6 +568,13 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         COMMAND "${CMAKE_COMMAND}"
             "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/owning_umbrella_in_cpp.cmake")
+    add_test(
+        NAME owning_umbrella_in_cpp_rejects_similar_path
+        COMMAND "${CMAKE_COMMAND}"
+            "-DQWEN_TTS_BRIDGE_SOURCE_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/owning_umbrella_bad_include"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/owning_umbrella_in_cpp.cmake")
+    set_tests_properties(owning_umbrella_in_cpp_rejects_similar_path
+        PROPERTIES WILL_FAIL TRUE)
 
     foreach(_cpp_include_fixture IN ITEMS
             first_party_cpp_include_in_cpp

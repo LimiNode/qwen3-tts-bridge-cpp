@@ -8,7 +8,6 @@
 #include <mutex>
 #include <vector>
 
-
 namespace qwen_tts_bridge::audio {
 
 /// \enum AudioTerminalReason

@@ -1,6 +1,5 @@
 #include <qwen_tts_bridge/protocol/framing.hpp>
 
-
 #include <utility>
 
 namespace qwen_tts_bridge {

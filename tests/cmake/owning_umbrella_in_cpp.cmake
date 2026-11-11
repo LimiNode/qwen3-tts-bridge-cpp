@@ -46,8 +46,10 @@ foreach(_source IN LISTS _sources)
     if(_first_include STREQUAL "")
         message(FATAL_ERROR "${_relative} has no include directive")
     endif()
-    string(FIND "${_first_include}" "${_expected}" _expected_position)
-    if(_expected_position LESS 0)
+    set(_expected_angle "#include <${_expected}>")
+    set(_expected_quoted "#include \"${_expected}\"")
+    if(NOT _first_include STREQUAL _expected_angle AND
+       NOT _first_include STREQUAL _expected_quoted)
         message(FATAL_ERROR
             "${_relative} must start with owning umbrella ${_expected}; got ${_first_include}")
     endif()

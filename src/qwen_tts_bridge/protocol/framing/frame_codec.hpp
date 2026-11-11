@@ -7,7 +7,6 @@
 #include <cstdint>
 #include <vector>
 
-
 namespace qwen_tts_bridge {
 
 /// \brief Checks whether a raw frame type value is defined by protocol v1.

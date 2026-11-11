@@ -11,7 +11,6 @@
 #include <memory>
 #include <string>
 
-
 #include "post_processor.hpp"
 
 namespace qwen_tts_bridge::audio {

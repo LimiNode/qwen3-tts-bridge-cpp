@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-
 namespace qwen_tts_bridge {
 
 /// \class FrameParser
