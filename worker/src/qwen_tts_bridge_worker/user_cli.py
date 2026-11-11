@@ -513,10 +513,21 @@ def _run_voices(args: argparse.Namespace) -> int:
                 log_file=args.log_file,
                 require_natural_eos=args.require_natural_eos,
                 acceptance_mock_worker=args.acceptance_mock_worker,
+                emit_success=False,
             )
+            if not args.require_natural_eos:
+                raise VoiceLibraryError(
+                    "voices create requires strict natural-EOS validation"
+                )
             result = _run_design(synthesis_args)
             if result != 0:
                 return result
+            try:
+                receipt = json.loads(result_json.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise VoiceLibraryError(
+                    "voices create could not read validated generation receipt"
+                ) from exc
             row = add_voice(
                 registry_path,
                 voice_id=voice_id,
@@ -524,13 +535,31 @@ def _run_voices(args: argparse.Namespace) -> int:
                 reference_text=args.sample_text,
                 x_vector_only=False,
                 preserve_reference_text_whitespace=True,
+                include_source_reference_path=False,
                 provenance={
                     "operation": "voices create",
                     "model_family": "voice-design",
                     "model_repository": model.spec.repository,
                     "model_path": str(model.path),
+                    "model_source": model.source,
+                    "model_revision": model.revision,
+                    "model_integrity_verified": model.integrity_verified,
                     "instruction": args.instruction,
                     "reference_text": args.sample_text,
+                    "language": args.language,
+                    "generation": {
+                        "audio_chunks": receipt.get("audio_chunks"),
+                        "audio_bytes": receipt.get("audio_bytes"),
+                        "terminal_state": receipt.get("terminal_state"),
+                        "termination_reason": receipt.get("termination_reason"),
+                        "hit_eos": receipt.get("hit_eos"),
+                        "completion_metadata_received": receipt.get(
+                            "completion_metadata_received"
+                        ),
+                        "generation_trace_available": receipt.get(
+                            "generation_trace_available"
+                        ),
+                    },
                     "runtime_backend": args.runtime_backend,
                     "device": _resolve_device(
                         args.device, runtime_config.get("device")
@@ -923,7 +952,8 @@ def _run_synthesis(
         diagnostics.close()
         for temporary_path in temporary_outputs:
             _remove_owned_temporary(temporary_path)
-    print(f"Wrote {output_description}: {output_path}")
+    if getattr(args, "emit_success", True):
+        print(f"Wrote {output_description}: {output_path}")
     if args.play:
         if os.name != "nt":
             raise ValueError("--play currently requires Windows")

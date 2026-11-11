@@ -168,7 +168,7 @@ class UserCliTests(unittest.TestCase):
             with mock.patch(
                 "qwen_tts_bridge_worker.user_cli.subprocess.run",
                 side_effect=_successful_voice_creation,
-            ) as run:
+            ) as run, redirect_stdout(io.StringIO()) as stdout:
                 result = user_cli.main(
                     [
                         "--config",
@@ -200,6 +200,58 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(
                 "This is the reference.", rows[0]["provenance"]["reference_text"]
             )
+            self.assertNotIn("source_reference_audio_path", rows[0])
+            self.assertEqual("Russian", rows[0]["provenance"]["language"])
+            self.assertIsNone(rows[0]["provenance"]["model_revision"])
+            self.assertEqual(
+                rows[0]["reference_audio_sha256"],
+                rows[0]["provenance"]["reference_audio_sha256"],
+            )
+            self.assertEqual(
+                "eos", rows[0]["provenance"]["generation"]["termination_reason"]
+            )
+            self.assertNotIn("Wrote VoiceDesign WAV:", stdout.getvalue())
+
+            verify = user_cli.main(
+                [
+                    "--config",
+                    str(config),
+                    "voices",
+                    "verify",
+                    "calm",
+                    "--backend",
+                    "python",
+                ]
+            )
+            self.assertEqual(0, verify)
+
+            base_model = _write_model(root / "base-model", model_type="base")
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_synthesis,
+            ):
+                self.assertEqual(
+                    0,
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "synth",
+                            "--model",
+                            str(base_model),
+                            "--voice-id",
+                            "calm",
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Reuse this voice.",
+                            "--out",
+                            str(root / "reused.wav"),
+                        ]
+                    ),
+                )
 
     def test_voices_create_rejects_duplicate_before_generation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -316,6 +368,51 @@ class UserCliTests(unittest.TestCase):
                     )
             self.assertEqual(2, raised.exception.code)
             self.assertFalse((root / "voices" / "registry.json").exists())
+
+    def test_voices_create_rejects_non_natural_eos_opt_out(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voice_library": {"registry_path": "voices/registry.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "voices",
+                            "create",
+                            "--id",
+                            "diagnostic-only",
+                            "--instruction",
+                            "A diagnostic voice.",
+                            "--sample-text",
+                            "Reference",
+                            "--allow-non-natural-eos",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("strict natural-EOS", stderr.getvalue())
+            run.assert_not_called()
 
     def test_voices_create_publication_failure_does_not_leave_registry(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
