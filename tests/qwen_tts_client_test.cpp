@@ -89,6 +89,7 @@ std::vector<std::byte> ready_frame_bytes() {
 class BlockingTransport final : public ITransport {
 public:
     bool block_after_hello = false;
+    bool block_stop = false;
     SendResult send_after_hello_result = SendResult::Accepted;
 
     bool start(
@@ -142,8 +143,15 @@ public:
             std::lock_guard<std::mutex> lock(mutex_);
             running_ = false;
             release_block_ = true;
+            stop_entered_ = true;
         }
         condition_.notify_all();
+        if (block_stop) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            condition_.wait(lock, [this]() {
+                return release_stop_;
+            });
+        }
     }
 
     bool wait_until_blocked() {
@@ -160,6 +168,24 @@ public:
         {
             std::lock_guard<std::mutex> lock(mutex_);
             release_block_ = true;
+        }
+        condition_.notify_all();
+    }
+
+    bool wait_until_stop_entered() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return condition_.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [this]() {
+                return stop_entered_;
+            });
+    }
+
+    void release_stop() {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            release_stop_ = true;
         }
         condition_.notify_all();
     }
@@ -187,6 +213,8 @@ private:
     std::atomic<bool> running_{false};
     bool blocked_ = false;
     bool release_block_ = false;
+    bool stop_entered_ = false;
+    bool release_stop_ = false;
     std::vector<std::byte> last_send_;
 };
 
@@ -579,6 +607,126 @@ void test_stop_from_completed_callback_then_destruct_outside() {
             return completed_callback_returned;
         }));
     }
+}
+
+void test_concurrent_external_stop_has_single_join_owner() {
+    auto transport = std::make_unique<BlockingTransport>();
+    transport->block_stop = true;
+    auto* raw_transport = transport.get();
+
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), make_client_options()));
+
+    std::atomic<int> completed_stops{0};
+    std::thread first([&]() {
+        client.stop();
+        ++completed_stops;
+    });
+    CHECK(raw_transport->wait_until_stop_entered());
+
+    std::thread second([&]() {
+        client.stop();
+        ++completed_stops;
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    CHECK(completed_stops.load() == 0);
+
+    raw_transport->release_stop();
+    first.join();
+    second.join();
+    CHECK(completed_stops.load() == 2);
+    CHECK(!client.is_running());
+
+    CHECK(client.start(std::make_unique<BlockingTransport>(), make_client_options()));
+    client.stop();
+}
+
+void test_external_and_callback_stop_overlap() {
+    QwenTtsClient client;
+    CHECK(client.start(make_worker_options(1000, 0.01), make_client_options()));
+
+    std::mutex callback_mutex;
+    std::condition_variable callback_condition;
+    bool callback_entered = false;
+    bool release_callback = false;
+
+    TtsCallbacks callbacks;
+    callbacks.on_audio = [&](const PcmChunk&) {
+        {
+            std::unique_lock<std::mutex> lock(callback_mutex);
+            callback_entered = true;
+            callback_condition.notify_all();
+            callback_condition.wait(lock, [&]() {
+                return release_callback;
+            });
+        }
+        client.stop();
+    };
+    CHECK(client.synthesize_async(
+        "Concurrent callback stop.",
+        std::move(callbacks)) != 0);
+
+    {
+        std::unique_lock<std::mutex> lock(callback_mutex);
+        CHECK(callback_condition.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [&]() { return callback_entered; }));
+    }
+
+    std::thread external([&]() { client.stop(); });
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex);
+        release_callback = true;
+    }
+    callback_condition.notify_all();
+    external.join();
+    CHECK(!client.is_running());
+}
+
+void test_worker_failure_racing_with_stop() {
+    auto transport = std::make_unique<BlockingTransport>();
+    transport->send_after_hello_result = SendResult::Failed;
+
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), make_client_options()));
+
+    std::mutex callback_mutex;
+    std::condition_variable callback_condition;
+    bool error_entered = false;
+    bool release_error = false;
+    TtsCallbacks callbacks;
+    callbacks.on_error = [&](const TtsError&) {
+        {
+            std::unique_lock<std::mutex> lock(callback_mutex);
+            error_entered = true;
+            callback_condition.notify_all();
+            callback_condition.wait(lock, [&]() {
+                return release_error;
+            });
+        }
+        client.stop();
+    };
+
+    CHECK(client.synthesize_async(
+        make_request("Worker failure racing with stop."),
+        std::move(callbacks)) != 0);
+    {
+        std::unique_lock<std::mutex> lock(callback_mutex);
+        CHECK(callback_condition.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [&]() { return error_entered; }));
+    }
+
+    std::thread external([&]() { client.stop(); });
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex);
+        release_error = true;
+    }
+    callback_condition.notify_all();
+    external.join();
+    CHECK(!client.is_running());
 }
 
 void test_callback_exception_is_reported_and_swallowed() {
@@ -1250,6 +1398,9 @@ int main() {
     test_request_error_routes_to_callback();
     test_stop_from_audio_callback_allows_restart();
     test_stop_from_completed_callback_then_destruct_outside();
+    test_concurrent_external_stop_has_single_join_owner();
+    test_external_and_callback_stop_overlap();
+    test_worker_failure_racing_with_stop();
     test_callback_exception_is_reported_and_swallowed();
     test_callback_exception_diagnostic_copy_failure_is_swallowed();
     test_error_callback_exception_is_reported_once();

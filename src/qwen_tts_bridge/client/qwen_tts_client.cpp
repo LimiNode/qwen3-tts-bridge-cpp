@@ -15,6 +15,23 @@ namespace {
 
 constexpr std::size_t outbound_command_fixed_overhead = 64u;
 
+thread_local QwenTtsClient* current_dispatcher_client = nullptr;
+
+class DispatcherThreadScope final {
+public:
+    explicit DispatcherThreadScope(QwenTtsClient* client)
+        : previous_(current_dispatcher_client) {
+        current_dispatcher_client = client;
+    }
+
+    ~DispatcherThreadScope() {
+        current_dispatcher_client = previous_;
+    }
+
+private:
+    QwenTtsClient* previous_;
+};
+
 std::optional<std::size_t> bytes_per_sample(const AudioFormat& format) {
     if (format.sample_format == "u8") {
         return 1u;
@@ -552,13 +569,36 @@ std::vector<std::string> QwenTtsClient::available_voice_ids() const {
 }
 
 void QwenTtsClient::stop() {
+    const bool called_from_dispatcher = is_current_dispatcher_thread();
     WorkerSession* session = nullptr;
+    bool owns_shutdown = false;
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock<std::mutex> lock(mutex_);
         running_ = false;
         stopping_ = true;
         clear_outbound_queue_locked();
         session = session_.get();
+
+        if (!shutdown_in_progress_) {
+            shutdown_in_progress_ = true;
+            shutdown_owner_thread_ = std::this_thread::get_id();
+            owns_shutdown = true;
+        }
+        else if (shutdown_owner_thread_ == std::this_thread::get_id() ||
+                 called_from_dispatcher) {
+            // The shutdown owner may re-enter through an error callback. A
+            // dispatcher callback must never wait for the owner that is
+            // joining the dispatcher thread.
+            outbound_condition_.notify_all();
+            return;
+        }
+        else {
+            outbound_condition_.notify_all();
+            shutdown_condition_.wait(lock, [this]() {
+                return !shutdown_in_progress_;
+            });
+            return;
+        }
     }
     outbound_condition_.notify_all();
 
@@ -574,16 +614,22 @@ void QwenTtsClient::stop() {
         "client_stopped",
         "QwenTtsClient stopped before request reached a terminal event"));
 
-    const bool called_from_dispatcher = is_current_dispatcher_thread();
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!writer_thread_.joinable() &&
-        (!dispatcher_thread_.joinable() || called_from_dispatcher)) {
-        session_.reset();
-        clear_outbound_queue_locked();
-        stopping_ = false;
-        running_ = false;
-        terminal_failure_handled_ = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!writer_thread_.joinable() &&
+            (!dispatcher_thread_.joinable() || called_from_dispatcher)) {
+            session_.reset();
+            clear_outbound_queue_locked();
+            stopping_ = false;
+            running_ = false;
+            terminal_failure_handled_ = false;
+        }
+        if (owns_shutdown) {
+            shutdown_owner_thread_ = std::thread::id{};
+            shutdown_in_progress_ = false;
+        }
     }
+    shutdown_condition_.notify_all();
 }
 
 RequestId QwenTtsClient::allocate_request_id_locked(RequestId requested_id) {
@@ -688,8 +734,7 @@ void QwenTtsClient::reap_finished_threads() {
 }
 
 bool QwenTtsClient::is_current_dispatcher_thread() const {
-    return dispatcher_thread_.joinable() &&
-        dispatcher_thread_.get_id() == std::this_thread::get_id();
+    return current_dispatcher_client == this;
 }
 
 void QwenTtsClient::writer_loop() {
@@ -727,6 +772,7 @@ void QwenTtsClient::writer_loop() {
 }
 
 void QwenTtsClient::dispatcher_loop() {
+    DispatcherThreadScope dispatcher_scope(this);
     while (true) {
         WorkerSession* session = nullptr;
         {
@@ -1082,6 +1128,7 @@ void QwenTtsClient::report_callback_exception(
 }
 
 void QwenTtsClient::join_threads() {
+    std::lock_guard<std::mutex> join_lock(join_mutex_);
     const auto current_thread = std::this_thread::get_id();
 
     if (writer_thread_.joinable() &&
