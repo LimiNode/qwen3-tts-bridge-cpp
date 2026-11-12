@@ -787,6 +787,46 @@ int main() {
     CHECK(reference_stderr.find("\"synthesis_ms\":") != std::string::npos);
     cached_client.stop();
 
+    auto exhausted_cache_options = options(8, nullptr, nullptr, 0, true);
+    exhausted_cache_options.arguments.push_back("--max-dynamic-voice-refs");
+    exhausted_cache_options.arguments.push_back("0");
+    QwenTtsClient exhausted_cache_client;
+    QwenTtsClientOptions exhausted_cache_client_options;
+    exhausted_cache_client_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(exhausted_cache_client.start(
+        std::move(exhausted_cache_options), exhausted_cache_client_options));
+    Probe exhausted_cache_probe;
+    TtsCallbacks exhausted_cache_callbacks;
+    exhausted_cache_callbacks.on_completed = [&exhausted_cache_probe]() {
+        std::lock_guard<std::mutex> lock(exhausted_cache_probe.mutex);
+        ++exhausted_cache_probe.completed;
+        exhausted_cache_probe.condition.notify_all();
+    };
+    exhausted_cache_callbacks.on_error = [&exhausted_cache_probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(exhausted_cache_probe.mutex);
+        exhausted_cache_probe.errors.push_back(error);
+        exhausted_cache_probe.condition.notify_all();
+    };
+    TtsRequest exhausted_cache_request;
+    exhausted_cache_request.text = "cache capacity request";
+    exhausted_cache_request.reference_audio_path = reference_wav.string();
+    exhausted_cache_request.x_vector_only = true;
+    CHECK(exhausted_cache_client.synthesize_async(
+        exhausted_cache_request, exhausted_cache_callbacks) != 0);
+    {
+        std::unique_lock<std::mutex> lock(exhausted_cache_probe.mutex);
+        CHECK(exhausted_cache_probe.condition.wait_for(
+            lock, std::chrono::seconds(5), [&exhausted_cache_probe]() {
+                return exhausted_cache_probe.completed != 0 ||
+                    !exhausted_cache_probe.errors.empty();
+            }));
+    }
+    CHECK(exhausted_cache_probe.completed == 0);
+    CHECK(exhausted_cache_probe.errors.size() == 1);
+    CHECK(exhausted_cache_probe.errors.front().category == "resource_error");
+    CHECK(exhausted_cache_probe.errors.front().code == "voice_reference_cache_exhausted");
+    exhausted_cache_client.stop();
+
     std::string icl_stderr;
     QwenTtsClient icl_client;
     QwenTtsClientOptions icl_options;
