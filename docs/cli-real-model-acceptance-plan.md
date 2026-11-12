@@ -48,11 +48,18 @@ Every case records:
   physical playback is exercised;
 - mechanical status, listening status, and release status separately.
 
-Use only these result values: `pass`, `fail`, `not_run`, `unsupported`, and
-`not_assessed`. Every `not_run`, `unsupported`, or `not_assessed` result must
-include a concise reason and identify any missing prerequisite. A `fail` must
-retain the failing receipt and environment; it is not silently converted to
-`not_run`.
+Use only these case/listening result values: `pass`, `fail`, `not_run`,
+`unsupported`, and `not_assessed`. Every `not_run`, `unsupported`, or
+`not_assessed` result must include a concise reason and identify any missing
+prerequisite. A `fail` must retain the failing receipt and environment; it is
+not silently converted to `not_run`.
+
+The release decision is a separate `release_disposition` field with one of
+`accepted`, `conditional`, or `blocked`. `conditional` is never a case result:
+it means that the declared release scope remains limited by an open gate,
+while optional or unadvertised cases may remain `not_run` or `unsupported`.
+Receipts must retain the case result, listening result, release disposition,
+and reason fields independently.
 
 ## Required matrix
 

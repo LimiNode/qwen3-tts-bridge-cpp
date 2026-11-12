@@ -1,6 +1,7 @@
 # Beta release gap analysis
 
-Baseline: `6cf272fce7358479393f0bdd7d9bb3186cd1f1fb` (current `main`).
+Historical B2 baseline: `6cf272fce7358479393f0bdd7d9bb3186cd1f1fb`.
+R1 audit baseline: `d0e1a629199647e908a4d945a1ce9743a68a5715`.
 
 This document narrows Phase B2 to evidence-backed work. It deliberately keeps
 the Python worker as the production baseline and does not promote the native
@@ -54,8 +55,10 @@ requirement for a third computer.
 
 Evidence is strong for Base 1.7B and experimental RU-stress, but not for every
 size/family listed by the API. CustomVoice 0.6B has a release runner without a
-committed exact-baseline receipt; CustomVoice 1.7B, Base 0.6B and VoiceDesign
-1.7B lack variant-specific real acceptance in this repository.
+committed exact-baseline receipt; CustomVoice 1.7B and Base 0.6B lack
+variant-specific real acceptance. VoiceDesign 1.7B has a frozen CMP receipt
+with partial listening, not full current-candidate acceptance; see the
+[acceptance index](reports/acceptance-index.json).
 
 * Owner: Python worker plus release runner and model manifests.
 * Smallest corrective: choose the beta advertised set first. For each selected
@@ -73,7 +76,7 @@ The bridge-level v0.2.2-to-v0.2.5 comparison is recorded in
 * Owner: `external/cpp/tts-front-cpp` and the bridge adapter.
 * Completed corrective: update the pin, run the prepared-text and adapter
   tests, and compare effective UTF-8 text and diagnostics on the fixed corpus.
-  The comparison found 12 unchanged cases, three intended effective-text
+  The comparison found 13 unchanged cases, three intended effective-text
   changes, one intended diagnostic-only change, and no regressions.
 * Acceptance: exact v0.2.5 tag/provenance and the comparison receipt are
   recorded. Targeted listening for the three changed text surfaces remains a
@@ -144,10 +147,10 @@ queues remain separate concerns.
 | Item | Why it is deferred |
 |---|---|
 | Targeted listening for the v0.2.5 frontend delta | The dependency pin and 17-case comparison (13 unchanged cases) are complete with no regressions. Listen only to the leading-zero year, contextual year-agreement, and genitive-decimal cases before making those changes part of a release claim. |
-| Shared CLI parsing helpers | Four examples duplicate parsing/JSON helpers, but no correctness drift was demonstrated. Extract only after a concrete option bug or during a small P2 cleanup. |
+| Further CLI decomposition | Shared C++ example parsing and focused implementation splits landed in #302–#305. Do not reopen that refactor without a concrete defect. |
 | Save-WAV direct reference-audio/seed/sampling options | Registered Base `voice_id` is the release-facing clone path. Keep this an explicit B2-0 scope decision; add fields only if direct reference input is a beta requirement. |
 | Full audio effects rack (EQ, compressor, limiter, denoise, reverb, pitch, speed) | Only terminal fade/padding and the generic postprocessor chain exist. Keep the minimum DSP surface as an explicit B2-0 scope decision; do not add presets before a product requirement. |
-| Automatic Python model downloader | Native has a validated URL/hash downloader; Python can use explicit external paths and doctor manifests. A unified downloader is optional if offline provisioning remains the contract. |
+| Implicit model provisioning | Python `models download` is implemented as an explicit operation. Synthesis stays offline after provisioning and never downloads silently. |
 | Predictive visemes, Unity/Godot/VRM presentation and display-latency claims | Audio-reactive v0 is accepted; presentation must follow a separate playback-cursor and avatar contract. |
 | Native in-process adapter promotion | It is a separate high-risk boundary and not needed for the Python beta. |
 
@@ -185,16 +188,22 @@ scope and keeps native routing explicitly opt-in, matching
 checklist and old ABI/near-silent reports remain historical; they must not be
 rewritten as current failures or current passes.
 
-## Recommended B2 order
+## Current remaining order
+
+The B2 terminal-history and pending-admission correctives below are already
+implemented, as described in C1/C2; they need frozen-candidate regression, not
+another implementation. The installed Python CLI completion wave #306–#309
+is also merged. The remaining release work is exact-candidate acceptance,
+clean packaging, listening and independent RTX validation.
 
 1. B2-0: decide the advertised model matrix, backend policy, required CLI
    commands and minimum DSP surface; update the release-facing changelog to
    match it.
 2. Complete the targeted listening gate for the v0.2.5 frontend delta, then
    keep the comparison receipt as the dependency provenance.
-3. Apply the selected strict acceptance-order terminal-ID/late-cancel
+3. Regression-test the implemented strict acceptance-order terminal-ID/late-cancel
    contract, then verify bounded history in Python and native workers.
-4. Define and implement bounded pending-request admission covering queued and
+4. Regression-test the implemented bounded pending-request admission covering queued and
    running requests, with cancellation and recovery tests.
 5. Execute the existing isolated clean-environment CMP portable real-Qwen
    package and selected
