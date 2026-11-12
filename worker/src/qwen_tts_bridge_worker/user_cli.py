@@ -133,9 +133,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     synth = commands.add_parser(
-        "synth", help="Synthesize with a registered Base voice profile."
+        "synth", help="Synthesize with the selected Qwen3-TTS model family."
     )
-    synth.add_argument("--voice-id", required=True)
+    synth.add_argument(
+        "--model-family", choices=tuple(MODEL_CATALOG), default="base-1.7b"
+    )
+    synth.add_argument("--voice-id")
+    synth.add_argument("--speaker")
+    synth.add_argument("--instruction")
     synth.add_argument("--text", required=True)
     synth.add_argument("--out", type=Path, required=True)
     synth.add_argument("--result-json", type=Path)
@@ -150,12 +155,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dtype",
         help="Worker compute dtype. Defaults to runtime.dtype or float16.",
     )
+    synth.add_argument(
+        "--runtime-backend", choices=("faster", "upstream"), default="faster"
+    )
 
     play = commands.add_parser(
         "play",
-        help="Stream one registered Base voice profile to the default audio device.",
+        help="Stream one Qwen3-TTS request to the default audio device.",
     )
-    play.add_argument("--voice-id", required=True)
+    play.add_argument(
+        "--model-family", choices=tuple(MODEL_CATALOG), default="base-1.7b"
+    )
+    play.add_argument("--voice-id")
+    play.add_argument("--speaker")
+    play.add_argument("--instruction")
     play.add_argument("--text", required=True)
     play.add_argument("--model", type=Path)
     play.add_argument("--language", default="Russian")
@@ -524,21 +537,10 @@ def _run_design(args: argparse.Namespace) -> int:
 def _run_synth(args: argparse.Namespace) -> int:
     root = _portable_root(args.portable_root)
     runtime = _runtime_config(args.config)
+    family = args.model_family
     registry_path = default_voice_registry_path(args.config).expanduser().resolve()
-    verification = verify_voice(
-        registry_path,
-        args.voice_id,
-        backend="python",
-        config_path=args.config,
-    )
-    if verification.get("status") != "compatible":
-        detail = verification.get("error")
-        suffix = f": {detail}" if isinstance(detail, str) and detail else ""
-        raise VoiceLibraryError(
-            f"voice {args.voice_id} is not compatible with the Python backend{suffix}"
-        )
     model = resolve_model(
-        "base-1.7b",
+        family,
         explicit_path=args.model,
         config_path=args.config,
         portable_root=root,
@@ -548,21 +550,56 @@ def _run_synth(args: argparse.Namespace) -> int:
         "--model-path",
         str(model.path),
         "--runtime-backend",
-        "faster",
+        args.runtime_backend,
         "--device",
         _resolve_device(args.device, runtime.get("device")),
         "--dtype",
         _resolve_dtype(args.dtype, runtime.get("dtype")),
-        "--collect-generation-trace",
-        "--voice-registry-path",
-        str(registry_path),
     )
+    if family.startswith("base-"):
+        if not args.voice_id:
+            raise ValueError("--voice-id is required for Base model families")
+        if args.speaker or args.instruction:
+            raise ValueError("Base synthesis accepts --voice-id only")
+        verification = verify_voice(
+            registry_path,
+            args.voice_id,
+            backend="python",
+            config_path=args.config,
+        )
+        if verification.get("status") != "compatible":
+            detail = verification.get("error")
+            suffix = f": {detail}" if isinstance(detail, str) and detail else ""
+            raise VoiceLibraryError(
+                "voice "
+                f"{args.voice_id} is not compatible with the Python backend{suffix}"
+            )
+        worker_arguments += ("--voice-registry-path", str(registry_path))
+        request_arguments = ("--voice-id", args.voice_id)
+    elif family.startswith("custom-"):
+        if args.voice_id:
+            raise ValueError("CustomVoice synthesis does not accept --voice-id")
+        if not args.speaker:
+            raise ValueError("--speaker is required for CustomVoice model families")
+        request_arguments = ("--speaker", args.speaker)
+        if args.instruction:
+            request_arguments += ("--instruction", args.instruction)
+    else:
+        if args.voice_id or args.speaker:
+            raise ValueError("VoiceDesign synthesis accepts --instruction only")
+        if not args.instruction:
+            raise ValueError("--instruction is required for voice-design")
+        request_arguments = ("--instruction", args.instruction)
+    if args.runtime_backend == "faster":
+        worker_arguments += ("--collect-generation-trace",)
     return _run_synthesis(
         args,
         root=root,
         worker_arguments=worker_arguments,
-        request_arguments=("--voice-id", args.voice_id),
-        output_description="Base voice WAV",
+        request_arguments=request_arguments,
+        output_description=(
+            "Base voice WAV" if family.startswith("base-") else f"{family} WAV"
+        ),
     )
 
 
@@ -570,21 +607,10 @@ def _run_play(args: argparse.Namespace) -> int:
     """Run the existing streaming playback client for one Base voice request."""
 
     root = _portable_root(args.portable_root)
+    family = args.model_family
     registry_path = default_voice_registry_path(args.config).expanduser().resolve()
-    verification = verify_voice(
-        registry_path,
-        args.voice_id,
-        backend="python",
-        config_path=args.config,
-    )
-    if verification.get("status") != "compatible":
-        detail = verification.get("error")
-        suffix = f": {detail}" if isinstance(detail, str) and detail else ""
-        raise VoiceLibraryError(
-            f"voice {args.voice_id} is not compatible with the Python backend{suffix}"
-        )
     model = resolve_model(
-        "base-1.7b",
+        family,
         explicit_path=args.model,
         config_path=args.config,
         portable_root=root,
@@ -622,8 +648,6 @@ def _run_play(args: argparse.Namespace) -> int:
         args.text,
         "--language",
         args.language,
-        "--voice-id",
-        args.voice_id,
         "--startup-timeout-ms",
         str(startup_timeout_ms),
         "--request-timeout-ms",
@@ -641,9 +665,41 @@ def _run_play(args: argparse.Namespace) -> int:
         _resolve_device(args.device, runtime.get("device")),
         "--dtype",
         _resolve_dtype(args.dtype, runtime.get("dtype")),
-        "--voice-registry-path",
-        str(registry_path),
     )
+    if family.startswith("base-"):
+        if not args.voice_id:
+            raise ValueError("--voice-id is required for Base model families")
+        if args.speaker or args.instruction:
+            raise ValueError("Base playback accepts --voice-id only")
+        verification = verify_voice(
+            registry_path,
+            args.voice_id,
+            backend="python",
+            config_path=args.config,
+        )
+        if verification.get("status") != "compatible":
+            detail = verification.get("error")
+            suffix = f": {detail}" if isinstance(detail, str) and detail else ""
+            raise VoiceLibraryError(
+                "voice "
+                f"{args.voice_id} is not compatible with the Python backend{suffix}"
+            )
+        worker_arguments += ("--voice-registry-path", str(registry_path))
+        command.extend(("--voice-id", args.voice_id))
+    elif family.startswith("custom-"):
+        if args.voice_id:
+            raise ValueError("CustomVoice playback does not accept --voice-id")
+        if not args.speaker:
+            raise ValueError("--speaker is required for CustomVoice model families")
+        command.extend(("--speaker", args.speaker))
+        if args.instruction:
+            command.extend(("--instruction", args.instruction))
+    else:
+        if args.voice_id or args.speaker:
+            raise ValueError("VoiceDesign playback accepts --instruction only")
+        if not args.instruction:
+            raise ValueError("--instruction is required for voice-design")
+        command.extend(("--instruction", args.instruction))
     if args.runtime_backend == "faster":
         worker_arguments += ("--collect-generation-trace",)
     if args.acceptance_mock_worker:

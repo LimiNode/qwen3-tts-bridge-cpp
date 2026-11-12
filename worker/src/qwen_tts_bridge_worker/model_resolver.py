@@ -19,7 +19,13 @@ if os.name == "nt":
 else:
     import fcntl
 
-ModelFamily = Literal["voice-design", "base-1.7b", "base-0.6b"]
+ModelFamily = Literal[
+    "voice-design",
+    "base-1.7b",
+    "base-0.6b",
+    "custom-1.7b",
+    "custom-0.6b",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +93,18 @@ MODEL_CATALOG: dict[str, ModelSpec] = {
         "base-0.6b",
         "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
         "base",
+        "0b6",
+    ),
+    "custom-1.7b": ModelSpec(
+        "custom-1.7b",
+        "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+        "custom_voice",
+        "1b7",
+    ),
+    "custom-0.6b": ModelSpec(
+        "custom-0.6b",
+        "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+        "custom_voice",
         "0b6",
     ),
 }
