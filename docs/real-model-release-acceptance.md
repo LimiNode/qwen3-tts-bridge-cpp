@@ -5,8 +5,9 @@ It deliberately separates three model concepts:
 
 - `ryan` and `serena` are preset speakers of the 0.6B CustomVoice model.
 - A `voice_id` is a locally registered Base voice-clone profile.
-- `qwen_tts_play` is the public C++ playback CLI; worker-only completion is not
-  a substitute for its one-shot playback test.
+- `qwen-tts play` is the installed user playback command; `qwen_tts_play` is
+  its directly usable C++ execution component. Worker-only completion is not
+  a substitute for either installed-command or physical-playback acceptance.
 
 The matrix uses the recommended CMP 50HX Faster configuration: right-padded
 codec decode, fixed 48-frame window, manual codec CUDA Graph, 16-frame PCM
@@ -20,6 +21,11 @@ includes the checked-out worker sources, so this command is a functional
 research/release-candidate runner, not the isolated clean portable-package
 gate. That gate remains a separate B2 acceptance step using the sealed package
 in a clean environment.
+
+The current installed CLI matrix, including family selection, `play --out`
+and `voices create`, is defined in
+[cli-real-model-acceptance-plan.md](cli-real-model-acceptance-plan.md).
+The auxiliary matrix below does not exercise those new command paths.
 
 ## Automated CustomVoice and CLI Matrix
 
