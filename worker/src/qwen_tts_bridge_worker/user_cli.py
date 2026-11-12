@@ -768,6 +768,7 @@ def _run_play(args: argparse.Namespace) -> int:
     root = _portable_root(args.portable_root)
     family = args.model_family
     registry_path = default_voice_registry_path(args.config).expanduser().resolve()
+    protected_reference_paths = _managed_reference_paths(registry_path)
     model = resolve_model(
         family,
         explicit_path=args.model,
@@ -805,8 +806,11 @@ def _run_play(args: argparse.Namespace) -> int:
         outputs=tuple(
             path for path in (output_path, log_file) if path is not None
         ),
-        protected=(config_directory / _selected_config_path(args.config).name,
-                   registry_path),
+        protected=(
+            config_directory / _selected_config_path(args.config).name,
+            registry_path,
+            *protected_reference_paths,
+        ),
         operation="playback output",
     )
     if (
@@ -965,6 +969,8 @@ def _run_synthesis(
     log_file = (
         _output_path(args.log_file) if getattr(args, "log_file", None) else None
     )
+    registry_path = default_voice_registry_path(args.config)
+    protected_reference_paths = _managed_reference_paths(registry_path)
     _validate_cli_targets(
         outputs=tuple(
             path for path in (output_path, result_json, log_file) if path is not None
@@ -972,6 +978,7 @@ def _run_synthesis(
         protected=(
             _selected_config_path(args.config),
             default_voice_registry_path(args.config),
+            *protected_reference_paths,
         ),
         operation="synthesis output",
     )
@@ -1311,6 +1318,21 @@ def _paths_refer_to_same_file(left: Path, right: Path) -> bool:
         return left.exists() and right.exists() and os.path.samefile(left, right)
     except OSError:
         return False
+
+
+def _managed_reference_paths(registry_path: Path) -> tuple[Path, ...]:
+    """Return managed reference files currently declared by the registry."""
+
+    try:
+        rows = load_voice_rows(registry_path)
+    except (OSError, VoiceLibraryError, json.JSONDecodeError):
+        return ()
+    paths: list[Path] = []
+    for row in rows:
+        relative = row.get("reference_audio_path")
+        if isinstance(relative, str) and relative:
+            paths.append((registry_path.parent / relative).resolve(strict=False))
+    return tuple(paths)
 
 
 def _validate_cli_targets(
