@@ -1943,12 +1943,17 @@ def _float_audio_to_s16le(audio: Any) -> bytes:
         numpy = None
 
     if numpy is not None and isinstance(audio, numpy.ndarray):
-        clipped = numpy.clip(audio.astype(numpy.float32, copy=False), -1.0, 1.0)
+        samples = audio.astype(numpy.float32, copy=False)
+        if not bool(numpy.all(numpy.isfinite(samples))):
+            raise ValueError("qwen model returned non-finite PCM samples")
+        clipped = numpy.clip(samples, -1.0, 1.0)
         pcm = (clipped * 32767.0).astype("<i2", copy=False)
         return bytes(pcm.tobytes())
 
     out = bytearray()
     for sample in _iter_float_samples(audio):
+        if not math.isfinite(sample):
+            raise ValueError("qwen model returned non-finite PCM samples")
         clipped_sample = max(-1.0, min(1.0, sample))
         value = int(clipped_sample * 32767.0)
         out.extend(value.to_bytes(2, byteorder="little", signed=True))

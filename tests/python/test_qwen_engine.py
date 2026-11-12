@@ -1,5 +1,6 @@
 import importlib
 import json
+import math
 import random
 import struct
 import tempfile
@@ -27,6 +28,7 @@ from qwen_tts_bridge_worker.engine.qwen_engine import (
     GenerationSequenceCapacityError,
     _create_stall_telemetry,
     _first_chunk_timing_fields,
+    _float_audio_to_s16le,
     _load_prefill_allowlist_warmup_manifest,
     _prefill_snapshot_max_abs,
     _preserved_rng_state,
@@ -35,6 +37,15 @@ from qwen_tts_bridge_worker.engine.qwen_engine import (
     _seed_runtime,
 )
 from qwen_tts_bridge_worker.engine.voice_profiles import VoicePromptPolicy
+
+
+class NonFinitePcmTests(unittest.TestCase):
+    def test_rejects_non_finite_python_audio(self) -> None:
+        for sample in (math.nan, math.inf, -math.inf):
+            with self.subTest(sample=sample), self.assertRaisesRegex(
+                ValueError, "non-finite PCM"
+            ):
+                _float_audio_to_s16le([0.0, sample, 0.25])
 
 
 class FirstChunkTimingFieldsTests(unittest.TestCase):
