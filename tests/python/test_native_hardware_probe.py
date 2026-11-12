@@ -8,6 +8,7 @@ import tempfile
 import unittest
 import wave
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -64,6 +65,17 @@ class NativeHardwareProbeTests(unittest.TestCase):
                     stream.getframerate(),
                     stream.getnframes(),
                 ))
+
+    def test_write_json_atomic_preserves_target_when_replace_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "probe.json"
+            path.write_text('{"old": true}\n', encoding="utf-8")
+            with patch.object(probe.os, "replace", side_effect=OSError("injected")):
+                with self.assertRaises(OSError):
+                    probe.write_json_atomic(path, {"new": True})
+            self.assertEqual('{"old": true}\n', path.read_text(encoding="utf-8"))
+            self.assertEqual([path], list(Path(directory).glob("probe.json")))
+            self.assertEqual([], list(Path(directory).glob(".probe.json.tmp-*")))
 
     def test_extract_ar_trace_strips_worker_prefix(self) -> None:
         lines = [
