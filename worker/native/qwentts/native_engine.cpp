@@ -94,6 +94,7 @@ struct CallbackContext {
     const std::atomic<bool>* cancelled = nullptr;
     const AudioChunkHandler* on_chunk = nullptr;
     bool emitted_audio = false;
+    bool invalid_sample = false;
     std::chrono::steady_clock::time_point synthesis_started_at;
     double first_chunk_callback_ms = 0.0;
 };
@@ -109,6 +110,12 @@ bool audio_callback(const float* samples, int count, void* user_data) {
         return false;
     }
     if (samples != nullptr && count > 0) {
+        for (int index = 0; index < count; ++index) {
+            if (!std::isfinite(samples[index])) {
+                context->invalid_sample = true;
+                return false;
+            }
+        }
         context->emitted_audio = true;
         if (context->first_chunk_callback_ms == 0.0) {
             context->first_chunk_callback_ms = std::chrono::duration<double, std::milli>(
@@ -672,6 +679,12 @@ SynthesisResult NativeEngine::synthesize(
         }
         return result;
     };
+    if (callbacks.invalid_sample) {
+        return apply_qwen_metrics({SynthesisOutcome::Failed, "model_error", "non_finite_pcm",
+                "qwentts emitted a non-finite PCM sample", {}, voice_reference_cache_hit,
+                voice_reference_extract_ms, reference_audio_decode_ms, synthesis_ms,
+                callbacks.first_chunk_callback_ms});
+    }
     if (status == QT_STATUS_OK) {
         const auto finish_reason = api.last_finish_reason();
         if (finish_reason == QT_FINISH_EOS ||

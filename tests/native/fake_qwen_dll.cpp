@@ -7,6 +7,7 @@
 #include <string>
 #include <chrono>
 #include <fstream>
+#include <limits>
 #include <thread>
 
 struct qt_context {
@@ -137,6 +138,9 @@ QT_API qt_status qt_synthesize(
         {-1.2F, -0.5F, 0.0F, 0.5F},
         {0.75F, 1.0F, 0.25F, 0.0F}
     };
+    const float non_finite_chunk[][4] = {
+        {0.0F, std::numeric_limits<float>::quiet_NaN(), 0.0F, 0.0F},
+    };
     if (params->on_chunk != nullptr) {
         if (std::strcmp(params->text, "barrier running") == 0) {
             while (params->cancel == nullptr || !params->cancel(params->cancel_user_data)) {
@@ -150,12 +154,15 @@ QT_API qt_status qt_synthesize(
             g_finish_reason = QT_FINISH_UNKNOWN;
             return QT_STATUS_CANCELLED;
         }
-        for (const auto& chunk : chunks) {
+        const bool emit_non_finite = std::strcmp(params->text, "force non-finite pcm") == 0;
+        const auto* chunk_begin = emit_non_finite ? non_finite_chunk : chunks;
+        const auto* chunk_end = emit_non_finite ? non_finite_chunk + 1 : chunks + 2;
+        for (const auto* chunk = chunk_begin; chunk != chunk_end; ++chunk) {
             if (params->cancel != nullptr && params->cancel(params->cancel_user_data)) {
                 g_finish_reason = QT_FINISH_UNKNOWN;
                 return QT_STATUS_CANCELLED;
             }
-            if (!params->on_chunk(chunk, 4, params->on_chunk_user_data)) {
+            if (!params->on_chunk(*chunk, 4, params->on_chunk_user_data)) {
                 return QT_STATUS_CANCELLED;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
