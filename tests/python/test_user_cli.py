@@ -976,6 +976,162 @@ class UserCliTests(unittest.TestCase):
                 user_cli.main(arguments)
             self.assertEqual(2, invalid.exception.code)
 
+    def test_play_fails_closed_for_unreadable_registry_before_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.json"
+            registry = root / "voices" / "registry.json"
+            registry.parent.mkdir(parents=True)
+            registry.write_bytes(b"preserve this malformed registry")
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voice_library": {"registry_path": "voices/registry.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            original = registry.read_bytes()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "play",
+                            "--model",
+                            str(model),
+                            "--play-executable",
+                            str(player),
+                            "--worker",
+                            str(worker),
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test",
+                            "--out",
+                            str(root / "speech.wav"),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertEqual(original, registry.read_bytes())
+            run.assert_not_called()
+
+    def test_play_rejects_registry_output_before_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config, registry = _write_voice_library(root, voice_id="voice")
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            original = registry.read_bytes()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "play",
+                            "--model",
+                            str(model),
+                            "--play-executable",
+                            str(player),
+                            "--worker",
+                            str(worker),
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test",
+                            "--out",
+                            str(registry),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("protected file", stderr.getvalue())
+            self.assertEqual(original, registry.read_bytes())
+            run.assert_not_called()
+
+    def test_design_rejects_config_output_before_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.json"
+            config.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            original = config.read_bytes()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--out",
+                            str(config),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("protected file", stderr.getvalue())
+            self.assertEqual(original, config.read_bytes())
+            run.assert_not_called()
+
+    def test_voices_add_rejects_config_registry_alias_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "voice_library": {"registry_path": "config.json"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            wav = root / "reference.wav"
+            _write_reference_wav(wav)
+            original = config.read_bytes()
+            with redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "voices",
+                            "add",
+                            "--id",
+                            "voice",
+                            "--wav",
+                            str(wav),
+                            "--text",
+                            "Reference",
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("protected file", stderr.getvalue())
+            self.assertEqual(original, config.read_bytes())
+
     def test_synth_explicit_model_executable_and_worker_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -2741,6 +2897,16 @@ class _BoundedReadStream(io.BytesIO):
 def _write_executable(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"exe")
+    return path
+
+
+def _write_reference_wav(path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x10" * 48_000)
     return path
 
 

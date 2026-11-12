@@ -1323,10 +1323,13 @@ def _paths_refer_to_same_file(left: Path, right: Path) -> bool:
 def _managed_reference_paths(registry_path: Path) -> tuple[Path, ...]:
     """Return managed reference files currently declared by the registry."""
 
-    try:
-        rows = load_voice_rows(registry_path)
-    except (OSError, VoiceLibraryError, json.JSONDecodeError):
+    if not registry_path.exists():
         return ()
+    # An existing registry that cannot be parsed must not degrade into an
+    # empty protected set: that could allow an output operation to overwrite a
+    # managed reference whose path is no longer discoverable.  Commands that
+    # rely on the registry therefore fail closed before starting a worker.
+    rows = load_voice_rows(registry_path, allow_missing=False)
     paths: list[Path] = []
     for row in rows:
         relative = row.get("reference_audio_path")
