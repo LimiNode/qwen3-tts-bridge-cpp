@@ -41,10 +41,11 @@ Create a managed reference using VoiceDesign:
 
 ```powershell
 qwen-tts voices create --id designed-voice --sample-text "Reference speech." `
-  --instruction "A calm, clear voice." --language English --json
+  --instruction "A calm, clear voice." --language English
 ```
 
-Creation requires a validated natural-EOS completion and successful registry
+The final result is a JSON object. Creation requires a validated natural-EOS
+completion and successful registry
 publication. A diagnostic non-natural-EOS opt-out cannot create a managed
 profile. The managed WAV and its SHA-256 are the authoritative reusable audio;
 the transient generation path is not retained as an external source.
