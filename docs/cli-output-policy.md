@@ -20,6 +20,15 @@ request.
   the WAV and receipt outputs.
 - Output capture uses a temporary file rather than an in-memory pipe, avoiding
   unbounded accumulation and pipe deadlocks while the worker streams audio.
+- Before a worker starts, `synth`, `play`, `design`, and voice-management
+  commands reject output, result, log, registry, and configuration targets
+  that resolve to the same path. Existing-file identity checks also reject
+  hardlink aliases where the platform exposes them. Managed registry files and
+  reference inputs are not output targets.
+- This is a preflight protection policy, not a complete TOCTOU guarantee. A
+  concurrent process can still replace a path or directory after validation;
+  publication therefore retains its temporary-file, backup, and rollback
+  safeguards.
 
 The worker itself still emits diagnostics to stderr. The CLI owns the
 presentation policy; the QTB protocol and synthesis engine are unchanged.

@@ -976,6 +976,199 @@ class UserCliTests(unittest.TestCase):
                 user_cli.main(arguments)
             self.assertEqual(2, invalid.exception.code)
 
+    def test_all_output_routes_preserve_protected_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config, registry = _write_voice_library(root, voice_id="voice")
+            row = json.loads(registry.read_text(encoding="utf-8"))["voices"][0]
+            managed = registry.parent / row["reference_audio_path"]
+            model = _write_model(root / "model", model_type="voice_design")
+            executable = _write_executable(root / "client.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "previous.wav"
+            output.write_bytes(b"preserve previous output")
+            nested = root / "aliases"
+            nested.mkdir()
+            common = [
+                "--model", str(model), "--worker", str(worker),
+            ]
+            routes = {
+                "synth": [
+                    "synth", "--model-family", "voice-design",
+                    "--instruction", "Voice", "--text", "Test",
+                    "--out", str(output), "--save-wav-executable",
+                    str(executable), *common,
+                ],
+                "design": [
+                    "design", "--instruction", "Voice", "--text", "Test",
+                    "--out", str(output), "--save-wav-executable",
+                    str(executable), *common,
+                ],
+                "play": [
+                    "play", "--model-family", "voice-design",
+                    "--instruction", "Voice", "--text", "Test",
+                    "--out", str(output), "--play-executable",
+                    str(executable), *common,
+                ],
+                "create": [
+                    "voices", "create", "--id", "new",
+                    "--instruction", "Voice", "--sample-text", "Test",
+                    "--save-wav-executable", str(executable), *common,
+                ],
+            }
+            expected = {
+                path: path.read_bytes()
+                for path in root.rglob("*") if path.is_file()
+            }
+            for route, arguments in routes.items():
+                flags = ["--log-file"]
+                if route != "create":
+                    flags.append("--out")
+                if route in {"synth", "design"}:
+                    flags.append("--result-json")
+                for flag in flags:
+                    for target in (config, registry, managed):
+                        with self.subTest(route=route, flag=flag, target=target):
+                            # Existing intermediate directory, canonical .. alias.
+                            alias = target.parent / "alias-dir"
+                            alias.mkdir(exist_ok=True)
+                            spelling = alias / ".." / target.name
+                            command = list(arguments)
+                            if flag in command:
+                                command[command.index(flag) + 1] = str(spelling)
+                            else:
+                                command.extend((flag, str(spelling)))
+                            with mock.patch.object(
+                                user_cli.subprocess, "run"
+                            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                                with self.assertRaises(SystemExit) as raised:
+                                    user_cli.main(
+                                        ["--config", str(config), *command]
+                                    )
+                            self.assertEqual(2, raised.exception.code)
+                            self.assertIn("protected file", stderr.getvalue())
+                            run.assert_not_called()
+                            self.assertEqual(
+                                expected,
+                                {
+                                    path: path.read_bytes()
+                                    for path in root.rglob("*") if path.is_file()
+                                },
+                            )
+
+    def test_voices_add_preserves_config_registry_and_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config, registry = _write_voice_library(root, voice_id="voice")
+            source = root / "reference.wav"
+            source.write_bytes(b"source must not be overwritten")
+            for target in ("config.json", "reference.wav"):
+                payload = json.loads(config.read_text(encoding="utf-8"))
+                payload["voice_library"]["registry_path"] = target
+                config.write_text(json.dumps(payload), encoding="utf-8")
+                expected = {
+                    path: path.read_bytes()
+                    for path in root.rglob("*") if path.is_file()
+                }
+                with self.subTest(target=target), mock.patch.object(
+                    user_cli, "add_voice"
+                ) as add, mock.patch.object(
+                    user_cli.subprocess, "run"
+                ) as run, redirect_stderr(io.StringIO()) as stderr:
+                    with self.assertRaises(SystemExit) as raised:
+                        user_cli.main([
+                            "--config", str(config), "voices", "add",
+                            "--id", "new", "--wav", str(source), "--text", "Test",
+                        ])
+                self.assertEqual(2, raised.exception.code)
+                self.assertIn("protected file", stderr.getvalue())
+                add.assert_not_called()
+                run.assert_not_called()
+                self.assertEqual(
+                    expected,
+                    {
+                        path: path.read_bytes()
+                        for path in root.rglob("*") if path.is_file()
+                    },
+                )
+
+    def test_output_routes_fail_closed_for_invalid_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config, registry = _write_voice_library(root, voice_id="voice")
+            model = _write_model(root / "model", model_type="voice_design")
+            executable = _write_executable(root / "client.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "previous.wav"
+            output.write_bytes(b"previous output")
+            routes = (
+                ["design", "--instruction", "Voice",
+                 "--save-wav-executable", str(executable)],
+                ["synth", "--model-family", "voice-design",
+                 "--instruction", "Voice",
+                 "--save-wav-executable", str(executable)],
+                ["play", "--model-family", "voice-design",
+                 "--instruction", "Voice",
+                 "--play-executable", str(executable)],
+            )
+            registry.write_bytes(b"not a valid registry")
+            expected = {
+                path: path.read_bytes()
+                for path in root.rglob("*") if path.is_file()
+            }
+            for arguments in routes:
+                with self.subTest(route=arguments[0]), mock.patch.object(
+                    user_cli.subprocess, "run"
+                ) as run, redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as raised:
+                        user_cli.main([
+                            "--config", str(config), *arguments,
+                            "--model", str(model), "--worker", str(worker),
+                            "--text", "Test", "--out", str(output),
+                        ])
+                self.assertEqual(2, raised.exception.code)
+                run.assert_not_called()
+                self.assertEqual(
+                    expected,
+                    {
+                        path: path.read_bytes()
+                        for path in root.rglob("*") if path.is_file()
+                    },
+                )
+            with mock.patch.object(
+                user_cli, "load_voice_rows", side_effect=PermissionError("denied")
+            ), self.assertRaises(PermissionError):
+                user_cli._managed_reference_paths(registry)
+
+    def test_voices_create_rejects_config_registry_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.json"
+            config.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "voice_library": {"registry_path": "config.json"},
+                    "voices": [],
+                }), encoding="utf-8",
+            )
+            before = config.read_bytes()
+            with mock.patch.object(
+                user_cli.subprocess, "run"
+            ) as run, mock.patch.object(
+                user_cli, "add_voice"
+            ) as add, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main([
+                        "--config", str(config), "voices", "create",
+                        "--id", "voice", "--instruction", "Voice",
+                        "--sample-text", "Test",
+                    ])
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("protected file", stderr.getvalue())
+            self.assertEqual(before, config.read_bytes())
+            run.assert_not_called()
+            add.assert_not_called()
+
     def test_synth_explicit_model_executable_and_worker_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1754,7 +1947,7 @@ class UserCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             config = root / "QwenTTSBridge" / "config.json"
-            config.parent.mkdir()
+            config.parent.mkdir(exist_ok=True)
             runtime = config.parent / "runtime"
             runtime.mkdir()
             (runtime / "qwen.dll").write_bytes(b"dll")
@@ -2080,6 +2273,49 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
             self.assertEqual(b"new wav", temporary_wav.read_bytes())
             self.assertEqual(b"new json", temporary_result.read_bytes())
+
+    def test_target_preflight_rejects_canonical_output_aliases(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "voice.wav"
+            result = root / "nested" / ".." / "voice.wav"
+            with self.assertRaisesRegex(ValueError, "different files"):
+                user_cli._validate_cli_targets(
+                    outputs=(output, result), protected=(), operation="synthesis"
+                )
+
+    def test_target_preflight_rejects_protected_config_and_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.json"
+            registry = root / "voices" / "registry.json"
+            config.parent.mkdir(exist_ok=True)
+            registry.parent.mkdir()
+            config.write_text("{}", encoding="utf-8")
+            registry.write_text("{}", encoding="utf-8")
+            for target in (config, registry):
+                with self.subTest(target=target):
+                    with self.assertRaisesRegex(ValueError, "protected file"):
+                        user_cli._validate_cli_targets(
+                            outputs=(target,),
+                            protected=(config, registry),
+                            operation="synthesis",
+                        )
+
+    def test_target_preflight_rejects_hardlink_alias_when_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            protected = root / "protected.wav"
+            alias = root / "alias.wav"
+            protected.write_bytes(b"immutable")
+            try:
+                os.link(protected, alias)
+            except (AttributeError, OSError) as exc:
+                self.skipTest(f"hardlinks unavailable: {exc}")
+            with self.assertRaisesRegex(ValueError, "protected file"):
+                user_cli._validate_cli_targets(
+                    outputs=(alias,), protected=(protected,), operation="playback"
+                )
 
 
     def test_synth_supports_custom_voice_family_and_speaker(self) -> None:
@@ -2475,6 +2711,82 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(2, raised.exception.code)
             self.assertIn("different files", stderr.getvalue())
             run.assert_not_called()
+
+    def test_synth_rejects_result_alias_before_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "voice.wav"
+            (root / "nested").mkdir()
+            aliased_result = root / "nested" / ".." / "voice.wav"
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--out",
+                            str(output),
+                            "--result-json",
+                            str(aliased_result),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("different files", stderr.getvalue())
+            run.assert_not_called()
+
+    def test_synth_rejects_registry_and_managed_reference_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config, registry = _write_voice_library(root, voice_id="voice")
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            row = json.loads(registry.read_text(encoding="utf-8"))["voices"][0]
+            managed = registry.parent / row["reference_audio_path"]
+            for target in (registry, managed, config):
+                with self.subTest(target=target):
+                    with mock.patch(
+                        "qwen_tts_bridge_worker.user_cli.subprocess.run"
+                    ) as run, redirect_stderr(io.StringIO()) as stderr:
+                        with self.assertRaises(SystemExit) as raised:
+                            user_cli.main(
+                                [
+                                    "--config",
+                                    str(config),
+                                    "synth",
+                                    "--model-family",
+                                    "base-1.7b",
+                                    "--voice-id",
+                                    "voice",
+                                    "--model",
+                                    str(model),
+                                    "--save-wav-executable",
+                                    str(save_wav),
+                                    "--worker",
+                                    str(worker),
+                                    "--text",
+                                    "Test",
+                                    "--out",
+                                    str(target),
+                                ]
+                            )
+                    self.assertEqual(2, raised.exception.code)
+                    self.assertIn("protected file", stderr.getvalue())
+                    run.assert_not_called()
 
 
     def test_play_path_collision_through_symlink_directory(self) -> None:
