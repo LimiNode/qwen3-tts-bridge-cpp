@@ -283,6 +283,7 @@ void NativeEngine::preload_voice_registry() {
             auto prepared = load_prepared_voice_reference(prepared_profile_context);
             finalize_prepared_publication(prepared_profile_context);
             profile.reference_cache_key = prepared.cache_key;
+            managed_voice_reference_keys_.insert(profile.reference_cache_key);
             if (voice_reference_cache_.find(profile.reference_cache_key) == voice_reference_cache_.end()) {
                 voice_reference_cache_.emplace(
                     profile.reference_cache_key, make_persisted_reference(std::move(prepared)));
@@ -300,6 +301,7 @@ void NativeEngine::preload_voice_registry() {
         }
         profile.reference_cache_key = voice_reference_cache_key(
             profile.reference_audio_path, profile.reference_audio);
+        managed_voice_reference_keys_.insert(profile.reference_cache_key);
         const auto cached = voice_reference_cache_.find(profile.reference_cache_key);
         if (cached != voice_reference_cache_.end()) {
             profile.reference_audio.clear();
@@ -338,11 +340,23 @@ void NativeEngine::preload_voice_registry() {
 void NativeEngine::clear_voice_reference_cache() noexcept {
     if (context_ == nullptr || voice_reference_cache_.empty()) {
         voice_reference_cache_.clear();
+        managed_voice_reference_keys_.clear();
         return;
     }
     voice_reference_cache_.clear();
+    managed_voice_reference_keys_.clear();
     talker_sha256_.clear();
     codec_sha256_.clear();
+}
+
+bool NativeEngine::dynamic_voice_reference_capacity_available() const noexcept {
+    std::size_t dynamic_entries = 0;
+    for (const auto& entry : voice_reference_cache_) {
+        if (managed_voice_reference_keys_.find(entry.first) == managed_voice_reference_keys_.end()) {
+            ++dynamic_entries;
+        }
+    }
+    return dynamic_entries < options_.max_dynamic_voice_refs;
 }
 
 void NativeEngine::load() {
@@ -540,6 +554,11 @@ SynthesisResult NativeEngine::synthesize(
                     voice_reference_cache_hit = true;
                 }
                 else {
+                    if (!dynamic_voice_reference_capacity_available()) {
+                        return {SynthesisOutcome::Failed, "resource_error", "voice_reference_cache_exhausted",
+                                "native dynamic voice-reference cache capacity exhausted", {}, false,
+                                0.0, reference_audio_decode_ms};
+                    }
                     auto entry = std::make_unique<CachedVoiceReference>();
                     const auto extraction_start = std::chrono::steady_clock::now();
                     const qt_status extraction_status = api.extract_voice_ref(

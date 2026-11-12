@@ -14,6 +14,9 @@
 namespace qwen_tts_bridge::native_worker {
 namespace {
 
+constexpr std::uint32_t kMaxReferenceWavBytes = 16u * 1024u * 1024u;
+constexpr std::uint32_t kMaxReferenceSamples = 20u * 24000u;
+
 std::uint16_t read_u16(const unsigned char* data) {
     return static_cast<std::uint16_t>(data[0]) |
         (static_cast<std::uint16_t>(data[1]) << 8u);
@@ -65,7 +68,10 @@ std::vector<float> read_mono_24k_wav(const std::filesystem::path& path) {
             throw std::runtime_error("truncated WAV chunk header");
         }
         const std::uint32_t chunk_size = read_u32(chunk_header.data() + 4);
-        if (chunk_size > 1024u * 1024u * 1024u) {
+        // Reject the declared size before allocating or reading a potentially
+        // hostile data/fmt chunk. Keep the native boundary aligned with the
+        // Python voice-profile limit.
+        if (chunk_size > kMaxReferenceWavBytes) {
             throw std::runtime_error("reference WAV chunk is too large");
         }
 
@@ -129,6 +135,10 @@ std::vector<float> read_mono_24k_wav(const std::filesystem::path& path) {
     }
     else {
         throw std::runtime_error("reference WAV must use PCM16 or IEEE float32 samples");
+    }
+
+    if (samples.size() > kMaxReferenceSamples) {
+        throw std::runtime_error("reference WAV duration exceeds 20 seconds");
     }
 
     return samples;

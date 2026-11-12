@@ -14,8 +14,9 @@ namespace qwen_tts_bridge::native_worker {
 ///
 /// \param path WAV file to decode.
 /// \return Normalized mono samples at 24 kHz.
-/// \throws std::runtime_error if the file is malformed or uses an unsupported
-///         format.
+/// \throws std::runtime_error if the file is malformed, uses an unsupported
+///         format, exceeds the 16 MiB/20 second reference limit, or contains
+///         non-finite float samples.
 std::vector<float> read_mono_24k_wav(const std::filesystem::path& path);
 
 /// Append the canonical Base ICL boundary silence used by FasterQwen.
