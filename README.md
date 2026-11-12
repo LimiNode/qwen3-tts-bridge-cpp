@@ -30,7 +30,7 @@ Russian stress profile; neither is the production default.
   `kraftwerk_robot_ru_warm` voice. A 12-utterance Russian corpus passed human
   listening with intended explicit stresses, natural EOS, non-empty PCM, and no
   starvation. The profile is still experimental and opt-in.
-- `tts-front-cpp` v0.2.2 supplies model-neutral `PreparedText`, including
+- `tts-front-cpp` v0.2.5 supplies model-neutral `PreparedText`, including
   pronunciation evidence and semantic stress decisions.
 - The optional speech-animation adapter has a real-Qwen receipt with contiguous
   sample-addressed PCM/animation timelines and playback-first failure
@@ -87,7 +87,7 @@ qwen-tts design --text "Hello" --instruction "A calm warm voice" --out voice.wav
 qwen-tts voices list
 ```
 
-To reuse a registered voice with the supported Python Base 1.7B path:
+To reuse a registered voice with the Python Base 1.7B route:
 
 ```powershell
 qwen-tts voices add --id kraftwerk-ru --wav .\kraftwerk.wav `
@@ -112,12 +112,22 @@ validated CMP 50HX baseline. Use `--dtype` for an explicit override, or set
 priority. `auto` remains available as an explicit choice, but is not the
 release default because the Faster backend resolves it to `bfloat16`.
 
-`synth` validates the existing managed profile, resolves only Base 1.7B, and
-passes the authoritative registry to the persistent Python worker. It does not
+`synth --voice-id` defaults to Base 1.7B and passes the authoritative managed
+registry to the persistent Python worker. Explicit `--model-family` selects
+Base 0.6B/1.7B, CustomVoice 0.6B/1.7B, or VoiceDesign; CustomVoice requires a
+preset `--speaker`, while VoiceDesign requires `--instruction`. Implemented
+routes are not universal hardware or release-support claims; see the
+[release scope](docs/beta-release-scope.md).
+Synthesis does not
 download a model, mutate the registry, fall back to a reference WAV, or select
 the native backend implicitly. `design` is different: it creates a new
 VoiceDesign rendition from a natural-language instruction rather than reusing
 a registered Base voice.
+
+`voices create --id <id> --sample-text <text> --instruction <description>`
+registers a generated VoiceDesign reference for later Base synthesis.
+`play` uses the same family selection and optionally captures a validated WAV
+with `--out`; see [playback usage](docs/user-cli-playback.md).
 
 Model downloads are always explicit through `qwen-tts models download`; a
 synthesis command never downloads or replaces model data silently.
@@ -139,6 +149,7 @@ build stages. Assemble the latter from an explicitly selected Release
 .\scripts\assemble-portable-release.ps1 `
   -PythonPackageRoot .\dist\QwenTTSBridge `
   -SaveWavExecutable .\.build\default\Release\qwen_tts_save_wav.exe `
+  -PlayExecutable .\.build\default\Release\qwen_tts_play.exe `
   -OutputRoot .\dist\QwenTTSBridge-release
 ```
 
@@ -184,7 +195,7 @@ The first version does not attempt to:
 ```text
 Application
     |
-    +--> optional tts-front-cpp v0.2.2
+    +--> optional tts-front-cpp v0.2.5
     |        |
     |        v
     |     PreparedText / pronunciation evidence

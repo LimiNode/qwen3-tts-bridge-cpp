@@ -57,7 +57,7 @@ revision, not that its identity has been cryptographically established. The
 complete original worker JSON. Missing revision or seed information is not
 invented.
 
-Synthesize through the supported persistent Python Base 1.7B path:
+Synthesize through the persistent Python Base 1.7B route (the default family):
 
 ```powershell
 qwen-tts synth --voice-id kraftwerk-ru `
@@ -73,7 +73,11 @@ started; it does not move a loaded model. `CUDA_VISIBLE_DEVICES` can remap the
 physical devices visible to the worker, so its `cuda:0` is the first visible
 device rather than necessarily physical GPU zero.
 
-`synth` requires an existing Python-compatible managed profile. It passes the
+`synth --voice-id` requires an existing Python-compatible managed profile.
+Use `--model-family base-0.6b` to select that size explicitly; it requires its
+own model and acceptance, not an inherited Base 1.7B verdict. Other families
+use `--speaker` or `--instruction` rather than a Base `voice_id`.
+The Base route passes the
 authoritative registry path and `voice_id` to `qwen_tts_save_wav` and the
 persistent worker, requires natural EOS by default, and validates the non-empty
 24 kHz mono PCM16 WAV plus schema-1 result JSON before sequential publication.

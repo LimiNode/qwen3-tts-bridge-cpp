@@ -19,9 +19,11 @@ use when a product needs the currently supported bridge behavior.
 
 ## R1 release state
 
-The current candidate is `d0e1a629199647e908a4d945a1ce9743a68a5715` and the
-repository version is `0.2.0`. No GitHub Release or release tag has been
-published. The candidate is suitable for release preparation, not yet a public
+The release-preparation baseline is `d0e1a629199647e908a4d945a1ce9743a68a5715`
+and the repository version is `0.2.0`. No GitHub Release has been published;
+the existing `frequency-r10-rtx4090-48gb-internal-rc1/rc2` tags are internal
+experiment tags, not R1 releases. A final release candidate is not frozen.
+The baseline is suitable for release preparation, not yet a public
 support claim: clean portable-package acceptance, independent hardware
 evidence, and the declared human-listening scope remain gates.
 

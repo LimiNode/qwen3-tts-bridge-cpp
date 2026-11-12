@@ -43,7 +43,7 @@ qwen-tts voices verify designed-voice --backend python
 Диагностический `--allow-non-natural-eos` не должен создавать долговременный
 профиль.
 
-Синтез через поддерживаемый persistent Python-маршрут Base 1.7B:
+Синтез через persistent Python-маршрут Base 1.7B (семейство по умолчанию):
 
 ```powershell
 qwen-tts synth --voice-id kraftwerk-ru `
@@ -51,7 +51,10 @@ qwen-tts synth --voice-id kraftwerk-ru `
   --language Russian --out .\speech.wav
 ```
 
-`synth` требует существующий Python-совместимый managed-профиль. Команда
+`synth --voice-id` требует существующий Python-совместимый managed-профиль.
+Для Base 0.6B задайте `--model-family base-0.6b`; этому размеру нужны собственная
+модель и независимый acceptance. CustomVoice использует `--speaker`, а
+VoiceDesign — `--instruction`, не Base `voice_id`. Команда Base
 передаёт authoritative registry и `voice_id` в `qwen_tts_save_wav` и persistent
 worker, по умолчанию требует natural EOS, затем проверяет непустой WAV 24 kHz
 mono PCM16 и result JSON schema 1 до последовательной публикации файлов.

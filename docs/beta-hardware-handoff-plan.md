@@ -147,6 +147,6 @@ Publish only when all of the following are true:
 * the final artifact bundle contains binaries, manifests, SHA-256 files,
   request-corpus hash and reports, but no model weights or temporary files.
 
-The beta release must not claim universal Qwen-family support, automatic model
+The beta release must not claim universal Qwen-family support, implicit model
 download, effects processing, predictive visemes, or avatar/display sync unless
 those are separately accepted in a future scope.

@@ -11,9 +11,23 @@ means that implementation and evidence exist; “supported” is the narrower
 product promise for the first beta.
 
 The repository version is `0.2.0` in CMake and the Python package metadata.
+Use the existing `0.2.0` version for R1 preparation; do not bump it to invent a
+new release line. The final tag spelling and release artifacts are selected
+only at the publication gate, not inferred from internal experiment tags.
 This document does not create a tag or publish a release. The candidate is
 still blocked on real clean-package acceptance and the required listening and
 hardware gates described below.
+
+### Candidate freeze state
+
+`d0e1a629` is the preparation baseline, not a sealed release candidate. After
+corrective PRs pass exact-head CI, freeze the resulting full SHA and the
+inputs in [the handoff plan](beta-hardware-handoff-plan.md): recursive
+submodule SHAs, compiler/CMake options, binaries, model/runtime manifests,
+managed reference hashes, exact UTF-8 corpus and generation/playback options.
+Missing runtime/model revision information is a blocker to reproducible
+promotion, not a value to guess. Any changed input invalidates reuse for the
+affected gate. No tag or publication precedes that freeze and both GPU gates.
 
 ## Recommended first-beta contract
 
@@ -150,15 +164,16 @@ are downloadable by the application.
 
 ## Release blockers and measurable gates
 
-The following are P1 blockers for a long-lived beta worker and must be resolved
-before unattended service claims:
+The following are required gates for a long-lived beta worker. The first two
+correctives are implemented and automated-tested; they are not new coding
+tasks. Preserve and rerun their regressions on the frozen release candidate:
 
-1. **Terminal history policy and bounded storage.** Enforce the selected
+1. **Terminal history policy and bounded storage (implemented).** Preserve the
    strict acceptance-order request-ID policy, with idempotent late cancel and
    deterministic shutdown cancellation. Then verify bounded Python and native
    state with large sequential request counts, duplicate active IDs, maximum-ID
    exhaustion and the chosen late-cancel behavior.
-2. **Pending admission.** B2-3 defines a default cap of 16 covering queued and
+2. **Pending admission (implemented).** B2-3 defines a default cap of 16 covering queued and
    physically running requests, rejects excess work with
    `resource_error/resource_exhausted`, reports the effective limit, and tests
    cancellation followed by replacement admission in both workers. Deployment
@@ -185,7 +200,7 @@ listening gates pass. It does not promise:
 
 * every Qwen model family or size;
 * native backend parity by default;
-* automatic model download or bundled model weights;
+* implicit model download or bundled model weights (`models download` is explicit);
 * a complete audio-effects suite;
 * cross-platform support beyond the documented Windows x64 target;
 * RTX 4090 support before an independent candidate run is recorded;
