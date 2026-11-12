@@ -85,6 +85,21 @@ a separate product decision and fresh verification of weights, licenses and
 deployment options; do not equate it with open-weight Qwen3-TTS or assume local
 weights exist. Do not port its acoustic architecture into the current engine.
 
+### Research-layer source distinction
+
+The source-backed distinction for future review is intentionally narrow:
+
+| Layer | Evidence boundary | Current repository decision |
+| --- | --- | --- |
+| Open-weight local Qwen3-TTS | [Qwen3-TTS source](https://github.com/QwenLM/Qwen3-TTS) and the corresponding [Hugging Face model cards](https://huggingface.co/Qwen) describe downloadable model artefacts and local inference targets. | This is the family used by the existing Python/native acceptance work; each promoted row still requires its own pinned model/runtime receipt. |
+| Hosted/API speech service | The [Qwen-TTS API documentation](https://www.alibabacloud.com/help/en/model-studio/developer-reference/qwen-tts-api) describes a service boundary, credentials and provider-managed runtime. | Treat as external context only. It is not a local worker backend or an R1/R2 dependency. |
+| Local C feasibility candidate | [gabriele-mastrapasqua/qwen3-tts](https://github.com/gabriele-mastrapasqua/qwen3-tts) is a separate research codebase whose assets, training assumptions and model compatibility must be audited at a pinned revision. | Keep as a post-R1 feasibility study; do not add it as a dependency or infer that reported steering assets work with this bridge. |
+
+These links are orientation sources, not acceptance evidence. A future study
+must record the exact revision, weight and asset provenance, license terms,
+runtime/ABI compatibility and Russian listening results before any capability is
+considered for the roadmap.
+
 ## Exit condition for R2
 
 R2 work may begin only after R1 has an exact release tag, verified package
