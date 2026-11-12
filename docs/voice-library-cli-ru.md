@@ -10,8 +10,10 @@ Base-модели в пользовательском registry schema 1. Изм�
 %LOCALAPPDATA%\QwenTTSBridge\voices\registry.json
 ```
 
-Путь можно задать как `voice_library.registry_path` в пользовательском config
-schema 1. Относительный путь считается от каталога config.
+Путь можно задать как `voice_library.registry_path` (или совместимый
+`voice_registry_path`) в пользовательском config schema 1. Относительный путь
+считается от каталога config. Пользовательский config передаётся глобальным
+параметром: `qwen-tts --config .\qwen-tts.local.json voices list --json`.
 
 ## Основные команды
 
@@ -43,6 +45,12 @@ qwen-tts voices verify designed-voice --backend python
 Диагностический `--allow-non-natural-eos` не должен создавать долговременный
 профиль.
 
+В `provenance` сохраняется известное resolver происхождение модели.
+`model_revision: null` означает отсутствие проверенной закреплённой ревизии,
+а не подтверждённую криптографическую идентичность checkpoint.
+`generation` содержит выбранные поля проверенного receipt, не его полную
+копию. Отсутствующие сведения о seed или ревизии не выдумываются.
+
 Синтез через persistent Python-маршрут Base 1.7B (семейство по умолчанию):
 
 ```powershell
@@ -62,6 +70,14 @@ mono PCM16 и result JSON schema 1 до последовательной пуб�
 этого требования. Команда не скачивает модель, не создаёт и не изменяет запись
 registry, не откатывается к прямому WAV и не переключает backend или семейство
 модели молча.
+
+`--device` имеет приоритет над `runtime.device` из config; по умолчанию —
+`cuda`. Например, `--device cuda:1` выбирает устройство при запуске worker,
+не переносит уже загруженную модель. `CUDA_VISIBLE_DEVICES` может перенумеровать
+видимые устройства: `cuda:0` означает первое видимое worker устройство.
+Для dtype действует такой же приоритет: `--dtype`, затем `runtime.dtype`,
+затем `float16` — проверенный CMP baseline. Явный `auto` у Faster выбирает
+`bfloat16`, поэтому не является релизным значением по умолчанию.
 
 `voices add` проверяет WAV существующим Python preflight, сохраняет отдельную
 managed-копию и SHA-256, а registry публикует атомарно. Исходный WAV пользователя
@@ -90,6 +106,10 @@ artifact отклоняется без автоматической переза
 Статусы проверки различают `compatible`, `incompatible`, `unprepared`,
 `prepared_valid`, `prepared_stale`, `prepared_corrupt` и `model_unavailable`.
 Наличие одного `manifest.json` само по себе не считается успехом.
+`prepared_valid` означает статическую проверку manifest; runtime-зависимое
+число RVQ codebooks достоверно только после загрузки DLL и codec context.
+Manifest привязан к хешам WAV, talker/codec, артефактов, транскрипту и
+x-vector mode. Ручной одиночный `native_reference` также поддерживается.
 
 `design` создаёт новую VoiceDesign rendition, а `synth` переиспользует
 зарегистрированный Base-профиль. Native preparation и native synthesis — разные
@@ -101,3 +121,10 @@ artifact отклоняется без автоматической переза
 установке. Native `.spk/.rvq` действительны только для записанных в manifest
 runtime/ABI и точных хешей моделей; они не являются Python prompt и не
 переносятся между Q8_0, Q4 и другими моделями автоматически.
+
+Voice ID — идентификатор, не путь. Managed-копии находятся в каталоге с
+SHA-256-derived именем под registry. Атомарные записи защищены эксклюзивной
+блокировкой ОС; она освобождается при завершении владельца, а сам lock-файл
+может оставаться для повторного использования. Существующие managed WAV и
+native manifests не перезаписываются молча. Исходные записи пользователя
+никогда не удаляются автоматической миграцией или резервным копированием.
