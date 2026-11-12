@@ -2319,6 +2319,49 @@ class UserCliTests(unittest.TestCase):
                 self.assertEqual(1, wav.getnchannels())
                 self.assertEqual(16, wav.getnframes())
 
+    def test_play_custom_voice_family_with_output_uses_capture_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(
+                root / "model", model_type="custom_voice", model_size="1b7"
+            )
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "speech.wav"
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_play,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "play",
+                        "--model-family",
+                        "custom-1.7b",
+                        "--speaker",
+                        "Ryan",
+                        "--text",
+                        "Test playback",
+                        "--model",
+                        str(model),
+                        "--play-executable",
+                        str(player),
+                        "--worker",
+                        str(worker),
+                        "--out",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            self.assertEqual("Ryan", command[command.index("--speaker") + 1])
+            self.assertIn(str(model), command)
+            self.assertIn("--wav-capture-file", command)
+
 
     def test_play_out_failure_preserves_previous_wav(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
