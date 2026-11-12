@@ -46,6 +46,30 @@ struct RequestProbe {
     std::vector<std::string> callback_events;
 };
 
+class TestBarrier final {
+public:
+    void arrive() {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            arrived_ = true;
+        }
+        condition_.notify_all();
+    }
+
+    bool wait_until_arrived() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return condition_.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [this]() { return arrived_; });
+    }
+
+private:
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    bool arrived_ = false;
+};
+
 std::vector<std::byte> bytes_from_string(const std::string& value) {
     std::vector<std::byte> bytes;
     bytes.reserve(value.size());
@@ -113,6 +137,7 @@ public:
             std::lock_guard<std::mutex> lock(mutex_);
             last_send_.assign(data, data + size);
         }
+        condition_.notify_all();
         if (current_send == 1) {
             receive_handler_(ready_frame_bytes());
             return SendResult::Accepted;
@@ -141,6 +166,7 @@ public:
     void stop() override {
         {
             std::lock_guard<std::mutex> lock(mutex_);
+            ++stop_calls_;
             running_ = false;
             release_block_ = true;
             stop_entered_ = true;
@@ -182,6 +208,21 @@ public:
             });
     }
 
+    bool wait_until_stop_calls(int expected) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return condition_.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [this, expected]() {
+                return stop_calls_ >= expected;
+            });
+    }
+
+    int stop_calls() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return stop_calls_;
+    }
+
     void release_stop() {
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -197,6 +238,16 @@ public:
 
     int send_count() const noexcept {
         return send_count_.load();
+    }
+
+    bool wait_until_send_count(int expected) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return condition_.wait_for(
+            lock,
+            std::chrono::seconds(5),
+            [this, expected]() {
+                return send_count_.load() >= expected;
+            });
     }
 
     void emit(Bytes bytes) {
@@ -215,6 +266,7 @@ private:
     bool release_block_ = false;
     bool stop_entered_ = false;
     bool release_stop_ = false;
+    int stop_calls_ = 0;
     std::vector<std::byte> last_send_;
 };
 
@@ -226,6 +278,13 @@ std::vector<std::byte> started_frame_bytes(
         "{\"message_type\":\"started\","
         "\"audio_format\":{\"sample_format\":\"" + sample_format +
         "\",\"sample_rate\":24000,\"channels\":1}}");
+}
+
+std::vector<std::byte> audio_frame_bytes(RequestId request_id) {
+    return frame_bytes(
+        FrameType::AudioPcm,
+        request_id,
+        std::vector<std::byte>{std::byte{0}, std::byte{0}});
 }
 
 StdIoTransportOptions make_worker_options(
@@ -618,6 +677,9 @@ void test_concurrent_external_stop_has_single_join_owner() {
     CHECK(client.start(std::move(transport), make_client_options()));
 
     std::atomic<int> completed_stops{0};
+    std::mutex second_mutex;
+    std::condition_variable second_condition;
+    bool second_started = false;
     std::thread first([&]() {
         client.stop();
         ++completed_stops;
@@ -625,10 +687,20 @@ void test_concurrent_external_stop_has_single_join_owner() {
     CHECK(raw_transport->wait_until_stop_entered());
 
     std::thread second([&]() {
+        {
+            std::lock_guard<std::mutex> lock(second_mutex);
+            second_started = true;
+        }
+        second_condition.notify_all();
         client.stop();
         ++completed_stops;
     });
-    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    {
+        std::unique_lock<std::mutex> lock(second_mutex);
+        CHECK(second_condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return second_started;
+        }));
+    }
     CHECK(completed_stops.load() == 0);
 
     raw_transport->release_stop();
@@ -641,14 +713,21 @@ void test_concurrent_external_stop_has_single_join_owner() {
     client.stop();
 }
 
-void test_external_and_callback_stop_overlap() {
+void run_ordered_external_callback_stop(bool external_owns_first) {
+    auto transport = std::make_unique<BlockingTransport>();
+    transport->block_stop = true;
+    auto* raw_transport = transport.get();
+
     QwenTtsClient client;
-    CHECK(client.start(make_worker_options(1000, 0.01), make_client_options()));
+    CHECK(client.start(std::move(transport), make_client_options()));
 
     std::mutex callback_mutex;
     std::condition_variable callback_condition;
     bool callback_entered = false;
     bool release_callback = false;
+    bool callback_returned = false;
+    TestBarrier terminal_callback;
+    std::atomic<int> terminal_callbacks{0};
 
     TtsCallbacks callbacks;
     callbacks.on_audio = [&](const PcmChunk&) {
@@ -661,10 +740,32 @@ void test_external_and_callback_stop_overlap() {
             });
         }
         client.stop();
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex);
+            callback_returned = true;
+        }
+        callback_condition.notify_all();
     };
-    CHECK(client.synthesize_async(
-        "Concurrent callback stop.",
-        std::move(callbacks)) != 0);
+    callbacks.on_completed = [&]() {
+        ++terminal_callbacks;
+        terminal_callback.arrive();
+    };
+    callbacks.on_cancelled = [&]() {
+        ++terminal_callbacks;
+        terminal_callback.arrive();
+    };
+    callbacks.on_error = [&](const TtsError&) {
+        ++terminal_callbacks;
+        terminal_callback.arrive();
+    };
+
+    const RequestId request_id = client.synthesize_async(
+        "Deterministic concurrent callback stop.",
+        std::move(callbacks));
+    CHECK(request_id != 0);
+    CHECK(raw_transport->wait_until_send_count(2));
+    raw_transport->emit(started_frame_bytes(request_id, "s16le"));
+    raw_transport->emit(audio_frame_bytes(request_id));
 
     {
         std::unique_lock<std::mutex> lock(callback_mutex);
@@ -674,14 +775,64 @@ void test_external_and_callback_stop_overlap() {
             [&]() { return callback_entered; }));
     }
 
-    std::thread external([&]() { client.stop(); });
-    {
-        std::lock_guard<std::mutex> lock(callback_mutex);
-        release_callback = true;
+    std::thread external;
+    if (external_owns_first) {
+        external = std::thread([&]() { client.stop(); });
+        CHECK(raw_transport->wait_until_stop_calls(1));
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex);
+            release_callback = true;
+        }
+        callback_condition.notify_all();
+        {
+            std::unique_lock<std::mutex> lock(callback_mutex);
+            CHECK(callback_condition.wait_for(
+                lock,
+                std::chrono::seconds(5),
+                [&]() { return callback_returned; }));
+        }
+        CHECK(raw_transport->stop_calls() == 1);
+        raw_transport->release_stop();
+        external.join();
     }
-    callback_condition.notify_all();
-    external.join();
+    else {
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex);
+            release_callback = true;
+        }
+        callback_condition.notify_all();
+        CHECK(raw_transport->wait_until_stop_calls(1));
+        TestBarrier external_started;
+        TestBarrier external_returned;
+        external = std::thread([&]() {
+            external_started.arrive();
+            client.stop();
+            external_returned.arrive();
+        });
+        CHECK(external_started.wait_until_arrived());
+        CHECK(raw_transport->stop_calls() == 1);
+        raw_transport->release_stop();
+        CHECK(external_returned.wait_until_arrived());
+        external.join();
+        {
+            std::unique_lock<std::mutex> lock(callback_mutex);
+            CHECK(callback_condition.wait_for(
+                lock,
+                std::chrono::seconds(5),
+                [&]() { return callback_returned; }));
+        }
+    }
+
+    CHECK(terminal_callback.wait_until_arrived());
+    CHECK(terminal_callbacks.load() == 1);
     CHECK(!client.is_running());
+    CHECK(client.start(std::make_unique<BlockingTransport>(), make_client_options()));
+    client.stop();
+}
+
+void test_external_and_callback_stop_overlap() {
+    run_ordered_external_callback_stop(true);
+    run_ordered_external_callback_stop(false);
 }
 
 void test_worker_failure_racing_with_stop() {
