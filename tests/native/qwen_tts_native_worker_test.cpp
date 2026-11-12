@@ -529,6 +529,30 @@ void write_file_bytes(const std::filesystem::path& path, const std::vector<char>
     std::ofstream output(path, std::ios::binary | std::ios::trunc);
     output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
 }
+
+void write_oversized_reference_wav_header(const std::filesystem::path& path) {
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output.good()) {
+        std::abort();
+    }
+    const auto write_u32 = [&output](std::uint32_t value) {
+        for (unsigned shift = 0; shift < 32; shift += 8) {
+            output.put(static_cast<char>((value >> shift) & 0xffu));
+        }
+    };
+    output.write("RIFF", 4);
+    write_u32(0);
+    output.write("WAVEfmt ", 8);
+    write_u32(16);
+    output.put(1); output.put(0); // PCM
+    output.put(1); output.put(0); // mono
+    write_u32(24000);
+    write_u32(48000);
+    output.put(2); output.put(0);
+    output.put(16); output.put(0);
+    output.write("data", 4);
+    write_u32(16u * 1024u * 1024u + 1u);
+}
 }
 
 int main() {
@@ -544,6 +568,19 @@ int main() {
     CHECK(reference_samples.back() == 0.0F);
 
     const auto runtime = std::filesystem::path(QWEN_TTS_FAKE_RUNTIME_DIR);
+    const auto oversized_reference_wav = runtime / "oversized-reference.wav";
+    write_oversized_reference_wav_header(oversized_reference_wav);
+    try {
+        static_cast<void>(qwen_tts_bridge::native_worker::read_mono_24k_wav(
+            oversized_reference_wav));
+        CHECK(false);
+    }
+    catch (const std::runtime_error& error) {
+        CHECK(std::string(error.what()).find("chunk is too large") != std::string::npos);
+    }
+    std::error_code oversized_cleanup_error;
+    std::filesystem::remove(oversized_reference_wav, oversized_cleanup_error);
+
     const auto mismatch_manifest = runtime / "manifest-mismatch.json";
     {
         std::ifstream input(runtime / "manifest.json", std::ios::binary);
