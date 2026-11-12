@@ -1140,6 +1140,35 @@ class UserCliTests(unittest.TestCase):
             ), self.assertRaises(PermissionError):
                 user_cli._managed_reference_paths(registry)
 
+    def test_voices_create_rejects_config_registry_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.json"
+            config.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "voice_library": {"registry_path": "config.json"},
+                    "voices": [],
+                }), encoding="utf-8",
+            )
+            before = config.read_bytes()
+            with mock.patch.object(
+                user_cli.subprocess, "run"
+            ) as run, mock.patch.object(
+                user_cli, "add_voice"
+            ) as add, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main([
+                        "--config", str(config), "voices", "create",
+                        "--id", "voice", "--instruction", "Voice",
+                        "--sample-text", "Test",
+                    ])
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("protected file", stderr.getvalue())
+            self.assertEqual(before, config.read_bytes())
+            run.assert_not_called()
+            add.assert_not_called()
+
     def test_synth_explicit_model_executable_and_worker_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

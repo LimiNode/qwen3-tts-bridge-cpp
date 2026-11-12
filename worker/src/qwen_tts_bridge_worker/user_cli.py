@@ -505,6 +505,11 @@ def _run_voices(args: argparse.Namespace) -> int:
         voice_id = args.voice_id.strip()
         if not voice_id:
             raise VoiceLibraryError("voice_id must be a non-empty string")
+        _validate_cli_targets(
+            outputs=(registry_path,),
+            protected=(config_path,),
+            operation="voice registry",
+        )
         if args.log_file is not None:
             _validate_cli_targets(
                 outputs=(_output_path(args.log_file),),
