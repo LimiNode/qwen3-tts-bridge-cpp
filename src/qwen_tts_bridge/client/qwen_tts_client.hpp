@@ -171,6 +171,9 @@ public:
     ///
     /// This method is idempotent. It may block while the worker stops and
     /// internal threads join. It is safe to call from request callbacks.
+    /// Concurrent external callers share one shutdown owner; only that owner
+    /// joins the internal threads. A callback caller never waits for the
+    /// dispatcher thread that is executing it.
     /// Destroying QwenTtsClient from one of its callbacks is not supported.
     void stop();
 
@@ -214,6 +217,11 @@ private:
     void join_threads();
 
     mutable std::mutex mutex_;
+    // Only the stop caller that claims shutdown ownership may join worker
+    // threads. Other external callers wait for that owner; a callback caller
+    // returns without waiting so it cannot wait for its dispatcher thread.
+    std::condition_variable shutdown_condition_;
+    std::mutex join_mutex_;
     std::condition_variable outbound_condition_;
     std::unique_ptr<WorkerSession> session_;
     QwenTtsClientOptions options_;
@@ -225,6 +233,8 @@ private:
     RequestId next_request_id_ = 1;
     bool running_ = false;
     bool stopping_ = false;
+    bool shutdown_in_progress_ = false;
+    std::thread::id shutdown_owner_thread_;
     bool terminal_failure_handled_ = false;
     std::uint64_t late_audio_after_terminal_count_ = 0;
     std::uint64_t duplicate_terminal_event_count_ = 0;

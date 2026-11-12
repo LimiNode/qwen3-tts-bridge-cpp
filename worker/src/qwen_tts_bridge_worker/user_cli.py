@@ -474,7 +474,13 @@ def _run_voices(args: argparse.Namespace) -> int:
     registry_path = default_voice_registry_path(args.config).expanduser().resolve(
         strict=False
     )
+    config_path = _selected_config_path(args.config)
     if args.voices_command == "add":
+        _validate_cli_targets(
+            outputs=(registry_path,),
+            protected=(config_path, _output_path(args.wav)),
+            operation="voice registry",
+        )
         row = add_voice(
             registry_path,
             voice_id=args.voice_id,
@@ -499,11 +505,16 @@ def _run_voices(args: argparse.Namespace) -> int:
         voice_id = args.voice_id.strip()
         if not voice_id:
             raise VoiceLibraryError("voice_id must be a non-empty string")
-        if args.log_file is not None and _canonical_path(
-            _output_path(args.log_file)
-        ) == _canonical_path(registry_path):
-            raise VoiceLibraryError(
-                "--log-file must be different from the voice registry"
+        _validate_cli_targets(
+            outputs=(registry_path,),
+            protected=(config_path,),
+            operation="voice registry",
+        )
+        if args.log_file is not None:
+            _validate_cli_targets(
+                outputs=(_output_path(args.log_file),),
+                protected=(config_path, registry_path),
+                operation="voice registry log",
             )
         rows = load_voice_rows(registry_path)
         if any(row.get("voice_id") == voice_id for row in rows):
@@ -762,6 +773,7 @@ def _run_play(args: argparse.Namespace) -> int:
     root = _portable_root(args.portable_root)
     family = args.model_family
     registry_path = default_voice_registry_path(args.config).expanduser().resolve()
+    protected_reference_paths = _managed_reference_paths(registry_path)
     model = resolve_model(
         family,
         explicit_path=args.model,
@@ -795,6 +807,17 @@ def _run_play(args: argparse.Namespace) -> int:
     )
     output_path = _output_path(args.out) if args.out is not None else None
     log_file = _output_path(args.log_file) if args.log_file else None
+    _validate_cli_targets(
+        outputs=tuple(
+            path for path in (output_path, log_file) if path is not None
+        ),
+        protected=(
+            config_directory / _selected_config_path(args.config).name,
+            registry_path,
+            *protected_reference_paths,
+        ),
+        operation="playback output",
+    )
     if (
         log_file is not None
         and output_path is not None
@@ -951,13 +974,19 @@ def _run_synthesis(
     log_file = (
         _output_path(args.log_file) if getattr(args, "log_file", None) else None
     )
-    if output_path == result_json:
-        raise ValueError("--out and --result-json must refer to different files")
-    if log_file is not None and _canonical_path(log_file) in {
-        _canonical_path(output_path),
-        _canonical_path(result_json),
-    }:
-        raise ValueError("--log-file must be different from synthesis outputs")
+    registry_path = default_voice_registry_path(args.config)
+    protected_reference_paths = _managed_reference_paths(registry_path)
+    _validate_cli_targets(
+        outputs=tuple(
+            path for path in (output_path, result_json, log_file) if path is not None
+        ),
+        protected=(
+            _selected_config_path(args.config),
+            default_voice_registry_path(args.config),
+            *protected_reference_paths,
+        ),
+        operation="synthesis output",
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_json.parent.mkdir(parents=True, exist_ok=True)
     _reject_output_target(output_path)
@@ -1283,6 +1312,65 @@ def _canonical_path(path: Path) -> Path:
     """Normalize path spelling for collision checks without weakening target guards."""
 
     return path.expanduser().resolve(strict=False)
+
+
+def _paths_refer_to_same_file(left: Path, right: Path) -> bool:
+    """Compare spellings and existing-file identity without claiming TOCTOU safety."""
+
+    if _canonical_path(left) == _canonical_path(right):
+        return True
+    try:
+        return left.exists() and right.exists() and os.path.samefile(left, right)
+    except OSError:
+        return False
+
+
+def _managed_reference_paths(registry_path: Path) -> tuple[Path, ...]:
+    """Return managed reference files currently declared by the registry."""
+
+    if not registry_path.exists():
+        return ()
+    # An existing registry that cannot be parsed must not degrade into an
+    # empty protected set: that could allow an output operation to overwrite a
+    # managed reference whose path is no longer discoverable.  Commands that
+    # rely on the registry therefore fail closed before starting a worker.
+    rows = load_voice_rows(registry_path, allow_missing=False)
+    paths: list[Path] = []
+    for row in rows:
+        relative = row.get("reference_audio_path")
+        if isinstance(relative, str) and relative:
+            paths.append((registry_path.parent / relative).resolve(strict=False))
+    return tuple(paths)
+
+
+def _validate_cli_targets(
+    *,
+    outputs: Sequence[Path],
+    protected: Sequence[Path],
+    operation: str,
+) -> None:
+    """Reject aliased output targets before starting a worker or publication.
+
+    Canonical spelling catches relative paths, ``..`` and directory links;
+    ``samefile`` additionally catches existing hardlink aliases. This is a
+    preflight check, not a complete TOCTOU defence against later filesystem
+    replacement or concurrent writers.
+    """
+
+    normalized_outputs = tuple(path.expanduser().absolute() for path in outputs)
+    for path in normalized_outputs:
+        _reject_output_target(path)
+    for index, left in enumerate(normalized_outputs):
+        for right in normalized_outputs[index + 1 :]:
+            if _paths_refer_to_same_file(left, right):
+                raise ValueError(f"{operation} targets must be different files")
+    for output in normalized_outputs:
+        for protected_path in protected:
+            if _paths_refer_to_same_file(output, protected_path):
+                raise ValueError(
+                    f"{operation} target must not overwrite protected file: "
+                    f"{protected_path}"
+                )
 
 
 def _reject_output_target(path: Path) -> None:
