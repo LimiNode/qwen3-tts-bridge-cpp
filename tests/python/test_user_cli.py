@@ -2362,7 +2362,13 @@ class UserCliTests(unittest.TestCase):
                             self.assertEqual(0, user_cli.main(invocation))
                         command = run.call_args.args[0]
                         worker_arguments = _worker_argument_values(command)
-                        self.assertIn(str(model), worker_arguments)
+                        model_path = Path(
+                            worker_arguments[worker_arguments.index("--model-path") + 1]
+                        )
+                        self.assertEqual(
+                            user_cli._canonical_path(model),
+                            user_cli._canonical_path(model_path),
+                        )
                         self.assertEqual(
                             backend,
                             worker_arguments[
