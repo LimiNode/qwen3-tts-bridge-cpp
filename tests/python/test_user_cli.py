@@ -488,6 +488,7 @@ class UserCliTests(unittest.TestCase):
             player = _write_executable(root / "player.exe")
             worker = _write_executable(root / "worker.exe")
             config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "speech.wav"
             (root / "temp").mkdir()
             aliased_output = root / "temp" / ".." / "speech.wav"
             with mock.patch(
@@ -510,7 +511,7 @@ class UserCliTests(unittest.TestCase):
                             "--worker",
                             str(worker),
                             "--out",
-                            str(aliased_output),
+                            str(output),
                             "--log-file",
                             str(aliased_output),
                         ]
@@ -518,6 +519,52 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual(2, raised.exception.code)
             self.assertIn("different files", stderr.getvalue())
             run.assert_not_called()
+
+    def test_play_path_collision_through_symlink_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target_dir = root / "audio"
+            target_dir.mkdir()
+            alias_dir = root / "alias"
+            try:
+                alias_dir.symlink_to(target_dir, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"directory symlinks unavailable: {exc}")
+            self.assertEqual(
+                user_cli._canonical_path(target_dir / "speech.wav"),
+                user_cli._canonical_path(alias_dir / "speech.wav"),
+            )
+            output_link = root / "output.wav"
+            output_link.symlink_to(target_dir / "speech.wav")
+            with self.assertRaisesRegex(ValueError, "symlink output"):
+                user_cli._reject_output_target(output_link)
+
+    def test_wav_validation_reads_bounded_chunks_and_rejects_truncated_pcm(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "capture.wav"
+            frames = 2 * user_cli._WAV_VALIDATION_CHUNK_FRAMES + 17
+            with wave.open(str(path), "wb") as writer:
+                writer.setnchannels(1)
+                writer.setsampwidth(2)
+                writer.setframerate(24000)
+                writer.writeframes(b"\x00\x10" * frames)
+            real_readframes = wave.Wave_read.readframes
+
+            def bounded_readframes(reader: wave.Wave_read, count: int) -> bytes:
+                self.assertLessEqual(count, user_cli._WAV_VALIDATION_CHUNK_FRAMES)
+                return real_readframes(reader, count)
+
+            with mock.patch.object(
+                wave.Wave_read, "readframes", autospec=True,
+                side_effect=bounded_readframes,
+            ) as readframes:
+                user_cli._validate_wav_output(path)
+                self.assertEqual(3, readframes.call_count)
+                path.write_bytes(path.read_bytes()[:-2])
+                with self.assertRaisesRegex(ValueError, "audio frames"):
+                    user_cli._validate_wav_output(path)
 
     def test_publish_output_backup_failure_preserves_existing_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
