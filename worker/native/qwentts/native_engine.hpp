@@ -11,6 +11,7 @@
 #include <functional>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,8 @@ struct NativeEngineOptions {
     /// The option is deliberately opt-in because it must preserve PCM and
     /// voice-identity parity with the uncached raw-WAV path first.
     bool precompute_voice_refs = false;
+    /// Maximum number of dynamic request reference entries retained in memory.
+    std::size_t max_dynamic_voice_refs = 16;
     /// Run one discarded synthesis before the worker announces `ready`.
     bool warmup_synthesis = false;
     std::string warmup_text = "Warmup.";
@@ -151,6 +154,7 @@ private:
     };
 
     void clear_voice_reference_cache() noexcept;
+    bool dynamic_voice_reference_capacity_available() const noexcept;
     void load_voice_registry();
     void preload_voice_registry();
     PreparedVoiceReferenceContext prepared_context(const VoiceProfile& profile) const;
@@ -162,6 +166,7 @@ private:
     qt_context* context_ = nullptr;
     std::unordered_map<std::string, VoiceProfile> voice_profiles_;
     std::unordered_map<std::string, std::unique_ptr<CachedVoiceReference>> voice_reference_cache_;
+    std::unordered_set<std::string> managed_voice_reference_keys_;
     std::string talker_sha256_;
     std::string codec_sha256_;
     bool warmed_up_ = false;

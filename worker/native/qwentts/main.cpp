@@ -121,6 +121,14 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
         else if (argument == L"--precompute-voice-ref") {
             options.precompute_voice_refs = true;
         }
+        else if (argument == L"--max-dynamic-voice-refs") {
+            const auto value = require_value(index, argc, argv, L"--max-dynamic-voice-refs");
+            const auto parsed = std::stoull(value.wstring());
+            if (parsed > 65536) {
+                throw std::invalid_argument("--max-dynamic-voice-refs must be in [0, 65536]");
+            }
+            options.max_dynamic_voice_refs = static_cast<std::size_t>(parsed);
+        }
         else if (argument == L"--warmup-synthesis") {
             options.warmup_synthesis = true;
         }
@@ -142,6 +150,7 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
                 << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
                 << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
                 << "  [--max-text-bytes N] [--max-admitted-requests N] [--precompute-voice-ref]\n"
+                << "  [--max-dynamic-voice-refs N]\n"
                 << "  [--eos-guard]\n"
                 << "  [--warmup-synthesis] [--warmup-text TEXT] [--warmup-language LANG]\n"
                 << "  [--warmup-voice-id ID]\n";
