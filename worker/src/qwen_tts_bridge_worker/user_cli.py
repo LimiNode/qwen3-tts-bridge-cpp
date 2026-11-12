@@ -38,6 +38,7 @@ from qwen_tts_bridge_worker.voice_library import (
 
 _DEFAULT_STARTUP_TIMEOUT_MS = 120_000
 _DEFAULT_REQUEST_TIMEOUT_MS = 300_000
+_WAV_VALIDATION_CHUNK_FRAMES = 4096
 _DEFAULT_DEVICE = "cuda"
 _DEFAULT_DTYPE = "float16"
 _SUPPORTED_USER_DTYPES = {
@@ -134,9 +135,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     synth = commands.add_parser(
-        "synth", help="Synthesize with a registered Base voice profile."
+        "synth", help="Synthesize with the selected Qwen3-TTS model family."
     )
-    synth.add_argument("--voice-id", required=True)
+    synth.add_argument(
+        "--model-family", choices=tuple(MODEL_CATALOG), default="base-1.7b"
+    )
+    synth.add_argument("--voice-id")
+    synth.add_argument("--speaker")
+    synth.add_argument("--instruction")
     synth.add_argument("--text", required=True)
     synth.add_argument("--out", type=Path, required=True)
     synth.add_argument("--result-json", type=Path)
@@ -151,13 +157,26 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dtype",
         help="Worker compute dtype. Defaults to runtime.dtype or float16.",
     )
+    synth.add_argument(
+        "--runtime-backend", choices=("faster", "upstream"), default="faster"
+    )
 
     play = commands.add_parser(
         "play",
-        help="Stream one registered Base voice profile to the default audio device.",
+        help="Stream one Qwen3-TTS request to the default audio device.",
     )
-    play.add_argument("--voice-id", required=True)
+    play.add_argument(
+        "--model-family", choices=tuple(MODEL_CATALOG), default="base-1.7b"
+    )
+    play.add_argument("--voice-id")
+    play.add_argument("--speaker")
+    play.add_argument("--instruction")
     play.add_argument("--text", required=True)
+    play.add_argument(
+        "--out",
+        type=Path,
+        help="Optionally capture the post-processed playback stream as a WAV.",
+    )
     play.add_argument("--model", type=Path)
     play.add_argument("--language", default="Russian")
     play.add_argument(
@@ -670,21 +689,10 @@ def _run_design(args: argparse.Namespace) -> int:
 def _run_synth(args: argparse.Namespace) -> int:
     root = _portable_root(args.portable_root)
     runtime = _runtime_config(args.config)
+    family = args.model_family
     registry_path = default_voice_registry_path(args.config).expanduser().resolve()
-    verification = verify_voice(
-        registry_path,
-        args.voice_id,
-        backend="python",
-        config_path=args.config,
-    )
-    if verification.get("status") != "compatible":
-        detail = verification.get("error")
-        suffix = f": {detail}" if isinstance(detail, str) and detail else ""
-        raise VoiceLibraryError(
-            f"voice {args.voice_id} is not compatible with the Python backend{suffix}"
-        )
     model = resolve_model(
-        "base-1.7b",
+        family,
         explicit_path=args.model,
         config_path=args.config,
         portable_root=root,
@@ -694,21 +702,56 @@ def _run_synth(args: argparse.Namespace) -> int:
         "--model-path",
         str(model.path),
         "--runtime-backend",
-        "faster",
+        args.runtime_backend,
         "--device",
         _resolve_device(args.device, runtime.get("device")),
         "--dtype",
         _resolve_dtype(args.dtype, runtime.get("dtype")),
-        "--collect-generation-trace",
-        "--voice-registry-path",
-        str(registry_path),
     )
+    if family.startswith("base-"):
+        if not args.voice_id:
+            raise ValueError("--voice-id is required for Base model families")
+        if args.speaker or args.instruction:
+            raise ValueError("Base synthesis accepts --voice-id only")
+        verification = verify_voice(
+            registry_path,
+            args.voice_id,
+            backend="python",
+            config_path=args.config,
+        )
+        if verification.get("status") != "compatible":
+            detail = verification.get("error")
+            suffix = f": {detail}" if isinstance(detail, str) and detail else ""
+            raise VoiceLibraryError(
+                "voice "
+                f"{args.voice_id} is not compatible with the Python backend{suffix}"
+            )
+        worker_arguments += ("--voice-registry-path", str(registry_path))
+        request_arguments = ("--voice-id", args.voice_id)
+    elif family.startswith("custom-"):
+        if args.voice_id:
+            raise ValueError("CustomVoice synthesis does not accept --voice-id")
+        if not args.speaker:
+            raise ValueError("--speaker is required for CustomVoice model families")
+        request_arguments = ("--speaker", args.speaker)
+        if args.instruction:
+            request_arguments += ("--instruction", args.instruction)
+    else:
+        if args.voice_id or args.speaker:
+            raise ValueError("VoiceDesign synthesis accepts --instruction only")
+        if not args.instruction:
+            raise ValueError("--instruction is required for voice-design")
+        request_arguments = ("--instruction", args.instruction)
+    if args.runtime_backend == "faster":
+        worker_arguments += ("--collect-generation-trace",)
     return _run_synthesis(
         args,
         root=root,
         worker_arguments=worker_arguments,
-        request_arguments=("--voice-id", args.voice_id),
-        output_description="Base voice WAV",
+        request_arguments=request_arguments,
+        output_description=(
+            "Base voice WAV" if family.startswith("base-") else f"{family} WAV"
+        ),
     )
 
 
@@ -716,21 +759,10 @@ def _run_play(args: argparse.Namespace) -> int:
     """Run the existing streaming playback client for one Base voice request."""
 
     root = _portable_root(args.portable_root)
+    family = args.model_family
     registry_path = default_voice_registry_path(args.config).expanduser().resolve()
-    verification = verify_voice(
-        registry_path,
-        args.voice_id,
-        backend="python",
-        config_path=args.config,
-    )
-    if verification.get("status") != "compatible":
-        detail = verification.get("error")
-        suffix = f": {detail}" if isinstance(detail, str) and detail else ""
-        raise VoiceLibraryError(
-            f"voice {args.voice_id} is not compatible with the Python backend{suffix}"
-        )
     model = resolve_model(
-        "base-1.7b",
+        family,
         explicit_path=args.model,
         config_path=args.config,
         portable_root=root,
@@ -760,6 +792,24 @@ def _run_play(args: argparse.Namespace) -> int:
         "runtime.request_timeout_ms",
         _DEFAULT_REQUEST_TIMEOUT_MS,
     )
+    output_path = _output_path(args.out) if args.out is not None else None
+    log_file = _output_path(args.log_file) if args.log_file else None
+    if (
+        log_file is not None
+        and output_path is not None
+        and _canonical_path(log_file) == _canonical_path(output_path)
+    ):
+        raise ValueError("--out and --log-file must refer to different files")
+    temporary_output: Path | None = None
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        _reject_output_target(output_path)
+        try:
+            temporary_output = _temporary_output_path(output_path)
+        except OSError as exc:
+            raise ValueError(
+                f"could not create temporary playback output: {exc}"
+            ) from exc
     command = [
         str(player),
         "--worker",
@@ -768,13 +818,13 @@ def _run_play(args: argparse.Namespace) -> int:
         args.text,
         "--language",
         args.language,
-        "--voice-id",
-        args.voice_id,
         "--startup-timeout-ms",
         str(startup_timeout_ms),
         "--request-timeout-ms",
         str(request_timeout_ms),
     ]
+    if temporary_output is not None:
+        command.extend(("--wav-capture-file", str(temporary_output)))
     for value in worker.prefix_arguments:
         command.extend(("--worker-arg", value))
     worker_arguments = (
@@ -787,9 +837,41 @@ def _run_play(args: argparse.Namespace) -> int:
         _resolve_device(args.device, runtime.get("device")),
         "--dtype",
         _resolve_dtype(args.dtype, runtime.get("dtype")),
-        "--voice-registry-path",
-        str(registry_path),
     )
+    if family.startswith("base-"):
+        if not args.voice_id:
+            raise ValueError("--voice-id is required for Base model families")
+        if args.speaker or args.instruction:
+            raise ValueError("Base playback accepts --voice-id only")
+        verification = verify_voice(
+            registry_path,
+            args.voice_id,
+            backend="python",
+            config_path=args.config,
+        )
+        if verification.get("status") != "compatible":
+            detail = verification.get("error")
+            suffix = f": {detail}" if isinstance(detail, str) and detail else ""
+            raise VoiceLibraryError(
+                "voice "
+                f"{args.voice_id} is not compatible with the Python backend{suffix}"
+            )
+        worker_arguments += ("--voice-registry-path", str(registry_path))
+        command.extend(("--voice-id", args.voice_id))
+    elif family.startswith("custom-"):
+        if args.voice_id:
+            raise ValueError("CustomVoice playback does not accept --voice-id")
+        if not args.speaker:
+            raise ValueError("--speaker is required for CustomVoice model families")
+        command.extend(("--speaker", args.speaker))
+        if args.instruction:
+            command.extend(("--instruction", args.instruction))
+    else:
+        if args.voice_id or args.speaker:
+            raise ValueError("VoiceDesign playback accepts --instruction only")
+        if not args.instruction:
+            raise ValueError("--instruction is required for voice-design")
+        command.extend(("--instruction", args.instruction))
     if args.runtime_backend == "faster":
         worker_arguments += ("--collect-generation-trace",)
     if args.acceptance_mock_worker:
@@ -803,7 +885,6 @@ def _run_play(args: argparse.Namespace) -> int:
     environment = os.environ.copy()
     if root is not None and worker.executable == Path(sys.executable).resolve():
         environment["PYTHONNOUSERSITE"] = "1"
-    log_file = _output_path(args.log_file) if args.log_file else None
     diagnostics = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
     try:
         try:
@@ -832,8 +913,13 @@ def _run_play(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
             return completed.returncode
+        if output_path is not None:
+            _validate_wav_output(temporary_output)
+            _publish_output(temporary_output, output_path)
     finally:
         diagnostics.close()
+        if temporary_output is not None:
+            _remove_owned_temporary(temporary_output)
     return 0
 
 
@@ -866,7 +952,10 @@ def _run_synthesis(
     )
     if output_path == result_json:
         raise ValueError("--out and --result-json must refer to different files")
-    if log_file is not None and log_file in (output_path, result_json):
+    if log_file is not None and _canonical_path(log_file) in {
+        _canonical_path(output_path),
+        _canonical_path(result_json),
+    }:
         raise ValueError("--log-file must be different from synthesis outputs")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_json.parent.mkdir(parents=True, exist_ok=True)
@@ -1219,11 +1308,88 @@ def _temporary_output_paths(output_path: Path, result_json: Path) -> tuple[Path,
         raise
 
 
+def _temporary_output_path(output_path: Path) -> Path:
+    descriptor, name = tempfile.mkstemp(
+        prefix=f".{output_path.name}.", suffix=".qtb-tmp", dir=output_path.parent
+    )
+    os.close(descriptor)
+    temporary = Path(name)
+    temporary.unlink()
+    return temporary
+
+
 def _remove_owned_temporary(path: Path) -> None:
     try:
         path.unlink(missing_ok=True)
     except OSError:
         pass
+
+
+def _validate_wav_output(path: Path | None) -> None:
+    if path is None or not path.is_file():
+        raise ValueError("playback completed but WAV capture was not created")
+    try:
+        with wave.open(str(path), "rb") as wav:
+            channels = wav.getnchannels()
+            sample_width = wav.getsampwidth()
+            sample_rate = wav.getframerate()
+            frame_count = wav.getnframes()
+            if (
+                channels != 1
+                or sample_width != 2
+                or sample_rate != 24000
+                or frame_count <= 0
+                or wav.getcomptype() != "NONE"
+            ):
+                raise ValueError("WAV capture has invalid audio format")
+            frame_size = channels * sample_width
+            remaining_frames = frame_count
+            audio_bytes = 0
+            while remaining_frames:
+                chunk = wav.readframes(
+                    min(remaining_frames, _WAV_VALIDATION_CHUNK_FRAMES)
+                )
+                if not chunk or len(chunk) % frame_size:
+                    break
+                frames_read = len(chunk) // frame_size
+                audio_bytes += len(chunk)
+                remaining_frames -= frames_read
+            if remaining_frames or audio_bytes != frame_count * frame_size:
+                raise ValueError("WAV capture contains no audio frames")
+    except (OSError, wave.Error) as exc:
+        raise ValueError(f"WAV capture is invalid: {path}") from exc
+
+
+def _publish_output(temporary: Path | None, target: Path) -> None:
+    if temporary is None:
+        raise ValueError("missing temporary playback output")
+    _reject_output_target(target)
+    backup: Path | None = None
+    backup_created = False
+    published = False
+    try:
+        if target.exists():
+            backup = _temporary_backup_path(target)
+            os.replace(target, backup)
+            backup_created = True
+        os.replace(temporary, target)
+        published = True
+    except OSError as exc:
+        if published:
+            _remove_owned_temporary(target)
+        rollback_error: OSError | None = None
+        if backup_created and backup is not None and backup.exists():
+            try:
+                os.replace(backup, target)
+            except OSError as restore_exc:
+                rollback_error = restore_exc
+        detail = f"could not publish playback WAV: {exc}"
+        if rollback_error is not None and backup is not None:
+            detail += f"; backup retained at {backup}: {rollback_error}"
+        raise ValueError(detail) from exc
+    else:
+        if backup is not None:
+            _remove_owned_temporary(backup)
 
 
 def _publish_design_outputs(

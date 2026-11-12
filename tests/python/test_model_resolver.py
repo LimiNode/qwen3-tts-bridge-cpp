@@ -24,6 +24,14 @@ from qwen_tts_bridge_worker.model_resolver import (
 
 
 class ModelResolverTests(unittest.TestCase):
+    def test_catalog_contains_verified_custom_voice_families(self) -> None:
+        self.assertEqual(
+            "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+            MODEL_CATALOG["custom-1.7b"].repository,
+        )
+        self.assertEqual("custom_voice", MODEL_CATALOG["custom-0.6b"].model_type)
+        self.assertEqual("0b6", MODEL_CATALOG["custom-0.6b"].model_size)
+
     def test_explicit_path_has_precedence_over_config_portable_and_cache(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
