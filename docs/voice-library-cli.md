@@ -37,6 +37,25 @@ qwen-tts voices show kraftwerk-ru --json
 qwen-tts voices verify kraftwerk-ru --backend python
 ```
 
+Create a managed reference using VoiceDesign:
+
+```powershell
+qwen-tts voices create --id designed-voice --sample-text "Reference speech." `
+  --instruction "A calm, clear voice." --language English --json
+```
+
+Creation requires a validated natural-EOS completion and successful registry
+publication. A diagnostic non-natural-EOS opt-out cannot create a managed
+profile. The managed WAV and its SHA-256 are the authoritative reusable audio;
+the transient generation path is not retained as an external source.
+
+Generated `provenance` records the model identity/source known to the resolver.
+A null `model_revision` means the local checkpoint has no verified pinned
+revision, not that its identity has been cryptographically established. The
+`generation` object is a selected summary of the validated receipt, not the
+complete original worker JSON. Missing revision or seed information is not
+invented.
+
 Synthesize through the supported persistent Python Base 1.7B path:
 
 ```powershell
@@ -107,9 +126,10 @@ explicitly a `static_manifest` validation; the runtime-dependent RVQ codebook
 count is authoritative only after the native worker loads the selected DLL and
 codec context during preparation or synthesis.
 
-This command family does not download models or create VoiceDesign voices.
-`design` creates a new VoiceDesign rendition; `synth` reuses a registered Base
-profile. Native preparation and native synthesis are separate capabilities:
+This command family does not download models. `design` creates a standalone
+VoiceDesign rendition; `voices create` registers a generated reference for
+reuse through Base; `synth --voice-id` reuses a registered Base profile.
+Native preparation and native synthesis are separate capabilities:
 preparing `.spk`/`.rvq` does not make `qwen-tts synth` select the native backend,
 and a native profile is not interchangeable with a Python prompt. Backend
 compatibility remains explicit and model/runtime bound.
