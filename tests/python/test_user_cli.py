@@ -488,7 +488,8 @@ class UserCliTests(unittest.TestCase):
             player = _write_executable(root / "player.exe")
             worker = _write_executable(root / "worker.exe")
             config, _ = _write_voice_library(root, voice_id="voice")
-            output = root / "speech.wav"
+            (root / "temp").mkdir()
+            aliased_output = root / "temp" / ".." / "speech.wav"
             with mock.patch(
                 "qwen_tts_bridge_worker.user_cli.subprocess.run"
             ) as run, redirect_stderr(io.StringIO()) as stderr:
@@ -509,9 +510,9 @@ class UserCliTests(unittest.TestCase):
                             "--worker",
                             str(worker),
                             "--out",
-                            str(output),
+                            str(aliased_output),
                             "--log-file",
-                            str(output),
+                            str(aliased_output),
                         ]
                     )
             self.assertEqual(2, raised.exception.code)
