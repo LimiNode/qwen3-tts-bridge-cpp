@@ -1124,6 +1124,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
 
         add_test(NAME qwen_tts_client_test COMMAND qwen_tts_client_test)
+        set_tests_properties(qwen_tts_client_test PROPERTIES TIMEOUT 180)
 
         if(TARGET qwen_tts_speech_animation_probe)
             add_test(
