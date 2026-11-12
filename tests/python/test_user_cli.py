@@ -1754,7 +1754,7 @@ class UserCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             config = root / "QwenTTSBridge" / "config.json"
-            config.parent.mkdir()
+            config.parent.mkdir(exist_ok=True)
             runtime = config.parent / "runtime"
             runtime.mkdir()
             (runtime / "qwen.dll").write_bytes(b"dll")
@@ -2080,6 +2080,49 @@ class UserCliTests(unittest.TestCase):
             self.assertEqual("keep", sentinel.read_text(encoding="utf-8"))
             self.assertEqual(b"new wav", temporary_wav.read_bytes())
             self.assertEqual(b"new json", temporary_result.read_bytes())
+
+    def test_target_preflight_rejects_canonical_output_aliases(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "voice.wav"
+            result = root / "nested" / ".." / "voice.wav"
+            with self.assertRaisesRegex(ValueError, "different files"):
+                user_cli._validate_cli_targets(
+                    outputs=(output, result), protected=(), operation="synthesis"
+                )
+
+    def test_target_preflight_rejects_protected_config_and_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.json"
+            registry = root / "voices" / "registry.json"
+            config.parent.mkdir(exist_ok=True)
+            registry.parent.mkdir()
+            config.write_text("{}", encoding="utf-8")
+            registry.write_text("{}", encoding="utf-8")
+            for target in (config, registry):
+                with self.subTest(target=target):
+                    with self.assertRaisesRegex(ValueError, "protected file"):
+                        user_cli._validate_cli_targets(
+                            outputs=(target,),
+                            protected=(config, registry),
+                            operation="synthesis",
+                        )
+
+    def test_target_preflight_rejects_hardlink_alias_when_supported(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            protected = root / "protected.wav"
+            alias = root / "alias.wav"
+            protected.write_bytes(b"immutable")
+            try:
+                os.link(protected, alias)
+            except (AttributeError, OSError) as exc:
+                self.skipTest(f"hardlinks unavailable: {exc}")
+            with self.assertRaisesRegex(ValueError, "protected file"):
+                user_cli._validate_cli_targets(
+                    outputs=(alias,), protected=(protected,), operation="playback"
+                )
 
 
     def test_synth_supports_custom_voice_family_and_speaker(self) -> None:
