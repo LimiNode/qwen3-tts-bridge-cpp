@@ -22,6 +22,9 @@ MECHANICAL_VALUES = {"pass", "fail", "not_run"}
 LISTENING_FIELDS = {"intelligibility", "voice_or_instruction", "artifacts", "final_tail", "sequential_contamination"}
 LISTENING_VALUES = {"pass", "partial", "not_assessed", "fail"}
 ARTIFACT_KINDS = {"wav", "json", "log", "manifest", "other"}
+RESULT_VALUES = {"pass", "fail", "not_run", "unsupported", "not_assessed"}
+RELEASE_VALUES = {"accepted", "conditional", "blocked"}
+RESULT_FIELDS = {"case_result", "listening_result", "release_disposition"}
 
 
 class ValidationError(ValueError):
@@ -54,8 +57,18 @@ def check_date(value: Any, label: str) -> None:
 
 
 def check_string(value: Any, label: str) -> None:
-    if not isinstance(value, str) or not value:
+    if not isinstance(value, str) or not value.strip():
         raise ValidationError(f"{label}: expected non-empty string")
+
+
+def validate_result(value: Any, allowed: set[str], label: str) -> str:
+    if not isinstance(value, dict):
+        raise ValidationError(f"{label}: expected status/reason object")
+    object_keys(value, {"status", "reason"}, {"status", "reason"}, label)
+    if not isinstance(value["status"], str) or value["status"] not in allowed:
+        raise ValidationError(f"{label}: invalid status")
+    check_string(value["reason"], f"{label}.reason")
+    return value["status"]
 
 
 def validate_artifact_path(value: Any, receipt_root: str, root: Path, label: str) -> Path:
@@ -99,10 +112,12 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
         "bridge_commit", "model_revision", "runtime_revision", "hardware", "artifact_root",
         "artifacts", "mechanical", "human_listening", "release_status", "input_identity",
     }
+    if type(receipt.get("schema_version")) is not int or receipt["schema_version"] not in {1, 2}:
+        raise ValidationError(f"{path}: unsupported schema_version")
+    if receipt["schema_version"] == 2 or RESULT_FIELDS.intersection(receipt):
+        required |= RESULT_FIELDS
     allowed = required | {"supersedes", "related_reports", "notes"}
     object_keys(receipt, required, allowed, str(path))
-    if receipt["schema_version"] != 1:
-        raise ValidationError(f"{path}: unsupported schema_version")
     if not isinstance(receipt["acceptance_id"], str) or not ID.fullmatch(receipt["acceptance_id"]):
         raise ValidationError(f"{path}: invalid acceptance_id")
     check_date(receipt["recorded_at"], f"{path}: recorded_at")
@@ -191,7 +206,10 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
         if not isinstance(artifact, dict):
             raise ValidationError(f"{label}: must be an object")
         fields = {"path", "kind", "bytes", "sha256"}
-        object_keys(artifact, fields, fields, label)
+        required_artifact = fields | ({"availability"} if receipt["schema_version"] == 2 else set())
+        object_keys(artifact, required_artifact, fields | {"availability"}, label)
+        if "availability" in artifact:
+            validate_result(artifact["availability"], {"local", "archive", "unavailable", "not_checked"}, f"{label}.availability")
         local_path = validate_artifact_path(artifact["path"], artifact_root, root, f"{label}.path")
         if artifact["kind"] not in ARTIFACT_KINDS:
             raise ValidationError(f"{label}: invalid kind")
@@ -208,8 +226,29 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
                 raise ValidationError(f"{label}: artifact SHA-256 mismatch: {local_path}")
 
     release = receipt["release_status"]
-    if release not in {"accepted", "conditional", "blocked"}:
+    if release not in RELEASE_VALUES:
         raise ValidationError(f"{path}: invalid release_status")
+    if RESULT_FIELDS.issubset(receipt):
+        case = validate_result(receipt["case_result"], RESULT_VALUES, f"{path}: case_result")
+        heard = validate_result(receipt["listening_result"], RESULT_VALUES, f"{path}: listening_result")
+        disposition = validate_result(receipt["release_disposition"], RELEASE_VALUES, f"{path}: release_disposition")
+        if disposition != release:
+            raise ValidationError(f"{path}: release disposition disagrees with release_status")
+        expected_listening = {
+            "pass": {"pass"}, "fail": {"fail"}, "partial_pass": {"not_assessed"},
+            "not_run": {"not_run", "not_assessed", "unsupported"},
+        }
+        if heard not in expected_listening[status]:
+            raise ValidationError(f"{path}: listening_result disagrees with scoped human_listening")
+        if case == "pass" and any(value != "pass" for value in mechanical.values()):
+            raise ValidationError(f"{path}: case pass requires all declared mechanical gates")
+        if release == "accepted" and (case != "pass" or heard != "pass" or identity["status"] != "recorded"):
+            raise ValidationError(f"{path}: accepted disposition requires complete results and input identity")
+        if release == "accepted" and any(
+            artifact.get("availability", {}).get("status") not in {"local", "archive"}
+            for artifact in artifacts
+        ):
+            raise ValidationError(f"{path}: accepted disposition requires available evidence")
     core_gates = {"model_load", "pcm", "natural_eos"}
     if release == "accepted" and (
         any(mechanical[key] != "pass" for key in core_gates) or status != "pass"

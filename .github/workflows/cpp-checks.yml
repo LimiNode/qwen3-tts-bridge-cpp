@@ -177,6 +177,18 @@ jobs:
             -OutputRoot $acceptance `
             -Python python
 
+      - name: Preserve portable CLI mock evidence
+        if: ${{ always() && matrix.build-examples == 'ON' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-cli-mock-${{ matrix.name }}
+          retention-days: 7
+          include-hidden-files: true
+          path: |
+            ${{ runner.temp }}/qwen-tts-cli-acceptance/cli-acceptance-summary.json
+            ${{ runner.temp }}/qwen-tts-cli-acceptance/.invoke-*
+            ${{ runner.temp }}/qwen-tts-cli-acceptance/результаты/*
+
   native-abi:
     name: Windows native qwentts ABI
     runs-on: windows-2022

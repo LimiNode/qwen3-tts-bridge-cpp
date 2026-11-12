@@ -2,6 +2,8 @@
     [string]$PackageRoot = "dist/QwenTTSBridge-release",
     [string]$OutputRoot = ".tmp/portable-user-cli-acceptance",
     [string]$Python = "python",
+    [ValidateRange(1, 600)]
+    [int]$CommandTimeoutSeconds = 120,
     [switch]$Clean
 )
 
@@ -9,6 +11,7 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $TestMarker = ".qtb-portable-cli-test-root"
+$Invocations = [Collections.Generic.List[object]]::new()
 
 function Resolve-PathFromRepo {
     param([string]$Path)
@@ -29,12 +32,29 @@ function Copy-Tree {
     }
 }
 
+function Get-Sha256Hex {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $HashAlgorithm = [Security.Cryptography.SHA256]::Create()
+    $Stream = $null
+    try {
+        $Stream = [IO.File]::OpenRead($Path)
+        return ([BitConverter]::ToString($HashAlgorithm.ComputeHash($Stream))).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        if ($Stream) { $Stream.Dispose() }
+        $HashAlgorithm.Dispose()
+    }
+}
+
 function Invoke-Cli {
     param([string[]]$Arguments, [string]$WorkingDirectory)
 
     $Previous = Get-Location
     $StdoutPath = Join-Path $ResolvedOutput (".invoke-" + [guid]::NewGuid().ToString("N") + ".stdout")
     $StderrPath = Join-Path $ResolvedOutput (".invoke-" + [guid]::NewGuid().ToString("N") + ".stderr")
+    $ExitCode = $null
+    $TimedOut = $false
     try {
         Set-Location $WorkingDirectory
         # Start the launcher and redirect both streams at the process level.
@@ -53,7 +73,18 @@ function Invoke-Cli {
             -WorkingDirectory $WorkingDirectory `
             -RedirectStandardOutput $StdoutPath `
             -RedirectStandardError $StderrPath `
-            -NoNewWindow -Wait -PassThru
+            -NoNewWindow -PassThru
+        # Windows PowerShell 5.1 must retain the native process handle before
+        # waiting; otherwise ExitCode can remain null after a fast child exits.
+        $null = $Process.Handle
+        if (-not $Process.WaitForExit($CommandTimeoutSeconds * 1000)) {
+            $TimedOut = $true
+            # Kill the launcher and its descendants, not just cmd.exe. The
+            # external watchdog must also work when a worker never exits.
+            & taskkill.exe /PID $Process.Id /T /F | Out-Null
+            throw "CLI watchdog timeout after $CommandTimeoutSeconds seconds; logs: $StdoutPath, $StderrPath"
+        }
+        $Process.WaitForExit()
         $ExitCode = $Process.ExitCode
         $Stdout = if (Test-Path -LiteralPath $StdoutPath) {
             Get-Content -Raw -Encoding UTF8 -LiteralPath $StdoutPath
@@ -64,7 +95,13 @@ function Invoke-Cli {
     }
     finally {
         Set-Location $Previous
-        Remove-Item -LiteralPath $StdoutPath, $StderrPath -Force -ErrorAction SilentlyContinue
+        $Invocations.Add([ordered]@{
+            arguments = $Arguments
+            stdout = [IO.Path]::GetFileName($StdoutPath)
+            stderr = [IO.Path]::GetFileName($StderrPath)
+            exit_code = $ExitCode
+            timed_out = $TimedOut
+        })
     }
     return [pscustomobject]@{
         exit_code = $ExitCode
@@ -77,14 +114,15 @@ function Invoke-Cli {
 function Write-TestModel {
     param(
         [string]$Path,
-        [string]$ModelType = "voice_design"
+        [string]$ModelType = "voice_design",
+        [string]$ModelSize = "1b7"
     )
 
     New-Item -ItemType Directory -Force -Path (Join-Path $Path "speech_tokenizer") | Out-Null
     $Config = [ordered]@{
         model_type = "qwen3_tts"
         tts_model_type = $ModelType
-        tts_model_size = "1b7"
+        tts_model_size = $ModelSize
     } | ConvertTo-Json
     [IO.File]::WriteAllText(
         (Join-Path $Path "config.json"),
@@ -145,6 +183,12 @@ function Write-TestReferenceWav {
 
 $ResolvedPackage = Resolve-PathFromRepo $PackageRoot
 $ResolvedOutput = Resolve-PathFromRepo $OutputRoot
+if ($ResolvedOutput.TrimEnd("\", "/") -eq $RepoRoot -or
+    $ResolvedOutput.TrimEnd("\", "/") -eq [IO.Path]::GetPathRoot($ResolvedOutput).TrimEnd("\", "/") -or
+    $ResolvedPackage.StartsWith($ResolvedOutput.TrimEnd("\", "/") + "\", [StringComparison]::OrdinalIgnoreCase) -or
+    $ResolvedPackage -eq $ResolvedOutput) {
+    throw "Unsafe or overlapping acceptance output: $ResolvedOutput"
+}
 if (-not (Test-Path -LiteralPath (Join-Path $ResolvedPackage ".qtb-portable-release-root") -PathType Leaf)) {
     throw "Portable release marker was not found: $ResolvedPackage"
 }
@@ -165,6 +209,12 @@ New-Item -ItemType Directory -Force -Path $ResolvedOutput | Out-Null
     [Text.UTF8Encoding]::new($false)
 )
 
+$AcceptancePassed = $false
+$FailureReason = "Acceptance did not reach the final checks."
+$StartedAt = [DateTime]::UtcNow.ToString("o")
+$ManifestPath = $null
+$WorkerOriginProbe = $null
+try {
 $Relocated = Join-Path $ResolvedOutput "перенесённый пакет"
 Copy-Tree -Source $ResolvedPackage -Destination $Relocated
 $RelocatedIsUnderRepo = [IO.Path]::GetFullPath($Relocated).StartsWith(
@@ -195,7 +245,7 @@ try {
     $env:PYTHONHOME = Join-Path $PortableWorkerRoot "python"
     $env:PYTHONPATH = Join-Path $PortableWorkerRoot "python/Lib/site-packages"
     $WorkerOriginJson = (& $PortableWorkerPython -B -P -s -c `
-        "import json, qwen_tts_bridge_worker, sys; print(json.dumps({'module': qwen_tts_bridge_worker.__file__, 'executable': sys.executable}, ensure_ascii=True))") -join ""
+        "import json, qwen_tts_bridge_worker, sys; print(json.dumps({'module': qwen_tts_bridge_worker.__file__, 'executable': sys.executable, 'python_version': sys.version}, ensure_ascii=True))") -join ""
     if ($LASTEXITCODE -ne 0) {
         throw "Portable worker import probe failed with exit code $LASTEXITCODE."
     }
@@ -235,7 +285,7 @@ foreach ($Entry in $Manifest.release_files) {
     if (-not (Test-Path -LiteralPath $File -PathType Leaf)) {
         throw "Release manifest file is missing: $($Entry.path)"
     }
-    $ActualHash = (Get-FileHash -LiteralPath $File -Algorithm SHA256).Hash.ToLowerInvariant()
+    $ActualHash = Get-Sha256Hex -Path $File
     if ($ActualHash -ne [string]$Entry.sha256) {
         throw "Release manifest hash mismatch: $($Entry.path)"
     }
@@ -245,6 +295,14 @@ $Model = Join-Path $Relocated "models/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
 Write-TestModel $Model
 $BaseModel = Join-Path $Relocated "models/Qwen3-TTS-12Hz-1.7B-Base"
 Write-TestModel -Path $BaseModel -ModelType "base"
+foreach ($Family in @(
+    @{ name = "0.6B-Base"; type = "base"; size = "0b6" },
+    @{ name = "0.6B-CustomVoice"; type = "custom_voice"; size = "0b6" },
+    @{ name = "1.7B-CustomVoice"; type = "custom_voice"; size = "1b7" }
+)) {
+    Write-TestModel -Path (Join-Path $Relocated ("models/Qwen3-TTS-12Hz-" + $Family.name)) `
+        -ModelType $Family.type -ModelSize $Family.size
+}
 $UnrelatedCwd = Join-Path $ResolvedOutput "unrelated cwd"
 New-Item -ItemType Directory -Force -Path $UnrelatedCwd | Out-Null
 $ResultRoot = Join-Path $ResolvedOutput "результаты"
@@ -294,6 +352,13 @@ try {
     )
     if ($VoiceAdd.exit_code -ne 0) {
         throw "Relocated voices add failed: $($VoiceAdd.output)"
+    }
+
+    $VoiceShow = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "voices", "show", "portable-test", "--json"
+    )
+    if ($VoiceShow.exit_code -ne 0 -or $VoiceShow.output -notmatch 'portable-test') {
+        throw "Relocated voices show failed: $($VoiceShow.output)"
     }
 
     $VoiceVerify = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
@@ -352,6 +417,73 @@ try {
         throw "Quiet play output was not silent: $($Play.output)"
     }
 
+    $CaptureWav = Join-Path $ResultRoot "play capture.wav"
+    $Capture = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "play", "--model-family", "custom-1.7b", "--speaker", "ryan",
+        "--text", "Portable playback capture.", "--out", $CaptureWav,
+        "--acceptance-mock-worker", "--acceptance-mock-playback"
+    )
+    if ($Capture.exit_code -ne 0) { throw "play --out failed: $($Capture.output)" }
+
+    $Created = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "voices", "create", "--id", "portable-created",
+        "--sample-text", "A managed reference for reuse.",
+        "--instruction", "A calm clear voice.", "--language", "English",
+        "--acceptance-mock-worker"
+    )
+    if ($Created.exit_code -ne 0) { throw "voices create failed: $($Created.output)" }
+    $CreatedValue = $Created.stdout | ConvertFrom-Json
+    if ($CreatedValue.status -ne "created" -or
+        $CreatedValue.voice.provenance.operation -ne "voices create" -or
+        $CreatedValue.voice.provenance.reference_text -cne "A managed reference for reuse." -or
+        $CreatedValue.voice.source_reference_audio_path) {
+        throw "voices create returned invalid managed provenance."
+    }
+    $CreatedVerify = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "voices", "verify", "portable-created", "--backend", "python"
+    )
+    if ($CreatedVerify.exit_code -ne 0 -or $CreatedVerify.stdout -notmatch '"status": "compatible"') {
+        throw "Created voice verification failed: $($CreatedVerify.output)"
+    }
+    $CreatedSynth = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
+        "synth", "--voice-id", "portable-created", "--text", "Reuse the managed voice.",
+        "--out", (Join-Path $ResultRoot "created synth.wav"),
+        "--result-json", (Join-Path $ResultRoot "created synth.json"), "--acceptance-mock-worker"
+    )
+    if ($CreatedSynth.exit_code -ne 0) { throw "Created voice synthesis failed: $($CreatedSynth.output)" }
+
+    foreach ($FamilyCase in @(
+        @{ family = "base-0.6b"; voice = @("--voice-id", "portable-test") },
+        @{ family = "custom-0.6b"; voice = @("--speaker", "ryan") },
+        @{ family = "custom-1.7b"; voice = @("--speaker", "serena") },
+        @{ family = "voice-design"; voice = @("--instruction", "A calm clear voice.") }
+    )) {
+        $FamilySynth = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments (@(
+            "synth", "--model-family", $FamilyCase.family, "--text", "Explicit family routing.",
+            "--out", (Join-Path $ResultRoot ($FamilyCase.family + ".wav")),
+            "--result-json", (Join-Path $ResultRoot ($FamilyCase.family + ".json")),
+            "--acceptance-mock-worker"
+        ) + $FamilyCase.voice)
+        if ($FamilySynth.exit_code -ne 0) {
+            throw "Family $($FamilyCase.family) failed: $($FamilySynth.output)"
+        }
+    }
+
+    foreach ($InvalidVoice in @(
+        @("--model-family", "custom-0.6b", "--voice-id", "portable-test"),
+        @("--model-family", "base-1.7b", "--speaker", "ryan"),
+        @("--model-family", "voice-design", "--speaker", "ryan")
+    )) {
+        $InvalidFamily = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments (@(
+            "synth", "--text", "Invalid voice selection.",
+            "--out", (Join-Path $ResultRoot "must-not-publish.wav"), "--acceptance-mock-worker"
+        ) + $InvalidVoice)
+        if ($InvalidFamily.exit_code -eq 0 -or
+            (Test-Path -LiteralPath (Join-Path $ResultRoot "must-not-publish.wav"))) {
+            throw "Invalid family/voice combination did not fail closed."
+        }
+    }
+
     $MissingExe = Join-Path $ResolvedOutput "missing-save-wav.exe"
     $FailClosed = Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @(
         "design",
@@ -376,6 +508,10 @@ try {
 import json
 import os
 import sys
+import time
+
+if "--hang" in sys.argv[1:]:
+    time.sleep(30)
 
 with open(os.environ["QTB_ARGUMENT_PROBE_OUTPUT"], "w", encoding="utf-8") as output:
     json.dump(sys.argv[1:], output, ensure_ascii=False)
@@ -424,6 +560,21 @@ if "--fail" in sys.argv[1:]:
         if ($ProbeFailure.exit_code -ne 19 -or $ProbeFailure.stderr -notmatch "probe diagnostic") {
             throw "Argument probe failure case did not preserve stderr/exit code: $($ProbeFailure.output)"
         }
+
+        $PreviousTimeout = $CommandTimeoutSeconds
+        try {
+            $CommandTimeoutSeconds = 1
+            $WatchdogObserved = $false
+            try {
+                Invoke-Cli -WorkingDirectory $UnrelatedCwd -Arguments @("--hang") | Out-Null
+            }
+            catch {
+                if ($_.Exception.Message -notmatch "CLI watchdog timeout") { throw }
+                $WatchdogObserved = $true
+            }
+            if (-not $WatchdogObserved) { throw "CLI watchdog did not terminate the hanging child." }
+        }
+        finally { $CommandTimeoutSeconds = $PreviousTimeout }
     }
     finally {
         $script:Launcher = $PreviousLauncher
@@ -436,26 +587,28 @@ finally {
     $env:HF_HUB_CACHE = $PreviousHfHubCache
 }
 
-& $Python (Join-Path $RepoRoot "tests/python/verify_wav.py") $Wav `
+foreach ($OutputWav in Get-ChildItem -LiteralPath $ResultRoot -Filter *.wav) {
+& $Python (Join-Path $RepoRoot "tests/python/verify_wav.py") $OutputWav.FullName `
     --sample-rate 24000 --channels 1 --bits-per-sample 16 --min-data-bytes 1
 if ($LASTEXITCODE -ne 0) {
     throw "Relocated CLI WAV verification failed."
 }
-& $Python (Join-Path $RepoRoot "tests/python/verify_wav.py") $SynthWav `
-    --sample-rate 24000 --channels 1 --bits-per-sample 16 --min-data-bytes 1
-if ($LASTEXITCODE -ne 0) {
-    throw "Relocated CLI synth WAV verification failed."
 }
-$ReceiptValue = Get-Content -Raw -Encoding UTF8 -LiteralPath $Receipt | ConvertFrom-Json
+foreach ($OutputReceipt in Get-ChildItem -LiteralPath $ResultRoot -Filter *.json) {
+$ReceiptValue = Get-Content -Raw -Encoding UTF8 -LiteralPath $OutputReceipt.FullName | ConvertFrom-Json
 if (
     $ReceiptValue.schema_version -ne 1 -or
     $ReceiptValue.terminal_state -ne "completed" -or
+    $ReceiptValue.completion_metadata_received -ne $true -or
     $ReceiptValue.generation_trace_available -ne $true -or
     $ReceiptValue.termination_reason -ne "eos" -or
     $ReceiptValue.hit_eos -ne $true -or
+    $ReceiptValue.hit_max_seq_len -ne $false -or
+    $ReceiptValue.hit_max_new_tokens -ne $false -or
     $ReceiptValue.audio_bytes -le 0
 ) {
-    throw "Relocated CLI receipt is invalid: $Receipt"
+    throw "Relocated CLI receipt is invalid: $($OutputReceipt.FullName)"
+}
 }
 
 $CombinedEvidence = @(
@@ -482,3 +635,76 @@ Write-Host "Worker origin: $WorkerModuleOrigin"
 Write-Host "Argument probe: exact UTF-8 arguments PASS; stderr/exit 19 PASS"
 Write-Host "WAV: $Wav"
 Write-Host "Receipt: $Receipt"
+$AcceptancePassed = $true
+}
+catch {
+    $FailureReason = $_.Exception.Message
+    # Write a minimal receipt before rethrowing. This keeps a machine-readable
+    # failure even if cleanup or artifact enumeration fails on Windows.
+    $FailureSummary = [ordered]@{
+        schema_version = 1
+        evidence_kind = "portable_cli_mock"
+        backend = "mock"
+        package_manifest_sha256 = if ($ManifestPath -and (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+            Get-Sha256Hex -Path $ManifestPath
+        } else { $null }
+        case_result = @{ status = "fail"; reason = $FailureReason }
+        listening_result = @{ status = "not_assessed"; reason = "Synthetic run did not complete." }
+        release_disposition = @{ status = "blocked"; reason = "Mock execution cannot qualify a real-model release." }
+    }
+    [IO.File]::WriteAllText(
+        (Join-Path $ResolvedOutput "cli-acceptance-summary.json"),
+        ($FailureSummary | ConvertTo-Json -Depth 8),
+        [Text.UTF8Encoding]::new($false)
+    )
+    throw
+}
+finally {
+    try {
+        $Artifacts = @(Get-ChildItem -LiteralPath $ResolvedOutput -File -Recurse |
+            Where-Object { $_.FullName -notlike "$Relocated\*" } |
+            ForEach-Object {
+                [ordered]@{
+                    path = $_.FullName.Substring($ResolvedOutput.Length + 1).Replace("\", "/")
+                    bytes = $_.Length
+                    sha256 = Get-Sha256Hex -Path $_.FullName
+                }
+            })
+        $Summary = [ordered]@{
+            schema_version = 1
+            evidence_kind = "portable_cli_mock"
+            backend = "mock"
+            model_revision = "synthetic fixtures; not a Qwen checkpoint"
+            package_manifest_sha256 = if ($ManifestPath -and (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+                Get-Sha256Hex -Path $ManifestPath
+            } else { $null }
+            worker_origin = $WorkerOriginProbe
+            started_at_utc = $StartedAt
+            finished_at_utc = [DateTime]::UtcNow.ToString("o")
+            powershell = [string]$PSVersionTable.PSVersion
+            os = [Environment]::OSVersion.VersionString
+            case_result = @{ status = if ($AcceptancePassed) { "pass" } else { "fail" }; reason = if ($AcceptancePassed) { "Installed mock CLI checks completed." } else { $FailureReason } }
+            listening_result = @{ status = "not_assessed"; reason = "Synthetic PCM, not human listening evidence." }
+            release_disposition = @{ status = "blocked"; reason = "Mock execution cannot qualify a real-model release." }
+            invocations = @($Invocations.ToArray())
+            artifacts = $Artifacts
+        }
+        [IO.File]::WriteAllText((Join-Path $ResolvedOutput "cli-acceptance-summary.json"),
+            ($Summary | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+    }
+    catch {
+        # A cleanup/provenance probe must never erase the failure receipt.
+        if (-not (Test-Path -LiteralPath (Join-Path $ResolvedOutput "cli-acceptance-summary.json") -PathType Leaf)) {
+            $Fallback = [ordered]@{
+                schema_version = 1
+                evidence_kind = "portable_cli_mock"
+                backend = "mock"
+                case_result = @{ status = "fail"; reason = $FailureReason }
+                listening_result = @{ status = "not_assessed"; reason = "Synthetic run did not complete." }
+                release_disposition = @{ status = "blocked"; reason = "Mock execution cannot qualify a real-model release." }
+            }
+            [IO.File]::WriteAllText((Join-Path $ResolvedOutput "cli-acceptance-summary.json"),
+                ($Fallback | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+        }
+    }
+}
