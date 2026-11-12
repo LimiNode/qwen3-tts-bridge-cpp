@@ -1360,7 +1360,8 @@ def _validate_cli_targets(
         for protected_path in protected:
             if _paths_refer_to_same_file(output, protected_path):
                 raise ValueError(
-                    f"{operation} target must not overwrite protected file: {protected_path}"
+                    f"{operation} target must not overwrite protected file: "
+                    f"{protected_path}"
                 )
 
 
