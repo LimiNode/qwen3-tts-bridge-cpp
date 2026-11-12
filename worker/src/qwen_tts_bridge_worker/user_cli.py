@@ -1392,12 +1392,6 @@ def _publish_output(temporary: Path | None, target: Path) -> None:
             _remove_owned_temporary(backup)
 
 
-def _canonical_path(path: Path) -> Path:
-    """Normalize path spelling for collision checks without weakening target guards."""
-
-    return path.expanduser().resolve(strict=False)
-
-
 def _publish_design_outputs(
     temporary_wav: Path,
     temporary_result: Path,
