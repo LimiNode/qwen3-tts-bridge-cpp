@@ -2519,6 +2519,82 @@ class UserCliTests(unittest.TestCase):
             self.assertIn("different files", stderr.getvalue())
             run.assert_not_called()
 
+    def test_synth_rejects_result_alias_before_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            output = root / "voice.wav"
+            (root / "nested").mkdir()
+            aliased_result = root / "nested" / ".." / "voice.wav"
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "design",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--text",
+                            "Test",
+                            "--instruction",
+                            "Voice",
+                            "--out",
+                            str(output),
+                            "--result-json",
+                            str(aliased_result),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("different files", stderr.getvalue())
+            run.assert_not_called()
+
+    def test_synth_rejects_registry_and_managed_reference_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config, registry = _write_voice_library(root, voice_id="voice")
+            model = _write_model(root / "model", model_type="base")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            row = json.loads(registry.read_text(encoding="utf-8"))["voices"][0]
+            managed = registry.parent / row["reference_audio_path"]
+            for target in (registry, managed, config):
+                with self.subTest(target=target):
+                    with mock.patch(
+                        "qwen_tts_bridge_worker.user_cli.subprocess.run"
+                    ) as run, redirect_stderr(io.StringIO()) as stderr:
+                        with self.assertRaises(SystemExit) as raised:
+                            user_cli.main(
+                                [
+                                    "--config",
+                                    str(config),
+                                    "synth",
+                                    "--model-family",
+                                    "base-1.7b",
+                                    "--voice-id",
+                                    "voice",
+                                    "--model",
+                                    str(model),
+                                    "--save-wav-executable",
+                                    str(save_wav),
+                                    "--worker",
+                                    str(worker),
+                                    "--text",
+                                    "Test",
+                                    "--out",
+                                    str(target),
+                                ]
+                            )
+                    self.assertEqual(2, raised.exception.code)
+                    self.assertIn("protected file", stderr.getvalue())
+                    run.assert_not_called()
+
 
     def test_play_path_collision_through_symlink_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
