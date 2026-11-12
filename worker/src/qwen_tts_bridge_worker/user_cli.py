@@ -30,6 +30,7 @@ from qwen_tts_bridge_worker.voice_library import (
     add_voice,
     default_voice_registry_path,
     list_voices,
+    load_voice_rows,
     prepare_voice,
     show_voice,
     verify_voice,
@@ -206,6 +207,36 @@ def _build_parser() -> argparse.ArgumentParser:
     add.add_argument("--text", default="")
     add.add_argument("--x-vector-only", action="store_true")
     add.add_argument("--preserve-reference-text-whitespace", action="store_true")
+    create = voice_commands.add_parser(
+        "create", help="Generate and register a managed VoiceDesign reference."
+    )
+    create.add_argument("--id", required=True, dest="voice_id")
+    create.add_argument("--instruction", required=True)
+    create.add_argument("--sample-text", required=True)
+    create.add_argument("--model", type=Path)
+    create.add_argument("--language", default="Russian")
+    create.add_argument("--device")
+    create.add_argument("--dtype")
+    create.add_argument(
+        "--runtime-backend", choices=("faster", "upstream"), default="faster"
+    )
+    create.add_argument("--save-wav-executable", type=Path)
+    create.add_argument("--worker", type=Path)
+    create.add_argument("--startup-timeout-ms", type=_parse_timeout_argument)
+    create.add_argument("--request-timeout-ms", type=_parse_timeout_argument)
+    create.add_argument("--verbose", action="store_true")
+    create.add_argument("--log-file", type=Path)
+    create.add_argument(
+        "--acceptance-mock-worker", action="store_true", help=argparse.SUPPRESS
+    )
+    eos = create.add_mutually_exclusive_group()
+    eos.add_argument(
+        "--require-natural-eos", dest="require_natural_eos", action="store_true"
+    )
+    eos.add_argument(
+        "--allow-non-natural-eos", dest="require_natural_eos", action="store_false"
+    )
+    create.set_defaults(require_natural_eos=True)
     list_command = voice_commands.add_parser("list", help="List registered voices.")
     list_command.add_argument("--json", action="store_true")
     show = voice_commands.add_parser("show", help="Show one registered voice.")
@@ -440,7 +471,9 @@ def _run_models(args: argparse.Namespace) -> int:
 
 
 def _run_voices(args: argparse.Namespace) -> int:
-    registry_path = default_voice_registry_path(args.config)
+    registry_path = default_voice_registry_path(args.config).expanduser().resolve(
+        strict=False
+    )
     if args.voices_command == "add":
         row = add_voice(
             registry_path,
@@ -454,6 +487,119 @@ def _run_voices(args: argparse.Namespace) -> int:
             json.dumps(
                 {
                     "status": "registered",
+                    "registry_path": str(registry_path),
+                    "voice": row,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.voices_command == "create":
+        voice_id = args.voice_id.strip()
+        if not voice_id:
+            raise VoiceLibraryError("voice_id must be a non-empty string")
+        if args.log_file is not None and _canonical_path(
+            _output_path(args.log_file)
+        ) == _canonical_path(registry_path):
+            raise VoiceLibraryError(
+                "--log-file must be different from the voice registry"
+            )
+        rows = load_voice_rows(registry_path)
+        if any(row.get("voice_id") == voice_id for row in rows):
+            raise VoiceLibraryError(f"voice_id already exists: {voice_id}")
+        root = _portable_root(args.portable_root)
+        model = resolve_model(
+            "voice-design",
+            explicit_path=args.model,
+            config_path=args.config,
+            portable_root=root,
+        )
+        runtime_config = _runtime_config(args.config)
+        with tempfile.TemporaryDirectory(prefix="qwen-tts-voice-create-") as temporary:
+            generated = Path(temporary) / "reference.wav"
+            result_json = Path(temporary) / "reference.json"
+            synthesis_args = argparse.Namespace(
+                config=args.config,
+                portable_root=args.portable_root,
+                model=model.path,
+                text=args.sample_text,
+                instruction=args.instruction,
+                out=generated,
+                result_json=result_json,
+                language=args.language,
+                device=args.device,
+                dtype=args.dtype,
+                runtime_backend=args.runtime_backend,
+                save_wav_executable=args.save_wav_executable,
+                worker=args.worker,
+                startup_timeout_ms=args.startup_timeout_ms,
+                request_timeout_ms=args.request_timeout_ms,
+                play=False,
+                verbose=args.verbose,
+                log_file=args.log_file,
+                require_natural_eos=args.require_natural_eos,
+                acceptance_mock_worker=args.acceptance_mock_worker,
+                emit_success=False,
+            )
+            if not args.require_natural_eos:
+                raise VoiceLibraryError(
+                    "voices create requires strict natural-EOS validation"
+                )
+            result = _run_design(synthesis_args)
+            if result != 0:
+                return result
+            try:
+                receipt = json.loads(result_json.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise VoiceLibraryError(
+                    "voices create could not read validated generation receipt"
+                ) from exc
+            row = add_voice(
+                registry_path,
+                voice_id=voice_id,
+                wav_path=generated,
+                reference_text=args.sample_text,
+                x_vector_only=False,
+                preserve_reference_text_whitespace=True,
+                include_source_reference_path=False,
+                provenance={
+                    "operation": "voices create",
+                    "model_family": "voice-design",
+                    "model_repository": model.spec.repository,
+                    "model_path": str(model.path),
+                    "model_source": model.source,
+                    "model_revision": model.revision,
+                    "model_integrity_verified": model.integrity_verified,
+                    "instruction": args.instruction,
+                    "reference_text": args.sample_text,
+                    "language": args.language,
+                    "generation": {
+                        "audio_chunks": receipt.get("audio_chunks"),
+                        "audio_bytes": receipt.get("audio_bytes"),
+                        "terminal_state": receipt.get("terminal_state"),
+                        "termination_reason": receipt.get("termination_reason"),
+                        "hit_eos": receipt.get("hit_eos"),
+                        "completion_metadata_received": receipt.get(
+                            "completion_metadata_received"
+                        ),
+                        "generation_trace_available": receipt.get(
+                            "generation_trace_available"
+                        ),
+                    },
+                    "runtime_backend": args.runtime_backend,
+                    "device": _resolve_device(
+                        args.device, runtime_config.get("device")
+                    ),
+                    "dtype": _resolve_dtype(
+                        args.dtype, runtime_config.get("dtype")
+                    ),
+                },
+            )
+        print(
+            json.dumps(
+                {
+                    "status": "created",
                     "registry_path": str(registry_path),
                     "voice": row,
                 },
@@ -903,7 +1049,8 @@ def _run_synthesis(
         diagnostics.close()
         for temporary_path in temporary_outputs:
             _remove_owned_temporary(temporary_path)
-    print(f"Wrote {output_description}: {output_path}")
+    if getattr(args, "emit_success", True):
+        print(f"Wrote {output_description}: {output_path}")
     if args.play:
         if os.name != "nt":
             raise ValueError("--play currently requires Windows")
@@ -1127,6 +1274,12 @@ def _output_path(path: Path) -> Path:
     return Path(path.expanduser()).absolute()
 
 
+def _canonical_path(path: Path) -> Path:
+    """Normalize path spelling for collision checks without weakening target guards."""
+
+    return path.expanduser().resolve(strict=False)
+
+
 def _reject_output_target(path: Path) -> None:
     if path.is_symlink():
         raise ValueError(f"refusing to overwrite symlink output: {path}")
@@ -1237,12 +1390,6 @@ def _publish_output(temporary: Path | None, target: Path) -> None:
     else:
         if backup is not None:
             _remove_owned_temporary(backup)
-
-
-def _canonical_path(path: Path) -> Path:
-    """Normalize path spelling for collision checks without weakening target guards."""
-
-    return path.expanduser().resolve(strict=False)
 
 
 def _publish_design_outputs(
