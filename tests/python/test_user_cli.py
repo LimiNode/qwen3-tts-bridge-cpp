@@ -403,6 +403,323 @@ class UserCliTests(unittest.TestCase):
                 worker_args[worker_args.index("--voice-registry-path") + 1],
             )
 
+    def test_play_out_captures_and_publishes_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "nested" / "speech.wav"
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                side_effect=_successful_play,
+            ) as run:
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "play",
+                        "--voice-id",
+                        "voice",
+                        "--text",
+                        "Test playback",
+                        "--model",
+                        str(model),
+                        "--play-executable",
+                        str(player),
+                        "--worker",
+                        str(worker),
+                        "--out",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(0, result)
+            command = run.call_args.args[0]
+            capture = Path(command[command.index("--wav-capture-file") + 1])
+            self.assertFalse(capture.exists())
+            with wave.open(str(output), "rb") as wav:
+                self.assertEqual(1, wav.getnchannels())
+                self.assertEqual(16, wav.getnframes())
+
+    def test_play_routes_families_with_and_without_wav_capture(self) -> None:
+        # Command forwarding only; actual speakers/styles require model acceptance.
+        families = (
+            ("base-0.6b", "base", "0b6", ["--voice-id", "voice"]),
+            ("base-1.7b", "base", "1b7", ["--voice-id", "voice"]),
+            ("custom-0.6b", "custom_voice", "0b6", ["--speaker", "Ryan"]),
+            (
+                "custom-1.7b", "custom_voice", "1b7",
+                ["--speaker", "Ryan", "--instruction", "Speak warmly."],
+            ),
+            ("voice-design", "voice_design", "1b7", ["--instruction", "Calm voice."]),
+        )
+        for family, model_type, size, voice_arguments in families:
+            for backend, capture in (
+                ("faster", False), ("faster", True),
+                ("upstream", False), ("upstream", True),
+            ):
+                with self.subTest(family=family, backend=backend, capture=capture):
+                    with tempfile.TemporaryDirectory() as temporary:
+                        root = Path(temporary)
+                        model = _write_model(
+                            root / "model", model_type=model_type, model_size=size
+                        )
+                        player = _write_executable(root / "player.exe")
+                        worker = _write_executable(root / "worker.exe")
+                        config, registry = _write_voice_library(root, voice_id="voice")
+                        output = root / "speech.wav"
+                        invocation = [
+                            "--config", str(config), "play", "--model-family", family,
+                            "--runtime-backend", backend, "--text", "Test playback",
+                            "--model", str(model), "--play-executable", str(player),
+                            "--worker", str(worker), *voice_arguments,
+                        ]
+                        if capture:
+                            invocation += ["--out", str(output)]
+                        with mock.patch(
+                            "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                            side_effect=_successful_play if capture else None,
+                            return_value=mock.Mock(returncode=0),
+                        ) as run:
+                            self.assertEqual(0, user_cli.main(invocation))
+                        command = run.call_args.args[0]
+                        worker_arguments = _worker_argument_values(command)
+                        model_path = Path(
+                            worker_arguments[worker_arguments.index("--model-path") + 1]
+                        )
+                        self.assertEqual(
+                            user_cli._canonical_path(model),
+                            user_cli._canonical_path(model_path),
+                        )
+                        self.assertEqual(
+                            backend,
+                            worker_arguments[
+                                worker_arguments.index("--runtime-backend") + 1
+                            ],
+                        )
+                        self.assertEqual(
+                            backend == "faster",
+                            "--collect-generation-trace" in worker_arguments,
+                        )
+                        for flag, value in zip(
+                            voice_arguments[::2], voice_arguments[1::2], strict=True
+                        ):
+                            self.assertEqual(value, command[command.index(flag) + 1])
+                        if family.startswith("base-"):
+                            self.assertIn(str(registry.resolve()), worker_arguments)
+                        else:
+                            self.assertNotIn("--voice-id", command)
+                            self.assertNotIn("--voice-registry-path", worker_arguments)
+                        self.assertEqual(capture, "--wav-capture-file" in command)
+                        self.assertEqual(capture, output.exists())
+                        if capture:
+                            user_cli._validate_wav_output(output)
+
+
+    def test_play_out_failure_preserves_previous_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "speech.wav"
+            output.write_bytes(b"previous wav")
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                return_value=mock.Mock(returncode=19),
+            ):
+                result = user_cli.main(
+                    [
+                        "--config",
+                        str(config),
+                        "play",
+                        "--voice-id",
+                        "voice",
+                        "--text",
+                        "Test playback",
+                        "--model",
+                        str(model),
+                        "--play-executable",
+                        str(player),
+                        "--worker",
+                        str(worker),
+                        "--out",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(19, result)
+            self.assertEqual(b"previous wav", output.read_bytes())
+
+    def test_play_rejects_output_and_log_file_collision_before_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model = _write_model(root / "model", model_type="base")
+            player = _write_executable(root / "player.exe")
+            worker = _write_executable(root / "worker.exe")
+            config, _ = _write_voice_library(root, voice_id="voice")
+            output = root / "speech.wav"
+            (root / "temp").mkdir()
+            aliased_output = root / "temp" / ".." / "speech.wav"
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "play",
+                            "--voice-id",
+                            "voice",
+                            "--text",
+                            "Test playback",
+                            "--model",
+                            str(model),
+                            "--play-executable",
+                            str(player),
+                            "--worker",
+                            str(worker),
+                            "--out",
+                            str(output),
+                            "--log-file",
+                            str(aliased_output),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("different files", stderr.getvalue())
+            run.assert_not_called()
+
+    def test_play_path_collision_through_symlink_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target_dir = root / "audio"
+            target_dir.mkdir()
+            alias_dir = root / "alias"
+            try:
+                alias_dir.symlink_to(target_dir, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"directory symlinks unavailable: {exc}")
+            self.assertEqual(
+                user_cli._canonical_path(target_dir / "speech.wav"),
+                user_cli._canonical_path(alias_dir / "speech.wav"),
+            )
+            output_link = root / "output.wav"
+            output_link.symlink_to(target_dir / "speech.wav")
+            with self.assertRaisesRegex(ValueError, "symlink output"):
+                user_cli._reject_output_target(output_link)
+
+    def test_wav_validation_reads_bounded_chunks_and_rejects_truncated_pcm(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "capture.wav"
+            frames = 2 * user_cli._WAV_VALIDATION_CHUNK_FRAMES + 17
+            with wave.open(str(path), "wb") as writer:
+                writer.setnchannels(1)
+                writer.setsampwidth(2)
+                writer.setframerate(24000)
+                writer.writeframes(b"\x00\x10" * frames)
+            real_readframes = wave.Wave_read.readframes
+
+            def bounded_readframes(reader: wave.Wave_read, count: int) -> bytes:
+                self.assertLessEqual(count, user_cli._WAV_VALIDATION_CHUNK_FRAMES)
+                return real_readframes(reader, count)
+
+            with mock.patch.object(
+                wave.Wave_read, "readframes", autospec=True,
+                side_effect=bounded_readframes,
+            ) as readframes:
+                user_cli._validate_wav_output(path)
+                self.assertEqual(3, readframes.call_count)
+                path.write_bytes(path.read_bytes()[:-2])
+                with self.assertRaisesRegex(ValueError, "audio frames"):
+                    user_cli._validate_wav_output(path)
+
+    def test_publish_output_backup_failure_preserves_existing_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "speech.wav"
+            temporary_output = root / ".speech.wav.qtb-tmp"
+            target.write_bytes(b"previous wav")
+            temporary_output.write_bytes(b"new wav")
+            real_replace = user_cli.os.replace
+
+            def fail_backup(
+                source: str | os.PathLike[str], destination: str | os.PathLike[str]
+            ) -> None:
+                if Path(source) == target:
+                    raise OSError("backup failure")
+                real_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace", side_effect=fail_backup
+            ):
+                with self.assertRaises(ValueError):
+                    user_cli._publish_output(temporary_output, target)
+            self.assertEqual(b"previous wav", target.read_bytes())
+            self.assertEqual(b"new wav", temporary_output.read_bytes())
+
+    def test_publish_output_publish_failure_restores_existing_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "speech.wav"
+            temporary_output = root / ".speech.wav.qtb-tmp"
+            target.write_bytes(b"previous wav")
+            temporary_output.write_bytes(b"new wav")
+            real_replace = user_cli.os.replace
+
+            def fail_publish(
+                source: str | os.PathLike[str], destination: str | os.PathLike[str]
+            ) -> None:
+                if Path(source) == temporary_output:
+                    raise OSError("publish failure")
+                real_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace", side_effect=fail_publish
+            ):
+                with self.assertRaises(ValueError):
+                    user_cli._publish_output(temporary_output, target)
+            self.assertEqual(b"previous wav", target.read_bytes())
+            self.assertEqual(b"new wav", temporary_output.read_bytes())
+
+    def test_publish_output_rollback_failure_retains_backup(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "speech.wav"
+            temporary_output = root / ".speech.wav.qtb-tmp"
+            target.write_bytes(b"previous wav")
+            temporary_output.write_bytes(b"new wav")
+            real_replace = user_cli.os.replace
+            calls = 0
+
+            def fail_rollback(
+                source: str | os.PathLike[str], destination: str | os.PathLike[str]
+            ) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("publish failure")
+                if calls == 3:
+                    raise OSError("rollback failure")
+                real_replace(source, destination)
+
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.os.replace", side_effect=fail_rollback
+            ):
+                with self.assertRaisesRegex(ValueError, "backup retained"):
+                    user_cli._publish_output(temporary_output, target)
+            self.assertFalse(target.exists())
+            backups = list(root.glob(".speech.wav.*.qtb-backup"))
+            self.assertEqual(1, len(backups))
+            self.assertEqual(b"previous wav", backups[0].read_bytes())
+
     def test_play_failure_preserves_bounded_diagnostics_and_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1963,6 +2280,17 @@ def _successful_synthesis(command: list[str], **_kwargs: object) -> mock.Mock:
         ),
         encoding="utf-8",
     )
+    return mock.Mock(returncode=0)
+
+
+def _successful_play(command: list[str], **_kwargs: object) -> mock.Mock:
+    output = Path(command[command.index("--wav-capture-file") + 1])
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(output), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b"\x00\x00" * 16)
     return mock.Mock(returncode=0)
 
 

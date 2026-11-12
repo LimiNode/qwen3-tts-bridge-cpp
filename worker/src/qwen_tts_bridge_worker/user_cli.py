@@ -37,6 +37,7 @@ from qwen_tts_bridge_worker.voice_library import (
 
 _DEFAULT_STARTUP_TIMEOUT_MS = 120_000
 _DEFAULT_REQUEST_TIMEOUT_MS = 300_000
+_WAV_VALIDATION_CHUNK_FRAMES = 4096
 _DEFAULT_DEVICE = "cuda"
 _DEFAULT_DTYPE = "float16"
 _SUPPORTED_USER_DTYPES = {
@@ -170,6 +171,11 @@ def _build_parser() -> argparse.ArgumentParser:
     play.add_argument("--speaker")
     play.add_argument("--instruction")
     play.add_argument("--text", required=True)
+    play.add_argument(
+        "--out",
+        type=Path,
+        help="Optionally capture the post-processed playback stream as a WAV.",
+    )
     play.add_argument("--model", type=Path)
     play.add_argument("--language", default="Russian")
     play.add_argument(
@@ -640,6 +646,24 @@ def _run_play(args: argparse.Namespace) -> int:
         "runtime.request_timeout_ms",
         _DEFAULT_REQUEST_TIMEOUT_MS,
     )
+    output_path = _output_path(args.out) if args.out is not None else None
+    log_file = _output_path(args.log_file) if args.log_file else None
+    if (
+        log_file is not None
+        and output_path is not None
+        and _canonical_path(log_file) == _canonical_path(output_path)
+    ):
+        raise ValueError("--out and --log-file must refer to different files")
+    temporary_output: Path | None = None
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        _reject_output_target(output_path)
+        try:
+            temporary_output = _temporary_output_path(output_path)
+        except OSError as exc:
+            raise ValueError(
+                f"could not create temporary playback output: {exc}"
+            ) from exc
     command = [
         str(player),
         "--worker",
@@ -653,6 +677,8 @@ def _run_play(args: argparse.Namespace) -> int:
         "--request-timeout-ms",
         str(request_timeout_ms),
     ]
+    if temporary_output is not None:
+        command.extend(("--wav-capture-file", str(temporary_output)))
     for value in worker.prefix_arguments:
         command.extend(("--worker-arg", value))
     worker_arguments = (
@@ -713,7 +739,6 @@ def _run_play(args: argparse.Namespace) -> int:
     environment = os.environ.copy()
     if root is not None and worker.executable == Path(sys.executable).resolve():
         environment["PYTHONNOUSERSITE"] = "1"
-    log_file = _output_path(args.log_file) if args.log_file else None
     diagnostics = cast(BinaryIO, tempfile.TemporaryFile(mode="w+b"))
     try:
         try:
@@ -742,8 +767,13 @@ def _run_play(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
             return completed.returncode
+        if output_path is not None:
+            _validate_wav_output(temporary_output)
+            _publish_output(temporary_output, output_path)
     finally:
         diagnostics.close()
+        if temporary_output is not None:
+            _remove_owned_temporary(temporary_output)
     return 0
 
 
@@ -776,7 +806,10 @@ def _run_synthesis(
     )
     if output_path == result_json:
         raise ValueError("--out and --result-json must refer to different files")
-    if log_file is not None and log_file in (output_path, result_json):
+    if log_file is not None and _canonical_path(log_file) in {
+        _canonical_path(output_path),
+        _canonical_path(result_json),
+    }:
         raise ValueError("--log-file must be different from synthesis outputs")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_json.parent.mkdir(parents=True, exist_ok=True)
@@ -1122,11 +1155,94 @@ def _temporary_output_paths(output_path: Path, result_json: Path) -> tuple[Path,
         raise
 
 
+def _temporary_output_path(output_path: Path) -> Path:
+    descriptor, name = tempfile.mkstemp(
+        prefix=f".{output_path.name}.", suffix=".qtb-tmp", dir=output_path.parent
+    )
+    os.close(descriptor)
+    temporary = Path(name)
+    temporary.unlink()
+    return temporary
+
+
 def _remove_owned_temporary(path: Path) -> None:
     try:
         path.unlink(missing_ok=True)
     except OSError:
         pass
+
+
+def _validate_wav_output(path: Path | None) -> None:
+    if path is None or not path.is_file():
+        raise ValueError("playback completed but WAV capture was not created")
+    try:
+        with wave.open(str(path), "rb") as wav:
+            channels = wav.getnchannels()
+            sample_width = wav.getsampwidth()
+            sample_rate = wav.getframerate()
+            frame_count = wav.getnframes()
+            if (
+                channels != 1
+                or sample_width != 2
+                or sample_rate != 24000
+                or frame_count <= 0
+                or wav.getcomptype() != "NONE"
+            ):
+                raise ValueError("WAV capture has invalid audio format")
+            frame_size = channels * sample_width
+            remaining_frames = frame_count
+            audio_bytes = 0
+            while remaining_frames:
+                chunk = wav.readframes(
+                    min(remaining_frames, _WAV_VALIDATION_CHUNK_FRAMES)
+                )
+                if not chunk or len(chunk) % frame_size:
+                    break
+                frames_read = len(chunk) // frame_size
+                audio_bytes += len(chunk)
+                remaining_frames -= frames_read
+            if remaining_frames or audio_bytes != frame_count * frame_size:
+                raise ValueError("WAV capture contains no audio frames")
+    except (OSError, wave.Error) as exc:
+        raise ValueError(f"WAV capture is invalid: {path}") from exc
+
+
+def _publish_output(temporary: Path | None, target: Path) -> None:
+    if temporary is None:
+        raise ValueError("missing temporary playback output")
+    _reject_output_target(target)
+    backup: Path | None = None
+    backup_created = False
+    published = False
+    try:
+        if target.exists():
+            backup = _temporary_backup_path(target)
+            os.replace(target, backup)
+            backup_created = True
+        os.replace(temporary, target)
+        published = True
+    except OSError as exc:
+        if published:
+            _remove_owned_temporary(target)
+        rollback_error: OSError | None = None
+        if backup_created and backup is not None and backup.exists():
+            try:
+                os.replace(backup, target)
+            except OSError as restore_exc:
+                rollback_error = restore_exc
+        detail = f"could not publish playback WAV: {exc}"
+        if rollback_error is not None and backup is not None:
+            detail += f"; backup retained at {backup}: {rollback_error}"
+        raise ValueError(detail) from exc
+    else:
+        if backup is not None:
+            _remove_owned_temporary(backup)
+
+
+def _canonical_path(path: Path) -> Path:
+    """Normalize path spelling for collision checks without weakening target guards."""
+
+    return path.expanduser().resolve(strict=False)
 
 
 def _publish_design_outputs(
