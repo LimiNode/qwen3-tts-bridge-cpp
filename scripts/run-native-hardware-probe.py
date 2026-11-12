@@ -12,10 +12,12 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import platform
 import queue
 import struct
 import subprocess
+import tempfile
 import threading
 import time
 import wave
@@ -106,6 +108,24 @@ def write_pcm_wav(path: Path, pcm_s16le: bytes) -> None:
         stream.setsampwidth(2)
         stream.setframerate(24000)
         stream.writeframes(pcm_s16le)
+
+
+def write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    """Publish one JSON receipt without exposing a partially written target."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.tmp-", dir=path.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+            json.dump(payload, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def extract_ar_trace(stderr_lines: list[str]) -> list[str]:
@@ -483,10 +503,7 @@ def main() -> int:
     if args.output_wav and captured_pcm:
         write_pcm_wav(args.output_wav, bytes(captured_pcm))
         evidence["output_wav_sha256"] = sha256_file(args.output_wav)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    write_json_atomic(args.output, evidence)
     return 1 if failure is not None or process.returncode != 0 else 0
 
 
