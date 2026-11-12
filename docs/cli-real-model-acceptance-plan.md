@@ -19,6 +19,21 @@ matrix. The runner uses the checkout worker sources through `PYTHONPATH`, so
 its results are not portable-package acceptance unless a separately assembled
 package is explicitly tested.
 
+The existing `scripts/test-portable-user-cli.ps1` provides installed,
+relocated **mock-only** coverage for all explicit family routes, `play --out`,
+legacy `design`, and `voices create` → `verify` → Base synthesis. It also
+checks WAV/completion receipts, fail-closed voice selection and a hanging-child
+watchdog. Its `cli-acceptance-summary.json` retains command logs, artifact
+hashes, timestamps and independent result layers. This is a run summary, not
+a canonical model receipt. Its release disposition is always `blocked`, even
+when mechanical checks pass. It never performs model acceptance or listening.
+
+Real installed-command automation remains a separate prerequisite: the
+checkout auxiliary runner does not cover it, and the mock package runner must
+not be pointed at real models in an attempt to promote its verdict. The
+remaining hardware matrix below must run the sealed installed CLI without
+mock switches and retain exact model/runtime/corpus manifests.
+
 ## Scope and evidence storage
 
 Run the matrix on a clean Windows machine with an idle GPU, a sealed worker

@@ -22,7 +22,7 @@
     "release_status"
   ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"type": "integer", "enum": [1, 2]},
     "acceptance_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"},
     "recorded_at": {"type": "string", "format": "date"},
     "model_family": {"type": "string", "enum": ["Base", "VoiceDesign", "RU-stress", "CustomVoice", "other"]},
@@ -65,7 +65,8 @@
           "path": {"type": "string", "pattern": "^\\.tmp/base-acceptance/[^\\\\]+$"},
           "kind": {"type": "string", "enum": ["wav", "json", "log", "manifest", "other"]},
           "bytes": {"type": "integer", "minimum": 0},
-          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "availability": {"$ref": "#/$defs/availability"}
         }
       }
     },
@@ -106,6 +107,9 @@
       }
     },
     "release_status": {"type": "string", "enum": ["accepted", "conditional", "blocked"]},
+    "case_result": {"$ref": "#/$defs/result"},
+    "listening_result": {"$ref": "#/$defs/result"},
+    "release_disposition": {"$ref": "#/$defs/disposition"},
     "supersedes": {
       "type": ["null", "array"],
       "items": {"type": "string", "minLength": 1}
@@ -116,7 +120,48 @@
     },
     "notes": {"type": "string"}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"const": 2}}},
+      "then": {
+        "required": ["case_result", "listening_result", "release_disposition"],
+        "properties": {"artifacts": {"items": {"required": ["availability"]}}}
+      }
+    }
+  ],
+  "dependentRequired": {
+    "case_result": ["listening_result", "release_disposition"],
+    "listening_result": ["case_result", "release_disposition"],
+    "release_disposition": ["case_result", "listening_result"]
+  },
   "$defs": {
+    "availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"enum": ["local", "archive", "unavailable", "not_checked"]},
+        "reason": {"type": "string", "pattern": "\\S"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "not_run", "unsupported", "not_assessed"]},
+        "reason": {"type": "string", "pattern": "\\S"}
+      }
+    },
+    "disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"enum": ["accepted", "conditional", "blocked"]},
+        "reason": {"type": "string", "pattern": "\\S"}
+      }
+    },
     "mechanical_status": {"type": "string", "enum": ["pass", "fail", "not_run"]},
     "listening_status": {"type": "string", "enum": ["pass", "partial", "not_assessed", "fail"]}
   }

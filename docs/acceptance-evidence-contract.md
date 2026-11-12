@@ -73,6 +73,29 @@ hardware portability. Leave unassessed criteria as `not_assessed`.
 
 ## Required handoff
 
+New R1 canonical receipts use `schema_version: 2`. Version 1 remains readable;
+do not rewrite historical receipts or listening verdicts to migrate them.
+Version 2 adds three independent `{ "status": "...", "reason": "..." }`
+objects: `case_result`, `listening_result`, and `release_disposition`.
+Case/listening values are `pass`, `fail`, `not_run`, `unsupported`, or
+`not_assessed`; disposition values are `accepted`, `conditional`, or `blocked`.
+Every result requires a nonblank reason. The legacy `release_status` remains
+for index compatibility and must agree with `release_disposition.status`.
+Each version-2 artifact also has `availability: {status, reason}` with status
+`local`, `archive`, `unavailable`, or `not_checked`. Name the restoration source
+in the reason for an archived artifact (machine-local locations stay in local
+data); never infer deletion from an absent worktree copy. Accepted receipts
+require available evidence, not an assumed or unchecked location.
+
+An aggregate case pass requires all declared mechanical checks, including
+persistent repeat and restart, to pass. A legacy scoped `partial_pass`
+listening observation maps to aggregate `not_assessed`, not `pass`; its
+positive criteria and observer statement remain in `human_listening`.
+An accepted version-2 receipt also requires recorded input hashes. Schema
+validation checks structure; the Python validator additionally rejects
+contradictory result layers. Neither validation substitutes for testing the
+declared release matrix or listening to the exact artifacts.
+
 Before handing work to a reviewer, an agent checks:
 
 - the canonical receipt is tracked and included in the diff;

@@ -540,6 +540,7 @@ def _run_voices(args: argparse.Namespace) -> int:
                 log_file=args.log_file,
                 require_natural_eos=args.require_natural_eos,
                 acceptance_mock_worker=args.acceptance_mock_worker,
+                acceptance_mock_reference=True,
                 emit_success=False,
             )
             if not args.require_natural_eos:
@@ -1002,7 +1003,11 @@ def _run_synthesis(
     for value in worker.prefix_arguments:
         command.extend(("--worker-arg", value))
     if args.acceptance_mock_worker:
-        worker_arguments = ("mock", "--chunks", "2", "--chunk-ms", "40")
+        # Managed references require at least two seconds of audible PCM.
+        # Keep ordinary synthetic smoke requests short, but exercise reference
+        # validation unchanged in the installed voices-create acceptance case.
+        chunks = "75" if getattr(args, "acceptance_mock_reference", False) else "2"
+        worker_arguments = ("mock", "--chunks", chunks, "--chunk-ms", "40")
     for value in worker_arguments:
         command.extend(("--worker-arg", value))
     if args.require_natural_eos:

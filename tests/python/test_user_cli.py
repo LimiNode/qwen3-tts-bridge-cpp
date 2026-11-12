@@ -181,6 +181,7 @@ class UserCliTests(unittest.TestCase):
                         "A calm warm voice.",
                         "--sample-text",
                         "This is the reference.",
+                        "--acceptance-mock-worker",
                         "--model",
                         str(model),
                         "--save-wav-executable",
@@ -192,6 +193,10 @@ class UserCliTests(unittest.TestCase):
 
             self.assertEqual(0, result)
             self.assertEqual(1, run.call_count)
+            worker_arguments = _worker_argument_values(run.call_args.args[0])
+            self.assertEqual(
+                "75", worker_arguments[worker_arguments.index("--chunks") + 1]
+            )
             registry = root / "voices" / "registry.json"
             rows = json.loads(registry.read_text(encoding="utf-8"))["voices"]
             self.assertEqual("calm", rows[0]["voice_id"])

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
 import os
@@ -38,6 +39,75 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
         VALIDATOR.validate_receipt(
             ROOT / "docs/reports/voice-design-frozen-cmp50hx-20261028.json", ROOT, False
         )
+
+    def version_two_receipt(self) -> dict:
+        receipt = copy.deepcopy(self.receipt)
+        for artifact in receipt["artifacts"]:
+            artifact["availability"] = {"status": "not_checked", "reason": "Test fixture only; payload not inspected."}
+        receipt.update(
+            schema_version=2,
+            case_result={"status": "not_assessed", "reason": "Repeat and restart not run."},
+            listening_result={"status": "not_assessed", "reason": "Scoped partial listening only."},
+            release_disposition={"status": "conditional", "reason": "Open release gates."},
+        )
+        return receipt
+
+    def test_version_two_positive_and_complete_acceptance(self) -> None:
+        receipt = self.version_two_receipt()
+        temporary_root = ROOT / ".tmp/acceptance-validator-tests"
+        temporary_root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=temporary_root) as directory:
+            path = Path(directory) / "receipt.json"
+            path.write_text(json.dumps(receipt), encoding="utf-8")
+            VALIDATOR.validate_receipt(path, ROOT, False)
+            receipt["mechanical"] = {key: "pass" for key in receipt["mechanical"]}
+            receipt["human_listening"].update(
+                status="pass", criteria={key: "pass" for key in receipt["human_listening"]["criteria"]}
+            )
+            receipt["input_identity"].update(status="recorded", corpus_sha256="a" * 64)
+            receipt["case_result"]["status"] = "pass"
+            receipt["listening_result"]["status"] = "pass"
+            receipt["release_disposition"]["status"] = "accepted"
+            receipt["release_status"] = "accepted"
+            for artifact in receipt["artifacts"]:
+                artifact["availability"] = {"status": "local", "reason": "Synthetic positive fixture."}
+            path.write_text(json.dumps(receipt), encoding="utf-8")
+            VALIDATOR.validate_receipt(path, ROOT, False)
+
+    def test_version_two_requires_separate_nonblank_result_layers(self) -> None:
+        for field in VALIDATOR.RESULT_FIELDS:
+            for malformed in (None, "pass", {}, {"status": [], "reason": "Invalid"},
+                              {"status": "conditional", "reason": " "}):
+                with self.subTest(field=field, malformed=malformed):
+                    receipt = self.version_two_receipt()
+                    receipt[field] = malformed
+                    self.assert_invalid(receipt)
+            receipt = self.version_two_receipt()
+            del receipt[field]
+            self.assert_invalid(receipt)
+
+    def test_result_layers_reject_incomplete_or_contradictory_pass(self) -> None:
+        for field, status in (("case_result", "pass"), ("listening_result", "pass"),
+                              ("release_disposition", "accepted")):
+            with self.subTest(field=field):
+                receipt = self.version_two_receipt()
+                receipt[field]["status"] = status
+                self.assert_invalid(receipt)
+
+    def test_schema_version_rejects_boolean_and_unknown(self) -> None:
+        for version in (True, 1.0, 3, "2"):
+            receipt = self.receipt.copy()
+            receipt["schema_version"] = version
+            self.assert_invalid(receipt)
+
+    def test_version_two_requires_honest_artifact_availability(self) -> None:
+        for value in (None, {"status": "archive", "reason": " "}, {"status": "assumed", "reason": "Unknown"}):
+            receipt = self.version_two_receipt()
+            receipt["artifacts"][0]["availability"] = value
+            self.assert_invalid(receipt)
+        receipt = self.version_two_receipt()
+        del receipt["artifacts"][0]["availability"]
+        self.assert_invalid(receipt)
 
     def test_invalid_model_family(self) -> None:
         receipt = self.receipt.copy()
