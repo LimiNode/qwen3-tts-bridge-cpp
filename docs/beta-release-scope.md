@@ -5,10 +5,15 @@ documentation-only. It does not announce a release, select a tag, change the
 runtime, or replace the acceptance reports in `docs/`.
 
 The scope is based on `main` at
-`6cf272fce7358479393f0bdd7d9bb3186cd1f1fb` and the Phase B1 inventory in
+`d0e1a629199647e908a4d945a1ce9743a68a5715` and the Phase B1 inventory in
 [`beta-capability-matrix.md`](beta-capability-matrix.md). “Verified” below
 means that implementation and evidence exist; “supported” is the narrower
 product promise for the first beta.
+
+The repository version is `0.2.0` in CMake and the Python package metadata.
+This document does not create a tag or publish a release. The candidate is
+still blocked on real clean-package acceptance and the required listening and
+hardware gates described below.
 
 ## Recommended first-beta contract
 
@@ -64,19 +69,22 @@ scope can be widened later without changing the core protocol.
 
 ## Release-facing CLI contract
 
-The required user-facing commands are intentionally small:
+The required user-facing commands are intentionally small and refer to the
+installed Python CLI, not the older example executable names:
 
 | Command | Required first-beta use | Minimum contract |
 |---|---|---|
-| `qwen_tts_save_wav` | scriptable WAV generation and automation | worker/runtime selection, model path, text, language, registered `voice_id` (or selected speaker where the accepted model requires it), output path, bounded startup/request timeout, and natural EOS required by the release-facing CLI by default |
-| `qwen_tts_play` | interactive playback and cancellation | worker/runtime selection, model/profile selection, text, language, cancellation, tail enabled by default with `--no-tail` opt-out, and playback diagnostics |
+| `qwen-tts synth` | scriptable WAV generation and automation | explicit model/profile selection, text, language, registered `voice_id` (or selected speaker where the accepted model requires it), output path, bounded startup/request timeout, and natural EOS by default |
+| `qwen-tts play` | interactive playback and optional capture | model/profile selection, text, language, cancellation, optional `--out`, and playback diagnostics |
+| `qwen-tts design` | legacy VoiceDesign WAV route | natural-language instruction, output path, bounded request timeout, and natural EOS by default |
+| `qwen-tts voices create/list/show/verify` | managed voice lifecycle where the selected profile is advertised | durable registry, provenance, SHA-256 verification, and no success claim before registration completes |
 
-`qwen_tts_latency_benchmark` and the speech-animation probe remain diagnostic
-tools, not release UX requirements. The first beta does not require unifying
-all example option parsers. Direct reference-audio, seed and sampling options
-in `qwen_tts_save_wav` are an explicit follow-up decision; registered Base
-profiles are the supported clone interface for this scope. A successful
-`qwen-tts design` requires natural EOS by default and accepts
+The C++ example executables and `qwen_tts_latency_benchmark` remain diagnostic
+or SDK-consumer tools, not replacements for the installed CLI contract. The
+first beta does not require unifying every example option parser. Direct
+reference-audio, seed and sampling options are an explicit follow-up decision;
+registered Base profiles are the supported clone interface for this scope. A
+successful `qwen-tts design` requires natural EOS by default and accepts
 `--allow-non-natural-eos` only for an explicit diagnostic opt-out. Natural EOS
 remains mandatory in the release acceptance receipt for every supported model
 run. Bit-identical audio
@@ -90,9 +98,10 @@ Required:
 * WAV writing;
 * optional physical playback as a separate sink;
 * terminal fade and completion/cancellation padding through the existing
-  postprocessor chain. `qwen_tts_play` enables the tail by default and accepts
-  `--no-tail`; `qwen_tts_save_wav` leaves it disabled by default and accepts
-  `--tail` to enable it;
+  postprocessor chain. The installed `qwen-tts play` route owns playback
+  capture policy; any tail or post-processing option exposed by a selected
+  build must be recorded in the acceptance receipt rather than inferred from
+  the diagnostic C++ examples;
 * playback receipts and diagnostics that do not rewrite synthesis lifecycle.
 
 Not required for the first beta:
@@ -169,15 +178,17 @@ included in a release claim.
 
 ## Compatibility and non-goals
 
-The beta promises Windows x64, UTF-8 request text, the versioned QTB protocol,
-async request IDs, streaming PCM, cancellation, WAV output and the selected
-Python Base 1.7B profile. It does not promise:
+The beta candidate promises Windows x64, UTF-8 request text, the versioned QTB
+protocol, async request IDs, streaming PCM, cancellation, WAV output and the
+selected Python/Faster Base 1.7B profile only after the clean-package and
+listening gates pass. It does not promise:
 
 * every Qwen model family or size;
 * native backend parity by default;
 * automatic model download or bundled model weights;
 * a complete audio-effects suite;
-* cross-platform support beyond the documented Windows target;
+* cross-platform support beyond the documented Windows x64 target;
+* RTX 4090 support before an independent candidate run is recorded;
 * predictive phoneme/viseme alignment, Unity/Godot/VRM presentation, or
   display-latency guarantees;
 * numerical or latency equivalence between CMP 50HX and RTX 4090 when engine,

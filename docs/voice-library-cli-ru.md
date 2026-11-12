@@ -27,6 +27,22 @@ qwen-tts voices verify kraftwerk-ru --backend native `
   --native-profile q8-base-17b
 ```
 
+Создание управляемого reference через VoiceDesign:
+
+```powershell
+qwen-tts voices create --id designed-voice `
+  --sample-text "Тестовая фраза для голоса." `
+  --instruction "Спокойный, ясный голос." --language Russian
+qwen-tts voices verify designed-voice --backend python
+```
+
+Команда возвращает структурированный JSON и публикует запись только после
+успешной генерации, строгой проверки natural EOS и атомарной регистрации.
+Временный WAV не сохраняется как внешний источник: authoritative reference —
+управляемая копия и её SHA-256, а генеративное происхождение хранится отдельно.
+Диагностический `--allow-non-natural-eos` не должен создавать долговременный
+профиль.
+
 Синтез через поддерживаемый persistent Python-маршрут Base 1.7B:
 
 ```powershell

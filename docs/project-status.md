@@ -17,6 +17,27 @@ PCM, and supports request IDs, cancellation, terminal lifecycle events, and
 portable/Nuitka packaging with models stored outside Git. This is the route to
 use when a product needs the currently supported bridge behavior.
 
+## R1 release state
+
+The current candidate is `d0e1a629199647e908a4d945a1ce9743a68a5715` and the
+repository version is `0.2.0`. No GitHub Release or release tag has been
+published. The candidate is suitable for release preparation, not yet a public
+support claim: clean portable-package acceptance, independent hardware
+evidence, and the declared human-listening scope remain gates.
+
+Keep these evidence layers separate:
+
+1. implementation and automated CI verification;
+2. real-model hardware receipts for an exact machine/runtime/model;
+3. human-listening observations for the named artifacts;
+4. the narrower public release scope recorded in
+   [`beta-release-scope.md`](beta-release-scope.md).
+
+An implemented route or a mock/CI pass does not promote a model family,
+backend, GPU, or package to supported status. CMP 50HX receipts remain scoped
+historical/current evidence for their exact candidates; RTX 4090 remains
+unassessed until an independent run is recorded.
+
 ### Current model acceptance records
 
 The tracked [acceptance index](reports/acceptance-index.json) is the source of
