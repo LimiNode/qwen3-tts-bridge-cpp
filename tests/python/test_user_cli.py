@@ -444,6 +444,75 @@ class UserCliTests(unittest.TestCase):
                 self.assertEqual(1, wav.getnchannels())
                 self.assertEqual(16, wav.getnframes())
 
+    def test_play_routes_families_with_and_without_wav_capture(self) -> None:
+        # Command forwarding only; actual speakers/styles require model acceptance.
+        families = (
+            ("base-0.6b", "base", "0b6", ["--voice-id", "voice"]),
+            ("base-1.7b", "base", "1b7", ["--voice-id", "voice"]),
+            ("custom-0.6b", "custom_voice", "0b6", ["--speaker", "Ryan"]),
+            (
+                "custom-1.7b", "custom_voice", "1b7",
+                ["--speaker", "Ryan", "--instruction", "Speak warmly."],
+            ),
+            ("voice-design", "voice_design", "1b7", ["--instruction", "Calm voice."]),
+        )
+        for family, model_type, size, voice_arguments in families:
+            for backend, capture in (
+                ("faster", False), ("faster", True),
+                ("upstream", False), ("upstream", True),
+            ):
+                with self.subTest(family=family, backend=backend, capture=capture):
+                    with tempfile.TemporaryDirectory() as temporary:
+                        root = Path(temporary)
+                        model = _write_model(
+                            root / "model", model_type=model_type, model_size=size
+                        )
+                        player = _write_executable(root / "player.exe")
+                        worker = _write_executable(root / "worker.exe")
+                        config, registry = _write_voice_library(root, voice_id="voice")
+                        output = root / "speech.wav"
+                        invocation = [
+                            "--config", str(config), "play", "--model-family", family,
+                            "--runtime-backend", backend, "--text", "Test playback",
+                            "--model", str(model), "--play-executable", str(player),
+                            "--worker", str(worker), *voice_arguments,
+                        ]
+                        if capture:
+                            invocation += ["--out", str(output)]
+                        with mock.patch(
+                            "qwen_tts_bridge_worker.user_cli.subprocess.run",
+                            side_effect=_successful_play if capture else None,
+                            return_value=mock.Mock(returncode=0),
+                        ) as run:
+                            self.assertEqual(0, user_cli.main(invocation))
+                        command = run.call_args.args[0]
+                        worker_arguments = _worker_argument_values(command)
+                        self.assertIn(str(model), worker_arguments)
+                        self.assertEqual(
+                            backend,
+                            worker_arguments[
+                                worker_arguments.index("--runtime-backend") + 1
+                            ],
+                        )
+                        self.assertEqual(
+                            backend == "faster",
+                            "--collect-generation-trace" in worker_arguments,
+                        )
+                        for flag, value in zip(
+                            voice_arguments[::2], voice_arguments[1::2], strict=True
+                        ):
+                            self.assertEqual(value, command[command.index(flag) + 1])
+                        if family.startswith("base-"):
+                            self.assertIn(str(registry.resolve()), worker_arguments)
+                        else:
+                            self.assertNotIn("--voice-id", command)
+                            self.assertNotIn("--voice-registry-path", worker_arguments)
+                        self.assertEqual(capture, "--wav-capture-file" in command)
+                        self.assertEqual(capture, output.exists())
+                        if capture:
+                            user_cli._validate_wav_output(output)
+
+
     def test_play_out_failure_preserves_previous_wav(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
