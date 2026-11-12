@@ -452,7 +452,9 @@ def _run_models(args: argparse.Namespace) -> int:
 
 
 def _run_voices(args: argparse.Namespace) -> int:
-    registry_path = default_voice_registry_path(args.config)
+    registry_path = default_voice_registry_path(args.config).expanduser().resolve(
+        strict=False
+    )
     if args.voices_command == "add":
         row = add_voice(
             registry_path,
@@ -478,6 +480,12 @@ def _run_voices(args: argparse.Namespace) -> int:
         voice_id = args.voice_id.strip()
         if not voice_id:
             raise VoiceLibraryError("voice_id must be a non-empty string")
+        if args.log_file is not None and _canonical_path(
+            _output_path(args.log_file)
+        ) == _canonical_path(registry_path):
+            raise VoiceLibraryError(
+                "--log-file must be different from the voice registry"
+            )
         rows = load_voice_rows(registry_path)
         if any(row.get("voice_id") == voice_id for row in rows):
             raise VoiceLibraryError(f"voice_id already exists: {voice_id}")
@@ -1175,6 +1183,12 @@ def _resolve_dtype(explicit: str | None, configured: object) -> str:
 
 def _output_path(path: Path) -> Path:
     return Path(path.expanduser()).absolute()
+
+
+def _canonical_path(path: Path) -> Path:
+    """Normalize path spelling for collision checks without weakening target guards."""
+
+    return path.expanduser().resolve(strict=False)
 
 
 def _reject_output_target(path: Path) -> None:

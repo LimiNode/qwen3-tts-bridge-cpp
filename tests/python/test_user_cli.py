@@ -281,6 +281,47 @@ class UserCliTests(unittest.TestCase):
             self.assertIn("voice_id already exists", stderr.getvalue())
             run.assert_not_called()
 
+    def test_voices_create_rejects_log_file_registry_collision(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config, registry = _write_voice_library(root, voice_id="existing")
+            model = _write_model(root / "model", model_type="voice_design")
+            save_wav = _write_executable(root / "save-wav.exe")
+            worker = _write_executable(root / "worker.exe")
+            (root / "logs").mkdir()
+            aliased_registry = root / "logs" / ".." / "voices" / "registry.json"
+            original_registry = registry.read_bytes()
+            with mock.patch(
+                "qwen_tts_bridge_worker.user_cli.subprocess.run"
+            ) as run, redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as raised:
+                    user_cli.main(
+                        [
+                            "--config",
+                            str(config),
+                            "voices",
+                            "create",
+                            "--id",
+                            "new-voice",
+                            "--instruction",
+                            "A new voice.",
+                            "--sample-text",
+                            "Reference",
+                            "--model",
+                            str(model),
+                            "--save-wav-executable",
+                            str(save_wav),
+                            "--worker",
+                            str(worker),
+                            "--log-file",
+                            str(aliased_registry),
+                        ]
+                    )
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("voice registry", stderr.getvalue())
+            self.assertEqual(original_registry, registry.read_bytes())
+            run.assert_not_called()
+
     def test_voices_create_generation_failure_does_not_publish_registry(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
