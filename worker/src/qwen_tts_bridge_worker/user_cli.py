@@ -37,6 +37,7 @@ from qwen_tts_bridge_worker.voice_library import (
 
 _DEFAULT_STARTUP_TIMEOUT_MS = 120_000
 _DEFAULT_REQUEST_TIMEOUT_MS = 300_000
+_WAV_VALIDATION_CHUNK_FRAMES = 4096
 _DEFAULT_DEVICE = "cuda"
 _DEFAULT_DTYPE = "float16"
 _SUPPORTED_USER_DTYPES = {
@@ -621,7 +622,11 @@ def _run_play(args: argparse.Namespace) -> int:
     )
     output_path = _output_path(args.out) if args.out is not None else None
     log_file = _output_path(args.log_file) if args.log_file else None
-    if log_file is not None and output_path is not None and log_file == output_path:
+    if (
+        log_file is not None
+        and output_path is not None
+        and _canonical_path(log_file) == _canonical_path(output_path)
+    ):
         raise ValueError("--out and --log-file must refer to different files")
     temporary_output: Path | None = None
     if output_path is not None:
@@ -745,7 +750,10 @@ def _run_synthesis(
     )
     if output_path == result_json:
         raise ValueError("--out and --result-json must refer to different files")
-    if log_file is not None and log_file in (output_path, result_json):
+    if log_file is not None and _canonical_path(log_file) in {
+        _canonical_path(output_path),
+        _canonical_path(result_json),
+    }:
         raise ValueError("--log-file must be different from synthesis outputs")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_json.parent.mkdir(parents=True, exist_ok=True)
@@ -1125,8 +1133,19 @@ def _validate_wav_output(path: Path | None) -> None:
                 or wav.getcomptype() != "NONE"
             ):
                 raise ValueError("WAV capture has invalid audio format")
-            audio = wav.readframes(frame_count)
-            if len(audio) != frame_count * channels * sample_width:
+            frame_size = channels * sample_width
+            remaining_frames = frame_count
+            audio_bytes = 0
+            while remaining_frames:
+                chunk = wav.readframes(
+                    min(remaining_frames, _WAV_VALIDATION_CHUNK_FRAMES)
+                )
+                if not chunk or len(chunk) % frame_size:
+                    break
+                frames_read = len(chunk) // frame_size
+                audio_bytes += len(chunk)
+                remaining_frames -= frames_read
+            if remaining_frames or audio_bytes != frame_count * frame_size:
                 raise ValueError("WAV capture contains no audio frames")
     except (OSError, wave.Error) as exc:
         raise ValueError(f"WAV capture is invalid: {path}") from exc
@@ -1162,6 +1181,12 @@ def _publish_output(temporary: Path | None, target: Path) -> None:
     else:
         if backup is not None:
             _remove_owned_temporary(backup)
+
+
+def _canonical_path(path: Path) -> Path:
+    """Normalize path spelling for collision checks without weakening target guards."""
+
+    return path.expanduser().resolve(strict=False)
 
 
 def _publish_design_outputs(
