@@ -27,8 +27,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$PSNativeCommandUseErrorActionPreference = $false
 $repoRoot = Split-Path -Parent $PSScriptRoot
+$script:CurrentStage = 'initialization'
+$script:CurrentCommand = @()
+$script:CurrentExitCode = $null
+$script:Invocations = New-Object 'System.Collections.Generic.List[object]'
 
 function Resolve-ExistingPath([string]$Path, [string]$Description) {
     $candidate = if ([IO.Path]::IsPathRooted($Path)) { $Path } else { Join-Path $repoRoot $Path }
@@ -52,7 +55,101 @@ function Write-JsonAtomic([string]$Path, [object]$Value) {
     finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force } }
 }
 
+function Set-RunStage([string]$Stage, [string[]]$Command = @()) {
+    $script:CurrentStage = $Stage
+    $script:CurrentCommand = @($Command)
+    $script:CurrentExitCode = $null
+}
+
+function Get-Sha256Hex([string]$Path) {
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = $null
+    try {
+        $stream = [IO.File]::OpenRead($Path)
+        return ([BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        if ($null -ne $stream) { $stream.Dispose() }
+        $algorithm.Dispose()
+    }
+}
+
+function Get-RunArtifacts {
+    $summaryPath = Join-Path $runDirectory 'summary.json'
+    return @(
+        Get-ChildItem -LiteralPath $runDirectory -File -Recurse |
+            Where-Object { -not $_.FullName.Equals($summaryPath, [StringComparison]::OrdinalIgnoreCase) } |
+            ForEach-Object {
+                [ordered]@{
+                    path = $_.FullName.Substring($runDirectory.Length + 1).Replace('\', '/')
+                    bytes = $_.Length
+                    sha256 = Get-Sha256Hex $_.FullName
+                }
+            }
+    )
+}
+
+function Write-RunSummary(
+    [string]$CaseStatus,
+    [string]$CaseReason,
+    [string]$ReleaseStatus,
+    [string]$ReleaseReason,
+    [switch]$IncludeFailure
+) {
+    $summary = [ordered]@{
+        schema_version = 2
+        generated_at_utc = [DateTime]::UtcNow.ToString('o')
+        scope = 'installed_real_model_cli_acceptance'
+        cli_path = $cli
+        config_path = $config
+        model_path = $model
+        model_family = $ModelFamily
+        runtime_backend = $RuntimeBackend
+        device = $Device
+        dtype = $Dtype
+        provenance = [ordered]@{
+            cli_path = $cli
+            python_verifier = $python
+            model_path = $model
+            config_path = $config
+            runtime_backend = $RuntimeBackend
+            device = $Device
+            dtype = $Dtype
+        }
+        verification_harness = [ordered]@{
+            wav_verifier_path = Join-Path $repoRoot 'tests/python/verify_wav.py'
+            wav_verifier_source = 'repository_checkout'
+            installed_cli_pythonpath_removed = $true
+            clean_package_independence = 'not_proven'
+        }
+        voice_verification = $voiceVerification
+        synth = $synth
+        play = $play
+        case_result = [ordered]@{ status = $CaseStatus; reason = $CaseReason }
+        listening_result = [ordered]@{
+            status = 'not_assessed'
+            reason = 'Human listening must be recorded separately for these WAV artifacts.'
+        }
+        release_disposition = [ordered]@{ status = $ReleaseStatus; reason = $ReleaseReason }
+        release_status = $ReleaseStatus
+        invocations = @($script:Invocations.ToArray())
+        artifacts = Get-RunArtifacts
+    }
+    if ($IncludeFailure) {
+        $summary.failure = [ordered]@{
+            stage = $script:CurrentStage
+            exit_code = $script:CurrentExitCode
+            reason = $CaseReason
+            command = @($script:CurrentCommand)
+        }
+    }
+    $summaryPath = Join-Path $runDirectory 'summary.json'
+    Write-JsonAtomic $summaryPath $summary
+    return $summaryPath
+}
+
 function Invoke-InstalledCli([string[]]$Arguments, [string]$Label, [string]$LogPath) {
+    Set-RunStage $Label $Arguments
     $previous = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
@@ -62,6 +159,13 @@ function Invoke-InstalledCli([string[]]$Arguments, [string]$Label, [string]$LogP
     finally { $ErrorActionPreference = $previous }
     $text = $raw -join [Environment]::NewLine
     Set-Content -LiteralPath $LogPath -Value $text -Encoding UTF8
+    $script:CurrentExitCode = $exitCode
+    $script:Invocations.Add([ordered]@{
+        label = $Label
+        arguments = @($Arguments)
+        exit_code = $exitCode
+        log = $LogPath
+    })
     if ($exitCode -ne 0) { throw "$Label failed with exit code $exitCode. See $LogPath`n$text" }
     return [ordered]@{ label = $Label; exit_code = $exitCode; log = $LogPath; output = $text }
 }
@@ -103,41 +207,50 @@ try {
     $synthPath = Join-Path $runDirectory 'synth.wav'
     $synthLog = Join-Path $runDirectory 'synth.log'
     $synth = Invoke-InstalledCli ($prefix + @('synth') + $base + @('--out', $synthPath)) 'qwen-tts synth' $synthLog
+    Set-RunStage 'validate synth WAV publication' @($synthPath)
     if (-not (Test-Path -LiteralPath $synthPath) -or (Get-Item -LiteralPath $synthPath).Length -le 44) {
         throw 'qwen-tts synth exited successfully but did not publish a non-empty WAV.'
     }
-    $verifyOutput = @(& $python (Join-Path $repoRoot 'tests/python/verify_wav.py') $synthPath --sample-rate 24000 --channels 1 --bits-per-sample 16 --min-data-bytes 1 2>&1)
-    if ($LASTEXITCODE -ne 0) { throw "synth WAV verification failed: $($verifyOutput -join [Environment]::NewLine)" }
+    $verifyScript = Join-Path $repoRoot 'tests/python/verify_wav.py'
+    $verifyLog = Join-Path $runDirectory 'synth-verify.log'
+    Set-RunStage 'verify synth WAV with checkout harness' @($python, $verifyScript, $synthPath)
+    $verifyOutput = @(& $python $verifyScript $synthPath --sample-rate 24000 --channels 1 --bits-per-sample 16 --min-data-bytes 1 2>&1)
+    $verifyExitCode = $LASTEXITCODE
+    $script:CurrentExitCode = $verifyExitCode
+    Set-Content -LiteralPath $verifyLog -Value ($verifyOutput -join [Environment]::NewLine) -Encoding UTF8
+    if ($verifyExitCode -ne 0) { throw "synth WAV verification failed: $($verifyOutput -join [Environment]::NewLine)" }
 
     $play = $null
     if (-not $SkipPlay) {
         $playPath = Join-Path $runDirectory 'play.wav'
         $playLog = Join-Path $runDirectory 'play.log'
         $play = Invoke-InstalledCli ($prefix + @('play') + $base + @('--out', $playPath)) 'qwen-tts play --out' $playLog
+        Set-RunStage 'validate play WAV publication' @($playPath)
         if (-not (Test-Path -LiteralPath $playPath) -or (Get-Item -LiteralPath $playPath).Length -le 44) {
             throw 'qwen-tts play exited successfully but did not publish a non-empty WAV.'
         }
-        $verifyPlayback = @(& $python (Join-Path $repoRoot 'tests/python/verify_wav.py') $playPath --sample-rate 24000 --channels 1 --bits-per-sample 16 --min-data-bytes 1 2>&1)
-        if ($LASTEXITCODE -ne 0) { throw "play WAV verification failed: $($verifyPlayback -join [Environment]::NewLine)" }
+        $verifyPlaybackLog = Join-Path $runDirectory 'play-verify.log'
+        Set-RunStage 'verify play WAV with checkout harness' @($python, $verifyScript, $playPath)
+        $verifyPlayback = @(& $python $verifyScript $playPath --sample-rate 24000 --channels 1 --bits-per-sample 16 --min-data-bytes 1 2>&1)
+        $verifyPlaybackExitCode = $LASTEXITCODE
+        $script:CurrentExitCode = $verifyPlaybackExitCode
+        Set-Content -LiteralPath $verifyPlaybackLog -Value ($verifyPlayback -join [Environment]::NewLine) -Encoding UTF8
+        if ($verifyPlaybackExitCode -ne 0) { throw "play WAV verification failed: $($verifyPlayback -join [Environment]::NewLine)" }
     }
 
-    $summary = [ordered]@{
-        schema_version = 1
-        generated_at_utc = [DateTime]::UtcNow.ToString('o')
-        scope = 'installed_real_model_cli_acceptance'
-        cli_path = $cli
-        config_path = $config
-        model_path = $model
-        model_family = $ModelFamily
-        runtime_backend = $RuntimeBackend
-        voice_verification = $voiceVerification
-        synth = $synth
-        play = $play
-        listening = [ordered]@{ status = 'not_assessed'; reason = 'Human listening must be recorded separately for these WAV artifacts.' }
-        release_disposition = 'conditional'
+    $summaryPath = Write-RunSummary 'pass' 'Installed CLI commands completed and generated WAVs passed the checkout verifier.' 'conditional' 'Human listening, clean relocation and the remaining release gates are assessed separately.'
+    Write-Output "summary_json=$summaryPath"
+}
+catch {
+    $failureReason = $_.Exception.Message
+    try {
+        $summaryPath = Write-RunSummary 'fail' $failureReason 'blocked' 'The installed CLI acceptance command failed; the retained receipt is not a release acceptance.' -IncludeFailure
+        Write-Output "summary_json=$summaryPath"
     }
-    Write-JsonAtomic (Join-Path $runDirectory 'summary.json') $summary
-    Write-Output "summary_json=$(Join-Path $runDirectory 'summary.json')"
+    catch {
+        Write-Warning "Failed to write structured acceptance receipt: $($_.Exception.Message)"
+    }
+    throw
 }
 finally {
     if ($null -eq $previousPythonPath) { Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue } else { $env:PYTHONPATH = $previousPythonPath }

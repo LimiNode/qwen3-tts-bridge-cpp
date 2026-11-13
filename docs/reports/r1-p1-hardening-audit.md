@@ -1,9 +1,19 @@
 # R1 P1 release-hardening audit
 
-Status: audit completed against `main` `8b19399cb84eb81556f84f2542bfae337c41b46f`
-on 2026-11-13. PRs #316, #318 and #319 are merged and their post-merge CI is
-green. This is still a planning and evidence document; it does not freeze an
-R1 candidate or promote either backend.
+Status: pre-freeze audit completed against `main`
+`8b19399cb84eb81556f84f2542bfae337c41b46f` on 2026-11-13. PRs #316, #318
+and #319 are merged and their post-merge CI is green. This document completes
+the pre-freeze checks; it does not itself freeze an R1 candidate or promote
+either backend.
+
+The R1 sequence is intentionally ordered as:
+
+`Pre-freeze checks -> Freeze RC -> hardware/package/listening acceptance -> Release`
+
+Hardware and release-package acceptance must run against the newly frozen
+candidate. They are not prerequisites for deciding which exact candidate to
+freeze, and they must not be silently attached to an earlier preparation
+baseline.
 
 | Area | Existing implementation and coverage | Finding | Smallest corrective change | R1 impact |
 | --- | --- | --- | --- | --- |
@@ -18,9 +28,12 @@ R1 candidate or promote either backend.
 The P1 list is intentionally narrow. PR #316 contains the native input-bound
 and dynamic-cache corrections; #318 covers non-finite PCM; #319 covers atomic
 probe receipts. All three are merged with successful post-merge CI. Streaming
-SHA-256 is not a reason to rewrite working runtime code. R1 remains **not
-frozen** until the independent CMP/RTX/package/listening gates and the
-installed real-model CLI prerequisite are complete.
+SHA-256 is not a reason to rewrite working runtime code. The audit is a
+pre-freeze gate: after the corrective candidate passes exact-head checks, the
+resulting full revision and manifests are frozen, and only then do the
+independent CMP/RTX/package/listening gates run. R1 is currently **not
+frozen**; the installed real-model CLI prerequisite and those post-freeze
+acceptance gates remain open.
 
 R1 now evaluates native qwentts.cpp/GGUF and Python/Faster as equally rigorous
 backend tracks, with native Base as the priority candidate for local inference.

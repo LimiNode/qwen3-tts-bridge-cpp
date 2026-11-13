@@ -19,9 +19,15 @@ matrix. For the installed real-model prerequisite, use
 `scripts/run-installed-real-model-cli-acceptance.ps1`. That runner invokes the
 installed `qwen-tts` command for real `synth` and `play --out` requests with
 `PYTHONPATH` removed, verifies the resulting PCM16/mono/24 kHz WAVs, and keeps
-logs and a conditional summary under the run directory. It does not infer human
-listening or release support. The checkout runner may still be used for
-telemetry, but its results are not portable-package acceptance.
+logs and a structured summary under the run directory. A failed command writes
+the same machine-readable receipt with `case_result.status: fail`, failure
+stage, exit code, reason, provenance, and hashes of all retained artifacts;
+failure is never silently converted to `not_run` or a successful
+`conditional` release disposition. The WAV verifier is an external
+checkout-based test harness, so this runner does not by itself prove that a
+relocated package is independent of the source checkout. Clean relocation is a
+separate mandatory gate. The checkout runner may still be used for telemetry,
+but its results are not portable-package acceptance.
 
 The existing `scripts/test-portable-user-cli.ps1` provides installed,
 relocated **mock-only** coverage for all explicit family routes, `play --out`,
