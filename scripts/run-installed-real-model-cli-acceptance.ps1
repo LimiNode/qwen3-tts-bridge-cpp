@@ -75,18 +75,26 @@ function Get-Sha256Hex([string]$Path) {
 }
 
 function Get-RunArtifacts {
-    $summaryPath = Join-Path $runDirectory 'summary.json'
-    return @(
-        Get-ChildItem -LiteralPath $runDirectory -File -Recurse |
-            Where-Object { -not $_.FullName.Equals($summaryPath, [StringComparison]::OrdinalIgnoreCase) } |
-            ForEach-Object {
-                [ordered]@{
-                    path = $_.FullName.Substring($runDirectory.Length + 1).Replace('\', '/')
-                    bytes = $_.Length
-                    sha256 = Get-Sha256Hex $_.FullName
+    $previousLocation = Get-Location
+    try {
+        Set-Location -LiteralPath $runDirectory
+        return @(
+            Get-ChildItem -LiteralPath . -File -Recurse |
+                ForEach-Object {
+                    $relative = [string](Resolve-Path -LiteralPath $_.FullName -Relative)
+                    if ($relative.StartsWith('.\', [StringComparison]::Ordinal)) {
+                        $relative = $relative.Substring(2)
+                    }
+                    if ($relative -ieq 'summary.json') { return }
+                    [ordered]@{
+                        path = $relative.Replace('\', '/')
+                        bytes = $_.Length
+                        sha256 = Get-Sha256Hex $_.FullName
+                    }
                 }
-            }
-    )
+        )
+    }
+    finally { Set-Location $previousLocation }
 }
 
 function Write-RunSummary(
