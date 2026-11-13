@@ -897,6 +897,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
         target_compile_definitions(native_engine_callback_test
             PRIVATE
+                NOMINMAX
                 QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
         add_dependencies(native_engine_callback_test qwen_tts_fake_qwen)
