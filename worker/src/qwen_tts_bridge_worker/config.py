@@ -559,6 +559,7 @@ class WorkerConfig:
 
     worker_version: str = "0.2.0"
     output_queue_size: int = 128
+    output_queue_bytes: int = 16 * 1024 * 1024
     max_admitted_requests: int = 16
     engine_startup_mode: Literal["main", "engine_warmup", "engine_load_warmup"] = "main"
     engine: EngineConfig = field(default_factory=MockEngineConfig)
@@ -571,6 +572,8 @@ class WorkerConfig:
             raise ValueError("worker_version must not be empty")
         if self.output_queue_size <= 0:
             raise ValueError("output_queue_size must be greater than zero")
+        if self.output_queue_bytes <= 0:
+            raise ValueError("output_queue_bytes must be greater than zero")
         if self.max_admitted_requests < 1 or self.max_admitted_requests > 65536:
             raise ValueError("max_admitted_requests must be in [1, 65536]")
         if self.engine_startup_mode not in {

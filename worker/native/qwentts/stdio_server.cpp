@@ -84,19 +84,27 @@ public:
     }
 
     bool send(std::vector<std::byte> frame) {
+        const auto frame_size = frame.size();
+        if (frame_size > max_bytes_) {
+            return false;
+        }
         std::unique_lock<std::mutex> lock(mutex_);
-        not_full_.wait(lock, [this]() {
-            return queue_.size() < max_frames_ || stopping_ || failed_;
+        not_full_.wait(lock, [this, frame_size]() {
+            return (
+                       queue_.size() < max_frames_
+                       && queued_bytes_ + in_flight_bytes_ + frame_size <= max_bytes_)
+                || stopping_ || failed_;
         });
         if (stopping_ || failed_) {
             return false;
         }
+        queued_bytes_ += frame_size;
         queue_.push_back(std::move(frame));
         not_empty_.notify_one();
         return true;
     }
 
-    void stop_when_drained() {
+    bool stop_when_drained(std::chrono::milliseconds timeout) {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             stopping_ = true;
@@ -104,8 +112,26 @@ public:
         not_empty_.notify_all();
         not_full_.notify_all();
         if (thread_.joinable()) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            const bool finished = finished_
+                || finished_condition_.wait_for(lock, timeout, [this]() {
+                    return finished_;
+                });
+            if (!finished) {
+                // A condition variable cannot interrupt a synchronous
+                // WriteFile.  Ask Windows to cancel that specific I/O before
+                // the caller applies its forced process-teardown policy.
+                CancelSynchronousIo(reinterpret_cast<HANDLE>(thread_.native_handle()));
+                if (!finished_condition_.wait_for(lock, std::chrono::seconds(1), [this]() {
+                        return finished_;
+                    })) {
+                    return false;
+                }
+            }
+            lock.unlock();
             thread_.join();
         }
+        return true;
     }
 
     bool failed() const {
@@ -115,6 +141,10 @@ public:
 
 private:
     void run() {
+        const auto mark_finished_locked = [this]() {
+            finished_ = true;
+            finished_condition_.notify_all();
+        };
         const HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
         for (;;) {
             std::vector<std::byte> frame;
@@ -122,10 +152,13 @@ private:
                 std::unique_lock<std::mutex> lock(mutex_);
                 not_empty_.wait(lock, [this]() { return !queue_.empty() || stopping_; });
                 if (queue_.empty() && stopping_) {
+                    mark_finished_locked();
                     return;
                 }
                 frame = std::move(queue_.front());
                 queue_.pop_front();
+                queued_bytes_ -= frame.size();
+                in_flight_bytes_ += frame.size();
                 not_full_.notify_one();
             }
 
@@ -139,20 +172,34 @@ private:
                 failed_ = true;
                 stopping_ = true;
                 queue_.clear();
+                queued_bytes_ = 0;
+                in_flight_bytes_ = 0;
                 not_full_.notify_all();
+                mark_finished_locked();
                 return;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                in_flight_bytes_ -= frame.size();
+                not_full_.notify_all();
             }
         }
     }
 
     static constexpr std::size_t max_frames_ = 128;
+    static constexpr std::size_t max_bytes_ = 16u * 1024u * 1024u;
     mutable std::mutex mutex_;
     std::condition_variable not_empty_;
     std::condition_variable not_full_;
+    std::condition_variable finished_condition_;
     std::deque<std::vector<std::byte>> queue_;
+    std::size_t queued_bytes_ = 0;
+    std::size_t in_flight_bytes_ = 0;
     std::thread thread_;
     bool stopping_ = false;
     bool failed_ = false;
+    bool finished_ = false;
 };
 
 StdioServer::StdioServer(NativeEngine& engine, std::size_t max_admitted_requests)
@@ -170,7 +217,7 @@ StdioServer::~StdioServer() {
         engine_thread_.join();
     }
     if (writer_) {
-        writer_->stop_when_drained();
+        writer_->stop_when_drained(std::chrono::milliseconds::max());
     }
 }
 
@@ -184,7 +231,12 @@ int StdioServer::run() {
     if (engine_thread_.joinable()) {
         engine_thread_.join();
     }
-    writer_->stop_when_drained();
+    if (!writer_->stop_when_drained(std::chrono::seconds(5))) {
+        std::cerr << "[native-worker:error] stdout writer did not stop after "
+                     "cancelling blocked output\n" << std::flush;
+        TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
+        return 1;
+    }
     return fatal_error_ || writer_->failed() ? 1 : 0;
 }
 

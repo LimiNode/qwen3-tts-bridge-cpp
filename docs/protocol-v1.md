@@ -647,8 +647,21 @@ All outgoing worker frames must pass through one bounded serialized output queue
 and must be written by one writer thread or task. Enqueue order defines the
 observable order on stdout.
 
+Implementations must bound both the number of queued frames and the total bytes
+held by queued plus currently written frames. A frame larger than the byte
+budget is rejected as a local resource failure; it must not be split or
+silently dropped. The default workers use a 16 MiB byte budget in addition to
+the frame-count limit.
+
 When the output queue is full, producers must block or await capacity. Audio
 frames must not be silently dropped.
+
+Graceful shutdown stops accepting new frames and drains the serialized writer.
+If the operating-system stdout write itself is blocked, a condition-variable
+notification cannot interrupt it. Standalone workers therefore use a bounded
+drain deadline and forced process teardown as the final fallback; embedded
+callers retain ownership of their streams and must make a blocked stream
+available before waiting for complete drain.
 
 The client may also use bounded incoming event queues. If client-side queues
 overflow, the client should treat it as a local resource error, close the

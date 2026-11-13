@@ -45,6 +45,7 @@ def build_worker_config(args: argparse.Namespace) -> WorkerConfig:
     return WorkerConfig(
         worker_version=_selected_worker_version(args),
         output_queue_size=_selected_output_queue_size(args),
+        output_queue_bytes=_selected_output_queue_bytes(args),
         max_admitted_requests=_selected_max_admitted_requests(args),
         engine_startup_mode=_selected_engine_startup_mode(args, engine),
         engine=engine,
@@ -279,6 +280,12 @@ def _add_root_server_options(parser: argparse.ArgumentParser) -> None:
         type=int,
     )
     server_group.add_argument(
+        "--output-queue-bytes",
+        dest="root_output_queue_bytes",
+        type=int,
+        help="Maximum queued stdout frame bytes (default: 16777216).",
+    )
+    server_group.add_argument(
         "--max-admitted-requests",
         dest="root_max_admitted_requests",
         type=int,
@@ -303,6 +310,12 @@ def _server_options_parent_parser() -> argparse.ArgumentParser:
         "--output-queue-size",
         dest="command_output_queue_size",
         type=int,
+    )
+    parser.add_argument(
+        "--output-queue-bytes",
+        dest="command_output_queue_bytes",
+        type=int,
+        help="Maximum queued stdout frame bytes (default: 16777216).",
     )
     parser.add_argument(
         "--max-admitted-requests",
@@ -845,6 +858,15 @@ def _selected_output_queue_size(args: argparse.Namespace) -> int:
         getattr(args, "command_output_queue_size", None),
         "output-queue-size",
         128,
+    )
+
+
+def _selected_output_queue_bytes(args: argparse.Namespace) -> int:
+    return _selected_server_option(
+        args.root_output_queue_bytes,
+        getattr(args, "command_output_queue_bytes", None),
+        "output-queue-bytes",
+        16 * 1024 * 1024,
     )
 
 
