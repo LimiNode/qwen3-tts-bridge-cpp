@@ -534,10 +534,12 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
 
     const auto request_start = std::chrono::steady_clock::now();
     std::size_t chunk_index = 0;
-    const SynthesisResult result = engine_.synthesize(
-        slot->request,
-        slot->cancelled,
-        [this, &slot, &request_start, &chunk_index](const float* samples, int count) {
+    SynthesisResult result;
+    try {
+        result = engine_.synthesize(
+            slot->request,
+            slot->cancelled,
+            [this, &slot, &request_start, &chunk_index](const float* samples, int count) {
             if (slot->cancelled.load(std::memory_order_relaxed) || slot->terminal.load()) {
                 return false;
             }
@@ -572,10 +574,38 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                 fail_fatal("stdout writer failed while streaming native audio");
             }
             return sent && !slot->cancelled.load(std::memory_order_relaxed);
-        });
+            });
+    }
+    catch (const std::bad_alloc&) {
+        result = {SynthesisOutcome::Failed, "internal_error", "native_request_bad_alloc",
+                  "native request processing raised std::bad_alloc"};
+    }
+    catch (const std::exception& error) {
+        result = {SynthesisOutcome::Failed, "internal_error", "native_request_exception", error.what()};
+    }
+    catch (...) {
+        result = {SynthesisOutcome::Failed, "internal_error", "native_request_unknown_exception",
+                  "native request processing raised an unknown exception"};
+    }
 
     if (!terminalize(slot)) {
         return;
+    }
+    const bool unrecoverable_engine_failure =
+        result.code == "audio_callback_bad_alloc" ||
+        result.code == "audio_callback_exception" ||
+        result.code == "audio_callback_unknown_exception" ||
+        result.code == "native_synthesis_bad_alloc" ||
+        result.code == "native_synthesis_exception" ||
+        result.code == "native_synthesis_unknown_exception" ||
+        result.code == "native_request_bad_alloc" ||
+        result.code == "native_request_exception" ||
+        result.code == "native_request_unknown_exception";
+    if (unrecoverable_engine_failure) {
+        // The qwentts engine may have partially mutated internal state before
+        // the callback or exception boundary was reached.  Do not reuse it for
+        // another request; report this request and make the worker shut down.
+        fail_fatal("native engine state is not recoverable after request failure");
     }
     const auto emit_finished_metric = [&](const char* terminal_state, const char* outcome) {
         std::cerr << "qtb_metric {\"event\":\"request_finished\",\"request_id\":"
