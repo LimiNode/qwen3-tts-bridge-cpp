@@ -5,7 +5,7 @@ documentation-only. It does not announce a release, select a tag, change the
 runtime, or replace the acceptance reports in `docs/`.
 
 The scope is based on `main` at
-`d0e1a629199647e908a4d945a1ce9743a68a5715` and the Phase B1 inventory in
+`8b19399cb84eb81556f84f2542bfae337c41b46f` and the Phase B1 inventory in
 [`beta-capability-matrix.md`](beta-capability-matrix.md). “Verified” below
 means that implementation and evidence exist; “supported” is the narrower
 product promise for the first beta.
@@ -20,7 +20,7 @@ hardware gates described below.
 
 ### Candidate freeze state
 
-`d0e1a629` is the preparation baseline, not a sealed release candidate. After
+`8b19399c` is the preparation baseline, not a sealed release candidate. After
 corrective PRs pass exact-head CI, freeze the resulting full SHA and the
 inputs in [the handoff plan](beta-hardware-handoff-plan.md): recursive
 submodule SHAs, compiler/CMake options, binaries, model/runtime manifests,
@@ -31,30 +31,34 @@ affected gate. No tag or publication precedes that freeze and both GPU gates.
 
 ## Recommended first-beta contract
 
-### Required production baseline
+### Required R1 acceptance tracks
 
-The first beta should advertise one conservative, reproducible path:
+R1 evaluates two equally rigorous local backend tracks. The release scope may
+select one or both only after the corresponding hardware, package, lifecycle,
+quality, and listening gates pass:
 
 * Windows x64;
 * the persistent Python worker using the pinned FasterQwen/Qwen streaming
   runtime;
+* the native qwentts.cpp/GGUF worker for the model families it actually
+  supports;
 * Qwen3-TTS **Base 1.7B** with a registered `voice_id` profile;
 * UTF-8 text, language, instruction/voice profile, streaming `s16le` mono PCM,
   WAV output, cancellation, restart and deterministic terminal lifecycle;
 * the documented CMP 50HX acceptance profile, with exact model/runtime/voice
   manifests supplied outside the repository.
 
-Base 1.7B is the recommended required family because it has the strongest
-current persistent-worker, playback, EOS, cancellation/recovery and human
-listening evidence. This is a scope recommendation, not a claim that other
-families are incompatible.
+Native Base Q8_0 is the priority R1 candidate for local inference. Python/Faster
+remains a maintained alternative and reference implementation, especially for
+CustomVoice and VoiceDesign until native support is independently accepted.
+Neither backend is promoted to the default by this document: backend selection
+is the outcome of the dual-GPU acceptance and packaging decision record.
 
 ### Experimental availability
 
 The following may remain available behind explicit opt-in switches or profiles,
 but must not be described as the default production backend:
 
-* native `qwentts.cpp` process worker and the optional in-process native path;
 * the RU-stress profile with profile-owned model identity and combining U+0301;
 * the build-tree speech-animation adapter;
 
@@ -131,9 +135,13 @@ latency, and quality acceptance; no effects framework is implied here.
 
 ## Backend and provisioning policy
 
-The Python persistent worker is the release baseline. Native is opt-in and
-requires its own ABI/runtime manifest, DLL hash, model hashes and acceptance
-receipt. No backend switch may silently change the advertised support level.
+Both Python/Faster and native qwentts.cpp are first-class R1 acceptance tracks.
+Native is the priority candidate for Base, but remains conditional until its
+own ABI/runtime manifest, DLL hash, model hashes, clean-package, lifecycle and
+listening receipts pass on the declared GPUs. The Python route remains a
+supported alternative wherever its own gates pass. No backend switch may
+silently change the advertised support level, and native process-worker and
+in-process adapter acceptance are separate gates.
 
 Models and reference audio are external artifacts. The beta provisioning
 contract is:
@@ -157,7 +165,7 @@ are downloadable by the application.
 | CustomVoice 0.6B | Exact sealed package, persistent-worker sequential requests, non-empty PCM, natural EOS, physical playback, and Ryan/Serena human listening on the selected hardware/runtime |
 | CustomVoice 1.7B or Base 0.6B | The same matrix with a variant-specific model manifest and receipt; no size-generalization from another row |
 | VoiceDesign 1.7B | Real model/instruction load, non-empty PCM/EOS, restart/cancellation, WAV/playback, and human intelligibility/voice-design quality gate |
-| Native worker | ABI/export/runtime-manifest verification, package/load gate, lifecycle/cancellation/recovery parity with Python, selected model listening, and explicit opt-in documentation |
+| Native worker | ABI/export/runtime-manifest verification, package/load gate, lifecycle/cancellation/recovery parity with Python, selected model listening, and an explicit backend-selection decision |
 | RU-stress | Preserve profile-owned identity and provenance, repeat the stress corpus after any frontend/model change, and keep experimental/default-off status until a product support decision |
 | WinMM | Installed optional target, device/playback failure isolation, cursor/receipt evidence, and a documented single-sink integration contract; optional supported module, not a default backend |
 | Speech-animation | Existing real-Qwen contiguous PCM/cue receipt remains required; predictive visemes and avatar presentation need a separate acceptance contract |

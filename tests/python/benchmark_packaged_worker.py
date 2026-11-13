@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import statistics
 import time
 from pathlib import Path
@@ -133,11 +134,28 @@ def main() -> int:
     serialized = json.dumps(report, sort_keys=True)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(serialized + "\n", encoding="utf-8")
+        _write_json_atomic(args.output, serialized + "\n")
         print(f"report_json={args.output.resolve()}")
     else:
         print(serialized)
     return 0
+
+
+def _write_json_atomic(path: Path, content: str) -> None:
+    """Publish a benchmark report without exposing a partial JSON document."""
+
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with temporary.open("w", encoding="utf-8", newline="\n") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _build_parser() -> argparse.ArgumentParser:

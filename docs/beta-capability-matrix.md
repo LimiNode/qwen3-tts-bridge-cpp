@@ -3,12 +3,12 @@
 This document preserves the historical Phase B1 inventory baseline
 `30500e9426ba1309c295f9e3228e7a80ad35d97b` (the merge of Phase A). The
 release-polish corrections are now reviewed against current `main`
-`d0e1a629199647e908a4d945a1ce9743a68a5715`.
+`8b19399cb84eb81556f84f2542bfae337c41b46f`.
 It is an evidence ledger, not a new full capability audit or a promise that
-every implemented path is release-ready.
-The production baseline remains the persistent Python worker.  Native Qwen,
-the RU-stress profile, and speech-animation are explicitly opt-in or
-experimental until their listed gates are closed.
+every implemented path is release-ready. R1 evaluates the persistent
+Python/Faster worker and native qwentts.cpp/GGUF worker as separate acceptance
+tracks; native Base is the priority candidate, while neither track is promoted
+without its listed gates.
 
 ## Evidence vocabulary
 
@@ -34,11 +34,11 @@ run is implied by this document.
 |---|---|---|---|---|---|
 | Static SDK and CMake install/export | `qwen_tts_bridge` target and generated package config in `CMakeLists.txt`; installed headers and `QwenTTSBridgeTargets`; optional installed `qwen_tts_bridge_winmm_playback` and tts-front adapter | Windows default CI installs the package and builds `tests/install_consumer` with WinMM (`.github/workflows/cpp-checks.yml`, `scripts/test-installed-package.ps1`) | Not hardware-dependent | **A** for core and WinMM. Native DLL and speech-animation adapters remain build-tree-only by design | REQUIRED |
 | Persistent Python worker and portable packaging | `worker/src/qwen_tts_bridge_worker`, persistent engine/output threads; `scripts/package-python-worker.ps1`, `test-portable-python-worker*.ps1` | Python suite, portable mock package, and C++ transport smoke run in CI; doctor verifies build/runtime/model manifests | Import/package probes only; no committed isolated clean-environment CMP real-model playback receipt | **B**. Complete one isolated clean-environment CMP real-Qwen package, doctor, C++ playback, and listening run | REQUIRED |
-| Native worker, dynamic `qwen.dll`, ABI/runtime manifest | `worker/native/qwentts`, runtime manifest loader, ABI/export/hash checks, split talker/codec and profile resolver; opt-in `QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER` | Native ABI CI and native worker tests; pinned qwentts.cpp `130cb99af9ae12d554962fd0920e08fb4268af01` (ABI 6) | CMP native playback/EOS/cancellation receipts and warm long-horizon listening exist | **Verification: B / Support: opt-in**. Finish promotion/package matrix before calling it a default backend | OPTIONAL for first beta; keep opt-in |
+| Native worker, dynamic `qwen.dll`, ABI/runtime manifest | `worker/native/qwentts`, runtime manifest loader, ABI/export/hash checks, split talker/codec and profile resolver; opt-in `QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER` | Native ABI CI and native worker tests; pinned qwentts.cpp `130cb99af9ae12d554962fd0920e08fb4268af01` (ABI 6) | CMP native playback/EOS/cancellation receipts and warm long-horizon listening exist | **Priority R1 candidate, conditional support**. Complete dual-GPU, clean-package, lifecycle, cancellation, quality and listening gates before selecting it as the Base backend; process-worker and in-process adapter are separate surfaces | R1 candidate; no default claim before decision record |
 | CustomVoice 0.6B | Python routing and speaker validation; `run-real-model-release-acceptance.ps1` accepts external 0.6B model and `ryan`/`serena` | Mock routing and packaging tests; release runner is implemented | Runner/checklist exists, but no committed exact-baseline real 0.6B release receipt was found in this audit | **B**. Run the exact sealed package matrix plus human Ryan/Serena listening | REQUIRED if advertised; otherwise B/P1 |
 | CustomVoice 1.7B | Same model-family route, model-size agnostic worker configuration | Mock/model-family tests | No variant-specific real acceptance receipt located | **B**. Either run and record a 1.7B acceptance or state that beta scope is 0.6B only | OPTIONAL / scope decision |
 | Base 0.6B | Base routing exists in Python/Faster paths; registered voice profile and reference-audio validation are implemented | Engine and lifecycle tests cover Base request shapes | No variant-specific 0.6B hardware receipt located | **B**. Run the selected 0.6B model with registered/reference voice if this size is advertised | OPTIONAL |
-| Base 1.7B and voice cloning | Python/Faster production route, registered `voice_id`, reference WAV validation; native worker has corresponding profile path | `run-real-model-release-acceptance.ps1`, lifecycle/restart tests, model/voice validation tests | CMP 50HX Base startup, persistent-worker, long-horizon, natural-EOS, cancellation/recovery, and listening receipts; `docs/cmp50hx-base-profile-startup.md`, `docs/reports/cmp50hx-abi6-playback-v2-2026-09-30.md` | **Verification: A for the documented CMP profile; Support: production Python baseline only.** Keep native opt-in and exact model/runtime/voice fingerprints with release. Direct per-request reference audio remains diagnostic in the release runner | REQUIRED for Base beta scope |
+| Base 1.7B and voice cloning | Python/Faster route and native Q8_0 candidate, both with registered `voice_id` and reference WAV validation | `run-real-model-release-acceptance.ps1`, `run-installed-real-model-cli-acceptance.ps1`, lifecycle/restart tests, model/voice validation tests | CMP 50HX Base startup, persistent-worker, long-horizon, natural-EOS, cancellation/recovery, and listening receipts; native warmup/RU-stress evidence remains separately fingerprinted | **Verification: A for the documented CMP Python profile; native support: conditional pending dual-GPU/package/listening decision.** Do not transfer a Python verdict to native or vice versa. Direct per-request reference audio remains diagnostic | REQUIRED for the selected Base backend; both tracks must be evaluated |
 | VoiceDesign 1.7B | `tts_model_type=VoiceDesign` route, instruction validation, `start-voice-design-save-wav.ps1` wrapper | Mock wrapper and engine tests; WAV plumbing test | Frozen CMP candidate has mechanical and scoped human-listening evidence in `docs/reports/voice-design-frozen-cmp50hx-20261028.json`; no GGUF | **B**. Full instruction/quality listening scope and RTX 4090 remain open; keep the capability conditional until those gates are closed | OPTIONAL / P1 if advertised |
 | RU-stress model and explicit U+0301 | Experimental profile-owned identity and renderer path; combining acute is passed through only for compatible profile | Native/profile and renderer tests | `docs/reports/russian-stress-cmp50hx-acceptance-2026-10-07.json`: 12/12 non-empty PCM, natural EOS, starvation-free; human listening PASS; explicit U+0301; oracle parity 310/311 payloads byte-identical, relative embedding L2 `1.36e-6` | **Verification: A for the recorded experiment; Support: experimental/opt-in, not default.** Preserve `kraftwerk_robot_ru_warm`, hashes, seed 1002 and profile provenance; repeat only if release scope changes | OPTIONAL / experimental |
 | Text frontend and normalization | Pinned `external/cpp/tts-front-cpp` `d1b6a6e18e7f51f8c51fff548bb84f10e749004a` (v0.2.5), `TtsFrontTextPreparer`, `PreparedText` contract | Frontend/adapter tests and 17-case v0.2.2 comparison oracle (13 unchanged cases); no regressions observed | Existing Russian stress listening remains valid; three changed text surfaces are isolated in `docs/reports/tts-front-v022-v025-effective-text.md` | **Verification: B for the dependency update.** Targeted listening for leading-zero year, contextual year agreement and genitive decimal remains open before advertising those changes as release-accepted behavior | REQUIRED; release claims remain conditional on the targeted listening gate |
@@ -53,11 +53,12 @@ run is implied by this document.
 
 ## Current beta interpretation
 
-The evidence supports a coherent beta built around the Python worker, the
-documented Base 1.7B CMP profile, the installed core/WinMM SDK, and the
-existing streaming/WAV/playback contracts. Model-free portable checks,
-real-model hardware runs, clean portable-package checks, and human listening
-remain separate acceptance gates. It does not support silently
+The evidence supports a coherent R1 evaluation built around two backend tracks:
+the Python worker and the native qwentts.cpp/GGUF worker. Native Base is the
+priority candidate for local inference, while Python remains a maintained
+alternative for model families not yet covered by native. Model-free portable
+checks, real-model hardware runs, clean portable-package checks, and human
+listening remain separate acceptance gates. It does not support silently
 claiming that every Qwen model size, VoiceDesign, native DLL, portable clean
 machine, or avatar presentation path is equally accepted.
 

@@ -4,22 +4,24 @@ This document is the short, evidence-backed status summary for
 `qwen3-tts-bridge-cpp`. It records what has actually been built and exercised,
 while keeping experimental paths separate from the production baseline.
 
-## Production baseline
+## R1 backend direction
 
-The accepted release and packaging route is the persistent Python worker:
+R1 evaluates two local backend routes behind the same bridge contract:
 
 ```text
-QwenTtsClient -> QTB stdin/stdout -> persistent Python/PyTorch worker -> PCM
+QwenTtsClient -> QTB stdin/stdout -> selected persistent worker -> PCM
 ```
 
-It keeps the model loaded between requests, exposes the async C++ API, streams
-PCM, and supports request IDs, cancellation, terminal lifecycle events, and
-portable/Nuitka packaging with models stored outside Git. This is the route to
-use when a product needs the currently supported bridge behavior.
+The Python/Faster worker and the native qwentts.cpp/GGUF worker both keep the
+model loaded between requests, expose the async C++ API, stream PCM, and use
+the same request lifecycle. Native Base Q8_0 is the priority R1 candidate for
+local inference; Python/Faster remains a maintained alternative and the route
+for model families not yet covered by native. Backend selection is conditional
+on the dual-GPU, clean-package, quality and listening gates below.
 
 ## R1 release state
 
-The release-preparation baseline is `d0e1a629199647e908a4d945a1ce9743a68a5715`
+The release-preparation baseline is `8b19399cb84eb81556f84f2542bfae337c41b46f`
 and the repository version is `0.2.0`. No GitHub Release has been published;
 the existing `frequency-r10-rtx4090-48gb-internal-rc1/rc2` tags are internal
 experiment tags, not R1 releases. A final release candidate is not frozen.
@@ -61,17 +63,18 @@ are identified in the tracked receipts by SHA-256.
 
 ### Native qwentts.cpp runtime and DLL
 
-The repository contains a working opt-in native path based on the pinned
+The repository contains a working native candidate based on the pinned
 `LimiNode/qwentts.cpp` fork. The native build enables `QWEN_SHARED=ON`, produces
 the shared `qwen.dll`, and the bridge ABI adapter and native worker can load the
 split talker/codec runtime and stream PCM on the validated CMP 50HX setup.
 The canonical acceptance receipt records qwentts revision `130cb99`, ABI 6,
 CUDA graphs enabled, and the exact worker/talker/codec hashes used for the run.
 
-This is a real build and runtime milestone, not a claim that native is the
-default backend. The native worker and the in-process DLL adapter remain opt-in
-until the documented quality, cancellation, lifecycle, packaging, and
-target-hardware promotion gates are closed. See
+This is a real build and runtime milestone, not a claim that native has already
+been promoted. Native Base is evaluated first for R1, while the native worker
+and the in-process DLL adapter remain separate acceptance surfaces until the
+documented quality, cancellation, lifecycle, packaging, and target-hardware
+promotion gates are closed. See
 [`native-qwentts-backend.md`](native-qwentts-backend.md),
 [`native-qwentts-worker.md`](native-qwentts-worker.md), and the boundary ADR
 [`architecture/adr-native-engine-boundaries.md`](architecture/adr-native-engine-boundaries.md).
@@ -186,8 +189,8 @@ The dependency direction is deliberate:
 
 | Area | Status | Boundary |
 | --- | --- | --- |
-| Persistent Python worker | Accepted production/packaging route | Continue release validation on the selected model and hardware |
-| Native worker and `qwen.dll` | Working, opt-in experimental | Close promotion gates before changing the default |
+| Python/Faster worker | Maintained acceptance route and alternative backend | Complete the same frozen dual-GPU/package/listening matrix |
+| Native worker and `qwen.dll` | Priority R1 Base candidate; conditional until accepted | Close promotion gates and record backend selection; in-process adapter is separate |
 | RU-stress + Kraftwerk profile | Hardware/listening validated, opt-in experimental | Expand long-run, cancellation, and packaging evidence |
 | `tts-front-cpp` v0.2.5 | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |

@@ -10,10 +10,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from benchmark_packaged_worker import _load_request_shapes, _synthesize_payload
+from benchmark_packaged_worker import (
+    _load_request_shapes,
+    _synthesize_payload,
+    _write_json_atomic,
+)
 
 
 class BenchmarkRequestShapeTests(unittest.TestCase):
+    def test_json_report_is_published_atomically(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "report.json"
+            _write_json_atomic(path, '{"status":"complete"}\n')
+
+            self.assertEqual(path.read_text(encoding="utf-8"), '{"status":"complete"}\n')
+            self.assertEqual(list(path.parent.glob("*.tmp")), [])
+
     def test_loads_base_profile_voice_id(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             path = Path(temporary_directory) / "shapes.jsonl"

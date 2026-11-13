@@ -77,5 +77,12 @@ encoding, but it is not prefix-KV reuse and is not a release profile until the
 PCM, semantic completeness, and voice-identity gates pass.
 
 An unsupported field must be reported as unsupported by the native capability
-manifest; silently ignoring it is not allowed. Until a native profile passes
-the common matrix, Python/FasterQwen remains the default release backend.
+manifest; silently ignoring it is not allowed. Native Q8_0 Base is the
+priority candidate for the R1 local backend, but this document does not
+promote it by assertion. A native profile must pass the same mechanical,
+lifecycle, packaging, quality and listening matrix on the declared hardware
+before the backend-selection record can make it preferred. Python/FasterQwen
+remains a maintained, fully supported alternative wherever its own gates pass,
+including model families not covered by native. Native process-worker and
+in-process adapter acceptance are separate; success of one does not transfer
+to the other.
