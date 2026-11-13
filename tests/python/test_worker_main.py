@@ -30,6 +30,7 @@ class _CapturingServer:
         engine: object,
         worker_version: str,
         output_queue_size: int,
+        output_queue_bytes: int,
         max_admitted_requests: int,
         engine_startup_mode: str,
         canary_runtime_provenance: object | None,
@@ -39,6 +40,7 @@ class _CapturingServer:
         self.output_stream = output_stream
         self.error_stream = error_stream
         self.engine_startup_mode = engine_startup_mode
+        self.output_queue_bytes = output_queue_bytes
         self.canary_runtime_provenance = canary_runtime_provenance
         self.abort_process_on_output_failure = abort_process_on_output_failure
         self.stdout_during_run: object | None = None
@@ -73,6 +75,7 @@ class WorkerMainTests(unittest.TestCase):
             self.assertIs(stdout.buffer, server.output_stream)
             self.assertIs(stderr, server.stdout_during_run)
             self.assertTrue(server.abort_process_on_output_failure)
+            self.assertEqual(16 * 1024 * 1024, server.output_queue_bytes)
             self.assertEqual(b"", stdout.buffer.getvalue())
             self.assertIn("third-party stdout noise", stderr.text.getvalue())
 

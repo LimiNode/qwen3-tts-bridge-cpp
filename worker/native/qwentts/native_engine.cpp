@@ -1,4 +1,5 @@
 #include "native_engine.hpp"
+#include "diagnostics.hpp"
 #include "runtime_manifest.hpp"
 #include "wav_reader.hpp"
 
@@ -11,7 +12,6 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <mutex>
 #include <stdexcept>
 #include <utility>
 
@@ -20,14 +20,17 @@ namespace {
 
 using Json = nlohmann::json;
 
-std::mutex log_mutex;
-
 void qwen_log_callback(qt_log_level level, const char* message, void*) {
     static constexpr const char* names[] = {"debug", "info", "warn", "error"};
     const int index = static_cast<int>(level);
     const char* name = index >= 0 && index < 4 ? names[index] : "unknown";
-    std::lock_guard<std::mutex> lock(log_mutex);
-    std::cerr << "[qwentts:" << name << "] " << (message != nullptr ? message : "") << '\n';
+    try {
+        write_diagnostic_line(
+            std::string("[qwentts:") + name + "] " + (message != nullptr ? message : ""));
+    }
+    catch (...) {
+        // A third-party C callback must never let allocation failure escape.
+    }
 }
 
 std::string path_utf8(const std::filesystem::path& path) {
@@ -40,12 +43,12 @@ void log_prepared_reference_metric(
     std::chrono::steady_clock::time_point started) {
     const double duration_ms = std::chrono::duration<double, std::milli>(
         std::chrono::steady_clock::now() - started).count();
-    std::cerr << "qtb_metric " << Json{
+    write_diagnostic_line("qtb_metric " + Json{
         {"event", "native_voice_reference_ready"},
         {"voice_id", voice_id},
         {"source", source},
         {"duration_ms", duration_ms},
-    }.dump() << '\n';
+    }.dump());
 }
 
 std::string voice_reference_cache_key(

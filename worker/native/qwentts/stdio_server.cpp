@@ -1,4 +1,5 @@
 #include "stdio_server.hpp"
+#include "diagnostics.hpp"
 #include "stdout_writer.hpp"
 
 #include <qwen_tts_bridge/protocol/control.hpp>
@@ -14,6 +15,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <sstream>
 #include <utility>
 
 namespace qwen_tts_bridge::native_worker {
@@ -75,6 +77,17 @@ PcmSignalStats s16le_pcm_stats(const std::vector<std::byte>& pcm) {
     return stats;
 }
 
+void write_admission_released_metric(
+    RequestId request_id,
+    std::size_t admission_limit,
+    std::size_t admitted_requests) {
+    std::ostringstream metric;
+    metric << "qtb_metric {\"event\":\"request_admission_released\",\"request_id\":"
+           << request_id << ",\"admission_limit\":" << admission_limit
+           << ",\"admitted_requests\":" << admitted_requests << "}";
+    write_diagnostic_line(metric.str());
+}
+
 } // namespace
 
 class StdioServer::OutputWriter final {
@@ -84,19 +97,27 @@ public:
     }
 
     bool send(std::vector<std::byte> frame) {
+        const auto frame_size = frame.size();
+        if (frame_size > max_bytes_) {
+            return false;
+        }
         std::unique_lock<std::mutex> lock(mutex_);
-        not_full_.wait(lock, [this]() {
-            return queue_.size() < max_frames_ || stopping_ || failed_;
+        not_full_.wait(lock, [this, frame_size]() {
+            return (
+                       queue_.size() < max_frames_
+                       && queued_bytes_ + in_flight_bytes_ + frame_size <= max_bytes_)
+                || stopping_ || failed_;
         });
         if (stopping_ || failed_) {
             return false;
         }
+        queued_bytes_ += frame_size;
         queue_.push_back(std::move(frame));
         not_empty_.notify_one();
         return true;
     }
 
-    void stop_when_drained() {
+    bool stop_when_drained(std::chrono::milliseconds timeout) {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             stopping_ = true;
@@ -104,8 +125,26 @@ public:
         not_empty_.notify_all();
         not_full_.notify_all();
         if (thread_.joinable()) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            const bool finished = finished_
+                || finished_condition_.wait_for(lock, timeout, [this]() {
+                    return finished_;
+                });
+            if (!finished) {
+                // A condition variable cannot interrupt a synchronous
+                // WriteFile.  Ask Windows to cancel that specific I/O before
+                // the caller applies its forced process-teardown policy.
+                CancelSynchronousIo(reinterpret_cast<HANDLE>(thread_.native_handle()));
+                if (!finished_condition_.wait_for(lock, std::chrono::seconds(1), [this]() {
+                        return finished_;
+                    })) {
+                    return false;
+                }
+            }
+            lock.unlock();
             thread_.join();
         }
+        return true;
     }
 
     bool failed() const {
@@ -115,6 +154,10 @@ public:
 
 private:
     void run() {
+        const auto mark_finished_locked = [this]() {
+            finished_ = true;
+            finished_condition_.notify_all();
+        };
         const HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
         for (;;) {
             std::vector<std::byte> frame;
@@ -122,10 +165,13 @@ private:
                 std::unique_lock<std::mutex> lock(mutex_);
                 not_empty_.wait(lock, [this]() { return !queue_.empty() || stopping_; });
                 if (queue_.empty() && stopping_) {
+                    mark_finished_locked();
                     return;
                 }
                 frame = std::move(queue_.front());
                 queue_.pop_front();
+                queued_bytes_ -= frame.size();
+                in_flight_bytes_ += frame.size();
                 not_full_.notify_one();
             }
 
@@ -139,20 +185,34 @@ private:
                 failed_ = true;
                 stopping_ = true;
                 queue_.clear();
+                queued_bytes_ = 0;
+                in_flight_bytes_ = 0;
                 not_full_.notify_all();
+                mark_finished_locked();
                 return;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                in_flight_bytes_ -= frame.size();
+                not_full_.notify_all();
             }
         }
     }
 
     static constexpr std::size_t max_frames_ = 128;
+    static constexpr std::size_t max_bytes_ = 16u * 1024u * 1024u;
     mutable std::mutex mutex_;
     std::condition_variable not_empty_;
     std::condition_variable not_full_;
+    std::condition_variable finished_condition_;
     std::deque<std::vector<std::byte>> queue_;
+    std::size_t queued_bytes_ = 0;
+    std::size_t in_flight_bytes_ = 0;
     std::thread thread_;
     bool stopping_ = false;
     bool failed_ = false;
+    bool finished_ = false;
 };
 
 StdioServer::StdioServer(NativeEngine& engine, std::size_t max_admitted_requests)
@@ -170,13 +230,15 @@ StdioServer::~StdioServer() {
         engine_thread_.join();
     }
     if (writer_) {
-        writer_->stop_when_drained();
+        writer_->stop_when_drained(std::chrono::milliseconds::max());
     }
 }
 
 int StdioServer::run() {
-    std::cerr << "qtb_metric {\"event\":\"worker_admission_started\",\"admission_limit\":"
-              << max_admitted_requests_ << ",\"admitted_requests\":0}\n" << std::flush;
+    std::ostringstream metric;
+    metric << "qtb_metric {\"event\":\"worker_admission_started\",\"admission_limit\":"
+           << max_admitted_requests_ << ",\"admitted_requests\":0}";
+    write_diagnostic_line(metric.str());
     writer_->start();
     engine_thread_ = std::thread([this]() { engine_loop(); });
     read_loop();
@@ -184,7 +246,12 @@ int StdioServer::run() {
     if (engine_thread_.joinable()) {
         engine_thread_.join();
     }
-    writer_->stop_when_drained();
+    if (!writer_->stop_when_drained(std::chrono::seconds(5))) {
+        std::cerr << "[native-worker:error] stdout writer did not stop after "
+                     "cancelling blocked output\n" << std::flush;
+        TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
+        return 1;
+    }
     return fatal_error_ || writer_->failed() ? 1 : 0;
 }
 
@@ -384,10 +451,12 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
         return;
     }
     if (admission_rejected) {
-        std::cerr << "qtb_metric {\"event\":\"request_admission_rejected\",\"request_id\":"
-                  << request_id << ",\"reason\":\"resource_exhausted\",\"admission_limit\":"
-                  << max_admitted_requests_ << ",\"admitted_requests\":" << admitted_requests
-                  << "}\n" << std::flush;
+        std::ostringstream metric;
+        metric << "qtb_metric {\"event\":\"request_admission_rejected\",\"request_id\":"
+               << request_id << ",\"reason\":\"resource_exhausted\",\"admission_limit\":"
+               << max_admitted_requests_ << ",\"admitted_requests\":" << admitted_requests
+               << "}";
+        write_diagnostic_line(metric.str());
         send_error(request_id, "resource_error", "resource_exhausted", "worker admission limit reached");
         return;
     }
@@ -406,6 +475,8 @@ void StdioServer::handle_cancel(RequestId request_id) {
 
     std::shared_ptr<RequestSlot> cancelled_slot;
     bool unknown = false;
+    bool admission_released = false;
+    std::size_t admitted_requests_after = 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         const auto it = active_.find(request_id);
@@ -420,15 +491,18 @@ void StdioServer::handle_cancel(RequestId request_id) {
             if (!slot->terminal.exchange(true)) {
                 active_.erase(it);
                 --admitted_requests_;
-                std::cerr << "qtb_metric {\"event\":\"request_admission_released\",\"request_id\":"
-                          << request_id << ",\"admission_limit\":" << max_admitted_requests_
-                          << ",\"admitted_requests\":" << admitted_requests_ << "}\n" << std::flush;
+                admission_released = true;
+                admitted_requests_after = admitted_requests_;
                 cancelled_slot = slot;
                 }
             }
         }
     }
     condition_.notify_all();
+    if (admission_released) {
+        write_admission_released_metric(
+            request_id, max_admitted_requests_, admitted_requests_after);
+    }
     if (unknown) {
         send_error(request_id, "request_error", "unknown_request_id", "request_id is not active");
     }
@@ -452,6 +526,7 @@ bool StdioServer::handle_shutdown(RequestId request_id, const ShutdownMessage& m
 
 void StdioServer::request_shutdown(bool send_ack) {
     std::vector<std::shared_ptr<RequestSlot>> queued;
+    std::vector<std::pair<RequestId, std::size_t>> released_metrics;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         shutdown_ack_needed_ = shutdown_ack_needed_ || send_ack;
@@ -467,15 +542,17 @@ void StdioServer::request_shutdown(bool send_ack) {
             if (!slot->terminal.exchange(true)) {
                 active_.erase(slot->id);
                 --admitted_requests_;
-                std::cerr << "qtb_metric {\"event\":\"request_admission_released\",\"request_id\":"
-                          << slot->id << ",\"admission_limit\":" << max_admitted_requests_
-                          << ",\"admitted_requests\":" << admitted_requests_ << "}\n" << std::flush;
+                released_metrics.emplace_back(slot->id, admitted_requests_);
                 queued.push_back(std::move(slot));
             }
         }
         for (auto& entry : active_) {
             entry.second->cancelled.store(true, std::memory_order_relaxed);
         }
+    }
+    for (const auto& [request_id, admitted_requests] : released_metrics) {
+        write_admission_released_metric(
+            request_id, max_admitted_requests_, admitted_requests);
     }
     for (const auto& slot : queued) {
         send_control(slot->id, CancelledMessage{});
@@ -549,15 +626,17 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                 const auto float_stats = float_pcm_stats(samples, count);
                 const auto first_chunk_ms = std::chrono::duration<double, std::milli>(
                     std::chrono::steady_clock::now() - request_start).count();
-                std::cerr << "qtb_metric {\"event\":\"native_pcm_signal\",\"request_id\":"
-                          << slot->id << ",\"chunk_index\":0,\"samples\":" << count
-                          << ",\"first_chunk_ms\":" << first_chunk_ms
-                          << ",\"float_peak_abs\":" << float_stats.peak_abs
-                          << ",\"float_rms\":" << float_stats.rms;
                 const auto pcm = float_pcm_to_s16le(samples, count);
                 const auto s16_stats = s16le_pcm_stats(pcm);
-                std::cerr << ",\"s16_peak_abs\":" << s16_stats.peak_abs
-                          << ",\"s16_rms\":" << s16_stats.rms << "}\n" << std::flush;
+                std::ostringstream metric;
+                metric << "qtb_metric {\"event\":\"native_pcm_signal\",\"request_id\":"
+                       << slot->id << ",\"chunk_index\":0,\"samples\":" << count
+                       << ",\"first_chunk_ms\":" << first_chunk_ms
+                       << ",\"float_peak_abs\":" << float_stats.peak_abs
+                       << ",\"float_rms\":" << float_stats.rms
+                       << ",\"s16_peak_abs\":" << s16_stats.peak_abs
+                       << ",\"s16_rms\":" << s16_stats.rms << "}";
+                write_diagnostic_line(metric.str());
                 const bool sent = writer_->send(make_frame(FrameType::AudioPcm, slot->id, pcm));
                 ++chunk_index;
                 if (!sent) {
@@ -578,27 +657,29 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         return;
     }
     const auto emit_finished_metric = [&](const char* terminal_state, const char* outcome) {
-        std::cerr << "qtb_metric {\"event\":\"request_finished\",\"request_id\":"
-                  << slot->id << ",\"terminal_state\":\"" << terminal_state << "\"";
-        std::cerr << ",\"voice_reference_cache_hit\":"
-                  << (result.voice_reference_cache_hit ? "true" : "false")
-                  << ",\"voice_reference_extract_ms\":" << result.voice_reference_extract_ms
-                  << ",\"reference_audio_decode_ms\":" << result.reference_audio_decode_ms
-                  << ",\"synthesis_ms\":" << result.synthesis_ms
-                  << ",\"first_chunk_callback_ms\":" << result.first_chunk_callback_ms
-                  << ",\"qwen_prompt_build_ms\":" << result.qwen_prompt_build_ms
-                  << ",\"qwen_prefill_ms\":" << result.qwen_prefill_ms
-                  << ",\"qwen_ttfa_ms\":" << result.qwen_ttfa_ms
-                  << ",\"qwen_talker_ms\":" << result.qwen_talker_ms
-                  << ",\"qwen_predictor_ms\":" << result.qwen_predictor_ms
-                  << ",\"qwen_host_ms\":" << result.qwen_host_ms
-                  << ",\"qwen_codec_ms\":" << result.qwen_codec_ms
-                  << ",\"qwen_total_ms\":" << result.qwen_total_ms
-                  << ",\"qwen_n_frames\":" << result.qwen_n_frames;
+        std::ostringstream metric;
+        metric << "qtb_metric {\"event\":\"request_finished\",\"request_id\":"
+               << slot->id << ",\"terminal_state\":\"" << terminal_state << "\""
+               << ",\"voice_reference_cache_hit\":"
+               << (result.voice_reference_cache_hit ? "true" : "false")
+               << ",\"voice_reference_extract_ms\":" << result.voice_reference_extract_ms
+               << ",\"reference_audio_decode_ms\":" << result.reference_audio_decode_ms
+               << ",\"synthesis_ms\":" << result.synthesis_ms
+               << ",\"first_chunk_callback_ms\":" << result.first_chunk_callback_ms
+               << ",\"qwen_prompt_build_ms\":" << result.qwen_prompt_build_ms
+               << ",\"qwen_prefill_ms\":" << result.qwen_prefill_ms
+               << ",\"qwen_ttfa_ms\":" << result.qwen_ttfa_ms
+               << ",\"qwen_talker_ms\":" << result.qwen_talker_ms
+               << ",\"qwen_predictor_ms\":" << result.qwen_predictor_ms
+               << ",\"qwen_host_ms\":" << result.qwen_host_ms
+               << ",\"qwen_codec_ms\":" << result.qwen_codec_ms
+               << ",\"qwen_total_ms\":" << result.qwen_total_ms
+               << ",\"qwen_n_frames\":" << result.qwen_n_frames;
         if (outcome != nullptr) {
-            std::cerr << ",\"execution_outcome\":\"" << outcome << "\"";
+            metric << ",\"execution_outcome\":\"" << outcome << "\"";
         }
-        std::cerr << "}\n" << std::flush;
+        metric << "}";
+        write_diagnostic_line(metric.str());
     };
     if (result.outcome == SynthesisOutcome::Completed) {
         CompletedMessage completed;
@@ -623,14 +704,17 @@ bool StdioServer::terminalize(const std::shared_ptr<RequestSlot>& slot) {
     if (slot->terminal.exchange(true)) {
         return false;
     }
-    std::lock_guard<std::mutex> lock(mutex_);
-    active_.erase(slot->id);
-    if (admitted_requests_ > 0) {
-        --admitted_requests_;
+    std::size_t admitted_requests_after = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        active_.erase(slot->id);
+        if (admitted_requests_ > 0) {
+            --admitted_requests_;
+        }
+        admitted_requests_after = admitted_requests_;
     }
-    std::cerr << "qtb_metric {\"event\":\"request_admission_released\",\"request_id\":"
-              << slot->id << ",\"admission_limit\":" << max_admitted_requests_
-              << ",\"admitted_requests\":" << admitted_requests_ << "}\n" << std::flush;
+    write_admission_released_metric(
+        slot->id, max_admitted_requests_, admitted_requests_after);
     return true;
 }
 

@@ -29,7 +29,12 @@ from qwen_tts_bridge_worker.protocol import (
 )
 from qwen_tts_bridge_worker.protocol.control import encode_json_payload
 from qwen_tts_bridge_worker.server import StdioWorkerServer
-from qwen_tts_bridge_worker.server.stdio_server import _RequestSlot
+from qwen_tts_bridge_worker.server.metrics import MetricsWriter
+from qwen_tts_bridge_worker.server.stdio_server import (
+    _OutputWriter,
+    _OutputWriterFailure,
+    _RequestSlot,
+)
 
 
 class FailingLoadEngine:
@@ -94,6 +99,19 @@ class _ShortWriteOutput(io.BytesIO):
 class _FailingFlushOutput(io.BytesIO):
     def flush(self) -> None:
         raise OSError("simulated stdout flush failure")
+
+
+class _GateOutput(io.BytesIO):
+    def __init__(self) -> None:
+        super().__init__()
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def write(self, data: bytes) -> int:
+        self.started.set()
+        if not self.release.wait(timeout=5.0):
+            raise TimeoutError("test output gate was not released")
+        return super().write(data)
 
 
 class _FailingErrorStream(io.StringIO):
@@ -375,6 +393,65 @@ class _EofAfterEvent:
 
 
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
+    def test_output_writer_rejects_frame_larger_than_byte_budget(self) -> None:
+        writer = _OutputWriter(
+            io.BytesIO(),
+            max_queue_size=4,
+            max_queue_bytes=3,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+
+        with self.assertRaises(_OutputWriterFailure):
+            writer.send(b"1234")
+
+    def test_output_writer_accounts_for_in_flight_bytes(self) -> None:
+        output = _GateOutput()
+        writer = _OutputWriter(
+            output,
+            max_queue_size=4,
+            max_queue_bytes=4,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        writer.start()
+        writer.send(b"1234")
+        self.assertTrue(output.started.wait(timeout=1.0))
+
+        sent = threading.Event()
+
+        def send_second() -> None:
+            writer.send(b"x")
+            sent.set()
+
+        sender = threading.Thread(target=send_second)
+        sender.start()
+        self.assertFalse(sent.wait(timeout=0.2))
+
+        output.release.set()
+        self.assertTrue(sent.wait(timeout=1.0))
+        writer.stop_when_drained()
+        sender.join(timeout=1.0)
+        self.assertFalse(sender.is_alive())
+        self.assertEqual(b"1234x", output.getvalue())
+
+    def test_output_writer_reports_stalled_drain_without_waiting_forever(self) -> None:
+        output = _GateOutput()
+        writer = _OutputWriter(
+            output,
+            max_queue_size=2,
+            max_queue_bytes=8,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        writer.start()
+        writer.send(b"1234")
+        self.assertTrue(output.started.wait(timeout=1.0))
+
+        self.assertFalse(writer.stop_when_drained(timeout=0.01))
+        output.release.set()
+        self.assertTrue(writer.stop_when_drained(timeout=1.0))
+
     def test_admission_rejects_without_advancing_id_watermark_and_releases_queued_slot(
         self,
     ) -> None:
