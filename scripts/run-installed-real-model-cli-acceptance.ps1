@@ -177,6 +177,7 @@ $config = Resolve-ExistingPath $ConfigPath 'CLI config'
 $outputDirectory = if ([IO.Path]::IsPathRooted($OutputRoot)) { $OutputRoot } else { Join-Path $repoRoot $OutputRoot }
 $runDirectory = Join-Path $outputDirectory ([DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ'))
 New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
+$runDirectory = (Resolve-Path -LiteralPath $runDirectory).Path
 
 $previousPythonPath = [Environment]::GetEnvironmentVariable('PYTHONPATH', 'Process')
 $previousNoUserSite = [Environment]::GetEnvironmentVariable('PYTHONNOUSERSITE', 'Process')
