@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 POWERSHELLS = [
@@ -119,7 +120,7 @@ class InstalledRealModelCliRunnerTests(unittest.TestCase):
         )
 
     @staticmethod
-    def find_summary(output: Path) -> dict[str, object]:
+    def find_summary(output: Path) -> dict[str, Any]:
         summaries = list(output.glob("*/summary.json"))
         if len(summaries) != 1:
             raise AssertionError(
