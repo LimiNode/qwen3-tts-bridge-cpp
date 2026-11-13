@@ -10,7 +10,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 ASSEMBLER = ROOT / "scripts" / "assemble-native-portable-release.ps1"
 AUDITOR = ROOT / "scripts" / "audit-native-dependencies.py"
