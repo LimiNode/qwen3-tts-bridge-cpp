@@ -42,6 +42,10 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
 
     def version_two_receipt(self) -> dict:
         receipt = copy.deepcopy(self.receipt)
+        receipt["hardware"].update(
+            gpu_uuid="GPU-40361931-6cb5-ac58-a059-5ba3e70986fb",
+            gpu_uuid_status="recorded",
+        )
         for artifact in receipt["artifacts"]:
             artifact["availability"] = {"status": "not_checked", "reason": "Test fixture only; payload not inspected."}
         receipt.update(
@@ -108,6 +112,44 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
         receipt = self.version_two_receipt()
         del receipt["artifacts"][0]["availability"]
         self.assert_invalid(receipt)
+
+    def test_accepted_receipt_requires_pinned_model_and_gpu_identity(self) -> None:
+        receipt = self.version_two_receipt()
+        receipt["mechanical"] = {key: "pass" for key in receipt["mechanical"]}
+        receipt["human_listening"].update(
+            status="pass", criteria={key: "pass" for key in receipt["human_listening"]["criteria"]}
+        )
+        receipt["input_identity"].update(status="recorded", corpus_sha256="a" * 64)
+        receipt["case_result"] = {"status": "pass", "reason": "All gates passed."}
+        receipt["listening_result"] = {"status": "pass", "reason": "All criteria passed."}
+        receipt["release_disposition"] = {"status": "accepted", "reason": "Release gate passed."}
+        receipt["release_status"] = "accepted"
+        for artifact in receipt["artifacts"]:
+            artifact["availability"] = {"status": "local", "reason": "Available."}
+        receipt["model_revision"] = "not_pinned"
+        self.assert_invalid(receipt)
+
+        receipt["model_revision"] = "a" * 64
+        del receipt["hardware"]["gpu_uuid_status"]
+        self.assert_invalid(receipt)
+
+    def test_uuid_unavailable_requires_machine_reason(self) -> None:
+        receipt = self.version_two_receipt()
+        receipt["hardware"] = dict(
+            self.receipt["hardware"], gpu_uuid_status="unavailable", gpu_uuid_reason="operator_note"
+        )
+        self.assert_invalid(receipt)
+        receipt["hardware"]["gpu_uuid_reason"] = "driver_api_unavailable"
+        VALIDATOR.validate_receipt(
+            self._write_temp_receipt(receipt), ROOT, False
+        )
+
+    def _write_temp_receipt(self, receipt: dict) -> Path:
+        directory = tempfile.mkdtemp()
+        path = Path(directory) / "receipt.json"
+        path.write_text(json.dumps(receipt), encoding="utf-8")
+        self.addCleanup(shutil.rmtree, directory, ignore_errors=True)
+        return path
 
     def test_invalid_model_family(self) -> None:
         receipt = self.receipt.copy()

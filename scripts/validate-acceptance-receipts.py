@@ -22,6 +22,14 @@ MECHANICAL_VALUES = {"pass", "fail", "not_run"}
 LISTENING_FIELDS = {"intelligibility", "voice_or_instruction", "artifacts", "final_tail", "sequential_contamination"}
 LISTENING_VALUES = {"pass", "partial", "not_assessed", "fail"}
 ARTIFACT_KINDS = {"wav", "json", "log", "manifest", "other"}
+GPU_UUID_STATUSES = {"recorded", "unavailable"}
+GPU_UUID_UNAVAILABLE_REASONS = {
+    "driver_api_unavailable",
+    "hardware_not_exposed",
+    "permission_denied",
+    "platform_unavailable",
+    "virtualized_device",
+}
 RESULT_VALUES = {"pass", "fail", "not_run", "unsupported", "not_assessed"}
 RELEASE_VALUES = {"accepted", "conditional", "blocked"}
 RESULT_FIELDS = {"case_result", "listening_result", "release_disposition"}
@@ -64,10 +72,19 @@ def check_string(value: Any, label: str) -> None:
 def validate_result(value: Any, allowed: set[str], label: str) -> str:
     if not isinstance(value, dict):
         raise ValidationError(f"{label}: expected status/reason object")
-    object_keys(value, {"status", "reason"}, {"status", "reason"}, label)
+    object_keys(value, {"status", "reason"}, {"status", "reason", "archive_id", "archive_sha256"}, label)
     if not isinstance(value["status"], str) or value["status"] not in allowed:
         raise ValidationError(f"{label}: invalid status")
     check_string(value["reason"], f"{label}.reason")
+    if value["status"] == "archive":
+        archive_id = value.get("archive_id")
+        archive_sha256 = value.get("archive_sha256")
+        if not isinstance(archive_id, str) or not re.fullmatch(r"[a-z0-9][a-z0-9._-]+", archive_id):
+            raise ValidationError(f"{label}.archive_id: expected machine-readable archive identifier")
+        if not isinstance(archive_sha256, str) or not HEX64.fullmatch(archive_sha256):
+            raise ValidationError(f"{label}.archive_sha256: expected SHA-256")
+    elif "archive_id" in value or "archive_sha256" in value:
+        raise ValidationError(f"{label}: archive metadata is only valid for archive status")
     return value["status"]
 
 
@@ -135,10 +152,27 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
     hardware = receipt["hardware"]
     if not isinstance(hardware, dict):
         raise ValidationError(f"{path}: hardware must be an object")
-    hardware_fields = {"gpu", "compute_capability", "driver", "cuda"}
-    object_keys(hardware, hardware_fields, hardware_fields, f"{path}: hardware")
-    for key in hardware_fields:
+    hardware_required = {"gpu", "compute_capability", "driver", "cuda"}
+    hardware_fields = hardware_required | {"gpu_uuid", "gpu_uuid_status", "gpu_uuid_reason"}
+    object_keys(hardware, hardware_required, hardware_fields, f"{path}: hardware")
+    for key in hardware_required:
         check_string(hardware[key], f"{path}: hardware.{key}")
+    release_claim = receipt.get("release_status")
+    if receipt["schema_version"] == 2 or release_claim == "accepted":
+        uuid_status = hardware.get("gpu_uuid_status")
+        if uuid_status not in GPU_UUID_STATUSES:
+            raise ValidationError(f"{path}: hardware.gpu_uuid_status must be recorded or unavailable")
+        if uuid_status == "recorded":
+            gpu_uuid = hardware.get("gpu_uuid")
+            if not isinstance(gpu_uuid, str) or not re.fullmatch(r"GPU-[A-Za-z0-9-]+", gpu_uuid):
+                raise ValidationError(f"{path}: hardware.gpu_uuid is required when recorded")
+            if "gpu_uuid_reason" in hardware:
+                raise ValidationError(f"{path}: recorded GPU UUID must not include gpu_uuid_reason")
+        else:
+            if "gpu_uuid" in hardware:
+                raise ValidationError(f"{path}: unavailable GPU UUID must not include gpu_uuid")
+            if hardware.get("gpu_uuid_reason") not in GPU_UUID_UNAVAILABLE_REASONS:
+                raise ValidationError(f"{path}: invalid hardware.gpu_uuid_reason")
 
     artifact_root = receipt["artifact_root"]
     if not isinstance(artifact_root, str) or not re.fullmatch(r"\.tmp/base-acceptance/[a-z0-9][a-z0-9-]+", artifact_root):
@@ -251,9 +285,13 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
             raise ValidationError(f"{path}: accepted disposition requires available evidence")
     core_gates = {"model_load", "pcm", "natural_eos"}
     if release == "accepted" and (
-        any(mechanical[key] != "pass" for key in core_gates) or status != "pass"
+        receipt["model_revision"] == "not_pinned"
+        or any(mechanical[key] != "pass" for key in MECHANICAL_FIELDS)
+        or status != "pass"
     ):
         raise ValidationError(f"{path}: accepted release cannot hide failed or incomplete gates")
+    if release == "blocked" and all(value == "pass" for value in mechanical.values()) and status == "pass":
+        raise ValidationError(f"{path}: blocked release must identify an incomplete or failed gate")
     if "supersedes" in receipt and receipt["supersedes"] is not None:
         if not isinstance(receipt["supersedes"], list) or any(not isinstance(item, str) or not item for item in receipt["supersedes"]):
             raise ValidationError(f"{path}: supersedes must be null or a string array")
