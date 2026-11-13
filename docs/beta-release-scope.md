@@ -142,6 +142,10 @@ listening receipts pass on the declared GPUs. The Python route remains a
 supported alternative wherever its own gates pass. No backend switch may
 silently change the advertised support level, and native process-worker and
 in-process adapter acceptance are separate gates.
+The packaging comparison and native dependency-closure decision are tracked in
+[`r1-release-packaging-audit.md`](reports/r1-release-packaging-audit.md);
+Python's measured multi-gigabyte footprint is not evidence that an unmeasured
+native package is small.
 
 Models and reference audio are external artifacts. The beta provisioning
 contract is:
