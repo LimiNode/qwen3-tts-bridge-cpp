@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "guaranteed_system": [
+    "advapi32.dll",
+    "bcrypt.dll",
+    "combase.dll",
+    "gdi32.dll",
+    "kernel32.dll",
+    "ntdll.dll",
+    "ole32.dll",
+    "oleaut32.dll",
+    "psapi.dll",
+    "rpcrt4.dll",
+    "shell32.dll",
+    "shlwapi.dll",
+    "ucrtbase.dll",
+    "user32.dll",
+    "version.dll",
+    "winmm.dll",
+    "ws2_32.dll"
+  ],
+  "guaranteed_system_prefixes": [
+    "api-ms-win-*",
+    "ext-ms-win-*"
+  ],
+  "declared_prerequisites": [
+    {
+      "name": "nvcuda.dll",
+      "kind": "nvidia_driver",
+      "reason": "Installed NVIDIA driver with CUDA driver API"
+    },
+    {
+      "name": "vcruntime*.dll",
+      "kind": "visual_cxx_runtime",
+      "reason": "Microsoft Visual C++ Redistributable, x64"
+    },
+    {
+      "name": "msvcp*.dll",
+      "kind": "visual_cxx_runtime",
+      "reason": "Microsoft Visual C++ Redistributable, x64"
+    }
+  ],
+  "dynamic_dependencies": []
+}

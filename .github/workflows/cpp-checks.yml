@@ -17,6 +17,7 @@ on:
       - "scripts/assemble-portable-release.ps1"
       - "scripts/assemble-native-portable-release.ps1"
       - "scripts/audit-native-dependencies.py"
+      - "scripts/verify-native-package.py"
       - "scripts/setup-python-packaging.ps1"
       - "scripts/test-portable-python-worker-cpp.ps1"
       - "scripts/test-portable-user-cli.ps1"
@@ -30,6 +31,8 @@ on:
       - "worker/**"
       - "docs/native-qwentts-worker.md"
       - "docs/native-portable-package.md"
+      - "config/native-package.example.json"
+      - "config/native-dependency-policy.json"
 
 permissions:
   contents: read
