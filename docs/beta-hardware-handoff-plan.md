@@ -1,10 +1,11 @@
 # CMP 50HX to RTX 4090 beta handoff plan
 
-This plan is for a reproducible beta candidate, not for comparing two GPUs by
-one headline latency number. CMP 50HX is the development and freeze machine;
-RTX 4090 is a later validation target. Any number is meaningful only with the
-same engine, model, runtime, request corpus and playback policy recorded beside
-it.
+This plan is for a reproducible R1 candidate, not for comparing two GPUs by
+one headline latency number. CMP 50HX and RTX 4090 are independent acceptance
+machines. Each backend (native qwentts.cpp/GGUF and Python/Faster) gets its own
+mechanical, packaging, lifecycle, quality and listening gates. Any number is
+meaningful only with the same engine, model, runtime, request corpus and
+playback policy recorded beside it.
 
 ## 1. Freeze the CMP candidate
 
@@ -85,6 +86,23 @@ For each advertised model/profile, capture at minimum:
 The existing speech-animation receipt may be retained as optional evidence, but
 it does not prove physical avatar presentation or display latency.
 
+### Native-first R1 campaign
+
+Run the native Base Q8_0 profile first on both GPUs when the frozen model and
+runtime manifests are available. Record cold initialization, explicit warmup,
+warmed first PCM, repeated requests, restart, cancellation/recovery, natural
+EOS, physical playback, peak VRAM and human listening. Repeat the exact
+12-case RU-stress corpus, including U+0301 cases, as a separate profile-owned
+receipt. Missing or mismatched GGUF assets are `not_run`/`fail`; never silently
+substitute a Base profile.
+
+Run the comparable Python/Faster Base workload independently on both GPUs,
+then prepare a backend-selection record covering correctness, quality, latency,
+resource use, packaging and maintenance. Native process-worker acceptance does
+not imply acceptance of the in-process `qwen.dll` adapter; that adapter needs
+its own ABI, lifecycle and clean-package evidence. Native CustomVoice and
+VoiceDesign gaps do not invalidate Python acceptance for those families.
+
 ## 3. RTX 4090 first run
 
 After the CMP candidate has passed the isolated clean-environment packaging
@@ -140,8 +158,8 @@ Publish only when all of the following are true:
   playback and listening evidence with frozen hashes;
 * required P1 hardening (terminal-ID policy/bounded history and bounded pending
   admission) is merged and tested;
-* release-facing changelog/status text matches the actual Python baseline and
-  optional native/RU-stress boundaries;
+* release-facing changelog/status text matches the dual-backend decision and
+  the actual native/Python support boundaries;
 * RTX 4090 reproduces the identical workload, or its documented differences
   are accepted as a separate hardware report;
 * the final artifact bundle contains binaries, manifests, SHA-256 files,

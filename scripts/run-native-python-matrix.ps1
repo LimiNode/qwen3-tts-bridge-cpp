@@ -297,6 +297,33 @@ function Get-JsonPropertyValue([object] $Object, [string] $Name) {
     return $property.Value
 }
 
+function Write-TextAtomic([string] $Path, [string] $Content) {
+    $directory = [System.IO.Path]::GetDirectoryName($Path)
+    if ($directory) { New-Item -ItemType Directory -Force -Path $directory | Out-Null }
+    $temporary = Join-Path $directory ("." + [System.IO.Path]::GetFileName($Path) + "." + [guid]::NewGuid().ToString("N") + ".tmp")
+    $encoding = [System.Text.UTF8Encoding]::new($false)
+    $bytes = $encoding.GetBytes($Content + [Environment]::NewLine)
+    $stream = [System.IO.File]::Open($temporary, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+    try {
+        $stream.Write($bytes, 0, $bytes.Length)
+        $stream.Flush($true)
+    }
+    finally {
+        $stream.Dispose()
+    }
+    try {
+        if (Test-Path -LiteralPath $Path) {
+            [System.IO.File]::Replace($temporary, $Path, $null, $true)
+        }
+        else {
+            [System.IO.File]::Move($temporary, $Path)
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
+}
+
 function Get-BenchmarkGateFailures(
     [string] $Name,
     [object] $Result) {
@@ -728,7 +755,7 @@ try {
         python = $pythonResult
         native = $nativeResult
         playback = $playback
-    } | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $outputPath -Encoding UTF8
+    } | ConvertTo-Json -Depth 100 | ForEach-Object { Write-TextAtomic $outputPath $_ }
     $provenanceFailures = [System.Collections.Generic.List[string]]::new()
     foreach ($sourceEntry in @($pythonSourceProvenance.Values)) {
         if ($sourceEntry.exists -ne $true -or [string]::IsNullOrWhiteSpace([string]$sourceEntry.git_commit)) {

@@ -13,11 +13,21 @@ The required end-to-end surface is exercised through the installed command,
 not by calling implementation modules directly. At minimum, the runbook must
 invoke the real commands `qwen-tts synth`, `qwen-tts play`, `qwen-tts voices
 create`, `qwen-tts voices verify`, and the legacy `qwen-tts design` route.
-`scripts/run-real-model-release-acceptance.ps1` is auxiliary telemetry,
+`scripts/run-real-model-release-acceptance.ps1` remains auxiliary telemetry,
 fixture, and playback infrastructure; it is not a substitute for the full CLI
-matrix. The runner uses the checkout worker sources through `PYTHONPATH`, so
-its results are not portable-package acceptance unless a separately assembled
-package is explicitly tested.
+matrix. For the installed real-model prerequisite, use
+`scripts/run-installed-real-model-cli-acceptance.ps1`. That runner invokes the
+installed `qwen-tts` command for real `synth` and `play --out` requests with
+`PYTHONPATH` removed, verifies the resulting PCM16/mono/24 kHz WAVs, and keeps
+logs and a structured summary under the run directory. A failed command writes
+the same machine-readable receipt with `case_result.status: fail`, failure
+stage, exit code, reason, provenance, and hashes of all retained artifacts;
+failure is never silently converted to `not_run` or a successful
+`conditional` release disposition. The WAV verifier is an external
+checkout-based test harness, so this runner does not by itself prove that a
+relocated package is independent of the source checkout. Clean relocation is a
+separate mandatory gate. The checkout runner may still be used for telemetry,
+but its results are not portable-package acceptance.
 
 The existing `scripts/test-portable-user-cli.ps1` provides installed,
 relocated **mock-only** coverage for all explicit family routes, `play --out`,
@@ -28,11 +38,10 @@ hashes, timestamps and independent result layers. This is a run summary, not
 a canonical model receipt. Its release disposition is always `blocked`, even
 when mechanical checks pass. It never performs model acceptance or listening.
 
-Real installed-command automation remains a separate prerequisite: the
-checkout auxiliary runner does not cover it, and the mock package runner must
-not be pointed at real models in an attempt to promote its verdict. The
-remaining hardware matrix below must run the sealed installed CLI without
-mock switches and retain exact model/runtime/corpus manifests.
+Real installed-command automation is now an explicit prerequisite: run the
+installed runner against the sealed package and external models, then retain
+exact model/runtime/corpus manifests. The mock package runner must not be
+pointed at real models in an attempt to promote its verdict.
 
 ## Scope and evidence storage
 
@@ -103,11 +112,13 @@ are mechanical safeguards and do not replace listening to the real artifacts.
 
 ## Backend comparison
 
-Python/Faster is the production baseline. Upstream is a separately identified
-diagnostic comparison and must not inherit a Faster acceptance verdict. Native
-profiles are opt-in: run them only when the exact DLL, model hashes, profile,
-and native acceptance prerequisites are available. A missing or unsupported
-combination is an explicit `not_run` or `unsupported` result, never a fallback.
+Native qwentts.cpp/GGUF and Python/Faster are equally rigorous R1 acceptance
+tracks, with native Base as the priority candidate. Upstream is a separately
+identified diagnostic comparison and must not inherit a Faster verdict. Run a
+native profile only when the exact DLL, model hashes, profile, and acceptance
+prerequisites are available. A missing or unsupported combination is an
+explicit `not_run` or `unsupported` result, never a fallback. Native
+process-worker and in-process adapter results are separate evidence surfaces.
 
 The same text corpus and seed/options should be used for comparable backends,
 but receipts remain separate because listening and timing results do not
