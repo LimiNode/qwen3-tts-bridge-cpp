@@ -1,0 +1,20 @@
+{
+  "player": "bin/qwen_tts_play.exe",
+  "worker": "bin/qwen_tts_native_worker.exe",
+  "runtime_dir": "runtime/qwentts",
+  "model_root": "models",
+  "default_model_profile": "base",
+  "model_profiles": {
+    "base": {
+      "talker_model": "models/base/qwen-talker-1.7b-base-Q8_0.gguf",
+      "codec_model": "models/common/qwen-tokenizer-12hz-Q8_0.gguf"
+    },
+    "ru-stress": {
+      "experimental": true,
+      "talker_model": "models/ru-stress/qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+      "codec_model": "models/common/qwen-tokenizer-12hz-Q8_0.gguf",
+      "text_render_capability": "explicit_combining_stress"
+    }
+  },
+  "warmup_synthesis": false
+}

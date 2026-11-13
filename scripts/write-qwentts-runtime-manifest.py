@@ -21,6 +21,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--runtime-dir", type=Path, required=True)
     parser.add_argument("--engine-commit", required=True)
     parser.add_argument("--backend", default="cuda")
+    parser.add_argument(
+        "--dynamic-dependency",
+        action="append",
+        default=[],
+        help="DLL loaded dynamically by the native runtime; may be repeated",
+    )
     parser.add_argument("--output", type=Path)
     return parser.parse_args()
 
@@ -37,7 +43,11 @@ def main() -> int:
     output = (args.output or runtime_dir / "manifest.json").resolve()
     files = []
     for path in sorted(runtime_dir.rglob("*")):
-        if not path.is_file() or path.name.lower() == "manifest.json" or path.resolve() == output:
+        if (
+            not path.is_file()
+            or path.name.lower() == "manifest.json"
+            or path.resolve() == output
+        ):
             continue
         relative = path.relative_to(runtime_dir).as_posix()
         files.append({"path": relative, "sha256": sha256(path)})
@@ -49,6 +59,7 @@ def main() -> int:
         "qt_abi_version": 6,
         "architecture": "x64",
         "backend": args.backend,
+        "dynamic_dependencies": sorted(set(args.dynamic_dependency), key=str.lower),
         "files": files,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
