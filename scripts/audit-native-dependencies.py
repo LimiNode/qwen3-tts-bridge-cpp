@@ -60,7 +60,9 @@ def _imports(path: Path) -> list[str]:
         virtual_address = _u32(data, section + 12)
         raw_size = _u32(data, section + 16)
         raw_pointer = _u32(data, section + 20)
-        sections.append((virtual_address, max(virtual_size, raw_size), raw_pointer, raw_size))
+        sections.append(
+            (virtual_address, max(virtual_size, raw_size), raw_pointer, raw_size)
+        )
 
     def rva_to_file_offset(rva: int) -> int:
         for virtual_address, span, raw_pointer, raw_size in sections:
