@@ -15,6 +15,8 @@ on:
       - "external/cpp/**"
       - "scripts/package-python-worker.ps1"
       - "scripts/assemble-portable-release.ps1"
+      - "scripts/assemble-native-portable-release.ps1"
+      - "scripts/audit-native-dependencies.py"
       - "scripts/setup-python-packaging.ps1"
       - "scripts/test-portable-python-worker-cpp.ps1"
       - "scripts/test-portable-user-cli.ps1"
@@ -27,6 +29,7 @@ on:
       - "tests/**"
       - "worker/**"
       - "docs/native-qwentts-worker.md"
+      - "docs/native-portable-package.md"
 
 permissions:
   contents: read
@@ -135,6 +138,21 @@ jobs:
         run: >
           [void][System.Management.Automation.Language.Parser]::ParseFile(
           'scripts/run-native-python-matrix.ps1', [ref]$null, [ref]$null)
+
+      - name: Parse native packaging runner
+        if: ${{ matrix.name == 'default' }}
+        shell: pwsh
+        run: |
+          $errors = $null
+          $tokens = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            'scripts/assemble-native-portable-release.ps1',
+            [ref]$tokens,
+            [ref]$errors)
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { $_.Message }
+            throw 'Native packaging runner failed PowerShell parsing.'
+          }
 
       - name: Install portable worker packaging tooling
         if: ${{ matrix.build-examples == 'ON' }}

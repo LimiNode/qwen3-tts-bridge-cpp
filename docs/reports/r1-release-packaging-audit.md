@@ -3,7 +3,7 @@
 Status: decision preparation only. No release artifact is published and no
 backend is promoted by this report.
 
-Baseline: `8b19399cb84eb81556f84f2542bfae337c41b46f`.
+Baseline: `73fcdd4d37d9b2115579a3b868b7f2de838cc6ef`.
 
 ## Why this is a separate gate
 
@@ -33,6 +33,14 @@ The Python result is a real measured footprint, not a promise that every
 future package has the same contents. The native result is deliberately
 `not_measured`; a small DLL or executable alone is not evidence of a usable
 native distribution.
+
+The focused native packaging work now provides
+`scripts/assemble-native-portable-release.ps1` and the standard-library PE
+dependency auditor in `scripts/audit-native-dependencies.py`. These tools
+assemble and audit a real runtime supplied outside the repository; they do not
+turn a build-tree or fake runtime into release evidence. Until the resulting
+ZIP is relocated and accepted on both target GPUs, the native row remains
+`not_measured` and the freeze decision remains NO-GO.
 
 ## Measurement procedure
 
