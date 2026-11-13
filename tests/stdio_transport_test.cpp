@@ -1020,6 +1020,82 @@ void test_stop_can_kill_worker_while_send_is_blocked() {
     CHECK(!transport.is_running());
 }
 
+void test_send_state_error_does_not_deadlock_on_callback_overflow() {
+    // Keep one receive callback in flight while a second event occupies the
+    // bounded callback queue.  A concurrent stop then makes send() observe a
+    // stale process handle and publish an error.  The error itself must be
+    // published after state_mutex_ is released: queue overflow tears down the
+    // transport and takes that mutex again.
+    RawCollector collector;
+    StdIoTransportOptions options = make_python_options(
+        "import sys, time\n"
+        "sys.stdout.buffer.write(b'first\\nsecond\\n')\n"
+        "sys.stdout.flush()\n"
+        "time.sleep(60)\n",
+        std::chrono::milliseconds(100));
+    options.read_buffer_size = 1;
+    options.max_callback_queue_events = 1;
+    options.max_callback_queue_bytes = 64;
+
+    std::mutex callback_mutex;
+    std::condition_variable callback_condition;
+    bool callback_entered = false;
+    bool release_callback = false;
+    StdIoTransport transport(options);
+    CHECK(transport.start(
+        [&](ITransport::Bytes bytes) {
+            collector.on_bytes(std::move(bytes));
+            {
+                std::lock_guard<std::mutex> lock(callback_mutex);
+                callback_entered = true;
+            }
+            callback_condition.notify_all();
+            std::unique_lock<std::mutex> lock(callback_mutex);
+            CHECK(callback_condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+                return release_callback;
+            }));
+        },
+        [&](std::string message) {
+            collector.on_error(std::move(message));
+        },
+        [&](int status) {
+            collector.on_exit(status);
+        }));
+
+    {
+        std::unique_lock<std::mutex> lock(callback_mutex);
+        CHECK(callback_condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return callback_entered;
+        }));
+    }
+
+    std::atomic<bool> send_finished{false};
+    std::thread sender([&]() {
+        const std::byte byte{0x31};
+        transport.send(&byte, 1);
+        send_finished = true;
+    });
+
+    std::thread stopper([&]() {
+        transport.stop();
+    });
+
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex);
+        release_callback = true;
+    }
+    callback_condition.notify_all();
+
+    collector.wait_for_exit(std::chrono::seconds(5));
+    for (int attempt = 0; attempt < 500 && !send_finished.load(); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(send_finished.load());
+    sender.join();
+    stopper.join();
+    CHECK(!transport.is_running());
+}
+
 void test_stdout_is_delivered_before_exit_callback() {
     RawCollector collector;
     StdIoTransportOptions options = make_python_options(
@@ -1237,6 +1313,7 @@ int main(int argc, char** argv) {
     test_lifecycle_watchdog_subprocess(
         argv[0], "--startup-error-child", "startup-error-child-ok");
     test_stop_can_kill_worker_while_send_is_blocked();
+    test_send_state_error_does_not_deadlock_on_callback_overflow();
     test_stdout_is_delivered_before_exit_callback();
     test_invalid_callback_queue_limits_reject_start();
     test_callback_queue_overflow_reports_error_and_stops_worker();

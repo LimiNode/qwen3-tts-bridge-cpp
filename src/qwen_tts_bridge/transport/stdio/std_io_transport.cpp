@@ -445,12 +445,19 @@ public:
         {
             std::lock_guard<std::mutex> write_lock(write_mutex_);
 
+            bool can_write = false;
             {
                 std::lock_guard<std::mutex> state_lock(state_mutex_);
-                if (state_ != ProcessState::Running || process_ != process || exited_) {
-                    report_error("stdio transport is not running");
-                    return SendResult::Closed;
-                }
+                can_write = state_ == ProcessState::Running
+                    && process_ == process
+                    && !exited_;
+            }
+            if (!can_write) {
+                // Do not publish while state_mutex_ is held.  The error path
+                // may overflow the callback queue and synchronously request
+                // transport teardown, which needs the same mutex.
+                report_error("stdio transport is not running");
+                return SendResult::Closed;
             }
 
             try {
