@@ -1,6 +1,8 @@
 #include <qwen_tts_bridge/protocol/control.hpp>
 #include <qwen_tts_bridge/protocol/framing.hpp>
 
+#include <nlohmann/json.hpp>
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -12,6 +14,7 @@
 #include <filesystem>
 #include <iostream>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -305,6 +308,30 @@ int run_pipe_integrity_case(int iteration) {
     resources.child_stderr_read.reset();
     resources.process_thread.reset();
     resources.process.reset();
+
+    std::vector<std::byte> stderr_bytes;
+    {
+        std::lock_guard<std::mutex> lock(stderr_capture.mutex);
+        stderr_bytes = stderr_capture.bytes;
+    }
+    const std::string stderr_text(
+        reinterpret_cast<const char*>(stderr_bytes.data()), stderr_bytes.size());
+    std::istringstream stderr_lines(stderr_text);
+    std::string stderr_line;
+    while (std::getline(stderr_lines, stderr_line)) {
+        if (stderr_line.rfind("qtb_metric ", 0) != 0) {
+            continue;
+        }
+        try {
+            const auto metric = nlohmann::json::parse(stderr_line.substr(10));
+            CHECK(metric.is_object());
+        }
+        catch (const nlohmann::json::exception& error) {
+            std::cerr << "invalid qtb_metric JSONL: " << error.what() << '\n'
+                      << stderr_line << '\n';
+            return 1;
+        }
+    }
 
     std::vector<std::byte> stdout_bytes;
     {

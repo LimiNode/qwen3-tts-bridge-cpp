@@ -205,6 +205,7 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
 
     add_executable(qwen_tts_native_worker
         worker/native/qwentts/main.cpp
+        worker/native/qwentts/diagnostics.cpp
         worker/native/qwentts/native_engine.cpp
         worker/native/qwentts/prepared_voice_reference.cpp
         worker/native/qwentts/qwen_dll_loader.cpp
@@ -882,6 +883,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_link_libraries(native_stdout_pipe_integrity_test
             PRIVATE
                 QwenTTSBridge::qwen_tts_bridge
+                nlohmann_json::nlohmann_json
         )
         target_compile_definitions(native_stdout_pipe_integrity_test
             PRIVATE
