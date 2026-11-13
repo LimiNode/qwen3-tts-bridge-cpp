@@ -876,6 +876,33 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         add_test(NAME qwen_tts_native_worker_test COMMAND qwen_tts_native_worker_test)
         set_tests_properties(qwen_tts_native_worker_test PROPERTIES TIMEOUT 60)
 
+        add_executable(native_engine_callback_test
+            tests/native/native_engine_callback_test.cpp
+            worker/native/qwentts/native_engine.cpp
+            worker/native/qwentts/prepared_voice_reference.cpp
+            worker/native/qwentts/qwen_dll_loader.cpp
+            worker/native/qwentts/runtime_manifest.cpp
+            worker/native/qwentts/wav_reader.cpp
+        )
+        target_include_directories(native_engine_callback_test
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
+                "${QWEN_TTS_BRIDGE_QWENTTS_DIR}/src"
+        )
+        target_link_libraries(native_engine_callback_test
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge
+                nlohmann_json::nlohmann_json
+                bcrypt
+        )
+        target_compile_definitions(native_engine_callback_test
+            PRIVATE
+                QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
+        )
+        add_dependencies(native_engine_callback_test qwen_tts_fake_qwen)
+        add_test(NAME native_engine_callback_test COMMAND native_engine_callback_test)
+        set_tests_properties(native_engine_callback_test PROPERTIES TIMEOUT 30)
+
         add_executable(native_stdout_pipe_integrity_test
             tests/native/native_stdout_pipe_integrity_test.cpp
         )
