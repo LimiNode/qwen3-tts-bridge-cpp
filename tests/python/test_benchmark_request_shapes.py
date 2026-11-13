@@ -23,7 +23,9 @@ class BenchmarkRequestShapeTests(unittest.TestCase):
             path = Path(temporary_directory) / "report.json"
             _write_json_atomic(path, '{"status":"complete"}\n')
 
-            self.assertEqual(path.read_text(encoding="utf-8"), '{"status":"complete"}\n')
+            self.assertEqual(
+                path.read_text(encoding="utf-8"), '{"status":"complete"}\n'
+            )
             self.assertEqual(list(path.parent.glob("*.tmp")), [])
 
     def test_loads_base_profile_voice_id(self) -> None:
