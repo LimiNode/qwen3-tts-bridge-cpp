@@ -132,8 +132,19 @@ def audit(root: Path, entries: list[str]) -> dict[str, object]:
     root = root.resolve()
     if not root.is_dir():
         raise ValueError(f"package root does not exist: {root}")
-    by_name = {path.name.lower(): path for path in root.rglob("*.dll")}
-    by_name.update({path.name.lower(): path for path in root.rglob("*.exe")})
+    candidates: dict[str, list[Path]] = {}
+    for path in (*root.rglob("*.dll"), *root.rglob("*.exe")):
+        candidates.setdefault(path.name.lower(), []).append(path)
+    duplicate_names = {
+        name: sorted(path.relative_to(root).as_posix() for path in paths)
+        for name, paths in candidates.items()
+        if len(paths) > 1
+    }
+    by_name = {
+        name: paths[0]
+        for name, paths in candidates.items()
+        if len(paths) == 1
+    }
     queue: deque[tuple[str, Path]] = deque()
     for entry in entries:
         path = (root / entry).resolve()
@@ -180,7 +191,8 @@ def audit(root: Path, entries: list[str]) -> dict[str, object]:
         "imports": imports,
         "unresolved_external": sorted(set(unresolved)),
         "non_pe_files": sorted(non_pe),
-        "status": "fail" if unresolved or non_pe else "pass",
+        "duplicate_bundled_names": duplicate_names,
+        "status": "fail" if unresolved or non_pe or duplicate_names else "pass",
     }
 
 

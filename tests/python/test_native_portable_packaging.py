@@ -59,6 +59,19 @@ class NativePortablePackagingContractTests(unittest.TestCase):
         self.assertEqual(result["status"], "fail")
         self.assertEqual(result["non_pe_files"], ["entry.exe"])
 
+    def test_auditor_rejects_duplicate_bundled_module_names(self) -> None:
+        auditor = _load_auditor()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "bin").mkdir()
+            (root / "runtime").mkdir()
+            (root / "bin" / "qwen.dll").write_bytes(b"not a PE")
+            (root / "runtime" / "qwen.dll").write_bytes(b"not a PE")
+            (root / "entry.exe").write_bytes(b"not a PE")
+            result = auditor.audit(root, ["entry.exe"])
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("qwen.dll", result["duplicate_bundled_names"])
+
     def test_auditor_cli_writes_structured_result(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
