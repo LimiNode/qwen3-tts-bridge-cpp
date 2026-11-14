@@ -109,6 +109,63 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
         del receipt["artifacts"][0]["availability"]
         self.assert_invalid(receipt)
 
+    def test_accepted_receipt_requires_pinned_model_and_gpu_identity(self) -> None:
+        receipt = self.version_two_receipt()
+        receipt["mechanical"] = {key: "pass" for key in receipt["mechanical"]}
+        receipt["human_listening"].update(
+            status="pass", criteria={key: "pass" for key in receipt["human_listening"]["criteria"]}
+        )
+        receipt["input_identity"].update(status="recorded", corpus_sha256="a" * 64)
+        receipt["case_result"] = {"status": "pass", "reason": "All gates passed."}
+        receipt["listening_result"] = {"status": "pass", "reason": "All criteria passed."}
+        receipt["release_disposition"] = {"status": "accepted", "reason": "Release gate passed."}
+        receipt["release_status"] = "accepted"
+        for artifact in receipt["artifacts"]:
+            artifact["availability"] = {"status": "local", "reason": "Available."}
+        receipt["model_revision"] = "not_pinned"
+        self.assert_invalid(receipt)
+
+        receipt["model_revision"] = "a" * 64
+        del receipt["hardware"]["gpu_uuid_status"]
+        self.assert_invalid(receipt)
+
+    def test_blocked_release_may_have_complete_local_results(self) -> None:
+        receipt = self.version_two_receipt()
+        receipt["mechanical"] = {key: "pass" for key in receipt["mechanical"]}
+        receipt["human_listening"].update(
+            status="pass",
+            criteria={key: "pass" for key in receipt["human_listening"]["criteria"]},
+        )
+        receipt["input_identity"].update(status="recorded", corpus_sha256="a" * 64)
+        receipt["case_result"] = {"status": "pass", "reason": "Local gates passed."}
+        receipt["listening_result"] = {"status": "pass", "reason": "Scoped listening passed."}
+        receipt["release_disposition"] = {
+            "status": "blocked",
+            "reason": "Independent RTX 4090 packaging gate remains unresolved.",
+        }
+        receipt["release_status"] = "blocked"
+        for artifact in receipt["artifacts"]:
+            artifact["availability"] = {"status": "local", "reason": "Available."}
+        VALIDATOR.validate_receipt(self._write_temp_receipt(receipt), ROOT, False)
+
+    def test_uuid_unavailable_requires_machine_reason(self) -> None:
+        receipt = self.version_two_receipt()
+        receipt["hardware"] = dict(
+            self.receipt["hardware"], gpu_uuid_status="unavailable", gpu_uuid_reason="operator_note"
+        )
+        self.assert_invalid(receipt)
+        receipt["hardware"]["gpu_uuid_reason"] = "driver_api_unavailable"
+        VALIDATOR.validate_receipt(
+            self._write_temp_receipt(receipt), ROOT, False
+        )
+
+    def _write_temp_receipt(self, receipt: dict) -> Path:
+        directory = tempfile.mkdtemp()
+        path = Path(directory) / "receipt.json"
+        path.write_text(json.dumps(receipt), encoding="utf-8")
+        self.addCleanup(shutil.rmtree, directory, ignore_errors=True)
+        return path
+
     def test_invalid_model_family(self) -> None:
         receipt = self.receipt.copy()
         receipt["model_family"] = "unknown"
