@@ -221,6 +221,15 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
             QWEN_STATIC
             NOMINMAX
     )
+    if(QWEN_TTS_BRIDGE_BUILD_TESTS)
+        # Test-only callback fault injection is compiled into the worker only
+        # for the fake-runtime integration suite; release builds have no such
+        # control path.
+        target_compile_definitions(qwen_tts_native_worker
+            PRIVATE
+                QTB_NATIVE_WORKER_TEST_HOOKS
+        )
+    endif()
     target_include_directories(qwen_tts_native_worker
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"

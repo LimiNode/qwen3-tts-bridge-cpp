@@ -11,8 +11,11 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <utility>
 
@@ -543,6 +546,25 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
             if (slot->cancelled.load(std::memory_order_relaxed) || slot->terminal.load()) {
                 return false;
             }
+#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
+            // The fake-runtime E2E suite needs to exercise the same callback
+            // boundary as a real qwentts plugin.  Keep the injection private
+            // to test builds and opt-in through the child process environment.
+            const char* failure_mode = std::getenv("QTB_TEST_NATIVE_CALLBACK_FAILURE");
+            const bool fail_first = failure_mode != nullptr &&
+                (std::strcmp(failure_mode, "runtime_error_first") == 0 ||
+                 std::strcmp(failure_mode, "bad_alloc_first") == 0);
+            const bool fail_after = failure_mode != nullptr &&
+                (std::strcmp(failure_mode, "runtime_error_after") == 0 ||
+                 std::strcmp(failure_mode, "bad_alloc_after") == 0);
+            if ((fail_first && chunk_index == 0) || (fail_after && chunk_index > 0)) {
+                if (std::strcmp(failure_mode, "bad_alloc_first") == 0 ||
+                    std::strcmp(failure_mode, "bad_alloc_after") == 0) {
+                    throw std::bad_alloc{};
+                }
+                throw std::runtime_error("injected native audio callback failure");
+            }
+#endif
             if (samples == nullptr || count <= 0) {
                 fail_fatal("qwen.dll emitted an invalid audio chunk");
                 return false;
