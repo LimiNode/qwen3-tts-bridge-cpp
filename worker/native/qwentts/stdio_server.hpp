@@ -80,6 +80,7 @@ private:
     bool shutdown_requested_ = false;
     bool shutdown_ack_needed_ = false;
     bool shutdown_terminals_enqueued_ = false;
+    bool engine_finished_ = false;
     bool fatal_error_ = false;
 };
 
