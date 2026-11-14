@@ -25,9 +25,39 @@
         }                                                                      \
     } while (false)
 
+using namespace qwen_tts_bridge;
+
+namespace qwen_tts_bridge::detail {
+using StdioSendStateRecheckHook = void (*)();
+using StdioStopStateHook = void (*)();
+void set_stdio_send_state_recheck_hook_for_tests(StdioSendStateRecheckHook hook);
+void set_stdio_stop_state_hook_for_tests(StdioStopStateHook hook);
+} // namespace detail
+
 namespace {
 
 using namespace qwen_tts_bridge;
+
+std::mutex send_recheck_gate_mutex;
+std::condition_variable send_recheck_gate_condition;
+bool send_recheck_gate_entered = false;
+bool send_recheck_gate_release = false;
+bool stop_state_hook_entered = false;
+
+void send_recheck_gate() {
+    std::unique_lock<std::mutex> lock(send_recheck_gate_mutex);
+    send_recheck_gate_entered = true;
+    send_recheck_gate_condition.notify_all();
+    CHECK(send_recheck_gate_condition.wait_for(lock, std::chrono::seconds(5), []() {
+        return send_recheck_gate_release;
+    }));
+}
+
+void stop_state_gate() {
+    std::lock_guard<std::mutex> lock(send_recheck_gate_mutex);
+    stop_state_hook_entered = true;
+    send_recheck_gate_condition.notify_all();
+}
 
 std::vector<std::byte> bytes_from_string(const std::string& value) {
     std::vector<std::byte> bytes;
@@ -730,7 +760,6 @@ void test_stop_racing_callback_exception_does_not_deadlock() {
 
     std::atomic<bool> callback_entered{false};
     std::atomic<bool> release_callback{false};
-    std::atomic<bool> stop_finished{false};
     CHECK(transport.start(
         [&](ITransport::Bytes) {
             callback_entered = true;
@@ -747,6 +776,7 @@ void test_stop_racing_callback_exception_does_not_deadlock() {
     }
     CHECK(callback_entered.load());
 
+    std::atomic<bool> stop_finished{false};
     std::thread stopper([&]() {
         transport.stop();
         stop_finished = true;
@@ -1020,6 +1050,116 @@ void test_stop_can_kill_worker_while_send_is_blocked() {
     CHECK(!transport.is_running());
 }
 
+void test_send_state_error_does_not_deadlock_on_callback_overflow() {
+    // Keep one receive callback in flight while a second event occupies the
+    // bounded callback queue.  A concurrent stop then makes send() observe a
+    // stale process handle and publish an error.  The error itself must be
+    // published after state_mutex_ is released: queue overflow tears down the
+    // transport and takes that mutex again.
+    RawCollector collector;
+    StdIoTransportOptions options = make_python_options(
+        "import sys, time\n"
+        "sys.stdout.buffer.write(b'A')\n"
+        "sys.stdout.flush()\n"
+        "time.sleep(0.25)\n"
+        "sys.stdout.buffer.write(b'B')\n"
+        "sys.stdout.flush()\n"
+        "time.sleep(60)\n",
+        std::chrono::milliseconds(100));
+    options.read_buffer_size = 1;
+    options.max_callback_queue_events = 1;
+    options.max_callback_queue_bytes = 64;
+
+    std::mutex callback_mutex;
+    std::condition_variable callback_condition;
+    bool callback_entered = false;
+    bool release_callback = false;
+    // The test hook is internal to the transport translation unit and exists
+    // only to make the transition between send()'s two state checks explicit.
+    {
+        std::lock_guard<std::mutex> lock(send_recheck_gate_mutex);
+        send_recheck_gate_entered = false;
+        send_recheck_gate_release = false;
+        stop_state_hook_entered = false;
+    }
+    detail::set_stdio_send_state_recheck_hook_for_tests(&send_recheck_gate);
+    detail::set_stdio_stop_state_hook_for_tests(&stop_state_gate);
+    StdIoTransport transport(options);
+    CHECK(transport.start(
+        [&](ITransport::Bytes bytes) {
+            collector.on_bytes(std::move(bytes));
+            {
+                std::lock_guard<std::mutex> lock(callback_mutex);
+                callback_entered = true;
+            }
+            callback_condition.notify_all();
+            std::unique_lock<std::mutex> lock(callback_mutex);
+            CHECK(callback_condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+                return release_callback;
+            }));
+        },
+        [&](std::string message) {
+            collector.on_error(std::move(message));
+        },
+        [&](int status) {
+            collector.on_exit(status);
+        }));
+
+    {
+        std::unique_lock<std::mutex> lock(callback_mutex);
+        CHECK(callback_condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return callback_entered;
+        }));
+    }
+
+    std::atomic<bool> send_finished{false};
+    std::thread sender([&]() {
+        const std::byte byte{0x31};
+        transport.send(&byte, 1);
+        send_finished = true;
+    });
+
+    {
+        std::unique_lock<std::mutex> lock(send_recheck_gate_mutex);
+        CHECK(send_recheck_gate_condition.wait_for(lock, std::chrono::seconds(5), []() {
+            return send_recheck_gate_entered;
+        }));
+    }
+    // The worker emits the second byte only after the first callback has
+    // entered and the sender has reached the gated stale-state transition.
+    std::this_thread::sleep_for(std::chrono::milliseconds(350));
+
+    std::thread stopper([&]() {
+        transport.stop();
+    });
+
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex);
+        release_callback = true;
+    }
+    callback_condition.notify_all();
+
+    {
+        std::unique_lock<std::mutex> lock(send_recheck_gate_mutex);
+        CHECK(send_recheck_gate_condition.wait_for(lock, std::chrono::seconds(5), [&]() {
+            return stop_state_hook_entered;
+        }));
+        send_recheck_gate_release = true;
+    }
+    send_recheck_gate_condition.notify_all();
+
+    collector.wait_for_exit(std::chrono::seconds(5));
+    for (int attempt = 0; attempt < 500 && !send_finished.load(); ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(send_finished.load());
+    sender.join();
+    stopper.join();
+    detail::set_stdio_send_state_recheck_hook_for_tests(nullptr);
+    detail::set_stdio_stop_state_hook_for_tests(nullptr);
+    CHECK(!transport.is_running());
+}
+
 void test_stdout_is_delivered_before_exit_callback() {
     RawCollector collector;
     StdIoTransportOptions options = make_python_options(
@@ -1221,6 +1361,11 @@ int main(int argc, char** argv) {
         std::cout << "startup-error-child-ok\n";
         return 0;
     }
+    if (argc == 2 && std::string(argv[1]) == "--send-state-error-child") {
+        test_send_state_error_does_not_deadlock_on_callback_overflow();
+        std::cout << "send-state-error-child-ok\n";
+        return 0;
+    }
 
     test_mock_worker_handshake_over_stdio_transport();
     test_send_before_start_and_empty_send();
@@ -1237,6 +1382,8 @@ int main(int argc, char** argv) {
     test_lifecycle_watchdog_subprocess(
         argv[0], "--startup-error-child", "startup-error-child-ok");
     test_stop_can_kill_worker_while_send_is_blocked();
+    test_lifecycle_watchdog_subprocess(
+        argv[0], "--send-state-error-child", "send-state-error-child-ok");
     test_stdout_is_delivered_before_exit_callback();
     test_invalid_callback_queue_limits_reject_start();
     test_callback_queue_overflow_reports_error_and_stops_worker();
