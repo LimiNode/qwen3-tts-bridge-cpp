@@ -269,6 +269,65 @@ TinyProcessLib::Process::environment_type to_process_environment(
 
 } // namespace
 
+namespace detail {
+
+using StdioSendStateRecheckHook = void (*)();
+using StdioStopStateHook = void (*)();
+
+std::mutex& stdio_send_state_recheck_hook_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+StdioSendStateRecheckHook& stdio_send_state_recheck_hook() {
+    static StdioSendStateRecheckHook hook = nullptr;
+    return hook;
+}
+
+void set_stdio_send_state_recheck_hook_for_tests(StdioSendStateRecheckHook hook) {
+    std::lock_guard<std::mutex> lock(stdio_send_state_recheck_hook_mutex());
+    stdio_send_state_recheck_hook() = hook;
+}
+
+void invoke_stdio_send_state_recheck_hook_for_tests() {
+    StdioSendStateRecheckHook hook = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stdio_send_state_recheck_hook_mutex());
+        hook = stdio_send_state_recheck_hook();
+    }
+    if (hook != nullptr) {
+        hook();
+    }
+}
+
+std::mutex& stdio_stop_state_hook_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+StdioStopStateHook& stdio_stop_state_hook() {
+    static StdioStopStateHook hook = nullptr;
+    return hook;
+}
+
+void set_stdio_stop_state_hook_for_tests(StdioStopStateHook hook) {
+    std::lock_guard<std::mutex> lock(stdio_stop_state_hook_mutex());
+    stdio_stop_state_hook() = hook;
+}
+
+void invoke_stdio_stop_state_hook_for_tests() {
+    StdioStopStateHook hook = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stdio_stop_state_hook_mutex());
+        hook = stdio_stop_state_hook();
+    }
+    if (hook != nullptr) {
+        hook();
+    }
+}
+
+} // namespace detail
+
 class StdIoTransport::Impl {
 public:
     explicit Impl(StdIoTransportOptions options)
@@ -445,6 +504,8 @@ public:
         {
             std::lock_guard<std::mutex> write_lock(write_mutex_);
 
+            detail::invoke_stdio_send_state_recheck_hook_for_tests();
+
             bool can_write = false;
             {
                 std::lock_guard<std::mutex> state_lock(state_mutex_);
@@ -518,6 +579,7 @@ public:
                     state_ = ProcessState::Stopping;
                 }
             }
+            detail::invoke_stdio_stop_state_hook_for_tests();
 
             if (process != nullptr) {
                 close_stdin_if_write_is_idle(process);
