@@ -133,6 +133,25 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
         del receipt["hardware"]["gpu_uuid_status"]
         self.assert_invalid(receipt)
 
+    def test_blocked_release_may_have_complete_local_results(self) -> None:
+        receipt = self.version_two_receipt()
+        receipt["mechanical"] = {key: "pass" for key in receipt["mechanical"]}
+        receipt["human_listening"].update(
+            status="pass",
+            criteria={key: "pass" for key in receipt["human_listening"]["criteria"]},
+        )
+        receipt["input_identity"].update(status="recorded", corpus_sha256="a" * 64)
+        receipt["case_result"] = {"status": "pass", "reason": "Local gates passed."}
+        receipt["listening_result"] = {"status": "pass", "reason": "Scoped listening passed."}
+        receipt["release_disposition"] = {
+            "status": "blocked",
+            "reason": "Independent RTX 4090 packaging gate remains unresolved.",
+        }
+        receipt["release_status"] = "blocked"
+        for artifact in receipt["artifacts"]:
+            artifact["availability"] = {"status": "local", "reason": "Available."}
+        VALIDATOR.validate_receipt(self._write_temp_receipt(receipt), ROOT, False)
+
     def test_uuid_unavailable_requires_machine_reason(self) -> None:
         receipt = self.version_two_receipt()
         receipt["hardware"] = dict(

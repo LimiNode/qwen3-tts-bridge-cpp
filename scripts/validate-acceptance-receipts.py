@@ -290,8 +290,6 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
         or status != "pass"
     ):
         raise ValidationError(f"{path}: accepted release cannot hide failed or incomplete gates")
-    if release == "blocked" and all(value == "pass" for value in mechanical.values()) and status == "pass":
-        raise ValidationError(f"{path}: blocked release must identify an incomplete or failed gate")
     if "supersedes" in receipt and receipt["supersedes"] is not None:
         if not isinstance(receipt["supersedes"], list) or any(not isinstance(item, str) or not item for item in receipt["supersedes"]):
             raise ValidationError(f"{path}: supersedes must be null or a string array")
