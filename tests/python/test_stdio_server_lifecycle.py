@@ -452,6 +452,25 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         output.release.set()
         self.assertTrue(writer.stop_when_drained(timeout=1.0))
 
+    def test_output_writer_shutdown_does_not_need_sentinel_capacity(self) -> None:
+        output = _GateOutput()
+        writer = _OutputWriter(
+            output,
+            max_queue_size=1,
+            max_queue_bytes=8,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        writer.start()
+        writer.send(b"1234")
+        self.assertTrue(output.started.wait(timeout=1.0))
+        writer.send(b"abcd")
+
+        self.assertFalse(writer.stop_when_drained(timeout=0.01))
+        output.release.set()
+        self.assertTrue(writer.stop_when_drained(timeout=1.0))
+        self.assertEqual(b"1234abcd", output.getvalue())
+
     def test_admission_rejects_without_advancing_id_watermark_and_releases_queued_slot(
         self,
     ) -> None:

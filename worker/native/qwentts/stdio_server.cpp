@@ -117,13 +117,17 @@ public:
         return true;
     }
 
-    bool stop_when_drained(std::chrono::milliseconds timeout) {
+    void stop_accepting() {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             stopping_ = true;
         }
         not_empty_.notify_all();
         not_full_.notify_all();
+    }
+
+    bool stop_when_drained(std::chrono::milliseconds timeout) {
+        stop_accepting();
         if (thread_.joinable()) {
             std::unique_lock<std::mutex> lock(mutex_);
             const bool finished = finished_
@@ -177,10 +181,11 @@ private:
 
             const auto result = write_stdout_frame(stdout_handle, frame);
             if (!result.success) {
-                std::cerr << "[native-worker:error] stdout WriteFile failed after "
-                          << result.bytes_written << " of " << frame.size()
-                          << " bytes, error=" << result.error_code << '\n'
-                          << std::flush;
+                std::ostringstream diagnostic;
+                diagnostic << "[native-worker:error] stdout WriteFile failed after "
+                           << result.bytes_written << " of " << frame.size()
+                           << " bytes, error=" << result.error_code;
+                write_diagnostic_line(diagnostic.str());
                 std::lock_guard<std::mutex> lock(mutex_);
                 failed_ = true;
                 stopping_ = true;
@@ -226,6 +231,9 @@ StdioServer::StdioServer(NativeEngine& engine, std::size_t max_admitted_requests
 
 StdioServer::~StdioServer() {
     request_shutdown(false);
+    if (writer_) {
+        writer_->stop_accepting();
+    }
     if (engine_thread_.joinable()) {
         engine_thread_.join();
     }
@@ -243,12 +251,34 @@ int StdioServer::run() {
     engine_thread_ = std::thread([this]() { engine_loop(); });
     read_loop();
     request_shutdown(false);
+    bool engine_finished = false;
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        engine_finished = condition_.wait_for(
+            lock, std::chrono::seconds(5), [this]() { return engine_finished_; });
+    }
+    if (!engine_finished) {
+        // Normal shutdown keeps the writer accepting frames so queued terminal
+        // events preserve order.  If the engine is stuck waiting for output
+        // capacity, switch to the forced phase and release blocked producers.
+        writer_->stop_accepting();
+        std::unique_lock<std::mutex> lock(mutex_);
+        engine_finished = condition_.wait_for(
+            lock, std::chrono::seconds(2), [this]() { return engine_finished_; });
+        lock.unlock();
+        if (!engine_finished) {
+            write_diagnostic_line(
+                "[native-worker:error] engine thread did not stop after output backpressure");
+            TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
+            return 1;
+        }
+    }
     if (engine_thread_.joinable()) {
         engine_thread_.join();
     }
     if (!writer_->stop_when_drained(std::chrono::seconds(5))) {
-        std::cerr << "[native-worker:error] stdout writer did not stop after "
-                     "cancelling blocked output\n" << std::flush;
+        write_diagnostic_line(
+            "[native-worker:error] stdout writer did not stop after cancelling blocked output");
         TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
         return 1;
     }
@@ -580,6 +610,11 @@ void StdioServer::engine_loop() {
     if (send_ack) {
         send_control(0, ShutdownAckMessage{});
     }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        engine_finished_ = true;
+    }
+    condition_.notify_all();
 }
 
 std::shared_ptr<StdioServer::RequestSlot> StdioServer::take_next_request() {
@@ -746,7 +781,7 @@ void StdioServer::send_error(
 }
 
 void StdioServer::fail_fatal(const std::string& message) {
-    std::cerr << "[native-worker:error] " << message << '\n';
+    write_diagnostic_line("[native-worker:error] " + message);
     {
         std::lock_guard<std::mutex> lock(mutex_);
         fatal_error_ = true;

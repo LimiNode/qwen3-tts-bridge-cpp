@@ -1,4 +1,5 @@
 #include "native_engine.hpp"
+#include "diagnostics.hpp"
 #include "stdio_server.hpp"
 
 #define WIN32_LEAN_AND_MEAN
@@ -15,6 +16,7 @@
 namespace {
 
 using qwen_tts_bridge::native_worker::NativeEngineOptions;
+using qwen_tts_bridge::native_worker::write_diagnostic_line;
 
 std::string wide_to_utf8(const std::wstring& value) {
     if (value.empty()) {
@@ -142,18 +144,18 @@ NativeEngineOptions parse_arguments(int argc, wchar_t** argv) {
             options.warmup_voice_id = wide_to_utf8(require_value(index, argc, argv, L"--warmup-voice-id").wstring());
         }
         else if (argument == L"--help" || argument == L"-h") {
-            std::cerr
-                << "qwen_tts_native_worker --runtime-dir DIR --talker-model FILE --codec-model FILE\n"
-                << "  [--dll-path FILE] [--manifest-path FILE] [--voice-registry-path FILE]\n"
-                << "  [--diagnostic-dump-dir DIR]\n"
-                << "  [--no-flash-attention]\n"
-                << "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
-                << "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
-                << "  [--max-text-bytes N] [--max-admitted-requests N] [--precompute-voice-ref]\n"
-                << "  [--max-dynamic-voice-refs N]\n"
-                << "  [--eos-guard]\n"
-                << "  [--warmup-synthesis] [--warmup-text TEXT] [--warmup-language LANG]\n"
-                << "  [--warmup-voice-id ID]\n";
+            write_diagnostic_line(
+                "qwen_tts_native_worker --runtime-dir DIR --talker-model FILE --codec-model FILE\n"
+                "  [--dll-path FILE] [--manifest-path FILE] [--voice-registry-path FILE]\n"
+                "  [--diagnostic-dump-dir DIR]\n"
+                "  [--no-flash-attention]\n"
+                "  [--clamp-fp16] [--max-batch N] [--codec-chunk-sec N]\n"
+                "  [--stream-max-chunk-frames N] [--max-new-tokens N]\n"
+                "  [--max-text-bytes N] [--max-admitted-requests N] [--precompute-voice-ref]\n"
+                "  [--max-dynamic-voice-refs N]\n"
+                "  [--eos-guard]\n"
+                "  [--warmup-synthesis] [--warmup-text TEXT] [--warmup-language LANG]\n"
+                "  [--warmup-voice-id ID]");
             std::exit(EXIT_SUCCESS);
         }
         else {
@@ -214,19 +216,18 @@ int wmain(int argc, wchar_t** argv) {
         engine.load();
         engine.warmup();
         const auto& manifest = engine.manifest();
-        std::cerr
-            << "[native-worker:info] qwentts runtime ready"
-            << " commit=" << manifest.engine_commit
-            << " abi=" << manifest.qt_abi_version
-            << " backend=" << manifest.backend
-            << " version=\"" << engine.engine_version() << "\"\n";
+        write_diagnostic_line(
+            "[native-worker:info] qwentts runtime ready commit="
+            + manifest.engine_commit + " abi=" + std::to_string(manifest.qt_abi_version)
+            + " backend=" + manifest.backend + " version=\""
+            + engine.engine_version() + "\"");
         qwen_tts_bridge::native_worker::StdioServer server(engine, options.max_admitted_requests);
         const int status = server.run();
         engine.close();
         return status;
     }
     catch (const std::exception& error) {
-        std::cerr << "[native-worker:fatal] " << error.what() << '\n';
+        write_diagnostic_line(std::string("[native-worker:fatal] ") + error.what());
         return EXIT_FAILURE;
     }
 }

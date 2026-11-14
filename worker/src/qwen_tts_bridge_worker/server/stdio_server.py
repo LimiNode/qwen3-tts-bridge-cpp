@@ -232,16 +232,18 @@ class _OutputWriter:
                 self._queue_condition.wait(timeout=0.1)
 
     def stop_when_drained(self, timeout: float | None = None) -> bool:
+        deadline = None if timeout is None else monotonic_seconds() + max(timeout, 0.0)
         with self._queue_condition:
             self._stopping = True
-            while self.failure() is None:
-                try:
-                    self._queue.put_nowait(None)
-                    self._queue_condition.notify_all()
-                    break
-                except queue.Full:
-                    self._queue_condition.wait(timeout=0.1)
-        self._thread.join(timeout)
+            # Shutdown is represented by state, not a sentinel frame.  A
+            # sentinel cannot be inserted when a stalled reader has filled the
+            # queue, while the writer can still drain existing frames and
+            # observe _stopping after the queue becomes empty.
+            self._queue_condition.notify_all()
+        remaining = None if deadline is None else max(
+            0.0, deadline - monotonic_seconds()
+        )
+        self._thread.join(remaining)
         return not self._thread.is_alive()
 
     def failure(self) -> BaseException | None:
