@@ -30,14 +30,17 @@ using namespace qwen_tts_bridge;
 namespace qwen_tts_bridge::detail {
 using StdioSendStateRecheckHook = void (*)();
 using StdioStopStateHook = void (*)();
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
 void set_stdio_send_state_recheck_hook_for_tests(StdioSendStateRecheckHook hook);
 void set_stdio_stop_state_hook_for_tests(StdioStopStateHook hook);
+#endif
 } // namespace detail
 
 namespace {
 
 using namespace qwen_tts_bridge;
 
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
 std::mutex send_recheck_gate_mutex;
 std::condition_variable send_recheck_gate_condition;
 bool send_recheck_gate_entered = false;
@@ -58,6 +61,7 @@ void stop_state_gate() {
     stop_state_hook_entered = true;
     send_recheck_gate_condition.notify_all();
 }
+#endif
 
 std::vector<std::byte> bytes_from_string(const std::string& value) {
     std::vector<std::byte> bytes;
@@ -1050,6 +1054,7 @@ void test_stop_can_kill_worker_while_send_is_blocked() {
     CHECK(!transport.is_running());
 }
 
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
 void test_send_state_error_does_not_deadlock_on_callback_overflow() {
     // Keep one receive callback in flight while a second event occupies the
     // bounded callback queue.  A concurrent stop then makes send() observe a
@@ -1159,6 +1164,7 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
     detail::set_stdio_stop_state_hook_for_tests(nullptr);
     CHECK(!transport.is_running());
 }
+#endif
 
 void test_stdout_is_delivered_before_exit_callback() {
     RawCollector collector;
@@ -1362,7 +1368,9 @@ int main(int argc, char** argv) {
         return 0;
     }
     if (argc == 2 && std::string(argv[1]) == "--send-state-error-child") {
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
         test_send_state_error_does_not_deadlock_on_callback_overflow();
+#endif
         std::cout << "send-state-error-child-ok\n";
         return 0;
     }

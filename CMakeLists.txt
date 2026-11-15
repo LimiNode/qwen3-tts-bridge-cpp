@@ -11,6 +11,9 @@ include(CMakePackageConfigHelpers)
 
 option(QWEN_TTS_BRIDGE_BUILD_EXAMPLES "Build QwenTTSBridge examples" ON)
 option(QWEN_TTS_BRIDGE_BUILD_TESTS "Build QwenTTSBridge tests" ON)
+option(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS
+    "Include deterministic transport test seams (automatically enabled with tests)"
+    ${QWEN_TTS_BRIDGE_BUILD_TESTS})
 option(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER "Build the optional qwentts.cpp process worker" OFF)
 option(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND
     "Build the opt-in qwentts.cpp/GGML native backend adapter" OFF)
@@ -157,6 +160,10 @@ add_library(qwen_tts_bridge
 add_library(QwenTTSBridge::qwen_tts_bridge ALIAS qwen_tts_bridge)
 
 target_compile_features(qwen_tts_bridge PUBLIC cxx_std_17)
+
+if(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+    target_compile_definitions(qwen_tts_bridge PRIVATE QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=1)
+endif()
 
 target_include_directories(qwen_tts_bridge
     PUBLIC
@@ -1087,6 +1094,10 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE}"
                 QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
         )
+        if(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+            target_compile_definitions(stdio_transport_test
+                PRIVATE QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=1)
+        endif()
 
         add_test(NAME stdio_transport_test COMMAND stdio_transport_test)
         set_tests_properties(stdio_transport_test PROPERTIES TIMEOUT 60)
