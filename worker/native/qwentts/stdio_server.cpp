@@ -359,12 +359,14 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
     slot->request = std::move(message);
     std::uint32_t position = 0;
     bool shutting_down = false;
+    bool fatal = false;
     bool duplicate = false;
     bool admission_rejected = false;
     std::size_t admitted_requests = 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         shutting_down = shutdown_requested_;
+        fatal = fatal_error_;
         duplicate = active_.count(request_id) != 0 || request_id <= accepted_id_high_water_;
         if (!shutting_down && !duplicate && admitted_requests_ >= max_admitted_requests_) {
             admission_rejected = true;
@@ -380,6 +382,10 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
     }
     if (shutting_down) {
         send_error(request_id, "protocol_error", "shutdown_in_progress", "native worker is shutting down");
+        return;
+    }
+    if (fatal) {
+        send_error(request_id, "worker_error", "worker_fatal", "native worker has entered a terminal failure state");
         return;
     }
     if (duplicate) {
@@ -517,7 +523,6 @@ std::shared_ptr<StdioServer::RequestSlot> StdioServer::take_next_request() {
     // A callback/engine failure is terminal for this worker instance.  Do not
     // run work that happened to be queued concurrently with fail_fatal().
     if (fatal_error_) {
-        pending_.clear();
         return {};
     }
     if (pending_.empty()) {
@@ -629,12 +634,6 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         result.code == "native_request_bad_alloc" ||
         result.code == "native_request_exception" ||
         result.code == "native_request_unknown_exception";
-    if (unrecoverable_engine_failure) {
-        // The qwentts engine may have partially mutated internal state before
-        // the callback or exception boundary was reached.  Do not reuse it for
-        // another request; report this request and make the worker shut down.
-        fail_fatal("native engine state is not recoverable after request failure");
-    }
     const auto emit_finished_metric = [&](const char* terminal_state, const char* outcome) {
         std::cerr << "qtb_metric {\"event\":\"request_finished\",\"request_id\":"
                   << slot->id << ",\"terminal_state\":\"" << terminal_state << "\"";
@@ -658,6 +657,16 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         }
         std::cerr << "}\n" << std::flush;
     };
+    if (unrecoverable_engine_failure) {
+        // Publish this request's terminal error before closing admission.  The
+        // fatal transition then terminalizes any other accepted requests that
+        // are still queued, so none are silently abandoned.
+        terminalize(slot);
+        emit_finished_metric("failed", nullptr);
+        send_error(slot->id, result.category, result.code, result.message);
+        fail_fatal("native engine state is not recoverable after request failure");
+        return;
+    }
     if (result.outcome == SynthesisOutcome::Completed) {
         CompletedMessage completed;
         completed.has_execution_outcome = true;
@@ -720,15 +729,53 @@ void StdioServer::send_error(
 }
 
 void StdioServer::fail_fatal(const std::string& message) {
-    std::cerr << "[native-worker:error] " << message << '\n';
+    std::vector<RequestId> abandoned;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        fatal_error_ = true;
-        for (auto& entry : active_) {
-            entry.second->cancelled.store(true, std::memory_order_relaxed);
+        if (fatal_error_) {
+            return;
         }
+        fatal_error_ = true;
+        abandoned.reserve(active_.size());
+        for (auto it = active_.begin(); it != active_.end();) {
+            const auto& slot = it->second;
+            slot->cancelled.store(true, std::memory_order_relaxed);
+            if (!slot->terminal.exchange(true)) {
+                abandoned.push_back(slot->id);
+                it = active_.erase(it);
+                if (admitted_requests_ > 0) {
+                    --admitted_requests_;
+                }
+            }
+            else {
+                it = active_.erase(it);
+            }
+        }
+        for (const auto& slot : pending_) {
+            slot->cancelled.store(true, std::memory_order_relaxed);
+            if (!slot->terminal.exchange(true)) {
+                abandoned.push_back(slot->id);
+                active_.erase(slot->id);
+                if (admitted_requests_ > 0) {
+                    --admitted_requests_;
+                }
+            }
+        }
+        pending_.clear();
     }
     condition_.notify_all();
+
+    std::cerr << "[native-worker:error] " << message << '\n';
+    // If stdout is still healthy, preserve the exactly-once terminal contract
+    // for accepted requests.  A broken writer will reject the first frame and
+    // the fatal guard above prevents recursive shutdown publication.
+    for (const RequestId request_id : abandoned) {
+        send_error(
+            request_id,
+            "worker_error",
+            "worker_fatal",
+            "native worker stopped after an unrecoverable engine failure");
+    }
 }
 
 std::vector<std::byte> float_pcm_to_s16le(const float* samples, int count) {
