@@ -58,12 +58,14 @@ private:
         std::string category,
         std::string code,
         std::string message);
+    void start_fatal_watchdog();
     void fail_fatal(const std::string& message);
 
     NativeEngine& engine_;
     FrameParser parser_;
     std::unique_ptr<OutputWriter> writer_;
     std::thread engine_thread_;
+    std::thread fatal_watchdog_thread_;
     std::mutex mutex_;
     std::condition_variable condition_;
     std::deque<std::shared_ptr<RequestSlot>> pending_;
@@ -82,6 +84,8 @@ private:
     bool shutdown_terminals_enqueued_ = false;
     bool engine_finished_ = false;
     bool fatal_error_ = false;
+    bool fatal_watchdog_started_ = false;
+    bool run_finished_ = false;
 };
 
 std::vector<std::byte> float_pcm_to_s16le(const float* samples, int count);

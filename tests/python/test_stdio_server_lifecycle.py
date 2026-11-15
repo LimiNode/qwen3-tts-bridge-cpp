@@ -405,6 +405,27 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         with self.assertRaises(_OutputWriterFailure):
             writer.send(b"1234")
 
+    def test_output_writer_budget_includes_header_for_max_payload(self) -> None:
+        budget = 16 * 1024 * 1024 + 24
+        writer = _OutputWriter(
+            io.BytesIO(),
+            max_queue_size=2,
+            max_queue_bytes=budget,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+
+        writer.send(b"x" * budget)
+        oversized = _OutputWriter(
+            io.BytesIO(),
+            max_queue_size=2,
+            max_queue_bytes=budget,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        with self.assertRaises(_OutputWriterFailure):
+            oversized.send(b"x" * (budget + 1))
+
     def test_output_writer_accounts_for_in_flight_bytes(self) -> None:
         output = _GateOutput()
         writer = _OutputWriter(

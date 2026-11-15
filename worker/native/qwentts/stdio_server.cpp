@@ -96,18 +96,27 @@ public:
         thread_ = std::thread([this]() { run(); });
     }
 
-    bool send(std::vector<std::byte> frame) {
+    bool send(
+        std::vector<std::byte> frame,
+        std::chrono::steady_clock::time_point deadline =
+            std::chrono::steady_clock::time_point::max()) {
         const auto frame_size = frame.size();
         if (frame_size > max_bytes_) {
             return false;
         }
         std::unique_lock<std::mutex> lock(mutex_);
-        not_full_.wait(lock, [this, frame_size]() {
+        const auto ready = [this, frame_size]() {
             return (
                        queue_.size() < max_frames_
                        && queued_bytes_ + in_flight_bytes_ + frame_size <= max_bytes_)
                 || stopping_ || failed_;
-        });
+        };
+        if (deadline == std::chrono::steady_clock::time_point::max()) {
+            not_full_.wait(lock, ready);
+        }
+        else if (!not_full_.wait_until(lock, deadline, ready)) {
+            return false;
+        }
         if (stopping_ || failed_) {
             return false;
         }
@@ -206,7 +215,11 @@ private:
     }
 
     static constexpr std::size_t max_frames_ = 128;
-    static constexpr std::size_t max_bytes_ = 16u * 1024u * 1024u;
+    // Queue accounting includes the fixed v1 frame header, so the full
+    // 16 MiB payload limit remains admissible.
+    static constexpr std::size_t max_bytes_ =
+        qwen_tts_bridge::ProtocolLimits::max_frame_payload_bytes +
+        qwen_tts_bridge::ProtocolLimits::min_header_size;
     mutable std::mutex mutex_;
     std::condition_variable not_empty_;
     std::condition_variable not_full_;
@@ -239,6 +252,9 @@ StdioServer::~StdioServer() {
     }
     if (writer_) {
         writer_->stop_when_drained(std::chrono::milliseconds::max());
+    }
+    if (fatal_watchdog_thread_.joinable()) {
+        fatal_watchdog_thread_.join();
     }
 }
 
@@ -282,7 +298,16 @@ int StdioServer::run() {
         TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
         return 1;
     }
-    return fatal_error_ || writer_->failed() ? 1 : 0;
+    const int status = fatal_error_ || writer_->failed() ? 1 : 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        run_finished_ = true;
+    }
+    condition_.notify_all();
+    if (fatal_watchdog_thread_.joinable()) {
+        fatal_watchdog_thread_.join();
+    }
+    return status;
 }
 
 void StdioServer::read_loop() {
@@ -584,8 +609,19 @@ void StdioServer::request_shutdown(bool send_ack) {
         write_admission_released_metric(
             request_id, max_admitted_requests_, admitted_requests);
     }
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     for (const auto& slot : queued) {
-        send_control(slot->id, CancelledMessage{});
+        JsonPayloadEncodeResult payload = encode_control_message(CancelledMessage{});
+        if (!payload) {
+            fail_fatal("unable to encode cancellation control message: " + payload.diagnostic);
+            break;
+        }
+        if (!writer_->send(
+                make_frame(FrameType::ControlJson, slot->id, std::move(payload.payload)),
+                deadline)) {
+            fail_fatal("stdout writer timed out while publishing cancellation");
+            break;
+        }
     }
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -780,7 +816,32 @@ void StdioServer::send_error(
     }
 }
 
+void StdioServer::start_fatal_watchdog() {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (fatal_watchdog_started_) {
+            return;
+        }
+        fatal_watchdog_started_ = true;
+    }
+    fatal_watchdog_thread_ = std::thread([this]() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (condition_.wait_for(lock, std::chrono::seconds(3), [this]() {
+                return run_finished_;
+            })) {
+            return;
+        }
+        lock.unlock();
+        // A fatal engine/output failure can leave read_loop() blocked in a
+        // synchronous stdin read.  The process-level deadline is independent
+        // of stderr/stdout publication and therefore cannot be wedged by a
+        // stalled pipe.
+        TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
+    });
+}
+
 void StdioServer::fail_fatal(const std::string& message) {
+    start_fatal_watchdog();
     write_diagnostic_line("[native-worker:error] " + message);
     {
         std::lock_guard<std::mutex> lock(mutex_);

@@ -75,7 +75,7 @@ class WorkerMainTests(unittest.TestCase):
             self.assertIs(stdout.buffer, server.output_stream)
             self.assertIs(stderr, server.stdout_during_run)
             self.assertTrue(server.abort_process_on_output_failure)
-            self.assertEqual(16 * 1024 * 1024, server.output_queue_bytes)
+            self.assertEqual(16 * 1024 * 1024 + 24, server.output_queue_bytes)
             self.assertEqual(b"", stdout.buffer.getvalue())
             self.assertIn("third-party stdout noise", stderr.text.getvalue())
 

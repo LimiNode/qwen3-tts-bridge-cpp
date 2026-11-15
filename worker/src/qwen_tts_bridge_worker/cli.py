@@ -866,7 +866,7 @@ def _selected_output_queue_bytes(args: argparse.Namespace) -> int:
         args.root_output_queue_bytes,
         getattr(args, "command_output_queue_bytes", None),
         "output-queue-bytes",
-        16 * 1024 * 1024,
+        16 * 1024 * 1024 + 24,
     )
 
 

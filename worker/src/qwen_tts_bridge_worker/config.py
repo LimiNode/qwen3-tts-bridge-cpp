@@ -559,7 +559,9 @@ class WorkerConfig:
 
     worker_version: str = "0.2.0"
     output_queue_size: int = 128
-    output_queue_bytes: int = 16 * 1024 * 1024
+    # The queue budget includes each frame's fixed v1 header.  This leaves
+    # room for the full 16 MiB protocol payload without rejecting its header.
+    output_queue_bytes: int = 16 * 1024 * 1024 + 24
     max_admitted_requests: int = 16
     engine_startup_mode: Literal["main", "engine_warmup", "engine_load_warmup"] = "main"
     engine: EngineConfig = field(default_factory=MockEngineConfig)
