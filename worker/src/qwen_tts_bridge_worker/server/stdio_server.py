@@ -31,10 +31,10 @@ from qwen_tts_bridge_worker.protocol.control import (
     error_frame,
 )
 from qwen_tts_bridge_worker.protocol.data import (
-    Frame,
-    FrameType,
     MAX_FRAME_PAYLOAD_BYTES,
     MIN_HEADER_SIZE,
+    Frame,
+    FrameType,
     ParseStatus,
 )
 from qwen_tts_bridge_worker.protocol.framing import FrameParser, encode_frame
