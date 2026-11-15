@@ -6,12 +6,15 @@
 
 #include <cstdint>
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cctype>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <mutex>
+#include <new>
 #include <stdexcept>
 #include <utility>
 
@@ -95,16 +98,46 @@ struct CallbackContext {
     const AudioChunkHandler* on_chunk = nullptr;
     bool emitted_audio = false;
     bool invalid_sample = false;
+    bool callback_failed = false;
+    std::array<char, 64> callback_failure_code{};
+    std::array<char, 256> callback_failure_message{};
     std::chrono::steady_clock::time_point synthesis_started_at;
     double first_chunk_callback_ms = 0.0;
 };
 
-bool cancel_callback(void* user_data) {
+void copy_callback_text(char* destination, std::size_t capacity, const char* source) noexcept {
+    if (destination == nullptr || capacity == 0) {
+        return;
+    }
+    std::size_t length = 0;
+    if (source != nullptr) {
+        while (length + 1 < capacity && source[length] != '\0') {
+            ++length;
+        }
+        std::memcpy(destination, source, length);
+    }
+    destination[length] = '\0';
+}
+
+void record_callback_failure(
+    CallbackContext& context,
+    const char* code,
+    const char* message) noexcept {
+    if (context.callback_failed) {
+        return;
+    }
+    context.callback_failed = true;
+    copy_callback_text(context.callback_failure_code.data(), context.callback_failure_code.size(), code);
+    copy_callback_text(
+        context.callback_failure_message.data(), context.callback_failure_message.size(), message);
+}
+
+bool cancel_callback(void* user_data) noexcept {
     const auto* context = static_cast<const CallbackContext*>(user_data);
     return context == nullptr || context->cancelled->load(std::memory_order_relaxed);
 }
 
-bool audio_callback(const float* samples, int count, void* user_data) {
+bool audio_callback(const float* samples, int count, void* user_data) noexcept {
     auto* context = static_cast<CallbackContext*>(user_data);
     if (context == nullptr || context->cancelled->load(std::memory_order_relaxed)) {
         return false;
@@ -122,7 +155,20 @@ bool audio_callback(const float* samples, int count, void* user_data) {
                 std::chrono::steady_clock::now() - context->synthesis_started_at).count();
         }
     }
-    return (*context->on_chunk)(samples, count);
+    try {
+        return (*context->on_chunk)(samples, count);
+    }
+    catch (const std::bad_alloc&) {
+        record_callback_failure(*context, "audio_callback_bad_alloc", "audio chunk callback allocation failed");
+    }
+    catch (const std::exception& error) {
+        record_callback_failure(*context, "audio_callback_exception", error.what());
+    }
+    catch (...) {
+        record_callback_failure(
+            *context, "audio_callback_unknown_exception", "audio chunk callback threw an unknown exception");
+    }
+    return false;
 }
 
 std::string last_error(const QwenApi& api, const char* fallback) {
@@ -657,7 +703,24 @@ SynthesisResult NativeEngine::synthesize(
 
     qt_audio output{};
     const auto synthesis_start = callbacks.synthesis_started_at;
-    const qt_status status = api.synthesize(context_, &params, &output);
+    qt_status status = QT_STATUS_INVALID_PARAMS;
+    try {
+        status = api.synthesize(context_, &params, &output);
+    }
+    catch (const std::bad_alloc&) {
+        api.audio_free(&output);
+        return {SynthesisOutcome::Failed, "internal_error", "native_synthesis_bad_alloc",
+                "native synthesis raised std::bad_alloc"};
+    }
+    catch (const std::exception& error) {
+        api.audio_free(&output);
+        return {SynthesisOutcome::Failed, "internal_error", "native_synthesis_exception", error.what()};
+    }
+    catch (...) {
+        api.audio_free(&output);
+        return {SynthesisOutcome::Failed, "internal_error", "native_synthesis_unknown_exception",
+                "native synthesis raised an unknown exception"};
+    }
     const double synthesis_ms = std::chrono::duration<double, std::milli>(
         std::chrono::steady_clock::now() - synthesis_start).count();
     api.audio_free(&output);
@@ -679,6 +742,12 @@ SynthesisResult NativeEngine::synthesize(
         }
         return result;
     };
+    if (callbacks.callback_failed) {
+        return apply_qwen_metrics({SynthesisOutcome::Failed, "internal_error",
+                callbacks.callback_failure_code.data(), callbacks.callback_failure_message.data(), {},
+                voice_reference_cache_hit, voice_reference_extract_ms, reference_audio_decode_ms,
+                synthesis_ms, callbacks.first_chunk_callback_ms});
+    }
     if (callbacks.invalid_sample) {
         return apply_qwen_metrics({SynthesisOutcome::Failed, "model_error", "non_finite_pcm",
                 "qwentts emitted a non-finite PCM sample", {}, voice_reference_cache_hit,

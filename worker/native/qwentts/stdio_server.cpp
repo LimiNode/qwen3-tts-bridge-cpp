@@ -12,8 +12,11 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <sstream>
 #include <utility>
@@ -693,13 +696,34 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
 
     const auto request_start = std::chrono::steady_clock::now();
     std::size_t chunk_index = 0;
-    const SynthesisResult result = engine_.synthesize(
-        slot->request,
-        slot->cancelled,
-        [this, &slot, &request_start, &chunk_index](const float* samples, int count) {
+    SynthesisResult result;
+    try {
+        result = engine_.synthesize(
+            slot->request,
+            slot->cancelled,
+            [this, &slot, &request_start, &chunk_index](const float* samples, int count) {
             if (slot->cancelled.load(std::memory_order_relaxed) || slot->terminal.load()) {
                 return false;
             }
+#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
+            // The fake-runtime E2E suite needs to exercise the same callback
+            // boundary as a real qwentts plugin.  Keep the injection private
+            // to test builds and opt-in through the child process environment.
+            const char* failure_mode = std::getenv("QTB_TEST_NATIVE_CALLBACK_FAILURE");
+            const bool fail_first = failure_mode != nullptr &&
+                (std::strcmp(failure_mode, "runtime_error_first") == 0 ||
+                 std::strcmp(failure_mode, "bad_alloc_first") == 0);
+            const bool fail_after = failure_mode != nullptr &&
+                (std::strcmp(failure_mode, "runtime_error_after") == 0 ||
+                 std::strcmp(failure_mode, "bad_alloc_after") == 0);
+            if ((fail_first && chunk_index == 0) || (fail_after && chunk_index > 0)) {
+                if (std::strcmp(failure_mode, "bad_alloc_first") == 0 ||
+                    std::strcmp(failure_mode, "bad_alloc_after") == 0) {
+                    throw std::bad_alloc{};
+                }
+                throw std::runtime_error("injected native audio callback failure");
+            }
+#endif
             if (samples == nullptr || count <= 0) {
                 fail_fatal("qwen.dll emitted an invalid audio chunk");
                 return false;
@@ -733,7 +757,19 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                 fail_fatal("stdout writer failed while streaming native audio");
             }
             return sent && !slot->cancelled.load(std::memory_order_relaxed);
-        });
+            });
+    }
+    catch (const std::bad_alloc&) {
+        result = {SynthesisOutcome::Failed, "internal_error", "native_request_bad_alloc",
+                  "native request processing raised std::bad_alloc"};
+    }
+    catch (const std::exception& error) {
+        result = {SynthesisOutcome::Failed, "internal_error", "native_request_exception", error.what()};
+    }
+    catch (...) {
+        result = {SynthesisOutcome::Failed, "internal_error", "native_request_unknown_exception",
+                  "native request processing raised an unknown exception"};
+    }
 
     if (!terminalize(slot)) {
         return;
@@ -777,6 +813,7 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         // Publish this request's terminal error before closing admission.  The
         // fatal transition then terminalizes any other accepted requests that
         // are still queued, so none are silently abandoned.
+        terminalize(slot);
         emit_finished_metric("failed", nullptr);
         send_error(slot->id, result.category, result.code, result.message);
         fail_fatal("native engine state is not recoverable after request failure");
@@ -909,7 +946,8 @@ void StdioServer::fail_fatal(const std::string& message) {
     }
     condition_.notify_all();
 
-    std::cerr << "[native-worker:error] " << message << '\n';
+    // The diagnostic boundary is independent from the request terminalization
+    // path and serializes all stderr records.
     // If stdout is still healthy, preserve the exactly-once terminal contract
     // for accepted requests.  A broken writer will reject the first frame and
     // the fatal guard above prevents recursive shutdown publication.
