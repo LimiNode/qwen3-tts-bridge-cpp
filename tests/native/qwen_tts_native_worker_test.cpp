@@ -6,6 +6,9 @@
 #include "prepared_voice_reference.hpp"
 #include "runtime_manifest.hpp"
 
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -59,7 +62,8 @@ StdIoTransportOptions options(
     const std::filesystem::path& diagnostic_dump_dir = {},
     bool eos_guard = false,
     std::size_t max_admitted_requests = 16,
-    const std::filesystem::path& release_barrier_path = {}) {
+    const std::filesystem::path& release_barrier_path = {},
+    const std::string& callback_failure_mode = {}) {
     const std::filesystem::path runtime = QWEN_TTS_FAKE_RUNTIME_DIR;
     StdIoTransportOptions result;
     result.arguments = {
@@ -94,6 +98,11 @@ StdIoTransportOptions options(
         result.environment_overrides.emplace(
             "QTB_FAKE_RELEASE_PATH",
             release_barrier_path.string());
+    }
+    if (!callback_failure_mode.empty()) {
+        result.environment_overrides.emplace(
+            "QTB_TEST_NATIVE_CALLBACK_FAILURE",
+            callback_failure_mode);
     }
     result.stderr_handler = [stderr_capture, cadence_observed](std::string message) {
         if (stderr_capture != nullptr) {
@@ -553,9 +562,141 @@ void write_oversized_reference_wav_header(const std::filesystem::path& path) {
     output.write("data", 4);
     write_u32(16u * 1024u * 1024u + 1u);
 }
+
+int run_callback_failure_e2e(const std::string& failure_mode, bool expect_audio) {
+    QwenTtsClient client;
+    QwenTtsClientOptions client_options;
+    client_options.session.startup_timeout = std::chrono::seconds(5);
+    auto transport_options = options(
+        8,
+        nullptr,
+        nullptr,
+        0,
+        false,
+        false,
+        {},
+        false,
+        16,
+        {},
+        failure_mode);
+    CHECK(client.start(transport_options, client_options));
+
+    Probe probe;
+    TtsCallbacks callbacks;
+    callbacks.on_audio = [&probe](const PcmChunk& chunk) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.audio.insert(probe.audio.end(), chunk.bytes.begin(), chunk.bytes.end());
+    };
+    callbacks.on_completed = [&probe]() {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        ++probe.completed;
+        probe.condition.notify_all();
+    };
+    callbacks.on_error = [&probe](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(probe.mutex);
+        probe.errors.push_back(error);
+        probe.condition.notify_all();
+    };
+
+    CHECK(client.synthesize_async("callback failure e2e", callbacks) != 0);
+
+    std::array<Probe, 3> pending_probes;
+    for (std::size_t index = 0; index < pending_probes.size(); ++index) {
+        TtsCallbacks pending_callbacks;
+        pending_callbacks.on_completed = [&pending_probes, index]() {
+            std::lock_guard<std::mutex> lock(pending_probes[index].mutex);
+            ++pending_probes[index].completed;
+            pending_probes[index].condition.notify_all();
+        };
+        pending_callbacks.on_error = [&pending_probes, index](const TtsError& error) {
+            std::lock_guard<std::mutex> lock(pending_probes[index].mutex);
+            pending_probes[index].errors.push_back(error);
+            pending_probes[index].condition.notify_all();
+        };
+        CHECK(client.synthesize_async("pending callback failure request", pending_callbacks) != 0);
+    }
+    {
+        std::unique_lock<std::mutex> lock(probe.mutex);
+        CHECK(probe.condition.wait_for(lock, std::chrono::seconds(5), [&probe]() {
+            return probe.completed != 0 || !probe.errors.empty();
+        }));
+    }
+    CHECK(probe.completed == 0);
+    CHECK(probe.errors.size() == 1);
+    CHECK(probe.errors.front().category == "internal_error");
+    const bool bad_alloc = failure_mode.find("bad_alloc") != std::string::npos;
+    CHECK(probe.errors.front().code ==
+        (bad_alloc ? "audio_callback_bad_alloc" : "audio_callback_exception"));
+    CHECK((!expect_audio && probe.audio.empty()) || (expect_audio && !probe.audio.empty()));
+
+    // A fatal callback boundary must not let accepted requests reuse the
+    // possibly-corrupted engine instance or disappear without a terminal
+    // outcome.  The after-first-chunk mode leaves enough time for all three
+    // requests to be admitted before the fatal transition.
+    if (expect_audio) {
+        for (auto& pending_probe : pending_probes) {
+            std::unique_lock<std::mutex> lock(pending_probe.mutex);
+            CHECK(pending_probe.condition.wait_for(lock, std::chrono::seconds(5), [&pending_probe]() {
+                return pending_probe.completed != 0 || !pending_probe.errors.empty();
+            }));
+            CHECK(pending_probe.completed == 0);
+            CHECK(pending_probe.errors.size() == 1);
+            CHECK(pending_probe.errors.front().category == "worker_error");
+            CHECK(pending_probe.errors.front().code == "worker_fatal");
+        }
+    }
+
+    const auto stop_started = std::chrono::steady_clock::now();
+    client.stop();
+    const auto stop_duration = std::chrono::steady_clock::now() - stop_started;
+    CHECK(stop_duration < std::chrono::seconds(8));
+    CHECK(!client.is_running());
+    return EXIT_SUCCESS;
 }
 
-int main() {
+int run_callback_failure_watchdog(const char* executable) {
+    std::string command = "\"" + std::string(executable) +
+        "\" --callback-failure-watchdog-child";
+    std::vector<char> command_line(command.begin(), command.end());
+    command_line.push_back('\0');
+
+    STARTUPINFOA startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    CHECK(CreateProcessA(
+        nullptr,
+        command_line.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        CREATE_NO_WINDOW,
+        nullptr,
+        nullptr,
+        &startup,
+        &process) != FALSE);
+    const DWORD wait_result = WaitForSingleObject(process.hProcess, 12000);
+    if (wait_result == WAIT_TIMEOUT) {
+        TerminateProcess(process.hProcess, EXIT_FAILURE);
+        CloseHandle(process.hThread);
+        CloseHandle(process.hProcess);
+        std::cerr << "callback failure child exceeded watchdog deadline\n";
+        return EXIT_FAILURE;
+    }
+    CHECK(wait_result == WAIT_OBJECT_0);
+    DWORD exit_code = EXIT_FAILURE;
+    CHECK(GetExitCodeProcess(process.hProcess, &exit_code) != FALSE);
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    CHECK(exit_code == EXIT_SUCCESS);
+    return EXIT_SUCCESS;
+}
+}
+
+int main(int argc, char** argv) {
+    if (argc == 2 && std::strcmp(argv[1], "--callback-failure-watchdog-child") == 0) {
+        return run_callback_failure_e2e("runtime_error_after", true);
+    }
+
     CHECK(run_raw_native_request_id_policy_test() == EXIT_SUCCESS);
     CHECK(run_raw_native_admission_test() == EXIT_SUCCESS);
     CHECK(run_raw_native_running_admission_test() == EXIT_SUCCESS);
@@ -1890,6 +2031,16 @@ int main() {
     CHECK(empty_eos_probe.errors.front().category == "model_error");
     CHECK(empty_eos_probe.errors.front().code == "non_finite_pcm");
     CHECK(empty_eos_probe.audio.empty());
+
+    // Exercise callback exception handling through the complete QTB path.
+    // The native worker marks the engine unrecoverable after each case; the
+    // client must observe exactly one Error and boundedly stop the supervisor
+    // even while the worker's stdin read is still blocked.
+    CHECK(run_callback_failure_e2e("runtime_error_first", false) == EXIT_SUCCESS);
+    CHECK(run_callback_failure_e2e("bad_alloc_first", false) == EXIT_SUCCESS);
+    CHECK(run_callback_failure_e2e("runtime_error_after", true) == EXIT_SUCCESS);
+    CHECK(run_callback_failure_e2e("bad_alloc_after", true) == EXIT_SUCCESS);
+    CHECK(run_callback_failure_watchdog(argv[0]) == EXIT_SUCCESS);
 
     client.stop();
     return EXIT_SUCCESS;
