@@ -114,6 +114,7 @@ class BlockingTransport final : public ITransport {
 public:
     bool block_after_hello = false;
     bool block_stop = false;
+    bool throw_on_stop = false;
     SendResult send_after_hello_result = SendResult::Accepted;
 
     bool start(
@@ -177,6 +178,9 @@ public:
             condition_.wait(lock, [this]() {
                 return release_stop_;
             });
+        }
+        if (throw_on_stop) {
+            throw std::runtime_error("injected transport stop failure");
         }
     }
 
@@ -701,6 +705,39 @@ void test_concurrent_external_stop_has_single_join_owner() {
             return second_started;
         }));
     }
+    CHECK(completed_stops.load() == 0);
+
+    raw_transport->release_stop();
+    first.join();
+    second.join();
+    CHECK(completed_stops.load() == 2);
+    CHECK(!client.is_running());
+
+    CHECK(client.start(std::make_unique<BlockingTransport>(), make_client_options()));
+    client.stop();
+}
+
+void test_throwing_transport_stop_releases_shutdown_owner() {
+    auto transport = std::make_unique<BlockingTransport>();
+    transport->block_stop = true;
+    transport->throw_on_stop = true;
+    auto* raw_transport = transport.get();
+
+    QwenTtsClient client;
+    CHECK(client.start(std::move(transport), make_client_options()));
+
+    std::atomic<int> completed_stops{0};
+    std::thread first([&]() {
+        client.stop();
+        ++completed_stops;
+    });
+    CHECK(raw_transport->wait_until_stop_entered());
+
+    std::thread second([&]() {
+        client.stop();
+        ++completed_stops;
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     CHECK(completed_stops.load() == 0);
 
     raw_transport->release_stop();
@@ -1550,6 +1587,7 @@ int main() {
     test_stop_from_audio_callback_allows_restart();
     test_stop_from_completed_callback_then_destruct_outside();
     test_concurrent_external_stop_has_single_join_owner();
+    test_throwing_transport_stop_releases_shutdown_owner();
     test_external_and_callback_stop_overlap();
     test_worker_failure_racing_with_stop();
     test_callback_exception_is_reported_and_swallowed();

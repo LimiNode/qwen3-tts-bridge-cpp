@@ -209,7 +209,13 @@ SynthesizeMessage to_control_message(const TtsRequest& request) {
 QwenTtsClient::QwenTtsClient() = default;
 
 QwenTtsClient::~QwenTtsClient() {
-    stop();
+    // Destruction must not allow a custom transport's throwing stop() to
+    // escape.  stop() performs the same best-effort cleanup for callers.
+    try {
+        stop();
+    }
+    catch (...) {
+    }
 }
 
 bool QwenTtsClient::start(
@@ -602,17 +608,33 @@ void QwenTtsClient::stop() {
     }
     outbound_condition_.notify_all();
 
+    bool session_stop_failed = false;
     if (session != nullptr) {
-        session->stop();
+        try {
+            session->stop();
+        }
+        catch (...) {
+            // A custom transport is not allowed to strand shutdown ownership.
+            // Continue joining and publish the local terminal error below.
+            session_stop_failed = true;
+        }
     }
 
-    join_threads();
+    try {
+        join_threads();
+    }
+    catch (...) {
+        // Joining is best effort here as well; the ownership release below is
+        // unconditional so concurrent stop callers cannot wait forever.
+    }
 
     fail_all_requests(make_local_error(
         0,
         "client_error",
-        "client_stopped",
-        "QwenTtsClient stopped before request reached a terminal event"));
+        session_stop_failed ? "client_stop_failed" : "client_stopped",
+        session_stop_failed
+            ? "QwenTtsClient transport stop raised an exception"
+            : "QwenTtsClient stopped before request reached a terminal event"));
 
     {
         std::lock_guard<std::mutex> lock(mutex_);
