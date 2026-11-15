@@ -42,6 +42,10 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
 
     def version_two_receipt(self) -> dict:
         receipt = copy.deepcopy(self.receipt)
+        receipt["hardware"].update(
+            gpu_uuid="GPU-40361931-6cb5-ac58-a059-5ba3e70986fb",
+            gpu_uuid_status="recorded",
+        )
         for artifact in receipt["artifacts"]:
             artifact["availability"] = {"status": "not_checked", "reason": "Test fixture only; payload not inspected."}
         receipt.update(
