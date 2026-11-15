@@ -514,6 +514,12 @@ std::shared_ptr<StdioServer::RequestSlot> StdioServer::take_next_request() {
         return !pending_.empty() ||
             (shutdown_requested_ && shutdown_terminals_enqueued_) || fatal_error_;
     });
+    // A callback/engine failure is terminal for this worker instance.  Do not
+    // run work that happened to be queued concurrently with fail_fatal().
+    if (fatal_error_) {
+        pending_.clear();
+        return {};
+    }
     if (pending_.empty()) {
         return {};
     }

@@ -610,11 +610,36 @@ int run_callback_failure_e2e(const std::string& failure_mode, bool expect_audio)
         (bad_alloc ? "audio_callback_bad_alloc" : "audio_callback_exception"));
     CHECK((!expect_audio && probe.audio.empty()) || (expect_audio && !probe.audio.empty()));
 
+    // A fatal callback boundary must not let a concurrently submitted request
+    // reuse the possibly-corrupted engine instance.
+    Probe follow_up;
+    TtsCallbacks follow_up_callbacks;
+    follow_up_callbacks.on_completed = [&follow_up]() {
+        std::lock_guard<std::mutex> lock(follow_up.mutex);
+        ++follow_up.completed;
+        follow_up.condition.notify_all();
+    };
+    follow_up_callbacks.on_error = [&follow_up](const TtsError& error) {
+        std::lock_guard<std::mutex> lock(follow_up.mutex);
+        follow_up.errors.push_back(error);
+        follow_up.condition.notify_all();
+    };
+    CHECK(client.synthesize_async("must not reuse failed engine", follow_up_callbacks) != 0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    {
+        std::lock_guard<std::mutex> lock(follow_up.mutex);
+        CHECK(follow_up.completed == 0);
+    }
+
     const auto stop_started = std::chrono::steady_clock::now();
     client.stop();
     const auto stop_duration = std::chrono::steady_clock::now() - stop_started;
     CHECK(stop_duration < std::chrono::seconds(8));
     CHECK(!client.is_running());
+    {
+        std::lock_guard<std::mutex> lock(follow_up.mutex);
+        CHECK(follow_up.completed == 0);
+    }
     return EXIT_SUCCESS;
 }
 }
