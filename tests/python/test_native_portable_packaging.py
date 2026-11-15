@@ -38,6 +38,18 @@ def _load_verifier():
 
 
 class NativePortablePackagingContractTests(unittest.TestCase):
+    @staticmethod
+    def _minimal_pe(machine: int, optional_magic: int) -> bytes:
+        payload = bytearray(512)
+        payload[:2] = b"MZ"
+        payload[0x3C:0x40] = (0x80).to_bytes(4, "little")
+        payload[0x80:0x84] = b"PE\0\0"
+        payload[0x84:0x86] = machine.to_bytes(2, "little")
+        payload[0x86:0x88] = (0).to_bytes(2, "little")
+        payload[0x94:0x96] = (96).to_bytes(2, "little")
+        payload[0x98:0x9A] = optional_magic.to_bytes(2, "little")
+        return bytes(payload)
+
     def test_assembler_requires_real_native_inputs_and_manifest(self) -> None:
         script = ASSEMBLER.read_text(encoding="utf-8")
         for token in (
@@ -78,6 +90,17 @@ class NativePortablePackagingContractTests(unittest.TestCase):
             result = auditor.audit(root, ["entry.exe"])
         self.assertEqual(result["status"], "fail")
         self.assertEqual(result["non_pe_files"], ["entry.exe"])
+
+    def test_auditor_rejects_pe32_x86_entry(self) -> None:
+        auditor = _load_auditor()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "entry.exe").write_bytes(
+                self._minimal_pe(0x14C, 0x10B)
+            )
+            result = auditor.audit(root, ["entry.exe"])
+        self.assertEqual(result["status"], "fail")
+        self.assertEqual(result["architecture_failures"][0]["machine"], "0x014c")
 
     def test_auditor_rejects_duplicate_bundled_module_names(self) -> None:
         auditor = _load_auditor()
