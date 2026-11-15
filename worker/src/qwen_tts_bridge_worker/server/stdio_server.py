@@ -31,10 +31,10 @@ from qwen_tts_bridge_worker.protocol.control import (
     error_frame,
 )
 from qwen_tts_bridge_worker.protocol.data import (
-    MIN_HEADER_SIZE,
-    MAX_FRAME_PAYLOAD_BYTES,
     Frame,
     FrameType,
+    MAX_FRAME_PAYLOAD_BYTES,
+    MIN_HEADER_SIZE,
     ParseStatus,
 )
 from qwen_tts_bridge_worker.protocol.framing import FrameParser, encode_frame
@@ -953,7 +953,10 @@ class StdioWorkerServer:
             remaining = max(0.0, shutdown_deadline - monotonic_seconds())
             try:
                 self._writer.send(
-                    control_frame(slot.request.request_id, {"message_type": "cancelled"}),
+                    control_frame(
+                        slot.request.request_id,
+                        {"message_type": "cancelled"},
+                    ),
                     timeout=remaining,
                 )
             except BaseException as exc:
