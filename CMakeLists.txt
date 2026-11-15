@@ -203,7 +203,7 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
             "Initialize external/cpp/qwentts.cpp before building the native worker")
     endif()
 
-    add_executable(qwen_tts_native_worker
+    set(QWEN_TTS_NATIVE_WORKER_SOURCES
         worker/native/qwentts/main.cpp
         worker/native/qwentts/native_engine.cpp
         worker/native/qwentts/prepared_voice_reference.cpp
@@ -213,6 +213,7 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
         worker/native/qwentts/stdout_writer.cpp
         worker/native/qwentts/wav_reader.cpp
     )
+    add_executable(qwen_tts_native_worker ${QWEN_TTS_NATIVE_WORKER_SOURCES})
     # Keep the Windows min/max macros out of the native worker.  The worker
     # uses std::numeric_limits<>::max(), which otherwise collides with the
     # legacy max macro from windows.h under MSVC.
@@ -221,15 +222,6 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
             QWEN_STATIC
             NOMINMAX
     )
-    if(QWEN_TTS_BRIDGE_BUILD_TESTS)
-        # Test-only callback fault injection is compiled into the worker only
-        # for the fake-runtime integration suite; release builds have no such
-        # control path.
-        target_compile_definitions(qwen_tts_native_worker
-            PRIVATE
-                QTB_NATIVE_WORKER_TEST_HOOKS
-        )
-    endif()
     target_include_directories(qwen_tts_native_worker
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
@@ -827,6 +819,33 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     endif()
 
     if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
+        # Fault injection belongs to a separate test executable.  The
+        # distributable qwen_tts_native_worker remains production-only even
+        # when a Release build also enables the repository test suite.
+        add_executable(qwen_tts_native_worker_instrumented
+            ${QWEN_TTS_NATIVE_WORKER_SOURCES}
+        )
+        target_compile_definitions(qwen_tts_native_worker_instrumented
+            PRIVATE
+                QWEN_STATIC
+                NOMINMAX
+                QTB_NATIVE_WORKER_TEST_HOOKS
+        )
+        target_include_directories(qwen_tts_native_worker_instrumented
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
+                "${QWEN_TTS_BRIDGE_QWENTTS_DIR}/src"
+        )
+        target_link_libraries(qwen_tts_native_worker_instrumented
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge
+                nlohmann_json::nlohmann_json
+                bcrypt
+        )
+        if(MINGW)
+            target_link_options(qwen_tts_native_worker_instrumented PRIVATE -municode)
+        endif()
+
         # Keep the test double out of the main configuration output directory.
         # The real qwentts runtime is also named qwen.dll; sharing the default
         # directory lets the fake library overwrite the production DLL and
@@ -876,11 +895,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_compile_definitions(qwen_tts_native_worker_test
             PRIVATE
                 NOMINMAX
-                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker>"
+                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker_instrumented>"
                 QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
         add_dependencies(qwen_tts_native_worker_test
-            qwen_tts_native_worker
+            qwen_tts_native_worker_instrumented
             qwen_tts_fake_qwen
         )
         add_test(NAME qwen_tts_native_worker_test COMMAND qwen_tts_native_worker_test)
@@ -924,11 +943,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_compile_definitions(native_stdout_pipe_integrity_test
             PRIVATE
                 NOMINMAX
-                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker>"
+                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker_instrumented>"
                 QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
         add_dependencies(native_stdout_pipe_integrity_test
-            qwen_tts_native_worker
+            qwen_tts_native_worker_instrumented
             qwen_tts_fake_qwen
         )
         add_test(
