@@ -20,6 +20,21 @@ class PeFormatError(ValueError):
     """Raised when a file is not a readable PE image."""
 
 
+def _pe_machine_and_magic(path: Path) -> tuple[int, int]:
+    """Return the COFF machine and optional-header magic for a PE image."""
+    data = path.read_bytes()
+    if len(data) < 0x40 or data[:2] != b"MZ":
+        raise PeFormatError(f"{path.name} is not a PE image")
+    pe_offset = _u32(data, 0x3C)
+    if pe_offset + 24 > len(data) or data[pe_offset : pe_offset + 4] != b"PE\0\0":
+        raise PeFormatError(f"{path.name} has an invalid PE signature")
+    coff = pe_offset + 4
+    machine = _u16(data, coff)
+    optional = coff + 20
+    magic = _u16(data, optional)
+    return machine, magic
+
+
 def _u16(data: bytes, offset: int) -> int:
     if offset + 2 > len(data):
         raise PeFormatError("truncated PE header")
@@ -257,6 +272,7 @@ def audit(
     missing: list[str] = []
     non_pe: list[str] = []
     export_failures: list[dict[str, object]] = []
+    architecture_failures: list[dict[str, object]] = []
     while queue:
         relative, path = queue.popleft()
         if path in visited:
@@ -268,6 +284,21 @@ def audit(
             imports.append({"path": relative, "status": "not_pe", "error": str(error)})
             non_pe.append(relative)
             continue
+        try:
+            machine, optional_magic = _pe_machine_and_magic(path)
+        except PeFormatError as error:
+            imports.append({"path": relative, "status": "invalid_pe", "error": str(error)})
+            non_pe.append(relative)
+            continue
+        if machine != 0x8664 or optional_magic != 0x20B:
+            architecture_failures.append(
+                {
+                    "path": relative,
+                    "machine": f"0x{machine:04x}",
+                    "optional_header_magic": f"0x{optional_magic:04x}",
+                    "expected": "PE32+/AMD64 (machine 0x8664, magic 0x20b)",
+                }
+            )
         if path.name.lower() == "qwen.dll" and required_exports:
             try:
                 exports = _exports(path)
@@ -335,7 +366,7 @@ def audit(
         for item in imports
         if item["status"] == "declared_prerequisite"
     })
-    status = "fail" if missing or non_pe or duplicate_names else (
+    status = "fail" if missing or non_pe or duplicate_names or architecture_failures else (
         "pass_with_prerequisites" if external_prerequisites else "pass"
     )
     return {
@@ -348,6 +379,7 @@ def audit(
         "external_prerequisites": external_prerequisites,
         "non_pe_files": sorted(non_pe),
         "export_failures": export_failures,
+        "architecture_failures": architecture_failures,
         "duplicate_bundled_names": duplicate_names,
         "status": "fail" if export_failures else status,
     }
