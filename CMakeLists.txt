@@ -915,6 +915,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
 
         add_executable(native_engine_callback_test
             tests/native/native_engine_callback_test.cpp
+            worker/native/qwentts/diagnostics.cpp
             worker/native/qwentts/native_engine.cpp
             worker/native/qwentts/prepared_voice_reference.cpp
             worker/native/qwentts/qwen_dll_loader.cpp
