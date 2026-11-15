@@ -873,6 +873,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
         target_compile_definitions(qwen_tts_native_worker_test
             PRIVATE
+                NOMINMAX
                 QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker>"
                 QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
