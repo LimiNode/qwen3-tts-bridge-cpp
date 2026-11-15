@@ -175,6 +175,10 @@ public:
     /// joins the internal threads. A callback caller never waits for the
     /// dispatcher thread that is executing it.
     /// Destroying QwenTtsClient from one of its callbacks is not supported.
+    ///
+    /// A throwing custom transport is isolated: shutdown ownership and
+    /// concurrent waiters are released, pending requests receive a terminal
+    /// local error, and the exception does not escape this method.
     void stop();
 
 private:
