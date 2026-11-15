@@ -30,7 +30,13 @@ from qwen_tts_bridge_worker.protocol.control import (
     decode_control_payload,
     error_frame,
 )
-from qwen_tts_bridge_worker.protocol.data import Frame, FrameType, ParseStatus
+from qwen_tts_bridge_worker.protocol.data import (
+    MIN_HEADER_SIZE,
+    MAX_FRAME_PAYLOAD_BYTES,
+    Frame,
+    FrameType,
+    ParseStatus,
+)
 from qwen_tts_bridge_worker.protocol.framing import FrameParser, encode_frame
 from qwen_tts_bridge_worker.server.metrics import MetricsWriter
 from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
@@ -44,6 +50,7 @@ _SAMPLING_FIELDS = frozenset(
         "do_sample",
     }
 )
+_DEFAULT_OUTPUT_QUEUE_BYTES = MAX_FRAME_PAYLOAD_BYTES + MIN_HEADER_SIZE
 
 
 def _parse_sampling_options(
@@ -193,6 +200,7 @@ class _OutputWriter:
         *,
         request_id: int | None = None,
         first_audio_frame: bool = False,
+        timeout: float | None = None,
     ) -> None:
         output_frame = _OutputFrame(
             payload=frame,
@@ -206,6 +214,7 @@ class _OutputWriter:
                 f"protocol stdout frame exceeds byte budget: {frame_bytes} > "
                 f"{self._max_queue_bytes}"
             )
+        deadline = None if timeout is None else monotonic_seconds() + max(timeout, 0.0)
         with self._queue_condition:
             while True:
                 failure = self.failure()
@@ -229,7 +238,15 @@ class _OutputWriter:
                     self._queued_bytes += frame_bytes
                     self._queue_condition.notify_all()
                     return
-                self._queue_condition.wait(timeout=0.1)
+                if deadline is not None:
+                    remaining = deadline - monotonic_seconds()
+                    if remaining <= 0.0:
+                        raise _OutputWriterFailure(
+                            "protocol stdout writer send timed out"
+                        )
+                    self._queue_condition.wait(timeout=min(0.1, remaining))
+                else:
+                    self._queue_condition.wait(timeout=0.1)
 
     def stop_when_drained(self, timeout: float | None = None) -> bool:
         deadline = None if timeout is None else monotonic_seconds() + max(timeout, 0.0)
@@ -328,7 +345,7 @@ class StdioWorkerServer:
         engine: TtsEngine,
         worker_version: str = "0.2.0",
         output_queue_size: int = 128,
-        output_queue_bytes: int = 16 * 1024 * 1024,
+        output_queue_bytes: int = _DEFAULT_OUTPUT_QUEUE_BYTES,
         max_admitted_requests: int = 16,
         read_chunk_size: int = 4096,
         engine_startup_mode: str = "main",
@@ -930,11 +947,18 @@ class StdioWorkerServer:
             for slot in self._active.values():
                 slot.cancel_event.set()
 
+        shutdown_deadline = monotonic_seconds() + 5.0
         for slot in queued_cancelled_slots:
             self._emit_request_finished(slot, "cancelled")
-            self._writer.send(
-                control_frame(slot.request.request_id, {"message_type": "cancelled"})
-            )
+            remaining = max(0.0, shutdown_deadline - monotonic_seconds())
+            try:
+                self._writer.send(
+                    control_frame(slot.request.request_id, {"message_type": "cancelled"}),
+                    timeout=remaining,
+                )
+            except BaseException as exc:
+                self._handle_output_failure(exc)
+                break
 
         with self._condition:
             self._shutdown_terminal_events_enqueued = True
@@ -966,7 +990,13 @@ class StdioWorkerServer:
             self._run_one_request(slot)
 
         if self._shutdown_ack_needed:
-            self._writer.send(control_frame(0, {"message_type": "shutdown_ack"}))
+            try:
+                self._writer.send(
+                    control_frame(0, {"message_type": "shutdown_ack"}),
+                    timeout=5.0,
+                )
+            except BaseException as exc:
+                self._handle_output_failure(exc)
 
     def _take_next_request(self) -> Optional[_RequestSlot]:
         with self._condition:
