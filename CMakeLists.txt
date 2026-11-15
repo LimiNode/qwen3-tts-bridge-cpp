@@ -212,6 +212,7 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
 
     set(QWEN_TTS_NATIVE_WORKER_SOURCES
         worker/native/qwentts/main.cpp
+        worker/native/qwentts/diagnostics.cpp
         worker/native/qwentts/native_engine.cpp
         worker/native/qwentts/prepared_voice_reference.cpp
         worker/native/qwentts/qwen_dll_loader.cpp
