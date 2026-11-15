@@ -269,6 +269,7 @@ TinyProcessLib::Process::environment_type to_process_environment(
 
 } // namespace
 
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
 namespace detail {
 
 using StdioSendStateRecheckHook = void (*)();
@@ -327,6 +328,7 @@ void invoke_stdio_stop_state_hook_for_tests() {
 }
 
 } // namespace detail
+#endif
 
 class StdIoTransport::Impl {
 public:
@@ -504,7 +506,9 @@ public:
         {
             std::lock_guard<std::mutex> write_lock(write_mutex_);
 
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
             detail::invoke_stdio_send_state_recheck_hook_for_tests();
+#endif
 
             bool can_write = false;
             {
@@ -576,7 +580,9 @@ public:
                     state_ = ProcessState::Stopping;
                 }
             }
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
             detail::invoke_stdio_stop_state_hook_for_tests();
+#endif
 
             if (process != nullptr) {
                 close_stdin_if_write_is_idle(process);
