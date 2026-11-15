@@ -14,6 +14,7 @@ from typing import Any
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
+PINNED_MODEL_REVISION = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 ID = re.compile(r"^[a-z0-9][a-z0-9-]+$")
 MODEL_FAMILIES = {"Base", "VoiceDesign", "RU-stress", "CustomVoice", "other"}
 BACKENDS = {"faster", "native", "upstream", "other"}
@@ -285,7 +286,7 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
             raise ValidationError(f"{path}: accepted disposition requires available evidence")
     core_gates = {"model_load", "pcm", "natural_eos"}
     if release == "accepted" and (
-        receipt["model_revision"] == "not_pinned"
+        not PINNED_MODEL_REVISION.fullmatch(receipt["model_revision"])
         or any(mechanical[key] != "pass" for key in MECHANICAL_FIELDS)
         or status != "pass"
     ):

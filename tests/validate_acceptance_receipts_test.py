@@ -112,6 +112,14 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
         receipt = self.version_two_receipt()
         del receipt["artifacts"][0]["availability"]
         self.assert_invalid(receipt)
+        receipt = self.version_two_receipt()
+        receipt["artifacts"][0]["availability"] = {
+            "status": "archive",
+            "reason": "Archived evidence.",
+            "archive_id": "r1-package-20261115",
+            "archive_sha256": "a" * 64,
+        }
+        VALIDATOR.validate_receipt(self._write_temp_receipt(receipt), ROOT, False)
 
     def test_accepted_receipt_requires_pinned_model_and_gpu_identity(self) -> None:
         receipt = self.version_two_receipt()
@@ -126,8 +134,9 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
         receipt["release_status"] = "accepted"
         for artifact in receipt["artifacts"]:
             artifact["availability"] = {"status": "local", "reason": "Available."}
-        receipt["model_revision"] = "not_pinned"
-        self.assert_invalid(receipt)
+        for unpinned in ("not_pinned", "unverified", "unknown", "latest"):
+            receipt["model_revision"] = unpinned
+            self.assert_invalid(receipt)
 
         receipt["model_revision"] = "a" * 64
         del receipt["hardware"]["gpu_uuid_status"]

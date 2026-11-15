@@ -50,8 +50,28 @@
         "gpu": {"type": "string", "minLength": 1},
         "compute_capability": {"type": "string", "minLength": 1},
         "driver": {"type": "string", "minLength": 1},
-        "cuda": {"type": "string", "minLength": 1}
-      }
+        "cuda": {"type": "string", "minLength": 1},
+        "gpu_uuid": {"type": "string", "pattern": "^GPU-[A-Za-z0-9-]+$"},
+        "gpu_uuid_status": {"type": "string", "enum": ["recorded", "unavailable"]},
+        "gpu_uuid_reason": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"gpu_uuid_status": {"const": "recorded"}}, "required": ["gpu_uuid_status"]},
+          "then": {"required": ["gpu_uuid"], "not": {"required": ["gpu_uuid_reason"]}}
+        },
+        {
+          "if": {"properties": {"gpu_uuid_status": {"const": "unavailable"}}, "required": ["gpu_uuid_status"]},
+          "then": {
+            "required": ["gpu_uuid_reason"],
+            "not": {"required": ["gpu_uuid"]},
+            "properties": {"gpu_uuid_reason": {"enum": [
+              "driver_api_unavailable", "hardware_not_exposed", "permission_denied",
+              "platform_unavailable", "virtualized_device"
+            ]}}
+          }
+        }
+      ]
     },
     "artifact_root": {"type": "string", "pattern": "^\\.tmp/base-acceptance/[a-z0-9][a-z0-9-]+$"},
     "artifacts": {
@@ -127,6 +147,23 @@
         "required": ["case_result", "listening_result", "release_disposition"],
         "properties": {"artifacts": {"items": {"required": ["availability"]}}}
       }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {"properties": {"schema_version": {"const": 2}}, "required": ["schema_version"]},
+          {"properties": {"release_status": {"const": "accepted"}}, "required": ["release_status"]}
+        ]
+      },
+      "then": {"properties": {"hardware": {"required": ["gpu_uuid_status"]}}}
+    },
+    {
+      "if": {"properties": {"release_status": {"const": "accepted"}}, "required": ["release_status"]},
+      "then": {
+        "properties": {
+          "model_revision": {"pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"}
+        }
+      }
     }
   ],
   "dependentRequired": {
@@ -141,8 +178,20 @@
       "required": ["status", "reason"],
       "properties": {
         "status": {"enum": ["local", "archive", "unavailable", "not_checked"]},
-        "reason": {"type": "string", "pattern": "\\S"}
-      }
+        "reason": {"type": "string", "pattern": "\\S"},
+        "archive_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+        "archive_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "archive"}}, "required": ["status"]},
+          "then": {"required": ["archive_id", "archive_sha256"]}
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["local", "unavailable", "not_checked"]}}, "required": ["status"]},
+          "then": {"not": {"anyOf": [{"required": ["archive_id"]}, {"required": ["archive_sha256"]}]}}
+        }
+      ]
     },
     "result": {
       "type": "object",
