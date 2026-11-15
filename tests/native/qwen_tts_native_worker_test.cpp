@@ -6,6 +6,9 @@
 #include "prepared_voice_reference.hpp"
 #include "runtime_manifest.hpp"
 
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -642,9 +645,50 @@ int run_callback_failure_e2e(const std::string& failure_mode, bool expect_audio)
     }
     return EXIT_SUCCESS;
 }
+
+int run_callback_failure_watchdog(const char* executable) {
+    std::string command = "\"" + std::string(executable) +
+        "\" --callback-failure-watchdog-child";
+    std::vector<char> command_line(command.begin(), command.end());
+    command_line.push_back('\0');
+
+    STARTUPINFOA startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    CHECK(CreateProcessA(
+        nullptr,
+        command_line.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        CREATE_NO_WINDOW,
+        nullptr,
+        nullptr,
+        &startup,
+        &process) != FALSE);
+    const DWORD wait_result = WaitForSingleObject(process.hProcess, 12000);
+    if (wait_result == WAIT_TIMEOUT) {
+        TerminateProcess(process.hProcess, EXIT_FAILURE);
+        CloseHandle(process.hThread);
+        CloseHandle(process.hProcess);
+        std::cerr << "callback failure child exceeded watchdog deadline\n";
+        return EXIT_FAILURE;
+    }
+    CHECK(wait_result == WAIT_OBJECT_0);
+    DWORD exit_code = EXIT_FAILURE;
+    CHECK(GetExitCodeProcess(process.hProcess, &exit_code) != FALSE);
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    CHECK(exit_code == EXIT_SUCCESS);
+    return EXIT_SUCCESS;
+}
 }
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc == 2 && std::strcmp(argv[1], "--callback-failure-watchdog-child") == 0) {
+        return run_callback_failure_e2e("runtime_error_after", true);
+    }
+
     CHECK(run_raw_native_request_id_policy_test() == EXIT_SUCCESS);
     CHECK(run_raw_native_admission_test() == EXIT_SUCCESS);
     CHECK(run_raw_native_running_admission_test() == EXIT_SUCCESS);
@@ -1988,6 +2032,7 @@ int main() {
     CHECK(run_callback_failure_e2e("bad_alloc_first", false) == EXIT_SUCCESS);
     CHECK(run_callback_failure_e2e("runtime_error_after", true) == EXIT_SUCCESS);
     CHECK(run_callback_failure_e2e("bad_alloc_after", true) == EXIT_SUCCESS);
+    CHECK(run_callback_failure_watchdog(argv[0]) == EXIT_SUCCESS);
 
     client.stop();
     return EXIT_SUCCESS;
