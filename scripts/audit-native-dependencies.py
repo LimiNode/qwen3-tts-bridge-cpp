@@ -273,6 +273,31 @@ def audit(
     non_pe: list[str] = []
     export_failures: list[dict[str, object]] = []
     architecture_failures: list[dict[str, object]] = []
+    declared_dynamic = list(policy.get("dynamic_dependencies", []))
+    declared_dynamic.extend(dynamic_dependencies or [])
+    for name in sorted(set(str(item) for item in declared_dynamic), key=str.lower):
+        bundled = by_name.get(name.lower())
+        if bundled is not None:
+            status = "bundled"
+            bundled_relative = bundled.relative_to(root).as_posix()
+            # Dynamic modules are roots of the same dependency closure as PE
+            # imports. Queue them before traversal so their own imports are
+            # audited even when no static importer references them.
+            queue.append((bundled_relative, bundled))
+        else:
+            external = _policy_external(name, policy)
+            status = external["status"] if external else "missing"
+            bundled_relative = None
+            if status == "missing":
+                missing.append(name.lower())
+        imports.append({
+            "importer": "<dynamic>" if bundled is None else "<dynamic-loader>",
+            "name": name,
+            "kind": "dynamic",
+            "status": status,
+            "external_kind": external["kind"] if bundled is None and external else None,
+            "bundled_path": bundled_relative,
+        })
     while queue:
         relative, path = queue.popleft()
         if path in visited:
@@ -340,27 +365,6 @@ def audit(
                 "external_kind": external_kind if bundled is None else None,
                 "bundled_path": bundled_relative,
             })
-    declared_dynamic = list(policy.get("dynamic_dependencies", []))
-    declared_dynamic.extend(dynamic_dependencies or [])
-    for name in sorted(set(str(item) for item in declared_dynamic), key=str.lower):
-        bundled = by_name.get(name.lower())
-        if bundled is not None:
-            status = "bundled"
-            bundled_relative = bundled.relative_to(root).as_posix()
-        else:
-            external = _policy_external(name, policy)
-            status = external["status"] if external else "missing"
-            bundled_relative = None
-            if status == "missing":
-                missing.append(name.lower())
-        imports.append({
-            "importer": "<dynamic>" if bundled is None else "<dynamic-loader>",
-            "name": name,
-            "kind": "dynamic",
-            "status": status,
-            "external_kind": external["kind"] if bundled is None and external else None,
-            "bundled_path": bundled_relative,
-        })
     external_prerequisites = sorted({
         item["name"]
         for item in imports

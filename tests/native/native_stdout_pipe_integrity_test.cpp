@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -146,6 +147,60 @@ bool parser_rejects_incomplete(const std::vector<std::byte>& bytes) {
     return result.status == ParseStatus::NeedMoreData && parser.buffered_size() != 0;
 }
 
+template <typename Predicate>
+bool wait_for_frame(
+    ByteCapture& capture,
+    std::chrono::milliseconds timeout,
+    Predicate&& predicate) {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    std::unique_lock<std::mutex> lock(capture.mutex);
+    for (;;) {
+        FrameParser parser;
+        parser.append(capture.bytes);
+        for (;;) {
+            const auto result = parser.parse_next();
+            if (result.status == ParseStatus::NeedMoreData) {
+                break;
+            }
+            if (result.status != ParseStatus::FrameReady) {
+                return false;
+            }
+            if (predicate(result.frame)) {
+                return true;
+            }
+        }
+        if (capture.changed.wait_until(lock, deadline) == std::cv_status::timeout) {
+            return false;
+        }
+    }
+}
+
+bool is_control_type(const Frame& frame, ControlMessageType expected) {
+    if (frame.header.frame_type != FrameType::ControlJson) {
+        return false;
+    }
+    const auto decoded = decode_control_message(
+        frame.payload,
+        ControlMessageDirection::WorkerToClient);
+    return decoded && control_message_type(decoded.message) == expected;
+}
+
+bool is_terminal_for(const Frame& frame, RequestId request_id) {
+    if (frame.header.request_id != request_id ||
+        frame.header.frame_type != FrameType::ControlJson) {
+        return false;
+    }
+    const auto decoded = decode_control_message(
+        frame.payload,
+        ControlMessageDirection::WorkerToClient);
+    if (!decoded) {
+        return false;
+    }
+    const auto type = control_message_type(decoded.message);
+    return type == ControlMessageType::Completed ||
+        type == ControlMessageType::Cancelled;
+}
+
 int run_parser_eof_regressions() {
     const auto payload = encode_control_message(
         ControlMessage{HelloMessage{"eof-regression", "0.2.0"}});
@@ -270,17 +325,46 @@ int run_pipe_integrity_case(int iteration) {
     CHECK(write_all(
         resources.child_stdin_write.get(),
         control_frame(0, ControlMessage{HelloMessage{"stdout-integrity", "0.2.0"}})));
-    // This is the original timing-sensitive sequence: two requests are sent
-    // back-to-back, then the late cancel and shutdown are sent on a bounded
-    // delay without waiting for terminal events first.
-    std::this_thread::sleep_for(std::chrono::milliseconds(350));
+    CHECK(wait_for_frame(
+        stdout_capture,
+        std::chrono::seconds(15),
+        [](const Frame& frame) {
+            return is_control_type(frame, ControlMessageType::Ready);
+        }));
+
+    // Keep the requests back-to-back to exercise the pipe and admission path,
+    // but synchronize subsequent commands on observable protocol events rather
+    // than sleeping for an assumed amount of engine time.
     SynthesizeMessage synthesis;
     synthesis.text = "native stdout integrity";
     CHECK(write_all(resources.child_stdin_write.get(), control_frame(100, ControlMessage{synthesis})));
     CHECK(write_all(resources.child_stdin_write.get(), control_frame(101, ControlMessage{synthesis})));
-    std::this_thread::sleep_for(std::chrono::milliseconds(350));
-    CHECK(write_all(resources.child_stdin_write.get(), control_frame(100, ControlMessage{CancelMessage{}})));
-    std::this_thread::sleep_for(std::chrono::milliseconds(350));
+    CHECK(wait_for_frame(
+        stdout_capture,
+        std::chrono::seconds(15),
+        [](const Frame& frame) { return is_terminal_for(frame, 100); }));
+    CHECK(wait_for_frame(
+        stdout_capture,
+        std::chrono::seconds(15),
+        [](const Frame& frame) { return is_terminal_for(frame, 101); }));
+
+    // Deliberately issue an unknown cancel after both requests are terminal.
+    // The request ID is above the accepted watermark, so the expected error
+    // is deterministic and synchronized to the response rather than a sleep.
+    constexpr RequestId unknown_cancel_id = 999;
+    CHECK(write_all(resources.child_stdin_write.get(), control_frame(unknown_cancel_id, ControlMessage{CancelMessage{}})));
+    CHECK(wait_for_frame(
+        stdout_capture,
+        std::chrono::seconds(15),
+        [unknown_cancel_id](const Frame& frame) {
+            if (frame.header.frame_type != FrameType::ErrorJson ||
+                frame.header.request_id != unknown_cancel_id) {
+                return false;
+            }
+            const auto decoded = decode_error_message(frame.payload);
+            return decoded && decoded.message.category == "request_error" &&
+                decoded.message.code == "unknown_request_id";
+        }));
     CHECK(write_all(resources.child_stdin_write.get(), control_frame(0, ControlMessage{ShutdownMessage{}})));
     resources.child_stdin_write.reset();
 
@@ -358,7 +442,7 @@ int run_pipe_integrity_case(int iteration) {
             CHECK(static_cast<bool>(decoded));
             CHECK(decoded.message.category == "request_error");
             CHECK(decoded.message.code == "unknown_request_id");
-            CHECK(frame.header.request_id == 100);
+            CHECK(frame.header.request_id == unknown_cancel_id);
             continue;
         }
         CHECK(frame.header.frame_type == FrameType::ControlJson);
@@ -396,6 +480,11 @@ int run_pipe_integrity_case(int iteration) {
                 CHECK(completed != nullptr);
                 CHECK(completed->has_execution_outcome);
                 CHECK(completed->execution_outcome == "natural_eos");
+                CHECK(completed->has_generation_trace);
+                CHECK(completed->generation_trace.hit_eos);
+                CHECK(completed->generation_trace.termination_reason == "eos");
+                // The deterministic fake runtime may omit codec metrics, but
+                // the terminal trace contract itself must be present.
                 ++terminal_counts[index];
             } else if (type == ControlMessageType::Cancelled) {
                 CHECK(std::get_if<CancelledMessage>(&decoded.message) != nullptr);

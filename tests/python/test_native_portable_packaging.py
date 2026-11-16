@@ -11,6 +11,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSEMBLER = ROOT / "scripts" / "assemble-native-portable-release.ps1"
@@ -132,6 +133,29 @@ class NativePortablePackagingContractTests(unittest.TestCase):
             ["cudart64_12.dll", "ggml-cuda.dll", "vcruntime140.dll"],
         )
 
+    def test_auditor_traverses_declared_dynamic_module_imports(self) -> None:
+        auditor = _load_auditor()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "entry.exe").write_bytes(self._minimal_pe(0x8664, 0x20B))
+            (root / "backend.dll").write_bytes(self._minimal_pe(0x8664, 0x20B))
+
+            def imports(path: Path) -> list[dict[str, str]]:
+                if path.name.lower() == "backend.dll":
+                    return [{"name": "helper.dll", "kind": "import"}]
+                return []
+
+            with patch.object(auditor, "_imports", side_effect=imports):
+                result = auditor.audit(
+                    root,
+                    ["entry.exe"],
+                    {"guaranteed_system": [], "declared_prerequisites": []},
+                    ["backend.dll"],
+                )
+
+        self.assertEqual(result["status"], "fail")
+        self.assertEqual(result["missing"], ["helper.dll"])
+
     def test_archive_verifier_covers_hidden_files_and_rejects_incomplete_zip(
         self,
     ) -> None:
@@ -227,8 +251,20 @@ class NativePortablePackagingContractTests(unittest.TestCase):
         )
         self.assertEqual(config["runtime_dir"], "runtime/qwentts")
         self.assertEqual(config["model_root"], "models")
+        self.assertEqual(config["default_model_profile"], "ru-stress")
         self.assertNotIn("sm75", config["runtime_dir"].lower())
-        self.assertTrue(config["model_profiles"]["base"]["talker_model"].startswith("models/"))
+        self.assertEqual(
+            config["model_profiles"]["base"]["talker_model"],
+            "base/qwen-talker-1.7b-base-Q8_0.gguf",
+        )
+        self.assertEqual(
+            config["model_profiles"]["base"]["codec_model"],
+            "common/qwen-tokenizer-12hz-Q8_0.gguf",
+        )
+        self.assertEqual(
+            config["model_profiles"]["ru-stress"]["talker_model"],
+            "ru-stress/qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+        )
 
 
 if __name__ == "__main__":

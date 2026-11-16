@@ -510,6 +510,12 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         PRIVATE
             QwenTTSBridge::qwen_tts_bridge
     )
+    if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
+        target_link_libraries(qwen_tts_save_wav
+            PRIVATE QwenTTSBridge::qwen_tts_bridge_tts_front)
+        target_compile_definitions(qwen_tts_save_wav
+            PRIVATE QWEN_TTS_BRIDGE_HAS_TTS_FRONT=1)
+    endif()
 
     target_link_libraries(qwen_tts_latency_benchmark
         PRIVATE
@@ -539,6 +545,12 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
             )
             target_compile_definitions(qwen_tts_play
                 PRIVATE QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION=1)
+        endif()
+        if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
+            target_link_libraries(qwen_tts_play
+                PRIVATE QwenTTSBridge::qwen_tts_bridge_tts_front)
+            target_compile_definitions(qwen_tts_play
+                PRIVATE QWEN_TTS_BRIDGE_HAS_TTS_FRONT=1)
         endif()
         if(MINGW)
             target_link_options(qwen_tts_play PRIVATE -municode)
@@ -645,6 +657,12 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/examples")
         target_link_libraries(qwen_tts_play_options_test
             PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
+        if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
+            # Keep option validation in this parser-only test consistent with
+            # the user-facing player target, whose default enables tts-front.
+            target_compile_definitions(qwen_tts_play_options_test
+                PRIVATE QWEN_TTS_BRIDGE_HAS_TTS_FRONT=1)
+        endif()
         if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
             target_compile_definitions(qwen_tts_play_options_test
                 PRIVATE QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION=1)
@@ -1159,7 +1177,12 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         endif()
 
         add_test(NAME stdio_transport_test COMMAND stdio_transport_test)
-        set_tests_properties(stdio_transport_test PROPERTIES TIMEOUT 60)
+        set_tests_properties(
+            stdio_transport_test
+            PROPERTIES
+                TIMEOUT 60
+                ENVIRONMENT "PYTHONPATH=${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
+        )
 
         add_executable(worker_session_test
             tests/worker_session_test.cpp
@@ -1177,6 +1200,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
 
         add_test(NAME worker_session_test COMMAND worker_session_test)
+        set_tests_properties(
+            worker_session_test
+            PROPERTIES
+                ENVIRONMENT "PYTHONPATH=${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
+        )
 
         add_executable(qwen_tts_client_test
             tests/qwen_tts_client_test.cpp
@@ -1194,7 +1222,12 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
 
         add_test(NAME qwen_tts_client_test COMMAND qwen_tts_client_test)
-        set_tests_properties(qwen_tts_client_test PROPERTIES TIMEOUT 180)
+        set_tests_properties(
+            qwen_tts_client_test
+            PROPERTIES
+                TIMEOUT 180
+                ENVIRONMENT "PYTHONPATH=${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
+        )
 
         if(TARGET qwen_tts_speech_animation_probe)
             add_test(

@@ -98,6 +98,9 @@ struct SynthesisResult {
     double qwen_total_ms = 0.0;
     /// Number of generated codec frames reported by qwentts.
     int qwen_n_frames = 0;
+    /// Terminal generation evidence exposed through the QTB completion event.
+    bool has_generation_trace = false;
+    GenerationTrace generation_trace;
 };
 
 using AudioChunkHandler = std::function<bool(const float*, int)>;

@@ -743,6 +743,26 @@ SynthesisResult NativeEngine::synthesize(
             result.qwen_total_ms = qwen_metrics.pipeline_total_ms;
             result.qwen_n_frames = qwen_metrics.n_frames;
         }
+        if (result.outcome == SynthesisOutcome::Completed &&
+            !result.execution_outcome.empty()) {
+            result.has_generation_trace = true;
+            result.generation_trace.termination_reason =
+                result.execution_outcome == "max_tokens" ? "max_tokens" : "eos";
+            result.generation_trace.hit_eos =
+                result.execution_outcome == "natural_eos" ||
+                result.execution_outcome == "eos_assisted" ||
+                result.execution_outcome == "eos_forced";
+            result.generation_trace.hit_max_seq_len = false;
+            result.generation_trace.hit_max_new_tokens =
+                result.execution_outcome == "max_tokens";
+            const auto frame_count = static_cast<std::uint64_t>(
+                std::max(result.qwen_n_frames, 0));
+            result.generation_trace.codec_frame_count = frame_count;
+            result.generation_trace.generated_steps = frame_count;
+            result.generation_trace.emitted_steps = frame_count;
+            result.generation_trace.terminal_step_index =
+                frame_count == 0 ? 0 : frame_count - 1;
+        }
         return result;
     };
     if (callbacks.callback_failed) {

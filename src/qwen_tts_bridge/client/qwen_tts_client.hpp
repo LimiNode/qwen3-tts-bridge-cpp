@@ -211,10 +211,11 @@ private:
     void complete_request(RequestId request_id, const CompletedMessage& completed);
     void cancel_request_locally(RequestId request_id);
     void fail_request(RequestId request_id, TtsError error);
-    void fail_all_requests(TtsError error);
+    void fail_all_requests(TtsError error) noexcept;
     void invoke_user_callback(const std::function<void()>& callback) noexcept;
     void report_callback_exception(std::exception_ptr exception) noexcept;
     void join_threads();
+    void release_shutdown_ownership() noexcept;
 
     mutable std::mutex mutex_;
     // Only the stop caller that claims shutdown ownership may join worker

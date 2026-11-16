@@ -602,21 +602,62 @@ void QwenTtsClient::stop() {
     }
     outbound_condition_.notify_all();
 
+    // Keep shutdown ownership cleanup independent from every operation below.
+    // Session teardown, joining, and callback storage can all fail; none of
+    // those failures may strand concurrent stop callers behind the ownership
+    // flag.
+    struct ShutdownOwnershipGuard final {
+        QwenTtsClient* client;
+        bool active;
+        ~ShutdownOwnershipGuard() noexcept {
+            if (active) {
+                client->release_shutdown_ownership();
+            }
+        }
+        void release() noexcept {
+            if (active) {
+                client->release_shutdown_ownership();
+                active = false;
+            }
+        }
+    } ownership_guard{this, owns_shutdown};
+
+    bool teardown_failed = false;
+
     if (session != nullptr) {
-        session->stop();
+        try {
+            session->stop();
+        }
+        catch (...) {
+            teardown_failed = true;
+        }
     }
 
-    join_threads();
+    try {
+        join_threads();
+    }
+    catch (...) {
+        teardown_failed = true;
+    }
 
-    fail_all_requests(make_local_error(
-        0,
-        "client_error",
-        "client_stopped",
-        "QwenTtsClient stopped before request reached a terminal event"));
+    try {
+        fail_all_requests(make_local_error(
+            0,
+            "client_error",
+            "client_stopped",
+            "QwenTtsClient stopped before request reached a terminal event"));
+    }
+    catch (...) {
+        // Constructing the diagnostic itself may allocate.  Preserve the
+        // lifecycle invariant even when that allocation fails.
+        teardown_failed = true;
+        std::lock_guard<std::mutex> lock(mutex_);
+        active_requests_.clear();
+    }
 
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (!writer_thread_.joinable() &&
+        if (!teardown_failed && !writer_thread_.joinable() &&
             (!dispatcher_thread_.joinable() || called_from_dispatcher)) {
             session_.reset();
             clear_outbound_queue_locked();
@@ -624,12 +665,8 @@ void QwenTtsClient::stop() {
             running_ = false;
             terminal_failure_handled_ = false;
         }
-        if (owns_shutdown) {
-            shutdown_owner_thread_ = std::thread::id{};
-            shutdown_in_progress_ = false;
-        }
     }
-    shutdown_condition_.notify_all();
+    ownership_guard.release();
 }
 
 RequestId QwenTtsClient::allocate_request_id_locked(RequestId requested_id) {
@@ -1064,29 +1101,48 @@ void QwenTtsClient::fail_request(RequestId request_id, TtsError error) {
     }
 }
 
-void QwenTtsClient::fail_all_requests(TtsError error) {
-    std::vector<std::pair<RequestId, TtsCallbacks>> callbacks;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        callbacks.reserve(active_requests_.size());
-        for (auto& item : active_requests_) {
-            callbacks.emplace_back(item.first, std::move(item.second.callbacks));
+void QwenTtsClient::fail_all_requests(TtsError error) noexcept {
+    try {
+        std::vector<std::pair<RequestId, TtsCallbacks>> callbacks;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            callbacks.reserve(active_requests_.size());
+            for (auto& item : active_requests_) {
+                callbacks.emplace_back(item.first, std::move(item.second.callbacks));
+            }
+            active_requests_.clear();
         }
+
+        for (auto& item : callbacks) {
+            auto& callback_set = item.second;
+            if (callback_set.on_error) {
+                TtsError request_error = error;
+                if (request_error.request_id == 0) {
+                    request_error.request_id = item.first;
+                }
+                invoke_user_callback([&callback_set, &request_error]() {
+                    callback_set.on_error(request_error);
+                });
+            }
+        }
+    }
+    catch (...) {
+        // Allocation/copy failures must not strand active request ownership or
+        // propagate out of the lifecycle path.  The remaining callbacks are
+        // discarded under the client lock; already delivered callbacks remain
+        // exactly-once because their entries were removed before invocation.
+        std::lock_guard<std::mutex> lock(mutex_);
         active_requests_.clear();
     }
+}
 
-    for (auto& item : callbacks) {
-        auto& callback_set = item.second;
-        if (callback_set.on_error) {
-            TtsError request_error = error;
-            if (request_error.request_id == 0) {
-                request_error.request_id = item.first;
-            }
-            invoke_user_callback([&callback_set, &request_error]() {
-                callback_set.on_error(request_error);
-            });
-        }
+void QwenTtsClient::release_shutdown_ownership() noexcept {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        shutdown_owner_thread_ = std::thread::id{};
+        shutdown_in_progress_ = false;
     }
+    shutdown_condition_.notify_all();
 }
 
 void QwenTtsClient::invoke_user_callback(

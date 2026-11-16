@@ -472,25 +472,44 @@ class StdioWorkerServer:
             traceback.print_exc(file=self._error)
         finally:
             self._request_shutdown(send_ack=False)
+            engine_joined = not engine_thread_started
             if engine_thread_started:
-                self._engine_thread.join()
-            try:
-                self._engine.close()
-            except Exception:
-                self._fatal_error = True
-                traceback.print_exc(file=self._error)
-            finally:
-                drained = self._writer.stop_when_drained(
-                    timeout=5.0 if self._abort_process_on_output_failure else None
-                )
-                if not drained:
+                # The engine can be blocked inside _OutputWriter.send() when
+                # the peer stopped consuming stdout. Never wait indefinitely
+                # before taking the writer-side abort path.
+                self._engine_thread.join(timeout=5.0)
+                engine_joined = not self._engine_thread.is_alive()
+                if not engine_joined:
                     self._fatal_error = True
-                    if self._abort_process_on_output_failure:
-                        # A synchronous pipe write cannot be interrupted safely
-                        # from Python.  The standalone worker therefore uses
-                        # process termination as the forced-shutdown fallback
-                        # after graceful draining exceeds its deadline.
-                        os._exit(1)
+            drained = self._writer.stop_when_drained(timeout=5.0)
+            if not drained:
+                self._fatal_error = True
+                if self._abort_process_on_output_failure:
+                    # A synchronous pipe write cannot be interrupted safely
+                    # from Python.  The standalone worker therefore uses
+                    # process termination as the forced-shutdown fallback
+                    # after graceful draining exceeds its deadline.
+                    os._exit(1)
+            if not engine_joined and engine_thread_started:
+                # A writer that was stopped cooperatively should wake an
+                # engine blocked in send(). Give it a final bounded chance to
+                # unwind. Standalone workers already terminate above when the
+                # writer itself is uninterruptibly blocked.
+                self._engine_thread.join(timeout=1.0)
+                engine_joined = not self._engine_thread.is_alive()
+
+            # Never close an engine while its worker thread can still execute
+            # against it. Embedded callers do not get an implicit process kill;
+            # they receive a failed run and retain responsibility for their
+            # externally blocked stream.
+            if engine_joined:
+                try:
+                    self._engine.close()
+                except Exception:
+                    self._fatal_error = True
+                    traceback.print_exc(file=self._error)
+            else:
+                self._fatal_error = True
 
         return 1 if self._fatal_error else 0
 

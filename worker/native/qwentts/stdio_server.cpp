@@ -493,7 +493,11 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
         if (!shutting_down && !duplicate && admitted_requests_ >= max_admitted_requests_) {
             admission_rejected = true;
         }
-        if (!shutting_down && !duplicate && !admission_rejected) {
+        // Fatal state closes admission atomically with the request registry.
+        // Do not publish a worker_fatal response after first inserting the
+        // request: that would consume capacity and leave a rejected request
+        // visible as active/pending.
+        if (!shutting_down && !fatal && !duplicate && !admission_rejected) {
             accepted_id_high_water_ = request_id;
             ++admitted_requests_;
             active_.emplace(request_id, slot);
@@ -825,6 +829,10 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         completed.execution_outcome = result.execution_outcome.empty()
             ? "completed"
             : result.execution_outcome;
+        completed.has_generation_trace = result.has_generation_trace;
+        if (completed.has_generation_trace) {
+            completed.generation_trace = result.generation_trace;
+        }
         emit_finished_metric("completed", completed.execution_outcome.c_str());
         send_control(slot->id, std::move(completed));
     }
