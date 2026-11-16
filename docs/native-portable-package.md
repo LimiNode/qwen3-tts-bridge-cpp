@@ -52,9 +52,12 @@ pwsh -File scripts/assemble-native-portable-release.ps1 `
 ```
 
 The release-specific configuration is `config/native-package.example.json`.
-Its `runtime_dir` is `runtime/qwentts` and its model paths are relative to the
-package root, so it remains valid after relocation. It intentionally contains
-no CMP-specific runtime name or checkout path.
+Its `runtime_dir` is `runtime/qwentts`, its `model_root` is `models`, and the
+profile model paths are relative to that model root, so it remains valid after
+relocation. It intentionally contains no CMP-specific runtime name or checkout
+path.
+The example selects the experimental `ru-stress` profile as the intended R1
+default; this remains conditional on the dual-GPU and human-listening gates.
 
 The command fails closed when the runtime manifest is missing, a hash differs,
 an import/export cannot be resolved, a path overlaps an input, a reparse point

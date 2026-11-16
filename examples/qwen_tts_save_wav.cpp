@@ -1,6 +1,9 @@
 #include <qwen_tts_bridge/audio.hpp>
 #include <qwen_tts_bridge/client.hpp>
 #include <qwen_tts_bridge/transport.hpp>
+#ifdef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+#include <qwen_tts_bridge/text.hpp>
+#endif
 
 #include "common/cli_parsing.hpp"
 #include "common/atomic_wav_output.hpp"
@@ -37,12 +40,19 @@
 namespace {
 
 using qwen_tts_bridge::AudioFormat;
+using qwen_tts_bridge::PreparedText;
 using qwen_tts_bridge::QwenTtsClient;
 using qwen_tts_bridge::QwenTtsClientOptions;
 using qwen_tts_bridge::RequestId;
 using qwen_tts_bridge::StdIoTransportOptions;
+using qwen_tts_bridge::TtsError;
 using qwen_tts_bridge::TtsRequest;
 using qwen_tts_bridge::TtsCompletion;
+#ifdef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+using qwen_tts_bridge::TextRenderCapability;
+using qwen_tts_bridge::TtsFrontTextPreparer;
+using qwen_tts_bridge::TtsFrontTextPreparerOptions;
+#endif
 using qwen_tts_bridge::audio::AudioPostProcessorChain;
 using qwen_tts_bridge::audio::SaveWavState;
 using qwen_tts_bridge::audio::TerminalFadeOptions;
@@ -75,6 +85,10 @@ struct ProgramOptions {
     std::chrono::milliseconds startup_timeout{30000};
     std::chrono::milliseconds request_timeout{60000};
     bool require_natural_eos = false;
+    // The native user-facing path uses the model-neutral frontend by default.
+    // Callers that need byte-for-byte raw input can opt out explicitly.
+    bool tts_front_enabled = true;
+    bool tts_front_explicit_stress = false;
     bool terminal_fade_enabled = false;
     TerminalFadeOptions terminal_fade;
 };
@@ -102,6 +116,9 @@ void print_usage(std::ostream& out, const char* executable_name) {
         << "  --startup-timeout-ms <ms>      Worker startup timeout, default: 30000.\n"
         << "  --request-timeout-ms <ms>      Request timeout, 0 disables it.\n"
         << "  --require-natural-eos          Fail unless worker reports natural EOS.\n"
+        << "  --tts-front                    Apply tts-front-cpp once before synthesis (default).\n"
+        << "  --no-tts-front                 Send raw text without frontend preparation.\n"
+        << "  --tts-front-explicit-stress    Render combining stress (RU-stress only).\n"
         << "  --tail                         Fade and pad terminal audio.\n"
         << "  --tail-fade-ms <ms>            Terminal fade duration, default: 15.\n"
         << "  --tail-silence-ms <ms>         Completion silence, default: 85.\n"
@@ -261,6 +278,17 @@ ProgramOptions parse_options(int argc, char** argv) {
         else if (arg == "--require-natural-eos") {
             options.require_natural_eos = true;
         }
+        else if (arg == "--tts-front") {
+            options.tts_front_enabled = true;
+        }
+        else if (arg == "--no-tts-front") {
+            options.tts_front_enabled = false;
+            options.tts_front_explicit_stress = false;
+        }
+        else if (arg == "--tts-front-explicit-stress") {
+            options.tts_front_enabled = true;
+            options.tts_front_explicit_stress = true;
+        }
         else if (arg == "--tail") {
             options.terminal_fade_enabled = true;
         }
@@ -319,6 +347,15 @@ void validate_options(const ProgramOptions& options) {
     if (options.text.empty()) {
         throw std::runtime_error("--text is required");
     }
+    if (options.tts_front_explicit_stress && !options.tts_front_enabled) {
+        throw std::runtime_error("--tts-front-explicit-stress requires --tts-front");
+    }
+#ifndef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+    if (options.tts_front_enabled) {
+        throw std::runtime_error(
+            "this qwen_tts_save_wav build has no tts-front-cpp support");
+    }
+#endif
     const auto output_path = std::filesystem::u8path(options.output_path);
     if (std::filesystem::exists(output_path)) {
         throw std::runtime_error(
@@ -431,6 +468,26 @@ int run_program(int argc, char** argv) {
 
         QwenTtsClientOptions client_options;
         client_options.session.startup_timeout = options.startup_timeout;
+#ifdef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+        std::shared_ptr<TtsFrontTextPreparer> text_preparer;
+        if (options.tts_front_enabled) {
+            TtsFrontTextPreparerOptions preparer_options;
+            if (options.language == "ru" || options.language == "russian") {
+                preparer_options.frontend.language = tts_front::Language::Russian;
+            }
+            preparer_options.render_capability = options.tts_front_explicit_stress
+                ? TextRenderCapability::ExplicitCombiningStress
+                : TextRenderCapability::Base;
+            text_preparer = std::make_shared<TtsFrontTextPreparer>(
+                std::move(preparer_options));
+            client_options.text_preparer = [text_preparer](
+                const TtsRequest& request,
+                PreparedText& prepared,
+                TtsError& error) {
+                return text_preparer->prepare(request, prepared, error);
+            };
+        }
+#endif
 
         QwenTtsClient client;
         if (!client.start(make_transport_options(options), client_options)) {
@@ -463,6 +520,22 @@ int run_program(int argc, char** argv) {
             completion = value;
             completion_metadata_received = true;
         };
+#ifdef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+        callbacks.on_text_prepared = [](const PreparedText& prepared) {
+            std::cerr << "text_front original=" << prepared.original_text << '\n'
+                      << "text_front normalized="
+                      << prepared.frontend_normalized_text << '\n'
+                      << "text_front pronunciation="
+                      << prepared.frontend_pronunciation_text << '\n'
+                      << "text_front effective=" << prepared.effective_text << '\n'
+                      << "text_front modified="
+                      << (prepared.was_modified ? "true" : "false") << '\n';
+            for (const auto& warning : prepared.frontend_warnings) {
+                std::cerr << "text_front warning=" << warning.code << ':'
+                          << warning.message << '\n';
+            }
+        };
+#endif
 
         const RequestId request_id = client.synthesize_async(
             std::move(request),

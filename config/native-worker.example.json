@@ -3,7 +3,7 @@
   "worker": "qwen_tts_native_worker.exe",
   "runtime_dir": "runtime/qwentts-sm75",
   "model_root": "",
-  "default_model_profile": "base",
+  "default_model_profile": "ru-stress",
   "model_profiles": {
     "base": {
       "talker_model": "models/qwen-talker-1.7b-base-Q8_0.gguf",

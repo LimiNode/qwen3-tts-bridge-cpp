@@ -2,7 +2,9 @@
 
 The native and Python playback launchers accept model paths outside the
 application directory. Relative model paths are resolved from the selected
-model root; absolute paths are used as-is.
+model root; absolute paths are used as-is. A profile path must not repeat the
+model-root directory name (for example, use `ru-stress/file.gguf` with
+`model_root: "models"`, not `models/ru-stress/file.gguf`).
 
 The model path and model root precedence are separate.
 
@@ -51,7 +53,7 @@ launcher accepts the same shape with a directory in `model_path`:
 
 ```json
 {
-  "default_model_profile": "base",
+  "default_model_profile": "ru-stress",
   "model_profiles": {
     "base": {
       "talker_model": "qwen-talker-1.7b-base-Q8_0.gguf",
@@ -69,21 +71,26 @@ launcher accepts the same shape with a directory in `model_path`:
 }
 ```
 
-Select a profile explicitly with `-ModelProfile ru-stress`. An explicit model
-path still wins over the profile, and an unknown explicitly requested profile
-fails closed. Once a named profile is selected, its required model identity is
-complete: native profiles must define both `talker_model` and `codec_model`
-(unless the corresponding CLI override is supplied), and Python profiles must
-define `model_path` (unless `-ModelPath` is supplied).
+Select a profile explicitly with `-ModelProfile ru-stress` in the native
+PowerShell launcher. An explicit model path still wins over the profile, and
+an unknown explicitly requested profile fails closed. Once a named profile is
+selected, its required model identity is complete: native profiles must define
+both `talker_model` and `codec_model` (unless the corresponding CLI override is
+supplied), and Python profiles must define `model_path` (unless `-ModelPath` is
+supplied). The standalone C++ example utilities intentionally expose the
+smaller worker/frontend surface; a full `--model-profile` C++ CLI remains an
+R2 task and is not implied by this R1 configuration contract.
 
 Download metadata is profile-owned as well. A selected native profile uses only
 its own `model_download`; top-level `model_download` is used only when no named
 profile is selected. A missing profile artifact without profile-owned URL and
 SHA-256 fails closed instead of borrowing another profile's identity.
 
-The `ru-stress` profile is opt-in. Its `text_render_capability` is metadata for
-the application composition layer: when that profile is selected, construct
-`TtsFrontTextPreparer` with
+The R1 native example selects `ru-stress` by default. Its
+`text_render_capability` is metadata for the application composition layer:
+when that profile is selected, construct `TtsFrontTextPreparer` with
 `TextRenderCapability::ExplicitCombiningStress`. The native launcher does not
-silently rewrite text or inject combining marks; Base remains model-neutral by
-default.
+infer stress from filenames. `--no-tts-front` disables preparation explicitly;
+selecting `base` keeps the renderer model-neutral and never adds combining
+marks. The `ru-stress` default remains conditional on the documented R1
+listening and hardware acceptance gates.

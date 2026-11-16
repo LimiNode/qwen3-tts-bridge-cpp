@@ -166,7 +166,7 @@ class Cmp50hxRuntimeProfilesTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('"model_root": ""', native_config)
-        self.assertIn('"default_model_profile": "base"', native_config)
+        self.assertIn('"default_model_profile": "ru-stress"', native_config)
         self.assertIn('"model_profiles"', native_config)
         self.assertIn('"ru-stress"', native_config)
         self.assertIn(

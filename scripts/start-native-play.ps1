@@ -8,6 +8,7 @@ param(
     [string]$CodecModel = '',
     [string]$Text,
     [switch]$NoPlayback,
+    [switch]$NoTtsFront,
     [switch]$NoDownload,
     [switch]$Offline
 )
@@ -168,6 +169,14 @@ $worker = Resolve-BundlePath $config.worker
 $args = @('--worker', $worker)
 foreach ($value in $workerArgs) { $args += @('--worker-arg', $value) }
 if ($NoPlayback) { $args += '--no-playback' }
+if ($NoTtsFront) {
+    $args += '--no-tts-front'
+}
+elseif ($profile -and $profile.text_render_capability -eq 'explicit_combining_stress') {
+    # Rendering capability comes from the selected model profile, not from a
+    # filename heuristic. The player still owns the frontend composition.
+    $args += '--tts-front-explicit-stress'
+}
 if ($PSBoundParameters.ContainsKey('Text')) { $args += @('--text', $Text) }
 & $player @args
 exit $LASTEXITCODE

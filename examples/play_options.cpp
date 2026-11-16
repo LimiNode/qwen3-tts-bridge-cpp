@@ -70,6 +70,9 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --text <utf8>                  One-shot playback instead of interactive mode.\n"
         << "  --language <name>              Request language, default: auto.\n"
+        << "  --tts-front                    Apply tts-front-cpp once before synthesis (default).\n"
+        << "  --no-tts-front                 Send raw text without frontend preparation.\n"
+        << "  --tts-front-explicit-stress    Render combining stress (RU-stress only).\n"
         << "  --speaker <name>               Optional request speaker or voice name.\n"
         << "  --voice-id <name>              Registered Base voice profile identifier.\n"
         << "  --instruction <utf8>           Natural-language style instruction.\n"
@@ -179,6 +182,17 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         }
         else if (arg == "--language" || arg.rfind("--language=", 0) == 0) {
             options.language = require_value(index, argc, argv, "--language");
+        }
+        else if (arg == "--tts-front") {
+            options.tts_front_enabled = true;
+        }
+        else if (arg == "--no-tts-front") {
+            options.tts_front_enabled = false;
+            options.tts_front_explicit_stress = false;
+        }
+        else if (arg == "--tts-front-explicit-stress") {
+            options.tts_front_enabled = true;
+            options.tts_front_explicit_stress = true;
         }
         else if (arg == "--speaker" || arg.rfind("--speaker=", 0) == 0) {
             options.speaker = require_value(index, argc, argv, "--speaker");
@@ -368,6 +382,16 @@ void validate_options(const ProgramOptions& options) {
     if (options.help || options.self_test_playback_lifecycle) {
         return;
     }
+    if (options.tts_front_explicit_stress && !options.tts_front_enabled) {
+        throw std::runtime_error(
+            "--tts-front-explicit-stress requires --tts-front");
+    }
+#ifndef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+    if (options.tts_front_enabled) {
+        throw std::runtime_error(
+            "this qwen_tts_play build has no tts-front-cpp support");
+    }
+#endif
     if (!options.use_mock_worker && options.worker_executable.empty()) {
         throw std::runtime_error("--worker is required unless --mock is used");
     }

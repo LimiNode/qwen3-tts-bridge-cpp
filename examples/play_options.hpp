@@ -15,6 +15,10 @@ struct ProgramOptions {
     bool use_mock_worker = false;
     bool playback_enabled = true;
     bool use_mock_playback_sink = false;
+    // Keep text preparation enabled for the user-facing native player unless
+    // --no-tts-front is explicitly requested.
+    bool tts_front_enabled = true;
+    bool tts_front_explicit_stress = false;
     bool require_natural_eos = true;
     std::string worker_executable;
     std::vector<std::string> worker_arguments;
