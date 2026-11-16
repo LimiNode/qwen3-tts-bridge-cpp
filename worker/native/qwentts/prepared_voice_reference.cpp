@@ -35,6 +35,8 @@ constexpr int kMaxRvqFrames = 1 << 20;
 constexpr std::uintmax_t kMaxManifestBytes = 1u * 1024u * 1024u;
 constexpr std::uintmax_t kMaxSpeakerBytes = 16u * 1024u * 1024u;
 constexpr std::uintmax_t kMaxRvqBytes = 256u * 1024u * 1024u;
+constexpr int kRecoveryRenameAttempts = 50;
+constexpr DWORD kRecoveryRenameDelayMs = 20;
 
 bool is_safe_relative_path(const std::filesystem::path& path) {
     if (path.empty() || path.is_absolute() || path.has_root_name() || path.has_root_directory()) {
@@ -296,6 +298,54 @@ Json read_publication_marker(const std::filesystem::path& marker) {
 
 void maybe_terminate_recovery(const char* phase);
 
+bool rename_for_recovery(const std::filesystem::path& source,
+                         const std::filesystem::path& target,
+                         std::error_code& error) {
+    // A forcibly terminated worker can still be releasing a file handle when
+    // the next worker starts recovery.  Keep the retry bounded: genuine path
+    // or permission errors must still fail closed, while transient sharing
+    // violations get a short handoff window on Windows.
+    for (int attempt = 0; attempt < kRecoveryRenameAttempts; ++attempt) {
+        // Recovery is idempotent.  If a prior recovery attempt completed the
+        // move just before this retry observed the sharing violation, the
+        // source is gone and the owned target is already in quarantine.
+        if (!std::filesystem::exists(source)) {
+            // A partial publication is disposable.  If the source vanished
+            // between the existence check and rename, there is no owned
+            // artifact left for this recovery pass to quarantine.
+            error.clear();
+            return true;
+        }
+        error.clear();
+        std::filesystem::create_directories(target.parent_path(), error);
+        if (error) {
+            Sleep(kRecoveryRenameDelayMs);
+            continue;
+        }
+        error.clear();
+        std::filesystem::rename(source, target, error);
+        if (!error) {
+            return true;
+        }
+        Sleep(kRecoveryRenameDelayMs);
+    }
+    if (error == std::make_error_code(std::errc::no_such_file_or_directory) ||
+        error.value() == static_cast<int>(ERROR_FILE_NOT_FOUND) ||
+        error.value() == static_cast<int>(ERROR_PATH_NOT_FOUND)) {
+        // The publication marker proves that this is an owned, incomplete
+        // artifact.  If Windows cannot complete the quarantine move because
+        // one path disappeared during forced-process cleanup, deleting that
+        // disposable artifact is safer than blocking recovery indefinitely.
+        std::error_code remove_error;
+        std::filesystem::remove(source, remove_error);
+        if (!remove_error || !std::filesystem::exists(source)) {
+            error.clear();
+            return true;
+        }
+    }
+    return false;
+}
+
 void recover_incomplete_publication_locked(
     const std::filesystem::path& directory,
     const std::filesystem::path& manifest_path) {
@@ -347,9 +397,13 @@ void recover_incomplete_publication_locked(
             reject_reparse_point(target);
             throw std::runtime_error("prepared voice recovery has conflicting owned artifact");
         }
-        std::filesystem::rename(source, target, error);
-        if (error) {
-            throw std::runtime_error("unable to quarantine incomplete prepared voice artifact");
+        if (!rename_for_recovery(source, target, error)) {
+            const auto source_exists = std::filesystem::exists(source);
+            const auto target_exists = std::filesystem::exists(target);
+            throw std::runtime_error(
+                "unable to quarantine incomplete prepared voice artifact '" + name + "': " +
+                error.message() + " (source_exists=" + (source_exists ? "true" : "false") +
+                ", target_exists=" + (target_exists ? "true" : "false") + ")");
         }
     };
     move_owned(speaker_name);
