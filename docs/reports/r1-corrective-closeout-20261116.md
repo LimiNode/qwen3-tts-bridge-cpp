@@ -6,6 +6,8 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
+- Current integration HEAD (documentation and packaging-script follow-up):
+  `b0802da2`
 - Implementation HEAD used for the corrective binaries and package:
   `faf546017ff05101788457ae6fd79fc10ba9a67c`
 - The package was regenerated after the A1–A3 corrective commit.  The receipt
