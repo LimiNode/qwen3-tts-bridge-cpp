@@ -6,19 +6,28 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
-- Implementation HEAD used for the binaries and package: `fd940f912176315b8ec7c03dcfade011cc29a6af`
-- The closeout receipt is documentation-only and follows the implementation
-  commit; it does not change the packaged binaries.
+- Implementation HEAD used for the corrective binaries and package:
+  `faf546017ff05101788457ae6fd79fc10ba9a67c`
+- The package was regenerated after the A1–A3 corrective commit.  The receipt
+  follows that exact implementation commit and records the resulting hashes.
 - Corrective commits include native admission/shutdown/package fixes,
   frontend-aware native defaults, and idempotent recovery of incomplete native
   voice publications.
-- MSVC Release CTest: **46/46 PASS** after two focused recovery repetitions.
+- MSVC Release CTest: **46/46 PASS** on the preceding native candidate; the
+  corrective native targets additionally passed the focused subprocess suites
+  (`qwen_tts_native_worker_test`, `stdio_transport_test`).
   The previous failure was the forced-termination recovery path; the new
   bounded recovery handles transient Windows path/handle races and disposable
   incomplete artifacts fail closed without touching a committed manifest.
-- Python/package results from the preceding committed candidate remain
-  historical evidence (`492 passed, 7 skipped`); they were not rerun by this
-  closeout.
+- Python corrective lifecycle and packaging/receipt suites: **67 tests, 1
+  skipped**, plus `validate-acceptance-receipts.py` validating 2 canonical
+  receipts.  The historical full Python result remains `492 passed, 7
+  skipped` and is retained as earlier evidence.
+- The production Release worker was built with `BUILD_TESTS=OFF` and
+  `QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=OFF`; binary-string inspection found no
+  `QTB_TEST_PUBLICATION`, `QTB_TEST_RECOVERY`, or `QTB_TEST_PERSISTENCE` seams.
+  The separate instrumented worker intentionally contains those hooks for
+  deterministic recovery tests.
 
 ## Native package measurement
 
@@ -29,15 +38,16 @@ provenance edit was made.
 
 | Artifact | Result |
 | --- | --- |
-| ZIP | 435,249,134 bytes |
-| Unpacked tree | 573,044,435 bytes, 21 files |
-| ZIP SHA-256 | `5C4E879A59143D92F41855F01C7A95C465FB47BDEB61409A4689311E7926D18F` |
+| ZIP | 435,248,520 bytes |
+| Unpacked tree | 573,042,652 bytes, 21 files |
+| ZIP SHA-256 | `1D3FBEDEE250F2D5B46B091583105BED01E80814CBF5BE1BA15F340059C489A7` |
 | Python/PyTorch bundled | no |
 | GGUF weights or user recordings bundled | no |
 | PE dependency closure and extraction verification | PASS |
 
-The review-only package is in the ignored local paths
-`.tmp/r1-native-package-final.zip` and `.tmp/r1-native-package-relocated/`.
+The review-only package is in the ignored local path
+`.tmp/r1-native-package-faf54601.zip`; the previous package remains historical
+evidence.  No release tag or GitHub release was created.
 They are evidence, not release assets.
 
 ## Remaining gates

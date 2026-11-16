@@ -9,9 +9,9 @@ param(
     [string]$PlayExecutable,
     [string[]]$ConfigExample = @("config/native-package.example.json"),
     [string]$DependencyPolicy = "config/native-dependency-policy.json",
-    [string[]]$DynamicDependency = @(),
     [Parameter(Mandatory = $true)]
     [string[]]$NoticeFile,
+    [string[]]$DynamicDependency = @(),
     [string]$LaunchInstructions = "docs/native-portable-package.md",
     [string]$OutputRoot = "dist/QwenTTSBridge-native",
     [string]$ZipPath,
@@ -297,30 +297,50 @@ try {
 
     $dependencyInventory = Join-Path $staging "dependency-inventory.json"
     $effectiveDynamicDependencies = @($runtimeManifest.dynamic_dependencies) + @($DynamicDependency)
-    & $Python (Join-Path $RepoRoot "scripts/audit-native-dependencies.py") `
-        --root $staging `
-        --policy (Join-Path $staging "config/native-dependency-policy.json") `
-        --entry "bin/qwen_tts_native_worker.exe" `
-        --entry "bin/qwen_tts_save_wav.exe" `
-        --entry "bin/qwen_tts_play.exe" `
-        --entry "runtime/qwentts/qwen.dll" `
-        $(foreach ($dependency in $effectiveDynamicDependencies) { "--dynamic"; $dependency }) `
-        --require-export "qt_version" `
-        --require-export "qt_last_error" `
-        --require-export "qt_last_finish_reason" `
-        --require-export "qt_init_default_params" `
-        --require-export "qt_init" `
-        --require-export "qt_free" `
-        --require-export "qt_tts_default_params_ex" `
-        --require-export "qt_synthesize" `
-        --require-export "qt_audio_free" `
-        --require-export "qt_num_codebooks" `
-        --require-export "qt_n_speakers" `
-        --require-export "qt_speaker_name" `
-        --require-export "qt_duration_sec_to_tokens" `
-        --require-export "qt_log_set" `
-        --output $dependencyInventory
-    if ($LASTEXITCODE -ne 0) { throw "Native dependency audit found unresolved imports." }
+    # Build one explicit argument array.  The previous inline foreach relied
+    # on shell-specific array unrolling and could pass the dynamic dependency
+    # pairs as one malformed argument under Windows PowerShell, causing a
+    # false unresolved-import failure even when the extracted closure was
+    # complete.
+    $auditArguments = @(
+        "$(Join-Path $RepoRoot 'scripts/audit-native-dependencies.py')",
+        "--root", $staging,
+        "--policy", (Join-Path $staging "config/native-dependency-policy.json"),
+        "--entry", "bin/qwen_tts_native_worker.exe",
+        "--entry", "bin/qwen_tts_save_wav.exe",
+        "--entry", "bin/qwen_tts_play.exe",
+        "--entry", "runtime/qwentts/qwen.dll"
+    )
+    foreach ($dependency in $effectiveDynamicDependencies) {
+        $auditArguments += @("--dynamic", [string]$dependency)
+    }
+    foreach ($export in @(
+        "qt_version",
+        "qt_last_error",
+        "qt_last_finish_reason",
+        "qt_init_default_params",
+        "qt_init",
+        "qt_free",
+        "qt_tts_default_params_ex",
+        "qt_synthesize",
+        "qt_audio_free",
+        "qt_num_codebooks",
+        "qt_n_speakers",
+        "qt_speaker_name",
+        "qt_duration_sec_to_tokens",
+        "qt_log_set"
+    )) {
+        $auditArguments += @("--require-export", $export)
+    }
+    $auditArguments += @("--output", $dependencyInventory)
+    & $Python @auditArguments
+    if ($LASTEXITCODE -ne 0) {
+        if (Test-Path -LiteralPath $dependencyInventory) {
+            $auditSummary = Get-Content -Raw -LiteralPath $dependencyInventory
+            Write-Error "Native dependency audit result:`n$auditSummary"
+        }
+        throw "Native dependency audit found unresolved imports."
+    }
 
     $sourceRevision = (& git -C $RepoRoot rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0) { throw "Unable to record source Git revision." }
