@@ -6,7 +6,9 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
-- Combined HEAD: `fd940f912176315b8ec7c03dcfade011cc29a6af`
+- Implementation HEAD used for the binaries and package: `fd940f912176315b8ec7c03dcfade011cc29a6af`
+- The closeout receipt is documentation-only and follows the implementation
+  commit; it does not change the packaged binaries.
 - Corrective commits include native admission/shutdown/package fixes,
   frontend-aware native defaults, and idempotent recovery of incomplete native
   voice publications.
@@ -20,9 +22,10 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 
 ## Native package measurement
 
-The package was assembled from the committed Release binaries and the pinned
-qwentts runtime (`130cb99`, ABI 6). The generated manifest records the exact
-source HEAD above; no manual provenance edit was made.
+The package was assembled from the committed Release binaries at the
+implementation HEAD above and the pinned qwentts runtime (`130cb99`, ABI 6).
+The generated manifest records that exact implementation revision; no manual
+provenance edit was made.
 
 | Artifact | Result |
 | --- | --- |
