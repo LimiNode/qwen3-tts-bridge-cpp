@@ -12,8 +12,8 @@ include(CMakePackageConfigHelpers)
 option(QWEN_TTS_BRIDGE_BUILD_EXAMPLES "Build QwenTTSBridge examples" ON)
 option(QWEN_TTS_BRIDGE_BUILD_TESTS "Build QwenTTSBridge tests" ON)
 option(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS
-    "Include deterministic transport test seams (automatically enabled with tests)"
-    ${QWEN_TTS_BRIDGE_BUILD_TESTS})
+    "Include deterministic transport test seams in the bridge library"
+    OFF)
 option(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER "Build the optional qwentts.cpp process worker" OFF)
 option(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND
     "Build the opt-in qwentts.cpp/GGML native backend adapter" OFF)
@@ -921,6 +921,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_compile_definitions(qwen_tts_native_worker_test
             PRIVATE
                 NOMINMAX
+                QTB_NATIVE_WORKER_TEST_HOOKS
                 QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker_instrumented>"
                 QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
@@ -954,6 +955,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_compile_definitions(native_engine_callback_test
             PRIVATE
                 NOMINMAX
+                QTB_NATIVE_WORKER_TEST_HOOKS
                 QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
         add_dependencies(native_engine_callback_test qwen_tts_fake_qwen)

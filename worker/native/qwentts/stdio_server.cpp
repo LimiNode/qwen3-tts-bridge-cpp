@@ -14,6 +14,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <new>
@@ -95,6 +96,11 @@ void write_admission_released_metric(
 
 class StdioServer::OutputWriter final {
 public:
+    using FailureHandler = std::function<void(std::string)>;
+
+    explicit OutputWriter(FailureHandler failure_handler)
+        : failure_handler_(std::move(failure_handler)) {}
+
     void start() {
         thread_ = std::thread([this]() { run(); });
     }
@@ -197,15 +203,23 @@ private:
                 diagnostic << "[native-worker:error] stdout WriteFile failed after "
                            << result.bytes_written << " of " << frame.size()
                            << " bytes, error=" << result.error_code;
-                write_diagnostic_line(diagnostic.str());
-                std::lock_guard<std::mutex> lock(mutex_);
-                failed_ = true;
-                stopping_ = true;
-                queue_.clear();
-                queued_bytes_ = 0;
-                in_flight_bytes_ = 0;
-                not_full_.notify_all();
-                mark_finished_locked();
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    failed_ = true;
+                    stopping_ = true;
+                    queue_.clear();
+                    queued_bytes_ = 0;
+                    in_flight_bytes_ = 0;
+                    not_full_.notify_all();
+                    mark_finished_locked();
+                }
+                // Publish the failure state before attempting diagnostics.
+                // stderr is a synchronous pipe and may be stalled; the
+                // server's failure handler starts the independent fatal
+                // watchdog before making diagnostics best-effort.
+                if (failure_handler_) {
+                    failure_handler_(diagnostic.str());
+                }
                 return;
             }
 
@@ -234,11 +248,13 @@ private:
     bool stopping_ = false;
     bool failed_ = false;
     bool finished_ = false;
+    FailureHandler failure_handler_;
 };
 
 StdioServer::StdioServer(NativeEngine& engine, std::size_t max_admitted_requests)
     : engine_(engine),
-      writer_(std::make_unique<OutputWriter>()),
+      writer_(std::make_unique<OutputWriter>(
+          [this](std::string message) { fail_fatal(message); })),
       max_admitted_requests_(max_admitted_requests) {
     if (max_admitted_requests_ < 1 || max_admitted_requests_ > 65536) {
         throw std::invalid_argument("max_admitted_requests must be in [1, 65536]");
@@ -262,10 +278,9 @@ StdioServer::~StdioServer() {
 }
 
 int StdioServer::run() {
-    std::ostringstream metric;
-    metric << "qtb_metric {\"event\":\"worker_admission_started\",\"admission_limit\":"
-           << max_admitted_requests_ << ",\"admitted_requests\":0}";
-    write_diagnostic_line(metric.str());
+    // Do not make startup depend on a synchronous stderr pipe.  The worker
+    // can begin serving protocol traffic even when diagnostics are not being
+    // consumed; ordinary request metrics remain best-effort below.
     writer_->start();
     engine_thread_ = std::thread([this]() { engine_loop(); });
     read_loop();
@@ -286,8 +301,8 @@ int StdioServer::run() {
             lock, std::chrono::seconds(2), [this]() { return engine_finished_; });
         lock.unlock();
         if (!engine_finished) {
-            write_diagnostic_line(
-                "[native-worker:error] engine thread did not stop after output backpressure");
+            // Forced termination must not wait for stderr: a stalled
+            // diagnostics pipe is one of the conditions covered by this path.
             TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
             return 1;
         }
@@ -296,8 +311,8 @@ int StdioServer::run() {
         engine_thread_.join();
     }
     if (!writer_->stop_when_drained(std::chrono::seconds(5))) {
-        write_diagnostic_line(
-            "[native-worker:error] stdout writer did not stop after cancelling blocked output");
+        // Forced termination must not wait for stderr: the writer may be
+        // blocked in a synchronous pipe operation.
         TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
         return 1;
     }
@@ -917,7 +932,6 @@ void StdioServer::start_fatal_watchdog() {
 
 void StdioServer::fail_fatal(const std::string& message) {
     start_fatal_watchdog();
-    write_diagnostic_line("[native-worker:error] " + message);
     std::vector<RequestId> abandoned;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -953,6 +967,11 @@ void StdioServer::fail_fatal(const std::string& message) {
         pending_.clear();
     }
     condition_.notify_all();
+
+    // Arm the fatal state before touching stderr.  Diagnostics are useful
+    // during graceful operation, but a stalled stderr pipe must not delay the
+    // watchdog or leave request cancellation/rejection unpublished locally.
+    write_diagnostic_line("[native-worker:error] " + message);
 
     // The diagnostic boundary is independent from the request terminalization
     // path and serializes all stderr records.

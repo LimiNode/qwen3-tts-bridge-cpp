@@ -233,7 +233,20 @@ class _OutputWriter:
                     try:
                         self._queue.put_nowait(output_frame)
                     except queue.Full:
-                        self._queue_condition.wait(timeout=0.1)
+                        # queue.Full is an independent capacity constraint from
+                        # the byte budget above.  Use the same absolute
+                        # deadline so a small-frame producer cannot outlive
+                        # send(timeout=...) merely by repeatedly observing a
+                        # full frame queue.
+                        if deadline is None:
+                            self._queue_condition.wait(timeout=0.1)
+                        else:
+                            remaining = deadline - monotonic_seconds()
+                            if remaining <= 0.0:
+                                raise _OutputWriterFailure(
+                                    "protocol stdout writer send timed out"
+                                )
+                            self._queue_condition.wait(timeout=min(0.1, remaining))
                         continue
                     self._queued_bytes += frame_bytes
                     self._queue_condition.notify_all()
@@ -497,6 +510,14 @@ class StdioWorkerServer:
                 # writer itself is uninterruptibly blocked.
                 self._engine_thread.join(timeout=1.0)
                 engine_joined = not self._engine_thread.is_alive()
+
+            if not engine_joined and self._abort_process_on_output_failure:
+                # The writer may have drained successfully while the engine
+                # ignored cancellation inside model code.  A standalone
+                # worker must not return into Python with a live non-daemon
+                # engine thread; embedded callers retain the bounded-failure
+                # return path above without terminating their host process.
+                os._exit(1)
 
             # Never close an engine while its worker thread can still execute
             # against it. Embedded callers do not get an implicit process kill;
@@ -1328,7 +1349,14 @@ class StdioWorkerServer:
             self._terminalize_locked(request_id)
         if emit_cancelled:
             self._emit_request_finished(slot, "cancelled")
-            self._writer.send(control_frame(request_id, {"message_type": "cancelled"}))
+            try:
+                self._writer.send(control_frame(request_id, {"message_type": "cancelled"}))
+            except _OutputWriterFailure:
+                # The standalone shutdown path may have stopped stdout while
+                # an engine that ignores cancellation is unwinding.  The
+                # terminal state is already recorded locally; there is no
+                # protocol channel left on which to publish it.
+                self._fatal_error = True
 
     def _emit_request_finished(
         self,

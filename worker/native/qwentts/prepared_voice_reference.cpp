@@ -296,7 +296,11 @@ Json read_publication_marker(const std::filesystem::path& marker) {
     return value;
 }
 
+#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
 void maybe_terminate_recovery(const char* phase);
+#else
+inline void maybe_terminate_recovery(const char*) {}
+#endif
 
 bool rename_for_recovery(const std::filesystem::path& source,
                          const std::filesystem::path& target,
@@ -423,6 +427,7 @@ void recover_incomplete_publication_locked(
     }
 }
 
+#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
 void maybe_inject_publication_failure(const char* phase) {
     const char* configured = std::getenv("QTB_TEST_PUBLICATION_FAILURE_PHASE");
     if (configured != nullptr && std::string(configured) == phase) {
@@ -456,6 +461,11 @@ void maybe_terminate_recovery(const char* phase) {
         TerminateProcess(GetCurrentProcess(), 71);
     }
 }
+#else
+inline void maybe_inject_publication_failure(const char*) {}
+inline void maybe_delay_publication(const char*) {}
+inline void maybe_terminate_publication(const char*) {}
+#endif
 
 void validate_context(const PreparedVoiceReferenceContext& context) {
     if (context.engine_commit.empty() || context.abi_version <= 0 ||
@@ -627,12 +637,14 @@ PreparedVoiceReferenceData persist_prepared_voice_reference(
     const PreparedVoiceReferenceContext& context,
     const qt_voice_ref& extracted) {
     validate_context(context);
+#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
     // Deterministic fault injection keeps the DLL-owned extraction cleanup
-    // path testable without changing the public ABI. This is intentionally
-    // ignored unless a test explicitly opts in through the environment.
+    // path testable without changing the public ABI. It is compiled only into
+    // the instrumented native-worker test target.
     if (std::getenv("QTB_TEST_PERSISTENCE_FAILURE") != nullptr) {
         throw std::runtime_error("injected prepared voice persistence failure");
     }
+#endif
     if (extracted.ref_spk_emb == nullptr || extracted.ref_spk_dim <= 0 ||
         extracted.ref_spk_dim > kMaxSpeakerDimension ||
         static_cast<std::size_t>(extracted.ref_spk_dim) >

@@ -20,6 +20,15 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _sha256_zip_entry(zipped: zipfile.ZipFile, name: str) -> str:
+    """Hash one ZIP entry incrementally without materializing it in RAM."""
+    digest = hashlib.sha256()
+    with zipped.open(name, "r") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def _safe_names(root: Path) -> set[str]:
     names = set()
     for path in root.rglob("*"):
@@ -77,7 +86,7 @@ def verify_archive(root: Path, archive: Path, extract_check: bool) -> None:
         ):
             raise ValueError("ZIP contains an unsafe path")
         for name in entries:
-            if _sha256(root / name) != hashlib.sha256(zipped.read(name)).hexdigest():
+            if _sha256(root / name) != _sha256_zip_entry(zipped, name):
                 raise ValueError(f"ZIP content differs from release directory: {name}")
         if extract_check:
             with tempfile.TemporaryDirectory(prefix="qtb-native-verify-") as temporary:

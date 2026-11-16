@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <deque>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
@@ -1062,15 +1063,23 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
     // published after state_mutex_ is released: queue overflow tears down the
     // transport and takes that mutex again.
     RawCollector collector;
+    const auto marker = std::filesystem::temp_directory_path() /
+        ("qtb-callback-queue-marker-" +
+         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    const auto trigger = marker.string() + ".trigger";
     StdIoTransportOptions options = make_python_options(
         "import sys, time\n"
         "sys.stdout.buffer.write(b'A')\n"
         "sys.stdout.flush()\n"
-        "time.sleep(0.25)\n"
+        "import os\n"
+        "while not os.path.exists(os.environ['QTB_CALLBACK_QUEUE_TRIGGER']): time.sleep(0.01)\n"
         "sys.stdout.buffer.write(b'B')\n"
         "sys.stdout.flush()\n"
+        "open(os.environ['QTB_CALLBACK_QUEUE_MARKER'], 'w').close()\n"
         "time.sleep(60)\n",
-        std::chrono::milliseconds(100));
+        std::chrono::seconds(5));
+    options.environment_overrides["QTB_CALLBACK_QUEUE_MARKER"] = marker.string();
+    options.environment_overrides["QTB_CALLBACK_QUEUE_TRIGGER"] = trigger;
     options.read_buffer_size = 1;
     options.max_callback_queue_events = 1;
     options.max_callback_queue_bytes = 64;
@@ -1130,28 +1139,38 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
             return send_recheck_gate_entered;
         }));
     }
-    // The worker emits the second byte only after the first callback has
-    // entered and the sender has reached the gated stale-state transition.
-    std::this_thread::sleep_for(std::chrono::milliseconds(350));
-
     std::thread stopper([&]() {
         transport.stop();
     });
-
-    {
-        std::lock_guard<std::mutex> lock(callback_mutex);
-        release_callback = true;
-    }
-    callback_condition.notify_all();
 
     {
         std::unique_lock<std::mutex> lock(send_recheck_gate_mutex);
         CHECK(send_recheck_gate_condition.wait_for(lock, std::chrono::seconds(5), [&]() {
             return stop_state_hook_entered;
         }));
+        std::ofstream trigger_file(trigger, std::ios::binary);
+        CHECK(static_cast<bool>(trigger_file));
+        trigger_file << "go";
         send_recheck_gate_release = true;
     }
     send_recheck_gate_condition.notify_all();
+
+    // The child writes the marker only after it has consumed the sender's
+    // byte and flushed the second output event.  This is explicit evidence
+    // that the callback queue reached the intended full state; no timing-only
+    // sleep is used to guess when the overflow branch became reachable.
+    const auto marker_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!std::filesystem::exists(marker) &&
+           std::chrono::steady_clock::now() < marker_deadline) {
+        std::this_thread::yield();
+    }
+    CHECK(std::filesystem::exists(marker));
+
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex);
+        release_callback = true;
+    }
+    callback_condition.notify_all();
 
     collector.wait_for_exit(std::chrono::seconds(5));
     for (int attempt = 0; attempt < 500 && !send_finished.load(); ++attempt) {
@@ -1162,6 +1181,9 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
     stopper.join();
     detail::set_stdio_send_state_recheck_hook_for_tests(nullptr);
     detail::set_stdio_stop_state_hook_for_tests(nullptr);
+    std::error_code marker_error;
+    std::filesystem::remove(marker, marker_error);
+    std::filesystem::remove(trigger, marker_error);
     CHECK(!transport.is_running());
 }
 #endif
