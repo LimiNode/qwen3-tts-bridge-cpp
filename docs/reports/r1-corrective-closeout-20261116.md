@@ -7,7 +7,7 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 
 - Integration branch: `integration/r1-corrective`
 - Current integration HEAD (documentation and packaging-script follow-up):
-  `b0802da2`
+  `ec2b1d2a`
 - Implementation HEAD used for the corrective binaries and package:
   `faf546017ff05101788457ae6fd79fc10ba9a67c`
 - The package was regenerated after the A1–A3 corrective commit.  The receipt
@@ -25,6 +25,12 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
   skipped**, plus `validate-acceptance-receipts.py` validating 2 canonical
   receipts.  The historical full Python result remains `492 passed, 7
   skipped` and is retained as earlier evidence.
+- Native packaging contract tests: **12/12 PASS**, including a real PE32+
+  fixture with normal imports, delay imports, recursive dynamic-module
+  traversal, and a missing transitive dependency.  The test exercises the
+  production PE parser without replacing `_imports()`.
+- Native publication/recovery qualification: `qwen_tts_native_worker_test`
+  passed in **3 consecutive Release runs** after the corrective changes.
 - The production Release worker was built with `BUILD_TESTS=OFF` and
   `QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=OFF`; binary-string inspection found no
   `QTB_TEST_PUBLICATION`, `QTB_TEST_RECOVERY`, or `QTB_TEST_PERSISTENCE` seams.
