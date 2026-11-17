@@ -31,7 +31,10 @@ using namespace qwen_tts_bridge;
 namespace qwen_tts_bridge::detail {
 using StdioSendStateRecheckHook = void (*)();
 using StdioStopStateHook = void (*)();
-using StdioCallbackQueueOverflowHook = void (*)();
+using StdioCallbackQueueOverflowHook = void (*)(
+    std::size_t queued_events,
+    std::size_t queued_bytes,
+    std::size_t incoming_event_bytes);
 #if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
 void set_stdio_send_state_recheck_hook_for_tests(StdioSendStateRecheckHook hook);
 void set_stdio_stop_state_hook_for_tests(StdioStopStateHook hook);
@@ -50,6 +53,9 @@ bool send_recheck_gate_entered = false;
 bool send_recheck_gate_release = false;
 bool stop_state_hook_entered = false;
 bool callback_queue_overflow_seen = false;
+std::size_t callback_queue_overflow_queued_events = 0;
+std::size_t callback_queue_overflow_queued_bytes = 0;
+std::size_t callback_queue_overflow_incoming_event_bytes = 0;
 
 void send_recheck_gate() {
     std::unique_lock<std::mutex> lock(send_recheck_gate_mutex);
@@ -66,9 +72,15 @@ void stop_state_gate() {
     send_recheck_gate_condition.notify_all();
 }
 
-void callback_queue_overflow_gate() {
+void callback_queue_overflow_gate(
+    std::size_t queued_events,
+    std::size_t queued_bytes,
+    std::size_t incoming_event_bytes) {
     std::lock_guard<std::mutex> lock(send_recheck_gate_mutex);
     callback_queue_overflow_seen = true;
+    callback_queue_overflow_queued_events = queued_events;
+    callback_queue_overflow_queued_bytes = queued_bytes;
+    callback_queue_overflow_incoming_event_bytes = incoming_event_bytes;
     send_recheck_gate_condition.notify_all();
 }
 #endif
@@ -1105,6 +1117,9 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
         send_recheck_gate_release = false;
         stop_state_hook_entered = false;
         callback_queue_overflow_seen = false;
+        callback_queue_overflow_queued_events = 0;
+        callback_queue_overflow_queued_bytes = 0;
+        callback_queue_overflow_incoming_event_bytes = 0;
     }
     detail::set_stdio_send_state_recheck_hook_for_tests(&send_recheck_gate);
     detail::set_stdio_stop_state_hook_for_tests(&stop_state_gate);
@@ -1176,6 +1191,9 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
             return callback_queue_overflow_seen;
         }));
     }
+    CHECK(callback_queue_overflow_queued_events == options.max_callback_queue_events);
+    CHECK(callback_queue_overflow_queued_bytes > 0);
+    CHECK(callback_queue_overflow_incoming_event_bytes > 0);
     const auto marker_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     while (!std::filesystem::exists(marker) &&
            std::chrono::steady_clock::now() < marker_deadline) {

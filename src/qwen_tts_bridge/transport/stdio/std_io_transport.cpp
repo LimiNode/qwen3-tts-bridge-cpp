@@ -274,7 +274,10 @@ namespace detail {
 
 using StdioSendStateRecheckHook = void (*)();
 using StdioStopStateHook = void (*)();
-using StdioCallbackQueueOverflowHook = void (*)();
+using StdioCallbackQueueOverflowHook = void (*)(
+    std::size_t queued_events,
+    std::size_t queued_bytes,
+    std::size_t incoming_event_bytes);
 
 std::mutex& stdio_send_state_recheck_hook_mutex() {
     static std::mutex mutex;
@@ -344,14 +347,17 @@ void set_stdio_callback_queue_overflow_hook_for_tests(
     stdio_callback_queue_overflow_hook() = hook;
 }
 
-void invoke_stdio_callback_queue_overflow_hook_for_tests() {
+void invoke_stdio_callback_queue_overflow_hook_for_tests(
+    std::size_t queued_events,
+    std::size_t queued_bytes,
+    std::size_t incoming_event_bytes) {
     StdioCallbackQueueOverflowHook hook = nullptr;
     {
         std::lock_guard<std::mutex> lock(stdio_callback_queue_overflow_hook_mutex());
         hook = stdio_callback_queue_overflow_hook();
     }
     if (hook != nullptr) {
-        hook();
+        hook(queued_events, queued_bytes, incoming_event_bytes);
     }
 }
 
@@ -880,6 +886,9 @@ private:
 
     void enqueue_event(CallbackEvent event) {
         bool should_stop = false;
+        std::size_t overflow_queued_events = 0;
+        std::size_t overflow_queued_bytes = 0;
+        std::size_t overflow_incoming_event_bytes = 0;
         {
             std::lock_guard<std::mutex> lock(callback_mutex_);
             if (!callback_accepting_events_
@@ -894,6 +903,9 @@ private:
             if (event.type != CallbackEventType::Exit
                 && would_overflow_regular_callback_queue(event)) {
                 if (!callback_queue_overflowed_) {
+                    overflow_queued_events = callback_events_.size();
+                    overflow_queued_bytes = callback_queued_bytes_;
+                    overflow_incoming_event_bytes = callback_event_payload_size(event);
                     callback_queue_overflowed_ = true;
                     enqueue_callback_event_locked(make_callback_queue_overflow_error());
                     should_stop = true;
@@ -907,7 +919,10 @@ private:
 
         if (should_stop) {
 #if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
-            detail::invoke_stdio_callback_queue_overflow_hook_for_tests();
+            detail::invoke_stdio_callback_queue_overflow_hook_for_tests(
+                overflow_queued_events,
+                overflow_queued_bytes,
+                overflow_incoming_event_bytes);
 #endif
             stop_after_callback_queue_overflow();
         }
