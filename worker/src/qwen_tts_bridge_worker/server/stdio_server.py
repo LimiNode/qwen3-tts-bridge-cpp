@@ -245,7 +245,7 @@ class _OutputWriter:
                             if remaining <= 0.0:
                                 raise _OutputWriterFailure(
                                     "protocol stdout writer send timed out"
-                                )
+                                ) from None
                             self._queue_condition.wait(timeout=min(0.1, remaining))
                         continue
                     self._queued_bytes += frame_bytes
@@ -1350,7 +1350,10 @@ class StdioWorkerServer:
         if emit_cancelled:
             self._emit_request_finished(slot, "cancelled")
             try:
-                self._writer.send(control_frame(request_id, {"message_type": "cancelled"}))
+                cancelled_frame = control_frame(
+                    request_id, {"message_type": "cancelled"}
+                )
+                self._writer.send(cancelled_frame)
             except _OutputWriterFailure:
                 # The standalone shutdown path may have stopped stdout while
                 # an engine that ignores cancellation is unwinding.  The

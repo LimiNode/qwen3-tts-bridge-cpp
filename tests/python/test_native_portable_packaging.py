@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
-import subprocess
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
