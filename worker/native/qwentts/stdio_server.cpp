@@ -968,16 +968,11 @@ void StdioServer::fail_fatal(const std::string& message) {
     }
     condition_.notify_all();
 
-    // Arm the fatal state before touching stderr.  Diagnostics are useful
+    // Publish terminal errors before touching stderr.  Diagnostics are useful
     // during graceful operation, but a stalled stderr pipe must not delay the
-    // watchdog or leave request cancellation/rejection unpublished locally.
-    write_diagnostic_line("[native-worker:error] " + message);
-
-    // The diagnostic boundary is independent from the request terminalization
-    // path and serializes all stderr records.
-    // If stdout is still healthy, preserve the exactly-once terminal contract
-    // for accepted requests.  A broken writer will reject the first frame and
-    // the fatal guard above prevents recursive shutdown publication.
+    // exactly-once terminal contract for accepted requests.  A broken writer
+    // will reject the first frame and the fatal guard above prevents recursive
+    // shutdown publication.
     for (const RequestId request_id : abandoned) {
         send_error(
             request_id,
@@ -985,6 +980,11 @@ void StdioServer::fail_fatal(const std::string& message) {
             "worker_fatal",
             "native worker stopped after an unrecoverable engine failure");
     }
+
+    // The diagnostic boundary is independent from request terminalization and
+    // serializes all stderr records.  Keep this best-effort write last so a
+    // stalled diagnostics pipe cannot postpone failure delivery.
+    write_diagnostic_line("[native-worker:error] " + message);
 }
 
 std::vector<std::byte> float_pcm_to_s16le(const float* samples, int count) {

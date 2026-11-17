@@ -274,6 +274,7 @@ namespace detail {
 
 using StdioSendStateRecheckHook = void (*)();
 using StdioStopStateHook = void (*)();
+using StdioCallbackQueueOverflowHook = void (*)();
 
 std::mutex& stdio_send_state_recheck_hook_mutex() {
     static std::mutex mutex;
@@ -321,6 +322,33 @@ void invoke_stdio_stop_state_hook_for_tests() {
     {
         std::lock_guard<std::mutex> lock(stdio_stop_state_hook_mutex());
         hook = stdio_stop_state_hook();
+    }
+    if (hook != nullptr) {
+        hook();
+    }
+}
+
+std::mutex& stdio_callback_queue_overflow_hook_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+StdioCallbackQueueOverflowHook& stdio_callback_queue_overflow_hook() {
+    static StdioCallbackQueueOverflowHook hook = nullptr;
+    return hook;
+}
+
+void set_stdio_callback_queue_overflow_hook_for_tests(
+    StdioCallbackQueueOverflowHook hook) {
+    std::lock_guard<std::mutex> lock(stdio_callback_queue_overflow_hook_mutex());
+    stdio_callback_queue_overflow_hook() = hook;
+}
+
+void invoke_stdio_callback_queue_overflow_hook_for_tests() {
+    StdioCallbackQueueOverflowHook hook = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stdio_callback_queue_overflow_hook_mutex());
+        hook = stdio_callback_queue_overflow_hook();
     }
     if (hook != nullptr) {
         hook();
@@ -878,6 +906,9 @@ private:
         callback_condition_.notify_one();
 
         if (should_stop) {
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+            detail::invoke_stdio_callback_queue_overflow_hook_for_tests();
+#endif
             stop_after_callback_queue_overflow();
         }
     }

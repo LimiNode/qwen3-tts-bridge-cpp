@@ -31,9 +31,11 @@ using namespace qwen_tts_bridge;
 namespace qwen_tts_bridge::detail {
 using StdioSendStateRecheckHook = void (*)();
 using StdioStopStateHook = void (*)();
+using StdioCallbackQueueOverflowHook = void (*)();
 #if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
 void set_stdio_send_state_recheck_hook_for_tests(StdioSendStateRecheckHook hook);
 void set_stdio_stop_state_hook_for_tests(StdioStopStateHook hook);
+void set_stdio_callback_queue_overflow_hook_for_tests(StdioCallbackQueueOverflowHook hook);
 #endif
 } // namespace detail
 
@@ -47,6 +49,7 @@ std::condition_variable send_recheck_gate_condition;
 bool send_recheck_gate_entered = false;
 bool send_recheck_gate_release = false;
 bool stop_state_hook_entered = false;
+bool callback_queue_overflow_seen = false;
 
 void send_recheck_gate() {
     std::unique_lock<std::mutex> lock(send_recheck_gate_mutex);
@@ -60,6 +63,12 @@ void send_recheck_gate() {
 void stop_state_gate() {
     std::lock_guard<std::mutex> lock(send_recheck_gate_mutex);
     stop_state_hook_entered = true;
+    send_recheck_gate_condition.notify_all();
+}
+
+void callback_queue_overflow_gate() {
+    std::lock_guard<std::mutex> lock(send_recheck_gate_mutex);
+    callback_queue_overflow_seen = true;
     send_recheck_gate_condition.notify_all();
 }
 #endif
@@ -1095,9 +1104,11 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
         send_recheck_gate_entered = false;
         send_recheck_gate_release = false;
         stop_state_hook_entered = false;
+        callback_queue_overflow_seen = false;
     }
     detail::set_stdio_send_state_recheck_hook_for_tests(&send_recheck_gate);
     detail::set_stdio_stop_state_hook_for_tests(&stop_state_gate);
+    detail::set_stdio_callback_queue_overflow_hook_for_tests(&callback_queue_overflow_gate);
     StdIoTransport transport(options);
     CHECK(transport.start(
         [&](ITransport::Bytes bytes) {
@@ -1155,10 +1166,16 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
     }
     send_recheck_gate_condition.notify_all();
 
-    // The child writes the marker only after it has consumed the sender's
-    // byte and flushed the second output event.  This is explicit evidence
-    // that the callback queue reached the intended full state; no timing-only
-    // sleep is used to guess when the overflow branch became reachable.
+    // The transport hook is raised after the actual overflow branch observes
+    // that the next callback would exceed the configured queue limit.  The
+    // child marker remains an independent check that the second event was
+    // produced, but is not used as a proxy for queue occupancy.
+    {
+        std::unique_lock<std::mutex> lock(send_recheck_gate_mutex);
+        CHECK(send_recheck_gate_condition.wait_for(lock, std::chrono::seconds(5), []() {
+            return callback_queue_overflow_seen;
+        }));
+    }
     const auto marker_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     while (!std::filesystem::exists(marker) &&
            std::chrono::steady_clock::now() < marker_deadline) {
@@ -1181,6 +1198,7 @@ void test_send_state_error_does_not_deadlock_on_callback_overflow() {
     stopper.join();
     detail::set_stdio_send_state_recheck_hook_for_tests(nullptr);
     detail::set_stdio_stop_state_hook_for_tests(nullptr);
+    detail::set_stdio_callback_queue_overflow_hook_for_tests(nullptr);
     std::error_code marker_error;
     std::filesystem::remove(marker, marker_error);
     std::filesystem::remove(trigger, marker_error);
