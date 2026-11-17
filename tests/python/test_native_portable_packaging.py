@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import subprocess
+import struct
 import sys
 import tempfile
 import unittest
@@ -49,6 +50,114 @@ class NativePortablePackagingContractTests(unittest.TestCase):
         payload[0x86:0x88] = (0).to_bytes(2, "little")
         payload[0x94:0x96] = (96).to_bytes(2, "little")
         payload[0x98:0x9A] = optional_magic.to_bytes(2, "little")
+        return bytes(payload)
+
+    @staticmethod
+    def _pe_with_imports(
+        imports: list[str], delay_imports: list[str] | None = None
+    ) -> bytes:
+        """Build a small valid PE32+ image with real import directories.
+
+        The fixture is deliberately generated in the test rather than loaded
+        through a patched parser.  It exercises the same RVA-to-file mapping
+        and descriptor layouts used by AMD64 release binaries while keeping
+        the repository free of generated executables.
+        """
+        delay_imports = delay_imports or []
+        pe_offset = 0x80
+        section_rva = 0x1000
+        raw_offset = 0x200
+        raw_size = 0x400
+        optional_size = 0xF0
+        section_table = pe_offset + 4 + 20 + optional_size
+        payload = bytearray(raw_offset + raw_size)
+        payload[:2] = b"MZ"
+        struct.pack_into("<I", payload, 0x3C, pe_offset)
+        payload[pe_offset : pe_offset + 4] = b"PE\0\0"
+        struct.pack_into(
+            "<HHIIIHH",
+            payload,
+            pe_offset + 4,
+            0x8664,
+            1,
+            0,
+            0,
+            0,
+            optional_size,
+            0x2022,
+        )
+        optional = pe_offset + 4 + 20
+        struct.pack_into("<H", payload, optional, 0x20B)
+        struct.pack_into("<I", payload, optional + 0x38, 0x2000)
+        struct.pack_into("<I", payload, optional + 0x3C, raw_offset)
+        struct.pack_into("<H", payload, optional + 0x5C, 3)
+        struct.pack_into("<I", payload, optional + 0x6C, 16)
+        directory = optional + 112
+        if imports:
+            struct.pack_into(
+                "<II", payload, directory + 8, section_rva, (len(imports) + 1) * 20
+            )
+        if delay_imports:
+            struct.pack_into(
+                "<II",
+                payload,
+                directory + 13 * 8,
+                section_rva + 0x80,
+                (len(delay_imports) + 1) * 32,
+            )
+        struct.pack_into(
+            "<8sIIIIIIHHI",
+            payload,
+            section_table,
+            b".idata\0\0",
+            raw_size,
+            section_rva,
+            raw_size,
+            raw_offset,
+            0,
+            0,
+            0,
+            0,
+            0x40000040,
+        )
+
+        cursor = 0x40
+
+        def write_name(name: str) -> int:
+            nonlocal cursor
+            encoded = name.encode("ascii") + b"\0"
+            start = cursor
+            payload[raw_offset + cursor : raw_offset + cursor + len(encoded)] = encoded
+            cursor += len(encoded)
+            return section_rva + start
+
+        for index, name in enumerate(imports):
+            name_rva = write_name(name)
+            struct.pack_into(
+                "<5I",
+                payload,
+                raw_offset + index * 20,
+                0,
+                0,
+                0,
+                name_rva,
+                0,
+            )
+        for index, name in enumerate(delay_imports):
+            name_rva = write_name(name)
+            struct.pack_into(
+                "<8I",
+                payload,
+                raw_offset + 0x80 + index * 32,
+                1,
+                name_rva,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            )
         return bytes(payload)
 
     def test_assembler_requires_real_native_inputs_and_manifest(self) -> None:
@@ -155,6 +264,33 @@ class NativePortablePackagingContractTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "fail")
         self.assertEqual(result["missing"], ["helper.dll"])
+
+    def test_auditor_parses_normal_delay_and_transitive_pe_imports(self) -> None:
+        auditor = _load_auditor()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "entry.exe").write_bytes(self._pe_with_imports(["backend.dll"]))
+            (root / "backend.dll").write_bytes(
+                self._pe_with_imports(["helper.dll"], ["delay-helper.dll"])
+            )
+            result = auditor.audit(
+                root,
+                ["entry.exe"],
+                {"guaranteed_system": [], "declared_prerequisites": []},
+                ["backend.dll"],
+            )
+
+        self.assertEqual(result["status"], "fail")
+        self.assertEqual(result["missing"], ["delay-helper.dll", "helper.dll"])
+        self.assertTrue(
+            any(
+                item.get("importer") == "backend.dll"
+                and item.get("name") == "delay-helper.dll"
+                and item.get("kind") == "delay"
+                for item in result["imports"]
+            )
+        )
+        self.assertFalse(result["architecture_failures"])
 
     def test_archive_verifier_covers_hidden_files_and_rejects_incomplete_zip(
         self,
