@@ -690,6 +690,78 @@ int run_callback_failure_watchdog(const char* executable) {
     CHECK(exit_code == EXIT_SUCCESS);
     return EXIT_SUCCESS;
 }
+
+int run_fatal_stderr_stall_e2e() {
+    std::atomic<bool> ready_seen{false};
+    std::atomic<bool> release_stderr{false};
+    std::atomic<int> terminal_errors{0};
+    auto stalled_options = options(8);
+    stalled_options.environment_overrides.emplace(
+        "QTB_TEST_NATIVE_CALLBACK_FAILURE", "runtime_error_first");
+    stalled_options.environment_overrides.emplace("QTB_TEST_NATIVE_STALL_STDERR", "1");
+    stalled_options.stderr_handler = [&ready_seen, &release_stderr](std::string message) {
+        if (!ready_seen.load(std::memory_order_acquire) &&
+            message.find("native-worker:info") != std::string::npos) {
+            ready_seen.store(true, std::memory_order_release);
+            return;
+        }
+        if (!ready_seen.load(std::memory_order_acquire) || message.size() < 4096) {
+            return;
+        }
+        while (!release_stderr.load(std::memory_order_acquire)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    };
+
+    QwenTtsClient client;
+    QwenTtsClientOptions client_options;
+    client_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(client.start(std::move(stalled_options), client_options));
+
+    std::array<Probe, 3> probes;
+    for (std::size_t index = 0; index < probes.size(); ++index) {
+        auto& probe = probes[index];
+        TtsCallbacks callbacks;
+        callbacks.on_error = [&probe, &terminal_errors, &release_stderr](const TtsError& error) {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            probe.errors.push_back(error);
+            probe.condition.notify_all();
+            if (terminal_errors.fetch_add(1, std::memory_order_acq_rel) == 2) {
+                release_stderr.store(true, std::memory_order_release);
+            }
+        };
+        callbacks.on_completed = [&probe]() {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            ++probe.completed;
+            probe.condition.notify_all();
+        };
+        CHECK(client.synthesize_async("stderr stall fatal request", callbacks) != 0);
+    }
+
+    for (std::size_t index = 0; index < probes.size(); ++index) {
+        auto& probe = probes[index];
+        std::unique_lock<std::mutex> lock(probe.mutex);
+        CHECK(probe.condition.wait_for(lock, std::chrono::seconds(5), [&probe]() {
+            return !probe.errors.empty() || probe.completed != 0;
+        }));
+        CHECK(probe.completed == 0);
+        CHECK(probe.errors.size() == 1);
+        if (index == 0) {
+            CHECK(probe.errors.front().category == "internal_error");
+            CHECK(probe.errors.front().code == "audio_callback_exception");
+        }
+        else {
+            CHECK(probe.errors.front().category == "worker_error");
+            CHECK(probe.errors.front().code == "worker_fatal");
+        }
+    }
+
+    release_stderr.store(true, std::memory_order_release);
+    client.stop();
+    CHECK(!client.is_running());
+    return EXIT_SUCCESS;
+}
+
 }
 
 int main(int argc, char** argv) {
@@ -2041,6 +2113,7 @@ int main(int argc, char** argv) {
     CHECK(run_callback_failure_e2e("runtime_error_after", true) == EXIT_SUCCESS);
     CHECK(run_callback_failure_e2e("bad_alloc_after", true) == EXIT_SUCCESS);
     CHECK(run_callback_failure_watchdog(argv[0]) == EXIT_SUCCESS);
+    CHECK(run_fatal_stderr_stall_e2e() == EXIT_SUCCESS);
 
     client.stop();
     return EXIT_SUCCESS;

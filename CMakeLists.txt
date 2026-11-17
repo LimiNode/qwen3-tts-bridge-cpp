@@ -930,7 +930,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             qwen_tts_fake_qwen
         )
         add_test(NAME qwen_tts_native_worker_test COMMAND qwen_tts_native_worker_test)
-        set_tests_properties(qwen_tts_native_worker_test PROPERTIES TIMEOUT 60)
+        set_tests_properties(qwen_tts_native_worker_test PROPERTIES TIMEOUT 120)
 
         add_executable(native_engine_callback_test
             tests/native/native_engine_callback_test.cpp

@@ -832,10 +832,14 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         // Publish this request's terminal error before closing admission.  The
         // fatal transition then terminalizes any other accepted requests that
         // are still queued, so none are silently abandoned.
-        terminalize(slot);
-        emit_finished_metric("failed", nullptr);
+        // Do not let the admission-release diagnostic get ahead of the
+        // terminal error.  stderr is synchronous and may be stalled; the
+        // accepted request must still receive its error and the fatal
+        // transition must still close admission.
+        terminalize(slot, false);
         send_error(slot->id, result.category, result.code, result.message);
         fail_fatal("native engine state is not recoverable after request failure");
+        emit_finished_metric("failed", nullptr);
         return;
     }
     if (result.outcome == SynthesisOutcome::Completed) {
@@ -861,7 +865,9 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
     }
 }
 
-bool StdioServer::terminalize(const std::shared_ptr<RequestSlot>& slot) {
+bool StdioServer::terminalize(
+    const std::shared_ptr<RequestSlot>& slot,
+    const bool emit_metric) {
     if (slot->terminal.exchange(true)) {
         return false;
     }
@@ -874,8 +880,10 @@ bool StdioServer::terminalize(const std::shared_ptr<RequestSlot>& slot) {
         }
         admitted_requests_after = admitted_requests_;
     }
-    write_admission_released_metric(
-        slot->id, max_admitted_requests_, admitted_requests_after);
+    if (emit_metric) {
+        write_admission_released_metric(
+            slot->id, max_admitted_requests_, admitted_requests_after);
+    }
     return true;
 }
 
@@ -980,6 +988,18 @@ void StdioServer::fail_fatal(const std::string& message) {
             "worker_fatal",
             "native worker stopped after an unrecoverable engine failure");
     }
+
+#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
+    // Fill the diagnostic pipe after terminal publication so the native test
+    // can prove that accepted requests do not depend on stderr progress.
+    const char* stall_stderr = std::getenv("QTB_TEST_NATIVE_STALL_STDERR");
+    if (stall_stderr != nullptr && std::strcmp(stall_stderr, "1") == 0) {
+        const std::string filler(1024u * 1024u, 'x');
+        for (int index = 0; index < 8; ++index) {
+            write_diagnostic_line(filler);
+        }
+    }
+#endif
 
     // The diagnostic boundary is independent from request terminalization and
     // serializes all stderr records.  Keep this best-effort write last so a

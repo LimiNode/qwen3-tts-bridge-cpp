@@ -51,7 +51,7 @@ private:
     void engine_loop();
     std::shared_ptr<RequestSlot> take_next_request();
     void run_request(const std::shared_ptr<RequestSlot>& slot);
-    bool terminalize(const std::shared_ptr<RequestSlot>& slot);
+    bool terminalize(const std::shared_ptr<RequestSlot>& slot, bool emit_metric = true);
     void send_control(RequestId request_id, ControlMessage message);
     void send_error(
         RequestId request_id,
