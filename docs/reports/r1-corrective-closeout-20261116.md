@@ -6,13 +6,13 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
-- Current integration HEAD (documentation and packaging-script follow-up):
-  `edb483a5`
-- Implementation HEAD used for the corrective binaries and package:
-  `edb483a5f13f6907fae207630de07691c95fa2eb`
-- The package was regenerated after the transport-overflow and fatal-diagnostic
-  corrective commit.  The receipt follows that exact implementation commit and
-  records the resulting hashes.
+- Current integration HEAD after the final source corrective:
+  `e8806e9b`
+- Implementation HEAD for the current source candidate:
+  `e8806e9b`
+- The existing package evidence predates this final source corrective and is
+  therefore historical only; it must be regenerated before any release
+  decision.
 - Corrective commits include native admission/shutdown/package fixes,
   frontend-aware native defaults, and idempotent recovery of incomplete native
   voice publications.
@@ -35,18 +35,55 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
   production PE parser without replacing `_imports()`.
 - Native publication/recovery qualification: `qwen_tts_native_worker_test`
   passed in **3 consecutive Release runs** after the corrective changes.
+- Native fatal delivery under a stalled stderr consumer passed with three
+  accepted requests: the active request received its internal terminal error
+  and both pending requests received `worker_fatal` before diagnostics were
+  released. The full native worker test uses a 120-second CTest budget.
+- `tts-front-cpp` is pinned to focused upstream fix commit `3a77203`
+  (`fix(russian): agree feminine book counts`). Its complete upstream Release
+  corpus passed **12/12**, including feminine and masculine count cases. The
+  bridge does not perform string substitution.
 - The production Release worker was built with `BUILD_TESTS=OFF` and
   `QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=OFF`; binary-string inspection found no
   `QTB_TEST_PUBLICATION`, `QTB_TEST_RECOVERY`, or `QTB_TEST_PERSISTENCE` seams.
   The separate instrumented worker intentionally contains those hooks for
   deterministic recovery tests.
 
+## CTest configuration inventory
+
+The reported `46/46` and `26/26` counts are different CMake configurations,
+not a regression. Both were configured with `CMAKE_BUILD_TYPE=Release`,
+`QWEN_TTS_BRIDGE_BUILD_TESTS=ON`, and
+`QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=ON`:
+
+| Configuration | `QWEN_TTS_BRIDGE_BUILD_EXAMPLES` | `ctest -N` | Result |
+| --- | ---: | ---: | --- |
+| full native-first | `ON` | 46 | 46/46 PASS |
+| no-examples | `OFF` | 26 | 26/26 PASS |
+
+The 20 tests present only in the full configuration are the example and
+example-driven suites: `latency_benchmark_boundaries_test`,
+`qwen_tts_play_options_test`, `tts_front_bridge_adapter_test`,
+`tts_front_effective_text_corpus`, `qwen_tts_save_wav_mock_cleanup`,
+`qwen_tts_save_wav_mock_example`, `qwen_tts_save_wav_mock_verify`,
+`qwen_tts_save_wav_generation_trace_receipts`, `qwen_tts_save_wav_output_safety`,
+`qwen_tts_voice_design_wrapper_mock`, `qwen_tts_latency_benchmark_mock_example`,
+`qwen_tts_latency_benchmark_manifest_mock`, `qwen_tts_latency_benchmark_eos_contract`,
+`qwen_tts_latency_benchmark_reference_warmup_mock`, `qwen_tts_play_mock_utf8_example`,
+`qwen_tts_play_mock_playback_metrics`, `qwen_tts_play_mock_pcm_capture`,
+`qwen_tts_play_mock_playback_failure`, `qwen_tts_play_mock_wav_capture_failure`,
+and `qwen_tts_playback_lifecycle_self_test`.
+
+The no-examples configuration therefore omits only targets guarded by
+`QWEN_TTS_BRIDGE_BUILD_EXAMPLES`; it does not disable the core transport or
+native-worker tests.
+
 ## Native package measurement
 
-The package was assembled from the committed Release binaries at the
-implementation HEAD above and the pinned qwentts runtime (`130cb99`, ABI 6).
-The generated manifest records that exact implementation revision; no manual
-provenance edit was made.
+The package below was assembled from an earlier committed Release candidate at
+implementation revision `edb483a5f13f6907fae207630de07691c95fa2eb` and the
+pinned qwentts runtime (`130cb99`, ABI 6). It is retained as historical
+evidence; the final package must be regenerated from `e8806e9b`.
 
 | Artifact | Result |
 | --- | --- |
@@ -74,6 +111,15 @@ same frozen package/source/runtime/model identities:
 - correction or fail-closed contract for the upstream `tts-front-cpp` defect
   where `2 книги` currently becomes `два книги` (the bridge does not apply a
   string substitution); and
+- review-only GitHub CI for the exact combined integration HEAD `4d684e4b`;
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
+
+## Corrective supersession
+
+The upstream frontend gate listed above is superseded by the pinned
+`tts-front-cpp` fix `3a77203`; its complete Release corpus passed 12/12.
+The remaining release gates are the final package regeneration from
+`e8806e9b`, clean relocation with real models, CMP 50HX and RTX 4090 native
+qualification, matched A/B WAV listening, and review-only CI on `e8806e9b`.
