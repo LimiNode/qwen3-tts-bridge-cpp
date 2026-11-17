@@ -6,10 +6,12 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
-- Current integration HEAD after the final source corrective:
-  `ff3624df`
-- Implementation HEAD for the current source candidate:
-  `e8806e9b`
+- Current source candidate HEAD:
+  `92a2dd53` (the receipt-only update below does not change production
+  sources).
+- The corrective source commits include `cbd58ef3`, `e8806e9b`, and
+  `92a2dd53`; Python lint/type corrective commits are `34945218`, `6ce6441b`,
+  and `4598d032`.
 - The existing package evidence predates this final source corrective and is
   therefore historical only; it must be regenerated before any release
   decision.
@@ -39,7 +41,7 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
   accepted requests: the active request received its internal terminal error
   and both pending requests received `worker_fatal` before diagnostics were
   released. The full native worker test uses a 120-second CTest budget.
-- `tts-front-cpp` is pinned to focused upstream fix commit `3a77203`
+- `tts-front-cpp` is pinned to focused upstream fix commit `64f73182`
   (`fix(russian): agree feminine book counts`). Its complete upstream Release
   corpus passed **12/12**, including feminine and masculine count cases. The
   bridge does not perform string substitution.
@@ -83,7 +85,8 @@ native-worker tests.
 The package below was assembled from an earlier committed Release candidate at
 implementation revision `edb483a5f13f6907fae207630de07691c95fa2eb` and the
 pinned qwentts runtime (`130cb99`, ABI 6). It is retained as historical
-evidence; the final package must be regenerated from `e8806e9b`.
+evidence; the final package must be regenerated from source candidate
+`92a2dd53` and the final packaging-script revision.
 
 | Artifact | Result |
 | --- | --- |
@@ -108,18 +111,16 @@ same frozen package/source/runtime/model identities:
 - CMP 50HX and RTX 4090 native qualification, including repeat/cancel/restart,
   physical playback and peak-memory measurements;
 - matched RU/EN A/B WAV corpus and human listening;
-- correction or fail-closed contract for the upstream `tts-front-cpp` defect
-  where `2 книги` currently becomes `два книги` (the bridge does not apply a
-  string substitution); and
-- review-only GitHub CI for the exact combined integration HEAD `4d684e4b`;
+- review-only GitHub CI for the exact combined integration HEAD `92a2dd53`;
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
 
 ## Corrective supersession
 
-The upstream frontend gate listed above is superseded by the pinned
-`tts-front-cpp` fix `3a77203`; its complete Release corpus passed 12/12.
-The remaining release gates are the final package regeneration from
-`e8806e9b`, clean relocation with real models, CMP 50HX and RTX 4090 native
-qualification, matched A/B WAV listening, and review-only CI on `ff3624df`.
+The upstream frontend gate is closed by pinned `tts-front-cpp` fix `64f73182`;
+its complete Release corpus passed 12/12 and the bridge corpus now expects the
+correct feminine agreement. The remaining release gates are final package
+regeneration from `92a2dd53`, clean relocation with real models, CMP 50HX and
+RTX 4090 native qualification, matched A/B WAV listening, and review-only CI
+on `92a2dd53`.
