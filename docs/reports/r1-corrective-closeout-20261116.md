@@ -6,8 +6,10 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
+- Current integration HEAD:
+  `9da0605a`
 - Current source candidate HEAD:
-  `92a2dd53` (the receipt-only update below does not change production
+  `92a2dd53` (the receipt-only commit `9da0605a` does not change production
   sources).
 - The corrective source commits include `cbd58ef3`, `e8806e9b`, and
   `92a2dd53`; Python lint/type corrective commits are `34945218`, `6ce6441b`,
@@ -111,7 +113,7 @@ same frozen package/source/runtime/model identities:
 - CMP 50HX and RTX 4090 native qualification, including repeat/cancel/restart,
   physical playback and peak-memory measurements;
 - matched RU/EN A/B WAV corpus and human listening;
-- review-only GitHub CI for the exact combined integration HEAD `92a2dd53`;
+- review-only GitHub CI for the exact combined integration HEAD `9da0605a`;
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
@@ -123,4 +125,4 @@ its complete Release corpus passed 12/12 and the bridge corpus now expects the
 correct feminine agreement. The remaining release gates are final package
 regeneration from `92a2dd53`, clean relocation with real models, CMP 50HX and
 RTX 4090 native qualification, matched A/B WAV listening, and review-only CI
-on `92a2dd53`.
+on `9da0605a`.
