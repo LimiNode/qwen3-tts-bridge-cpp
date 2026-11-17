@@ -7,7 +7,7 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 
 - Integration branch: `integration/r1-corrective`
 - Current integration HEAD (documentation and packaging-script follow-up):
-  `ec2b1d2a`
+  `7c80ecc1`
 - Implementation HEAD used for the corrective binaries and package:
   `faf546017ff05101788457ae6fd79fc10ba9a67c`
 - The package was regenerated after the A1–A3 corrective commit.  The receipt
@@ -21,10 +21,12 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
   The previous failure was the forced-termination recovery path; the new
   bounded recovery handles transient Windows path/handle races and disposable
   incomplete artifacts fail closed without touching a committed manifest.
-- Python corrective lifecycle and packaging/receipt suites: **67 tests, 1
-  skipped**, plus `validate-acceptance-receipts.py` validating 2 canonical
-  receipts.  The historical full Python result remains `492 passed, 7
-  skipped` and is retained as earlier evidence.
+- Full model-free Python suite: **502 tests, 7 skipped, OK** with
+  `PYTHONPATH=worker/src`; Pyright reports **0 errors, 0 warnings, 0
+  informations**.  Ruff was not installed in the qualification environment.
+  The focused corrective lifecycle/packaging suites and
+  `validate-acceptance-receipts.py` also pass, including validation of 2
+  canonical receipts.
 - Native packaging contract tests: **12/12 PASS**, including a real PE32+
   fixture with normal imports, delay imports, recursive dynamic-module
   traversal, and a missing transitive dependency.  The test exercises the
