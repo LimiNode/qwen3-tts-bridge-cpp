@@ -7,17 +7,19 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 
 - Integration branch: `integration/r1-corrective`
 - Current integration HEAD (documentation and packaging-script follow-up):
-  `7c80ecc1`
+  `edb483a5`
 - Implementation HEAD used for the corrective binaries and package:
-  `faf546017ff05101788457ae6fd79fc10ba9a67c`
-- The package was regenerated after the A1–A3 corrective commit.  The receipt
-  follows that exact implementation commit and records the resulting hashes.
+  `edb483a5f13f6907fae207630de07691c95fa2eb`
+- The package was regenerated after the transport-overflow and fatal-diagnostic
+  corrective commit.  The receipt follows that exact implementation commit and
+  records the resulting hashes.
 - Corrective commits include native admission/shutdown/package fixes,
   frontend-aware native defaults, and idempotent recovery of incomplete native
   voice publications.
-- MSVC Release CTest: **46/46 PASS** on the preceding native candidate; the
-  corrective native targets additionally passed the focused subprocess suites
-  (`qwen_tts_native_worker_test`, `stdio_transport_test`).
+- MSVC Release CTest with `BUILD_EXAMPLES=ON`, `BUILD_TESTS=ON`, and explicit
+  `QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=ON`: **46/46 PASS**.  The focused
+  corrective subprocess suites (`qwen_tts_native_worker_test`,
+  `stdio_transport_test`) also pass after the latest source changes.
   The previous failure was the forced-termination recovery path; the new
   bounded recovery handles transient Windows path/handle races and disposable
   incomplete artifacts fail closed without touching a committed manifest.
@@ -48,9 +50,9 @@ provenance edit was made.
 
 | Artifact | Result |
 | --- | --- |
-| ZIP | 435,248,520 bytes |
+| ZIP | 435,248,526 bytes |
 | Unpacked tree | 573,042,652 bytes, 21 files |
-| ZIP SHA-256 | `1D3FBEDEE250F2D5B46B091583105BED01E80814CBF5BE1BA15F340059C489A7` |
+| ZIP SHA-256 | `5027CE22F9859EF3EA9FD8D231A8C04006B1B19D9E6C7F297E413347BBF3D763` |
 | Python/PyTorch bundled | no |
 | GGUF weights or user recordings bundled | no |
 | PE dependency closure and extraction verification | PASS |
@@ -72,7 +74,6 @@ same frozen package/source/runtime/model identities:
 - correction or fail-closed contract for the upstream `tts-front-cpp` defect
   where `2 книги` currently becomes `два книги` (the bridge does not apply a
   string substitution); and
-- publication of the review branch for independent inspection.
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
