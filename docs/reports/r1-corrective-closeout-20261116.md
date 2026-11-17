@@ -7,7 +7,7 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 
 - Integration branch: `integration/r1-corrective`
 - Current integration HEAD after the final source corrective:
-  `e8806e9b`
+  `ff3624df`
 - Implementation HEAD for the current source candidate:
   `e8806e9b`
 - The existing package evidence predates this final source corrective and is
@@ -122,4 +122,4 @@ The upstream frontend gate listed above is superseded by the pinned
 `tts-front-cpp` fix `3a77203`; its complete Release corpus passed 12/12.
 The remaining release gates are the final package regeneration from
 `e8806e9b`, clean relocation with real models, CMP 50HX and RTX 4090 native
-qualification, matched A/B WAV listening, and review-only CI on `e8806e9b`.
+qualification, matched A/B WAV listening, and review-only CI on `ff3624df`.
