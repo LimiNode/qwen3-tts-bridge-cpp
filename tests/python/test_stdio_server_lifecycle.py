@@ -645,7 +645,7 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         )
         output_stream = io.BytesIO()
         server = StdioWorkerServer(
-            input_stream=cast(BinaryIO, input_stream),
+            input_stream=input_stream,
             output_stream=output_stream,
             error_stream=io.StringIO(),
             engine=NoopWarmupEngine(),
@@ -1085,7 +1085,7 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
             input_release,
         )
         server = StdioWorkerServer(
-            input_stream=input_stream,
+            input_stream=cast(BinaryIO, input_stream),
             output_stream=io.BytesIO(),
             error_stream=io.StringIO(),
             engine=engine,
