@@ -539,8 +539,8 @@ void StdioServer::handle_synthesize(RequestId request_id, SynthesizeMessage mess
                << request_id << ",\"reason\":\"resource_exhausted\",\"admission_limit\":"
                << max_admitted_requests_ << ",\"admitted_requests\":" << admitted_requests
                << "}";
-        write_diagnostic_line(metric.str());
         send_error(request_id, "resource_error", "resource_exhausted", "worker admission limit reached");
+        write_diagnostic_line(metric.str());
         return;
     }
     QueuedMessage queued;
@@ -582,15 +582,15 @@ void StdioServer::handle_cancel(RequestId request_id) {
         }
     }
     condition_.notify_all();
-    if (admission_released) {
-        write_admission_released_metric(
-            request_id, max_admitted_requests_, admitted_requests_after);
-    }
     if (unknown) {
         send_error(request_id, "request_error", "unknown_request_id", "request_id is not active");
     }
     else if (cancelled_slot) {
         send_control(request_id, CancelledMessage{});
+    }
+    if (admission_released) {
+        write_admission_released_metric(
+            request_id, max_admitted_requests_, admitted_requests_after);
     }
 }
 
@@ -633,10 +633,6 @@ void StdioServer::request_shutdown(bool send_ack) {
             entry.second->cancelled.store(true, std::memory_order_relaxed);
         }
     }
-    for (const auto& [request_id, admitted_requests] : released_metrics) {
-        write_admission_released_metric(
-            request_id, max_admitted_requests_, admitted_requests);
-    }
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     for (const auto& slot : queued) {
         JsonPayloadEncodeResult payload = encode_control_message(CancelledMessage{});
@@ -650,6 +646,10 @@ void StdioServer::request_shutdown(bool send_ack) {
             fail_fatal("stdout writer timed out while publishing cancellation");
             break;
         }
+    }
+    for (const auto& [request_id, admitted_requests] : released_metrics) {
+        write_admission_released_metric(
+            request_id, max_admitted_requests_, admitted_requests);
     }
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -703,8 +703,11 @@ std::shared_ptr<StdioServer::RequestSlot> StdioServer::take_next_request() {
 
 void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
     if (slot->cancelled.load(std::memory_order_relaxed)) {
-        if (terminalize(slot)) {
+        std::size_t admitted_requests_after = 0;
+        if (terminalize(slot, false, &admitted_requests_after)) {
             send_control(slot->id, CancelledMessage{});
+            write_admission_released_metric(
+                slot->id, max_admitted_requests_, admitted_requests_after);
         }
         return;
     }
@@ -712,6 +715,23 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
     StartedMessage started;
     started.audio_format = slot->request.output;
     send_control(slot->id, started);
+
+#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
+    // Exercise a diagnostics pipe that is already blocked before this request
+    // reaches its terminal path.  The detached writer is test-only and has no
+    // server ownership or production shutdown impact.
+    static std::atomic<bool> prefill_started{false};
+    const char* prefill_stderr = std::getenv("QTB_TEST_NATIVE_PREFILL_STDERR");
+    if (prefill_stderr != nullptr && std::strcmp(prefill_stderr, "1") == 0 &&
+        !prefill_started.exchange(true, std::memory_order_acq_rel)) {
+        std::thread([]() {
+            const std::string filler(1024u * 1024u, 'x');
+            for (int index = 0; index < 8; ++index) {
+                write_diagnostic_line(filler);
+            }
+        }).detach();
+    }
+#endif
 
     const auto request_start = std::chrono::steady_clock::now();
     std::size_t chunk_index = 0;
@@ -761,12 +781,16 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                        << ",\"float_rms\":" << float_stats.rms
                        << ",\"s16_peak_abs\":" << s16_stats.peak_abs
                        << ",\"s16_rms\":" << s16_stats.rms << "}";
-                write_diagnostic_line(metric.str());
                 const bool sent = writer_->send(make_frame(FrameType::AudioPcm, slot->id, pcm));
                 ++chunk_index;
                 if (!sent) {
                     fail_fatal("stdout writer failed while streaming native audio");
+                    return false;
                 }
+                // The PCM frame is already published.  Keep telemetry
+                // best-effort and after the protocol write so a stalled
+                // stderr consumer cannot delay first audio.
+                write_diagnostic_line(metric.str());
                 return sent && !slot->cancelled.load(std::memory_order_relaxed);
             }
             auto pcm = float_pcm_to_s16le(samples, count);
@@ -790,9 +814,6 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
                   "native request processing raised an unknown exception"};
     }
 
-    if (!terminalize(slot)) {
-        return;
-    }
     const bool unrecoverable_engine_failure =
         result.code == "audio_callback_bad_alloc" ||
         result.code == "audio_callback_exception" ||
@@ -803,6 +824,10 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         result.code == "native_request_bad_alloc" ||
         result.code == "native_request_exception" ||
         result.code == "native_request_unknown_exception";
+    std::size_t admitted_requests_after = 0;
+    if (!terminalize(slot, false, &admitted_requests_after)) {
+        return;
+    }
     const auto emit_finished_metric = [&](const char* terminal_state, const char* outcome) {
         std::ostringstream metric;
         metric << "qtb_metric {\"event\":\"request_finished\",\"request_id\":"
@@ -836,10 +861,11 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         // terminal error.  stderr is synchronous and may be stalled; the
         // accepted request must still receive its error and the fatal
         // transition must still close admission.
-        terminalize(slot, false);
         send_error(slot->id, result.category, result.code, result.message);
         fail_fatal("native engine state is not recoverable after request failure");
         emit_finished_metric("failed", nullptr);
+        write_admission_released_metric(
+            slot->id, max_admitted_requests_, admitted_requests_after);
         return;
     }
     if (result.outcome == SynthesisOutcome::Completed) {
@@ -852,37 +878,44 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
         if (completed.has_generation_trace) {
             completed.generation_trace = result.generation_trace;
         }
-        emit_finished_metric("completed", completed.execution_outcome.c_str());
+        const auto execution_outcome = completed.execution_outcome;
         send_control(slot->id, std::move(completed));
+        emit_finished_metric("completed", execution_outcome.c_str());
     }
     else if (result.outcome == SynthesisOutcome::Cancelled) {
-        emit_finished_metric("cancelled", nullptr);
         send_control(slot->id, CancelledMessage{});
+        emit_finished_metric("cancelled", nullptr);
     }
     else {
-        emit_finished_metric("failed", nullptr);
         send_error(slot->id, result.category, result.code, result.message);
+        emit_finished_metric("failed", nullptr);
     }
+    write_admission_released_metric(
+        slot->id, max_admitted_requests_, admitted_requests_after);
 }
 
 bool StdioServer::terminalize(
     const std::shared_ptr<RequestSlot>& slot,
-    const bool emit_metric) {
+    const bool emit_metric,
+    std::size_t* admitted_requests_after) {
     if (slot->terminal.exchange(true)) {
         return false;
     }
-    std::size_t admitted_requests_after = 0;
+    std::size_t admitted_requests_after_count = 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         active_.erase(slot->id);
         if (admitted_requests_ > 0) {
             --admitted_requests_;
         }
-        admitted_requests_after = admitted_requests_;
+        admitted_requests_after_count = admitted_requests_;
+    }
+    if (admitted_requests_after != nullptr) {
+        *admitted_requests_after = admitted_requests_after_count;
     }
     if (emit_metric) {
         write_admission_released_metric(
-            slot->id, max_admitted_requests_, admitted_requests_after);
+            slot->id, max_admitted_requests_, admitted_requests_after_count);
     }
     return true;
 }

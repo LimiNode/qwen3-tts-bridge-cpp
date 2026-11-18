@@ -717,6 +717,13 @@ int run_fatal_stderr_stall_e2e() {
     QwenTtsClientOptions client_options;
     client_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(client.start(std::move(stalled_options), client_options));
+    ReadyMessage ready;
+    const auto ready_message_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!client.ready_message(ready) &&
+           std::chrono::steady_clock::now() < ready_message_deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(client.ready_message(ready));
 
     std::array<Probe, 3> probes;
     for (std::size_t index = 0; index < probes.size(); ++index) {
@@ -762,11 +769,153 @@ int run_fatal_stderr_stall_e2e() {
     return EXIT_SUCCESS;
 }
 
+int run_pre_stalled_stderr_fatal_e2e() {
+    std::atomic<bool> large_diagnostic_seen{false};
+    std::atomic<bool> release_stderr{false};
+    std::atomic<int> terminal_errors{0};
+    auto stalled_options = options(8);
+    stalled_options.environment_overrides.emplace(
+        "QTB_TEST_NATIVE_CALLBACK_FAILURE", "runtime_error_first");
+    stalled_options.environment_overrides.emplace("QTB_TEST_NATIVE_PREFILL_STDERR", "1");
+    stalled_options.stderr_handler = [&large_diagnostic_seen, &release_stderr](std::string message) {
+        if (message.size() < 4096) {
+            return;
+        }
+        large_diagnostic_seen.store(true, std::memory_order_release);
+        while (!release_stderr.load(std::memory_order_acquire)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    };
+
+    QwenTtsClient client;
+    QwenTtsClientOptions client_options;
+    client_options.session.startup_timeout = std::chrono::seconds(5);
+    CHECK(client.start(std::move(stalled_options), client_options));
+    ReadyMessage ready;
+    const auto ready_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!client.ready_message(ready) &&
+           std::chrono::steady_clock::now() < ready_deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(client.ready_message(ready));
+
+    std::array<Probe, 3> probes;
+    for (auto& probe : probes) {
+        TtsCallbacks callbacks;
+        callbacks.on_error = [&probe, &terminal_errors](const TtsError& error) {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            probe.errors.push_back(error);
+            probe.condition.notify_all();
+            terminal_errors.fetch_add(1, std::memory_order_acq_rel);
+        };
+        callbacks.on_completed = [&probe]() {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            ++probe.completed;
+            probe.condition.notify_all();
+        };
+        CHECK(client.synthesize_async("pre-stalled stderr fatal request", callbacks) != 0);
+    }
+    const auto diagnostic_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!large_diagnostic_seen.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < diagnostic_deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    CHECK(large_diagnostic_seen.load(std::memory_order_acquire));
+
+    bool all_terminal_errors_observed = true;
+    for (std::size_t index = 0; index < probes.size(); ++index) {
+        auto& probe = probes[index];
+        std::unique_lock<std::mutex> lock(probe.mutex);
+        if (!probe.condition.wait_for(lock, std::chrono::seconds(5), [&probe]() {
+            return !probe.errors.empty() || probe.completed != 0;
+        })) {
+            all_terminal_errors_observed = false;
+            break;
+        }
+        if (probe.completed != 0 || probe.errors.size() != 1) {
+            all_terminal_errors_observed = false;
+            break;
+        }
+        if (index == 0) {
+            if (probe.errors.front().category != "internal_error" ||
+                probe.errors.front().code != "audio_callback_exception") {
+                all_terminal_errors_observed = false;
+                break;
+            }
+        }
+        else {
+            if (probe.errors.front().category != "worker_error" ||
+                probe.errors.front().code != "worker_fatal") {
+                all_terminal_errors_observed = false;
+                break;
+            }
+        }
+    }
+    release_stderr.store(true, std::memory_order_release);
+    client.stop();
+    if (!all_terminal_errors_observed) {
+        std::cerr << "pre-stalled stderr terminal check failed; counts=";
+        for (auto& probe : probes) {
+            std::lock_guard<std::mutex> lock(probe.mutex);
+            std::cerr << probe.errors.size() << "/" << probe.completed << ' ';
+            if (!probe.errors.empty()) {
+                std::cerr << probe.errors.front().category << ':' << probe.errors.front().code
+                          << ':' << probe.errors.front().message << ' ';
+            }
+        }
+        std::cerr << " total=" << terminal_errors.load(std::memory_order_acquire) << '\n';
+    }
+    CHECK(all_terminal_errors_observed);
+    CHECK(terminal_errors.load(std::memory_order_acquire) == 3);
+    CHECK(!client.is_running());
+    return EXIT_SUCCESS;
+}
+
+int run_pre_stalled_stderr_watchdog(const char* executable) {
+    std::string command = "\"" + std::string(executable) +
+        "\" --pre-stalled-stderr-fatal-child";
+    std::vector<char> command_line(command.begin(), command.end());
+    command_line.push_back('\0');
+
+    STARTUPINFOA startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    CHECK(CreateProcessA(
+        nullptr,
+        command_line.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        CREATE_NO_WINDOW,
+        nullptr,
+        nullptr,
+        &startup,
+        &process) != FALSE);
+    const DWORD wait_result = WaitForSingleObject(process.hProcess, 12000);
+    if (wait_result == WAIT_TIMEOUT) {
+        TerminateProcess(process.hProcess, EXIT_FAILURE);
+        CloseHandle(process.hThread);
+        CloseHandle(process.hProcess);
+        std::cerr << "pre-stalled stderr child exceeded watchdog deadline\n";
+        return EXIT_FAILURE;
+    }
+    CHECK(wait_result == WAIT_OBJECT_0);
+    DWORD exit_code = EXIT_FAILURE;
+    CHECK(GetExitCodeProcess(process.hProcess, &exit_code) != FALSE);
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    CHECK(exit_code == EXIT_SUCCESS);
+    return EXIT_SUCCESS;
+}
+
 }
 
 int main(int argc, char** argv) {
     if (argc == 2 && std::strcmp(argv[1], "--callback-failure-watchdog-child") == 0) {
         return run_callback_failure_e2e("runtime_error_after", true);
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--pre-stalled-stderr-fatal-child") == 0) {
+        return run_pre_stalled_stderr_fatal_e2e();
     }
 
     CHECK(run_raw_native_request_id_policy_test() == EXIT_SUCCESS);
@@ -2114,6 +2263,7 @@ int main(int argc, char** argv) {
     CHECK(run_callback_failure_e2e("bad_alloc_after", true) == EXIT_SUCCESS);
     CHECK(run_callback_failure_watchdog(argv[0]) == EXIT_SUCCESS);
     CHECK(run_fatal_stderr_stall_e2e() == EXIT_SUCCESS);
+    CHECK(run_pre_stalled_stderr_watchdog(argv[0]) == EXIT_SUCCESS);
 
     client.stop();
     return EXIT_SUCCESS;
