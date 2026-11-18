@@ -272,6 +272,7 @@ StdioServer::~StdioServer() {
     if (writer_) {
         writer_->stop_when_drained(std::chrono::milliseconds::max());
     }
+    flush_diagnostics(std::chrono::milliseconds(250));
     if (fatal_watchdog_thread_.joinable()) {
         fatal_watchdog_thread_.join();
     }
@@ -282,6 +283,20 @@ int StdioServer::run() {
     // can begin serving protocol traffic even when diagnostics are not being
     // consumed; ordinary request metrics remain best-effort below.
     writer_->start();
+#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
+    // Fill the diagnostics pipe before the parent submits a request.  This
+    // test-only hook proves that normal streaming does not depend on stderr
+    // consumption; production builds do not compile it.
+    const char* prefill_stderr = std::getenv("QTB_TEST_NATIVE_PREFILL_STDERR");
+    if (prefill_stderr != nullptr && std::strcmp(prefill_stderr, "1") == 0) {
+        std::thread([]() {
+            const std::string filler(1024u * 1024u, 'x');
+            for (int index = 0; index < 8; ++index) {
+                write_diagnostic_line(filler);
+            }
+        }).detach();
+    }
+#endif
     engine_thread_ = std::thread([this]() { engine_loop(); });
     read_loop();
     request_shutdown(false);
@@ -316,6 +331,7 @@ int StdioServer::run() {
         TerminateProcess(GetCurrentProcess(), ERROR_TIMEOUT);
         return 1;
     }
+    flush_diagnostics(std::chrono::milliseconds(250));
     const int status = fatal_error_ || writer_->failed() ? 1 : 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -715,23 +731,6 @@ void StdioServer::run_request(const std::shared_ptr<RequestSlot>& slot) {
     StartedMessage started;
     started.audio_format = slot->request.output;
     send_control(slot->id, started);
-
-#if defined(QTB_NATIVE_WORKER_TEST_HOOKS)
-    // Exercise a diagnostics pipe that is already blocked before this request
-    // reaches its terminal path.  The detached writer is test-only and has no
-    // server ownership or production shutdown impact.
-    static std::atomic<bool> prefill_started{false};
-    const char* prefill_stderr = std::getenv("QTB_TEST_NATIVE_PREFILL_STDERR");
-    if (prefill_stderr != nullptr && std::strcmp(prefill_stderr, "1") == 0 &&
-        !prefill_started.exchange(true, std::memory_order_acq_rel)) {
-        std::thread([]() {
-            const std::string filler(1024u * 1024u, 'x');
-            for (int index = 0; index < 8; ++index) {
-                write_diagnostic_line(filler);
-            }
-        }).detach();
-    }
-#endif
 
     const auto request_start = std::chrono::steady_clock::now();
     std::size_t chunk_index = 0;

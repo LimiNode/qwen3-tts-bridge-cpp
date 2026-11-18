@@ -46,6 +46,7 @@ struct Probe {
     std::mutex mutex;
     std::condition_variable condition;
     std::vector<std::byte> audio;
+    std::size_t audio_chunks = 0;
     std::size_t completed = 0;
     std::size_t cancelled = 0;
     std::vector<TtsError> errors;
@@ -254,6 +255,182 @@ private:
     std::deque<Frame> frames_;
     std::string error_;
     bool exited_ = false;
+};
+
+// Direct pipe harness used by diagnostics regressions.  Unlike StdIoTransport,
+// it deliberately never reads the child's stderr handle, while still draining
+// stdout synchronously.  This makes a genuinely full Windows stderr pipe
+// observable without blocking the test's stdout reader.
+class DirectPipeNativeWorker final {
+public:
+    ~DirectPipeNativeWorker() {
+        if (process_ != nullptr) {
+            TerminateProcess(process_, EXIT_FAILURE);
+            WaitForSingleObject(process_, 2000);
+        }
+        close_handles();
+    }
+
+    bool start() {
+        SECURITY_ATTRIBUTES security_attributes{};
+        security_attributes.nLength = sizeof(security_attributes);
+        security_attributes.bInheritHandle = TRUE;
+        if (!CreatePipe(&stdout_read_, &stdout_write_, &security_attributes, 0) ||
+            !CreatePipe(&stdin_read_, &stdin_write_, &security_attributes, 0) ||
+            !CreatePipe(&stderr_read_, &stderr_write_, &security_attributes, 0)) {
+            return false;
+        }
+        if (!SetHandleInformation(stdout_read_, HANDLE_FLAG_INHERIT, 0) ||
+            !SetHandleInformation(stdin_write_, HANDLE_FLAG_INHERIT, 0) ||
+            !SetHandleInformation(stderr_read_, HANDLE_FLAG_INHERIT, 0)) {
+            return false;
+        }
+        const auto runtime = std::filesystem::path(QWEN_TTS_FAKE_RUNTIME_DIR);
+        std::string command = "\"" + std::string(QWEN_TTS_NATIVE_WORKER_EXE) + "\""
+            " --runtime-dir \"" + runtime.string() + "\""
+            " --stream-max-chunk-frames 2"
+            " --talker-model \"" + (runtime / "talker.gguf").string() + "\""
+            " --codec-model \"" + (runtime / "codec.gguf").string() + "\""
+            " --max-admitted-requests 16";
+        std::vector<char> command_line(command.begin(), command.end());
+        command_line.push_back('\0');
+        SetEnvironmentVariableA("QTB_TEST_NATIVE_PREFILL_STDERR", "1");
+        STARTUPINFOA startup{};
+        startup.cb = sizeof(startup);
+        startup.dwFlags = STARTF_USESTDHANDLES;
+        startup.hStdInput = stdin_read_;
+        startup.hStdOutput = stdout_write_;
+        startup.hStdError = stderr_write_;
+        PROCESS_INFORMATION process{};
+        if (!CreateProcessA(
+                nullptr, command_line.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
+                nullptr, nullptr, &startup, &process)) {
+            return false;
+        }
+        CloseHandle(process.hThread);
+        process_ = process.hProcess;
+        CloseHandle(stdin_read_);
+        stdin_read_ = nullptr;
+        CloseHandle(stdout_write_);
+        stdout_write_ = nullptr;
+        CloseHandle(stderr_write_);
+        stderr_write_ = nullptr;
+        return true;
+    }
+
+    bool send(RequestId request_id, const ControlMessage& message) {
+        const auto payload = encode_control_message(message);
+        if (!payload) {
+            return false;
+        }
+        const auto frame = encode_frame(FrameType::ControlJson, request_id, payload.payload);
+        if (!frame) {
+            return false;
+        }
+        std::size_t offset = 0;
+        while (offset < frame.bytes.size()) {
+            DWORD written = 0;
+            if (!WriteFile(
+                    stdin_write_, frame.bytes.data() + offset,
+                    static_cast<DWORD>(frame.bytes.size() - offset), &written, nullptr) ||
+                written == 0) {
+                return false;
+            }
+            offset += written;
+        }
+        return true;
+    }
+
+    bool read_frame(Frame& result) {
+        for (;;) {
+            const auto parsed = parser_.parse_next();
+            if (parsed.status == ParseStatus::FrameReady) {
+                result = parsed.frame;
+                return true;
+            }
+            if (parsed.status == ParseStatus::FatalError) {
+                return false;
+            }
+            std::array<std::byte, 64 * 1024> buffer{};
+            DWORD count = 0;
+            if (!ReadFile(stdout_read_, buffer.data(), static_cast<DWORD>(buffer.size()), &count, nullptr) ||
+                count == 0) {
+                return false;
+            }
+            parser_.append(buffer.data(), count);
+        }
+    }
+
+    bool wait_for_terminal(RequestId request_id, std::size_t& audio_frames) {
+        for (;;) {
+            Frame frame;
+            if (!read_frame(frame)) {
+                return false;
+            }
+            if (frame.header.request_id != request_id) {
+                continue;
+            }
+            if (frame.header.frame_type == FrameType::AudioPcm) {
+                ++audio_frames;
+                continue;
+            }
+            if (frame.header.frame_type == FrameType::ErrorJson) {
+                return false;
+            }
+            if (frame.header.frame_type == FrameType::ControlJson) {
+                const auto decoded = decode_control_message(
+                    frame.payload, ControlMessageDirection::WorkerToClient);
+                if (!decoded) {
+                    return false;
+                }
+                const auto type = control_message_type(decoded.message);
+                if (type == ControlMessageType::Completed ||
+                    type == ControlMessageType::Cancelled) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    bool shutdown() {
+        if (!send(0, ControlMessage{ShutdownMessage{}})) {
+            return false;
+        }
+        CloseHandle(stdin_write_);
+        stdin_write_ = nullptr;
+        if (WaitForSingleObject(process_, 8000) == WAIT_OBJECT_0) {
+            return true;
+        }
+        TerminateProcess(process_, EXIT_FAILURE);
+        WaitForSingleObject(process_, 2000);
+        return false;
+    }
+
+private:
+    void close_handles() {
+        const auto close = [](HANDLE& handle) {
+            if (handle != nullptr) {
+                CloseHandle(handle);
+                handle = nullptr;
+            }
+        };
+        close(stdin_read_);
+        close(stdin_write_);
+        close(stdout_read_);
+        close(stdout_write_);
+        close(stderr_read_);
+        close(stderr_write_);
+        close(process_);
+    }
+
+    HANDLE stdin_read_ = nullptr;
+    HANDLE stdin_write_ = nullptr;
+    HANDLE stdout_read_ = nullptr;
+    HANDLE stdout_write_ = nullptr;
+    HANDLE stderr_read_ = nullptr;
+    HANDLE stderr_write_ = nullptr;
+    HANDLE process_ = nullptr;
+    FrameParser parser_;
 };
 
 bool is_control_frame(const Frame& frame, RequestId request_id) {
@@ -871,6 +1048,80 @@ int run_pre_stalled_stderr_fatal_e2e() {
     return EXIT_SUCCESS;
 }
 
+int run_pre_stalled_stderr_streaming_e2e() {
+    DirectPipeNativeWorker worker;
+    CHECK(worker.start());
+    CHECK(worker.send(0, ControlMessage{HelloMessage{"direct-stderr-test", "0.2.0"}}));
+    Frame ready;
+    CHECK(worker.read_frame(ready));
+    CHECK(is_control_frame(ready, 0));
+    CHECK(control_message_type(decode_control_message(
+        ready.payload, ControlMessageDirection::WorkerToClient).message) == ControlMessageType::Ready);
+
+    SynthesizeMessage request;
+    request.text = "stalled stderr normal streaming first request";
+    CHECK(worker.send(101, ControlMessage{request}));
+    std::size_t first_audio_frames = 0;
+    CHECK(worker.wait_for_terminal(101, first_audio_frames));
+    CHECK(first_audio_frames >= 2);
+
+    request.text = "stalled stderr normal streaming second request";
+    CHECK(worker.send(102, ControlMessage{request}));
+    std::size_t second_audio_frames = 0;
+    CHECK(worker.wait_for_terminal(102, second_audio_frames));
+    CHECK(second_audio_frames >= 2);
+    CHECK(worker.shutdown());
+    return EXIT_SUCCESS;
+}
+
+int run_pre_stalled_stderr_cancel_e2e() {
+    DirectPipeNativeWorker worker;
+    CHECK(worker.start());
+    CHECK(worker.send(0, ControlMessage{HelloMessage{"direct-stderr-cancel-test", "0.2.0"}}));
+    Frame ready;
+    CHECK(worker.read_frame(ready));
+    CHECK(is_control_frame(ready, 0));
+    SynthesizeMessage request;
+    request.text = "stalled stderr cancellation request";
+    CHECK(worker.send(201, ControlMessage{request}));
+    request.text = "stalled stderr pending request";
+    CHECK(worker.send(202, ControlMessage{request}));
+    CHECK(worker.send(201, ControlMessage{CancelMessage{}}));
+    std::size_t cancelled_audio = 0;
+    CHECK(worker.wait_for_terminal(201, cancelled_audio));
+    std::size_t pending_audio = 0;
+    CHECK(worker.wait_for_terminal(202, pending_audio));
+    CHECK(worker.shutdown());
+    return EXIT_SUCCESS;
+}
+
+int run_stalled_stderr_watchdog(const char* executable, const char* child_argument) {
+    std::string command = "\"" + std::string(executable) + "\" " + child_argument;
+    std::vector<char> command_line(command.begin(), command.end());
+    command_line.push_back('\0');
+    STARTUPINFOA startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    CHECK(CreateProcessA(
+        nullptr, command_line.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
+        nullptr, nullptr, &startup, &process) != FALSE);
+    const DWORD wait_result = WaitForSingleObject(process.hProcess, 15000);
+    if (wait_result == WAIT_TIMEOUT) {
+        TerminateProcess(process.hProcess, EXIT_FAILURE);
+        CloseHandle(process.hThread);
+        CloseHandle(process.hProcess);
+        std::cerr << child_argument << " child exceeded watchdog deadline\n";
+        return EXIT_FAILURE;
+    }
+    CHECK(wait_result == WAIT_OBJECT_0);
+    DWORD exit_code = EXIT_FAILURE;
+    CHECK(GetExitCodeProcess(process.hProcess, &exit_code) != FALSE);
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    CHECK(exit_code == EXIT_SUCCESS);
+    return EXIT_SUCCESS;
+}
+
 int run_pre_stalled_stderr_watchdog(const char* executable) {
     std::string command = "\"" + std::string(executable) +
         "\" --pre-stalled-stderr-fatal-child";
@@ -916,6 +1167,12 @@ int main(int argc, char** argv) {
     }
     if (argc == 2 && std::strcmp(argv[1], "--pre-stalled-stderr-fatal-child") == 0) {
         return run_pre_stalled_stderr_fatal_e2e();
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--pre-stalled-stderr-streaming-child") == 0) {
+        return run_pre_stalled_stderr_streaming_e2e();
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--pre-stalled-stderr-cancel-child") == 0) {
+        return run_pre_stalled_stderr_cancel_e2e();
     }
 
     CHECK(run_raw_native_request_id_policy_test() == EXIT_SUCCESS);
@@ -2264,6 +2521,8 @@ int main(int argc, char** argv) {
     CHECK(run_callback_failure_watchdog(argv[0]) == EXIT_SUCCESS);
     CHECK(run_fatal_stderr_stall_e2e() == EXIT_SUCCESS);
     CHECK(run_pre_stalled_stderr_watchdog(argv[0]) == EXIT_SUCCESS);
+    CHECK(run_stalled_stderr_watchdog(argv[0], "--pre-stalled-stderr-streaming-child") == EXIT_SUCCESS);
+    CHECK(run_stalled_stderr_watchdog(argv[0], "--pre-stalled-stderr-cancel-child") == EXIT_SUCCESS);
 
     client.stop();
     return EXIT_SUCCESS;

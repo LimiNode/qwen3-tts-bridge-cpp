@@ -8,6 +8,7 @@
 #include <io.h>
 
 #include <cstdlib>
+#include <chrono>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -16,6 +17,7 @@
 namespace {
 
 using qwen_tts_bridge::native_worker::NativeEngineOptions;
+using qwen_tts_bridge::native_worker::flush_diagnostics;
 using qwen_tts_bridge::native_worker::write_diagnostic_line;
 
 std::string wide_to_utf8(const std::wstring& value) {
@@ -228,6 +230,7 @@ int wmain(int argc, wchar_t** argv) {
     }
     catch (const std::exception& error) {
         write_diagnostic_line(std::string("[native-worker:fatal] ") + error.what());
+        flush_diagnostics(std::chrono::milliseconds(250));
         return EXIT_FAILURE;
     }
 }
