@@ -7,13 +7,13 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 
 - Integration branch: `integration/r1-corrective`
 - Current integration HEAD:
-  `9da0605a`
+  `7131d78d`
 - Current source candidate HEAD:
-  `92a2dd53` (the receipt-only commit `9da0605a` does not change production
-  sources).
+  `7131d78d` (the latest corrective publishes terminal protocol outcomes
+  before synchronous diagnostics).
 - The corrective source commits include `cbd58ef3`, `e8806e9b`, and
-  `92a2dd53`; Python lint/type corrective commits are `34945218`, `6ce6441b`,
-  and `4598d032`.
+  `92a2dd53`, and `7131d78d`; Python lint/type corrective commits are
+  `34945218`, `6ce6441b`, and `4598d032`.
 - The existing package evidence predates this final source corrective and is
   therefore historical only; it must be regenerated before any release
   decision.
@@ -113,7 +113,7 @@ same frozen package/source/runtime/model identities:
 - CMP 50HX and RTX 4090 native qualification, including repeat/cancel/restart,
   physical playback and peak-memory measurements;
 - matched RU/EN A/B WAV corpus and human listening;
-- review-only GitHub CI for the exact combined integration HEAD `9da0605a`;
+- review-only GitHub CI for the exact combined integration HEAD `7131d78d`;
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
@@ -123,6 +123,6 @@ and do not promote native Base/RU-stress support.
 The upstream frontend gate is closed by pinned `tts-front-cpp` fix `64f73182`;
 its complete Release corpus passed 12/12 and the bridge corpus now expects the
 correct feminine agreement. The remaining release gates are final package
-regeneration from `92a2dd53`, clean relocation with real models, CMP 50HX and
+regeneration from `7131d78d`, clean relocation with real models, CMP 50HX and
 RTX 4090 native qualification, matched A/B WAV listening, and review-only CI
-on `9da0605a`.
+on `7131d78d`.
