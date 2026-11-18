@@ -7,12 +7,12 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 
 - Integration branch: `integration/r1-corrective`
 - Current integration HEAD:
-  `6d992dbb`
+  `9a4525db`
 - Current source candidate HEAD:
-  `7131d78d` (the latest corrective publishes terminal protocol outcomes
-  before synchronous diagnostics).
+  `9a4525db` (the latest corrective decouples diagnostics from inference with
+  a bounded best-effort writer).
 - The corrective source commits include `cbd58ef3`, `e8806e9b`, and
-  `92a2dd53`, and `7131d78d`; Python lint/type corrective commits are
+  `92a2dd53`, `7131d78d`, and `9a4525db`; Python lint/type corrective commits are
   `34945218`, `6ce6441b`, and `4598d032`.
 - The existing package evidence predates this final source corrective and is
   therefore historical only; it must be regenerated before any release
@@ -43,6 +43,10 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
   accepted requests: the active request received its internal terminal error
   and both pending requests received `worker_fatal` before diagnostics were
   released. The full native worker test uses a 120-second CTest budget.
+- Direct Windows-pipe diagnostics regressions pass with stderr intentionally
+  unread: two multi-chunk natural-EOS requests complete, and cancellation plus
+  shutdown remain bounded. Diagnostics use a finite 64-record/4 MiB queue;
+  shutdown waits at most 250 ms for it and drops records when full or closed.
 - `tts-front-cpp` is pinned to focused upstream fix commit `64f73182`
   (`fix(russian): agree feminine book counts`). Its complete upstream Release
   corpus passed **12/12**, including feminine and masculine count cases. The
@@ -113,7 +117,7 @@ same frozen package/source/runtime/model identities:
 - CMP 50HX and RTX 4090 native qualification, including repeat/cancel/restart,
   physical playback and peak-memory measurements;
 - matched RU/EN A/B WAV corpus and human listening;
-- review-only GitHub CI for the exact combined integration HEAD `6d992dbb`;
+- review-only GitHub CI for the exact combined integration HEAD `9a4525db`;
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
@@ -123,6 +127,6 @@ and do not promote native Base/RU-stress support.
 The upstream frontend gate is closed by pinned `tts-front-cpp` fix `64f73182`;
 its complete Release corpus passed 12/12 and the bridge corpus now expects the
 correct feminine agreement. The remaining release gates are final package
-regeneration from `7131d78d`, clean relocation with real models, CMP 50HX and
+regeneration from `9a4525db`, clean relocation with real models, CMP 50HX and
 RTX 4090 native qualification, matched A/B WAV listening, and review-only CI
-on `6d992dbb`.
+on `9a4525db`.
