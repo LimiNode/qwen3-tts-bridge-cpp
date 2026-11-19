@@ -9,8 +9,11 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 - Final production source candidate:
   `ea9ceaf2` (the lifecycle, protocol-contract, provenance and test-environment
   corrective follows the bounded diagnostics baseline).
-- Tested PR/integration HEAD:
-  `0c78f56b` (receipt-only documentation follows the production candidate).
+- Tested corrective source/test HEAD:
+  `b74dc5c2` (adds the explicit fail-closed restart assertion after a throwing
+  transport teardown).
+- Receipt-only documentation follows that tested source/test candidate; the
+  exact-head C++ and Python runs are `44550510030` and `44550510035`.
 - Bounded diagnostics production baseline:
   `9a4525db` (decouples diagnostics from inference with a bounded best-effort
   writer).
@@ -146,7 +149,8 @@ same frozen package/source/runtime/model identities:
 - CMP 50HX and RTX 4090 native qualification, including repeat/cancel/restart,
   physical playback and peak-memory measurements;
 - matched RU/EN A/B WAV corpus and human listening;
-- review-only GitHub CI for the exact tested corrective PR HEAD `0c78f56b`;
+- review-only GitHub CI for the exact tested corrective source/test HEAD
+  `b74dc5c2` (C++ run `44550510030`, Python run `44550510035`);
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
@@ -158,4 +162,4 @@ its complete Release corpus passed 12/12 and the bridge corpus now expects the
 correct feminine agreement. The remaining release gates are final package
 regeneration from `ea9ceaf2`, clean relocation with real models, CMP 50HX and
 RTX 4090 native qualification, matched A/B WAV listening, and review-only CI
-on `0c78f56b`.
+on `b74dc5c2`.
