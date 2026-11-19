@@ -1,9 +1,11 @@
 # tts-front-cpp integration
 
-The bridge uses the released `tts-front-cpp` v0.2.5 component, pinned as the
-`external/cpp/tts-front-cpp` submodule at commit
-`d1b6a6e18e7f51f8c51fff548bb84f10e749004a` (tag `v0.2.5`). The fixed
-v0.2.2-to-v0.2.5 effective-text comparison is recorded in
+The bridge uses `tts-front-cpp` from the focused upstream corrective commit
+`64f73182d26de60af6c082724b1b199eb7310620`, pinned in the
+`external/cpp/tts-front-cpp` submodule. This commit is based on the published
+v0.2.5 line; it is not itself a published v0.2.6 release. The earlier
+v0.2.5 baseline `d1b6a6e18e7f51f8c51fff548bb84f10e749004a` remains historical
+evidence for the fixed v0.2.2-to-v0.2.5 effective-text comparison recorded in
 `docs/reports/tts-front-v022-v025-effective-text.md`.
 
 The preparation boundary is intentionally one-way:

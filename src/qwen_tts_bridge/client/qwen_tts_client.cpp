@@ -208,8 +208,14 @@ SynthesizeMessage to_control_message(const TtsRequest& request) {
 
 QwenTtsClient::QwenTtsClient() = default;
 
-QwenTtsClient::~QwenTtsClient() {
-    stop();
+QwenTtsClient::~QwenTtsClient() noexcept {
+    // Destruction must not allow a custom transport's throwing stop() to
+    // escape.  stop() performs best-effort cleanup for ordinary callers.
+    try {
+        stop();
+    }
+    catch (...) {
+    }
 }
 
 bool QwenTtsClient::start(

@@ -118,6 +118,21 @@ The review-only package is in the ignored local path
 evidence.  No release tag or GitHub release was created.
 They are evidence, not release assets.
 
+## PR #321-#326 coverage
+
+| Earlier PR | Final-tree disposition |
+| --- | --- |
+| #321 native portable packaging | Integrated and reworked in the current packaging/manifest and audit paths. |
+| #322 stale transport sends | Integrated through the later transport corrective history; the current transport tests cover the superseding implementation. |
+| #323 callback boundary | Integrated through the current callback/session implementation and CMake test wiring. |
+| #324 acceptance schemas | Integrated through the current schema and validator revisions. |
+| #325 bounded stdout | Runtime implementation integrated; the missing protocol backpressure contract is restored in `docs/protocol-v1.md`. |
+| #326 lifecycle corrective | Later stop-ownership code is retained; the omitted `WorkerSession` destructor exception boundary and throwing-transport regressions are restored in the current corrective. |
+
+No unique implementation from #321-#325 is intentionally left only on its old
+branch. Those PRs should be closed as superseded only after #327 is merged;
+#326 likewise remains historical and must not be merged separately.
+
 ## Remaining gates
 
 R1 remains NO-GO until all of the following are independently recorded for the

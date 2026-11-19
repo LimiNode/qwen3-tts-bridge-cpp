@@ -95,7 +95,7 @@ public:
         WorkerSessionOptions options = {});
 
     /// \brief Stops the transport if it is still running.
-    ~WorkerSession();
+    ~WorkerSession() noexcept;
 
     WorkerSession(const WorkerSession&) = delete;
     WorkerSession& operator=(const WorkerSession&) = delete;

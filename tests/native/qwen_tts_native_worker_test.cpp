@@ -301,6 +301,40 @@ public:
             " --max-admitted-requests 16";
         std::vector<char> command_line(command.begin(), command.end());
         command_line.push_back('\0');
+
+        struct EnvironmentSnapshot {
+            const char* name;
+            bool existed = false;
+            std::string value;
+        };
+        std::array<EnvironmentSnapshot, 3> environment_snapshots{{
+            {"QTB_TEST_NATIVE_PREFILL_STDERR"},
+            {"QTB_FAKE_RELEASE_PATH"},
+            {"QTB_FAKE_BARRIER_READY_PATH"},
+        }};
+        for (auto& snapshot : environment_snapshots) {
+            const DWORD required = GetEnvironmentVariableA(snapshot.name, nullptr, 0);
+            if (required == 0) {
+                snapshot.existed = GetLastError() != ERROR_ENVVAR_NOT_FOUND;
+                continue;
+            }
+            snapshot.existed = true;
+            std::string value(required, '\0');
+            const DWORD length = GetEnvironmentVariableA(
+                snapshot.name, value.data(), required);
+            if (length < required) {
+                value.resize(length);
+                snapshot.value = std::move(value);
+            }
+        }
+        const auto restore_environment = [&environment_snapshots]() {
+            for (const auto& snapshot : environment_snapshots) {
+                SetEnvironmentVariableA(
+                    snapshot.name,
+                    snapshot.existed ? snapshot.value.c_str() : nullptr);
+            }
+        };
+
         SetEnvironmentVariableA("QTB_TEST_NATIVE_PREFILL_STDERR", "1");
         SetEnvironmentVariableA(
             "QTB_FAKE_RELEASE_PATH",
@@ -315,9 +349,11 @@ public:
         startup.hStdOutput = stdout_write_;
         startup.hStdError = stderr_write_;
         PROCESS_INFORMATION process{};
-        if (!CreateProcessA(
+        const BOOL created = CreateProcessA(
                 nullptr, command_line.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW,
-                nullptr, nullptr, &startup, &process)) {
+                nullptr, nullptr, &startup, &process);
+        restore_environment();
+        if (!created) {
             return false;
         }
         CloseHandle(process.hThread);

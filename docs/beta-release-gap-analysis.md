@@ -69,8 +69,11 @@ with partial listening, not full current-candidate acceptance; see the
 
 ### B3. tts-front revision (P1) — dependency update complete
 
-The submodule is now pinned to v0.2.5 (`d1b6a6e18e7f51f8c51fff548bb84f10e749004a`).
-The bridge-level v0.2.2-to-v0.2.5 comparison is recorded in
+The submodule is now pinned to focused corrective commit
+`64f73182d26de60af6c082724b1b199eb7310620`, based on the published v0.2.5
+line and not itself a v0.2.6 release. The historical v0.2.5 baseline
+`d1b6a6e18e7f51f8c51fff548bb84f10e749004a` remains the candidate for the
+bridge-level v0.2.2-to-v0.2.5 comparison recorded in
 `docs/reports/tts-front-v022-v025-effective-text.md`.
 
 * Owner: `external/cpp/tts-front-cpp` and the bridge adapter.
@@ -78,9 +81,9 @@ The bridge-level v0.2.2-to-v0.2.5 comparison is recorded in
   tests, and compare effective UTF-8 text and diagnostics on the fixed corpus.
   The comparison found 13 unchanged cases, three intended effective-text
   changes, one intended diagnostic-only change, and no regressions.
-* Acceptance: exact v0.2.5 tag/provenance and the comparison receipt are
-  recorded. Targeted listening for the three changed text surfaces remains a
-  separate release gate. Do not mix that gate with worker hardening.
+* Acceptance: the corrective commit and historical v0.2.5 provenance are
+  recorded separately. Targeted listening for the three changed text surfaces
+  remains a separate release gate. Do not mix that gate with worker hardening.
 
 ### B4. Native promotion boundary (P1/P2)
 

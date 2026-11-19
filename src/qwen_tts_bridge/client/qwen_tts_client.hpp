@@ -80,7 +80,7 @@ public:
     QwenTtsClient();
 
     /// \brief Stops the worker session if still running.
-    ~QwenTtsClient();
+    ~QwenTtsClient() noexcept;
 
     QwenTtsClient(const QwenTtsClient&) = delete;
     QwenTtsClient& operator=(const QwenTtsClient&) = delete;
