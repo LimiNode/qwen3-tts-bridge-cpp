@@ -234,6 +234,14 @@ Assert-File $instructions "native package launch instructions"
 Assert-NoPathOverlap "instructions" $instructions "output" $resolvedOutput
 Assert-NoPathOverlap "instructions" $instructions "staging" $resolvedStaging
 Assert-NoPathOverlap "instructions" $instructions "zip" $resolvedZip
+$launchers = @('scripts/start-native-play.ps1', 'scripts/ensure-native-models.ps1')
+foreach ($launcher in $launchers) {
+    $path = Resolve-InputPath $launcher
+    Assert-File $path 'native package launcher'
+    Assert-NoPathOverlap 'launcher' $path 'output' $resolvedOutput
+    Assert-NoPathOverlap 'launcher' $path 'staging' $resolvedStaging
+    Assert-NoPathOverlap 'launcher' $path 'zip' $resolvedZip
+}
 
 $outputWasOwned = $false
 if (Test-Path -LiteralPath $resolvedOutput) {
@@ -287,6 +295,11 @@ try {
     $docsRoot = Join-Path $staging "docs"
     New-Item -ItemType Directory -Force -Path $docsRoot | Out-Null
     Copy-Item -LiteralPath $instructions -Destination (Join-Path $docsRoot "native-portable-package.md")
+    $scriptsRoot = Join-Path $staging 'scripts'
+    New-Item -ItemType Directory -Force -Path $scriptsRoot | Out-Null
+    foreach ($launcher in $launchers) {
+        Copy-Item -LiteralPath (Resolve-InputPath $launcher) -Destination $scriptsRoot
+    }
     $licenseRoot = Join-Path $staging "licenses"
     New-Item -ItemType Directory -Force -Path $licenseRoot | Out-Null
     foreach ($notice in $notices) {

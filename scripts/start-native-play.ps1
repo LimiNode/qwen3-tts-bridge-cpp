@@ -1,12 +1,18 @@
 [CmdletBinding()]
 param(
-    [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\native-worker.local.json'),
+    [string]$ConfigPath = '',
     [string]$VoiceRegistryPath = '',
     [string]$ModelRoot = '',
     [string]$ModelProfile = '',
     [string]$TalkerModel = '',
     [string]$CodecModel = '',
     [string]$Text,
+    [string]$Language = 'auto',
+    [string]$VoiceId = '',
+    [string]$OutputWav = '',
+    [string]$ResultJson = '',
+    [uint32]$StartupTimeoutMs = 30000,
+    [uint32]$RequestTimeoutMs = 300000,
     [switch]$NoPlayback,
     [switch]$NoTtsFront,
     [switch]$NoDownload,
@@ -14,19 +20,31 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if (-not $ConfigPath) {
+    $ConfigPath = Join-Path $root 'config/native-worker.local.json'
+    if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
+        $ConfigPath = Join-Path $root 'config/native-package.example.json'
+    }
+}
 if ($NoDownload -and $Offline) {
     throw '-NoDownload and -Offline are mutually exclusive'
 }
 if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
     throw "native worker config was not found: $ConfigPath (copy config/native-worker.example.json to native-worker.local.json)"
 }
-$config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+$config = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $required = 'player', 'worker', 'runtime_dir'
 foreach ($name in $required) {
     if (-not $config.$name) { throw "native worker config field '$name' is required" }
 }
 
-$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if ($OutputWav -and -not $PSBoundParameters.ContainsKey('Text')) {
+    throw '-OutputWav requires -Text'
+}
+if ($ResultJson -and -not $OutputWav) {
+    throw '-ResultJson requires -OutputWav'
+}
 function Resolve-BundlePath([string]$value) {
     if ([System.IO.Path]::IsPathRooted($value)) { return $value }
     return Join-Path $root $value
@@ -51,6 +69,10 @@ if ($selectedProfile) {
         throw "native model profile was not found: $selectedProfile"
     }
     $profile = $profileProperty.Value
+}
+if ($Text -and $Text.Contains([string][char]0x0301) -and
+    (-not $profile -or $profile.text_render_capability -ne 'explicit_combining_stress')) {
+    throw 'Explicit U+0301 stress requires a compatible model profile'
 }
 $configuredModelRoot = if ($ModelRoot) {
     $ModelRoot
@@ -112,6 +134,7 @@ $ensureParams = @{
     TalkerModel = $talkerModel
     CodecModel = $codecModel
 }
+if ($config.require_model_hashes) { $ensureParams.RequireHash = $true }
 if ($download) {
     if ($download.talker_url) { $ensureParams.TalkerUrl = [string]$download.talker_url }
     if ($download.codec_url) { $ensureParams.CodecUrl = [string]$download.codec_url }
@@ -121,8 +144,8 @@ if ($download) {
 $model_missing =
     -not (Test-Path -LiteralPath $talkerModel -PathType Leaf) -or
     -not (Test-Path -LiteralPath $codecModel -PathType Leaf)
-if (-not $NoDownload) {
-    if ($Offline) {
+if ($config.require_model_hashes -or -not $NoDownload) {
+    if ($Offline -or $NoDownload) {
         $ensureParams.Offline = $true
     }
     elseif ($model_missing) {
@@ -130,7 +153,6 @@ if (-not $NoDownload) {
         $ensureParams.RequireHash = $true
     }
     & $ensureScript @ensureParams | Out-Host
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 $workerArgs = @(
@@ -164,11 +186,22 @@ if ($config.warmup_synthesis) {
     if ($config.warmup_voice_id) { $workerArgs += @('--warmup-voice-id', [string]$config.warmup_voice_id) }
 }
 
-$player = Resolve-BundlePath $config.player
+$executable = if ($OutputWav) {
+    if (-not $config.save_wav) { throw "native worker config field 'save_wav' is required for -OutputWav" }
+    Resolve-BundlePath $config.save_wav
+}
+else { Resolve-BundlePath $config.player }
 $worker = Resolve-BundlePath $config.worker
 $args = @('--worker', $worker)
 foreach ($value in $workerArgs) { $args += @('--worker-arg', $value) }
-if ($NoPlayback) { $args += '--no-playback' }
+if ($OutputWav) {
+    if (-not $ResultJson) { $ResultJson = "$OutputWav.result.json" }
+    $args += @('--output', $OutputWav, '--result-json', $ResultJson, '--require-natural-eos')
+}
+elseif ($NoPlayback) { $args += '--no-playback' }
+$args += @('--language', $Language, '--startup-timeout-ms', [string]$StartupTimeoutMs,
+    '--request-timeout-ms', [string]$RequestTimeoutMs)
+if ($VoiceId) { $args += @('--voice-id', $VoiceId) }
 if ($NoTtsFront) {
     $args += '--no-tts-front'
 }
@@ -178,5 +211,5 @@ elseif ($profile -and $profile.text_render_capability -eq 'explicit_combining_st
     $args += '--tts-front-explicit-stress'
 }
 if ($PSBoundParameters.ContainsKey('Text')) { $args += @('--text', $Text) }
-& $player @args
+& $executable @args
 exit $LASTEXITCODE

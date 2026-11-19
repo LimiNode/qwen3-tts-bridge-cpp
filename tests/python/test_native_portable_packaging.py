@@ -183,6 +183,8 @@ class NativePortablePackagingContractTests(unittest.TestCase):
             "models_included = $false",
             ".qtb-native-release-root",
             "audit-native-dependencies.py",
+            "scripts/start-native-play.ps1",
+            "scripts/ensure-native-models.ps1",
         ):
             self.assertIn(token, script)
 
@@ -388,6 +390,11 @@ class NativePortablePackagingContractTests(unittest.TestCase):
         self.assertEqual(config["runtime_dir"], "runtime/qwentts")
         self.assertEqual(config["model_root"], "models")
         self.assertEqual(config["default_model_profile"], "ru-stress")
+        self.assertEqual(config["save_wav"], "bin/qwen_tts_save_wav.exe")
+        self.assertTrue(config["require_model_hashes"])
+        for profile in config["model_profiles"].values():
+            for key in ("talker_sha256", "codec_sha256"):
+                self.assertRegex(profile["model_download"][key], r"^[0-9a-f]{64}$")
         self.assertNotIn("sm75", config["runtime_dir"].lower())
         self.assertEqual(
             config["model_profiles"]["base"]["talker_model"],

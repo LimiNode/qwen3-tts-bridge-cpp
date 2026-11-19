@@ -16,6 +16,8 @@ runtime/qwentts/<GGML and CUDA DLL closure>
 runtime/qwentts/manifest.json
 config/native-dependency-policy.json
 config/native-package.example.json
+scripts/start-native-play.ps1
+scripts/ensure-native-models.ps1
 dependency-inventory.json
 release-manifest.json
 SHA256SUMS.txt
@@ -58,6 +60,9 @@ relocation. It intentionally contains no CMP-specific runtime name or checkout
 path.
 The example selects the experimental `ru-stress` profile as the intended R1
 default; this remains conditional on the dual-GPU and human-listening gates.
+It pins the converted native Q8_0 talker and shared codec SHA-256 values from
+the recorded model provenance. Both are checked before launch, including when
+`-NoDownload` is supplied. Models are external; URLs are intentionally absent.
 
 The command fails closed when the runtime manifest is missing, a hash differs,
 an import/export cannot be resolved, a path overlaps an input, a reparse point
@@ -76,7 +81,81 @@ notice inventory for a release.
 ## Relocation gate
 
 Extract the ZIP outside the source checkout, provision models explicitly, and
-run the native worker with `--runtime-dir runtime/qwentts`. Verify the ready
+use the packaged launcher without a source checkout, Python, or PyTorch.
+Install the exact model files below the extracted `models/` directory using
+the profile-relative paths in `config/native-package.example.json`, or supply
+`-ModelRoot` with an external model root of the same layout. The RU-stress pair
+is the **converted split GGUF** pair, not the upstream ONNX codec. Hash failure
+is an error, not permission to silently substitute another model.
+
+Provision a compatible native voice registry and its managed reference files
+separately (no user recordings are shipped). For example, put a PCM16 mono
+24 kHz reference WAV at `config/voices/approved_voice/reference.wav` and create
+`config/voice-profiles.json` with its exact spoken transcript:
+
+```json
+{
+  "schema_version": 1,
+  "voices": [{
+    "voice_id": "approved_voice",
+    "reference_audio_path": "voices/approved_voice/reference.wav",
+    "reference_text": "Exact words spoken in the reference WAV.",
+    "x_vector_only": false
+  }]
+}
+```
+
+The native worker extracts the reference at startup; no Python tool is needed.
+Use absolute paths in a machine-local registry or paths relative to that
+registry, not paths into a developer checkout. Existing persisted references
+are model-bound: do not reuse a RU-stress `.spk`/`.rvq` manifest with Base or
+vice versa. The WAV-only row above works with either selected model profile.
+
+From an extracted directory such as `D:\Native Acceptance\QwenTTSBridge-native`:
+
+```powershell
+# Run with Windows PowerShell 5.1+; no repository checkout is needed.
+$bundle = (Get-Location).Path
+$launch = Join-Path $bundle 'scripts/start-native-play.ps1'
+$voice = Join-Path $bundle 'config/voice-profiles.json'
+
+# RU-stress Q8_0 + TTS Front by default; no physical playback.
+& $launch -Offline -VoiceRegistryPath $voice -VoiceId approved_voice `
+  -Language russian -Text 'Вчера я купил 2 книги.' `
+  -OutputWav .\ru-front.wav -ResultJson .\ru-front.result.json `
+  -StartupTimeoutMs 300000
+if ($LASTEXITCODE -ne 0) { throw 'Native synthesis failed' }
+
+# Explicit Base selection, then byte-for-byte raw-text frontend opt-out.
+& $launch -Offline -VoiceRegistryPath $voice -VoiceId approved_voice `
+  -ModelProfile base -Language english -Text 'I bought 2 books.' `
+  -NoTtsFront -OutputWav .\base-raw.wav
+if ($LASTEXITCODE -ne 0) { throw 'Native synthesis failed' }
+
+# Interactive physical playback uses the same package/model configuration.
+& $launch -Offline -VoiceRegistryPath $voice -VoiceId approved_voice -Language russian
+```
+
+By default the launcher uses `config/native-worker.local.json` when present,
+otherwise the shipped `config/native-package.example.json`. `-ConfigPath`
+selects an explicit configuration. Bundle paths are resolved from the script,
+not the current working directory; output paths remain caller-relative.
+`-OutputWav` selects `qwen_tts_save_wav.exe`, requires `-Text`, always requests
+natural EOS, and defaults the JSON receipt to `<output>.result.json`.
+Existing WAV/JSON paths are rejected by the executable. The JSON is terminal
+generation evidence; retain console/worker logs and package/model manifests
+beside it for effective text, runtime identity, and acceptance provenance.
+
+TTS Front is enabled by default in both packaged executables.
+`-NoTtsFront` sends raw text and never enables the explicit-stress renderer.
+With the frontend enabled the launcher derives the combining-accent capability
+only from the selected profile; Base never receives automatically rendered
+U+0301. An input that already contains U+0301 is rejected for a profile without
+that capability. Enter Russian and explicit accents in a Unicode-aware shell;
+save repeatable `.ps1` files as UTF-8 **with BOM** for Windows PowerShell 5.1.
+
+For direct worker probes, use `bin/qwen_tts_native_worker.exe` with
+`--runtime-dir runtime/qwentts` and explicit model paths. Verify the ready
 handshake, non-empty PCM, natural EOS, repeated requests, cancellation and
 restart before making a support claim. Run the same sealed package on CMP 50HX
 and RTX 4090 and retain the package manifest, runtime manifest, dependency
