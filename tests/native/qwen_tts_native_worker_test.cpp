@@ -34,9 +34,17 @@
 #include <utility>
 #include <vector>
 
+namespace {
+std::ofstream child_failure_receipt;
+
+std::ostream& test_diagnostics() {
+    return child_failure_receipt.is_open() ? child_failure_receipt : std::cerr;
+}
+}
+
 #define CHECK(expr) do { \
     if (!(expr)) { \
-        std::cerr << "CHECK failed: " #expr << " at " << __FILE__ << ':' << __LINE__ << '\n'; \
+        test_diagnostics() << "CHECK failed: " #expr << " at " << __FILE__ << ':' << __LINE__ << std::endl; \
         return EXIT_FAILURE; \
     } \
 } while (false)
@@ -278,7 +286,9 @@ public:
 
     bool start(
         const std::filesystem::path& release_barrier = {},
-        const std::filesystem::path& barrier_ready = {}) {
+        const std::filesystem::path& barrier_ready = {},
+        const std::string& callback_failure_mode = {},
+        bool prefill_stderr = true) {
         SECURITY_ATTRIBUTES security_attributes{};
         security_attributes.nLength = sizeof(security_attributes);
         security_attributes.bInheritHandle = TRUE;
@@ -307,10 +317,12 @@ public:
             bool existed = false;
             std::string value;
         };
-        std::array<EnvironmentSnapshot, 3> environment_snapshots{{
+        std::array<EnvironmentSnapshot, 5> environment_snapshots{{
             {"QTB_TEST_NATIVE_PREFILL_STDERR"},
+            {"QTB_TEST_NATIVE_STALL_STDERR"},
             {"QTB_FAKE_RELEASE_PATH"},
             {"QTB_FAKE_BARRIER_READY_PATH"},
+            {"QTB_TEST_NATIVE_CALLBACK_FAILURE"},
         }};
         for (auto& snapshot : environment_snapshots) {
             const DWORD required = GetEnvironmentVariableA(snapshot.name, nullptr, 0);
@@ -335,13 +347,17 @@ public:
             }
         };
 
-        SetEnvironmentVariableA("QTB_TEST_NATIVE_PREFILL_STDERR", "1");
+        SetEnvironmentVariableA("QTB_TEST_NATIVE_PREFILL_STDERR", prefill_stderr ? "1" : nullptr);
+        SetEnvironmentVariableA("QTB_TEST_NATIVE_STALL_STDERR", prefill_stderr ? nullptr : "1");
         SetEnvironmentVariableA(
             "QTB_FAKE_RELEASE_PATH",
             release_barrier.empty() ? nullptr : release_barrier.string().c_str());
         SetEnvironmentVariableA(
             "QTB_FAKE_BARRIER_READY_PATH",
             barrier_ready.empty() ? nullptr : barrier_ready.string().c_str());
+        SetEnvironmentVariableA(
+            "QTB_TEST_NATIVE_CALLBACK_FAILURE",
+            callback_failure_mode.empty() ? nullptr : callback_failure_mode.c_str());
         STARTUPINFOA startup{};
         startup.cb = sizeof(startup);
         startup.dwFlags = STARTF_USESTDHANDLES;
@@ -438,6 +454,8 @@ public:
     struct TerminalResult {
         ControlMessageType type = ControlMessageType::Queued;
         CompletedMessage completed;
+        bool has_error = false;
+        ErrorMessage error;
         std::size_t audio_frames = 0;
     };
 
@@ -474,7 +492,9 @@ public:
                     result.type = ControlMessageType::Cancelled;
                     return true;
                 }
-                return false;
+                result.has_error = true;
+                result.error = observed->second.error;
+                return true;
             }
             Frame ignored;
             if (!read_frame(ignored)) {
@@ -483,8 +503,8 @@ public:
         }
     }
 
-    bool shutdown() {
-        if (!send(0, ControlMessage{ShutdownMessage{}})) {
+    bool shutdown(bool expect_fatal_exit = false) {
+        if (!expect_fatal_exit && !send(0, ControlMessage{ShutdownMessage{}})) {
             return false;
         }
         CloseHandle(stdin_write_);
@@ -495,6 +515,13 @@ public:
                 return false;
             }
             if (WaitForSingleObject(process_, 0) == WAIT_OBJECT_0) {
+                if (expect_fatal_exit) {
+                    DWORD exit_code = 0;
+                    if (!GetExitCodeProcess(process_, &exit_code) || exit_code != EXIT_FAILURE) {
+                        test_diagnostics() << "expected fatal exit=1; actual=" << exit_code << std::endl;
+                        return false;
+                    }
+                }
                 return drain_available_output();
             }
             if (std::chrono::steady_clock::now() >= deadline) {
@@ -519,6 +546,7 @@ private:
         std::set<ControlMessageType> control_types;
         TerminalKind terminal = TerminalKind::None;
         CompletedMessage completed;
+        ErrorMessage error;
     };
 
     bool observe_frame(const Frame& frame) {
@@ -531,11 +559,13 @@ private:
             return true;
         }
         if (frame.header.frame_type == FrameType::ErrorJson) {
-            if (!decode_error_message(frame.payload) ||
+            const auto decoded = decode_error_message(frame.payload);
+            if (!decoded ||
                 observation.terminal != TerminalKind::None) {
                 return false;
             }
             observation.terminal = TerminalKind::Error;
+            observation.error = decoded.message;
             return true;
         }
         if (frame.header.frame_type != FrameType::ControlJson) {
@@ -577,7 +607,9 @@ private:
             }
             DWORD available = 0;
             if (!PeekNamedPipe(stdout_read_, nullptr, 0, nullptr, &available, nullptr)) {
-                return WaitForSingleObject(process_, 0) == WAIT_OBJECT_0;
+                // Closing stdout can precede the process handle becoming
+                // signalled. The caller still enforces its exit deadline.
+                return GetLastError() == ERROR_BROKEN_PIPE;
             }
             if (available == 0) {
                 return true;
@@ -1055,183 +1087,60 @@ int run_callback_failure_watchdog(const char* executable) {
     return EXIT_SUCCESS;
 }
 
-int run_fatal_stderr_stall_e2e() {
-    std::atomic<bool> ready_seen{false};
-    std::atomic<bool> release_stderr{false};
-    std::atomic<int> terminal_errors{0};
-    auto stalled_options = options(8);
-    stalled_options.environment_overrides.emplace(
-        "QTB_TEST_NATIVE_CALLBACK_FAILURE", "runtime_error_first");
-    stalled_options.environment_overrides.emplace("QTB_TEST_NATIVE_STALL_STDERR", "1");
-    stalled_options.stderr_handler = [&ready_seen, &release_stderr](std::string message) {
-        if (!ready_seen.load(std::memory_order_acquire) &&
-            message.find("native-worker:info") != std::string::npos) {
-            ready_seen.store(true, std::memory_order_release);
-            return;
+int run_stalled_stderr_fatal_e2e(bool prefill_stderr) {
+    const auto release_path = std::filesystem::absolute("native-direct-fatal-release.flag");
+    const auto barrier_ready_path = std::filesystem::absolute("native-direct-fatal-ready.flag");
+    struct BarrierCleanup {
+        std::filesystem::path release_path;
+        std::filesystem::path ready_path;
+        ~BarrierCleanup() {
+            std::error_code error;
+            std::filesystem::remove(release_path, error);
+            std::filesystem::remove(ready_path, error);
         }
-        if (!ready_seen.load(std::memory_order_acquire) || message.size() < 4096) {
-            return;
-        }
-        while (!release_stderr.load(std::memory_order_acquire)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    };
+    } cleanup{release_path, barrier_ready_path};
+    std::error_code error;
+    std::filesystem::remove(release_path, error);
+    std::filesystem::remove(barrier_ready_path, error);
 
-    QwenTtsClient client;
-    QwenTtsClientOptions client_options;
-    client_options.session.startup_timeout = std::chrono::seconds(5);
-    CHECK(client.start(std::move(stalled_options), client_options));
-    ReadyMessage ready;
-    const auto ready_message_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    while (!client.ready_message(ready) &&
-           std::chrono::steady_clock::now() < ready_message_deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // Stalling StdIoTransport's stderr callback also stalls its shared Receive
+    // dispatcher. Use independent pipes to test the worker, not that dispatcher.
+    DirectPipeNativeWorker worker;
+    CHECK(worker.start(release_path, barrier_ready_path, "runtime_error_first", prefill_stderr));
+    if (prefill_stderr) {
+        CHECK(worker.wait_for_stderr_saturation());
     }
-    CHECK(client.ready_message(ready));
-
-    std::array<Probe, 3> probes;
-    for (std::size_t index = 0; index < probes.size(); ++index) {
-        auto& probe = probes[index];
-        TtsCallbacks callbacks;
-        callbacks.on_error = [&probe, &terminal_errors, &release_stderr](const TtsError& error) {
-            std::lock_guard<std::mutex> lock(probe.mutex);
-            probe.errors.push_back(error);
-            probe.condition.notify_all();
-            if (terminal_errors.fetch_add(1, std::memory_order_acq_rel) == 2) {
-                release_stderr.store(true, std::memory_order_release);
-            }
-        };
-        callbacks.on_completed = [&probe]() {
-            std::lock_guard<std::mutex> lock(probe.mutex);
-            ++probe.completed;
-            probe.condition.notify_all();
-        };
-        CHECK(client.synthesize_async("stderr stall fatal request", callbacks) != 0);
+    CHECK(worker.send(0, ControlMessage{HelloMessage{"direct-stderr-fatal-test", "0.2.0"}}));
+    CHECK(worker.wait_for_control_type(0, ControlMessageType::Ready));
+    SynthesizeMessage request;
+    request.text = "barrier callback";
+    CHECK(worker.send(301, ControlMessage{request}));
+    CHECK(worker.wait_for_control_type(301, ControlMessageType::Started));
+    CHECK(DirectPipeNativeWorker::wait_for_file(barrier_ready_path));
+    request.text = "pending fatal request";
+    for (const RequestId id : {302u, 303u}) {
+        CHECK(worker.send(id, ControlMessage{request}));
+        CHECK(worker.wait_for_control_type(id, ControlMessageType::Queued));
     }
-
-    for (std::size_t index = 0; index < probes.size(); ++index) {
-        auto& probe = probes[index];
-        std::unique_lock<std::mutex> lock(probe.mutex);
-        CHECK(probe.condition.wait_for(lock, std::chrono::seconds(5), [&probe]() {
-            return !probe.errors.empty() || probe.completed != 0;
-        }));
-        CHECK(probe.completed == 0);
-        CHECK(probe.errors.size() == 1);
-        if (index == 0) {
-            CHECK(probe.errors.front().category == "internal_error");
-            CHECK(probe.errors.front().code == "audio_callback_exception");
-        }
-        else {
-            CHECK(probe.errors.front().category == "worker_error");
-            CHECK(probe.errors.front().code == "worker_fatal");
-        }
+    // Both pending requests are admitted before the active callback can fail.
+    {
+        std::ofstream release(release_path, std::ios::binary);
+        release << "release";
+        CHECK(release.good());
     }
-
-    release_stderr.store(true, std::memory_order_release);
-    client.stop();
-    CHECK(!client.is_running());
-    return EXIT_SUCCESS;
-}
-
-int run_pre_stalled_stderr_fatal_e2e() {
-    std::atomic<bool> large_diagnostic_seen{false};
-    std::atomic<bool> release_stderr{false};
-    std::atomic<int> terminal_errors{0};
-    auto stalled_options = options(8);
-    stalled_options.environment_overrides.emplace(
-        "QTB_TEST_NATIVE_CALLBACK_FAILURE", "runtime_error_first");
-    stalled_options.environment_overrides.emplace("QTB_TEST_NATIVE_PREFILL_STDERR", "1");
-    stalled_options.stderr_handler = [&large_diagnostic_seen, &release_stderr](std::string message) {
-        if (message.size() < 4096) {
-            return;
-        }
-        large_diagnostic_seen.store(true, std::memory_order_release);
-        while (!release_stderr.load(std::memory_order_acquire)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    };
-
-    QwenTtsClient client;
-    QwenTtsClientOptions client_options;
-    client_options.session.startup_timeout = std::chrono::seconds(5);
-    CHECK(client.start(std::move(stalled_options), client_options));
-    ReadyMessage ready;
-    const auto ready_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    while (!client.ready_message(ready) &&
-           std::chrono::steady_clock::now() < ready_deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    CHECK(worker.wait_for_stderr_saturation());
+    for (const RequestId id : {301u, 302u, 303u}) {
+        DirectPipeNativeWorker::TerminalResult result;
+        CHECK(worker.wait_for_terminal(id, result));
+        test_diagnostics() << "request=" << id << " error=" << result.has_error
+                           << ' ' << result.error.category << ':' << result.error.code
+                           << " audio_frames=" << result.audio_frames << std::endl;
+        CHECK(result.has_error);
+        CHECK(result.audio_frames == 0);
+        CHECK(result.error.category == (id == 301 ? "internal_error" : "worker_error"));
+        CHECK(result.error.code == (id == 301 ? "audio_callback_exception" : "worker_fatal"));
     }
-    CHECK(client.ready_message(ready));
-
-    std::array<Probe, 3> probes;
-    for (auto& probe : probes) {
-        TtsCallbacks callbacks;
-        callbacks.on_error = [&probe, &terminal_errors](const TtsError& error) {
-            std::lock_guard<std::mutex> lock(probe.mutex);
-            probe.errors.push_back(error);
-            probe.condition.notify_all();
-            terminal_errors.fetch_add(1, std::memory_order_acq_rel);
-        };
-        callbacks.on_completed = [&probe]() {
-            std::lock_guard<std::mutex> lock(probe.mutex);
-            ++probe.completed;
-            probe.condition.notify_all();
-        };
-        CHECK(client.synthesize_async("pre-stalled stderr fatal request", callbacks) != 0);
-    }
-    const auto diagnostic_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    while (!large_diagnostic_seen.load(std::memory_order_acquire) &&
-           std::chrono::steady_clock::now() < diagnostic_deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    CHECK(large_diagnostic_seen.load(std::memory_order_acquire));
-
-    bool all_terminal_errors_observed = true;
-    for (std::size_t index = 0; index < probes.size(); ++index) {
-        auto& probe = probes[index];
-        std::unique_lock<std::mutex> lock(probe.mutex);
-        if (!probe.condition.wait_for(lock, std::chrono::seconds(5), [&probe]() {
-            return !probe.errors.empty() || probe.completed != 0;
-        })) {
-            all_terminal_errors_observed = false;
-            break;
-        }
-        if (probe.completed != 0 || probe.errors.size() != 1) {
-            all_terminal_errors_observed = false;
-            break;
-        }
-        if (index == 0) {
-            if (probe.errors.front().category != "internal_error" ||
-                probe.errors.front().code != "audio_callback_exception") {
-                all_terminal_errors_observed = false;
-                break;
-            }
-        }
-        else {
-            if (probe.errors.front().category != "worker_error" ||
-                probe.errors.front().code != "worker_fatal") {
-                all_terminal_errors_observed = false;
-                break;
-            }
-        }
-    }
-    release_stderr.store(true, std::memory_order_release);
-    client.stop();
-    if (!all_terminal_errors_observed) {
-        std::cerr << "pre-stalled stderr terminal check failed; counts=";
-        for (auto& probe : probes) {
-            std::lock_guard<std::mutex> lock(probe.mutex);
-            std::cerr << probe.errors.size() << "/" << probe.completed << ' ';
-            if (!probe.errors.empty()) {
-                std::cerr << probe.errors.front().category << ':' << probe.errors.front().code
-                          << ':' << probe.errors.front().message << ' ';
-            }
-        }
-        std::cerr << " total=" << terminal_errors.load(std::memory_order_acquire) << '\n';
-    }
-    CHECK(all_terminal_errors_observed);
-    CHECK(terminal_errors.load(std::memory_order_acquire) == 3);
-    CHECK(!client.is_running());
+    CHECK(worker.shutdown(true));
     return EXIT_SUCCESS;
 }
 
@@ -1320,8 +1229,16 @@ int run_pre_stalled_stderr_cancel_e2e() {
     return EXIT_SUCCESS;
 }
 
-int run_stalled_stderr_watchdog(const char* executable, const char* child_argument) {
-    std::string command = "\"" + std::string(executable) + "\" " + child_argument;
+int run_stalled_stderr_watchdog(
+    const char* executable, const char* child_argument, DWORD deadline_ms = 15000) {
+    const auto receipt_directory = std::filesystem::absolute(
+        std::filesystem::path(__FILE__).parent_path().parent_path().parent_path() /
+        ".tmp/native-worker-watchdogs");
+    std::filesystem::create_directories(receipt_directory);
+    const auto receipt_path = receipt_directory /
+        (std::string(child_argument) + '-' + std::to_string(GetCurrentProcessId()) + ".log");
+    std::string command = "\"" + std::string(executable) + "\" " + child_argument +
+        " \"" + receipt_path.string() + "\"";
     std::vector<char> command_line(command.begin(), command.end());
     command_line.push_back('\0');
     STARTUPINFOA startup{};
@@ -1330,73 +1247,57 @@ int run_stalled_stderr_watchdog(const char* executable, const char* child_argume
     CHECK(CreateProcessA(
         nullptr, command_line.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
         nullptr, nullptr, &startup, &process) != FALSE);
-    const DWORD wait_result = WaitForSingleObject(process.hProcess, 15000);
+    const DWORD wait_result = WaitForSingleObject(process.hProcess, deadline_ms);
     if (wait_result == WAIT_TIMEOUT) {
         TerminateProcess(process.hProcess, EXIT_FAILURE);
-        CloseHandle(process.hThread);
-        CloseHandle(process.hProcess);
+        WaitForSingleObject(process.hProcess, 2000);
         std::cerr << child_argument << " child exceeded watchdog deadline\n";
-        return EXIT_FAILURE;
     }
-    CHECK(wait_result == WAIT_OBJECT_0);
     DWORD exit_code = EXIT_FAILURE;
-    CHECK(GetExitCodeProcess(process.hProcess, &exit_code) != FALSE);
+    const BOOL exit_code_observed = GetExitCodeProcess(process.hProcess, &exit_code);
     CloseHandle(process.hThread);
     CloseHandle(process.hProcess);
-    CHECK(exit_code == EXIT_SUCCESS);
-    return EXIT_SUCCESS;
-}
-
-int run_pre_stalled_stderr_watchdog(const char* executable) {
-    std::string command = "\"" + std::string(executable) +
-        "\" --pre-stalled-stderr-fatal-child";
-    std::vector<char> command_line(command.begin(), command.end());
-    command_line.push_back('\0');
-
-    STARTUPINFOA startup{};
-    startup.cb = sizeof(startup);
-    PROCESS_INFORMATION process{};
-    CHECK(CreateProcessA(
-        nullptr,
-        command_line.data(),
-        nullptr,
-        nullptr,
-        FALSE,
-        CREATE_NO_WINDOW,
-        nullptr,
-        nullptr,
-        &startup,
-        &process) != FALSE);
-    const DWORD wait_result = WaitForSingleObject(process.hProcess, 12000);
-    if (wait_result == WAIT_TIMEOUT) {
-        TerminateProcess(process.hProcess, EXIT_FAILURE);
-        CloseHandle(process.hThread);
-        CloseHandle(process.hProcess);
-        std::cerr << "pre-stalled stderr child exceeded watchdog deadline\n";
+    if (wait_result != WAIT_OBJECT_0 || !exit_code_observed || exit_code != EXIT_SUCCESS) {
+        // The test subprocess writes here directly, independently of the
+        // worker's intentionally unread stderr pipe and inherited std handles.
+        std::ifstream receipt(receipt_path, std::ios::binary);
+        std::cerr << child_argument << " exit=" << exit_code
+                  << " diagnostic receipt: " << receipt_path << '\n'
+                  << std::string(std::istreambuf_iterator<char>(receipt),
+                                 std::istreambuf_iterator<char>());
         return EXIT_FAILURE;
     }
-    CHECK(wait_result == WAIT_OBJECT_0);
-    DWORD exit_code = EXIT_FAILURE;
-    CHECK(GetExitCodeProcess(process.hProcess, &exit_code) != FALSE);
-    CloseHandle(process.hThread);
-    CloseHandle(process.hProcess);
-    CHECK(exit_code == EXIT_SUCCESS);
+    std::error_code cleanup_error;
+    std::filesystem::remove(receipt_path, cleanup_error);
     return EXIT_SUCCESS;
 }
 
 }
 
 int main(int argc, char** argv) {
+    if (argc == 3) {
+        child_failure_receipt.open(argv[2], std::ios::binary | std::ios::trunc);
+        CHECK(child_failure_receipt.is_open());
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--pre-stalled-stderr-fatal-watchdog") == 0) {
+        return run_stalled_stderr_watchdog(argv[0], "--pre-stalled-stderr-fatal-child", 12000);
+    }
+    if (argc == 2 && std::strcmp(argv[1], "--fatal-stderr-stall-watchdog") == 0) {
+        return run_stalled_stderr_watchdog(argv[0], "--fatal-stderr-stall-child", 12000);
+    }
     if (argc == 2 && std::strcmp(argv[1], "--callback-failure-watchdog-child") == 0) {
         return run_callback_failure_e2e("runtime_error_after", true);
     }
-    if (argc == 2 && std::strcmp(argv[1], "--pre-stalled-stderr-fatal-child") == 0) {
-        return run_pre_stalled_stderr_fatal_e2e();
+    if ((argc == 2 || argc == 3) && std::strcmp(argv[1], "--pre-stalled-stderr-fatal-child") == 0) {
+        return run_stalled_stderr_fatal_e2e(true);
     }
-    if (argc == 2 && std::strcmp(argv[1], "--pre-stalled-stderr-streaming-child") == 0) {
+    if ((argc == 2 || argc == 3) && std::strcmp(argv[1], "--fatal-stderr-stall-child") == 0) {
+        return run_stalled_stderr_fatal_e2e(false);
+    }
+    if ((argc == 2 || argc == 3) && std::strcmp(argv[1], "--pre-stalled-stderr-streaming-child") == 0) {
         return run_pre_stalled_stderr_streaming_e2e();
     }
-    if (argc == 2 && std::strcmp(argv[1], "--pre-stalled-stderr-cancel-child") == 0) {
+    if ((argc == 2 || argc == 3) && std::strcmp(argv[1], "--pre-stalled-stderr-cancel-child") == 0) {
         return run_pre_stalled_stderr_cancel_e2e();
     }
 
@@ -2744,8 +2645,8 @@ int main(int argc, char** argv) {
     CHECK(run_callback_failure_e2e("runtime_error_after", true) == EXIT_SUCCESS);
     CHECK(run_callback_failure_e2e("bad_alloc_after", true) == EXIT_SUCCESS);
     CHECK(run_callback_failure_watchdog(argv[0]) == EXIT_SUCCESS);
-    CHECK(run_fatal_stderr_stall_e2e() == EXIT_SUCCESS);
-    CHECK(run_pre_stalled_stderr_watchdog(argv[0]) == EXIT_SUCCESS);
+    CHECK(run_stalled_stderr_watchdog(argv[0], "--fatal-stderr-stall-child", 12000) == EXIT_SUCCESS);
+    CHECK(run_stalled_stderr_watchdog(argv[0], "--pre-stalled-stderr-fatal-child", 12000) == EXIT_SUCCESS);
     CHECK(run_stalled_stderr_watchdog(argv[0], "--pre-stalled-stderr-streaming-child") == EXIT_SUCCESS);
     CHECK(run_stalled_stderr_watchdog(argv[0], "--pre-stalled-stderr-cancel-child") == EXIT_SUCCESS);
 
