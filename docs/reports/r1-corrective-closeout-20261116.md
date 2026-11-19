@@ -6,14 +6,16 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
-- Production source candidate:
-  `9a4525db` (the latest corrective decouples diagnostics from inference with
-  a bounded best-effort writer).
-- Tested PR/integration HEAD:
-  `2763d67e` (receipt-only documentation follows the production candidate).
+- Final production source candidate / tested PR HEAD:
+  `ea9ceaf2` (the lifecycle, protocol-contract, provenance and test-environment
+  corrective follows the bounded diagnostics baseline).
+- Bounded diagnostics production baseline:
+  `9a4525db` (decouples diagnostics from inference with a bounded best-effort
+  writer).
 - The corrective source commits include `cbd58ef3`, `e8806e9b`, and
-  `92a2dd53`, `7131d78d`, and `9a4525db`; Python lint/type corrective commits are
-  `34945218`, `6ce6441b`, and `4598d032`.
+  `92a2dd53`, `7131d78d`, `9a4525db`, `43963b1b`, `e5241096`, and
+  `ea9ceaf2`; Python lint/type corrective commits are `34945218`, `6ce6441b`,
+  and `4598d032`.
 - The existing package evidence predates this final source corrective and is
   therefore historical only; it must be regenerated before any release
   decision.
@@ -142,7 +144,7 @@ same frozen package/source/runtime/model identities:
 - CMP 50HX and RTX 4090 native qualification, including repeat/cancel/restart,
   physical playback and peak-memory measurements;
 - matched RU/EN A/B WAV corpus and human listening;
-- review-only GitHub CI for the exact tested PR HEAD `2763d67e`;
+- review-only GitHub CI for the exact final corrective PR HEAD `ea9ceaf2`;
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
@@ -152,6 +154,6 @@ and do not promote native Base/RU-stress support.
 The upstream frontend gate is closed by pinned `tts-front-cpp` fix `64f73182`;
 its complete Release corpus passed 12/12 and the bridge corpus now expects the
 correct feminine agreement. The remaining release gates are final package
-regeneration from `9a4525db`, clean relocation with real models, CMP 50HX and
+regeneration from `ea9ceaf2`, clean relocation with real models, CMP 50HX and
 RTX 4090 native qualification, matched A/B WAV listening, and review-only CI
-on `2763d67e`.
+on `ea9ceaf2`.
