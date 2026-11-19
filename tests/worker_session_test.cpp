@@ -8,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <stdexcept>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -74,6 +75,7 @@ std::vector<std::byte> audio_frame_bytes(RequestId request_id) {
 class ScriptedTransport final : public ITransport {
 public:
     bool start_return = true;
+    bool throw_on_stop = false;
     std::vector<SendResult> send_results;
     std::vector<Bytes> chunks_on_send;
     std::vector<std::string> errors_on_send;
@@ -126,6 +128,9 @@ public:
 
     void stop() override {
         running_ = false;
+        if (throw_on_stop) {
+            throw std::runtime_error("injected WorkerSession transport stop failure");
+        }
     }
 
     void emit(Bytes bytes) {
@@ -456,6 +461,18 @@ void test_invalid_options_and_repeated_start_are_rejected() {
     CHECK(!session.start());
 }
 
+void test_destructor_swallows_transport_stop_exception() {
+    auto transport = std::make_unique<ScriptedTransport>();
+    transport->chunks_on_send.push_back(ready_frame_bytes());
+    transport->throw_on_stop = true;
+
+    {
+        WorkerSession session = make_scripted_session(std::move(transport));
+        CHECK(session.start());
+        wait_for_control(session, ControlMessageType::Ready, 0);
+    }
+}
+
 } // namespace
 
 int main() {
@@ -472,5 +489,6 @@ int main() {
     test_send_control_failure_reports_transport_error();
     test_queue_overflow_prevents_startup_success();
     test_invalid_options_and_repeated_start_are_rejected();
+    test_destructor_swallows_transport_stop_exception();
     return 0;
 }

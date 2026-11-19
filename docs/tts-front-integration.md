@@ -1,9 +1,11 @@
 # tts-front-cpp integration
 
-The bridge uses the released `tts-front-cpp` v0.2.5 component, pinned as the
-`external/cpp/tts-front-cpp` submodule at commit
-`d1b6a6e18e7f51f8c51fff548bb84f10e749004a` (tag `v0.2.5`). The fixed
-v0.2.2-to-v0.2.5 effective-text comparison is recorded in
+The bridge uses `tts-front-cpp` from the focused upstream corrective commit
+`64f73182d26de60af6c082724b1b199eb7310620`, pinned in the
+`external/cpp/tts-front-cpp` submodule. This commit is based on the published
+v0.2.5 line; it is not itself a published v0.2.6 release. The earlier
+v0.2.5 baseline `d1b6a6e18e7f51f8c51fff548bb84f10e749004a` remains historical
+evidence for the fixed v0.2.2-to-v0.2.5 effective-text comparison recorded in
 `docs/reports/tts-front-v022-v025-effective-text.md`.
 
 The preparation boundary is intentionally one-way:
@@ -45,12 +47,13 @@ the core target remains independent from the frontend implementation.
 
 The experimental native `ru-stress` model profile is now load-compatible with
 the split GGUF runtime and advertises
-`text_render_capability: "explicit_combining_stress"`. Applications may select
-`TextRenderCapability::ExplicitCombiningStress` only when that profile is
-explicitly selected. The launcher still does not rewrite text automatically;
-the application composition layer must make the capability choice. The Base
-profile remains the default and stays model-neutral.
+`text_render_capability: "explicit_combining_stress"`. The R1 native example
+configuration selects this profile by default and the native launcher derives
+the explicit-stress renderer from that profile metadata. `--no-tts-front`
+remains an explicit raw-text opt-out. Selecting the Base profile keeps the
+renderer model-neutral and never adds combining marks.
 
-This is not a general production-default promotion. Keep listening,
-long-horizon, and cancellation acceptance evidence alongside the model
-provenance in `docs/russian-stress-model-compatibility.md`.
+This is a target R1 product default, not a completed release claim. Keep
+listening, long-horizon, dual-GPU, and cancellation acceptance evidence
+alongside the model provenance in
+`docs/russian-stress-model-compatibility.md` before publishing R1.

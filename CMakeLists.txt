@@ -11,6 +11,9 @@ include(CMakePackageConfigHelpers)
 
 option(QWEN_TTS_BRIDGE_BUILD_EXAMPLES "Build QwenTTSBridge examples" ON)
 option(QWEN_TTS_BRIDGE_BUILD_TESTS "Build QwenTTSBridge tests" ON)
+option(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS
+    "Include deterministic transport test seams in the bridge library"
+    OFF)
 option(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER "Build the optional qwentts.cpp process worker" OFF)
 option(QWEN_TTS_BRIDGE_BUILD_NATIVE_BACKEND
     "Build the opt-in qwentts.cpp/GGML native backend adapter" OFF)
@@ -158,6 +161,10 @@ add_library(QwenTTSBridge::qwen_tts_bridge ALIAS qwen_tts_bridge)
 
 target_compile_features(qwen_tts_bridge PUBLIC cxx_std_17)
 
+if(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+    target_compile_definitions(qwen_tts_bridge PRIVATE QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=1)
+endif()
+
 target_include_directories(qwen_tts_bridge
     PUBLIC
         $<BUILD_INTERFACE:${QWEN_TTS_BRIDGE_SRC_DIR}>
@@ -203,8 +210,9 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
             "Initialize external/cpp/qwentts.cpp before building the native worker")
     endif()
 
-    add_executable(qwen_tts_native_worker
+    set(QWEN_TTS_NATIVE_WORKER_SOURCES
         worker/native/qwentts/main.cpp
+        worker/native/qwentts/diagnostics.cpp
         worker/native/qwentts/native_engine.cpp
         worker/native/qwentts/prepared_voice_reference.cpp
         worker/native/qwentts/qwen_dll_loader.cpp
@@ -213,6 +221,7 @@ if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
         worker/native/qwentts/stdout_writer.cpp
         worker/native/qwentts/wav_reader.cpp
     )
+    add_executable(qwen_tts_native_worker ${QWEN_TTS_NATIVE_WORKER_SOURCES})
     # Keep the Windows min/max macros out of the native worker.  The worker
     # uses std::numeric_limits<>::max(), which otherwise collides with the
     # legacy max macro from windows.h under MSVC.
@@ -501,6 +510,12 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         PRIVATE
             QwenTTSBridge::qwen_tts_bridge
     )
+    if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
+        target_link_libraries(qwen_tts_save_wav
+            PRIVATE QwenTTSBridge::qwen_tts_bridge_tts_front)
+        target_compile_definitions(qwen_tts_save_wav
+            PRIVATE QWEN_TTS_BRIDGE_HAS_TTS_FRONT=1)
+    endif()
 
     target_link_libraries(qwen_tts_latency_benchmark
         PRIVATE
@@ -530,6 +545,12 @@ if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
             )
             target_compile_definitions(qwen_tts_play
                 PRIVATE QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION=1)
+        endif()
+        if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
+            target_link_libraries(qwen_tts_play
+                PRIVATE QwenTTSBridge::qwen_tts_bridge_tts_front)
+            target_compile_definitions(qwen_tts_play
+                PRIVATE QWEN_TTS_BRIDGE_HAS_TTS_FRONT=1)
         endif()
         if(MINGW)
             target_link_options(qwen_tts_play PRIVATE -municode)
@@ -636,6 +657,12 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/examples")
         target_link_libraries(qwen_tts_play_options_test
             PRIVATE QwenTTSBridge::qwen_tts_bridge_winmm_playback)
+        if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
+            # Keep option validation in this parser-only test consistent with
+            # the user-facing player target, whose default enables tts-front.
+            target_compile_definitions(qwen_tts_play_options_test
+                PRIVATE QWEN_TTS_BRIDGE_HAS_TTS_FRONT=1)
+        endif()
         if(QWEN_TTS_BRIDGE_BUILD_SPEECH_ANIMATION)
             target_compile_definitions(qwen_tts_play_options_test
                 PRIVATE QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION=1)
@@ -818,6 +845,33 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     endif()
 
     if(QWEN_TTS_BRIDGE_BUILD_QWENTTS_WORKER)
+        # Fault injection belongs to a separate test executable.  The
+        # distributable qwen_tts_native_worker remains production-only even
+        # when a Release build also enables the repository test suite.
+        add_executable(qwen_tts_native_worker_instrumented
+            ${QWEN_TTS_NATIVE_WORKER_SOURCES}
+        )
+        target_compile_definitions(qwen_tts_native_worker_instrumented
+            PRIVATE
+                QWEN_STATIC
+                NOMINMAX
+                QTB_NATIVE_WORKER_TEST_HOOKS
+        )
+        target_include_directories(qwen_tts_native_worker_instrumented
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
+                "${QWEN_TTS_BRIDGE_QWENTTS_DIR}/src"
+        )
+        target_link_libraries(qwen_tts_native_worker_instrumented
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge
+                nlohmann_json::nlohmann_json
+                bcrypt
+        )
+        if(MINGW)
+            target_link_options(qwen_tts_native_worker_instrumented PRIVATE -municode)
+        endif()
+
         # Keep the test double out of the main configuration output directory.
         # The real qwentts runtime is also named qwen.dll; sharing the default
         # directory lets the fake library overwrite the production DLL and
@@ -866,15 +920,47 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
         target_compile_definitions(qwen_tts_native_worker_test
             PRIVATE
-                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker>"
+                NOMINMAX
+                QTB_NATIVE_WORKER_TEST_HOOKS
+                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker_instrumented>"
                 QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
         add_dependencies(qwen_tts_native_worker_test
-            qwen_tts_native_worker
+            qwen_tts_native_worker_instrumented
             qwen_tts_fake_qwen
         )
         add_test(NAME qwen_tts_native_worker_test COMMAND qwen_tts_native_worker_test)
-        set_tests_properties(qwen_tts_native_worker_test PROPERTIES TIMEOUT 60)
+        set_tests_properties(qwen_tts_native_worker_test PROPERTIES TIMEOUT 120)
+
+        add_executable(native_engine_callback_test
+            tests/native/native_engine_callback_test.cpp
+            worker/native/qwentts/diagnostics.cpp
+            worker/native/qwentts/native_engine.cpp
+            worker/native/qwentts/prepared_voice_reference.cpp
+            worker/native/qwentts/qwen_dll_loader.cpp
+            worker/native/qwentts/runtime_manifest.cpp
+            worker/native/qwentts/wav_reader.cpp
+        )
+        target_include_directories(native_engine_callback_test
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/worker/native/qwentts"
+                "${QWEN_TTS_BRIDGE_QWENTTS_DIR}/src"
+        )
+        target_link_libraries(native_engine_callback_test
+            PRIVATE
+                QwenTTSBridge::qwen_tts_bridge
+                nlohmann_json::nlohmann_json
+                bcrypt
+        )
+        target_compile_definitions(native_engine_callback_test
+            PRIVATE
+                NOMINMAX
+                QTB_NATIVE_WORKER_TEST_HOOKS
+                QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
+        )
+        add_dependencies(native_engine_callback_test qwen_tts_fake_qwen)
+        add_test(NAME native_engine_callback_test COMMAND native_engine_callback_test)
+        set_tests_properties(native_engine_callback_test PROPERTIES TIMEOUT 30)
 
         add_executable(native_stdout_pipe_integrity_test
             tests/native/native_stdout_pipe_integrity_test.cpp
@@ -886,11 +972,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         target_compile_definitions(native_stdout_pipe_integrity_test
             PRIVATE
                 NOMINMAX
-                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker>"
+                QWEN_TTS_NATIVE_WORKER_EXE="$<TARGET_FILE:qwen_tts_native_worker_instrumented>"
                 QWEN_TTS_FAKE_RUNTIME_DIR="${QWEN_TTS_FAKE_RUNTIME_DIR}"
         )
         add_dependencies(native_stdout_pipe_integrity_test
-            qwen_tts_native_worker
+            qwen_tts_native_worker_instrumented
             qwen_tts_fake_qwen
         )
         add_test(
@@ -1087,9 +1173,18 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
                 QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE="${QWEN_TTS_BRIDGE_TEST_PYTHON_EXECUTABLE}"
                 QWEN_TTS_BRIDGE_TEST_WORKER_DIR="${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
         )
+        if(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+            target_compile_definitions(stdio_transport_test
+                PRIVATE QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS=1)
+        endif()
 
         add_test(NAME stdio_transport_test COMMAND stdio_transport_test)
-        set_tests_properties(stdio_transport_test PROPERTIES TIMEOUT 60)
+        set_tests_properties(
+            stdio_transport_test
+            PROPERTIES
+                TIMEOUT 60
+                ENVIRONMENT "PYTHONPATH=${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
+        )
 
         add_executable(worker_session_test
             tests/worker_session_test.cpp
@@ -1107,6 +1202,11 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
 
         add_test(NAME worker_session_test COMMAND worker_session_test)
+        set_tests_properties(
+            worker_session_test
+            PROPERTIES
+                ENVIRONMENT "PYTHONPATH=${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
+        )
 
         add_executable(qwen_tts_client_test
             tests/qwen_tts_client_test.cpp
@@ -1124,7 +1224,12 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         )
 
         add_test(NAME qwen_tts_client_test COMMAND qwen_tts_client_test)
-        set_tests_properties(qwen_tts_client_test PROPERTIES TIMEOUT 180)
+        set_tests_properties(
+            qwen_tts_client_test
+            PROPERTIES
+                TIMEOUT 180
+                ENVIRONMENT "PYTHONPATH=${QWEN_TTS_BRIDGE_TEST_WORKER_DIR}"
+        )
 
         if(TARGET qwen_tts_speech_animation_probe)
             add_test(

@@ -51,19 +51,24 @@ private:
     void engine_loop();
     std::shared_ptr<RequestSlot> take_next_request();
     void run_request(const std::shared_ptr<RequestSlot>& slot);
-    bool terminalize(const std::shared_ptr<RequestSlot>& slot);
+    bool terminalize(
+        const std::shared_ptr<RequestSlot>& slot,
+        bool emit_metric = true,
+        std::size_t* admitted_requests_after = nullptr);
     void send_control(RequestId request_id, ControlMessage message);
     void send_error(
         RequestId request_id,
         std::string category,
         std::string code,
         std::string message);
+    void start_fatal_watchdog();
     void fail_fatal(const std::string& message);
 
     NativeEngine& engine_;
     FrameParser parser_;
     std::unique_ptr<OutputWriter> writer_;
     std::thread engine_thread_;
+    std::thread fatal_watchdog_thread_;
     std::mutex mutex_;
     std::condition_variable condition_;
     std::deque<std::shared_ptr<RequestSlot>> pending_;
@@ -80,7 +85,10 @@ private:
     bool shutdown_requested_ = false;
     bool shutdown_ack_needed_ = false;
     bool shutdown_terminals_enqueued_ = false;
+    bool engine_finished_ = false;
     bool fatal_error_ = false;
+    bool fatal_watchdog_started_ = false;
+    bool run_finished_ = false;
 };
 
 std::vector<std::byte> float_pcm_to_s16le(const float* samples, int count);

@@ -269,6 +269,101 @@ TinyProcessLib::Process::environment_type to_process_environment(
 
 } // namespace
 
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+namespace detail {
+
+using StdioSendStateRecheckHook = void (*)();
+using StdioStopStateHook = void (*)();
+using StdioCallbackQueueOverflowHook = void (*)(
+    std::size_t queued_events,
+    std::size_t queued_bytes,
+    std::size_t incoming_event_bytes);
+
+std::mutex& stdio_send_state_recheck_hook_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+StdioSendStateRecheckHook& stdio_send_state_recheck_hook() {
+    static StdioSendStateRecheckHook hook = nullptr;
+    return hook;
+}
+
+void set_stdio_send_state_recheck_hook_for_tests(StdioSendStateRecheckHook hook) {
+    std::lock_guard<std::mutex> lock(stdio_send_state_recheck_hook_mutex());
+    stdio_send_state_recheck_hook() = hook;
+}
+
+void invoke_stdio_send_state_recheck_hook_for_tests() {
+    StdioSendStateRecheckHook hook = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stdio_send_state_recheck_hook_mutex());
+        hook = stdio_send_state_recheck_hook();
+    }
+    if (hook != nullptr) {
+        hook();
+    }
+}
+
+std::mutex& stdio_stop_state_hook_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+StdioStopStateHook& stdio_stop_state_hook() {
+    static StdioStopStateHook hook = nullptr;
+    return hook;
+}
+
+void set_stdio_stop_state_hook_for_tests(StdioStopStateHook hook) {
+    std::lock_guard<std::mutex> lock(stdio_stop_state_hook_mutex());
+    stdio_stop_state_hook() = hook;
+}
+
+void invoke_stdio_stop_state_hook_for_tests() {
+    StdioStopStateHook hook = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stdio_stop_state_hook_mutex());
+        hook = stdio_stop_state_hook();
+    }
+    if (hook != nullptr) {
+        hook();
+    }
+}
+
+std::mutex& stdio_callback_queue_overflow_hook_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+StdioCallbackQueueOverflowHook& stdio_callback_queue_overflow_hook() {
+    static StdioCallbackQueueOverflowHook hook = nullptr;
+    return hook;
+}
+
+void set_stdio_callback_queue_overflow_hook_for_tests(
+    StdioCallbackQueueOverflowHook hook) {
+    std::lock_guard<std::mutex> lock(stdio_callback_queue_overflow_hook_mutex());
+    stdio_callback_queue_overflow_hook() = hook;
+}
+
+void invoke_stdio_callback_queue_overflow_hook_for_tests(
+    std::size_t queued_events,
+    std::size_t queued_bytes,
+    std::size_t incoming_event_bytes) {
+    StdioCallbackQueueOverflowHook hook = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stdio_callback_queue_overflow_hook_mutex());
+        hook = stdio_callback_queue_overflow_hook();
+    }
+    if (hook != nullptr) {
+        hook(queued_events, queued_bytes, incoming_event_bytes);
+    }
+}
+
+} // namespace detail
+#endif
+
 class StdIoTransport::Impl {
 public:
     explicit Impl(StdIoTransportOptions options)
@@ -445,12 +540,20 @@ public:
         {
             std::lock_guard<std::mutex> write_lock(write_mutex_);
 
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+            detail::invoke_stdio_send_state_recheck_hook_for_tests();
+#endif
+
+            bool can_write = false;
             {
                 std::lock_guard<std::mutex> state_lock(state_mutex_);
-                if (state_ != ProcessState::Running || process_ != process || exited_) {
-                    report_error("stdio transport is not running");
-                    return SendResult::Closed;
-                }
+                can_write = state_ == ProcessState::Running
+                    && process_ == process
+                    && !exited_;
+            }
+            if (!can_write) {
+                report_error("stdio transport is not running");
+                return SendResult::Closed;
             }
 
             try {
@@ -511,6 +614,9 @@ public:
                     state_ = ProcessState::Stopping;
                 }
             }
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+            detail::invoke_stdio_stop_state_hook_for_tests();
+#endif
 
             if (process != nullptr) {
                 close_stdin_if_write_is_idle(process);
@@ -780,6 +886,9 @@ private:
 
     void enqueue_event(CallbackEvent event) {
         bool should_stop = false;
+        std::size_t overflow_queued_events = 0;
+        std::size_t overflow_queued_bytes = 0;
+        std::size_t overflow_incoming_event_bytes = 0;
         {
             std::lock_guard<std::mutex> lock(callback_mutex_);
             if (!callback_accepting_events_
@@ -794,6 +903,9 @@ private:
             if (event.type != CallbackEventType::Exit
                 && would_overflow_regular_callback_queue(event)) {
                 if (!callback_queue_overflowed_) {
+                    overflow_queued_events = callback_events_.size();
+                    overflow_queued_bytes = callback_queued_bytes_;
+                    overflow_incoming_event_bytes = callback_event_payload_size(event);
                     callback_queue_overflowed_ = true;
                     enqueue_callback_event_locked(make_callback_queue_overflow_error());
                     should_stop = true;
@@ -806,6 +918,12 @@ private:
         callback_condition_.notify_one();
 
         if (should_stop) {
+#if defined(QWEN_TTS_BRIDGE_ENABLE_TEST_HOOKS)
+            detail::invoke_stdio_callback_queue_overflow_hook_for_tests(
+                overflow_queued_events,
+                overflow_queued_bytes,
+                overflow_incoming_event_bytes);
+#endif
             stop_after_callback_queue_overflow();
         }
     }

@@ -29,7 +29,13 @@ from qwen_tts_bridge_worker.protocol import (
 )
 from qwen_tts_bridge_worker.protocol.control import encode_json_payload
 from qwen_tts_bridge_worker.server import StdioWorkerServer
-from qwen_tts_bridge_worker.server.stdio_server import _RequestSlot
+from qwen_tts_bridge_worker.server.metrics import MetricsWriter
+from qwen_tts_bridge_worker.server.stdio_server import (
+    _OutputWriter,
+    _OutputWriterFailure,
+    _RequestSlot,
+)
+from qwen_tts_bridge_worker.timing import monotonic_seconds
 
 
 class FailingLoadEngine:
@@ -94,6 +100,19 @@ class _ShortWriteOutput(io.BytesIO):
 class _FailingFlushOutput(io.BytesIO):
     def flush(self) -> None:
         raise OSError("simulated stdout flush failure")
+
+
+class _GateOutput(io.BytesIO):
+    def __init__(self) -> None:
+        super().__init__()
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def write(self, data: bytes) -> int:
+        self.started.set()
+        if not self.release.wait(timeout=5.0):
+            raise TimeoutError("test output gate was not released")
+        return super().write(data)
 
 
 class _FailingErrorStream(io.StringIO):
@@ -329,6 +348,25 @@ class NoopWarmupEngine:
         pass
 
 
+class CancellationIgnoringEngine(NoopWarmupEngine):
+    def __init__(self) -> None:
+        self.entered_blocking_generation = threading.Event()
+        self.release_generation = threading.Event()
+
+    def synthesize_stream(
+        self,
+        request: SynthesisRequest,
+        cancel_event: threading.Event,
+    ) -> Iterable[bytes]:
+        del request, cancel_event
+        yield b"\0" * 4
+        self.entered_blocking_generation.set()
+        # Deliberately ignore cancellation while blocked in model code.  This
+        # exercises the standalone process-level fallback rather than the
+        # ordinary writer timeout path.
+        self.release_generation.wait(timeout=30.0)
+
+
 class SafetyLimitEngine(NoopWarmupEngine):
     def __init__(self) -> None:
         self.limit_reached = threading.Event()
@@ -375,6 +413,129 @@ class _EofAfterEvent:
 
 
 class StdioWorkerServerLifecycleTests(unittest.TestCase):
+    def test_output_writer_rejects_frame_larger_than_byte_budget(self) -> None:
+        writer = _OutputWriter(
+            io.BytesIO(),
+            max_queue_size=4,
+            max_queue_bytes=3,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+
+        with self.assertRaises(_OutputWriterFailure):
+            writer.send(b"1234")
+
+    def test_output_writer_budget_includes_header_for_max_payload(self) -> None:
+        budget = 16 * 1024 * 1024 + 24
+        writer = _OutputWriter(
+            io.BytesIO(),
+            max_queue_size=2,
+            max_queue_bytes=budget,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+
+        writer.send(b"x" * budget)
+        oversized = _OutputWriter(
+            io.BytesIO(),
+            max_queue_size=2,
+            max_queue_bytes=budget,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        with self.assertRaises(_OutputWriterFailure):
+            oversized.send(b"x" * (budget + 1))
+
+    def test_output_writer_frame_capacity_honors_absolute_deadline(self) -> None:
+        output = _GateOutput()
+        writer = _OutputWriter(
+            output,
+            max_queue_size=1,
+            max_queue_bytes=1024,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        writer.start()
+        writer.send(b"a")
+        self.assertTrue(output.started.wait(timeout=1.0))
+        # The byte budget still has ample room, but the single queued-frame
+        # slot is occupied while the first write is stalled.
+        writer.send(b"b")
+
+        started = monotonic_seconds()
+        with self.assertRaisesRegex(_OutputWriterFailure, "timed out"):
+            writer.send(b"c", timeout=0.05)
+        self.assertLess(monotonic_seconds() - started, 0.5)
+
+        output.release.set()
+        self.assertTrue(writer.stop_when_drained(timeout=1.0))
+
+    def test_output_writer_accounts_for_in_flight_bytes(self) -> None:
+        output = _GateOutput()
+        writer = _OutputWriter(
+            output,
+            max_queue_size=4,
+            max_queue_bytes=4,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        writer.start()
+        writer.send(b"1234")
+        self.assertTrue(output.started.wait(timeout=1.0))
+
+        sent = threading.Event()
+
+        def send_second() -> None:
+            writer.send(b"x")
+            sent.set()
+
+        sender = threading.Thread(target=send_second)
+        sender.start()
+        self.assertFalse(sent.wait(timeout=0.2))
+
+        output.release.set()
+        self.assertTrue(sent.wait(timeout=1.0))
+        writer.stop_when_drained()
+        sender.join(timeout=1.0)
+        self.assertFalse(sender.is_alive())
+        self.assertEqual(b"1234x", output.getvalue())
+
+    def test_output_writer_reports_stalled_drain_without_waiting_forever(self) -> None:
+        output = _GateOutput()
+        writer = _OutputWriter(
+            output,
+            max_queue_size=2,
+            max_queue_bytes=8,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        writer.start()
+        writer.send(b"1234")
+        self.assertTrue(output.started.wait(timeout=1.0))
+
+        self.assertFalse(writer.stop_when_drained(timeout=0.01))
+        output.release.set()
+        self.assertTrue(writer.stop_when_drained(timeout=1.0))
+
+    def test_output_writer_shutdown_does_not_need_sentinel_capacity(self) -> None:
+        output = _GateOutput()
+        writer = _OutputWriter(
+            output,
+            max_queue_size=1,
+            max_queue_bytes=8,
+            metrics=MetricsWriter(io.StringIO()),
+            on_failure=lambda exc: None,
+        )
+        writer.start()
+        writer.send(b"1234")
+        self.assertTrue(output.started.wait(timeout=1.0))
+        writer.send(b"abcd")
+
+        self.assertFalse(writer.stop_when_drained(timeout=0.01))
+        output.release.set()
+        self.assertTrue(writer.stop_when_drained(timeout=1.0))
+        self.assertEqual(b"1234abcd", output.getvalue())
+
     def test_admission_rejects_without_advancing_id_watermark_and_releases_queued_slot(
         self,
     ) -> None:
@@ -907,6 +1068,55 @@ class StdioWorkerServerLifecycleTests(unittest.TestCase):
         self.assertNotEqual(0, process.returncode)
         process.stderr.read()
         process.stderr.close()
+
+    def test_standalone_aborts_when_engine_ignores_cancellation(self) -> None:
+        engine = CancellationIgnoringEngine()
+        input_release = threading.Event()
+        input_stream = _EofAfterEvent(
+            _control_frame(
+                0,
+                {
+                    "message_type": "hello",
+                    "client_name": "engine-stall-test",
+                    "client_version": "0.2.0",
+                },
+            )
+            + _control_frame(1, {"message_type": "synthesize", "text": "blocked"}),
+            input_release,
+        )
+        server = StdioWorkerServer(
+            input_stream=cast(BinaryIO, input_stream),
+            output_stream=io.BytesIO(),
+            error_stream=io.StringIO(),
+            engine=engine,
+            abort_process_on_output_failure=True,
+        )
+
+        result: dict[str, BaseException | int] = {}
+
+        def run_server() -> None:
+            try:
+                result["code"] = server.run()
+            except BaseException as exc:  # pragma: no cover - test harness
+                result["exception"] = exc
+
+        with patch(
+            "qwen_tts_bridge_worker.server.stdio_server.os._exit",
+            side_effect=SystemExit(1),
+        ) as abort:
+            runner = threading.Thread(target=run_server)
+            runner.start()
+            self.assertTrue(engine.entered_blocking_generation.wait(timeout=5.0))
+            input_release.set()
+            runner.join(timeout=10.0)
+            self.assertFalse(runner.is_alive())
+            self.assertIsInstance(result.get("exception"), SystemExit)
+            abort.assert_called_once_with(1)
+
+        engine.release_generation.set()
+        if server._engine_thread.is_alive():
+            server._engine_thread.join(timeout=2.0)
+        self.assertFalse(server._engine_thread.is_alive())
 
     def test_warmup_failure_does_not_join_unstarted_engine_thread(self) -> None:
         engine = FailingWarmupEngine()

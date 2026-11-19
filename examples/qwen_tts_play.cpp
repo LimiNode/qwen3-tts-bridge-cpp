@@ -1,4 +1,7 @@
 #include <qwen_tts_bridge/audio.hpp>
+#ifdef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+#include <qwen_tts_bridge/text.hpp>
+#endif
 
 #include "play.hpp"
 
@@ -60,6 +63,11 @@ using qwen_tts_bridge::TtsCallbacks;
 using qwen_tts_bridge::TtsCompletion;
 using qwen_tts_bridge::TtsError;
 using qwen_tts_bridge::TtsRequest;
+#ifdef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+using qwen_tts_bridge::TextRenderCapability;
+using qwen_tts_bridge::TtsFrontTextPreparer;
+using qwen_tts_bridge::TtsFrontTextPreparerOptions;
+#endif
 using qwen_tts_bridge::audio::AudioPostProcessorChain;
 using qwen_tts_bridge::audio::AudioTerminalReason;
 using qwen_tts_bridge::audio::PlayoutBuffer;
@@ -336,6 +344,18 @@ PreparedTtsRequest prepare_request(
               << ", modified="
               << (prepared_request.text.was_modified ? "true" : "false")
               << '\n';
+    std::cout << "text_front original=" << prepared_request.text.original_text << '\n'
+              << "text_front normalized="
+              << prepared_request.text.frontend_normalized_text << '\n'
+              << "text_front pronunciation="
+              << prepared_request.text.frontend_pronunciation_text << '\n'
+              << "text_front effective=" << prepared_request.text.effective_text << '\n'
+              << "text_front modified="
+              << (prepared_request.text.was_modified ? "true" : "false") << '\n';
+    for (const auto& warning : prepared_request.text.frontend_warnings) {
+        std::cerr << "text_front warning=" << warning.code << ':'
+                  << warning.message << '\n';
+    }
     return prepared_request;
 }
 
@@ -620,6 +640,26 @@ int wmain(int argc, wchar_t** argv) {
 
         QwenTtsClientOptions client_options;
         client_options.session.startup_timeout = options.startup_timeout;
+#ifdef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
+        std::shared_ptr<TtsFrontTextPreparer> text_preparer;
+        if (options.tts_front_enabled) {
+            TtsFrontTextPreparerOptions preparer_options;
+            if (options.language == "ru" || options.language == "russian") {
+                preparer_options.frontend.language = tts_front::Language::Russian;
+            }
+            preparer_options.render_capability = options.tts_front_explicit_stress
+                ? TextRenderCapability::ExplicitCombiningStress
+                : TextRenderCapability::Base;
+            text_preparer = std::make_shared<TtsFrontTextPreparer>(
+                std::move(preparer_options));
+            client_options.text_preparer = [text_preparer](
+                const TtsRequest& request,
+                PreparedText& prepared,
+                TtsError& error) {
+                return text_preparer->prepare(request, prepared, error);
+            };
+        }
+#endif
 
         QwenTtsClient client;
         if (!client.start(make_transport_options(options), client_options)) {

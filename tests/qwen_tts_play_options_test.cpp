@@ -44,6 +44,11 @@ int main() {
         require(options.text == u8"\u041f\u0440\u0438\u0432\u0435\u0442", "UTF-8 text changed");
         require(options.top_k == 12 && options.seed == 42, "numeric options changed");
         require(options.auto_fast_max_bytes == 100, "legacy option alias changed");
+        require(options.tts_front_enabled, "tts-front must be enabled by default");
+        auto raw_options = parse({L"play", L"--mock", L"--no-tts-front"});
+        require(!raw_options.tts_front_enabled &&
+            !raw_options.tts_front_explicit_stress,
+            "--no-tts-front must select raw text");
         rejects([] { parse({L"play", L"--unknown"}); }, "unknown option");
         rejects([] { parse({L"play", L"--seed"}); }, "missing value for --seed");
         rejects([&] {

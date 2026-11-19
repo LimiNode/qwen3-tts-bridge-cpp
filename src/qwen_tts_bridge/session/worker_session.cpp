@@ -73,8 +73,14 @@ WorkerSession::WorkerSession(
     : transport_(std::move(transport)),
       options_(std::move(options)) {}
 
-WorkerSession::~WorkerSession() {
-    stop();
+WorkerSession::~WorkerSession() noexcept {
+    try {
+        stop();
+    }
+    catch (...) {
+        // Destruction is best effort even when an injected/custom transport
+        // violates the non-throwing stop contract.
+    }
 }
 
 bool WorkerSession::start() {

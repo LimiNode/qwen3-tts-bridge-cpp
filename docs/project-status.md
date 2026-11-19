@@ -104,13 +104,18 @@ Primary evidence:
 * [`russian-stress-model-compatibility.md`](russian-stress-model-compatibility.md)
 * [`russian-stress-oracle-parity.json`](reports/russian-stress-oracle-parity.json)
 
-The result is **experimental and opt-in**. The production default was not
-changed, and the upstream stress repository is not treated as directly
-compatible with the native split loader without the documented conversion.
+The result remains **experimental**, and the upstream stress repository is not
+treated as directly compatible with the native split loader without the
+documented conversion. The R1 native example/package configuration now names
+`ru-stress` as the intended default, but that product default is conditional
+on the remaining listening, dual-GPU, and release-package acceptance gates.
 
 ### Text preparation and playback/animation plumbing
 
-`tts-front-cpp` v0.2.5 is integrated as a model-neutral preparation boundary:
+`tts-front-cpp` is integrated as a model-neutral preparation boundary. The
+submodule is pinned to focused upstream corrective commit
+`64f73182d26de60af6c082724b1b199eb7310620`, based on the published v0.2.5
+line and not a published v0.2.6 release:
 
 ```text
 raw text -> TextFrontend -> PreparedText -> QwenTtsClient
@@ -118,9 +123,10 @@ raw text -> TextFrontend -> PreparedText -> QwenTtsClient
 
 `PreparedText` carries normalized text, pronunciation evidence, semantic stress
 decisions, warnings, and uncertainty. The Qwen adapter renders U+0301 only for
-an explicitly compatible stress capability; the bridge does not guess from a
-profile name.
-The bridge pins the frontend at commit
+an explicitly compatible stress capability. The native launcher derives that
+capability from selected profile metadata; the low-level bridge does not guess
+from a filename or profile name.
+The historical v0.2.5 baseline remains
 `d1b6a6e18e7f51f8c51fff548bb84f10e749004a` (tag `v0.2.5`). The bridge-level
 comparison against v0.2.2 is recorded in
 [`tts-front-v022-v025-effective-text.md`](reports/tts-front-v022-v025-effective-text.md);
@@ -145,7 +151,7 @@ See [`tts-front-integration.md`](tts-front-integration.md),
 ```text
 Application
     |
-    +--> optional tts-front-cpp v0.2.5
+    +--> optional tts-front-cpp corrective 64f73182 (v0.2.5 line)
     |        |
     |        v
     |     PreparedText / pronunciation evidence
@@ -190,9 +196,9 @@ The dependency direction is deliberate:
 | Area | Status | Boundary |
 | --- | --- | --- |
 | Python/Faster worker | Maintained acceptance route and alternative backend | Complete the same frozen dual-GPU/package/listening matrix |
-| Native worker and `qwen.dll` | Priority R1 Base candidate; conditional until accepted | Close promotion gates and record backend selection; in-process adapter is separate |
-| RU-stress + Kraftwerk profile | Hardware/listening validated, opt-in experimental | Expand long-run, cancellation, and packaging evidence |
-| `tts-front-cpp` v0.2.5 | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims |
+| Native worker and `qwen.dll` | Priority R1 native route; conditional until accepted | Close promotion gates and record backend selection; in-process adapter is separate |
+| RU-stress + Kraftwerk profile | Intended R1 default, still experimental | Expand dual-GPU, long-run, cancellation, packaging, and listening evidence |
+| `tts-front-cpp` pinned corrective `64f73182` (based on v0.2.5) | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims; do not describe the corrective commit as a v0.2.6 release |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |
 | Avatar presentation | Not yet complete | Add a separate VRM/Unity/Godot adapter after playback-locked cues are stable |
 

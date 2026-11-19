@@ -30,7 +30,13 @@ from qwen_tts_bridge_worker.protocol.control import (
     decode_control_payload,
     error_frame,
 )
-from qwen_tts_bridge_worker.protocol.data import Frame, FrameType, ParseStatus
+from qwen_tts_bridge_worker.protocol.data import (
+    MAX_FRAME_PAYLOAD_BYTES,
+    MIN_HEADER_SIZE,
+    Frame,
+    FrameType,
+    ParseStatus,
+)
 from qwen_tts_bridge_worker.protocol.framing import FrameParser, encode_frame
 from qwen_tts_bridge_worker.server.metrics import MetricsWriter
 from qwen_tts_bridge_worker.timing import elapsed_milliseconds, monotonic_seconds
@@ -44,6 +50,7 @@ _SAMPLING_FIELDS = frozenset(
         "do_sample",
     }
 )
+_DEFAULT_OUTPUT_QUEUE_BYTES = MAX_FRAME_PAYLOAD_BYTES + MIN_HEADER_SIZE
 
 
 def _parse_sampling_options(
@@ -163,15 +170,23 @@ class _OutputWriter:
         self,
         output: BinaryIO,
         max_queue_size: int,
+        max_queue_bytes: int,
         metrics: MetricsWriter,
         on_failure: Callable[[BaseException], None],
     ) -> None:
         self._output = output
         self._metrics = metrics
         self._on_failure = on_failure
+        if max_queue_size <= 0 or max_queue_bytes <= 0:
+            raise ValueError("stdout queue limits must be greater than zero")
+        self._max_queue_bytes = max_queue_bytes
         self._queue: queue.Queue[Optional[_OutputFrame]] = queue.Queue(
             maxsize=max_queue_size
         )
+        self._queue_condition = threading.Condition()
+        self._queued_bytes = 0
+        self._in_flight_bytes = 0
+        self._stopping = False
         self._thread = threading.Thread(target=self._run, name="qtb-stdout-writer")
         self._failure: BaseException | None = None
         self._failure_lock = threading.Lock()
@@ -185,6 +200,7 @@ class _OutputWriter:
         *,
         request_id: int | None = None,
         first_audio_frame: bool = False,
+        timeout: float | None = None,
     ) -> None:
         output_frame = _OutputFrame(
             payload=frame,
@@ -192,26 +208,73 @@ class _OutputWriter:
             request_id=request_id,
             first_audio_frame=first_audio_frame,
         )
-        while True:
-            failure = self.failure()
-            if failure is not None:
-                raise _OutputWriterFailure(
-                    "protocol stdout writer failed"
-                ) from failure
-            try:
-                self._queue.put(output_frame, timeout=0.1)
-                return
-            except queue.Full:
-                continue
+        frame_bytes = len(frame)
+        if frame_bytes > self._max_queue_bytes:
+            raise _OutputWriterFailure(
+                f"protocol stdout frame exceeds byte budget: {frame_bytes} > "
+                f"{self._max_queue_bytes}"
+            )
+        deadline = None if timeout is None else monotonic_seconds() + max(timeout, 0.0)
+        with self._queue_condition:
+            while True:
+                failure = self.failure()
+                if failure is not None:
+                    raise _OutputWriterFailure(
+                        "protocol stdout writer failed"
+                    ) from failure
+                if self._stopping:
+                    raise _OutputWriterFailure("protocol stdout writer is stopping")
+                if (
+                    self._queued_bytes
+                    + self._in_flight_bytes
+                    + frame_bytes
+                    <= self._max_queue_bytes
+                ):
+                    try:
+                        self._queue.put_nowait(output_frame)
+                    except queue.Full:
+                        # queue.Full is an independent capacity constraint from
+                        # the byte budget above.  Use the same absolute
+                        # deadline so a small-frame producer cannot outlive
+                        # send(timeout=...) merely by repeatedly observing a
+                        # full frame queue.
+                        if deadline is None:
+                            self._queue_condition.wait(timeout=0.1)
+                        else:
+                            remaining = deadline - monotonic_seconds()
+                            if remaining <= 0.0:
+                                raise _OutputWriterFailure(
+                                    "protocol stdout writer send timed out"
+                                ) from None
+                            self._queue_condition.wait(timeout=min(0.1, remaining))
+                        continue
+                    self._queued_bytes += frame_bytes
+                    self._queue_condition.notify_all()
+                    return
+                if deadline is not None:
+                    remaining = deadline - monotonic_seconds()
+                    if remaining <= 0.0:
+                        raise _OutputWriterFailure(
+                            "protocol stdout writer send timed out"
+                        )
+                    self._queue_condition.wait(timeout=min(0.1, remaining))
+                else:
+                    self._queue_condition.wait(timeout=0.1)
 
-    def stop_when_drained(self) -> None:
-        while self.failure() is None:
-            try:
-                self._queue.put(None, timeout=0.1)
-                break
-            except queue.Full:
-                continue
-        self._thread.join()
+    def stop_when_drained(self, timeout: float | None = None) -> bool:
+        deadline = None if timeout is None else monotonic_seconds() + max(timeout, 0.0)
+        with self._queue_condition:
+            self._stopping = True
+            # Shutdown is represented by state, not a sentinel frame.  A
+            # sentinel cannot be inserted when a stalled reader has filled the
+            # queue, while the writer can still drain existing frames and
+            # observe _stopping after the queue becomes empty.
+            self._queue_condition.notify_all()
+        remaining = None if deadline is None else max(
+            0.0, deadline - monotonic_seconds()
+        )
+        self._thread.join(remaining)
+        return not self._thread.is_alive()
 
     def failure(self) -> BaseException | None:
         with self._failure_lock:
@@ -220,7 +283,16 @@ class _OutputWriter:
     def _run(self) -> None:
         try:
             while True:
-                output_frame = self._queue.get()
+                with self._queue_condition:
+                    while self._queue.empty():
+                        if self._stopping:
+                            return
+                        self._queue_condition.wait(timeout=0.1)
+                    output_frame = self._queue.get_nowait()
+                    if output_frame is not None:
+                        self._queued_bytes -= len(output_frame.payload)
+                        self._in_flight_bytes += len(output_frame.payload)
+                    self._queue_condition.notify_all()
                 if output_frame is None:
                     return
                 write_started_at = monotonic_seconds()
@@ -244,6 +316,9 @@ class _OutputWriter:
                     )
                 self._output.flush()
                 flushed_at = monotonic_seconds()
+                with self._queue_condition:
+                    self._in_flight_bytes -= len(output_frame.payload)
+                    self._queue_condition.notify_all()
                 if (
                     output_frame.first_audio_frame
                     and output_frame.request_id is not None
@@ -262,8 +337,13 @@ class _OutputWriter:
                         ),
                     )
         except BaseException as exc:
+            with self._queue_condition:
+                self._in_flight_bytes = 0
             with self._failure_lock:
                 self._failure = exc
+            with self._queue_condition:
+                self._stopping = True
+                self._queue_condition.notify_all()
             self._on_failure(exc)
 
 
@@ -278,6 +358,7 @@ class StdioWorkerServer:
         engine: TtsEngine,
         worker_version: str = "0.2.0",
         output_queue_size: int = 128,
+        output_queue_bytes: int = _DEFAULT_OUTPUT_QUEUE_BYTES,
         max_admitted_requests: int = 16,
         read_chunk_size: int = 4096,
         engine_startup_mode: str = "main",
@@ -300,6 +381,7 @@ class StdioWorkerServer:
         self._writer = _OutputWriter(
             output_stream,
             output_queue_size,
+            output_queue_bytes,
             self._metrics,
             self._handle_output_failure,
         )
@@ -403,15 +485,52 @@ class StdioWorkerServer:
             traceback.print_exc(file=self._error)
         finally:
             self._request_shutdown(send_ack=False)
+            engine_joined = not engine_thread_started
             if engine_thread_started:
-                self._engine_thread.join()
-            try:
-                self._engine.close()
-            except Exception:
+                # The engine can be blocked inside _OutputWriter.send() when
+                # the peer stopped consuming stdout. Never wait indefinitely
+                # before taking the writer-side abort path.
+                self._engine_thread.join(timeout=5.0)
+                engine_joined = not self._engine_thread.is_alive()
+                if not engine_joined:
+                    self._fatal_error = True
+            drained = self._writer.stop_when_drained(timeout=5.0)
+            if not drained:
                 self._fatal_error = True
-                traceback.print_exc(file=self._error)
-            finally:
-                self._writer.stop_when_drained()
+                if self._abort_process_on_output_failure:
+                    # A synchronous pipe write cannot be interrupted safely
+                    # from Python.  The standalone worker therefore uses
+                    # process termination as the forced-shutdown fallback
+                    # after graceful draining exceeds its deadline.
+                    os._exit(1)
+            if not engine_joined and engine_thread_started:
+                # A writer that was stopped cooperatively should wake an
+                # engine blocked in send(). Give it a final bounded chance to
+                # unwind. Standalone workers already terminate above when the
+                # writer itself is uninterruptibly blocked.
+                self._engine_thread.join(timeout=1.0)
+                engine_joined = not self._engine_thread.is_alive()
+
+            if not engine_joined and self._abort_process_on_output_failure:
+                # The writer may have drained successfully while the engine
+                # ignored cancellation inside model code.  A standalone
+                # worker must not return into Python with a live non-daemon
+                # engine thread; embedded callers retain the bounded-failure
+                # return path above without terminating their host process.
+                os._exit(1)
+
+            # Never close an engine while its worker thread can still execute
+            # against it. Embedded callers do not get an implicit process kill;
+            # they receive a failed run and retain responsibility for their
+            # externally blocked stream.
+            if engine_joined:
+                try:
+                    self._engine.close()
+                except Exception:
+                    self._fatal_error = True
+                    traceback.print_exc(file=self._error)
+            else:
+                self._fatal_error = True
 
         return 1 if self._fatal_error else 0
 
@@ -868,11 +987,21 @@ class StdioWorkerServer:
             for slot in self._active.values():
                 slot.cancel_event.set()
 
+        shutdown_deadline = monotonic_seconds() + 5.0
         for slot in queued_cancelled_slots:
             self._emit_request_finished(slot, "cancelled")
-            self._writer.send(
-                control_frame(slot.request.request_id, {"message_type": "cancelled"})
-            )
+            remaining = max(0.0, shutdown_deadline - monotonic_seconds())
+            try:
+                self._writer.send(
+                    control_frame(
+                        slot.request.request_id,
+                        {"message_type": "cancelled"},
+                    ),
+                    timeout=remaining,
+                )
+            except BaseException as exc:
+                self._handle_output_failure(exc)
+                break
 
         with self._condition:
             self._shutdown_terminal_events_enqueued = True
@@ -904,7 +1033,13 @@ class StdioWorkerServer:
             self._run_one_request(slot)
 
         if self._shutdown_ack_needed:
-            self._writer.send(control_frame(0, {"message_type": "shutdown_ack"}))
+            try:
+                self._writer.send(
+                    control_frame(0, {"message_type": "shutdown_ack"}),
+                    timeout=5.0,
+                )
+            except BaseException as exc:
+                self._handle_output_failure(exc)
 
     def _take_next_request(self) -> Optional[_RequestSlot]:
         with self._condition:
@@ -1214,7 +1349,17 @@ class StdioWorkerServer:
             self._terminalize_locked(request_id)
         if emit_cancelled:
             self._emit_request_finished(slot, "cancelled")
-            self._writer.send(control_frame(request_id, {"message_type": "cancelled"}))
+            try:
+                cancelled_frame = control_frame(
+                    request_id, {"message_type": "cancelled"}
+                )
+                self._writer.send(cancelled_frame)
+            except _OutputWriterFailure:
+                # The standalone shutdown path may have stopped stdout while
+                # an engine that ignores cancellation is unwinding.  The
+                # terminal state is already recorded locally; there is no
+                # protocol channel left on which to publish it.
+                self._fatal_error = True
 
     def _emit_request_finished(
         self,
