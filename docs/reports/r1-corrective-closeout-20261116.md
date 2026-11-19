@@ -6,9 +6,11 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
-- Final production source candidate / tested PR HEAD:
+- Final production source candidate:
   `ea9ceaf2` (the lifecycle, protocol-contract, provenance and test-environment
   corrective follows the bounded diagnostics baseline).
+- Tested PR/integration HEAD:
+  `0c78f56b` (receipt-only documentation follows the production candidate).
 - Bounded diagnostics production baseline:
   `9a4525db` (decouples diagnostics from inference with a bounded best-effort
   writer).
@@ -144,7 +146,7 @@ same frozen package/source/runtime/model identities:
 - CMP 50HX and RTX 4090 native qualification, including repeat/cancel/restart,
   physical playback and peak-memory measurements;
 - matched RU/EN A/B WAV corpus and human listening;
-- review-only GitHub CI for the exact final corrective PR HEAD `ea9ceaf2`;
+- review-only GitHub CI for the exact tested corrective PR HEAD `0c78f56b`;
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
@@ -156,4 +158,4 @@ its complete Release corpus passed 12/12 and the bridge corpus now expects the
 correct feminine agreement. The remaining release gates are final package
 regeneration from `ea9ceaf2`, clean relocation with real models, CMP 50HX and
 RTX 4090 native qualification, matched A/B WAV listening, and review-only CI
-on `ea9ceaf2`.
+on `0c78f56b`.
