@@ -143,6 +143,11 @@ QT_API qt_status qt_synthesize(
     };
     if (params->on_chunk != nullptr) {
         if (std::strcmp(params->text, "barrier running") == 0) {
+            const char* ready_path = std::getenv("QTB_FAKE_BARRIER_READY_PATH");
+            if (ready_path != nullptr && *ready_path != '\0') {
+                std::ofstream ready(ready_path, std::ios::binary);
+                ready << "ready";
+            }
             while (params->cancel == nullptr || !params->cancel(params->cancel_user_data)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }

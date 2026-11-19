@@ -44,14 +44,19 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
   and both pending requests received `worker_fatal` before diagnostics were
   released. The full native worker test uses a 120-second CTest budget.
 - Direct Windows-pipe diagnostics regressions pass with stderr intentionally
-  unread: two multi-chunk natural-EOS requests complete, and cancellation plus
-  shutdown remain bounded. Diagnostics use a finite 64-record/4 MiB queue;
-  shutdown waits at most 250 ms for it and drops records when full or closed.
+  unread and at least 4096 bytes buffered before requests are submitted: two
+  multi-chunk natural-EOS requests complete, and cancellation plus shutdown
+  remain bounded. This proves protocol progress with a no-reader diagnostic
+  backlog; it does not claim to observe the writer thread's internal blocked
+  state. Diagnostics use a finite 64-record/4 MiB queue; shutdown waits at
+  most 250 ms for it and drops records when full or closed.
 - The direct-pipe streaming assertions require `Completed`,
   `execution_outcome: natural_eos`, `generation_trace.hit_eos`, and at least
-  two PCM frames for both requests. The cancellation case uses the fake
-  engine's release barrier and requires `Cancelled` for the active request and
-  natural-EOS `Completed` for the queued request.
+  two PCM frames for both requests. The cancellation case waits for the fake
+  engine's barrier-ready marker, then uses its release barrier and requires
+  `Cancelled` for the active request and natural-EOS `Completed` for the queued
+  request. The harness accounts for terminal and post-terminal frames across
+  all observed request IDs while draining shutdown output.
 - `tts-front-cpp` is pinned to focused upstream fix commit `64f73182`
   (`fix(russian): agree feminine book counts`). Its complete upstream Release
   corpus passed **12/12**, including feminine and masculine count cases. The
