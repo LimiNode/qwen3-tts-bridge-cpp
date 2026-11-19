@@ -142,13 +142,15 @@ QT_API qt_status qt_synthesize(
         {0.0F, std::numeric_limits<float>::quiet_NaN(), 0.0F, 0.0F},
     };
     if (params->on_chunk != nullptr) {
-        if (std::strcmp(params->text, "barrier running") == 0) {
+        const bool cancel_barrier = std::strcmp(params->text, "barrier running") == 0;
+        if (cancel_barrier || std::strcmp(params->text, "barrier callback") == 0) {
             const char* ready_path = std::getenv("QTB_FAKE_BARRIER_READY_PATH");
             if (ready_path != nullptr && *ready_path != '\0') {
                 std::ofstream ready(ready_path, std::ios::binary);
                 ready << "ready";
             }
-            while (params->cancel == nullptr || !params->cancel(params->cancel_user_data)) {
+            while (cancel_barrier &&
+                   (params->cancel == nullptr || !params->cancel(params->cancel_user_data))) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
             const char* release_path = std::getenv("QTB_FAKE_RELEASE_PATH");
@@ -156,8 +158,10 @@ QT_API qt_status qt_synthesize(
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 release_path = std::getenv("QTB_FAKE_RELEASE_PATH");
             }
-            g_finish_reason = QT_FINISH_UNKNOWN;
-            return QT_STATUS_CANCELLED;
+            if (cancel_barrier) {
+                g_finish_reason = QT_FINISH_UNKNOWN;
+                return QT_STATUS_CANCELLED;
+            }
         }
         const bool emit_non_finite = std::strcmp(params->text, "force non-finite pcm") == 0;
         const auto* chunk_begin = emit_non_finite ? non_finite_chunk : chunks;
