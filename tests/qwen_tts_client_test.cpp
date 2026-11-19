@@ -745,6 +745,7 @@ void test_throwing_transport_stop_releases_shutdown_owner() {
     second.join();
     CHECK(completed_stops.load() == 2);
     CHECK(!client.is_running());
+    CHECK(!client.start(std::make_unique<BlockingTransport>(), make_client_options()));
 }
 
 void run_ordered_external_callback_stop(bool external_owns_first) {
