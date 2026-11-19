@@ -6,11 +6,11 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
 ## Exact source and automated verification
 
 - Integration branch: `integration/r1-corrective`
-- Current integration HEAD:
-  `9a4525db`
-- Current source candidate HEAD:
+- Production source candidate:
   `9a4525db` (the latest corrective decouples diagnostics from inference with
   a bounded best-effort writer).
+- Tested PR/integration HEAD:
+  `2763d67e` (receipt-only documentation follows the production candidate).
 - The corrective source commits include `cbd58ef3`, `e8806e9b`, and
   `92a2dd53`, `7131d78d`, and `9a4525db`; Python lint/type corrective commits are
   `34945218`, `6ce6441b`, and `4598d032`.
@@ -29,7 +29,7 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
   incomplete artifacts fail closed without touching a committed manifest.
 - Full model-free Python suite: **502 tests, 7 skipped, OK** with
   `PYTHONPATH=worker/src`; Pyright reports **0 errors, 0 warnings, 0
-  informations**.  Ruff was not installed in the qualification environment.
+  informations**; Ruff **PASS**.
   The focused corrective lifecycle/packaging suites and
   `validate-acceptance-receipts.py` also pass, including validation of 2
   canonical receipts.
@@ -47,6 +47,11 @@ reviewable local candidate; it is not a tag, GitHub release, or support claim.
   unread: two multi-chunk natural-EOS requests complete, and cancellation plus
   shutdown remain bounded. Diagnostics use a finite 64-record/4 MiB queue;
   shutdown waits at most 250 ms for it and drops records when full or closed.
+- The direct-pipe streaming assertions require `Completed`,
+  `execution_outcome: natural_eos`, `generation_trace.hit_eos`, and at least
+  two PCM frames for both requests. The cancellation case uses the fake
+  engine's release barrier and requires `Cancelled` for the active request and
+  natural-EOS `Completed` for the queued request.
 - `tts-front-cpp` is pinned to focused upstream fix commit `64f73182`
   (`fix(russian): agree feminine book counts`). Its complete upstream Release
   corpus passed **12/12**, including feminine and masculine count cases. The
@@ -117,7 +122,7 @@ same frozen package/source/runtime/model identities:
 - CMP 50HX and RTX 4090 native qualification, including repeat/cancel/restart,
   physical playback and peak-memory measurements;
 - matched RU/EN A/B WAV corpus and human listening;
-- review-only GitHub CI for the exact combined integration HEAD `9a4525db`;
+- review-only GitHub CI for the exact tested PR HEAD `2763d67e`;
 
 CustomVoice Python/BF16 observations remain a separate optional capability gate
 and do not promote native Base/RU-stress support.
@@ -129,4 +134,4 @@ its complete Release corpus passed 12/12 and the bridge corpus now expects the
 correct feminine agreement. The remaining release gates are final package
 regeneration from `9a4525db`, clean relocation with real models, CMP 50HX and
 RTX 4090 native qualification, matched A/B WAV listening, and review-only CI
-on `9a4525db`.
+on `2763d67e`.

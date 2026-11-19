@@ -26,6 +26,7 @@
 #include <limits>
 #include <mutex>
 #include <string>
+#include <set>
 #include <fstream>
 #include <iterator>
 #include <thread>
@@ -257,6 +258,8 @@ private:
     bool exited_ = false;
 };
 
+bool is_control_frame(const Frame& frame, RequestId request_id);
+
 // Direct pipe harness used by diagnostics regressions.  Unlike StdIoTransport,
 // it deliberately never reads the child's stderr handle, while still draining
 // stdout synchronously.  This makes a genuinely full Windows stderr pipe
@@ -271,7 +274,7 @@ public:
         close_handles();
     }
 
-    bool start() {
+    bool start(const std::filesystem::path& release_barrier = {}) {
         SECURITY_ATTRIBUTES security_attributes{};
         security_attributes.nLength = sizeof(security_attributes);
         security_attributes.bInheritHandle = TRUE;
@@ -295,6 +298,9 @@ public:
         std::vector<char> command_line(command.begin(), command.end());
         command_line.push_back('\0');
         SetEnvironmentVariableA("QTB_TEST_NATIVE_PREFILL_STDERR", "1");
+        if (!release_barrier.empty()) {
+            SetEnvironmentVariableA("QTB_FAKE_RELEASE_PATH", release_barrier.string().c_str());
+        }
         STARTUPINFOA startup{};
         startup.cb = sizeof(startup);
         startup.dwFlags = STARTF_USESTDHANDLES;
@@ -316,6 +322,19 @@ public:
         CloseHandle(stderr_write_);
         stderr_write_ = nullptr;
         return true;
+    }
+
+    bool wait_for_stderr_saturation() const {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (std::chrono::steady_clock::now() < deadline) {
+            DWORD available = 0;
+            if (PeekNamedPipe(stderr_read_, nullptr, 0, nullptr, &available, nullptr) &&
+                available >= 4096) {
+                return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return false;
     }
 
     bool send(RequestId request_id, const ControlMessage& message) {
@@ -361,7 +380,33 @@ public:
         }
     }
 
-    bool wait_for_terminal(RequestId request_id, std::size_t& audio_frames) {
+    bool wait_for_control_type(RequestId request_id, ControlMessageType expected) {
+        for (;;) {
+            Frame frame;
+            if (!read_frame(frame)) {
+                return false;
+            }
+            if (!is_control_frame(frame, request_id)) {
+                continue;
+            }
+            const auto decoded = decode_control_message(
+                frame.payload, ControlMessageDirection::WorkerToClient);
+            if (!decoded) {
+                return false;
+            }
+            if (control_message_type(decoded.message) == expected) {
+                return true;
+            }
+        }
+    }
+
+    struct TerminalResult {
+        ControlMessageType type = ControlMessageType::Queued;
+        CompletedMessage completed;
+        std::size_t audio_frames = 0;
+    };
+
+    bool wait_for_terminal(RequestId request_id, TerminalResult& result) {
         for (;;) {
             Frame frame;
             if (!read_frame(frame)) {
@@ -371,10 +416,13 @@ public:
                 continue;
             }
             if (frame.header.frame_type == FrameType::AudioPcm) {
-                ++audio_frames;
+                ++result.audio_frames;
                 continue;
             }
             if (frame.header.frame_type == FrameType::ErrorJson) {
+                if (!terminal_ids_.insert(frame.header.request_id).second) {
+                    return false;
+                }
                 return false;
             }
             if (frame.header.frame_type == FrameType::ControlJson) {
@@ -384,8 +432,19 @@ public:
                     return false;
                 }
                 const auto type = control_message_type(decoded.message);
-                if (type == ControlMessageType::Completed ||
-                    type == ControlMessageType::Cancelled) {
+                if (type == ControlMessageType::Completed) {
+                    if (!terminal_ids_.insert(frame.header.request_id).second) {
+                        return false;
+                    }
+                    result.type = type;
+                    result.completed = std::get<CompletedMessage>(decoded.message);
+                    return true;
+                }
+                if (type == ControlMessageType::Cancelled) {
+                    if (!terminal_ids_.insert(frame.header.request_id).second) {
+                        return false;
+                    }
+                    result.type = type;
                     return true;
                 }
             }
@@ -431,6 +490,7 @@ private:
     HANDLE stderr_write_ = nullptr;
     HANDLE process_ = nullptr;
     FrameParser parser_;
+    std::set<RequestId> terminal_ids_;
 };
 
 bool is_control_frame(const Frame& frame, RequestId request_id) {
@@ -1051,6 +1111,7 @@ int run_pre_stalled_stderr_fatal_e2e() {
 int run_pre_stalled_stderr_streaming_e2e() {
     DirectPipeNativeWorker worker;
     CHECK(worker.start());
+    CHECK(worker.wait_for_stderr_saturation());
     CHECK(worker.send(0, ControlMessage{HelloMessage{"direct-stderr-test", "0.2.0"}}));
     Frame ready;
     CHECK(worker.read_frame(ready));
@@ -1061,22 +1122,43 @@ int run_pre_stalled_stderr_streaming_e2e() {
     SynthesizeMessage request;
     request.text = "stalled stderr normal streaming first request";
     CHECK(worker.send(101, ControlMessage{request}));
-    std::size_t first_audio_frames = 0;
-    CHECK(worker.wait_for_terminal(101, first_audio_frames));
-    CHECK(first_audio_frames >= 2);
+    DirectPipeNativeWorker::TerminalResult first_result;
+    CHECK(worker.wait_for_terminal(101, first_result));
+    CHECK(first_result.type == ControlMessageType::Completed);
+    CHECK(first_result.audio_frames >= 2);
+    CHECK(first_result.completed.has_execution_outcome);
+    CHECK(first_result.completed.execution_outcome == "natural_eos");
+    CHECK(first_result.completed.has_generation_trace);
+    CHECK(first_result.completed.generation_trace.hit_eos);
 
     request.text = "stalled stderr normal streaming second request";
     CHECK(worker.send(102, ControlMessage{request}));
-    std::size_t second_audio_frames = 0;
-    CHECK(worker.wait_for_terminal(102, second_audio_frames));
-    CHECK(second_audio_frames >= 2);
+    DirectPipeNativeWorker::TerminalResult second_result;
+    CHECK(worker.wait_for_terminal(102, second_result));
+    CHECK(second_result.type == ControlMessageType::Completed);
+    CHECK(second_result.audio_frames >= 2);
+    CHECK(second_result.completed.has_execution_outcome);
+    CHECK(second_result.completed.execution_outcome == "natural_eos");
+    CHECK(second_result.completed.has_generation_trace);
+    CHECK(second_result.completed.generation_trace.hit_eos);
     CHECK(worker.shutdown());
     return EXIT_SUCCESS;
 }
 
 int run_pre_stalled_stderr_cancel_e2e() {
+    const auto release_path = std::filesystem::absolute("native-direct-cancel-release.flag");
+    struct ReleasePathCleanup {
+        std::filesystem::path path;
+        ~ReleasePathCleanup() {
+            std::error_code error;
+            std::filesystem::remove(path, error);
+        }
+    } release_path_cleanup{release_path};
+    std::error_code cleanup_error;
+    std::filesystem::remove(release_path, cleanup_error);
     DirectPipeNativeWorker worker;
-    CHECK(worker.start());
+    CHECK(worker.start(release_path));
+    CHECK(worker.wait_for_stderr_saturation());
     CHECK(worker.send(0, ControlMessage{HelloMessage{"direct-stderr-cancel-test", "0.2.0"}}));
     Frame ready;
     CHECK(worker.read_frame(ready));
@@ -1084,13 +1166,23 @@ int run_pre_stalled_stderr_cancel_e2e() {
     SynthesizeMessage request;
     request.text = "stalled stderr cancellation request";
     CHECK(worker.send(201, ControlMessage{request}));
+    CHECK(worker.wait_for_control_type(201, ControlMessageType::Started));
     request.text = "stalled stderr pending request";
     CHECK(worker.send(202, ControlMessage{request}));
+    CHECK(worker.wait_for_control_type(202, ControlMessageType::Queued));
     CHECK(worker.send(201, ControlMessage{CancelMessage{}}));
-    std::size_t cancelled_audio = 0;
-    CHECK(worker.wait_for_terminal(201, cancelled_audio));
-    std::size_t pending_audio = 0;
-    CHECK(worker.wait_for_terminal(202, pending_audio));
+    {
+        std::ofstream release(release_path, std::ios::binary);
+        release << "release";
+    }
+    DirectPipeNativeWorker::TerminalResult cancelled_result;
+    CHECK(worker.wait_for_terminal(201, cancelled_result));
+    CHECK(cancelled_result.type == ControlMessageType::Cancelled);
+    DirectPipeNativeWorker::TerminalResult pending_result;
+    CHECK(worker.wait_for_terminal(202, pending_result));
+    CHECK(pending_result.type == ControlMessageType::Completed);
+    CHECK(pending_result.completed.has_execution_outcome);
+    CHECK(pending_result.completed.execution_outcome == "natural_eos");
     CHECK(worker.shutdown());
     return EXIT_SUCCESS;
 }
