@@ -236,8 +236,43 @@ Start listening with
 `.tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/REVIEW-FIRST.md`,
 then `listening/CMP50HX/cmp50hx-matrix-001/index.md` for all 49 WAVs and
 `index.json` for exact original/effective text and output hashes. Human
-listening remains `not_assessed`. The independent second-PC instructions are
-in [the RTX 4090 handoff](native-r1-aa2770ec-rtx4090-handoff.md).
+listening of the matrix artifacts remains `not_assessed`. The independent
+second-PC instructions are in [the RTX 4090 handoff](native-r1-aa2770ec-rtx4090-handoff.md).
+
+## Scoped word-stress feedback and separate corrected candidate
+
+The user reported incorrect stress in "мастерской" in the earlier
+`cmp50hx-smoke-001/ru-stress/front/ru-ordinary/speech.wav`, not the matrix WAV.
+That exact smoke artifact is 7.36 seconds, 353,324 bytes, SHA-256
+`229cd5debf0cebb7ccb5fffd8fde61b9ef0f9ef380b20c4c41d96e037af8142e`.
+The [separate smoke feedback receipt](native-r1-ru-stress-smoke-feedback-cmp50hx-20261120.json)
+records a failed `pronunciation_stress` criterion only; all unrelated criteria
+remain unassessed. No judgment transfers to the 6.88-second matrix WAV.
+
+A new candidate in
+`listening/CMP50HX/cmp50hx-stress-corrective-001/ru-stress/front/ru-ordinary/`
+uses explicit "мастерско́й" (U+0301 after the final о), preserved in the logged
+effective text. The unchanged packaged launcher/runtime/models produced readable
+nonzero PCM16 mono 24 kHz, natural EOS, 92 codec frames, 7.36 seconds, 353,324
+bytes, WAV SHA-256
+`e0f7a6dce285c869ce744eb04dccd36f3102e7318f28e173ffea10d4e397c898`.
+The new pronunciation remains unassessed by a human; it does not replace the
+original artifact or repair the frozen matrix by implication. R1 stays NO-GO.
+
+The distinct 0.24-second outlier is
+`listening/CMP50HX/cmp50hx-matrix-001/ru-stress/raw/ru-abbreviations/speech.wav`:
+"МГУ находится в Москве. Инженер проверил USB-порт, GPS и новый процессор."
+It is 11,564 bytes, 3 codec frames, SHA-256
+`0411d394523849e46624cfa278a1e1e0d5ee66bdc7d785f33deafbafcd36566f`.
+No new listening observation exists for it in this follow-up.
+
+Follow-up validation accepted all five indexed receipts, verified all local
+artifact identities in both matrix receipts and the new smoke receipt, and
+passed 22 regression tests (one existing Windows symlink skip). The optional
+stress criterion preserves the five required criteria and cannot hide a
+declared stress failure or unassessed status behind an aggregate listening
+pass. JSON Schema execution was not run locally because `jsonschema` is not
+installed; the executable receipt validator and its regression tests ran.
 
 ## Cleanup
 
