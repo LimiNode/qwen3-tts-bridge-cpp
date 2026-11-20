@@ -1,19 +1,29 @@
 {
   "player": "bin/qwen_tts_play.exe",
+  "save_wav": "bin/qwen_tts_save_wav.exe",
   "worker": "bin/qwen_tts_native_worker.exe",
   "runtime_dir": "runtime/qwentts",
   "model_root": "models",
   "default_model_profile": "ru-stress",
+  "require_model_hashes": true,
   "model_profiles": {
     "base": {
       "talker_model": "base/qwen-talker-1.7b-base-Q8_0.gguf",
-      "codec_model": "common/qwen-tokenizer-12hz-Q8_0.gguf"
+      "codec_model": "common/qwen-tokenizer-12hz-Q8_0.gguf",
+      "model_download": {
+        "talker_sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+        "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94"
+      }
     },
     "ru-stress": {
       "experimental": true,
       "talker_model": "ru-stress/qwen-talker-1.7b-ru-stress-Q8_0.gguf",
       "codec_model": "common/qwen-tokenizer-12hz-Q8_0.gguf",
-      "text_render_capability": "explicit_combining_stress"
+      "text_render_capability": "explicit_combining_stress",
+      "model_download": {
+        "talker_sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+        "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94"
+      }
     }
   },
   "warmup_synthesis": false
