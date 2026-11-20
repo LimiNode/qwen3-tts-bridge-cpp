@@ -8,6 +8,12 @@ This is a work checklist, not an acceptance result. See the
 The current code-prefix candidate is rejected; no live recovery policy or
 faster engine is qualified. R1 remains NO-GO. Do not merge or release.
 
+The separate [CMP frame-reseed/shared-prefix study](reports/native-frame-reseed-and-prefix-20261120.md)
+and [qwentts Draft PR #49](https://github.com/LimiNode/qwentts.cpp/pull/49)
+cover the additional deterministic reseeding and true two-slot experiments.
+They do not update the Bridge engine pin or install a live recovery policy.
+Current task scope is CMP 50HX only; do not launch RTX work from this addendum.
+
 ## Independent RTX 4090 agent
 
 1. Use a task worktree under the local repository's `.worktrees/`, check out
