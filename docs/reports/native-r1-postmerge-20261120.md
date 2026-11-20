@@ -247,6 +247,18 @@ then `listening/CMP50HX/cmp50hx-matrix-001/index.md` for all 49 WAVs and
 listening of the matrix artifacts remains `not_assessed`. The independent
 second-PC instructions are in [the RTX 4090 handoff](native-r1-aa2770ec-rtx4090-handoff.md).
 
+## Seeded early-EOS follow-up
+
+The [seeded diagnostic](native-r1-seeded-early-eos-cmp50hx-20261120.md) and
+[separate canonical receipt](native-r1-seeded-early-eos-cmp50hx-20261120.json)
+reproduce the raw abbreviations failure at seeds2/14 (3 frames,0.24s), including
+original max2048 and guard OFF/ON. Saved finite weights and exact F32 sampler
+replay show model EOS probability90.5919% after the three-frame bad history.
+Controlled audio-prefix substitutions reproduce identical step3 logits across
+seeds; the convergence guard is unrelated and does not prevent early EOS.
+This closes the missing reproducible-seed diagnostic, not the content failure
+or release gate. No production fix/default change or listening PASS is claimed.
+
 ## Scoped word-stress feedback and separate corrected candidate
 
 The user reported incorrect stress in "мастерской" in the earlier

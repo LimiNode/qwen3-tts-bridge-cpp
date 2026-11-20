@@ -6,6 +6,12 @@ qwentts `130cb99af9ae12d554962fd0920e08fb4268af01`, ABI6, CMP50HX UUID
 unchanged from the [canonical RU-stress receipt](native-r1-ru-stress-cmp50hx-20261120.json).
 No production fix, sampling-default change or acceptance promotion was made.
 
+Follow-up: [the seeded sweep](native-r1-seeded-early-eos-cmp50hx-20261120.md)
+now reproduces this failure class at seeds2/14, with retained logits, exact
+sampler replay and guard OFF/ON plus controlled audio-history comparisons.
+The initial observations below remain historical; the lack of a reproducible
+seed has been resolved, while upstream/native same-history parity remains open.
+
 ## Input is not empty
 
 The full input and logged effective text are identical:

@@ -3,6 +3,14 @@
   "generated_at": "2026-11-20",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-r1-seeded-early-eos-cmp50hx-20261120",
+      "receipt": "docs/reports/native-r1-seeded-early-eos-cmp50hx-20261120.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-r1-ru-stress-smoke-feedback-cmp50hx-20261120",
       "receipt": "docs/reports/native-r1-ru-stress-smoke-feedback-cmp50hx-20261120.json",
       "model_family": "RU-stress",

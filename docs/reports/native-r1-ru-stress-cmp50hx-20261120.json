@@ -649,6 +649,7 @@
   },
   "supersedes": null,
   "related_reports": [
+    "docs/reports/native-r1-seeded-early-eos-cmp50hx-20261120.md",
     "docs/reports/native-r1-raw-abbreviations-eos-diagnosis-20261120.md",
     "docs/reports/native-r1-postmerge-20261120.md",
     "docs/reports/native-r1-aa2770ec-rtx4090-handoff.md"
