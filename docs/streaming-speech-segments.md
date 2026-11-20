@@ -56,8 +56,11 @@ and pronunciation remain separate acceptance gates.
 MSVC x64 Release with frontend, WinMM, native worker and test hooks enabled:
 **48/48 CTest PASS**. The compiled C++ source matches `6194dc50`; the final
 Python probe formatting does not change its behavior. Python 3.11's full suite
-passes **517 tests, 7 skipped**; Ruff and Pyright pass. The new replay
-analyzer's eight model-free tests are included in that suite. The independent
+passes **517 tests, 7 skipped**; Ruff and Pyright pass. The initial replay
+analyzer's eight model-free tests are included in that suite. A subsequent
+causality regression adds a ninth analyzer test; it separates text-only gate
+eligibility from future terminal labels without changing the discovery
+measurements. The independent
 g++ segmentation unit probe and public-header build also pass.
 
 The first full run is preserved, not counted as green. Its native-worker

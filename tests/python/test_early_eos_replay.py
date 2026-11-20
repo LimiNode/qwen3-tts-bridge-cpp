@@ -100,6 +100,7 @@ class EarlyEosReplayTests(unittest.TestCase):
 
     def test_equal_horizon_is_not_released_before_eos_decision(self) -> None:
         row = {
+            "text": TEXT,
             "frames": 3,
             "first_pcm_ms": 10,
             "terminal_ms": 25,
@@ -113,6 +114,26 @@ class EarlyEosReplayTests(unittest.TestCase):
         gated = study.release_boundary(row, 3)
         self.assertIsNone(gated["release_ms"])
         self.assertEqual(25, gated["decision_ms"])
+
+    def test_gate_never_reads_future_terminal_outcome(self) -> None:
+        row = {
+            "text": TEXT,
+            "frames": 3,
+            "first_pcm_ms": 10,
+            "terminal_ms": 25,
+            "chunks": [
+                {"arrival_ms": 10, "audio_bytes": study.FRAME_BYTES},
+                {"arrival_ms": 20, "audio_bytes": 2 * study.FRAME_BYTES},
+            ],
+        }
+        for outcome in ("natural_eos", "max_tokens", "error"):
+            with self.subTest(outcome=outcome):
+                row["duration_proxy"] = study.duration_proxy(TEXT, 3, outcome)
+                gated = study.release_boundary(row, 3)
+                self.assertIsNone(gated["release_ms"])
+                self.assertEqual(25, gated["decision_ms"])
+                self.assertFalse(gated["gate_bypassed_unassessed_text"])
+                self.assertEqual(20, study.release_boundary(row, 2)["release_ms"])
 
     def test_short_legitimate_utterance_has_no_failure_label_or_gate(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -178,6 +199,7 @@ class EarlyEosReplayTests(unittest.TestCase):
 
     def test_chunk_after_terminal_and_corrupt_frame_size_are_rejected(self) -> None:
         row = {
+            "text": TEXT,
             "frames": 1,
             "first_pcm_ms": 10,
             "terminal_ms": 9,

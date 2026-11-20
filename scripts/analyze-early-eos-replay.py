@@ -86,10 +86,15 @@ def parse_traces(stderr: str) -> dict[int, dict[str, Any]]:
     return finished
 
 
+def gate_eligible_text(text: str) -> bool:
+    """Choose the replay gate using only text available before generation."""
+    words = re.findall(r"[^\W\d_]+", text, re.UNICODE)
+    return len(words) >= 6 and sum(map(len, words)) >= 24
+
+
 def duration_proxy(text: str, frames: int, outcome: str) -> bool | None:
     """Prespecified long-text duration anomaly, not a content/quality label."""
-    words = re.findall(r"[^\W\d_]+", text, re.UNICODE)
-    if len(words) < 6 or sum(map(len, words)) < 24 or outcome != "natural_eos":
+    if not gate_eligible_text(text) or outcome != "natural_eos":
         return None
     return frames <= 12
 
@@ -140,7 +145,7 @@ def confusion(
 
 def release_boundary(row: dict[str, Any], horizon: int) -> dict[str, Any]:
     """Replay actual callback granularity; >N frames proves frame N is not EOS."""
-    gate = horizon if row["duration_proxy"] is not None else 0
+    gate = horizon if gate_eligible_text(row["text"]) else 0
     cumulative = 0
     release = None
     previous = -1.0

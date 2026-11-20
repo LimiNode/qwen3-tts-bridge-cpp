@@ -39,17 +39,21 @@ Run from a checkout with Python 3.11, replacing the repository prefix if needed:
 ```powershell
 py -3.11 -B scripts/analyze-early-eos-replay.py `
   --run-dir E:\_repoz\qwen3-tts-bridge-cpp\.tmp\base-acceptance\native-r1-aa2770ec-20261120\diagnosis\short-eos-seed-sweep-001\scan-000-031 `
-  --output E:\_repoz\qwen3-tts-bridge-cpp\.tmp\base-acceptance\streaming-eos-research-20261120\detector-replay\analysis-v2.json
+  --output E:\_repoz\qwen3-tts-bridge-cpp\.tmp\base-acceptance\streaming-eos-research-20261120\detector-replay\analysis-v3.json
 ```
 
 Output creation is exclusive: choose a new filename when repeating the command.
-`analysis-v2.json` supersedes the initial diagnostic `analysis.json` by adding
-the exact analyzer identity; neither historical file was overwritten.
+`analysis-v2.json` added the exact analyzer identity to the initial diagnostic
+`analysis.json`. The current `analysis-v3.json` separates text-only gate
+eligibility from retrospective terminal-dependent labels. A non-natural
+terminal must not retroactively bypass a gate. The all-natural discovery
+policy and classifier results below are unchanged. All historical outputs
+remain preserved; choose a new filename on rerun.
 
 - Analyzer SHA-256:
-  `147182de7ee2584cedd22fd3216dc5bb642fde4c394a11f2bdd69590be7348e5`.
-- `analysis-v2.json` SHA-256:
-  `63cc0c7caa08a57aee11e8c3845325b95aedfb65b6364fcddaa994becc0f8897`.
+  `2d9a86d3001ec6e8431ff91de938c84e681d28d7d56c2676d31b209b34a0de31`.
+- `analysis-v3.json` SHA-256:
+  `4b847f052f8a899621d051458c90da96634ab750b6c163b33acae99e074c46a6`.
 
 ## Labels and split: narrow duration proxy, not speech truth
 
@@ -148,9 +152,10 @@ applied to physical playback or combined with retry/deadline/cancellation.
   retain one absolute deadline, respect cancellation, and never duplicate
   committed speech. None of those properties is established by this replay.
 
-Validation: **8/8** model-free unit tests pass, covering short-text exclusion,
+Validation: **9/9** model-free unit tests pass, covering short-text exclusion,
 strict `>N` ordering, missing/malformed features, seed alignment/interleaving,
-no held-out-label fit, input immutability, and exclusive output creation.
+no held-out-label fit, future-terminal-independent gate decisions, input
+immutability, and exclusive output creation.
 Ruff check/format and Pyright pass for both script and test module. This report
 does not change acceptance receipts or close any mechanical/listening/release
 gate; it only records a reproducible read-only analysis of preserved evidence.
