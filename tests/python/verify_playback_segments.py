@@ -28,7 +28,8 @@ def run(command: list[str]) -> subprocess.CompletedProcess[str]:
         process.communicate(timeout=5)
         raise
     return subprocess.CompletedProcess(
-        command, process.returncode,
+        command,
+        process.returncode,
         stdout.decode("utf-8", errors="replace"),
         stderr.decode("utf-8", errors="replace"),
     )
@@ -45,9 +46,16 @@ def main() -> int:
     ) as temporary:
         root = Path(temporary)
         common = [
-            str(args.player), "--mock", "--mock-playback-sink", "--no-tts-front",
-            "--no-tail", "--segment-text", "--mock-chunks", "2",
-            "--mock-chunk-ms", "20",
+            str(args.player),
+            "--mock",
+            "--mock-playback-sink",
+            "--no-tts-front",
+            "--no-tail",
+            "--segment-text",
+            "--mock-chunks",
+            "2",
+            "--mock-chunk-ms",
+            "20",
         ]
         wav = root / "complete.wav"
         text = "В мастерско\u0301й тихо. Инженер проверил USB-порт."
@@ -66,16 +74,25 @@ def main() -> int:
         assert "text_front effective=Инженер проверил USB-порт." in output, output
         with wave.open(str(wav), "rb") as audio:
             assert (
-                audio.getframerate(), audio.getnchannels(), audio.getsampwidth()
+                audio.getframerate(),
+                audio.getnchannels(),
+                audio.getsampwidth(),
             ) == (24000, 1, 2)
             assert audio.getnframes() == 2 * 2 * 20 * 24000 // 1000
             assert len(audio.readframes(audio.getnframes())) == audio.getnframes() * 2
 
         failed = root / "failed.wav"
-        result = run(common + [
-            "--text", "First. Second. Third.", "--wav-capture-file", str(failed),
-            "--mock-playback-fail-after", "2",
-        ])
+        result = run(
+            common
+            + [
+                "--text",
+                "First. Second. Third.",
+                "--wav-capture-file",
+                str(failed),
+                "--mock-playback-fail-after",
+                "2",
+            ]
+        )
         output = result.stdout + result.stderr
         assert result.returncode != 0, output
         assert "playback failed" in output, output
@@ -84,10 +101,19 @@ def main() -> int:
         assert not list(root.glob("failed.wav.tmp.*")), "failed capture left temporary"
 
         timed_out = root / "timed-out.wav"
-        result = run(common + [
-            "--text", "First. Second. Third.", "--wav-capture-file", str(timed_out),
-            "--request-timeout-ms", "70", "--mock-chunk-delay", "0.03",
-        ])
+        result = run(
+            common
+            + [
+                "--text",
+                "First. Second. Third.",
+                "--wav-capture-file",
+                str(timed_out),
+                "--request-timeout-ms",
+                "70",
+                "--mock-chunk-delay",
+                "0.03",
+            ]
+        )
         output = result.stdout + result.stderr
         assert result.returncode != 0 and "timed out" in output, output
         assert "speech_segment index=2" not in output, output
