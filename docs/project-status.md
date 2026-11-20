@@ -21,13 +21,22 @@ on the dual-GPU, clean-package, quality and listening gates below.
 
 ## R1 release state
 
-The release-preparation baseline is `8b19399cb84eb81556f84f2542bfae337c41b46f`
-and the repository version is `0.2.0`. No GitHub Release has been published;
+The frozen native CLI source candidate is
+`aa2770ec8aeb45d59f42c96c3a1f4f2dc52390d8` (merged PRs #328 and #329).
+The repository version is `0.2.0`. No GitHub Release has been published;
 the existing `frequency-r10-rtx4090-48gb-internal-rc1/rc2` tags are internal
-experiment tags, not R1 releases. A final release candidate is not frozen.
-The baseline is suitable for release preparation, not yet a public
+experiment tags, not R1 releases. This is an unpublished acceptance candidate,
+not a final release candidate. It is suitable for release preparation, not yet a public
 support claim: clean portable-package acceptance, independent hardware
 evidence, and the declared human-listening scope remain gates.
+
+The earlier `8b19399c` baseline and its receipts remain historical evidence.
+The current source candidate has successful exact-head C++ (7/7 jobs) and
+Python CI. The test-only fatal/stderr correction, local model-free checks,
+fresh production package, and remaining acceptance boundaries are recorded in
+[the post-merge qualification report](reports/native-r1-postmerge-20261120.md).
+Receipt-only documentation commits do not change the source identity or ZIP
+of this frozen candidate.
 
 Keep these evidence layers separate:
 
@@ -58,6 +67,20 @@ have mechanical synthesis and natural-EOS evidence plus scoped human listening:
 These are scoped `partial_pass` listening verdicts, not a universal release
 acceptance. The exact payloads remain local under `.tmp/base-acceptance/` and
 are identified in the tracked receipts by SHA-256.
+
+The new frozen native CLI candidate has separate, unlistened CMP 50HX records:
+
+* [RU-stress native CLI](reports/native-r1-ru-stress-cmp50hx-20261120.json).
+* [Base native CLI](reports/native-r1-base-cmp50hx-20261120.json).
+
+They do not replace the earlier Python listening observations or inherit the
+historical RU-stress listening verdict. In this candidate, Base + frontend
+English numbers/dates reached `max_tokens`; the saver correctly refused final
+publication without natural EOS. The frontend also still emits an incorrect
+case inflection for `за 1250 рублей`, despite the targeted `две книги` fix.
+RU-stress/raw abbreviations also returned only 0.24 seconds despite natural
+EOS, so content completeness requires investigation. These limitations and
+every unrun gate remain explicit. R1 is **NO-GO**.
 
 ## Verified milestones
 

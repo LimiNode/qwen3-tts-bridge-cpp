@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "candidate_source_head": "aa2770ec8aeb45d59f42c96c3a1f4f2dc52390d8",
+  "runtime_commit": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "frontend_commit": "64f73182d26de60af6c082724b1b199eb7310620",
+  "voice_id": "kraftwerk_robot_ru_bootstrap_fidelity",
+  "settings": {
+    "warmup_synthesis": false,
+    "startup_timeout_ms": 300000,
+    "request_timeout_ms": 300000,
+    "require_natural_eos": true,
+    "seed": "not_exposed_by_packaged_launcher; not supplied",
+    "sampling": "unchanged packaged native defaults; not independently overridden",
+    "physical_playback": "not_run",
+    "human_listening": "not_assessed"
+  },
+  "cases": [
+    {"id":"ru-ordinary","language":"russian","category":"ordinary","profiles":["ru-stress","base"],"expected":"completed","text":"Сегодня в мастерской тихо. Я проверяю связь и читаю новую команду спокойным голосом.","listen_for":"Intelligibility, Kraftwerk reference identity, no foreign phonemes or repeated words."},
+    {"id":"en-ordinary","language":"english","category":"ordinary","profiles":["ru-stress","base"],"expected":"completed","text":"The workshop is quiet today. I am checking the connection and reading the next instruction in a calm voice.","listen_for":"English intelligibility and stability; English support is not inferred from completion."},
+    {"id":"ru-numbers-dates","language":"russian","category":"numbers_dates","profiles":["ru-stress","base"],"expected":"completed","text":"Вчера я купил 2 книги за 1250 рублей. Встреча назначена на 21.11.2026 в 14:35.","front_effective_contains_without_stress":"две книги","listen_for":"Correct feminine agreement for two books; numbers, date and time are understandable."},
+    {"id":"en-numbers-dates","language":"english","category":"numbers_dates","profiles":["ru-stress","base"],"expected":"completed","text":"I bought 2 books for 12.50 dollars on November 21, 2026. The next meeting starts at 14:35.","listen_for":"Numbers, date and time; compare actual frontend output, not an invented transcript."},
+    {"id":"ru-abbreviations","language":"russian","category":"abbreviations","profiles":["ru-stress","base"],"expected":"completed","text":"МГУ находится в Москве. Инженер проверил USB-порт, GPS и новый процессор.","listen_for":"Abbreviations, Russian and Latin letter boundaries, no skipped phrase."},
+    {"id":"en-abbreviations","language":"english","category":"abbreviations","profiles":["ru-stress","base"],"expected":"completed","text":"The CPU reads data from the USB port. Please check GPS, RAM and the next API request.","listen_for":"Acronyms and ordinary surrounding English speech."},
+    {"id":"ru-homographs","language":"russian","category":"homographs","profiles":["ru-stress","base"],"expected":"completed","text":"На горе стоит старый замок. Мастер проверил замок на двери и вернулся в мастерскую.","listen_for":"Castle versus lock. No stress accuracy claim before listening."},
+    {"id":"en-homographs","language":"english","category":"homographs","profiles":["ru-stress","base"],"expected":"completed","text":"Please record the next message. Keep this record on the desk, and present the present to our guest.","listen_for":"Context-sensitive pronunciation; record and present have different roles."},
+    {"id":"ru-long","language":"russian","category":"long","profiles":["ru-stress","base"],"expected":"completed","text":"Когда погас последний индикатор, инженер ещё раз внимательно осмотрел панель управления. Он проверил кабели, записал показания приборов и попросил напарника повторить короткую команду. За окном шёл дождь, но в мастерской было сухо и спокойно. После небольшой паузы система передала новый отчёт: связь работает, питание стабильно, можно продолжать испытание. Это последняя фраза длинной проверки, и она должна прозвучать полностью.","listen_for":"No late stalls, skipped clauses, repetition, early ending or voice drift."},
+    {"id":"en-long","language":"english","category":"long","profiles":["ru-stress","base"],"expected":"completed","text":"After the final indicator went dark, the engineer inspected the control panel once more. She checked every cable, wrote down the readings and asked her colleague to repeat a short instruction. Rain was falling outside, but the workshop remained quiet. A new report arrived: the connection was working, the power was stable and the test could continue. This is the final sentence of the long check, and it must be spoken completely.","listen_for":"No late stalls, repeated clauses, truncated ending or English voice drift."},
+    {"id":"ru-endings","language":"russian","category":"punctuation_endings","profiles":["ru-stress","base"],"expected":"completed","text":"Проверка завершена. Дверь закрыта? Да, теперь всё готово! Последнее слово: конец.","listen_for":"Questions, phrase boundaries, complete last word and natural unclipped tail."},
+    {"id":"en-endings","language":"english","category":"punctuation_endings","profiles":["ru-stress","base"],"expected":"completed","text":"The check is complete. Is the door closed? Yes, everything is ready! The final word is finish.","listen_for":"Punctuation, full final word and natural unclipped tail."},
+    {"id":"ru-explicit-stress","language":"russian","category":"explicit_stress","profiles":["ru-stress"],"expected":"completed","text":"На горе́ стои́т ста́рый за́мок. Я закры́л замо́к на двери́ и вы́шел во двор.","listen_for":"Exact contrasting explicit stresses: за́мок / замо́к; на двери́. RU-stress only."},
+    {"id":"base-reject-explicit-stress","language":"russian","category":"negative_explicit_stress","profiles":["base"],"expected":"rejected","text":"На горе́ стои́т ста́рый за́мок. Я закры́л замо́к на двери́ и вы́шел во двор.","listen_for":"No WAV should be created; compatible-profile rejection must happen before synthesis."}
+  ]
+}
