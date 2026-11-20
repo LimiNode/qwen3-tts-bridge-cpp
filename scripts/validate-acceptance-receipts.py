@@ -21,6 +21,7 @@ BACKENDS = {"faster", "native", "upstream", "other"}
 MECHANICAL_FIELDS = {"model_load", "pcm", "natural_eos", "persistent_repeat", "restart"}
 MECHANICAL_VALUES = {"pass", "fail", "not_run"}
 LISTENING_FIELDS = {"intelligibility", "voice_or_instruction", "artifacts", "final_tail", "sequential_contamination"}
+OPTIONAL_LISTENING_FIELDS = {"pronunciation_stress"}
 LISTENING_VALUES = {"pass", "partial", "not_assessed", "fail"}
 ARTIFACT_KINDS = {"wav", "json", "log", "manifest", "other"}
 GPU_UUID_STATUSES = {"recorded", "unavailable"}
@@ -216,7 +217,10 @@ def validate_receipt(path: Path, root: Path, check_artifacts: bool) -> dict[str,
     criteria = listening["criteria"]
     if not isinstance(criteria, dict):
         raise ValidationError(f"{path}: human_listening.criteria must be an object")
-    object_keys(criteria, LISTENING_FIELDS, LISTENING_FIELDS, f"{path}: human_listening.criteria")
+    object_keys(
+        criteria, LISTENING_FIELDS, LISTENING_FIELDS | OPTIONAL_LISTENING_FIELDS,
+        f"{path}: human_listening.criteria",
+    )
     if any(value not in LISTENING_VALUES for value in criteria.values()):
         raise ValidationError(f"{path}: invalid human listening criterion")
     values = set(criteria.values())

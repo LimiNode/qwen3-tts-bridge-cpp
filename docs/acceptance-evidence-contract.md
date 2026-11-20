@@ -73,6 +73,12 @@ hardware portability. Leave unassessed criteria as `not_assessed`.
 
 ## Required handoff
 
+`human_listening.criteria.pronunciation_stress` is an optional scoped criterion
+for pronunciation or word-stress feedback. Record the exact word and artifact
+in `scope`/`notes`; leave unrelated criteria unassessed. Absence of this field
+in an older receipt is not a pronunciation verdict. A declared failure or
+unassessed criterion cannot accompany an aggregate listening pass.
+
 New R1 canonical receipts use `schema_version: 2`. Version 1 remains readable;
 do not rewrite historical receipts or listening verdicts to migrate them.
 Version 2 adds three independent `{ "status": "...", "reason": "..." }`

@@ -224,6 +224,55 @@ class AcceptanceReceiptValidatorTests(unittest.TestCase):
         receipt["human_listening"] = dict(receipt["human_listening"], status="pass")
         self.assert_invalid(receipt)
 
+    def test_stress_only_listening_failure_preserves_unassessed_criteria(self) -> None:
+        receipt = self.version_two_receipt()
+        criteria = {
+            key: "not_assessed" for key in receipt["human_listening"]["criteria"]
+        }
+        criteria["pronunciation_stress"] = "fail"
+        receipt["human_listening"].update(status="fail", criteria=criteria)
+        receipt["listening_result"] = {
+            "status": "fail", "reason": "Incorrect stress in one observed word only."
+        }
+        VALIDATOR.validate_receipt(self._write_temp_receipt(receipt), ROOT, False)
+
+    def test_listening_pass_requires_optional_stress_to_pass(self) -> None:
+        for stress_status in ("pass", "fail", "not_assessed"):
+            with self.subTest(stress_status=stress_status):
+                receipt = self.version_two_receipt()
+                criteria = {
+                    key: "pass" for key in receipt["human_listening"]["criteria"]
+                }
+                criteria["pronunciation_stress"] = stress_status
+                receipt["human_listening"].update(status="pass", criteria=criteria)
+                receipt["listening_result"]["status"] = "pass"
+                if stress_status == "pass":
+                    VALIDATOR.validate_receipt(
+                        self._write_temp_receipt(receipt), ROOT, False
+                    )
+                else:
+                    self.assert_invalid(receipt)
+
+    def test_optional_stress_rejects_invalid_status(self) -> None:
+        receipt = self.version_two_receipt()
+        receipt["human_listening"]["criteria"]["pronunciation_stress"] = "unknown"
+        self.assert_invalid(receipt)
+
+    def test_optional_stress_does_not_relax_criterion_keys(self) -> None:
+        for required_field in self.receipt["human_listening"]["criteria"]:
+            with self.subTest(required_field=required_field):
+                receipt = self.version_two_receipt()
+                criteria = receipt["human_listening"]["criteria"]
+                criteria["pronunciation_stress"] = "not_assessed"
+                del criteria[required_field]
+                self.assert_invalid(receipt)
+
+        receipt = self.version_two_receipt()
+        receipt["human_listening"]["criteria"].update(
+            pronunciation_stress="not_assessed", unknown_criterion="not_assessed"
+        )
+        self.assert_invalid(receipt)
+
     def test_partial_pass_requires_incomplete_scope(self) -> None:
         receipt = self.receipt.copy()
         listening = dict(receipt["human_listening"])
