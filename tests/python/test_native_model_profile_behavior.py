@@ -10,9 +10,21 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 _ROOT = Path(__file__).resolve().parents[2]
 _LAUNCHER = _ROOT / "scripts" / "start-native-play.ps1"
+_TEST_TEMP = _ROOT / ".tmp" / "native-launcher-tests"
+
+
+def _windows_powershell_environment() -> dict[str, str]:
+    # pwsh 7's built-in module directory is incompatible with Windows PS 5.1.
+    # Let the child reconstruct its own defaults rather than inherit the host's.
+    return {
+        key: value
+        for key, value in os.environ.items()
+        if key.casefold() != "psmodulepath"
+    }
 
 
 class NativeModelProfileBehaviorTests(unittest.TestCase):
@@ -24,7 +36,8 @@ class NativeModelProfileBehaviorTests(unittest.TestCase):
     def run_launcher(
         self, config: dict[str, object], *extra: str
     ) -> subprocess.CompletedProcess[str]:
-        with tempfile.TemporaryDirectory() as temporary_directory:
+        _TEST_TEMP.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=_TEST_TEMP) as temporary_directory:
             config_path = Path(temporary_directory) / "native-worker.local.json"
             config_path.write_text(json.dumps(config), encoding="utf-8")
             command = [
@@ -41,6 +54,7 @@ class NativeModelProfileBehaviorTests(unittest.TestCase):
             return subprocess.run(
                 command,
                 cwd=_ROOT,
+                env=_windows_powershell_environment(),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -96,10 +110,9 @@ class NativeModelProfileBehaviorTests(unittest.TestCase):
     def run_relocated_bundle(
         self, *extra: str, corrupt_model: str = "", exit_code: int = 0
     ) -> tuple[subprocess.CompletedProcess[str], list[str] | None]:
-        temporary_root = _ROOT / ".tmp" / "native-launcher-tests"
-        temporary_root.mkdir(parents=True, exist_ok=True)
+        _TEST_TEMP.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(
-            prefix="bundle with spaces ", dir=temporary_root
+            prefix="bundle with spaces ", dir=_TEST_TEMP
         ) as temporary_directory:
             bundle = Path(temporary_directory)
             for name in ("scripts", "bin", "config", "models"):
@@ -149,7 +162,10 @@ class NativeModelProfileBehaviorTests(unittest.TestCase):
                 ],
                 # The launch must not depend on the caller's checkout or cwd.
                 cwd=bundle / "bin",
-                env={**os.environ, "QTB_LAUNCH_ARGS": str(capture)},
+                env={
+                    **_windows_powershell_environment(),
+                    "QTB_LAUNCH_ARGS": str(capture),
+                },
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -229,6 +245,20 @@ class NativeModelProfileBehaviorTests(unittest.TestCase):
             "-Offline", "-Text", "test", exit_code=17,
         )
         self.assertEqual(17, result.returncode)
+
+    def test_windows_powershell_rebuilds_module_path(self) -> None:
+        inherited_path = str(_ROOT / ".tmp" / "pwsh7-only-modules")
+        with patch.dict(os.environ, {"PSModulePath": inherited_path}):
+            self.assertFalse(
+                any(
+                    key.casefold() == "psmodulepath"
+                    for key in _windows_powershell_environment()
+                )
+            )
+            result, arguments = self.run_relocated_bundle("-Offline", "-Text", "test")
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertIsNotNone(arguments)
+            self.assertEqual(inherited_path, os.environ["PSModulePath"])
 
 
 if __name__ == "__main__":
