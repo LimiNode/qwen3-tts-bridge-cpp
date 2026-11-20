@@ -7,6 +7,7 @@
   "speech_coverage": "partial",
   "listening_receipt": "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json",
   "shared_prefix_listening_receipt": "docs/reports/native-eos-prefix-listening-cmp50hx-20261120.json",
+  "offline_fade_diagnostic": "docs/reports/native-eos-fade-comparison-20261120.json",
   "listening_scope": "User confirms complete text in eight switch-1/switch-2 WAVs and three selected single/dual one-frame-prefix continuations. MGU is sometimes too fast in the switch set; the batch seed-65 prefix continuation gradually fades toward the end. Other candidates, general audio quality and live switching remain unassessed.",
   "physical_playback": "not_run",
   "rtx4090": "not_run",
@@ -223,7 +224,7 @@
       "duration_seconds": 7.2,
       "coverage": "pass",
       "human_listening": "partial_pass",
-      "audible_observation": "User reports gradual fading toward the end while confirming the full correct phrase; cause and measured severity remain unassessed."
+      "audible_observation": "User reports gradual fading toward the end while confirming the full correct phrase. The linked offline diagnostic measures a similar quieter late portion in single seed 65, not a substantial batch-only global attenuation ramp; cause/perceptual severity remain unresolved."
     },
     {
       "label": "Legitimate short Da, seed 65",

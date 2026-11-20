@@ -26,13 +26,19 @@ selector are not accepted by this observation. R1 stays NO-GO.
 
 The user subsequently confirmed the full correct phrase in three selected
 one-frame seed-2-prefix continuations: single seed 64 and batch seeds 64/65.
-The batch seed-65 WAV gradually fades toward the end; its cause and measured
-severity remain unassessed. See the
+The user reports gradual fading toward the end of the batch seed-65 WAV;
+its cause and perceptual severity remain unassessed. See the
 [prefix listening receipt](reports/native-eos-prefix-listening-cmp50hx-20261120.json).
 This establishes scoped coverage, not artifact-free audio or live switching.
 
-Next, characterize that fade without modifying the retained WAVs, freeze a
-broader CMP-only corpus and measure the actual EOS/selection timestamp,
+The [offline matched-seed diagnostic](reports/native-eos-fade-comparison-20261120.md)
+now measures similar quieter late portions in single and batch seed 65, with
+no fade introduced by WAV conversion and no substantial batch-only global
+attenuation supported for this pair. It preserves the observation, not a
+general quality pass; the matched single seed-65 WAV is not yet listened to.
+
+Next, compare those two retained WAVs perceptually, freeze a broader CMP-only
+corpus and measure the actual EOS/selection timestamp,
 serial-prefill cost and committed-PCM deadline before deciding on a true fork
 or live selector. Whole-step timing is not a selector implementation. Preserve
 baseline and all failures. Review the current Draft PRs before promoting any runtime.

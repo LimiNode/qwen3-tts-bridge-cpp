@@ -81,7 +81,7 @@
       "final_tail": "partial",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "User reported: \"Речь есть везде. ВОт конкретно тут она блтже к концу постепенно затухает. но фраза корректна. в этом смысле всё нормально\". The annotation identifies only dual-seed-2-frames-1/group-1-lane-1.wav (seed 65; SHA-256 52e56573fda2a33e100fea904a28c58a44c6b7436f1fab56f800cb0f4152f304) as gradually fading toward the end. Text coverage is user-confirmed for all three files; the fade is an auditory observation, not an established model, codec or batch defect. Its measured severity/cause and general voice/audio-quality criteria remain unassessed. No claim of artifact-free or constant-volume output is made."
+    "notes": "User reported: \"Речь есть везде. ВОт конкретно тут она блтже к концу постепенно затухает. но фраза корректна. в этом смысле всё нормально\". The annotation identifies only dual-seed-2-frames-1/group-1-lane-1.wav (seed 65; SHA-256 52e56573fda2a33e100fea904a28c58a44c6b7436f1fab56f800cb0f4152f304) as gradually fading toward the end. Text coverage is user-confirmed for all three files; the fade is an auditory observation, not an established model, codec or batch defect. The related offline seed-65 comparison measures similar quieter late portions in single and batch, with no WAV-conversion fade; cause, perceptual severity and general voice/audio-quality criteria remain unassessed. This does not add a listening verdict for single seed 65. No claim of artifact-free or constant-volume output is made."
   },
   "case_result": {
     "status": "not_assessed",
@@ -93,7 +93,7 @@
   },
   "release_disposition": {
     "status": "blocked",
-    "reason": "Teacher-forced research continuations, not an implemented live fork/selector. Broader corpus, measured fade cause/severity, streaming deadlines, physical playback and RTX qualification remain open. R1 remains NO-GO."
+    "reason": "Teacher-forced research continuations, not an implemented live fork/selector. Broader corpus, fade cause/perceptual severity, streaming deadlines, physical playback and RTX qualification remain open. R1 remains NO-GO."
   },
   "release_status": "blocked",
   "supersedes": null,
@@ -101,7 +101,9 @@
     "docs/reports/native-frame-reseed-and-prefix-20261120.md",
     "docs/reports/native-frame-reseed-evidence-20261120.json",
     "docs/reports/native-frame-reseed-observations-20261120.csv",
-    "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json"
+    "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json",
+    "docs/reports/native-eos-fade-comparison-20261120.md",
+    "docs/reports/native-eos-fade-comparison-20261120.json"
   ],
   "notes": "bridge_commit identifies the supporting research report, not an executed Bridge client. The probe statically links qwen-core and does not load qwen.dll. model_revision is the exact RU-stress Q8_0 Talker SHA-256, not an invented upstream revision. Single seed 64 and batch seed 64 produce 87 frames (6.96 s); batch seed 65 produces 90 frames (7.20 s). Baseline seed policy and the exact seed-2 one-frame prefix were used in all three. Listening does not transfer to other prefix lengths, seeds/texts, codec lanes, GPUs, a real state fork, live switching or release readiness. This receipt supplements, rather than supersedes, the separate switch-1/2 listening receipt."
 }

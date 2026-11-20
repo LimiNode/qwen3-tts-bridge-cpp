@@ -67,6 +67,9 @@ The separate [prefix listening receipt](reports/native-eos-prefix-listening-cmp5
 confirms full text in three named single/dual continuations, with user-reported
 gradual end-volume fading on batch seed 65. It does not qualify general audio
 quality, live branch switching or release readiness.
+The [offline seed-65 diagnostic](reports/native-eos-fade-comparison-20261120.md)
+finds a similar quieter ending in single and batch, not a WAV-conversion fade;
+the cause and perceptual severity remain unresolved.
 
 ## Verified milestones
 

@@ -1,0 +1,128 @@
+{
+  "kind": "offline_descriptive_audio_comparison_not_acceptance",
+  "date": "2026-11-20",
+  "report": "docs/reports/native-eos-fade-comparison-20261120.md",
+  "source_evidence": "docs/reports/native-frame-reseed-evidence-20261120.json",
+  "listening_receipt": "docs/reports/native-eos-prefix-listening-cmp50hx-20261120.json",
+  "scope": "Retained CMP 50HX / RU-stress Q8_0 / Kraftwerk / frontend OFF; continuation seed 65, baseline policy, one complete seed-2 frame preserved",
+  "engine_runtime_source": "5b03c53ee8bb2f7f4f102005ab7f6ba148ffd92c",
+  "payload_root": ".tmp/base-acceptance/eos-reseed-branching-20261120/",
+  "path_base": "payload_root; all artifact paths below are relative to it",
+  "new_inference": false,
+  "new_listening": false,
+  "audio_modified": false,
+  "release_status": "blocked",
+  "analysis_environment": "Python 3.11.9 standard library; five model-free self-checks passed",
+  "analysis_artifacts": [
+    {
+      "path": "fade-analysis-008/compare_fade.py",
+      "bytes": 7551,
+      "sha256": "022334533e1ffc15c92fb7f1760a0a49b570bf6ccb0a9c03e87a85c2cabac7b1"
+    },
+    {
+      "path": "fade-analysis-008/comparison.json",
+      "bytes": 15844,
+      "sha256": "86cbc008129bfe575edc187a39df6a99e166330df7fad55fff2313d3fbd2f375"
+    },
+    {
+      "path": "fade-analysis-008/envelope-500ms.csv",
+      "bytes": 3317,
+      "sha256": "56fbcdaa4dd361241dec739686f4cf82f2f570d0ef949fece983c3b45cf519df"
+    }
+  ],
+  "source_manifests": [
+    {
+      "path": "matrix-final-006/single-seed-2-frames-1-manifest.json",
+      "bytes": 3847,
+      "sha256": "76f69f0960c284281454fadb9f452efda9d7dc499985a783bd7b98c388c576d3"
+    },
+    {
+      "path": "matrix-final-006/dual-seed-2-frames-1-manifest.json",
+      "bytes": 2288,
+      "sha256": "00a1ff50117bf2c668da4e7364580574a80503199121422b464bbaf53ed667b3"
+    }
+  ],
+  "cases": {
+    "single": {
+      "raw": {
+        "path": "matrix-final-006/single-seed-2-frames-1/group-3-lane-0.f32",
+        "bytes": 691200,
+        "sha256": "6cc7353374a351057bc841ebd479af89449423b29d10839f09733a7e81453968"
+      },
+      "wav": {
+        "path": "matrix-final-006/single-seed-2-frames-1/group-3-lane-0.wav",
+        "bytes": 345644,
+        "sha256": "ce8c99ab6ffadb8bb6ed20c2d371674f90b3b924f19a9eb8ef1c05ab458f4c7a"
+      },
+      "rms": 0.04989141940849254,
+      "rms_dbfs": -26.03948280455694,
+      "median_20ms_rms_ge_0_01_by_third": [0.04994684480831221, 0.06479260406746126, 0.03379642120090249],
+      "human_listening": "not_assessed"
+    },
+    "batch": {
+      "raw": {
+        "path": "matrix-final-006/dual-seed-2-frames-1/group-1-lane-1.f32",
+        "bytes": 691200,
+        "sha256": "f36a502eb342769d80e2464293199e0ef9029c69e5fce9da28810dd3065ee8b5"
+      },
+      "wav": {
+        "path": "matrix-final-006/dual-seed-2-frames-1/group-1-lane-1.wav",
+        "bytes": 345644,
+        "sha256": "52e56573fda2a33e100fea904a28c58a44c6b7436f1fab56f800cb0f4152f304"
+      },
+      "rms": 0.04987829351199067,
+      "rms_dbfs": -26.041768269468815,
+      "median_20ms_rms_ge_0_01_by_third": [0.04994921489789158, 0.06490888038251032, 0.0337729924567554],
+      "human_listening": "See existing canonical receipt; no new verdict"
+    },
+    "batch_repeat": {
+      "raw": {
+        "path": "matrix-final-006/dual-seed-2-frames-1/group-5-lane-1.f32",
+        "bytes": 691200,
+        "sha256": "f36a502eb342769d80e2464293199e0ef9029c69e5fce9da28810dd3065ee8b5"
+      },
+      "wav": {
+        "path": "matrix-final-006/dual-seed-2-frames-1/group-5-lane-1.wav",
+        "bytes": 345644,
+        "sha256": "52e56573fda2a33e100fea904a28c58a44c6b7436f1fab56f800cb0f4152f304"
+      },
+      "human_listening": "not_assessed"
+    }
+  },
+  "common_checks": {
+    "complete_16_codebook_frames_identical": 90,
+    "samples_per_case": 172800,
+    "duration_seconds": 7.2,
+    "wav_format": "PCM16 mono 24000 Hz",
+    "natural_eos_all_cases": true,
+    "batch_repeat_raw_identical": true,
+    "wav_quantization_mismatches_all_cases": 0,
+    "quantization": "clip(round(raw_f32*32768), -32768, 32767)",
+    "all_samples_finite_and_no_clipping": true,
+    "last_20ms_window_end_rms_ge_0_005_seconds": 7.06
+  },
+  "single_vs_batch": {
+    "rms_ratio_db": -0.0022854649118724812,
+    "fitted_gain": 0.999550866176284,
+    "fitted_gain_db": -0.003902003151925279,
+    "correlation": 0.9998139059113603,
+    "difference_rms": 0.0009624756307887396,
+    "peak_absolute_difference": 0.06440734677016735,
+    "window_fitted_gain_db_range": [-0.014697991963968583, 0.007699511892557647]
+  },
+  "method": {
+    "envelope_window_seconds": 0.5,
+    "last_envelope_window_seconds": 0.2,
+    "filtered_rms_window_seconds": 0.02,
+    "filtered_rms_thresholds": [0.005, 0.01],
+    "third_boundaries_seconds": [0.0, 2.4, 4.8, 7.2]
+  },
+  "conclusion": "Similar quieter late portions in single and batch; no substantial batch-only global attenuation ramp supported for this pair; WAV conversion introduces no fade. Cause and perceptual severity unresolved.",
+  "limitations": [
+    "Thresholds are descriptive, not VAD, phoneme alignment, perceptual loudness or a production gate.",
+    "Energy is not monotonically decreasing; different phonemes naturally differ in energy.",
+    "Similar levels and high correlation do not prove inaudibility or rule out other batch-dependent artifacts.",
+    "No new listening verdict; existing user observation and partial_pass receipt remain unchanged.",
+    "Ignored scripts, generated data and audio are not transferred or backed up by Git."
+  ]
+}
