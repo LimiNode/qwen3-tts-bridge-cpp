@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
+import shutil
 import struct
 import subprocess
 import sys
@@ -194,6 +196,68 @@ class NativePortablePackagingContractTests(unittest.TestCase):
         self.assertIn("test/fake native runtime file", script)
         self.assertIn("unmanifested file", script)
 
+    @unittest.skipUnless(shutil.which("powershell"), "Windows PowerShell is required")
+    def test_notice_name_collision_fails_before_publication(self) -> None:
+        temporary_root = ROOT / ".tmp" / "native-packaging-tests"
+        temporary_root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=temporary_root) as temporary:
+            root = Path(temporary)
+            runtime = root / "runtime"
+            output = root / "output"
+            runtime.mkdir()
+            output.mkdir()
+            (runtime / "qwen.dll").write_bytes(b"runtime-preflight-fixture")
+            (root / "tool.exe").write_bytes(b"executable-preflight-fixture")
+            (runtime / "manifest.json").write_text(
+                json.dumps({
+                    "schema_version": 1, "engine": "qwentts.cpp",
+                    "architecture": "x64", "qt_abi_version": 6,
+                    "engine_commit": "130cb99", "backend": "cpu",
+                    "files": [{
+                        "path": "qwen.dll",
+                        "sha256": hashlib.sha256(
+                            (runtime / "qwen.dll").read_bytes()
+                        ).hexdigest(),
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            for directory, name in (("one", "LICENSE"), ("two", "license")):
+                (root / directory).mkdir()
+                (root / directory / name).write_text(directory, encoding="utf-8")
+            (output / ".qtb-native-release-root").write_text("owned", encoding="utf-8")
+            sentinel = output / "preserve.txt"
+            sentinel.write_bytes(b"existing package remains unchanged")
+            runner = root / "invoke.ps1"
+            assembler_path = str(ASSEMBLER).replace("'", "''")
+            runner.write_text(
+                "$tool = Join-Path $PSScriptRoot 'tool.exe'\n"
+                f"& '{assembler_path}' -NativeWorkerExecutable $tool "
+                "-SaveWavExecutable $tool -PlayExecutable $tool "
+                "-RuntimeRoot (Join-Path $PSScriptRoot 'runtime') "
+                "-NoticeFile @((Join-Path $PSScriptRoot 'one/LICENSE'), "
+                "(Join-Path $PSScriptRoot 'two/license')) "
+                "-OutputRoot (Join-Path $PSScriptRoot 'output') -Clean\n",
+                encoding="utf-8-sig",
+            )
+            completed = subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                 "-File", str(runner)],
+                env={key: value for key, value in os.environ.items()
+                     if key.casefold() != "psmodulepath"},
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                check=False,
+            )
+            self.assertNotEqual(0, completed.returncode)
+            self.assertIn(
+                "Native notice destination name collision",
+                completed.stdout + completed.stderr,
+            )
+            self.assertEqual(
+                b"existing package remains unchanged", sentinel.read_bytes()
+            )
+            self.assertFalse((root / ".output.assembling").exists())
+
     def test_auditor_marks_non_pe_entry_as_failure(self) -> None:
         auditor = _load_auditor()
         with tempfile.TemporaryDirectory() as temporary:
@@ -379,7 +443,7 @@ class NativePortablePackagingContractTests(unittest.TestCase):
         document = DOC.read_text(encoding="utf-8")
         self.assertIn("not yet a hardware or listening acceptance", document)
         self.assertIn("Python/FasterQwen distribution remains a separate", document)
-        self.assertIn("outside the source checkout", document)
+        self.assertIn("outside the source checkout", " ".join(document.split()))
 
     def test_release_config_uses_relocatable_runtime_and_model_paths(self) -> None:
         config = json.loads(

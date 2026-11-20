@@ -221,9 +221,15 @@ foreach ($example in $ConfigExample) {
     Assert-NoPathOverlap "config" $path "zip" $resolvedZip
 }
 $notices = @()
+$noticeNames = @{}
 foreach ($notice in $NoticeFile) {
     $path = Resolve-InputPath $notice
     Assert-File $path "native third-party notice"
+    $name = Split-Path -Leaf $path
+    if ($noticeNames.ContainsKey($name)) {
+        throw "Native notice destination name collision: $name ($($noticeNames[$name]), $path)"
+    }
+    $noticeNames[$name] = $path
     $notices += $path
     Assert-NoPathOverlap "notice" $path "output" $resolvedOutput
     Assert-NoPathOverlap "notice" $path "staging" $resolvedStaging

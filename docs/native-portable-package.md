@@ -41,12 +41,21 @@ configuration. Prepare a real qwentts.cpp runtime directory containing
 `qwen.dll`, its complete GGML/CUDA DLL closure, and its manifest. Then run:
 
 ```powershell
-pwsh -File scripts/assemble-native-portable-release.ps1 `
-  -NativeWorkerExecutable build/native/Release/qwen_tts_native_worker.exe `
-  -RuntimeRoot E:/models/qwentts-runtime `
-  -SaveWavExecutable build/default/Release/qwen_tts_save_wav.exe `
-  -PlayExecutable build/default/Release/qwen_tts_play.exe `
-  -NoticeFile LICENSE,external/cpp/qwentts.cpp/LICENSE,external/cpp/qwentts.cpp/ggml/LICENSE `
+# Give notices unique names; colliding basenames are rejected before staging.
+$noticeRoot = '.tmp/native-notices'
+New-Item -ItemType Directory -Force -Path $noticeRoot | Out-Null
+Copy-Item LICENSE "$noticeRoot/bridge-LICENSE.txt"
+Copy-Item external/cpp/qwentts.cpp/LICENSE "$noticeRoot/qwentts-LICENSE.txt"
+Copy-Item external/cpp/qwentts.cpp/ggml/LICENSE "$noticeRoot/ggml-LICENSE.txt"
+$notices = @("$noticeRoot/bridge-LICENSE.txt", "$noticeRoot/qwentts-LICENSE.txt",
+  "$noticeRoot/ggml-LICENSE.txt") # Add applicable CUDA/VC++ notices too.
+
+& ./scripts/assemble-native-portable-release.ps1 `
+  -NativeWorkerExecutable .build/native/Release/qwen_tts_native_worker.exe `
+  -RuntimeRoot .tmp/native-runtime `
+  -SaveWavExecutable .build/default/Release/qwen_tts_save_wav.exe `
+  -PlayExecutable .build/default/Release/qwen_tts_play.exe `
+  -NoticeFile $notices `
   -EngineCommit 130cb99af9ae12d554962fd0920e08fb4268af01 `
   -OutputRoot dist/QwenTTSBridge-native `
   -ZipPath dist/QwenTTSBridge-native.zip `
@@ -76,11 +85,12 @@ result.
 The package must include redistributable notices for the Bridge, qwentts.cpp,
 GGML and any bundled CUDA/VC++ components. Pass those files explicitly through
 `-NoticeFile`; the default Bridge `LICENSE` is not a complete third-party
-notice inventory for a release.
+notice inventory for a release. Input basenames must be unique ignoring case,
+because all supplied notices are copied into `licenses/`.
 
 ## Relocation gate
 
-Extract the ZIP outside the source checkout, provision models explicitly, and
+Extract the ZIP into a fresh directory, provision models explicitly, and
 use the packaged launcher without a source checkout, Python, or PyTorch.
 Install the exact model files below the extracted `models/` directory using
 the profile-relative paths in `config/native-package.example.json`, or supply
@@ -111,7 +121,13 @@ registry, not paths into a developer checkout. Existing persisted references
 are model-bound: do not reuse a RU-stress `.spk`/`.rvq` manifest with Base or
 vice versa. The WAV-only row above works with either selected model profile.
 
-From an extracted directory such as `D:\Native Acceptance\QwenTTSBridge-native`:
+For the current repository-local preparation, use an isolated directory such
+as `.tmp/base-acceptance/<run-id>/relocated package` (including the space).
+That proves in-repository relocation only: the literal outside the source
+checkout gate remains `not_run` until an independently authorized clean-host
+test. Do not create temporary acceptance directories outside the repository.
+
+From the extracted package directory:
 
 ```powershell
 # Run with Windows PowerShell 5.1+; no repository checkout is needed.
