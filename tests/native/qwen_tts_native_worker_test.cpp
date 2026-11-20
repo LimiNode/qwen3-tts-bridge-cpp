@@ -1521,6 +1521,8 @@ int main(int argc, char** argv) {
             return reference_probe.completed == 2 || !reference_probe.errors.empty();
         }));
     }
+    // Completion precedes stderr telemetry; join its dispatcher before reading.
+    cached_client.stop();
     CHECK(reference_probe.errors.empty());
     CHECK(reference_probe.completed == 2);
     CHECK(reference_stderr.find("\"voice_reference_cache_hit\":false") != std::string::npos);
@@ -1530,8 +1532,6 @@ int main(int argc, char** argv) {
     CHECK(std::filesystem::is_directory(diagnostic_dump_dir));
     CHECK(reference_stderr.find("\"reference_audio_decode_ms\":") != std::string::npos);
     CHECK(reference_stderr.find("\"synthesis_ms\":") != std::string::npos);
-    cached_client.stop();
-
     auto exhausted_cache_options = options(8, nullptr, nullptr, 0, true);
     exhausted_cache_options.arguments.push_back("--max-dynamic-voice-refs");
     exhausted_cache_options.arguments.push_back("0");
