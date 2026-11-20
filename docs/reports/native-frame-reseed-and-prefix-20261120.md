@@ -2,7 +2,8 @@
 
 Research, 2026-11-20. R1 remains **NO-GO**. No sampler/EOS defaults,
 Bridge dependency pin, frozen package, model, or historical receipt changes.
-No listening, speech-coverage, physical-playback or RTX gate is promoted.
+Scoped standalone-WAV listening is recorded below; no production-recovery,
+physical-playback or RTX gate is promoted.
 Experimental engine code is in [qwentts.cpp Draft PR #49](https://github.com/LimiNode/qwentts.cpp/pull/49).
 
 ## Measured result
@@ -39,6 +40,28 @@ baseline bit-for-bit in complete codes and full f32 PCM.
 Both repetitions match. The unchanged complete prefixes have length exactly
 1/2/3 respectively. Changing draws after the third frame did not escape the
 short-duration outcome in these cases; changing them earlier changed history.
+
+### Scoped listening: switch after one/two frames
+
+On 2026-11-20 the user confirmed listening to all four WAVs in each of
+`matrix-final-006/switch-1` and `switch-2`: the complete original sentence is
+spoken in every file and the overall speech is normal. The user noted that
+`МГУ` is sometimes pronounced too quickly, without attributing this to a
+particular file. The [canonical listening receipt](native-eos-switch-listening-cmp50hx-20261120.json)
+records the eight exact paths, byte counts and SHA-256 values.
+
+This is **eight listened files, four unique WAV payloads**: seeds 2/14,
+switch-after 1/2, each repeated. Seed 2 produces 6.8 s and seed 14 produces
+7.6 s. Full-text coverage is now user-confirmed for these cases, not inferred
+from duration. Overall listening remains `partial_pass`; detailed voice
+fidelity, individual stress accuracy, artifact-free continuity and live branch
+transitions were not separately assessed. Restart qualification remains absent.
+
+This result does not transfer to per-frame/early-N reseeding, other texts or
+seeds, teacher-forced single/dual prefixes, another GPU or production recovery.
+It does not revise the prospective 0/24 versus 2/24 comparison above. Keep the
+abbreviation-speed issue as a separate frontend A/B check; do not silently
+change the frozen discovery text when comparing EOS trajectories.
 
 Single-slot teacher-forcing results on **unique continuation seeds 64..71**:
 
@@ -269,7 +292,8 @@ independent repeat requires the exact retained conditioning evidence and its
 verified inventory, not a similarly named voice. Current task scope is CMP
 50HX only; RTX is deliberately not run.
 
-Next: listen to the retained pairs, qualify text coverage, then decide whether
+Next: listen to the teacher-forced single/dual pairs (not covered by the switch
+listening above), qualify their text coverage, then decide whether
 a narrowly opt-in true state fork/selector merits implementation. That work
 must cover all slot/KV/codec/pending-frame state, bounded loser cancellation,
 one deadline, commit boundaries and actual playback. Keep immediate baseline

@@ -59,6 +59,11 @@ These are scoped `partial_pass` listening verdicts, not a universal release
 acceptance. The exact payloads remain local under `.tmp/base-acceptance/` and
 are identified in the tracked receipts by SHA-256.
 
+Separately, the [native EOS-switch research receipt](reports/native-eos-switch-listening-cmp50hx-20261120.json)
+records user-confirmed full text in eight standalone CMP WAVs (four unique
+seed/policy cases with repeats). This is scoped listening evidence only;
+the research policies, shared-prefix batch and R1 release remain unqualified.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL

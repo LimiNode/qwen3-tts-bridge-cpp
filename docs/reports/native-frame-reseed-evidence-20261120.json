@@ -3,8 +3,10 @@
   "date": "2026-11-20",
   "scope": "CMP 50HX / RU-stress Q8_0 / Kraftwerk / frontend OFF; no production EOS policy",
   "release_status": "blocked",
-  "human_listening": "not_run",
-  "speech_coverage": "unassessed",
+  "human_listening": "partial_pass",
+  "speech_coverage": "partial",
+  "listening_receipt": "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json",
+  "listening_scope": "User confirms complete text and normal overall speech in all eight switch-1/switch-2 WAVs (four unique seed/policy cases with repeats). MGU is sometimes too fast; other candidates and live/batched switching remain unassessed.",
   "physical_playback": "not_run",
   "rtx4090": "not_run",
   "engine_runtime_source": {
@@ -140,8 +142,8 @@
       "prefix": null,
       "frames": 85,
       "duration_seconds": 6.8,
-      "coverage": "unassessed",
-      "human_listening": "unassessed"
+      "coverage": "pass",
+      "human_listening": "partial_pass"
     },
     {
       "label": "Seed 2, switch after two frames",
@@ -153,8 +155,8 @@
       "prefix": null,
       "frames": 85,
       "duration_seconds": 6.8,
-      "coverage": "unassessed",
-      "human_listening": "unassessed"
+      "coverage": "pass",
+      "human_listening": "partial_pass"
     },
     {
       "label": "Original text seed 68, baseline",

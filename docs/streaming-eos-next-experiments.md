@@ -14,6 +14,25 @@ cover the additional deterministic reseeding and true two-slot experiments.
 They do not update the Bridge engine pin or install a live recovery policy.
 Current task scope is CMP 50HX only; do not launch RTX work from this addendum.
 
+## Current scoped listening checkpoint
+
+The user listened to all eight WAVs in `matrix-final-006/switch-1` and
+`switch-2`: full original text, normal overall speech, with a caveat that
+`МГУ` is sometimes too fast. These are four unique seed/policy outcomes with
+repeats, not eight independent cases. See the
+[canonical receipt](reports/native-eos-switch-listening-cmp50hx-20261120.json).
+The broader research corpus, teacher-forced shared-prefix batch and streaming
+selector are not accepted by this observation. R1 stays NO-GO.
+
+Next, compare the retained single-prefix continuation with both true two-slot
+continuations before implementing any state fork or live selector. If their
+coverage and audio are acceptable, freeze a broader CMP-only corpus and measure
+the actual EOS/selection timestamp, serial-prefill cost and committed-PCM
+deadline; whole-step timing is not a selector implementation. Preserve baseline
+and all failures. Review the current Draft PRs before promoting any runtime.
+Abbreviation handling belongs in a separate frontend A/B experiment, leaving
+the EOS discovery inputs and sampler defaults unchanged.
+
 ## Independent RTX 4090 agent
 
 1. Use a task worktree under the local repository's `.worktrees/`, check out
