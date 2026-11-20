@@ -33,6 +33,106 @@
   "artifact_root": ".tmp/base-acceptance/native-r1-aa2770ec-20261120",
   "artifacts": [
     {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/diagnosis/short-eos-001/diagnosis.json",
+      "bytes": 7872,
+      "sha256": "9288927553a4b640fd5e5504b0fe9ddf07a1e843deabe01a0723157ab2d59666",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/ru-stress/raw/ru-abbreviations/stderr.log",
+      "bytes": 5996,
+      "sha256": "93455b12d018e84e643ca67ae2d842c659fb077b4d5ddb9ddf0980c78bce810b",
+      "kind": "log",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/diagnosis/short-eos-001/benchmark.json",
+      "bytes": 18827,
+      "sha256": "3f4c7928ccf51d3249ace02ffa1b437b00de7dda1e53d3e173cb20ab3d1e63c8",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/diagnosis/short-eos-001/requests.jsonl",
+      "bytes": 1578,
+      "sha256": "56285573c74029ce59a846edcba8d155c97e6c82129231feb02d7df24f869fbb",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/diagnosis/short-eos-001/invocation.json",
+      "bytes": 2526,
+      "sha256": "460eff219c7c20a5c26552ee1b9263444afb781a49c57a162d80c33d12eff03c",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/diagnosis/short-eos-001/execution.json",
+      "bytes": 73,
+      "sha256": "5ab197048eb1a0ec6a8cb07cd58725f89220d11127c7b5d81bc32d5b917d9713",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/diagnosis/short-eos-001/stderr.log",
+      "bytes": 19239,
+      "sha256": "64f510291ac0b8a0bc4766ca373be1e6821547118b7c808b919c0c909e3f1e90",
+      "kind": "log",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/diagnosis/short-eos-001/run.py",
+      "bytes": 3466,
+      "sha256": "4c13c888f9f6910c87f0630ace8e0b496ab192309b0bc9ab6a9e745b429c32e5",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-short-eos-diag-001/ru-stress/raw/ru-abbreviations/case-receipt.json",
+      "bytes": 2924,
+      "sha256": "6556da52131a3f3cc0d7e97a0d2ae2076aa60da61b51de007a080c82089544db",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-short-eos-diag-001/ru-stress/raw/ru-abbreviations/speech.wav",
+      "bytes": 357164,
+      "sha256": "803ab81ac592af9b500f82e181274183adfdba95142b51a644d618cc74ea223d",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout on 2026-11-20 for the scoped short-EOS diagnostic; private transfer/backup required."
+      }
+    },
+    {
       "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/index.json",
       "kind": "json",
       "bytes": 209458,
@@ -536,7 +636,7 @@
   },
   "case_result": {
     "status": "not_assessed",
-    "reason": "All 26 one-shot PCM/EOS checks and separate raw persistent/cancel/restart tests passed, but raw ru-abbreviations yielded only 0.24 seconds/3 frames for multiple sentences. Aggregate full-content acceptance is withheld pending diagnosis/listening; mechanical pass is not semantic completion."
+    "reason": "All 26 one-shot PCM/EOS checks and separate raw persistent/cancel/restart tests passed, but raw ru-abbreviations yielded only 0.24 seconds/3 frames for multiple sentences. Diagnosis rules out empty/truncated input and confirms engine EOS at step3, not WAV truncation. A separate unchanged-input cold repeat produced7.44 seconds; seed42/43/44 pairs produced8.08/6.96/6.64 seconds. None reproduces or supersedes the original outlier; its seed/logits were not retained and the underlying early-EOS cause remains unresolved. Aggregate full-content acceptance is withheld; mechanical pass is not semantic completion."
   },
   "listening_result": {
     "status": "not_assessed",
@@ -549,6 +649,7 @@
   },
   "supersedes": null,
   "related_reports": [
+    "docs/reports/native-r1-raw-abbreviations-eos-diagnosis-20261120.md",
     "docs/reports/native-r1-postmerge-20261120.md",
     "docs/reports/native-r1-aa2770ec-rtx4090-handoff.md"
   ],

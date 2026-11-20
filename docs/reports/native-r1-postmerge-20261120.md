@@ -159,7 +159,15 @@ only 3 codec frames / 0.24 seconds for the multi-sentence request. Natural EOS
 and nonzero WAV checks passed, but complete content delivery is not established.
 Treat this as suspected premature EOS requiring exact-artifact listening and
 diagnosis, not as intelligibility or full-sentence success. Its WAV and
-`ru-stress-raw-abbreviations-short-output.json` are preserved without retry.
+`ru-stress-raw-abbreviations-short-output.json` are preserved unchanged.
+
+A [separate diagnostic follow-up](native-r1-raw-abbreviations-eos-diagnosis-20261120.md)
+rules out empty input: full126-byte UTF-8 text,22 BPE body tokens, direct native
+text forwarding. The engine selected EOS at step3 and the saver retained all
+three frames. One unchanged-input cold repeat produced7.44s; seed42/43/44 pairs
+produced8.08/6.96/6.64s. These diagnostic repeats do not replace the original
+outlier or supply a listening verdict. The original random seed/logits were not
+retained, so the underlying reason for that early EOS remains unresolved.
 
 An actual Base + frontend `en-numbers-dates` run failed the natural-EOS gate:
 the worker generated 2,048 frames (163.84 seconds of PCM), reported
