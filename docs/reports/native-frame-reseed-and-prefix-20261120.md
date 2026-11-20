@@ -73,8 +73,24 @@ Single-slot teacher-forcing results on **unique continuation seeds 64..71**:
 | Seed 14, two complete frames | 8/8 | 0/8 |
 
 Additional continuation seed 1 is above the proxy in all four cases. None
-of these counts establishes speech coverage. Seed 14's one-frame prefix with
+of these counts alone establishes speech coverage. Seed 14's one-frame prefix with
 continuation seed 64 still fails, including its repeat.
+
+### Scoped listening: one-frame seed-2 prefix
+
+On 2026-11-20 the user confirmed the complete correct original phrase in the
+three specifically linked outputs: single seed 64 (6.96 s), batch seed 64
+(6.96 s), and batch seed 65 (7.20 s), all with one complete seed-2 frame
+preserved. The [separate canonical receipt](native-eos-prefix-listening-cmp50hx-20261120.json)
+records their exact paths, sizes, hashes and listening scope.
+
+The user reports **gradual fading toward the end only for the batch seed-65
+artifact** (`dual-seed-2-frames-1/group-1-lane-1.wav`), while confirming its
+full correct phrase. This is a listening observation with unresolved cause and
+measured severity, not a demonstrated batch, sampler or codec defect. Do not
+label that output artifact-free or constant-volume. Text coverage passes for
+the three named artifacts; overall listening remains `partial_pass`, without
+transfer to other continuations, a real state fork or live PCM switching.
 
 True two-slot forced-prefix groups have **24/24 byte-identical first PCM
 chunks**, and 36/36 first same-seed single/dual comparisons have identical
@@ -82,7 +98,9 @@ complete generated codes. However, all-output PCM is not bit-deterministic
 across codec lanes: same-seed paired lanes can differ despite identical codes
 (peak absolute f32 difference 0.00186..0.00613; RMS difference
 0.0000915..0.000169). Their first shared chunk still matches exactly.
-Audible significance and full codec-state equivalence remain unassessed.
+Audible significance of these numerical differences and full codec-state
+equivalence remain unassessed. The reported seed-65 fade is not causally
+attributed to the cross-lane PCM differences.
 
 Illustrative warm instrumented timings, excluding each process's first group:
 
@@ -292,8 +310,8 @@ independent repeat requires the exact retained conditioning evidence and its
 verified inventory, not a similarly named voice. Current task scope is CMP
 50HX only; RTX is deliberately not run.
 
-Next: listen to the teacher-forced single/dual pairs (not covered by the switch
-listening above), qualify their text coverage, then decide whether
+Next: characterize the reported fade, qualify the broader corpus and measure
+the actual decision/commit timing before deciding whether
 a narrowly opt-in true state fork/selector merits implementation. That work
 must cover all slot/KV/codec/pending-frame state, bounded loser cancellation,
 one deadline, commit boundaries and actual playback. Keep immediate baseline

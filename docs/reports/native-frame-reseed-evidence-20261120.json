@@ -6,7 +6,8 @@
   "human_listening": "partial_pass",
   "speech_coverage": "partial",
   "listening_receipt": "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json",
-  "listening_scope": "User confirms complete text and normal overall speech in all eight switch-1/switch-2 WAVs (four unique seed/policy cases with repeats). MGU is sometimes too fast; other candidates and live/batched switching remain unassessed.",
+  "shared_prefix_listening_receipt": "docs/reports/native-eos-prefix-listening-cmp50hx-20261120.json",
+  "listening_scope": "User confirms complete text in eight switch-1/switch-2 WAVs and three selected single/dual one-frame-prefix continuations. MGU is sometimes too fast in the switch set; the batch seed-65 prefix continuation gradually fades toward the end. Other candidates, general audio quality and live switching remain unassessed.",
   "physical_playback": "not_run",
   "rtx4090": "not_run",
   "engine_runtime_source": {
@@ -194,8 +195,8 @@
       "prefix": "seed-2-frames-1",
       "frames": 87,
       "duration_seconds": 6.96,
-      "coverage": "unassessed",
-      "human_listening": "unassessed"
+      "coverage": "pass",
+      "human_listening": "partial_pass"
     },
     {
       "label": "Shared seed-2 first frame, batched continuation 64",
@@ -207,8 +208,8 @@
       "prefix": "seed-2-frames-1",
       "frames": 87,
       "duration_seconds": 6.96,
-      "coverage": "unassessed",
-      "human_listening": "unassessed"
+      "coverage": "pass",
+      "human_listening": "partial_pass"
     },
     {
       "label": "Shared seed-2 first frame, batched continuation 65",
@@ -220,8 +221,9 @@
       "prefix": "seed-2-frames-1",
       "frames": 90,
       "duration_seconds": 7.2,
-      "coverage": "unassessed",
-      "human_listening": "unassessed"
+      "coverage": "pass",
+      "human_listening": "partial_pass",
+      "audible_observation": "User reports gradual fading toward the end while confirming the full correct phrase; cause and measured severity remain unassessed."
     },
     {
       "label": "Legitimate short Da, seed 65",

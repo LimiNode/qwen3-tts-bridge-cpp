@@ -63,6 +63,10 @@ Separately, the [native EOS-switch research receipt](reports/native-eos-switch-l
 records user-confirmed full text in eight standalone CMP WAVs (four unique
 seed/policy cases with repeats). This is scoped listening evidence only;
 the research policies, shared-prefix batch and R1 release remain unqualified.
+The separate [prefix listening receipt](reports/native-eos-prefix-listening-cmp50hx-20261120.json)
+confirms full text in three named single/dual continuations, with user-reported
+gradual end-volume fading on batch seed 65. It does not qualify general audio
+quality, live branch switching or release readiness.
 
 ## Verified milestones
 

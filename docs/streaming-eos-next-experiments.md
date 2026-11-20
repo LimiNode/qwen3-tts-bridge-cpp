@@ -24,12 +24,18 @@ repeats, not eight independent cases. See the
 The broader research corpus, teacher-forced shared-prefix batch and streaming
 selector are not accepted by this observation. R1 stays NO-GO.
 
-Next, compare the retained single-prefix continuation with both true two-slot
-continuations before implementing any state fork or live selector. If their
-coverage and audio are acceptable, freeze a broader CMP-only corpus and measure
-the actual EOS/selection timestamp, serial-prefill cost and committed-PCM
-deadline; whole-step timing is not a selector implementation. Preserve baseline
-and all failures. Review the current Draft PRs before promoting any runtime.
+The user subsequently confirmed the full correct phrase in three selected
+one-frame seed-2-prefix continuations: single seed 64 and batch seeds 64/65.
+The batch seed-65 WAV gradually fades toward the end; its cause and measured
+severity remain unassessed. See the
+[prefix listening receipt](reports/native-eos-prefix-listening-cmp50hx-20261120.json).
+This establishes scoped coverage, not artifact-free audio or live switching.
+
+Next, characterize that fade without modifying the retained WAVs, freeze a
+broader CMP-only corpus and measure the actual EOS/selection timestamp,
+serial-prefill cost and committed-PCM deadline before deciding on a true fork
+or live selector. Whole-step timing is not a selector implementation. Preserve
+baseline and all failures. Review the current Draft PRs before promoting any runtime.
 Abbreviation handling belongs in a separate frontend A/B experiment, leaving
 the EOS discovery inputs and sampler defaults unchanged.
 
