@@ -75,6 +75,16 @@ the user found slight or effectively absent fading in single seed 65 and no
 noticeable difference from the earlier track. This informal feedback does not
 establish an actionable fade defect or qualify general audio quality.
 
+The [2026-11-21 CMP corpus/timing research](reports/native-eos-corpus-and-decision-20261121.md)
+adds 142 direct-engine baseline outcomes each for RU-stress and Base, plus
+36 timing controls. All have valid PCM and natural EOS; RU-stress has three
+non-short duration anomalies (seeds 72/75/78), versus none among Base's 64
+eligible corpus cases. These new WAVs have **not** been listened to. The
+observer preserves output on ten ON/OFF pairs, but frame-3 continuation does
+not detect seed 72's later early EOS; measured warm N=2 pair decisions also
+miss the first-chunk budget. Canonical research receipts are in the index.
+No engine pin, sampler/default, live selector or release gate is promoted.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL

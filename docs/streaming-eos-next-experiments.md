@@ -45,10 +45,16 @@ records this informal comparison without claiming calibrated equivalence,
 full-text reassessment or general artifact-free output. No actionable fade
 defect is established; no normalization or runtime change follows.
 
-Next, freeze a broader CMP-only corpus and measure the actual EOS/selection
-timestamp, serial-prefill cost and committed-PCM deadline before deciding on a true fork
-or live selector. Whole-step timing is not a selector implementation. Preserve
-baseline and all failures. Review the current Draft PRs before promoting any runtime.
+The [CMP-only expansion and selection-timing run](reports/native-eos-corpus-and-decision-20261121.md)
+is now complete: 284 baseline outcomes and 36 controls, all retained. RU-stress
+has three non-short duration anomalies (seeds 72/75/78); Base has none in its
+64 eligible cases. New speech/listening is unassessed. Seed 72 terminates
+after a non-EOS frame-3 decision, and warm N=2 pair decisions miss the first
+80-ms budget by 8.930..25.750 ms. This is not a qualified detector or selector.
+Next, label the listening set and freeze a separate continuation/detector
+evaluation; profile serial admission before deciding on a true state fork.
+Actual committed-PCM/playback remains unmeasured. Preserve baseline and all
+failures. Review the current Draft PRs before promoting any runtime.
 Abbreviation handling belongs in a separate frontend A/B experiment, leaving
 the EOS discovery inputs and sampler defaults unchanged.
 
@@ -102,6 +108,10 @@ the original evidence. If matching inputs/checkpoint are unavailable, report
 that boundary rather than substituting a different model.
 
 ## Prospective independent corpus
+
+The CMP frontend-OFF/segmentation-OFF baseline cells below have now run; their
+current receipts are linked from the result report above. The full text,
+frontend, segmentation, hardware and listening cross-product is **not** complete.
 
 Freeze the following matrix and seed list in an invocation manifest **before**
 observing outcomes. Do not refit a classifier on its evaluation split.

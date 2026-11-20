@@ -3,6 +3,22 @@
   "generated_at": "2026-11-21",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-eos-corpus-ru-stress-cmp50hx-20261121",
+      "receipt": "docs/reports/native-eos-corpus-ru-stress-cmp50hx-20261121.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-corpus-base-cmp50hx-20261121",
+      "receipt": "docs/reports/native-eos-corpus-base-cmp50hx-20261121.json",
+      "model_family": "Base",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-eos-seed65-listening-cmp50hx-20261121",
       "receipt": "docs/reports/native-eos-seed65-listening-cmp50hx-20261121.json",
       "model_family": "RU-stress",

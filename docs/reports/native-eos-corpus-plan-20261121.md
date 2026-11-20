@@ -6,6 +6,10 @@ No default, sampler, model, Bridge engine pin, frozen package, live selector,
 merge or release changes. Engine work stays in qwentts Draft PR #49; the
 Bridge report stays on the existing Draft PR #331 task branch.
 
+Execution completed: see the [results](native-eos-corpus-and-decision-20261121.md)
+and [exact evidence](native-eos-corpus-evidence-20261121.json). The frozen
+design below is preserved; speech coverage and listening remain unassessed.
+
 ## Baseline corpus tier
 
 Two sequential direct-engine runs, RU-stress Q8_0 and Base 1.7B Q8_0, with

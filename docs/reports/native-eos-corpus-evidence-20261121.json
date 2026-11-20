@@ -1,0 +1,1462 @@
+{
+  "schema_version": 1,
+  "kind": "bounded_direct_engine_research_not_release_acceptance",
+  "recorded_at": "2026-11-21",
+  "bridge_plan_commit": "59d8fc04e6f86b1423635e4549b2d8f6b2944e27",
+  "engine_commit": "0de7ec5c7467bc5a1cbf5b82e42d2f270016fbd3",
+  "bridge_engine_pin_unchanged": "130cb99af9ae12d554962fd0920e08fb4268af01",
+  "ggml_commit": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3"
+  },
+  "scope": {
+    "backend": "native direct-engine statically linked research probe",
+    "frontend": "OFF",
+    "segmentation": "OFF",
+    "baseline_lanes": 1,
+    "force_prefix_baseline": false,
+    "physical_playback": "not_run",
+    "bridge_pcm_commit": "not_run",
+    "restart": "not_run",
+    "rtx4090": "not_run",
+    "speech_coverage": "unassessed",
+    "human_listening": "not_run",
+    "release_status": "blocked"
+  },
+  "runtime": {
+    "probe": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\eos-research-probe.exe",
+      "bytes": 504832,
+      "sha256": "c9ab5a3d9d26bf1d53030b66c4afc32e90e2567d7bf3ed0ea80fc48c09270578"
+    },
+    "models": {
+      "ru_stress": {
+        "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\ru-stress\\qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+        "bytes": 2079448256,
+        "sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427"
+      },
+      "base": {
+        "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\qwen-talker-1.7b-base-Q8_0.gguf",
+        "bytes": 2079448256,
+        "sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda"
+      },
+      "codec": {
+        "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\common\\qwen-tokenizer-12hz-Q8_0.gguf",
+        "bytes": 291150624,
+        "sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94"
+      }
+    },
+    "dlls": [
+      {
+        "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\ggml-base.dll",
+        "bytes": 651264,
+        "sha256": "b208a454ab89a5df8bef822e8c2d5979e6050f7320f8566db13a8423415664fc"
+      },
+      {
+        "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\ggml-cpu.dll",
+        "bytes": 805888,
+        "sha256": "ce396925c7e87cbe6d84185c3b71d08b6a1d34f242e77cacbe440738aea6fc40"
+      },
+      {
+        "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\ggml-cuda.dll",
+        "bytes": 52135936,
+        "sha256": "cb752006fe96e3b7031c69b53819d2507bb116612631c6a30f005f8eb908743e"
+      },
+      {
+        "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\ggml.dll",
+        "bytes": 67072,
+        "sha256": "9d442d446d2f7f15fcaeb017f202dd2f89841e2d5e0f2272ce875fa23273da09"
+      },
+      {
+        "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\qwen.dll",
+        "bytes": 378880,
+        "sha256": "3e7c1cc0332f0a812315a0fc0edde186c5e5cdcac0d2eb009d56163667eeca6b"
+      },
+      {
+        "path": "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.3\\bin\\x64\\cublas64_13.dll",
+        "bytes": 52697712,
+        "sha256": "8c6bac24474af29627ec96500025a5d410a1b7e8ffa00e1fe13b1781fc6b3ddc"
+      },
+      {
+        "path": "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.3\\bin\\x64\\cublasLt64_13.dll",
+        "bytes": 463655536,
+        "sha256": "e323abd89e0f03c1db91a09d7aeb1928de08e1f86192cc713b335fefe3e368a9"
+      },
+      {
+        "path": "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.3\\bin\\x64\\cudart64_13.dll",
+        "bytes": 551024,
+        "sha256": "b00ca6f53699120da815bf3e06e2e4285fae2f201235b883dcbb50eec51e2a2a"
+      }
+    ],
+    "dll_scope": "all probe siblings; cublas/cudart/vcomp DLLs from explicit dependency directories, not a loaded-module audit",
+    "cmake_cache": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\CMakeCache.txt",
+      "bytes": 50993,
+      "sha256": "7f3ae581ed47da81f3c170fb6e75834e526578d6e140a577e8e4a91efdee44ac"
+    },
+    "probe_linkage": "qwen-core static; qwen.dll sibling identified but not the executing engine"
+  },
+  "inputs": {
+    "en-hi.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\en-hi.txt",
+      "bytes": 3,
+      "sha256": "ca51ce1fb15acc6d69b8a5700256172fcc507e02073e6f19592e341bd6508ab8"
+    },
+    "en-thanks.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\en-thanks.txt",
+      "bytes": 10,
+      "sha256": "8569efc4ed5a6273140c2b6ec0ab8d99f4398210808fbb7c0cbbae4fbcc21350"
+    },
+    "en-unseen.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\en-unseen.txt",
+      "bytes": 106,
+      "sha256": "ae9f3549a374efd65ce6097383a6471b4c04e6cabadc948ec3ebfaa62f9387ee"
+    },
+    "original.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\original.txt",
+      "bytes": 126,
+      "sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e"
+    },
+    "reference.i32": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\reference.i32",
+      "bytes": 14464,
+      "sha256": "069ac5c280be070c2e5bf006cb9b58a2d248f34e1bdd37aab62310f2ffdd9443"
+    },
+    "reference.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\reference.txt",
+      "bytes": 308,
+      "sha256": "e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4"
+    },
+    "ru-no.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\ru-no.txt",
+      "bytes": 7,
+      "sha256": "ab3be5c500dddf8142266bbb28eb1b3fac6735768d98f7a892d55f20d6645374"
+    },
+    "ru-two-sentences.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\ru-two-sentences.txt",
+      "bytes": 204,
+      "sha256": "674140bc91c13cc5db422be52fe17e2fb1d6bf92113c4b344281b5bf1b6d284f"
+    },
+    "ru-unseen.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\ru-unseen.txt",
+      "bytes": 147,
+      "sha256": "080c6a34b342079da88a2f9cee494e81a92fceaf55c3349ac6e2e9826aed9070"
+    },
+    "ru-yes.txt": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\ru-yes.txt",
+      "bytes": 5,
+      "sha256": "27b3333fedf5a4f3c6bfb0546b04e760080752b4a36a79fa743eb1e9ab16179d"
+    },
+    "speaker.f32": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\ru-corpus-001\\inputs\\speaker.f32",
+      "bytes": 8192,
+      "sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698"
+    }
+  },
+  "corpus_design": {
+    "per_model": 142,
+    "corpus": 128,
+    "controls": "original seeds 2,14,42 twice",
+    "repeats": 8,
+    "short_valid_corpus": 64,
+    "non_short_proxy_eligible": 64,
+    "corpus_seeds": "64..79; each text repeats seed 64 after its 16 cases",
+    "prior_exposure": "32 RU-stress text/seed pairs were previously seen; 96 absent from prior baseline. Base flags describe pairs reused from RU-stress, not same-Base-checkpoint replay."
+  },
+  "results": {
+    "RU-stress": {
+      "runner_summary": {
+        "observed": 142,
+        "planned": 142,
+        "prospective_observed": 128,
+        "prospective_planned": 128,
+        "prospective_prior_exposed_observed": 32,
+        "prospective_not_in_previous_baseline_observed": 96,
+        "short_duration_proxy_nonshort_prospective": 3,
+        "proxy_eligible_prospective_observed": 64,
+        "engine_errors": 0,
+        "max_tokens": 0,
+        "artifact_errors": 0,
+        "decision_capture_invalid": 0,
+        "warm_callback_ttfa_ms_all_observed": {
+          "n": 141,
+          "p50": 179.235,
+          "p95": 180.722
+        },
+        "warm_all_observed_outcomes": {
+          "engine_errors": 0,
+          "max_tokens": 0,
+          "invalid_pcm": 0
+        },
+        "decision_capture_evidence_errors": 0,
+        "coverage": "unassessed",
+        "human_listening": "unassessed",
+        "physical_playback": "not_run"
+      },
+      "texts": [
+        {
+          "text": "original",
+          "n": 16,
+          "short_valid": false,
+          "short_proxy_seeds": [
+            72,
+            75,
+            78
+          ],
+          "frames": {
+            "n": 16,
+            "p50": 83.5,
+            "p95": 104,
+            "min": 2,
+            "max": 104
+          }
+        },
+        {
+          "text": "ru-yes",
+          "n": 16,
+          "short_valid": true,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 2,
+            "p95": 4,
+            "min": 2,
+            "max": 4
+          }
+        },
+        {
+          "text": "ru-no",
+          "n": 16,
+          "short_valid": true,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 2,
+            "p95": 15,
+            "min": 2,
+            "max": 15
+          }
+        },
+        {
+          "text": "en-hi",
+          "n": 16,
+          "short_valid": true,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 2,
+            "p95": 3,
+            "min": 2,
+            "max": 3
+          }
+        },
+        {
+          "text": "en-thanks",
+          "n": 16,
+          "short_valid": true,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 2,
+            "p95": 15,
+            "min": 2,
+            "max": 15
+          }
+        },
+        {
+          "text": "ru-unseen",
+          "n": 16,
+          "short_valid": false,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 73,
+            "p95": 99,
+            "min": 66,
+            "max": 99
+          }
+        },
+        {
+          "text": "ru-two-sentences",
+          "n": 16,
+          "short_valid": false,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 98.5,
+            "p95": 119,
+            "min": 92,
+            "max": 119
+          }
+        },
+        {
+          "text": "en-unseen",
+          "n": 16,
+          "short_valid": false,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 82,
+            "p95": 92,
+            "min": 73,
+            "max": 92
+          }
+        }
+      ],
+      "repeat64_raw_matches": 8,
+      "repeat64_total": 8,
+      "first_use": {
+        "frames": 3,
+        "first_pcm_ms": 1528.92,
+        "fourth_selection_ms": 1642.18,
+        "eos_selection_ms": 1642.18,
+        "fourth_after_first_pcm_ms": 113.25999999999999,
+        "fourth_slack_first_chunk_ms": -33.25999999999999,
+        "eos_after_first_pcm_ms": 113.25999999999999
+      },
+      "warm_fourth_after_first_pcm_ms": {
+        "n": 92,
+        "p50": 55.153499999999994,
+        "p95": 56.39599999999999,
+        "min": 54.34800000000001,
+        "max": 66.24099999999999
+      },
+      "warm_fourth_slack_first_chunk_ms": {
+        "n": 92,
+        "p50": 24.846500000000006,
+        "p95": 25.41599999999997,
+        "min": 13.759000000000015,
+        "max": 25.651999999999987
+      },
+      "warm_fourth_misses_first_chunk_budget": 0,
+      "warm_earlier_eos_instead_of_fourth": 49,
+      "warm_earlier_eos_after_first_pcm_ms": {
+        "n": 49,
+        "p50": 22.299000000000007,
+        "p95": 22.635999999999996,
+        "min": 21.955000000000013,
+        "max": 23.157999999999987
+      },
+      "warm_serial_admission_ms": {
+        "n": 141,
+        "p50": 160.39200000000002,
+        "p95": 161.6574,
+        "min": 159.4314,
+        "max": 171.1442
+      },
+      "anomaly_timings": [
+        {
+          "group": 14,
+          "seed": 72,
+          "frames": 6,
+          "first_pcm_ms": 180.722,
+          "fourth_selection_ms": 235.979,
+          "eos_selection_ms": 286.184,
+          "fourth_after_first_pcm_ms": 55.257000000000005,
+          "fourth_slack_first_chunk_ms": 24.742999999999967,
+          "eos_after_first_pcm_ms": 105.46200000000002
+        },
+        {
+          "group": 17,
+          "seed": 75,
+          "frames": 2,
+          "first_pcm_ms": 179.13,
+          "fourth_selection_ms": null,
+          "eos_selection_ms": 201.285,
+          "fourth_after_first_pcm_ms": null,
+          "fourth_slack_first_chunk_ms": null,
+          "eos_after_first_pcm_ms": 22.155
+        },
+        {
+          "group": 20,
+          "seed": 78,
+          "frames": 3,
+          "first_pcm_ms": 180.857,
+          "fourth_selection_ms": 235.841,
+          "eos_selection_ms": 235.841,
+          "fourth_after_first_pcm_ms": 54.98400000000001,
+          "fourth_slack_first_chunk_ms": 25.015999999999963,
+          "eos_after_first_pcm_ms": 54.98400000000001
+        }
+      ],
+      "source_plan": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/plan.json",
+        "bytes": 38227,
+        "sha256": "6f4936e9b706f447b19611e5a57857e439a988a41de10f4466bb73f72ecf8846"
+      },
+      "observations": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/all-observations.json",
+        "bytes": 1031999,
+        "sha256": "f0d627f7d47b326d0ef951056bb1230f9b8935738a6f14e2c18e426319354cc4"
+      },
+      "inventory": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/sha256-inventory.json",
+        "bytes": 88867,
+        "sha256": "761035307de3953ebbbfd21ce344231e4092355c698acc48f6963aa5ad819d1b"
+      }
+    },
+    "Base": {
+      "runner_summary": {
+        "observed": 142,
+        "planned": 142,
+        "prospective_observed": 128,
+        "prospective_planned": 128,
+        "prospective_prior_exposed_observed": 32,
+        "prospective_not_in_previous_baseline_observed": 96,
+        "short_duration_proxy_nonshort_prospective": 0,
+        "proxy_eligible_prospective_observed": 64,
+        "engine_errors": 0,
+        "max_tokens": 0,
+        "artifact_errors": 0,
+        "decision_capture_invalid": 0,
+        "warm_callback_ttfa_ms_all_observed": {
+          "n": 141,
+          "p50": 178.789,
+          "p95": 180.32
+        },
+        "warm_all_observed_outcomes": {
+          "engine_errors": 0,
+          "max_tokens": 0,
+          "invalid_pcm": 0
+        },
+        "decision_capture_evidence_errors": 0,
+        "coverage": "unassessed",
+        "human_listening": "unassessed",
+        "physical_playback": "not_run"
+      },
+      "texts": [
+        {
+          "text": "original",
+          "n": 16,
+          "short_valid": false,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 94,
+            "p95": 105,
+            "min": 87,
+            "max": 105
+          }
+        },
+        {
+          "text": "ru-yes",
+          "n": 16,
+          "short_valid": true,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 8,
+            "p95": 11,
+            "min": 5,
+            "max": 11
+          }
+        },
+        {
+          "text": "ru-no",
+          "n": 16,
+          "short_valid": true,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 9,
+            "p95": 13,
+            "min": 5,
+            "max": 13
+          }
+        },
+        {
+          "text": "en-hi",
+          "n": 16,
+          "short_valid": true,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 11,
+            "p95": 18,
+            "min": 7,
+            "max": 18
+          }
+        },
+        {
+          "text": "en-thanks",
+          "n": 16,
+          "short_valid": true,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 10.5,
+            "p95": 24,
+            "min": 8,
+            "max": 24
+          }
+        },
+        {
+          "text": "ru-unseen",
+          "n": 16,
+          "short_valid": false,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 78,
+            "p95": 90,
+            "min": 72,
+            "max": 90
+          }
+        },
+        {
+          "text": "ru-two-sentences",
+          "n": 16,
+          "short_valid": false,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 110,
+            "p95": 120,
+            "min": 98,
+            "max": 120
+          }
+        },
+        {
+          "text": "en-unseen",
+          "n": 16,
+          "short_valid": false,
+          "short_proxy_seeds": [],
+          "frames": {
+            "n": 16,
+            "p50": 91.5,
+            "p95": 105,
+            "min": 82,
+            "max": 105
+          }
+        }
+      ],
+      "repeat64_raw_matches": 8,
+      "repeat64_total": 8,
+      "first_use": {
+        "frames": 89,
+        "first_pcm_ms": 1512.49,
+        "fourth_selection_ms": 1619.83,
+        "eos_selection_ms": 3513.13,
+        "fourth_after_first_pcm_ms": 107.33999999999992,
+        "fourth_slack_first_chunk_ms": -27.339999999999918,
+        "eos_after_first_pcm_ms": 2000.64
+      },
+      "warm_fourth_after_first_pcm_ms": {
+        "n": 141,
+        "p50": 55.19200000000001,
+        "p95": 56.078,
+        "min": 54.19199999999998,
+        "max": 65.957
+      },
+      "warm_fourth_slack_first_chunk_ms": {
+        "n": 141,
+        "p50": 24.807999999999993,
+        "p95": 25.282999999999987,
+        "min": 14.043000000000006,
+        "max": 25.80800000000002
+      },
+      "warm_fourth_misses_first_chunk_budget": 0,
+      "warm_earlier_eos_instead_of_fourth": 0,
+      "warm_earlier_eos_after_first_pcm_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "min": null,
+        "max": null
+      },
+      "warm_serial_admission_ms": {
+        "n": 141,
+        "p50": 159.9315,
+        "p95": 161.26760000000002,
+        "min": 159.1226,
+        "max": 168.40800000000002
+      },
+      "anomaly_timings": [],
+      "source_plan": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/plan.json",
+        "bytes": 38205,
+        "sha256": "245525d98ff92d413e87ca7c9e866ab7d223d57b0bb5418f678588a086ffd1c7"
+      },
+      "observations": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/all-observations.json",
+        "bytes": 1262716,
+        "sha256": "1b09bd523a56622c7bb1e0988a7a6d42ca14aacd6eef6811bfc04fffebbe2e7f"
+      },
+      "inventory": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/sha256-inventory.json",
+        "bytes": 89544,
+        "sha256": "248bc6b7563a36e546832e67b66defdd4a53a55cd9f887666a96c09c7c693b49"
+      }
+    }
+  },
+  "observer_transparency": {
+    "n": 10,
+    "raw_identical": 10,
+    "complete_code_traces_identical": 10
+  },
+  "timing_controls": {
+    "observer-on": {
+      "lanes": 10,
+      "warm_fourth_after_first_pcm_ms": {
+        "n": 9,
+        "p50": 55.56700000000001,
+        "p95": 62.578,
+        "min": 54.81800000000001,
+        "max": 62.578
+      },
+      "warm_fourth_slack_first_chunk_ms": {
+        "n": 9,
+        "p50": 24.432999999999993,
+        "p95": 25.18199999999996,
+        "min": 17.422000000000025,
+        "max": 25.18199999999996
+      },
+      "warm_fourth_misses_first_chunk_budget": 0,
+      "warm_serial_admission_ms": [
+        169.10829999999999,
+        159.5559,
+        160.58530000000002,
+        159.6299,
+        159.98219999999998,
+        160.1241,
+        160.2973,
+        161.6495,
+        159.6495
+      ],
+      "observations": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/timing-controls-001/observer-on-observations.json",
+        "bytes": 222345,
+        "sha256": "0da80fb6ef5ebc7cfbf9c3bb908351d7d59d56d84ae4775a540f7c901ba42052"
+      }
+    },
+    "observer-off": {
+      "lanes": 10,
+      "warm_fourth_after_first_pcm_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "min": null,
+        "max": null
+      },
+      "warm_fourth_slack_first_chunk_ms": {
+        "n": 0,
+        "p50": null,
+        "p95": null,
+        "min": null,
+        "max": null
+      },
+      "warm_fourth_misses_first_chunk_budget": 0,
+      "warm_serial_admission_ms": [
+        170.1402,
+        159.3451,
+        159.6973,
+        160.2081,
+        160.8092,
+        160.3767,
+        160.2715,
+        161.4054,
+        160.65630000000002
+      ],
+      "observations": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/timing-controls-001/observer-off-observations.json",
+        "bytes": 207685,
+        "sha256": "69287cc4d3362086243c2cb14edbe0025c1e0f84d0908bc578c3e041b4134e18"
+      }
+    },
+    "prefix-single": {
+      "lanes": 4,
+      "warm_fourth_after_first_pcm_ms": {
+        "n": 3,
+        "p50": 54.976,
+        "p95": 62.77599999999998,
+        "min": 54.900000000000006,
+        "max": 62.77599999999998
+      },
+      "warm_fourth_slack_first_chunk_ms": {
+        "n": 3,
+        "p50": 25.02400000000003,
+        "p95": 25.099999999999994,
+        "min": 17.224000000000046,
+        "max": 25.099999999999994
+      },
+      "warm_fourth_misses_first_chunk_budget": 0,
+      "warm_serial_admission_ms": [
+        170.3508,
+        160.9844,
+        160.5979
+      ],
+      "observations": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/timing-controls-001/prefix-single-observations.json",
+        "bytes": 46449,
+        "sha256": "763e262d6d35479f328971554d692a6360b3567f034565684780a9163911fd11"
+      }
+    },
+    "prefix-dual": {
+      "lanes": 4,
+      "warm_fourth_after_first_pcm_ms": {
+        "n": 2,
+        "p50": 88.894,
+        "p95": 88.911,
+        "min": 88.87700000000001,
+        "max": 88.911
+      },
+      "warm_fourth_slack_first_chunk_ms": {
+        "n": 2,
+        "p50": -8.894000000000005,
+        "p95": -8.87700000000001,
+        "min": -8.911000000000001,
+        "max": -8.87700000000001
+      },
+      "warm_fourth_misses_first_chunk_budget": 2,
+      "warm_serial_admission_ms": [
+        161.98090000000002,
+        161.85899999999998
+      ],
+      "observations": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/timing-controls-001/prefix-dual-observations.json",
+        "bytes": 46987,
+        "sha256": "22e27e4f48ce5a874b59cbc66b97c119d73ae5d76336518c36c9ede75bb65e74"
+      }
+    },
+    "independent-dual": {
+      "lanes": 8,
+      "warm_fourth_after_first_pcm_ms": {
+        "n": 6,
+        "p50": 98.44149999999999,
+        "p95": 105.73199999999997,
+        "min": 98.18400000000003,
+        "max": 105.73199999999997
+      },
+      "warm_fourth_slack_first_chunk_ms": {
+        "n": 6,
+        "p50": -18.44149999999999,
+        "p95": -18.184000000000026,
+        "min": -25.73199999999997,
+        "max": -18.184000000000026
+      },
+      "warm_fourth_misses_first_chunk_budget": 6,
+      "warm_serial_admission_ms": [
+        162.8926,
+        161.91500000000002,
+        162.55589999999998,
+        162.106,
+        161.7118,
+        161.31899999999996
+      ],
+      "observations": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/timing-controls-001/independent-dual-observations.json",
+        "bytes": 89900,
+        "sha256": "4e7241774adf7c166e8878b004404ea83dc3d6ffef893ba74f6643fd5c2aecb2"
+      }
+    }
+  },
+  "timing_control_plan": {
+    "stages": [
+      {
+        "name": "observer-on",
+        "manifest": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\timing-controls-001\\observer-on-manifest.json",
+        "manifest_sha256": "1ecdf22234da576904fb7425fa36f885b68939124e6213e21e16952773ad1c1c",
+        "groups": [
+          [
+            2
+          ],
+          [
+            14
+          ],
+          [
+            42
+          ],
+          [
+            64
+          ],
+          [
+            65
+          ],
+          [
+            2
+          ],
+          [
+            14
+          ],
+          [
+            42
+          ],
+          [
+            64
+          ],
+          [
+            65
+          ]
+        ],
+        "observe_decisions": true,
+        "trace_frames": true,
+        "prefix": null,
+        "prefix_sha256": null
+      },
+      {
+        "name": "observer-off",
+        "manifest": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\timing-controls-001\\observer-off-manifest.json",
+        "manifest_sha256": "4dcbe2e37c5d900fc743e27787515ff792ffd94f937fd343cd28f0d7eab1104d",
+        "groups": [
+          [
+            2
+          ],
+          [
+            14
+          ],
+          [
+            42
+          ],
+          [
+            64
+          ],
+          [
+            65
+          ],
+          [
+            2
+          ],
+          [
+            14
+          ],
+          [
+            42
+          ],
+          [
+            64
+          ],
+          [
+            65
+          ]
+        ],
+        "observe_decisions": false,
+        "trace_frames": true,
+        "prefix": null,
+        "prefix_sha256": null
+      },
+      {
+        "name": "prefix-single",
+        "manifest": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\timing-controls-001\\prefix-single-manifest.json",
+        "manifest_sha256": "2a2d9b6b4edadaae87b2821ad6513a346d260d39436bb43497b92ed9af3d1053",
+        "groups": [
+          [
+            64
+          ],
+          [
+            65
+          ],
+          [
+            64
+          ],
+          [
+            65
+          ]
+        ],
+        "observe_decisions": true,
+        "trace_frames": false,
+        "prefix": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-reseed-branching-20261120\\matrix-final-006\\inputs\\seed-2-frames-1.txt",
+        "prefix_sha256": "7d7ac6c8df63a4190b4ecf96f9dd9f3e778099933e3fe81bf2083268f0ac723f"
+      },
+      {
+        "name": "prefix-dual",
+        "manifest": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\timing-controls-001\\prefix-dual-manifest.json",
+        "manifest_sha256": "4012827c2e6ca4c91cf0a5570e8b58c26f0db161e25f4ff81fd0ab41a161ae27",
+        "groups": [
+          [
+            64,
+            65
+          ],
+          [
+            64,
+            65
+          ]
+        ],
+        "observe_decisions": true,
+        "trace_frames": false,
+        "prefix": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-reseed-branching-20261120\\matrix-final-006\\inputs\\seed-2-frames-1.txt",
+        "prefix_sha256": "7d7ac6c8df63a4190b4ecf96f9dd9f3e778099933e3fe81bf2083268f0ac723f"
+      },
+      {
+        "name": "independent-dual",
+        "manifest": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\eos-corpus-decision-20261121\\timing-controls-001\\independent-dual-manifest.json",
+        "manifest_sha256": "a94135401eb6fce416d0354328cd8e674627116e79109d57530c71a7d6f6aaa6",
+        "groups": [
+          [
+            2,
+            42
+          ],
+          [
+            14,
+            43
+          ],
+          [
+            2,
+            42
+          ],
+          [
+            14,
+            43
+          ]
+        ],
+        "observe_decisions": true,
+        "trace_frames": false,
+        "prefix": null,
+        "prefix_sha256": null
+      }
+    ],
+    "max_total_seconds": 600,
+    "max_child_seconds": 240,
+    "parent_combined_study_budget_seconds": 1800,
+    "scope": "fixed direct-engine research controls; no Bridge commit or physical playback",
+    "prepared_before_launch": true,
+    "driver_sha256": "ebb7e565a749dd60b808e816d06df0686c1bd5701344e9839f08baf62a87f827",
+    "text_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e"
+  },
+  "additional_independent_checks": {
+    "ru_prior_raw_pcm_matches": "32/32",
+    "repeat_full_raw_pcm_and_wav": "11/11 per model: 8 seed64 repeats plus 3 control repeats",
+    "inventory_hashes": "306/306 per model and 109/109 controls",
+    "control_natural_eos": "36/36",
+    "fresh_backup_admission": "~160 ms warm N=1; two serial ~161..163 ms admissions for N=2, not a zero-cost state fork",
+    "seed72_counterexample": "non-EOS frame3; EOS frame6 at 105.462 ms after first PCM, outside first 80 ms"
+  },
+  "local_artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/study-analysis.json",
+      "bytes": 26747,
+      "sha256": "f9cc89d46c000374083d70237beb106c0874ec8dbb7b97bec107029de7c5634b"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/corpus-observations.csv",
+      "bytes": 102575,
+      "sha256": "55f44ad562e002b8cb847a2910e719e09138ffb16ddf66462282632ef0a1b0c3"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/LISTENING.md",
+      "bytes": 2418,
+      "sha256": "c67e693b239ff674ccbc3486198838ed097d1b60a2d8a1726e5a2700ff2cf5b1"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/timing-controls-001/plan.json",
+      "bytes": 4223,
+      "sha256": "a08709430f64dd2362fbb6e3e27762779a5feecc2cd4e9a20ae89e2cea20d77a"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/timing-controls-001/outcomes.json",
+      "bytes": 851,
+      "sha256": "c7f98f2baa2ba28398e9c1c229e2e981ed676cf2aeb689b4426ec8e1e6db9367"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/timing-controls-001/sha256-inventory.json",
+      "bytes": 16160,
+      "sha256": "504cd440f04f717a49ab5ef839cf824b40873b5b961476152c8e3f0d99cf259d"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/plan.json",
+      "bytes": 38227,
+      "sha256": "6f4936e9b706f447b19611e5a57857e439a988a41de10f4466bb73f72ecf8846"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/plan.json",
+      "bytes": 38205,
+      "sha256": "245525d98ff92d413e87ca7c9e866ab7d223d57b0bb5418f678588a086ffd1c7"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/all-observations.json",
+      "bytes": 1031999,
+      "sha256": "f0d627f7d47b326d0ef951056bb1230f9b8935738a6f14e2c18e426319354cc4"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/all-observations.json",
+      "bytes": 1262716,
+      "sha256": "1b09bd523a56622c7bb1e0988a7a6d42ca14aacd6eef6811bfc04fffebbe2e7f"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/sha256-inventory.json",
+      "bytes": 88867,
+      "sha256": "761035307de3953ebbbfd21ce344231e4092355c698acc48f6963aa5ad819d1b"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/sha256-inventory.json",
+      "bytes": 89544,
+      "sha256": "248bc6b7563a36e546832e67b66defdd4a53a55cd9f887666a96c09c7c693b49"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/listening-first-pass/manifest.json",
+      "bytes": 9528,
+      "sha256": "b978b629c9525fb18f5cfab4aa8d203422543403f9cd06253e1901a591b2d325"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/tooling/analyze_study.py",
+      "bytes": 10651,
+      "sha256": "83100a6619b47a7554b8c57a3f28632010e6cc0aa246b213fad05d36a7fd34d9"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/tooling/timing_controls.py",
+      "bytes": 7271,
+      "sha256": "ebb7e565a749dd60b808e816d06df0686c1bd5701344e9839f08baf62a87f827"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/tooling/run_eos_corpus.py",
+      "bytes": 22404,
+      "sha256": "c0c9b219201ebc162dbfd1f3e26e5f2f47af5d547254102961cd69e00cc09806"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/tooling/run_eos_research.py",
+      "bytes": 22620,
+      "sha256": "9b70fd904bbe977eb2f3478e85b585438298da41a87fcc15ac0ddb617f497117"
+    }
+  ],
+  "listening_candidates": [
+    {
+      "family": "RU-stress",
+      "text_label": "original",
+      "seed": 64,
+      "frames": 84,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-6-lane-0.wav",
+        "bytes": 322604,
+        "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "original",
+      "seed": 72,
+      "frames": 6,
+      "duration_proxy": true,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-14-lane-0.wav",
+        "bytes": 23084,
+        "sha256": "954e5e0fc2abcccae6265e902aae587f487e8c0f2db49c034a9e048fd5fe06fd"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "original",
+      "seed": 75,
+      "frames": 2,
+      "duration_proxy": true,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-17-lane-0.wav",
+        "bytes": 7724,
+        "sha256": "6d9e7f60a7c955554f54db358cf12d1826ae0ca8560ff406eb6eb723ff128e23"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "original",
+      "seed": 78,
+      "frames": 3,
+      "duration_proxy": true,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-20-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "1c677648775a9af9178bf617b549467e4a437ce8a8c1e3f7923bd77e4e0ff834"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "ru-yes",
+      "seed": 64,
+      "frames": 4,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-23-lane-0.wav",
+        "bytes": 15404,
+        "sha256": "845daa1e5f6f794bb2306ae9f1b2017e9754c87ac7b9cb457d5ec2d78975e701"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "ru-no",
+      "seed": 64,
+      "frames": 2,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-40-lane-0.wav",
+        "bytes": 7724,
+        "sha256": "16adb74a2ced9e015e364d31f1512ced96a18428bc67c4c33f54c3b3e8976a36"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "en-hi",
+      "seed": 64,
+      "frames": 3,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-57-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "ff9bde2acf4d5e423a823f5cc718b1089f223a057d0d3967f07532b29abc63ad"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "en-thanks",
+      "seed": 64,
+      "frames": 3,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-74-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "58851dc2beae83a262e3eb4333e4d598499b47863abe35b17ea572376e4a5eee"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "ru-unseen",
+      "seed": 64,
+      "frames": 71,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-91-lane-0.wav",
+        "bytes": 272684,
+        "sha256": "c6824eae1dc1b95dab698c31231eed0e15dbb1efc3223e9c1a80e78204743e22"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "ru-two-sentences",
+      "seed": 64,
+      "frames": 92,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-108-lane-0.wav",
+        "bytes": 353324,
+        "sha256": "fada01bc05bc7067ed42bddeffd85f2969d212888306e72d248d696ef19ea590"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "RU-stress",
+      "text_label": "en-unseen",
+      "seed": 64,
+      "frames": 76,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-125-lane-0.wav",
+        "bytes": 291884,
+        "sha256": "96a9522c6a1a5000f49cb0199de86b7bd839b5b22fea641411f3207f1379cc13"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "Base",
+      "text_label": "original",
+      "seed": 64,
+      "frames": 103,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-6-lane-0.wav",
+        "bytes": 395564,
+        "sha256": "eca6c089d6cd388a70f110bfb1ef2ef5a9f72fc8cb13b4a3bb3f215b729305ee"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "Base",
+      "text_label": "ru-yes",
+      "seed": 64,
+      "frames": 10,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-23-lane-0.wav",
+        "bytes": 38444,
+        "sha256": "c4c1b088aab8f37f8caf0b72ca7ced2be0775c8289aabd72e478a9f34b4ef49c"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "Base",
+      "text_label": "ru-no",
+      "seed": 64,
+      "frames": 11,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-40-lane-0.wav",
+        "bytes": 42284,
+        "sha256": "1031ccf5014778f88587128637db43013eb28c1a4788cf3af581ac24dab355af"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "Base",
+      "text_label": "en-hi",
+      "seed": 64,
+      "frames": 8,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-57-lane-0.wav",
+        "bytes": 30764,
+        "sha256": "b9953572d2521fb280899662e6fbf0888804f89db77aeb4562dbf663a4b16369"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "Base",
+      "text_label": "en-thanks",
+      "seed": 64,
+      "frames": 12,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-74-lane-0.wav",
+        "bytes": 46124,
+        "sha256": "acd0c8a2dc68379584047b023a5374257054ea7b7fede5a98bd6adbd52e35011"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "Base",
+      "text_label": "ru-unseen",
+      "seed": 64,
+      "frames": 74,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-91-lane-0.wav",
+        "bytes": 284204,
+        "sha256": "8dc1ef0da6305d4cb6f8e58889eb8a20e96c8b090ce1d48bcb700fb337f6c827"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "Base",
+      "text_label": "ru-two-sentences",
+      "seed": 64,
+      "frames": 106,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-108-lane-0.wav",
+        "bytes": 407084,
+        "sha256": "7a3c46e201f0d44d24fe23329d22fbbbd83e49929181794ca2948121b3838546"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    },
+    {
+      "family": "Base",
+      "text_label": "en-unseen",
+      "seed": 64,
+      "frames": 93,
+      "duration_proxy": false,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-125-lane-0.wav",
+        "bytes": 357164,
+        "sha256": "e626a20962256dd8b7377d59387dad98340528073236e7ad48a4390762ffddd2"
+      },
+      "coverage": "unassessed",
+      "human_listening": "not_run"
+    }
+  ],
+  "limitations": [
+    "No live selector, physical playback, Bridge commit, frontend/segmentation or RTX run.",
+    "Fourth-decision budget comparison is hypothetical; timings are direct-engine wall times.",
+    "Exact fourth-decision distributions exclude earlier terminal outputs; a non-EOS fourth decision cannot exclude a later short outcome.",
+    "Base prior-exposure flags refer to pairs reused from the earlier RU-stress matrix, not prior same-Base-checkpoint evidence.",
+    "Some corpus pairs were already seen; duration is not speech coverage.",
+    "No claim of unbiased held-out failure rate, complete speech, correctness of native forward arithmetic, zero observer overhead, or a working EOS classifier.",
+    "Timing-control driver and offline analyzer are retained task-local tooling, not portable production interfaces; transfer exact payloads before replication.",
+    "Payloads are ignored, local only, not transferred/backed up by Git; runtime-current preserves the measured build, runtime-before preserves the superseded build."
+  ],
+  "decisions": [
+    "No sampler/default/ABI/model change, Bridge engine-pin update, live selector, normalization, merge or release.",
+    "First collect scoped listening; then design a bounded general EOS/continuation test including seed72 and legitimate short answers, without fitting on evaluation cases.",
+    "N=2 first-chunk timing did not meet the measured hypothetical deadline; profile serial admission before implementing a fork."
+  ],
+  "paired_control_analysis": {
+    "observer_pairs_full_metadata_codes_raw_wav_equal": 10,
+    "paired_timings": {
+      "prefix-dual": [
+        {
+          "group": 0,
+          "first_group": true,
+          "seeds": [
+            64,
+            65
+          ],
+          "earliest_first_pcm_ms": 1698.83,
+          "latest_frame3_selection_ms": 1841.46,
+          "decision_after_earliest_first_pcm_ms": 142.6300000000001,
+          "common_first_chunk_deadline_ms": 1778.83,
+          "slack_ms": -62.63000000000011,
+          "second_chunks_delivered_before_decision": [
+            true,
+            true
+          ],
+          "shared_first_1920_f32_sha256": "ec9b3e4a1696d55add40c2f0c4a9da9d152e3dfaf9b91c15f928149cdc0bd5b6"
+        },
+        {
+          "group": 1,
+          "first_group": false,
+          "seeds": [
+            64,
+            65
+          ],
+          "earliest_first_pcm_ms": 355.243,
+          "latest_frame3_selection_ms": 444.173,
+          "decision_after_earliest_first_pcm_ms": 88.93,
+          "common_first_chunk_deadline_ms": 435.243,
+          "slack_ms": -8.930000000000007,
+          "second_chunks_delivered_before_decision": [
+            true,
+            true
+          ],
+          "shared_first_1920_f32_sha256": "ec9b3e4a1696d55add40c2f0c4a9da9d152e3dfaf9b91c15f928149cdc0bd5b6"
+        }
+      ],
+      "independent-dual": [
+        {
+          "group": 0,
+          "first_group": true,
+          "seeds": [
+            2,
+            42
+          ],
+          "earliest_first_pcm_ms": 1705.06,
+          "latest_frame3_selection_ms": 1848.02,
+          "decision_after_earliest_first_pcm_ms": 142.96000000000004,
+          "common_first_chunk_deadline_ms": 1785.06,
+          "slack_ms": -62.960000000000036,
+          "second_chunks_delivered_before_decision": [
+            true,
+            true
+          ]
+        },
+        {
+          "group": 1,
+          "first_group": false,
+          "seeds": [
+            14,
+            43
+          ],
+          "earliest_first_pcm_ms": 356.094,
+          "latest_frame3_selection_ms": 461.844,
+          "decision_after_earliest_first_pcm_ms": 105.75,
+          "common_first_chunk_deadline_ms": 436.094,
+          "slack_ms": -25.75,
+          "second_chunks_delivered_before_decision": [
+            true,
+            true
+          ]
+        },
+        {
+          "group": 2,
+          "first_group": false,
+          "seeds": [
+            2,
+            42
+          ],
+          "earliest_first_pcm_ms": 356.583,
+          "latest_frame3_selection_ms": 455.074,
+          "decision_after_earliest_first_pcm_ms": 98.49099999999999,
+          "common_first_chunk_deadline_ms": 436.583,
+          "slack_ms": -18.490999999999985,
+          "second_chunks_delivered_before_decision": [
+            true,
+            true
+          ]
+        },
+        {
+          "group": 3,
+          "first_group": false,
+          "seeds": [
+            14,
+            43
+          ],
+          "earliest_first_pcm_ms": 354.417,
+          "latest_frame3_selection_ms": 452.706,
+          "decision_after_earliest_first_pcm_ms": 98.28900000000004,
+          "common_first_chunk_deadline_ms": 434.417,
+          "slack_ms": -18.289000000000044,
+          "second_chunks_delivered_before_decision": [
+            true,
+            true
+          ]
+        }
+      ]
+    },
+    "ru_anomaly_eos_timings": [
+      {
+        "seed": 72,
+        "frames": 6,
+        "eos_after_first_pcm_ms": 105.46200000000002,
+        "eos_slack_first_chunk_ms": -25.462000000000046
+      },
+      {
+        "seed": 75,
+        "frames": 2,
+        "eos_after_first_pcm_ms": 22.155,
+        "eos_slack_first_chunk_ms": 57.845
+      },
+      {
+        "seed": 78,
+        "frames": 3,
+        "eos_after_first_pcm_ms": 54.98400000000001,
+        "eos_slack_first_chunk_ms": 25.015999999999963
+      }
+    ],
+    "scope": "Paired lanes are correlated, not independent trials; no live selector or PCM commit.",
+    "analysis_script_sha256": "72f41f7c4ef16a67638177000d6f34f57e43dcf808faeaff2d6b4cbd4a5b5c4b"
+  },
+  "supplemental_local_artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/control-pair-analysis.json",
+      "bytes": 3922,
+      "sha256": "2429e7f799537ffc8cd4811ae531877baa7e9ad451e85b2335415498939fb66d"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/verify_control_pairs.py",
+      "bytes": 4028,
+      "sha256": "72f41f7c4ef16a67638177000d6f34f57e43dcf808faeaff2d6b4cbd4a5b5c4b"
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/final-sha256-inventory.json",
+      "bytes": 129285,
+      "sha256": "ac424ba1a7a3a5754c36022983d90b9c7c6936cb39d7426a8a3d744526d4db92"
+    }
+  ],
+  "timing_control_driver_limitation": "The task-local frozen timing driver may exit before writing outcomes/inventory on assertion/artifact exceptions. All five stages actually completed and their final artifacts were independently verified in this run; it is not a generally failure-safe reusable runner.",
+  "verification": {
+    "ctest": "11/11 Release tests passed after build",
+    "corpus_python_tests": "8/8 model-free tests passed",
+    "independent_audit": "read-only corpus, observer and control result checks passed; no speech listening",
+    "gpu_budget_seconds": 1800,
+    "run_elapsed_seconds": {
+      "ru": 184.375,
+      "base": 219.562,
+      "controls": 84.734
+    },
+    "budget_note": "Sequential probes, all completed; no further GPU synthesis scheduled in this batch."
+  }
+}
