@@ -4,6 +4,8 @@
   "report": "docs/reports/native-eos-fade-comparison-20261120.md",
   "source_evidence": "docs/reports/native-frame-reseed-evidence-20261120.json",
   "listening_receipt": "docs/reports/native-eos-prefix-listening-cmp50hx-20261120.json",
+  "follow_up_listening_receipt": "docs/reports/native-eos-seed65-listening-cmp50hx-20261121.json",
+  "listening_state_scope": "The fields below are the offline-analysis snapshot on 2026-11-20; new_listening=false describes that analysis. See the follow-up receipt for the 2026-11-21 single-seed-65 feedback.",
   "scope": "Retained CMP 50HX / RU-stress Q8_0 / Kraftwerk / frontend OFF; continuation seed 65, baseline policy, one complete seed-2 frame preserved",
   "engine_runtime_source": "5b03c53ee8bb2f7f4f102005ab7f6ba148ffd92c",
   "payload_root": ".tmp/base-acceptance/eos-reseed-branching-20261120/",

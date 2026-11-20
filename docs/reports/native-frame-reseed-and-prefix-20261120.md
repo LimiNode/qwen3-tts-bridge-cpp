@@ -84,8 +84,8 @@ three specifically linked outputs: single seed 64 (6.96 s), batch seed 64
 preserved. The [separate canonical receipt](native-eos-prefix-listening-cmp50hx-20261120.json)
 records their exact paths, sizes, hashes and listening scope.
 
-The user reports **gradual fading toward the end only for the batch seed-65
-artifact** (`dual-seed-2-frames-1/group-1-lane-1.wav`), while confirming its
+On 2026-11-20 the user reported **gradual fading toward the end only for the
+batch seed-65 artifact** (`dual-seed-2-frames-1/group-1-lane-1.wav`), while confirming its
 full correct phrase. This is a listening observation with unresolved cause and
 perceptual severity, not a demonstrated batch, sampler or codec defect. Do not
 label that output artifact-free or constant-volume. Text coverage passes for
@@ -97,9 +97,17 @@ finds similar quieter late portions in single and batch seed 65: 90 identical
 complete code frames, but nonidentical raw PCM. Whole-file batch/single RMS
 differs by -0.002285 dB; conversion to WAV adds no gain/fade. The contour is
 not monotonically decreasing and is not explained solely by the low-level
-final tail. Cause/perceptual severity remain unresolved, and single seed 65
-has no listening verdict. This does not rule out other batch-dependent
+final tail. Cause was not isolated, and at that time single seed 65 had no
+listening verdict. This does not rule out other batch-dependent
 artifacts or overwrite the user's observation.
+
+On 2026-11-21 the user listened to single seed 65 and found slight or
+effectively absent fading, less noticeable at medium/high playback volume,
+with no noticeable difference from the earlier track. The
+[new scoped receipt](native-eos-seed65-listening-cmp50hx-20261121.json) records
+an informal comparison, not a general quality pass or calibrated equivalence.
+No actionable fade defect is established; the earlier three-file text-coverage
+verdict is preserved without extending it to single seed 65.
 
 True two-slot forced-prefix groups have **24/24 byte-identical first PCM
 chunks**, and 36/36 first same-seed single/dual comparisons have identical
@@ -319,8 +327,8 @@ independent repeat requires the exact retained conditioning evidence and its
 verified inventory, not a similarly named voice. Current task scope is CMP
 50HX only; RTX is deliberately not run.
 
-Next: compare the matched-seed WAVs perceptually, qualify the broader corpus
-and measure the actual decision/commit timing before deciding whether
+Next: qualify the broader corpus and measure the actual decision/commit timing
+before deciding whether
 a narrowly opt-in true state fork/selector merits implementation. That work
 must cover all slot/KV/codec/pending-frame state, bounded loser cancellation,
 one deadline, commit boundaries and actual playback. Keep immediate baseline

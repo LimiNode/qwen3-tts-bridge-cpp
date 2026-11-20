@@ -94,10 +94,19 @@ these hashed files. The script and raw audio are **not transferred by Git**;
 an independent reproduction needs those verified payloads. The formulas and
 case mapping above permit an independent offline calculation.
 
-Single seed 65 has **not** acquired a listening verdict from these numerical
-checks; the earlier listened single candidate was seed 64. Comparing the
-matched single/batch seed-65 WAVs is the smallest next perceptual check. If
-the contour is judged objectionable in both, isolating generation versus
-decoding needs a separate controlled experiment, not blind normalization.
+At the time of this offline analysis, single seed 65 had no listening verdict;
+the earlier listened single candidate was seed 64. Numerical checks alone
+did not change that status.
+
+On 2026-11-21 the user listened to the specifically linked single seed-65 WAV
+and reported slight fading, no noticeable difference from the earlier track,
+and that the effect was less noticeable at medium/high playback volume. The
+follow-up assessment was that the effect was effectively absent. The
+[new scoped receipt](native-eos-seed65-listening-cmp50hx-20261121.json) preserves
+this uncertainty and leaves general quality and text-coverage reassessment
+open. This is an informal comparison, not calibrated loudness equivalence or
+an inaudibility finding. No actionable fade defect is established here.
+
 No state fork, selector, EOS fix, default change or release promotion follows
-from this diagnostic. The existing partial listening verdict stays unchanged.
+from this diagnostic or feedback. Preserve the earlier listening history;
+broader corpus and actual streaming decision/commit timing remain next work.

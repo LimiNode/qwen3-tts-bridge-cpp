@@ -8,7 +8,8 @@
   "listening_receipt": "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json",
   "shared_prefix_listening_receipt": "docs/reports/native-eos-prefix-listening-cmp50hx-20261120.json",
   "offline_fade_diagnostic": "docs/reports/native-eos-fade-comparison-20261120.json",
-  "listening_scope": "User confirms complete text in eight switch-1/switch-2 WAVs and three selected single/dual one-frame-prefix continuations. MGU is sometimes too fast in the switch set; the batch seed-65 prefix continuation gradually fades toward the end. Other candidates, general audio quality and live switching remain unassessed.",
+  "seed65_follow_up_listening_receipt": "docs/reports/native-eos-seed65-listening-cmp50hx-20261121.json",
+  "listening_scope": "User confirms complete text in eight switch-1/switch-2 WAVs and three selected single/dual one-frame-prefix continuations. MGU is sometimes too fast in the switch set. After the initial batch seed-65 fade observation, the 2026-11-21 single-seed-65 feedback describes little or effectively absent fading, less noticeable at medium/high volume, and no noticeable difference from the earlier track. Single-seed-65 text coverage was not reassessed; other candidates, general audio quality and live switching remain unassessed.",
   "physical_playback": "not_run",
   "rtx4090": "not_run",
   "engine_runtime_source": {
@@ -224,7 +225,7 @@
       "duration_seconds": 7.2,
       "coverage": "pass",
       "human_listening": "partial_pass",
-      "audible_observation": "User reports gradual fading toward the end while confirming the full correct phrase. The linked offline diagnostic measures a similar quieter late portion in single seed 65, not a substantial batch-only global attenuation ramp; cause/perceptual severity remain unresolved."
+      "audible_observation": "Initial 2026-11-20 observation: gradual fading while confirming the full correct phrase. The offline diagnostic measures a similar quieter late portion in single seed 65. The linked 2026-11-21 single-seed-65 feedback finds no noticeable difference from the earlier track and describes the effect as slight or effectively absent; no actionable batch-specific fade defect is established."
     },
     {
       "label": "Legitimate short Da, seed 65",

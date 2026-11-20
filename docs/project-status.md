@@ -69,7 +69,11 @@ gradual end-volume fading on batch seed 65. It does not qualify general audio
 quality, live branch switching or release readiness.
 The [offline seed-65 diagnostic](reports/native-eos-fade-comparison-20261120.md)
 finds a similar quieter ending in single and batch, not a WAV-conversion fade;
-the cause and perceptual severity remain unresolved.
+the cause was not isolated. In the
+[2026-11-21 follow-up](reports/native-eos-seed65-listening-cmp50hx-20261121.json),
+the user found slight or effectively absent fading in single seed 65 and no
+noticeable difference from the earlier track. This informal feedback does not
+establish an actionable fade defect or qualify general audio quality.
 
 ## Verified milestones
 

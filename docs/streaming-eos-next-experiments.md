@@ -26,8 +26,8 @@ selector are not accepted by this observation. R1 stays NO-GO.
 
 The user subsequently confirmed the full correct phrase in three selected
 one-frame seed-2-prefix continuations: single seed 64 and batch seeds 64/65.
-The user reports gradual fading toward the end of the batch seed-65 WAV;
-its cause and perceptual severity remain unassessed. See the
+The initial 2026-11-20 observation was gradual fading toward the end of the
+batch seed-65 WAV. See the
 [prefix listening receipt](reports/native-eos-prefix-listening-cmp50hx-20261120.json).
 This establishes scoped coverage, not artifact-free audio or live switching.
 
@@ -35,11 +35,18 @@ The [offline matched-seed diagnostic](reports/native-eos-fade-comparison-2026112
 now measures similar quieter late portions in single and batch seed 65, with
 no fade introduced by WAV conversion and no substantial batch-only global
 attenuation supported for this pair. It preserves the observation, not a
-general quality pass; the matched single seed-65 WAV is not yet listened to.
+general quality pass.
 
-Next, compare those two retained WAVs perceptually, freeze a broader CMP-only
-corpus and measure the actual EOS/selection timestamp,
-serial-prefill cost and committed-PCM deadline before deciding on a true fork
+The user listened to single seed 65 on 2026-11-21: slight or effectively absent
+fading, less noticeable at medium/high player volume, and no noticeable
+difference from the earlier track. The
+[follow-up receipt](reports/native-eos-seed65-listening-cmp50hx-20261121.json)
+records this informal comparison without claiming calibrated equivalence,
+full-text reassessment or general artifact-free output. No actionable fade
+defect is established; no normalization or runtime change follows.
+
+Next, freeze a broader CMP-only corpus and measure the actual EOS/selection
+timestamp, serial-prefill cost and committed-PCM deadline before deciding on a true fork
 or live selector. Whole-step timing is not a selector implementation. Preserve
 baseline and all failures. Review the current Draft PRs before promoting any runtime.
 Abbreviation handling belongs in a separate frontend A/B experiment, leaving
