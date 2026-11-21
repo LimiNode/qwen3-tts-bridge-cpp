@@ -42,38 +42,41 @@
     "restart": "not_run"
   },
   "human_listening": {
-    "status": "not_run",
-    "observer": "not_assessed",
+    "status": "fail",
+    "observer": "user",
     "recorded_at": "2026-11-21",
-    "scope": "New21 selected unchanged WAV paths: baseline/talker-top1/predictor-greedy triples for seven diagnostic text-seed cases. No fresh direct listening observation; no inherited acceptance from identical historical audio.",
+    "scope": "All21 named unchanged listening-quality-controls WAVs, seven selected text/seed cases in baseline/talker-top1/predictor-greedy triples. Only these first-repeat paths were directly listened to; other outputs and voice identity are not assessed.",
     "criteria": {
-      "intelligibility": "not_assessed",
+      "intelligibility": "partial",
       "voice_or_instruction": "not_assessed",
-      "artifacts": "not_assessed",
-      "final_tail": "not_assessed",
+      "artifacts": "fail",
+      "final_tail": "fail",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "Earlier failed listening receipts stay current for their original scope. Four trace outcomes and two sampler default Hi72 repeats hit max_tokens. Alternative controls reach natural EOS but speech/absence of extras remain unassessed."
+    "notes": "User assessed every named file. Baseline fails with laughter in01/07/13, humming plus unrelated speech in04, distorted syllables in10 and breathing/extra sounds in19;16 says Hi. Talker top-1 has no reported laughter, cough or extra speech in02/05/08/11/14/17/20:02 sounds sad,11 is recognized as Готово with syllabic delivery,17 is recognized as Hi but sounds like Хау (pronunciation concern, not full text-quality pass). Predictor greedy03 is Пшшшш-like noise,09 laughs before Спасибо,18 repeats Хау-like Hi then adds unidentified English speech;06 sad Нет,12 stretched Готово,15 No,21 Hi are recognized. No exact transcript or language is invented for unrelated speech. Candidate-specific receipts keep the partial positive Talker result separate from failed controls."
   },
   "case_result": {
     "status": "fail",
     "reason": "The declared mixed control scope includes six retained max-token outcomes. Completed observation, exact repeats and alternative natural-EOS results are not aggregate successful synthesis or general lifecycle qualification."
   },
   "listening_result": {
-    "status": "not_run",
-    "reason": "No human feedback exists for the newly selected21 WAV paths; all candidate speech-content and artifact judgments remain unassessed."
+    "status": "fail",
+    "reason": "The declared all21-file scope contains user-confirmed noise, extra speech/vocalizations and distorted words. Scoped Talker improvement does not pass the mixed control scope."
   },
   "release_disposition": {
     "status": "blocked",
-    "reason": "Known baseline/prefix quality defects remain, new controls are unlistened and unqualified on held-out texts/seeds, restart/other hardware/release routes not tested. No production promotion."
+    "reason": "Selected baseline and predictor-greedy listening fail; Talker top-1 has a pronunciation concern and only partial scoped positive evidence. Held-out texts/seeds, restart, other hardware and release routes remain unqualified; no production promotion."
   },
   "release_status": "blocked",
   "supersedes": null,
   "related_reports": [
     "docs/reports/native-short-quality-causal-20261121.md",
-    "docs/reports/native-prefill-short-20261121.md"
+    "docs/reports/native-prefill-short-20261121.md",
+    "docs/reports/native-short-quality-default-listening-cmp50hx-20261121.json",
+    "docs/reports/native-short-quality-talker-top1-listening-cmp50hx-20261121.json",
+    "docs/reports/native-short-quality-predictor-greedy-listening-cmp50hx-20261121.json"
   ],
-  "notes": "122 trace requests in20 processes plus54 sampler requests in6 processes; all outputs preserved.14/14 cold requests equal earlier primed baseline,90/90 original-schedule trace outputs equal untraced controls, MMQ-without-prefix18/18 equal baseline. Hi64 prefix-MMQ first code drift is frame1/codebook1 (437 to407), while c0 remains equal.21/21 sampler-repeat pairs exact. These are selected diagnostic cases, not prospective quality rates; natural EOS/duration do not certify words or lack of laughter. Exact source snapshots and runtime/model before/after identities are local evidence.",
+  "notes": "122 trace requests in20 processes plus54 sampler requests in6 processes; all outputs preserved.14/14 cold requests equal earlier primed baseline,90/90 original-schedule trace outputs equal untraced controls, MMQ-without-prefix18/18 equal baseline. Hi64 prefix-MMQ first code drift is frame1/codebook1 (437 to407), while c0 remains equal.21/21 sampler-repeat pairs exact. These are selected diagnostic cases, not prospective quality rates; natural EOS/duration do not certify words or lack of laughter. Exact source snapshots and runtime/model before/after identities are local evidence. User listening subsequently completed for all21 exact selected WAVs; the original immutable generated manifests retain their historical not_run labels. No inference or audio editing was performed for the listening update.",
   "artifacts": [
     {
       "path": ".tmp/base-acceptance/short-quality-causal-20261121/analysis.json",
@@ -82,7 +85,7 @@
       "kind": "manifest",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -92,7 +95,7 @@
       "kind": "manifest",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -102,7 +105,7 @@
       "kind": "manifest",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -112,7 +115,7 @@
       "kind": "manifest",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -122,7 +125,7 @@
       "kind": "manifest",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -132,7 +135,7 @@
       "kind": "manifest",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -142,7 +145,7 @@
       "kind": "manifest",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -152,7 +155,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -162,7 +165,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -172,7 +175,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -182,7 +185,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -192,7 +195,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -202,7 +205,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -212,7 +215,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -222,7 +225,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -232,7 +235,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -242,7 +245,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -252,7 +255,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -262,7 +265,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -272,7 +275,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -282,7 +285,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -292,7 +295,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -302,7 +305,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -312,7 +315,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -322,7 +325,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -332,7 +335,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -342,7 +345,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -352,7 +355,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -362,7 +365,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -372,7 +375,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     },
     {
@@ -382,7 +385,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact size/SHA-256 checked on2026-11-21; retained ignored local research evidence. Listening copies are unedited; new human assessment not yet recorded."
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
       }
     }
   ]

@@ -3,11 +3,35 @@
   "generated_at": "2026-11-21",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-short-quality-default-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-short-quality-default-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-quality-talker-top1-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-short-quality-talker-top1-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-quality-predictor-greedy-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-short-quality-predictor-greedy-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-short-quality-causal-cmp50hx-20261121",
       "receipt": "docs/reports/native-short-quality-causal-cmp50hx-20261121.json",
       "model_family": "CustomVoice",
       "backend": "native",
-      "human_listening": "not_run",
+      "human_listening": "fail",
       "release_status": "blocked"
     },
     {

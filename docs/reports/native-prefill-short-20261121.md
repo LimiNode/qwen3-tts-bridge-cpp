@@ -214,8 +214,10 @@ new exact-file observations; original generated run results remain unchanged.
 The [subsequent quality investigation](native-short-quality-causal-20261121.md)
 tests cold processes, trace neutrality, MMQ without prefix and two independent
 sampler controls. It preserves the failed observations above and does not
-promote the measured speedup. New candidate audio has its own unlistened
-canonical receipt; historical listening is not transferred.
+promote the measured speedup. The user has since assessed its21 selected WAVs;
+baseline and predictor greedy fail, while Talker top-1 has partial scoped
+positive evidence with a `Hi!` pronunciation concern. Separate canonical
+receipts preserve those scopes; historical listening is not transferred.
 
 ## Decision boundary
 

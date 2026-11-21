@@ -139,10 +139,16 @@ For `Hi!` seed64, prefix-MMQ first changes acoustic `c1` in frame1 despite the
 same first two Talker codes; the exact originating hidden operation remains
 unlocalized. Talker top-1 and predictor greedy each reach natural EOS on the
 14 selected short outcomes, but no new audio quality verdict follows from that.
-All21 repeat pairs match and21 unchanged WAVs are prepared in one directory;
-new listening remains `not_run`. The new indexed canonical receipt preserves
-six failed max-token controls and release `blocked`. No new latency claim,
-Base/Kraftwerk verdict, EOS policy change or production promotion is made.
+All21 repeat pairs match. The user has now listened to all21 selected WAVs:
+baseline and predictor greedy fail; Talker top-1 has scoped `partial_pass`
+with no reported laughter/cough/extra speech, but `Hi!` seed64 sounds like
+`Хау` and remains a pronunciation concern. Sad affect and slightly syllabic
+`Готово` are recorded without inventing an instruction-adherence failure.
+Separate indexed receipts preserve each candidate's scope; the mixed receipt
+keeps six failed max-token controls, failed listening and release `blocked`.
+Held-out coverage, broader voice criteria and prefix-plus-top-1 interaction
+remain unqualified. No new latency claim, Base/Kraftwerk verdict, EOS policy
+change or production promotion is made.
 
 ## Verified milestones
 

@@ -1,0 +1,229 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-short-quality-default-listening-cmp50hx-20261121",
+  "recorded_at": "2026-11-21",
+  "model_family": "CustomVoice",
+  "backend": "native",
+  "bridge_commit": "8a4162719c4e278a97cb70f46289e072042e90ea",
+  "model_revision": "cab2cff67a0a557310febe558dc83076b28ed790e491867eb2751759f4cd89fa",
+  "runtime_revision": {
+    "published_research_commit": "7195258219ff41873805310da19a16e4474c1c26",
+    "qwentts_cpp": "53ac793c956dfc4d42c66b61402367ec0564cdf7",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "baseline_probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+    "sampler_probe_sha256": "91368b96d53972332a82d4ce98afa10db3116e373fe0ac121b6f866fa59f6cba",
+    "sampler_probe_source_sha256": "ceabfb298584ec546834693505e22d77dbd42859fedd46910fc620865a47a3ec",
+    "sampler_probe_source_base": "b2000885f90eae7d0dacff269c1c23a730f7e610",
+    "linked_core_archive_sha256": "bce8022a28b275edbe84a61a549f19dadac539e2603a0fa67091e5605bb62dc7",
+    "ggml_cuda_sha256": "bd54280b060357d21d0345cd1ecbc3f58e220b169561cd44f4c3a42255661b30",
+    "codec_sha256": "9a0bf7e0d16f04232a852bcd41fd2e485ea546acda1dbf3ce5e59dee76ae8c24",
+    "scope": "Statically linked internal probes, not Bridge/native-worker or packaged DLL execution. New probe changes only research manifest parsing, applied sampler controls and effective echoes; core archive unchanged. Bridge commit identifies documentation baseline, not an executed Bridge build.",
+    "settings": "Sampler-001 only: CustomVoice1.7B Q8_0/ryan; CMP50HX; prefix OFF; fusion OFF; unchanged Philox seed policy. Only default applied to selected short requests; primer requests keep defaults. Complete16-code trace bounded to128, no tensor taps or latency claims; adaptive EOS guard OFF and original minimum-two-frame suppression unchanged."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Seven selected text/seed cases for default; exact input bytes, seeds, repeats and effective sampler controls in sampler-001/plan.json/results.json. The shared immutable21-file manifest identifies only the seven directly assessed same-control files.",
+    "corpus_sha256": "65fb0ba3b70e821e41a985d64f22810feac090d325e2cce3a4b9e00d93f776d1"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/short-quality-causal-20261121",
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "fail",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "fail",
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "Only seven named default first-repeat WAVs in listening-quality-controls, CustomVoice ryan/CMP50HX; no direct second-repeat/primer listening or general voice-identity assessment.",
+    "criteria": {
+      "intelligibility": "partial",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "fail",
+      "final_tail": "fail",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "Direct user observations for files01/04/07/10/13/16/19 only:01 laughter then Нет;04 humming ммм then Нет then extensive meaningless extra speech;07 laughter then Спасибо;10 Га га то ва (distorted/repeated syllables, not labeled laughter);13 laughter then No;16 Hi;19 intermittent excited breathing, Hi, more breathing and с... с... сс-like sounds. No invented transcript for extra speech."
+  },
+  "case_result": {
+    "status": "fail",
+    "reason": "Selected baseline scope contains two max-token Hi72 repeats plus user-confirmed extra vocalizations and distorted syllables."
+  },
+  "listening_result": {
+    "status": "fail",
+    "reason": "Laughter, unrelated speech, distorted syllables and breathing/extras are reported in the exact selected baseline WAVs."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Failed selected baseline listening and max-token controls; broad model/seed/lifecycle/hardware/release qualification remains open."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-short-quality-causal-20261121.md",
+    "docs/reports/native-short-quality-causal-cmp50hx-20261121.json"
+  ],
+  "notes": "New separately scoped user-listening receipt, not a rewrite of historical observations or production promotion. Same runtime/model/input identities are inherited only because the exact sampler-001 artifacts were verified. Seven first-repeat WAVs are assessed directly; repeated PCM identity is mechanical evidence, not a second direct listening observation. No inference, audio editing or default change in this update.",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/analysis.json",
+      "bytes": 73825,
+      "sha256": "c756994e3371e1268d19ce23fe580204f0f7ecbe38b22ffc6ac8eaa6c03d0a60",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/sampler-001/plan.json",
+      "bytes": 15942,
+      "sha256": "65fb0ba3b70e821e41a985d64f22810feac090d325e2cce3a4b9e00d93f776d1",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/sampler-001/results.json",
+      "bytes": 1698492,
+      "sha256": "b32157d95313f95b6bcc85fbb74612d39f8c9824ed1599212772520f557d8132",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/manifest.json",
+      "bytes": 48899,
+      "sha256": "6fa7de4a5ed69b7af274d19f6586e84cbdbbbfe673eb9de7d42354c4b28fe74a",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/README.txt",
+      "bytes": 2113,
+      "sha256": "79e62c75ca009a4dbe5c40ec6f58115dda7cb928d8f01e4a545a7b6fef53fcf0",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/executed-source/run_prefill_quality_causal.py",
+      "bytes": 17985,
+      "sha256": "aa54cfa7e5c3fa57da83b54b2955fd5cf2602965baf848b3d78a785b321a0cd0",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/executed-source/run_prefill_sampler_controls.py",
+      "bytes": 21872,
+      "sha256": "f43e2a0c397f22b33fe9e7b7707e36e5b6b534fb79f2ccdf031257bd905554ce",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/executed-source/eos_research_probe.cpp",
+      "bytes": 33167,
+      "sha256": "ceabfb298584ec546834693505e22d77dbd42859fedd46910fc620865a47a3ec",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/01-ru-no-seed-64-default.wav",
+      "bytes": 80684,
+      "sha256": "5c6bf36ef4c53f8f3cdc83c5b87d45a83e2b2757d8bf993d050ec2a39676525b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/04-ru-no-seed-75-default.wav",
+      "bytes": 756524,
+      "sha256": "d87846ad5c16be993d82b8731996b02e60def8a0390c3d8840d56a121cdbefcf",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/07-ru-thanks-seed-65-default.wav",
+      "bytes": 295724,
+      "sha256": "a72791e75976c575ded93592e9d6e4eebd049f59ea1a107dbb8b95c5eff47e51",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/10-ru-ready-seed-64-default.wav",
+      "bytes": 157484,
+      "sha256": "ed8d469ae32f08fb870d7ad6681130bb9e7e1b52ba9c1a04faa4df9757f3c32b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/13-en-no-seed-64-default.wav",
+      "bytes": 130604,
+      "sha256": "8ee7692a0e8850afa214a44e109b3f9b13201c8628b915075d5f89375f9739d3",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/16-en-hi-seed-64-default.wav",
+      "bytes": 53804,
+      "sha256": "43917df3a6988970424974ddf02f2b1dbb46c6871c89b9f926322e07084350c2",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-quality-causal-20261121/listening-quality-controls/19-en-hi-seed-72-default.wav",
+      "bytes": 983084,
+      "sha256": "1d4656dcad854adcb225ad22dee0ed6a57027618664b44f1ecb0a31eb21562a8",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 rechecked against the immutable listening manifest/source on2026-11-21. Audio is unchanged; generated historical not_run fields are preserved and current user observations are tracked separately."
+      }
+    }
+  ]
+}

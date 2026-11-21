@@ -156,17 +156,95 @@ Consecutive triples are baseline / Talker top-1 / predictor greedy. Cases are
 ordered as in the table above:01-03,04-06,07-09,10-12,13-15,16-18,19-21.
 The full matrix includes both repeats; the listening selection uses the first
 repeat, including the20.48s baseline failure, without trimming or normalization.
-All new candidate listening is `not_run`. Earlier observations stay attached
-to their original exact files; identical source bytes are distinguished from
-a new direct listening observation.
+The user subsequently listened to all21 named files; the exact observations
+are recorded below. The immutable generated manifest/analysis retain their
+historical `not_run` fields. Current listening status is owned by the tracked
+receipts, not by relabeling the original generated payloads. Earlier listening
+observations remain attached to their original files.
 
 The offline `analyze.py`, its hash and per-file source/copy hashes are retained
 with `analysis.json`. The tracked [canonical receipt](native-short-quality-causal-cmp50hx-20261121.json)
-records failed natural-EOS mechanics, new listening not run and release blocked
-separately. No failed historical receipt is superseded. The next decision is
-whether either control removes unwanted vocalizations while preserving the
-requested words; only then is a held-out text/seed matrix justified. A concrete
-prefix-MMQ quality regression remains open regardless of the sampler results.
+records failed mixed-control natural-EOS mechanics, failed mixed-control
+listening and release blocked separately. Candidate-specific receipts below
+separate the partial positive Talker result from failed baseline/predictor
+controls. No failed historical receipt is superseded. A concrete prefix-MMQ
+quality regression remains open regardless of these no-prefix sampler results.
+
+## Twenty-one-file user listening
+
+Observer: user,2026-11-21. Only the named first-repeat WAVs are directly
+assessed. Source/copy identity is rechecked against the immutable manifest;
+no synthesis, waveform editing, trimming or normalization accompanies this
+feedback update. Do not transfer a listening verdict to the second repeat,
+primers, held-out cases, Base/Kraftwerk, RTX4090 or production packages.
+
+Independent read-only checking confirms all21 listening files match the
+manifest, source WAV, float PCM and exact PCM16 mono24kHz conversion. Seeds,
+effective controls, text identities and first-repeat mapping agree; all21
+payloads are distinct. The immutable manifest is48,899 bytes, SHA-256
+`6fa7de4a5ed69b7af274d19f6586e84cbdbbbfe673eb9de7d42354c4b28fe74a`.
+
+| File | Control | User observation |
+| --- | --- | --- |
+|01|Baseline|Laughter, then `Нет`.|
+|02|Talker top-1|Sad-sounding `Нет`.|
+|03|Predictor greedy|`Пшшшш`-like noise; requested `Нет` not confirmed.|
+|04|Baseline|`ммм`, then `Нет`, then extensive meaningless extra speech.|
+|05|Talker top-1|Ordinary `Нет`.|
+|06|Predictor greedy|Sad-sounding `Нет`.|
+|07|Baseline|Laughter, then `Спасибо`.|
+|08|Talker top-1|`Спасибо`.|
+|09|Predictor greedy|Laughter, then `Спасибо`.|
+|10|Baseline|`Га га то ва`: distorted/repeated syllables, not labeled laughter.|
+|11|Talker top-1|`Гатова`, explicitly clarified as `Готово`, slightly syllabic.|
+|12|Predictor greedy|`Готово`, slightly stretched.|
+|13|Baseline|Laughter, then `No`.|
+|14|Talker top-1|`No`.|
+|15|Predictor greedy|`No`.|
+|16|Baseline|`Hi!`.|
+|17|Talker top-1|`Hi!` sounding like `Хау`; pronunciation concern.|
+|18|Predictor greedy|`Хау`-like `Hi!` twice, followed by unidentified English speech.|
+|19|Baseline|Intermittent excited breathing, `Hi!`, more breathing, then `с... с... сс`-like sounds.|
+|20|Talker top-1|`Hi!`.|
+|21|Predictor greedy|`Hi!`.|
+
+Sad affect in02/06 is an observation, not a failure against an unspecified
+style instruction. In11 the observer explicitly recognizes `Готово`;
+slightly syllabic delivery is not silently equated with baseline10's repeated
+syllables. The spelling `Гатова` alone does not establish an incorrect Russian
+word or stress pattern. For17, retain both recognition of `Hi!` and the
+`Хау`-like pronunciation concern; do not invent a phonetic transcription,
+declare it correct, or claim an unrelated word was definitely substituted.
+No transcript is invented for the extra speech in04/18.
+
+The separate indexed listening receipts are:
+
+- [Baseline,7 files](native-short-quality-default-listening-cmp50hx-20261121.json):
+  `fail`. One clean reported `Hi!` does not cancel laughter, distorted syllables
+  and extra speech in the other selected controls.
+- [Talker top-1,7 files](native-short-quality-talker-top1-listening-cmp50hx-20261121.json):
+  scoped `partial_pass`, aggregate listening `not_assessed`. No laughter,
+  cough or extra speech is reported in these seven files, but17 has a
+  pronunciation concern and broader voice/identity criteria are not assessed.
+- [Predictor greedy,7 files](native-short-quality-predictor-greedy-listening-cmp50hx-20261121.json):
+  `fail`. Noise in03, laughter in09 and repetition/extra speech in18 disqualify
+  a general repair even though06/12/15/21 contain recognizable target words.
+
+Talker top-1 removes the reported large extra-vocalization failures in the
+selected baseline pairs01/02,04/05,07/08,13/14 and19/20. Baseline10's distorted
+syllables become recognizable, slightly syllabic `Готово` in11. This is useful
+selected-case evidence, not a7/7 clean-speech score or an estimated success
+rate on unseen texts. Natural EOS with predictor greedy did not guarantee
+requested speech quality. These are late/extraneous-generation observations,
+not proof of a general repair for the earlier Base/RU-stress early-EOS problem.
+
+The next bounded investigation should prioritize Talker top-1 with unchanged
+predictor sampling on held-out short/longer texts and seeds, retaining all
+failures and confirming17's pronunciation separately. Prefix is OFF in all
+these sampler controls; no prefix-plus-top-1 interaction or new latency result
+has been checked. Keep the measured prefix acceleration as an independent
+experimental candidate. No default, engine pin, EOS policy or release status
+changes because of this listening feedback.
 
 ### Reproduction
 
