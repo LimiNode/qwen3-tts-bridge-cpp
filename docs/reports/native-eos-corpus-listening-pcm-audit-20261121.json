@@ -1,0 +1,425 @@
+{
+  "kind": "offline_saved_PCM_not_ASR_or_new_inference",
+  "recorded_at": "2026-11-21",
+  "method": "PCM16 normalized by32768; unweighted RMS/peak; nonoverlapping20ms windows, descriptive .005 RMS threshold; exact clipped/rounded f32-to-PCM16 comparison.",
+  "boundary": "Energy is not a speech or text-coverage detector. No audio regenerated, gain changed or physical playback measured.",
+  "script": {
+    "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/audit_listening_pcm.py",
+    "sha256": "eb8def5c35f29c737d3fb4d8ec019f4d8b3563a9c482d20588386fb4a67e049e",
+    "bytes": 3629
+  },
+  "cases": [
+    {
+      "listening_copy": "01-ru-stress-original-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-6-lane-0.wav",
+        "bytes": 322604,
+        "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b"
+      },
+      "raw_sha256": "0b70e9ae9fd9516c8c83d193c5a301b61b153ef99ccc0ab2da7392c00b4f31d4",
+      "samples": 161280,
+      "seconds": 6.72,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.38671875,
+      "pcm16_rms_dbfs": -25.784652111845674,
+      "pcm16_zero_fraction": 0.0069320436507936505,
+      "windows_20ms": 336,
+      "windows_rms_at_least_0_005": 301,
+      "active_window_span_seconds": [
+        0.06,
+        6.640000000000001
+      ]
+    },
+    {
+      "listening_copy": "02-ru-stress-original-seed-72.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-14-lane-0.wav",
+        "bytes": 23084,
+        "sha256": "954e5e0fc2abcccae6265e902aae587f487e8c0f2db49c034a9e048fd5fe06fd"
+      },
+      "raw_sha256": "7947c4a3a177869cff904870dbd624fa2363b1b6fb72a7ca7efcd267209bc00b",
+      "samples": 11520,
+      "seconds": 0.48,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.253662109375,
+      "pcm16_rms_dbfs": -24.68586426405373,
+      "pcm16_zero_fraction": 0.33576388888888886,
+      "windows_20ms": 24,
+      "windows_rms_at_least_0_005": 16,
+      "active_window_span_seconds": [
+        0.14,
+        0.46
+      ]
+    },
+    {
+      "listening_copy": "03-ru-stress-original-seed-75.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-17-lane-0.wav",
+        "bytes": 7724,
+        "sha256": "6d9e7f60a7c955554f54db358cf12d1826ae0ca8560ff406eb6eb723ff128e23"
+      },
+      "raw_sha256": "c579c5668f49ed17c424d8c8b312ad5035be3fd07d641ccf3292c07685b0753d",
+      "samples": 3840,
+      "seconds": 0.16,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.000030517578125,
+      "pcm16_rms_dbfs": -107.7013305427271,
+      "pcm16_zero_fraction": 0.9817708333333334,
+      "windows_20ms": 8,
+      "windows_rms_at_least_0_005": 0,
+      "active_window_span_seconds": null
+    },
+    {
+      "listening_copy": "04-ru-stress-original-seed-78.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-20-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "1c677648775a9af9178bf617b549467e4a437ce8a8c1e3f7923bd77e4e0ff834"
+      },
+      "raw_sha256": "45aa4b514e5c612a8e0e18a17fcb6d763406ebca3a37d7741db86a2c33992a43",
+      "samples": 5760,
+      "seconds": 0.24,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.000030517578125,
+      "pcm16_rms_dbfs": -109.27999493222191,
+      "pcm16_zero_fraction": 0.9873263888888889,
+      "windows_20ms": 12,
+      "windows_rms_at_least_0_005": 0,
+      "active_window_span_seconds": null
+    },
+    {
+      "listening_copy": "05-ru-stress-ru-yes-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-23-lane-0.wav",
+        "bytes": 15404,
+        "sha256": "845daa1e5f6f794bb2306ae9f1b2017e9754c87ac7b9cb457d5ec2d78975e701"
+      },
+      "raw_sha256": "8fc234b6c35733973f16b411b4058ce25a2d36b3407f1af30541f479c1108190",
+      "samples": 7680,
+      "seconds": 0.32,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.219970703125,
+      "pcm16_rms_dbfs": -25.594459320468857,
+      "pcm16_zero_fraction": 0.14661458333333333,
+      "windows_20ms": 16,
+      "windows_rms_at_least_0_005": 12,
+      "active_window_span_seconds": [
+        0.08,
+        0.32
+      ]
+    },
+    {
+      "listening_copy": "06-ru-stress-ru-no-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-40-lane-0.wav",
+        "bytes": 7724,
+        "sha256": "16adb74a2ced9e015e364d31f1512ced96a18428bc67c4c33f54c3b3e8976a36"
+      },
+      "raw_sha256": "bd35d6e4c835a83896e10567a8e94c3a6f2f9ada8c883b577c7f971ec238c7cb",
+      "samples": 3840,
+      "seconds": 0.16,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.10888671875,
+      "pcm16_rms_dbfs": -35.6644218967687,
+      "pcm16_zero_fraction": 0.41875,
+      "windows_20ms": 8,
+      "windows_rms_at_least_0_005": 4,
+      "active_window_span_seconds": [
+        0.08,
+        0.16
+      ]
+    },
+    {
+      "listening_copy": "07-ru-stress-en-hi-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-57-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "ff9bde2acf4d5e423a823f5cc718b1089f223a057d0d3967f07532b29abc63ad"
+      },
+      "raw_sha256": "7ec5964c06d8866474864c082e9d9ac53051530320531062c6d75fc5deeb3fa2",
+      "samples": 5760,
+      "seconds": 0.24,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.1531982421875,
+      "pcm16_rms_dbfs": -31.870571688473444,
+      "pcm16_zero_fraction": 0.2565972222222222,
+      "windows_20ms": 12,
+      "windows_rms_at_least_0_005": 7,
+      "active_window_span_seconds": [
+        0.1,
+        0.24
+      ]
+    },
+    {
+      "listening_copy": "08-ru-stress-en-thanks-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-74-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "58851dc2beae83a262e3eb4333e4d598499b47863abe35b17ea572376e4a5eee"
+      },
+      "raw_sha256": "467e9edf50cb2e683bdf44d1144271775124db29630a9b0b8be9c042335d6739",
+      "samples": 5760,
+      "seconds": 0.24,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.1656494140625,
+      "pcm16_rms_dbfs": -32.45668175709944,
+      "pcm16_zero_fraction": 0.35954861111111114,
+      "windows_20ms": 12,
+      "windows_rms_at_least_0_005": 8,
+      "active_window_span_seconds": [
+        0.06,
+        0.22
+      ]
+    },
+    {
+      "listening_copy": "09-ru-stress-ru-unseen-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-91-lane-0.wav",
+        "bytes": 272684,
+        "sha256": "c6824eae1dc1b95dab698c31231eed0e15dbb1efc3223e9c1a80e78204743e22"
+      },
+      "raw_sha256": "cfc258da6a8857e4642a5215803004d48935302c78174276d0ae25452e28f558",
+      "samples": 136320,
+      "seconds": 5.68,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.30419921875,
+      "pcm16_rms_dbfs": -25.839153214002934,
+      "pcm16_zero_fraction": 0.007056924882629108,
+      "windows_20ms": 284,
+      "windows_rms_at_least_0_005": 260,
+      "active_window_span_seconds": [
+        0.06,
+        5.46
+      ]
+    },
+    {
+      "listening_copy": "10-ru-stress-ru-two-sentences-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-108-lane-0.wav",
+        "bytes": 353324,
+        "sha256": "fada01bc05bc7067ed42bddeffd85f2969d212888306e72d248d696ef19ea590"
+      },
+      "raw_sha256": "1e8037328c155ea4dacb79f754d5e5a3630043ba333820d338290977d1fb3bd5",
+      "samples": 176640,
+      "seconds": 7.36,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.336669921875,
+      "pcm16_rms_dbfs": -25.99742596609441,
+      "pcm16_zero_fraction": 0.014719202898550724,
+      "windows_20ms": 368,
+      "windows_rms_at_least_0_005": 353,
+      "active_window_span_seconds": [
+        0.06,
+        7.12
+      ]
+    },
+    {
+      "listening_copy": "11-ru-stress-en-unseen-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-125-lane-0.wav",
+        "bytes": 291884,
+        "sha256": "96a9522c6a1a5000f49cb0199de86b7bd839b5b22fea641411f3207f1379cc13"
+      },
+      "raw_sha256": "252948828136c547189fdb471933ae98329454324d166569d5c26b7599124e87",
+      "samples": 145920,
+      "seconds": 6.08,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.235107421875,
+      "pcm16_rms_dbfs": -27.731379341226166,
+      "pcm16_zero_fraction": 0.013013980263157894,
+      "windows_20ms": 304,
+      "windows_rms_at_least_0_005": 293,
+      "active_window_span_seconds": [
+        0.08,
+        6.04
+      ]
+    },
+    {
+      "listening_copy": "12-base-original-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-6-lane-0.wav",
+        "bytes": 395564,
+        "sha256": "eca6c089d6cd388a70f110bfb1ef2ef5a9f72fc8cb13b4a3bb3f215b729305ee"
+      },
+      "raw_sha256": "847e3e9d3bc3753265169c5cf8875ddac11d03f0b57cb16e7c68331698c7d37c",
+      "samples": 197760,
+      "seconds": 8.24,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.28125,
+      "pcm16_rms_dbfs": -26.74153423636929,
+      "pcm16_zero_fraction": 0.0156957928802589,
+      "windows_20ms": 412,
+      "windows_rms_at_least_0_005": 293,
+      "active_window_span_seconds": [
+        0.38,
+        8.16
+      ]
+    },
+    {
+      "listening_copy": "13-base-ru-yes-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-23-lane-0.wav",
+        "bytes": 38444,
+        "sha256": "c4c1b088aab8f37f8caf0b72ca7ced2be0775c8289aabd72e478a9f34b4ef49c"
+      },
+      "raw_sha256": "c1015a7c67bd332585b494d34b07e4c81da5cca4c1927ae4a5474b40bbe0082b",
+      "samples": 19200,
+      "seconds": 0.8,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.26416015625,
+      "pcm16_rms_dbfs": -27.154116329426614,
+      "pcm16_zero_fraction": 0.1053125,
+      "windows_20ms": 40,
+      "windows_rms_at_least_0_005": 26,
+      "active_window_span_seconds": [
+        0.12,
+        0.64
+      ]
+    },
+    {
+      "listening_copy": "14-base-ru-no-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-40-lane-0.wav",
+        "bytes": 42284,
+        "sha256": "1031ccf5014778f88587128637db43013eb28c1a4788cf3af581ac24dab355af"
+      },
+      "raw_sha256": "40a73b205cc00b423bc3f2a2b8d80d737a260ccf4fd6ee71f72b1af788f91237",
+      "samples": 21120,
+      "seconds": 0.88,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.412109375,
+      "pcm16_rms_dbfs": -25.57066555248159,
+      "pcm16_zero_fraction": 0.13385416666666666,
+      "windows_20ms": 44,
+      "windows_rms_at_least_0_005": 32,
+      "active_window_span_seconds": [
+        0.1,
+        0.74
+      ]
+    },
+    {
+      "listening_copy": "15-base-en-hi-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-57-lane-0.wav",
+        "bytes": 30764,
+        "sha256": "b9953572d2521fb280899662e6fbf0888804f89db77aeb4562dbf663a4b16369"
+      },
+      "raw_sha256": "7d7c00d0e1d7ba0b6e1326b26ceeb4ee1f2462b907d54263823d919ae780296a",
+      "samples": 15360,
+      "seconds": 0.64,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.337646484375,
+      "pcm16_rms_dbfs": -28.245284054175098,
+      "pcm16_zero_fraction": 0.2044921875,
+      "windows_20ms": 32,
+      "windows_rms_at_least_0_005": 23,
+      "active_window_span_seconds": [
+        0.1,
+        0.56
+      ]
+    },
+    {
+      "listening_copy": "16-base-en-thanks-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-74-lane-0.wav",
+        "bytes": 46124,
+        "sha256": "acd0c8a2dc68379584047b023a5374257054ea7b7fede5a98bd6adbd52e35011"
+      },
+      "raw_sha256": "b33df557872aab491f7f964db5f799f86e036535e3fb9d50ff4077e8c7f254c8",
+      "samples": 23040,
+      "seconds": 0.96,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.2261962890625,
+      "pcm16_rms_dbfs": -31.06770049144061,
+      "pcm16_zero_fraction": 0.05846354166666667,
+      "windows_20ms": 48,
+      "windows_rms_at_least_0_005": 30,
+      "active_window_span_seconds": [
+        0.12,
+        0.72
+      ]
+    },
+    {
+      "listening_copy": "17-base-ru-unseen-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-91-lane-0.wav",
+        "bytes": 284204,
+        "sha256": "8dc1ef0da6305d4cb6f8e58889eb8a20e96c8b090ce1d48bcb700fb337f6c827"
+      },
+      "raw_sha256": "446042a56245c343256c71f4de91773f08fb077b4405287b4fb7e5d3ba76251c",
+      "samples": 142080,
+      "seconds": 5.92,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.412841796875,
+      "pcm16_rms_dbfs": -23.63323907090413,
+      "pcm16_zero_fraction": 0.01463963963963964,
+      "windows_20ms": 296,
+      "windows_rms_at_least_0_005": 291,
+      "active_window_span_seconds": [
+        0.08,
+        5.9
+      ]
+    },
+    {
+      "listening_copy": "18-base-ru-two-sentences-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-108-lane-0.wav",
+        "bytes": 407084,
+        "sha256": "7a3c46e201f0d44d24fe23329d22fbbbd83e49929181794ca2948121b3838546"
+      },
+      "raw_sha256": "79b7f00d168cbffb69706ff48bd4b03189858f85cdb5f2bab1b40b49e529a71c",
+      "samples": 203520,
+      "seconds": 8.48,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.343017578125,
+      "pcm16_rms_dbfs": -24.636668117956994,
+      "pcm16_zero_fraction": 0.012549135220125787,
+      "windows_20ms": 424,
+      "windows_rms_at_least_0_005": 387,
+      "active_window_span_seconds": [
+        0.1,
+        8.42
+      ]
+    },
+    {
+      "listening_copy": "19-base-en-unseen-seed-64.wav",
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-125-lane-0.wav",
+        "bytes": 357164,
+        "sha256": "e626a20962256dd8b7377d59387dad98340528073236e7ad48a4390762ffddd2"
+      },
+      "raw_sha256": "c7489f25ef43b47ade318799cb9cceac04264396194bfabbc12dd622af40e735",
+      "samples": 178560,
+      "seconds": 7.44,
+      "raw_finite": true,
+      "raw_to_pcm16_mismatches": 0,
+      "pcm16_peak_normalized": 0.30712890625,
+      "pcm16_rms_dbfs": -25.368356937592566,
+      "pcm16_zero_fraction": 0.01153673835125448,
+      "windows_20ms": 372,
+      "windows_rms_at_least_0_005": 356,
+      "active_window_span_seconds": [
+        0.08,
+        7.2
+      ]
+    }
+  ]
+}

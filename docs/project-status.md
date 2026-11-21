@@ -59,6 +59,41 @@ These are scoped `partial_pass` listening verdicts, not a universal release
 acceptance. The exact payloads remain local under `.tmp/base-acceptance/` and
 are identified in the tracked receipts by SHA-256.
 
+Separately, the [native EOS-switch research receipt](reports/native-eos-switch-listening-cmp50hx-20261120.json)
+records user-confirmed full text in eight standalone CMP WAVs (four unique
+seed/policy cases with repeats). This is scoped listening evidence only;
+the research policies, shared-prefix batch and R1 release remain unqualified.
+The separate [prefix listening receipt](reports/native-eos-prefix-listening-cmp50hx-20261120.json)
+confirms full text in three named single/dual continuations, with user-reported
+gradual end-volume fading on batch seed 65. It does not qualify general audio
+quality, live branch switching or release readiness.
+The [offline seed-65 diagnostic](reports/native-eos-fade-comparison-20261120.md)
+finds a similar quieter ending in single and batch, not a WAV-conversion fade;
+the cause was not isolated. In the
+[2026-11-21 follow-up](reports/native-eos-seed65-listening-cmp50hx-20261121.json),
+the user found slight or effectively absent fading in single seed 65 and no
+noticeable difference from the earlier track. This informal feedback does not
+establish an actionable fade defect or qualify general audio quality.
+
+The [2026-11-21 CMP corpus/timing research](reports/native-eos-corpus-and-decision-20261121.md)
+adds 142 direct-engine baseline outcomes each for RU-stress and Base, plus
+36 timing controls. All have valid PCM and natural EOS; RU-stress has three
+non-short duration anomalies (seeds 72/75/78), versus none among Base's 64
+eligible corpus cases. In the subsequent
+[19-file listening](reports/native-eos-corpus-listening-20261121.json), the user
+recognizes normal text in eleven files, is uncertain about one, and reports seven
+as unrecognizable, inaudible or meaningless. The file-specific follow-up
+confirms Base file18's full normal phrase, superseding its initial inferred
+failure and the duration-proxy-miss interpretation; Base file14 remains a
+failed short answer. The saved-PCM audit finds no copy/conversion
+corruption: files03/04 are near silence; files14/18 have substantial signal,
+which does not establish intelligible text. All other cases and voice-quality
+criteria remain unassessed. Both canonical research receipts record failed
+scoped listening. The observer preserves output on ten ON/OFF pairs, but frame-3 continuation does
+not detect seed 72's later early EOS; measured warm N=2 pair decisions also
+miss the first-chunk budget. Canonical research receipts are in the index.
+No engine pin, sampler/default, live selector or release gate is promoted.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL

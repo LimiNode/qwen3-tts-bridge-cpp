@@ -1,4 +1,5 @@
 #include <qwen_tts_bridge/audio.hpp>
+#include <qwen_tts_bridge/text/segmentation.hpp>
 #ifdef QWEN_TTS_BRIDGE_HAS_TTS_FRONT
 #include <qwen_tts_bridge/text.hpp>
 #endif
@@ -375,8 +376,11 @@ RequestId submit_request(
     , PlaybackAnimationContext* animation_context = nullptr
 #endif
     ) {
-    const std::uint64_t playback_epoch = playback_epoch_override.value_or(
-        cancel_active_request(
+    // optional::value_or eagerly evaluates its argument; a reset there would
+    // discard the previous segment even when an existing epoch is supplied.
+    const std::uint64_t playback_epoch = playback_epoch_override.has_value()
+        ? playback_epoch_override.value()
+        : cancel_active_request(
             client,
             player,
             active_state,
@@ -384,7 +388,7 @@ RequestId submit_request(
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
             , animation_runtime, animation_context
 #endif
-        ));
+        );
 
     TtsRequest request = std::move(prepared_request.request);
     std::uint64_t animation_generation = 0;
@@ -408,6 +412,10 @@ RequestId submit_request(
     }
 
     const RequestId request_id = request.id;
+    if (options.segment_text) {
+        std::cout << "speech_segment request_id=" << request_id
+                  << " playback_epoch=" << player.playback_epoch() << '\n';
+    }
     player.note_request_started(request_id);
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
     if (animation_runtime != nullptr) {
@@ -637,6 +645,17 @@ int wmain(int argc, wchar_t** argv) {
         if (options.self_test_playback_lifecycle) {
             return run_playback_lifecycle_self_test();
         }
+        // Validate all segment boundaries and resource limits before starting
+        // a worker or playing any prefix of an invalid oversized utterance.
+        std::vector<qwen_tts_bridge::text::SpeechSegment> speech_segments;
+        if (!options.text.empty()) {
+            speech_segments = options.segment_text
+                ? qwen_tts_bridge::text::plan_speech_segments(options.text)
+                : std::vector<qwen_tts_bridge::text::SpeechSegment>{{0, options.text.size()}};
+            if (speech_segments.empty()) {
+                throw std::runtime_error("segmented text contains no spoken content");
+            }
+        }
 
         QwenTtsClientOptions client_options;
         client_options.session.startup_timeout = options.startup_timeout;
@@ -858,55 +877,85 @@ int wmain(int argc, wchar_t** argv) {
 #endif
 
         if (!options.text.empty()) {
-            OneShotState state;
-            OneShotCompletionState completion_state;
             if (playback_metrics != nullptr) {
                 playback_metrics->begin_request();
             }
-            auto prepared_request = prepare_request(client, options, options.text);
-            submit_request(
-                client_for_text(
-                    options,
-                    prepared_request.text,
-                    client,
-                    safe_client.get()),
-                player,
-                active_state,
-                options,
-                std::move(prepared_request),
-                &state,
-                &completion_state,
-                pcm_capture.get(),
-                wav_capture.get(),
-                std::nullopt
-#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
-                , animation_runtime.get(), animation_context.get()
-#endif
-            );
-            if (!wait_for_one_shot(state, options.request_timeout)) {
-                cancel_active_request(
-                    client,
+            const auto deadline = std::chrono::steady_clock::now() + options.request_timeout;
+            const auto remaining = [&deadline, &options] {
+                if (!options.segment_text) {
+                    return options.request_timeout;
+                }
+                return std::chrono::duration_cast<std::chrono::milliseconds>(
+                    deadline - std::chrono::steady_clock::now());
+            };
+            // Keep one epoch across sentence requests. Resetting it between
+            // requests would discard audio still queued in the player.
+            const auto playback_epoch = options.segment_text
+                ? std::optional<std::uint64_t>{player.playback_epoch()}
+                : std::nullopt;
+            for (std::size_t index = 0; index < speech_segments.size(); ++index) {
+                OneShotState state;
+                OneShotCompletionState completion_state;
+                const auto& segment = speech_segments[index];
+                if (options.segment_text) {
+                    std::cout << "speech_segment index=" << index
+                              << " count=" << speech_segments.size()
+                              << " source_begin=" << segment.begin
+                              << " source_end=" << segment.end << '\n';
+                }
+                auto prepared_request = prepare_request(client, options,
+                    options.text.substr(segment.begin, segment.end - segment.begin));
+                if (remaining().count() <= 0) {
+                    throw std::runtime_error("one-shot synthesis timed out before next segment");
+                }
+                submit_request(
+                    client_for_text(
+                        options,
+                        prepared_request.text,
+                        client,
+                        safe_client.get()),
                     player,
                     active_state,
-                    options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0
+                    options,
+                    std::move(prepared_request),
+                    &state,
+                    &completion_state,
+                    pcm_capture.get(),
+                    wav_capture.get(),
+                    playback_epoch
 #ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
                     , animation_runtime.get(), animation_context.get()
 #endif
                 );
-                if (safe_client != nullptr) {
-                    safe_client->stop();
+                if (!wait_for_one_shot(state, remaining())) {
+                    cancel_active_request(
+                        client,
+                        player,
+                        active_state,
+                        options.terminal_fade_enabled ? options.terminal_fade.fade_ms : 0
+#ifdef QWEN_TTS_BRIDGE_HAS_SPEECH_ANIMATION
+                        , animation_runtime.get(), animation_context.get()
+#endif
+                    );
+                    if (safe_client != nullptr) {
+                        safe_client->stop();
+                    }
+                    client.stop();
+                    throw std::runtime_error("one-shot synthesis timed out");
                 }
-                client.stop();
-                throw std::runtime_error("one-shot synthesis timed out");
-            }
-            if (!state.success) {
-                if (safe_client != nullptr) {
-                    safe_client->stop();
+                if (!state.success) {
+                    if (safe_client != nullptr) {
+                        safe_client->stop();
+                    }
+                    client.stop();
+                    throw std::runtime_error(
+                        state.message.empty() ? "one-shot synthesis failed" : state.message);
                 }
-                client.stop();
-                throw std::runtime_error(state.message.empty() ? "one-shot synthesis failed" : state.message);
             }
-            player.wait_until_idle(options.request_timeout);
+            if (remaining().count() <= 0) {
+                throw std::runtime_error("one-shot synthesis/playback timed out");
+            }
+            player.wait_until_idle(remaining());
             if (pcm_capture != nullptr) {
                 pcm_capture->finalize();
             }

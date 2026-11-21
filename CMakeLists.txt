@@ -155,6 +155,7 @@ add_library(qwen_tts_bridge
     src/qwen_tts_bridge/protocol/framing/frame_codec.cpp
     src/qwen_tts_bridge/protocol/framing/frame_parser.cpp
     src/qwen_tts_bridge/session/worker_session.cpp
+    src/qwen_tts_bridge/text/segmentation/speech_segments.cpp
     src/qwen_tts_bridge/transport/stdio/std_io_transport.cpp
 )
 add_library(QwenTTSBridge::qwen_tts_bridge ALIAS qwen_tts_bridge)
@@ -412,6 +413,15 @@ if(QWEN_TTS_BRIDGE_BUILD_TTS_FRONT)
     )
 endif()
 install(
+    FILES "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/text/segmentation.hpp"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge/text"
+)
+install(
+    DIRECTORY "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/text/segmentation"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge/text"
+    FILES_MATCHING PATTERN "*.hpp"
+)
+install(
     FILES "${QWEN_TTS_BRIDGE_SRC_DIR}/qwen_tts_bridge/playback.hpp"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/qwen_tts_bridge"
 )
@@ -631,6 +641,10 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
     )
     add_test(NAME example_cli_parsing_test COMMAND example_cli_parsing_test)
 
+    add_executable(speech_segments_test tests/speech_segments_test.cpp)
+    target_link_libraries(speech_segments_test PRIVATE QwenTTSBridge::qwen_tts_bridge)
+    add_test(NAME speech_segments_test COMMAND speech_segments_test)
+
     if(QWEN_TTS_BRIDGE_BUILD_EXAMPLES)
         add_executable(latency_benchmark_boundaries_test
             tests/latency_benchmark_boundaries_test.cpp
@@ -682,6 +696,7 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
         qwen_tts_bridge/protocol/control.hpp
         qwen_tts_bridge/protocol/framing.hpp
         qwen_tts_bridge/session.hpp
+        qwen_tts_bridge/text/segmentation.hpp
         qwen_tts_bridge/transport.hpp
         qwen_tts_bridge/transport/stdio.hpp
         # Explicit leaf checks for neutral value types whose standalone use is
@@ -1297,6 +1312,14 @@ if(QWEN_TTS_BRIDGE_BUILD_TESTS)
             set_tests_properties(qwen_tts_save_wav_output_safety
                 PROPERTIES TIMEOUT 120)
             if(WIN32)
+                add_test(
+                    NAME qwen_tts_play_mock_speech_segments
+                    COMMAND "${Python3_EXECUTABLE}"
+                        "${CMAKE_CURRENT_SOURCE_DIR}/tests/python/verify_playback_segments.py"
+                        --player "$<TARGET_FILE:qwen_tts_play>"
+                        --output-root "${CMAKE_CURRENT_BINARY_DIR}/speech-segments-test")
+                set_tests_properties(qwen_tts_play_mock_speech_segments
+                    PROPERTIES RESOURCE_LOCK default_audio_playback TIMEOUT 120)
                 add_test(
                     NAME qwen_tts_voice_design_wrapper_mock
                     COMMAND "${Python3_EXECUTABLE}"

@@ -1,0 +1,109 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-prefix-listening-cmp50hx-20261120",
+  "recorded_at": "2026-11-20",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "bd1f22cdf1285cb706eff7293c2c988e7bff4eb5",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp": "5b03c53ee8bb2f7f4f102005ab7f6ba148ffd92c",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "04e2d865153731ee2c83c59bad9c66bf8e50f36765be060b360546e7166bbfde",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "voice_registry_sha256": "1906bae1c02857e5bb716be3be6e103c4c7a6c6c86dec237a1a09b49a0770977",
+    "seed_schedule": "Fixed baseline seeds 64/65 with one complete seed-2 frame teacher-forced; research probe only",
+    "forced_prefix_sha256": "7d7ac6c8df63a4190b4ecf96f9dd9f3e778099933e3fe81bf2083268f0ac723f"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/inputs/original.txt; exact UTF-8 source, frontend OFF; group/seed/policy mapping in the retained plan and tracked observation CSV",
+    "text_utf8_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+    "corpus_sha256": "9d8c1d180d547400216545781a245b14c740592c5fec646e98c6db2cbecf17b9"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-reseed-branching-20261120",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/single-seed-2-frames-1/group-2-lane-0.wav",
+      "kind": "wav",
+      "bytes": 334124,
+      "sha256": "dff2cc78ff57d00fb5957b0056c6fddbd27254b1ea8ae7a37fe11dd6be8697dd",
+      "availability": {
+        "status": "local",
+        "reason": "Exact file size, SHA-256 and PCM16 mono 24-kHz WAV structure verified on 2026-11-20; user identified these three linked artifacts."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/dual-seed-2-frames-1/group-1-lane-0.wav",
+      "kind": "wav",
+      "bytes": 334124,
+      "sha256": "f33d96566518e50d4e034e757bf3815fa62727ca152af146ea537273e7aab745",
+      "availability": {
+        "status": "local",
+        "reason": "Exact file size, SHA-256 and PCM16 mono 24-kHz WAV structure verified on 2026-11-20; user identified these three linked artifacts."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/dual-seed-2-frames-1/group-1-lane-1.wav",
+      "kind": "wav",
+      "bytes": 345644,
+      "sha256": "52e56573fda2a33e100fea904a28c58a44c6b7436f1fab56f800cb0f4152f304",
+      "availability": {
+        "status": "local",
+        "reason": "Exact file size, SHA-256 and PCM16 mono 24-kHz WAV structure verified on 2026-11-20; user identified these three linked artifacts."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "not_run",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-20",
+    "scope": "Three exact standalone WAVs: single-slot continuation seed 64 and true two-slot continuations 64/65, all preserving one complete seed-2 frame. User confirms the full correct original phrase in all three. This is not a live fork or a PCM-switching test.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "partial",
+      "final_tail": "partial",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User reported: \"Речь есть везде. ВОт конкретно тут она блтже к концу постепенно затухает. но фраза корректна. в этом смысле всё нормально\". The annotation identifies only dual-seed-2-frames-1/group-1-lane-1.wav (seed 65; SHA-256 52e56573fda2a33e100fea904a28c58a44c6b7436f1fab56f800cb0f4152f304) as gradually fading toward the end. Text coverage is user-confirmed for all three files; the fade is an auditory observation, not an established model, codec or batch defect. The related offline seed-65 comparison measures similar quieter late portions in single and batch, with no WAV-conversion fade; cause, perceptual severity and general voice/audio-quality criteria remain unassessed. This does not add a listening verdict for single seed 65. No claim of artifact-free or constant-volume output is made."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Direct-engine model load, valid PCM and natural EOS are recorded for the three artifacts; persistent-repeat/restart contracts, Bridge integration and physical streaming are outside this receipt."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "Full-text intelligibility passes for the three selected WAVs, but the seed-65 batch continuation has user-reported gradual end-volume fading; detailed voice fidelity, artifact-free audio and live branch transitions are not qualified."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Teacher-forced research continuations, not an implemented live fork/selector. Broader corpus, fade cause/perceptual severity, streaming deadlines, physical playback and RTX qualification remain open. R1 remains NO-GO."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-frame-reseed-and-prefix-20261120.md",
+    "docs/reports/native-frame-reseed-evidence-20261120.json",
+    "docs/reports/native-frame-reseed-observations-20261120.csv",
+    "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json",
+    "docs/reports/native-eos-fade-comparison-20261120.md",
+    "docs/reports/native-eos-fade-comparison-20261120.json"
+  ],
+  "notes": "bridge_commit identifies the supporting research report, not an executed Bridge client. The probe statically links qwen-core and does not load qwen.dll. model_revision is the exact RU-stress Q8_0 Talker SHA-256, not an invented upstream revision. Single seed 64 and batch seed 64 produce 87 frames (6.96 s); batch seed 65 produces 90 frames (7.20 s). Baseline seed policy and the exact seed-2 one-frame prefix were used in all three. Listening does not transfer to other prefix lengths, seeds/texts, codec lanes, GPUs, a real state fork, live switching or release readiness. This receipt supplements, rather than supersedes, the separate switch-1/2 listening receipt."
+}

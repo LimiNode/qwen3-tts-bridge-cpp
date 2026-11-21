@@ -32,6 +32,7 @@ points are listed explicitly below.
 | `audio.hpp` | `data.hpp`, `client.hpp` | `audio/{wav_writer,post_processor,playout_cursor,save_wav_callbacks,terminal_fade_post_processor}.hpp` |
 | `playback.hpp` | `data.hpp` | `playback/{playback_cursor,playback_receipt}.hpp` |
 | `text.hpp` (optional) | `client.hpp`, external `tts_front.hpp` | `text/tts_front_text_preparer.hpp` |
+| `text/segmentation.hpp` (experimental) | none | `segmentation/speech_segments.hpp` |
 | `playback/winmm.hpp` (optional) | `audio.hpp`, `playback.hpp` | `winmm/wave_out_player.hpp` |
 | `integration/speech_animation.hpp` (optional) | `client.hpp`, external speech-animation headers | `speech_animation/{adapter,playback_runtime}.hpp` |
 | `native.hpp` (opt-in) | none | `native/native_qwen_backend.hpp` |

@@ -20,6 +20,7 @@ struct ProgramOptions {
     bool tts_front_enabled = true;
     bool tts_front_explicit_stress = false;
     bool require_natural_eos = true;
+    bool segment_text = false;
     std::string worker_executable;
     std::vector<std::string> worker_arguments;
     std::string working_directory;
