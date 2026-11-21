@@ -119,7 +119,10 @@ full PCM equality for the one tested short seed64 case. The user listened to
 the three exact short WAVs: baseline01 and MMQ03 say `Да` without coughing;
 ordinary-prefix02 says `КхмКхм Да`. Separate indexed receipts retain the failed
 ordinary-prefix case and partial positive MMQ/baseline scope. Broader
-seed/text/latency and voice-quality validation remain open; no default is promoted.
+seed/text/latency checks are extended in the
+[short-utterance follow-up](reports/native-prefill-short-20261121.md);
+new-file listening and broader voice-quality validation remain open. No default
+is promoted, and the earlier failed ordinary-prefix receipts are not superseded.
 
 ## Verified milestones
 

@@ -154,3 +154,7 @@ effects separately before claiming equivalent prefix reuse. No new cache
 framework, hidden retry, startup EOS gate or release change follows from this
 evidence. The previous approximately46ms prefix saving is not remeasured by
 these diagnostic runs.
+
+The subsequent [short-utterance study](native-prefill-short-20261121.md) broadens
+the text/seed controls and measures timing separately with the retained runtime.
+It does not transfer the three-file listening verdict to any new recording.
