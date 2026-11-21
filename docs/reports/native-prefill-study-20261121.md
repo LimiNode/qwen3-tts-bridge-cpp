@@ -497,3 +497,14 @@ examples neither establish broader quality nor repair known early EOS cases.
 No PR is merged by this study, no package is rebuilt/promoted, and RTX4090
 is not tested. Numerical equality on the stated cases, human quality and
 release support remain separate questions.
+
+## Layer/KV and kernel follow-up
+
+The [differential follow-up](native-prefill-differential-20261121.md) records
+208 bounded outcomes,104 exact OFF/ON pairs and240 byte-exact KV restores.
+The first valid drift is Q projection, before attention. CUDA route logs and
+prefix5/6 controls isolate a substantial MMQ/MMVQ-switch contribution for
+CustomVoice short text. Forced MMQ preserves full seed64 `Да!` PCM in a
+separate12-request natural-EOS run, but residual logits differ, new listening
+is pending and no production profile is promoted. Base/RU intra-MMQ shape
+drift remains. See the linked record for excluded view taps and provenance gaps.

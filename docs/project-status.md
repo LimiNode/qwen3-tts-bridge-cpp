@@ -111,6 +111,13 @@ detailed voice matching, instruction adherence and broader quality remain
 unassessed. The report's research summary is not release acceptance;
 R1 gates, engine pin, ABI and sampler defaults remain unchanged.
 
+The [prefill differential follow-up](reports/native-prefill-differential-20261121.md)
+adds208 bounded outcomes and a separate12-request natural-EOS control. KV
+restores are exact; drift begins before attention. A traced MMQ/MMVQ shape
+switch materially changes short CustomVoice output; consistent MMQ restores
+full PCM equality for the one tested short seed64 case. New listening and
+broader seed/text/latency validation remain open; no default is promoted.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL
