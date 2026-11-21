@@ -1343,10 +1343,7 @@ int main(int argc, char** argv) {
     std::atomic<bool> mismatch_observed{false};
     CHECK(!mismatched_client.start(
         manifest_options(mismatch_manifest, &mismatch_stderr, &mismatch_observed), mismatched_options));
-    for (int attempt = 0; attempt < 20 &&
-         !mismatch_observed.load(std::memory_order_acquire); ++attempt) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
+    mismatched_client.stop();
     CHECK(mismatch_observed.load(std::memory_order_acquire));
 
     QwenTtsClient invalid_client;
@@ -1359,11 +1356,6 @@ int main(int argc, char** argv) {
     client_options.session.startup_timeout = std::chrono::seconds(5);
     std::atomic<bool> cadence_observed{false};
     CHECK(client.start(options(4, nullptr, &cadence_observed), client_options));
-    for (int attempt = 0; attempt < 20 &&
-         !cadence_observed.load(std::memory_order_acquire); ++attempt) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    CHECK(cadence_observed.load(std::memory_order_acquire));
 
     ReadyMessage ready;
     CHECK(client.ready_message(ready));
@@ -1600,10 +1592,10 @@ int main(int argc, char** argv) {
             return icl_probe.completed == 1 || !icl_probe.errors.empty();
         }));
     }
+    icl_client.stop();
     CHECK(icl_probe.errors.empty());
     CHECK(icl_probe.completed == 1);
     CHECK(icl_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
-    icl_client.stop();
 
     const auto voice_registry = runtime / "voice-registry.json";
     {
@@ -1623,7 +1615,6 @@ int main(int argc, char** argv) {
     CHECK(registry_ready.capabilities.voice_profiles);
     CHECK(registry_ready.voice_ids.size() == 1);
     CHECK(registry_ready.voice_ids.front() == "fake-voice");
-    CHECK(registry_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
     Probe registry_probe;
     TtsCallbacks registry_callbacks;
     registry_callbacks.on_completed = [&registry_probe]() {
@@ -1646,10 +1637,12 @@ int main(int argc, char** argv) {
             return registry_probe.completed == 1 || !registry_probe.errors.empty();
         }));
     }
+    // QTB completion does not drain the transport's stderr callbacks.
+    registry_client.stop();
     CHECK(registry_probe.errors.empty());
     CHECK(registry_probe.completed == 1);
+    CHECK(registry_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
     CHECK(registry_stderr.find("\"voice_reference_cache_hit\":true") != std::string::npos);
-    registry_client.stop();
 
     // An explicitly supplied empty registry is equivalent to no registered
     // profiles.  Python already accepts this configuration, so native must
@@ -1790,7 +1783,6 @@ int main(int argc, char** argv) {
         prepared_manifest_json.at("rvq").at("path").get<std::string>();
     CHECK(std::filesystem::is_regular_file(prepared_speaker_path));
     CHECK(std::filesystem::is_regular_file(prepared_rvq_path));
-    CHECK(prepare_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
     Probe prepared_probe;
     TtsCallbacks prepared_callbacks;
     prepared_callbacks.on_audio = [&prepared_probe](const PcmChunk& chunk) {
@@ -1822,6 +1814,7 @@ int main(int argc, char** argv) {
     CHECK(prepared_probe.completed == 1);
     CHECK(!prepared_probe.audio.empty());
     prepare_client.stop();
+    CHECK(prepare_stderr.find("fake voice_ref_samples=12004") != std::string::npos);
 
     const auto fault_directory = runtime / "prepared-native-fault";
     std::error_code fault_cleanup_error;
@@ -1925,9 +1918,9 @@ int main(int argc, char** argv) {
     CHECK(committed_restart.start(
         voice_registry_options(committed_registry, &committed_restart_stderr),
         committed_restart_options));
-    CHECK(committed_restart_stderr.find("fake voice_ref_samples=") == std::string::npos);
     CHECK(!std::filesystem::exists(committed_directory / ".qtb-publication.incomplete"));
     committed_restart.stop();
+    CHECK(committed_restart_stderr.find("fake voice_ref_samples=") == std::string::npos);
 
     const auto failed_after_manifest_directory = runtime / "prepared-native-failed-after-manifest";
     std::filesystem::remove_all(failed_after_manifest_directory, fault_cleanup_error);
@@ -1968,12 +1961,12 @@ int main(int argc, char** argv) {
     CHECK(failed_restart.start(
         voice_registry_options(failed_after_manifest_registry, &failed_restart_stderr),
         failed_restart_options));
-    CHECK(failed_restart_stderr.find("fake voice_ref_samples=") == std::string::npos);
     CHECK(read_file_bytes(failed_manifest) == failed_manifest_bytes);
     CHECK(read_file_bytes(failed_speaker) == failed_speaker_bytes);
     CHECK(read_file_bytes(failed_rvq) == failed_rvq_bytes);
     CHECK(!std::filesystem::exists(failed_after_manifest_directory / ".qtb-publication.incomplete"));
     failed_restart.stop();
+    CHECK(failed_restart_stderr.find("fake voice_ref_samples=") == std::string::npos);
 
     const auto concurrent_directory = runtime / "prepared-native-concurrent";
     std::filesystem::remove_all(concurrent_directory, fault_cleanup_error);
@@ -2085,7 +2078,6 @@ int main(int argc, char** argv) {
     reload_options.session.startup_timeout = std::chrono::seconds(5);
     CHECK(reload_client.start(
         voice_registry_options(prepared_registry, &reload_stderr), reload_options));
-    CHECK(reload_stderr.find("fake voice_ref_samples=") == std::string::npos);
     Probe reload_probe;
     TtsCallbacks reload_callbacks;
     reload_callbacks.on_audio = [&reload_probe](const PcmChunk& chunk) {
@@ -2114,6 +2106,7 @@ int main(int argc, char** argv) {
     CHECK(reload_probe.completed == 1);
     CHECK(reload_probe.audio == prepared_probe.audio);
     reload_client.stop();
+    CHECK(reload_stderr.find("fake voice_ref_samples=") == std::string::npos);
 
     const auto speaker_bytes = read_file_bytes(prepared_speaker_path);
     write_file_bytes(prepared_speaker_path, {'x'});
@@ -2484,10 +2477,10 @@ int main(int argc, char** argv) {
             return guard_probe.completed != 0 || !guard_probe.errors.empty();
         }));
     }
+    guard_client.stop();
     CHECK(guard_probe.errors.empty());
     CHECK(guard_probe.completed == 1);
     CHECK(guard_stderr.find("fake eos_guard_enabled=true") != std::string::npos);
-    guard_client.stop();
 
     Probe max_probe;
     TtsCallbacks max_callbacks;
@@ -2651,5 +2644,6 @@ int main(int argc, char** argv) {
     CHECK(run_stalled_stderr_watchdog(argv[0], "--pre-stalled-stderr-cancel-child") == EXIT_SUCCESS);
 
     client.stop();
+    CHECK(cadence_observed.load(std::memory_order_acquire));
     return EXIT_SUCCESS;
 }
