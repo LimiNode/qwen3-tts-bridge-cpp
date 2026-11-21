@@ -13,20 +13,23 @@ per-file labels and original artifact hashes are in the
 | Named subset | Recognized normal text | Uncertain | Failed text recognizability |
 | --- | ---: | ---: | ---: |
 | RU-stress | 4 | 1 | 6 |
-| Base | 6 | 0 | 2 |
+| Base | 7 | 0 | 1 |
 
-Normal text: files01/09/10/11/12/13/15/16/17/19. File05 only resembles
+Normal text: files01/09/10/11/12/13/15/16/17/18/19. File05 only resembles
 "да" and stays uncertain. File02 resembles "але" or "мг", not the requested
-phrase; files03/04/06/07/08/14/18 fall under the user's remaining-files report:
+phrase; files03/04/06/07/08/14 fall under the user's remaining-files report:
 inaudible **or** very short and meaningless. Do not assign one alternative
 or an exact physical silence mechanism to each file from this grouped wording.
 Voice fidelity, artifacts and final tail were not separately assessed.
 
 RU-stress seeds72/75/78 are now requested-text listening failures, not merely
-duration anomalies. Base file18 is 106 frames / **8.48 s**, yet belongs to the
-failed-recognizability group without triggering the duration proxy. Thus
-Base's 0/64 duration anomalies is not zero speech failures. Base file14 also
-fails despite being a legitimate-short input. Short texts must be validated,
+duration anomalies. A later file-specific clarification explicitly confirms
+the full expected normal phrase in Base file18 (106 frames / **8.48 s**).
+Its initial failure inferred from the grouped remainder, and the dependent
+duration-proxy false-negative claim, are **superseded**. Initial wording and
+the exact clarification are preserved in the listening record. Current totals
+are **11 confirmed, 1 uncertain, 7 failed**. Base file14 still fails despite
+being a legitimate-short input. Short texts must be validated,
 not simply excluded from semantic failure accounting.
 
 These 19 are an enriched, nonrandom subset of 284 baseline WAVs. The other
@@ -49,12 +52,11 @@ finite. No convenience-copy or WAV serialization corruption was found.
 | 18 | 8.48 s | -24.64 | Substantial signal across .10..8.42 s |
 
 For file18, 387/424 nonoverlapping 20-ms windows have normalized RMS >=.005;
-file14 has 32/44. This descriptive threshold is not a speech detector. Their
-negative user observations cannot be explained by global file silence or low
-overall gain, but energy alone establishes neither intelligible speech nor
-the exact failure mechanism. The grouped wording is preserved; a focused
-follow-up question about file18's audible content is open, not a revoked
-failure or a request to reinterpret the user's verdict.
+file14 has 32/44. This descriptive threshold is not a speech detector. File14's
+negative observation cannot be explained by global file silence or low overall
+gain, but energy alone establishes neither intelligible speech nor its failure
+mechanism. File18's full speech is now explicitly confirmed by the user, not
+inferred from these energy measurements. Its focused clarification is closed.
 
 ## Identity and scope
 
@@ -192,9 +194,9 @@ Canonical research receipts:
 listening. Release remains blocked. Local Release CTest: **11/11 PASS**,
 including the observer and corpus contracts; corpus Python tests: **8/8 PASS**.
 
-Next: clarify Base file18's audible content, keeping waveform energy distinct
-from text recognizability. Include its duration-proxy miss, seed72
-and legitimate short answers in discovery, then freeze a separate evaluation
+Next: keep waveform energy distinct from text recognizability. Include seed72,
+the remaining file14 observation and legitimate short answers in discovery,
+then freeze a separate evaluation
 before choosing an EOS/continuation rule. Do not train and evaluate on these
 same listening labels. Investigate serial admission/prefill for acceleration.
 Do not install

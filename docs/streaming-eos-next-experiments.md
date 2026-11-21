@@ -49,14 +49,17 @@ The [CMP-only expansion and selection-timing run](reports/native-eos-corpus-and-
 is now complete: 284 baseline outcomes and 36 controls, all retained. RU-stress
 has three non-short duration anomalies (seeds 72/75/78); Base has none in its
 64 eligible cases. The [subsequent 19-file listening](reports/native-eos-corpus-listening-20261121.json)
-confirms normal text in ten, leaves one uncertain and fails eight, including
-Base file18 despite 8.48-s duration. Other cases and general voice quality
+confirms normal text in eleven, leaves one uncertain and fails seven after
+the explicit full-text confirmation for Base file18. Its initial inferred
+failure and duration-proxy-miss claim are superseded, not a current defect.
+Other cases and general voice quality
 remain unassessed. Seed 72 terminates
 after a non-EOS frame-3 decision, and warm N=2 pair decisions miss the first
 80-ms budget by 8.930..25.750 ms. This is not a qualified detector or selector.
 The saved-PCM audit finds near-silence in files03/04 and substantial signal in
-14/18, with no WAV conversion or copy corruption. Next, clarify file18's
-audible content and freeze a separate continuation/detector evaluation that
+14/18, with no WAV conversion or copy corruption. The file18 clarification is
+closed; Base file14 remains a failed short answer. Next, freeze a separate
+continuation/detector evaluation that
 does not mistake duration or natural EOS for text coverage;
 profile serial admission before deciding on a true state fork.
 Actual committed-PCM/playback remains unmeasured. Preserve baseline and all

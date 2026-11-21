@@ -11,9 +11,9 @@
   "counts": {
     "all": {
       "heard": 19,
-      "user_confirmed_text": 10,
+      "user_confirmed_text": 11,
       "uncertain": 1,
-      "failed_recognizability": 8
+      "failed_recognizability": 7
     },
     "ru_stress": {
       "heard": 11,
@@ -23,9 +23,9 @@
     },
     "base": {
       "heard": 8,
-      "user_confirmed_text": 6,
+      "user_confirmed_text": 7,
       "uncertain": 0,
-      "failed_recognizability": 2
+      "failed_recognizability": 1
     }
   },
   "cases": [
@@ -365,11 +365,19 @@
         "bytes": 407084,
         "sha256": "7a3c46e201f0d44d24fe23329d22fbbbd83e49929181794ca2948121b3838546"
       },
-      "text_coverage": "failed_recognizability",
-      "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+      "text_coverage": "user_confirmed_text",
+      "observation": "In a file-specific follow-up, the user explicitly confirms normal speech containing the entire expected two-sentence phrase.",
       "voice_quality": "not_separately_assessed",
       "final_tail": "not_separately_assessed",
-      "root_cause": "not_established"
+      "root_cause": "not_established",
+      "assessment_history": [
+        {
+          "recorded_at": "2026-11-21",
+          "text_coverage": "failed_recognizability",
+          "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+          "status": "superseded_by_file_specific_clarification"
+        }
+      ]
     },
     {
       "number": 19,
@@ -393,7 +401,7 @@
   ],
   "implications": [
     "RU-stress seeds72/75/78 are now listening failures for the requested original phrase, not only duration anomalies.",
-    "Base file18 (ru-two-sentences seed64) belongs to the failed-recognizability group despite 106 frames / 8.48 seconds and no duration-proxy flag. Therefore Base 0/64 duration anomalies cannot be presented as zero speech failures.",
+    "Base file18 (106 frames / 8.48 s) has explicitly confirmed full normal text. Withdraw its initial failed-recognizability and duration-proxy false-negative classification; it is not evidence of a long-output speech failure.",
     "Base file14 (Нет.) also fails in the grouped feedback; short-valid texts are excluded only from the long-text duration proxy, not exempt from speech validation.",
     "Do not turn the grouped inaudible-or-short-meaningless report into an individually established physical silence, truncation mechanism or EOS root cause.",
     "The enriched 19-file subset is not a random held-out evaluation; do not extrapolate its rates to the complete corpus or tune and evaluate a detector on these same labels."
@@ -404,5 +412,19 @@
   "related_reports": [
     "docs/reports/native-eos-corpus-and-decision-20261121.md",
     "docs/reports/native-eos-corpus-evidence-20261121.json"
+  ],
+  "initial_feedback_scope": "The initial verbatim grouped remainder is preserved as history. Its inferred file18 failure is superseded by the explicit file-specific clarification; other observations are unchanged.",
+  "clarifications": [
+    {
+      "recorded_at": "2026-11-21",
+      "observer": "user",
+      "file_number": 18,
+      "listening_copy": "18-base-ru-two-sentences-seed-64.wav",
+      "artifact_sha256": "7a3c46e201f0d44d24fe23329d22fbbbd83e49929181794ca2948121b3838546",
+      "user_feedback_verbatim": "Там слышна нормальная речь \"В мастерско́й завершили проверку. Теперь можно закрыть дверь и отправить подробный отчёт о выполненной работе\"",
+      "supersedes": "Only file18's initial inferred failed_recognizability label and dependent 10/1/8 totals and duration-proxy-miss interpretation.",
+      "current_text_coverage": "user_confirmed_text",
+      "voice_quality_scope": "Normal speech and the full stated phrase confirmed; no calibrated voice-fidelity or universal artifact-free claim."
+    }
   ]
 }

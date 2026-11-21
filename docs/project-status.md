@@ -81,10 +81,11 @@ adds 142 direct-engine baseline outcomes each for RU-stress and Base, plus
 non-short duration anomalies (seeds 72/75/78), versus none among Base's 64
 eligible corpus cases. In the subsequent
 [19-file listening](reports/native-eos-corpus-listening-20261121.json), the user
-recognizes normal text in ten files, is uncertain about one, and reports eight
-as unrecognizable, inaudible or meaningless. This includes Base file18, whose
-8.48-s duration did not trigger the proxy: no short-duration anomaly does not
-mean no speech failure. The saved-PCM audit finds no copy/conversion
+recognizes normal text in eleven files, is uncertain about one, and reports seven
+as unrecognizable, inaudible or meaningless. The file-specific follow-up
+confirms Base file18's full normal phrase, superseding its initial inferred
+failure and the duration-proxy-miss interpretation; Base file14 remains a
+failed short answer. The saved-PCM audit finds no copy/conversion
 corruption: files03/04 are near silence; files14/18 have substantial signal,
 which does not establish intelligible text. All other cases and voice-quality
 criteria remain unassessed. Both canonical research receipts record failed

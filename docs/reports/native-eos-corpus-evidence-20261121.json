@@ -1452,9 +1452,10 @@
     "report": "docs/reports/native-eos-corpus-listening-20261121.json",
     "saved_pcm_audit": "docs/reports/native-eos-corpus-listening-pcm-audit-20261121.json",
     "named_files": 19,
-    "user_confirmed_text": 10,
+    "user_confirmed_text": 11,
     "uncertain": 1,
-    "failed_recognizability": 8,
+    "failed_recognizability": 7,
+    "file18_clarification": "The user explicitly confirms the full normal two-sentence phrase. Its initial grouped failure and duration-proxy-miss interpretation are superseded in the linked listening record; Base now has seven confirmed files and one remaining failure (file14).",
     "historical_field_scope": "Generated model summaries, local analysis, original CSV and inventories retain their pre-listening unassessed values. The linked exact-artifact overlay and canonical receipts own current listening; no other case is promoted.",
     "new_inference": "not_run"
   },

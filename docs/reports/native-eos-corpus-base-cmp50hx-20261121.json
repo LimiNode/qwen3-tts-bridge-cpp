@@ -179,11 +179,11 @@
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "User recognizes normal text in files12/13/15/16/17/19, explicitly да in13 and хай in15. Files14/18 belong to the reported inaudible-or-short-meaningless remainder. File18 is 8.48 s and not duration-proxy positive. Do not choose a specific silence/error mechanism from the grouped wording. Voice fidelity, artifacts and tail were not separately assessed."
+    "notes": "User recognizes normal text in files12/13/15/16/17/18/19, explicitly да in13 and хай in15. The later file-specific clarification confirms the complete expected phrase in file18 and supersedes its initially inferred failure from the grouped remainder. Only file14 remains under the inaudible-or-short-meaningless group; do not choose a specific mechanism from that wording. Broader voice fidelity, artifacts and tail were not separately assessed."
   },
   "case_result": {
     "status": "fail",
-    "reason": "Mechanical PCM/natural-EOS checks remain passed, but the user does not recognize the requested text in files14/18. Listening disproves interpreting the 0/64 duration-anomaly count as zero speech failures. Remaining corpus coverage, restart and integration are unassessed."
+    "reason": "Mechanical PCM/natural-EOS checks remain passed. Seven of eight listened Base files have confirmed normal text; file14 (short Нет.) remains a failed-recognizability observation. File18's initial inferred failure and duration-proxy-miss interpretation are withdrawn after explicit full-text confirmation. Remaining corpus coverage, restart and integration are unassessed."
   },
   "listening_result": {
     "status": "fail",
@@ -201,5 +201,5 @@
     "docs/reports/native-eos-corpus-plan-20261121.md",
     "docs/reports/native-eos-corpus-listening-20261121.json"
   ],
-  "notes": "bridge_commit identifies the pre-run Bridge plan, not an executed Bridge client. Mechanical pass is limited to this direct-engine run and its 11 deterministic repeats, not restart or contamination/voice fidelity. The prior-exposure field in the Base run plan refers to text/seed pairs previously seen on RU-stress, not earlier same-Base-checkpoint parity. No sampler/default/ABI/model/pin/package change, live selector, normalization, merge or release. Local runtime-current preserves measured tooling; runtime-before is historical. Listening follow-up updates only named 2026-11-21 artifacts; all original PCM, generated summaries and initial inventories remain immutable. A failed listening verdict is independent of the passed mechanical checks."
+  "notes": "bridge_commit identifies the pre-run Bridge plan, not an executed Bridge client. Mechanical pass is limited to this direct-engine run and its 11 deterministic repeats, not restart or contamination/voice fidelity. The prior-exposure field in the Base run plan refers to text/seed pairs previously seen on RU-stress, not earlier same-Base-checkpoint parity. No sampler/default/ABI/model/pin/package change, live selector, normalization, merge or release. Local runtime-current preserves measured tooling; runtime-before is historical. Listening follow-up updates only named 2026-11-21 artifacts; all original PCM, generated summaries and initial inventories remain immutable. A failed listening verdict is independent of the passed mechanical checks. The later file18 clarification supersedes only its initial grouped failure; seven Base files are now text-confirmed, while file14 still prevents a scoped listening pass."
 }
