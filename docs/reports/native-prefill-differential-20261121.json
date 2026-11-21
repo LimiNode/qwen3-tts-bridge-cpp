@@ -1789,7 +1789,8 @@
   "full_speech_followup": {
     "outcomes": 12,
     "max_tokens": 256,
-    "listening": "unassessed",
+    "listening": "scoped_user_listening_recorded",
+    "listening_status_note": "Historical row-level unassessed fields remain unchanged. The later exact-file observations and independent candidate receipts are in human_listening_followup; only three of twelve outputs were listened to.",
     "results_path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-speech-followup-002/results.json",
     "results_sha256": "28e94b7fef734e607214f876eff8349bd06f10956ed2cf0314b17756017b7248",
     "variants": [
@@ -2200,6 +2201,48 @@
         }
       }
     ]
+  },
+  "human_listening_followup": {
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "Only the three unchanged short Да! WAVs in listening-customvoice-mmq, seed64; remaining full-speech-followup outputs remain unassessed.",
+    "manifest": {
+      "path": ".tmp/base-acceptance/prefill-differential-20261121/listening-customvoice-mmq/manifest.json",
+      "bytes": 1425,
+      "sha256": "631ff68c0efc9914febddcd3d65b6690fdd02b2c6608dcea4d7543f67358ad5a"
+    },
+    "observations": [
+      {
+        "file": "01-baseline-yes-seed-64.wav",
+        "text": "Да",
+        "extraneous_cough": "not_heard",
+        "bytes": 34604,
+        "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+        "listening": "partial_pass"
+      },
+      {
+        "file": "02-prefix-default-yes-seed-64.wav",
+        "text": "КхмКхм Да",
+        "extraneous_cough": "heard_before_word",
+        "bytes": 142124,
+        "sha256": "c30574dba774f57be2d5eaada48dd86f4b5b3f8fd8d60172e2c5170d36b78939",
+        "listening": "fail"
+      },
+      {
+        "file": "03-prefix-mmq-yes-seed-64.wav",
+        "text": "Да",
+        "extraneous_cough": "not_heard",
+        "bytes": 34604,
+        "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+        "listening": "partial_pass"
+      }
+    ],
+    "canonical_receipts": [
+      "docs/reports/native-prefill-default-short-listening-cmp50hx-20261121.json",
+      "docs/reports/native-prefill-mmq-short-listening-cmp50hx-20261121.json"
+    ],
+    "limitations": "Files01/03 are byte-identical, not independent quality trials. Voice fidelity, final tail, sequential isolation, other texts/seeds and uninstrumented latency remain unassessed. No general early-EOS or release promotion claim.",
+    "release_disposition": "blocked"
   },
   "published_engine_head": "f96b1ead9546a47576e182640ee8d32a6eea7292",
   "incomplete_speech_followup": {

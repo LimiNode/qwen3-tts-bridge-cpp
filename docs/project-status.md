@@ -115,8 +115,11 @@ The [prefill differential follow-up](reports/native-prefill-differential-2026112
 adds208 bounded outcomes and a separate12-request natural-EOS control. KV
 restores are exact; drift begins before attention. A traced MMQ/MMVQ shape
 switch materially changes short CustomVoice output; consistent MMQ restores
-full PCM equality for the one tested short seed64 case. New listening and
-broader seed/text/latency validation remain open; no default is promoted.
+full PCM equality for the one tested short seed64 case. The user listened to
+the three exact short WAVs: baseline01 and MMQ03 say `Да` without coughing;
+ordinary-prefix02 says `КхмКхм Да`. Separate indexed receipts retain the failed
+ordinary-prefix case and partial positive MMQ/baseline scope. Broader
+seed/text/latency and voice-quality validation remain open; no default is promoted.
 
 ## Verified milestones
 

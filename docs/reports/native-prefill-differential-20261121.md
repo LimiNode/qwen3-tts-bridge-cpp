@@ -1,11 +1,12 @@
 # Prefix-KV differential follow-up
 
-Status: bounded CMP 50HX research complete; new listening candidates unassessed.
+Status: bounded CMP 50HX research complete; scoped three-file user listening recorded.
 Date: 2026-11-21. No engine pin, ABI, sampler or release/default promotion.
 
 This follows the [prefill study](native-prefill-study-20261121.md) and its
 13 exact-file user observations. Those observations remain authoritative only
-for the original files; the new audio below has not been listened to.
+for the original files. Separate user listening for the three short-text WAVs
+below was subsequently recorded on2026-11-21.
 
 ## Scope and controls
 
@@ -94,9 +95,28 @@ One directory contains three unchanged WAV copies:
 2. `02-prefix-default-yes-seed-64.wav`.
 3. `03-prefix-mmq-yes-seed-64.wav`.
 
-All are unassessed by a human. Files01/03 are byte-identical, not independent
-quality evidence. Full original-phrase results are retained too; no favorable
-selection is substituted for the complete run.
+The user listened to all three exact files and reports:
+
+- File01 says `Да`, without the cough heard in02.
+- File02 says `КхмКхм Да`: coughing/throat-clearing before the expected word.
+- File03 says `Да`, without the cough heard in02.
+
+Sizes/SHA-256 and original source copies were independently checked. Files01/03
+are 34,604 bytes and byte-identical, not independent quality trials. File02 is
+142,124 bytes, SHA-256
+`c30574dba774f57be2d5eaada48dd86f4b5b3f8fd8d60172e2c5170d36b78939`.
+This is direct scoped listening evidence that forced MMQ avoids the ordinary
+prefix-induced cough on this text/seed64, not merely a duration-based inference.
+Broader voice fidelity, final tail, sequential isolation and other texts/seeds
+are not assessed. Full original-phrase results remain unlistened; no favorable
+selection is substituted for the complete run. Generated manifests/results
+remain unchanged, including their historical unassessed fields.
+
+Separate indexed canonical receipts preserve the
+[ordinary-prefix failure](native-prefill-default-short-listening-cmp50hx-20261121.json)
+and [scoped MMQ/baseline observation](native-prefill-mmq-short-listening-cmp50hx-20261121.json).
+The earlier failed prefix receipt is not superseded. Both new release
+dispositions remain blocked; no production profile is promoted.
 
 ## Diagnostic corrections and provenance limits
 
@@ -127,8 +147,8 @@ the failure nor its generated audio is deleted or counted as complete.
 
 The larger CustomVoice short-text drift has a demonstrated contribution from
 shape-dependent matrix dispatch. A consistent MMQ route is a promising
-research control; it is not yet a production setting. Next, listen to the
-three exact files, test more short texts/seeds and measure uninstrumented
+research control; it is not yet a production setting. The three-file listening
+check is complete. Next, test more short texts/seeds and measure uninstrumented
 latency/cost with the same kernels. For Base/RU, investigate intra-MMQ shape
 effects separately before claiming equivalent prefix reuse. No new cache
 framework, hidden retry, startup EOS gate or release change follows from this

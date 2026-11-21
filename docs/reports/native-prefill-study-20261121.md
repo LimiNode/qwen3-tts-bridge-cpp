@@ -505,6 +505,8 @@ The [differential follow-up](native-prefill-differential-20261121.md) records
 The first valid drift is Q projection, before attention. CUDA route logs and
 prefix5/6 controls isolate a substantial MMQ/MMVQ-switch contribution for
 CustomVoice short text. Forced MMQ preserves full seed64 `Да!` PCM in a
-separate12-request natural-EOS run, but residual logits differ, new listening
-is pending and no production profile is promoted. Base/RU intra-MMQ shape
+separate12-request natural-EOS run, but residual logits differ. The user now
+confirms `Да` without coughing in the new baseline/MMQ files01/03, while
+ordinary-prefix file02 coughs before `Да`. This is one exact text/seed64
+observation, not broad qualification. No production profile is promoted. Base/RU intra-MMQ shape
 drift remains. See the linked record for excluded view taps and provenance gaps.
