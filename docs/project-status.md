@@ -79,8 +79,16 @@ The [2026-11-21 CMP corpus/timing research](reports/native-eos-corpus-and-decisi
 adds 142 direct-engine baseline outcomes each for RU-stress and Base, plus
 36 timing controls. All have valid PCM and natural EOS; RU-stress has three
 non-short duration anomalies (seeds 72/75/78), versus none among Base's 64
-eligible corpus cases. These new WAVs have **not** been listened to. The
-observer preserves output on ten ON/OFF pairs, but frame-3 continuation does
+eligible corpus cases. In the subsequent
+[19-file listening](reports/native-eos-corpus-listening-20261121.json), the user
+recognizes normal text in ten files, is uncertain about one, and reports eight
+as unrecognizable, inaudible or meaningless. This includes Base file18, whose
+8.48-s duration did not trigger the proxy: no short-duration anomaly does not
+mean no speech failure. The saved-PCM audit finds no copy/conversion
+corruption: files03/04 are near silence; files14/18 have substantial signal,
+which does not establish intelligible text. All other cases and voice-quality
+criteria remain unassessed. Both canonical research receipts record failed
+scoped listening. The observer preserves output on ten ON/OFF pairs, but frame-3 continuation does
 not detect seed 72's later early EOS; measured warm N=2 pair decisions also
 miss the first-chunk budget. Canonical research receipts are in the index.
 No engine pin, sampler/default, live selector or release gate is promoted.

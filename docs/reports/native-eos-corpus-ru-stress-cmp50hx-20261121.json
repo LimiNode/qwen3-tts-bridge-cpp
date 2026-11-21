@@ -86,7 +86,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Original unprocessed PCM16 mono 24-kHz WAV; hash and format verified, no listening verdict."
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
       }
     },
     {
@@ -96,7 +96,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Original unprocessed PCM16 mono 24-kHz WAV; hash and format verified, no listening verdict."
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
       }
     },
     {
@@ -106,7 +106,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Original unprocessed PCM16 mono 24-kHz WAV; hash and format verified, no listening verdict."
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
       }
     },
     {
@@ -116,7 +116,77 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Original unprocessed PCM16 mono 24-kHz WAV; hash and format verified, no listening verdict."
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-23-lane-0.wav",
+      "bytes": 15404,
+      "sha256": "845daa1e5f6f794bb2306ae9f1b2017e9754c87ac7b9cb457d5ec2d78975e701",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-40-lane-0.wav",
+      "bytes": 7724,
+      "sha256": "16adb74a2ced9e015e364d31f1512ced96a18428bc67c4c33f54c3b3e8976a36",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-57-lane-0.wav",
+      "bytes": 11564,
+      "sha256": "ff9bde2acf4d5e423a823f5cc718b1089f223a057d0d3967f07532b29abc63ad",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-74-lane-0.wav",
+      "bytes": 11564,
+      "sha256": "58851dc2beae83a262e3eb4333e4d598499b47863abe35b17ea572376e4a5eee",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-91-lane-0.wav",
+      "bytes": 272684,
+      "sha256": "c6824eae1dc1b95dab698c31231eed0e15dbb1efc3223e9c1a80e78204743e22",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-108-lane-0.wav",
+      "bytes": 353324,
+      "sha256": "fada01bc05bc7067ed42bddeffd85f2969d212888306e72d248d696ef19ea590",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-125-lane-0.wav",
+      "bytes": 291884,
+      "sha256": "96a9522c6a1a5000f49cb0199de86b7bd839b5b22fea641411f3207f1379cc13",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
       }
     }
   ],
@@ -128,37 +198,38 @@
     "restart": "not_run"
   },
   "human_listening": {
-    "status": "not_run",
-    "observer": "not_run",
+    "status": "fail",
+    "observer": "user",
     "recorded_at": "2026-11-21",
-    "scope": "All 142 new baseline WAVs on this exact model/build; the first-listening catalog is a convenience subset only. Earlier listening verdicts do not transfer.",
+    "scope": "Eleven named RU-stress WAV copies in listening-first-pass, mapped by SHA-256 to originals in the linked per-file listening report. Not all 142 baseline WAVs or any 36 timing controls were listened to.",
     "criteria": {
-      "intelligibility": "not_assessed",
+      "intelligibility": "fail",
       "voice_or_instruction": "not_assessed",
       "artifacts": "not_assessed",
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "The user authorized generation and later listening, but has not assessed these new artifacts. Full text and voice/audio quality must be labeled separately; natural EOS or duration cannot establish speech coverage."
+    "notes": "User recognizes normal text in files01/09/10/11. File02 has a strange sound resembling але or мг; files03/04/06/07/08 belong to the inaudible-or-short-meaningless remainder. File05 only resembles да and remains uncertain, not a confirmed pass. Voice fidelity, artifacts and tail were not separately assessed."
   },
   "case_result": {
-    "status": "not_assessed",
-    "reason": "142/142 natural-EOS outcomes, no engine/limit/PCM/capture errors. Eleven same-seed pairs reproduce full PCM/WAV in the same persistent engine. Restart, Bridge integration and coverage are not qualified. Three non-short corpus cases (seeds72/75/78) satisfy the duration-anomaly proxy; 3/64 eligible, not 3/128."
+    "status": "fail",
+    "reason": "Mechanical PCM/natural-EOS checks remain passed, but six listened cases fail requested-text recognizability; another short Да! case is uncertain. Seeds72/75/78 are now confirmed listening failures for the original phrase. Remaining corpus coverage, restart and integration are unassessed."
   },
   "listening_result": {
-    "status": "not_assessed",
-    "reason": "No human listening or independent speech-coverage labels exist for these new WAVs."
+    "status": "fail",
+    "reason": "Scoped requested-text recognizability failed in the linked per-file user observation; positive cases remain recorded separately, not erased or generalized."
   },
   "release_disposition": {
     "status": "blocked",
-    "reason": "Research evidence only; speech coverage, actual PCM commit/selector, frontend/segmentation, physical playback, restart and independent hardware gates remain open. R1 remains NO-GO."
+    "reason": "Scoped listening failures exist. A duration-only or natural-EOS success criterion is insufficient; detector/recovery, integration, playback, restart and independent hardware gates remain open. R1 remains NO-GO."
   },
   "release_status": "blocked",
   "supersedes": null,
   "related_reports": [
     "docs/reports/native-eos-corpus-and-decision-20261121.md",
     "docs/reports/native-eos-corpus-evidence-20261121.json",
-    "docs/reports/native-eos-corpus-plan-20261121.md"
+    "docs/reports/native-eos-corpus-plan-20261121.md",
+    "docs/reports/native-eos-corpus-listening-20261121.json"
   ],
-  "notes": "bridge_commit identifies the pre-run Bridge plan, not an executed Bridge client. Mechanical pass is limited to this direct-engine run and its 11 deterministic repeats, not restart or contamination/voice fidelity. 32/128 corpus text/seed pairs were already observed on RU-stress; all32 reproduce old full raw PCM. No sampler/default/ABI/model/pin/package change, live selector, normalization, merge or release. Local runtime-current preserves measured tooling; runtime-before is historical."
+  "notes": "bridge_commit identifies the pre-run Bridge plan, not an executed Bridge client. Mechanical pass is limited to this direct-engine run and its 11 deterministic repeats, not restart or contamination/voice fidelity. 32/128 corpus text/seed pairs were already observed on RU-stress; all32 reproduce old full raw PCM. No sampler/default/ABI/model/pin/package change, live selector, normalization, merge or release. Local runtime-current preserves measured tooling; runtime-before is historical. Listening follow-up updates only named 2026-11-21 artifacts; all original PCM, generated summaries and initial inventories remain immutable. A failed listening verdict is independent of the passed mechanical checks."
 }

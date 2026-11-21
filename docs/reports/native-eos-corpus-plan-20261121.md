@@ -8,7 +8,9 @@ Bridge report stays on the existing Draft PR #331 task branch.
 
 Execution completed: see the [results](native-eos-corpus-and-decision-20261121.md)
 and [exact evidence](native-eos-corpus-evidence-20261121.json). The frozen
-design below is preserved; speech coverage and listening remain unassessed.
+design below is preserved. The subsequent
+[19-file listening record](native-eos-corpus-listening-20261121.json) contains
+scoped failures; all other coverage/listening remains unassessed.
 
 ## Baseline corpus tier
 

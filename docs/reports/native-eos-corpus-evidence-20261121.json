@@ -23,8 +23,8 @@
     "bridge_pcm_commit": "not_run",
     "restart": "not_run",
     "rtx4090": "not_run",
-    "speech_coverage": "unassessed",
-    "human_listening": "not_run",
+    "speech_coverage": "19 named baseline WAVs partially assessed; failures recorded in listening follow-up; other cases unassessed",
+    "human_listening": "scoped_failures_recorded_20261121",
     "release_status": "blocked"
   },
   "runtime": {
@@ -1447,6 +1447,17 @@
     }
   ],
   "timing_control_driver_limitation": "The task-local frozen timing driver may exit before writing outcomes/inventory on assertion/artifact exceptions. All five stages actually completed and their final artifacts were independently verified in this run; it is not a generally failure-safe reusable runner.",
+  "listening_followup": {
+    "recorded_at": "2026-11-21",
+    "report": "docs/reports/native-eos-corpus-listening-20261121.json",
+    "saved_pcm_audit": "docs/reports/native-eos-corpus-listening-pcm-audit-20261121.json",
+    "named_files": 19,
+    "user_confirmed_text": 10,
+    "uncertain": 1,
+    "failed_recognizability": 8,
+    "historical_field_scope": "Generated model summaries, local analysis, original CSV and inventories retain their pre-listening unassessed values. The linked exact-artifact overlay and canonical receipts own current listening; no other case is promoted.",
+    "new_inference": "not_run"
+  },
   "verification": {
     "ctest": "11/11 Release tests passed after build",
     "corpus_python_tests": "8/8 model-free tests passed",

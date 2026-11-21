@@ -1,8 +1,60 @@
 # CMP 50HX corpus expansion and actual EOS-decision timing
 
-Status: completed bounded research; speech coverage unassessed; R1 **NO-GO**.
+Status: completed bounded research; scoped listening failures; R1 **NO-GO**.
 This follows the [pre-run plan](native-eos-corpus-plan-20261121.md), not a new
 sampler, live selector, recovery policy or release qualification.
+
+## User listening follow-up (2026-11-21)
+
+The user assessed the 19 numbered convenience copies. The exact statement,
+per-file labels and original artifact hashes are in the
+[listening record](native-eos-corpus-listening-20261121.json).
+
+| Named subset | Recognized normal text | Uncertain | Failed text recognizability |
+| --- | ---: | ---: | ---: |
+| RU-stress | 4 | 1 | 6 |
+| Base | 6 | 0 | 2 |
+
+Normal text: files01/09/10/11/12/13/15/16/17/19. File05 only resembles
+"да" and stays uncertain. File02 resembles "але" or "мг", not the requested
+phrase; files03/04/06/07/08/14/18 fall under the user's remaining-files report:
+inaudible **or** very short and meaningless. Do not assign one alternative
+or an exact physical silence mechanism to each file from this grouped wording.
+Voice fidelity, artifacts and final tail were not separately assessed.
+
+RU-stress seeds72/75/78 are now requested-text listening failures, not merely
+duration anomalies. Base file18 is 106 frames / **8.48 s**, yet belongs to the
+failed-recognizability group without triggering the duration proxy. Thus
+Base's 0/64 duration anomalies is not zero speech failures. Base file14 also
+fails despite being a legitimate-short input. Short texts must be validated,
+not simply excluded from semantic failure accounting.
+
+These 19 are an enriched, nonrandom subset of 284 baseline WAVs. The other
+265 and all 36 controls retain unassessed coverage; no listening or quality
+verdict transfers to them. Original generated observations/CSV/inventories
+are preserved as pre-listening snapshots, with this linked record as the
+per-file label overlay. Canonical receipts now record failed listening while
+retaining passed mechanical PCM/natural-EOS checks. No new inference ran.
+
+The [saved-PCM audit](native-eos-corpus-listening-pcm-audit-20261121.json)
+reverified all 19 source/copy hashes, PCM16 mono 24-kHz format and exact
+clipped/rounded raw-f32 conversion, with zero mismatches and all raw values
+finite. No convenience-copy or WAV serialization corruption was found.
+
+| WAV | Duration | PCM16 RMS, dBFS | Saved signal |
+| --- | ---: | ---: | --- |
+| 03 | 0.16 s | -107.70 | >98% zero samples, near quantization floor |
+| 04 | 0.24 s | -109.28 | >98% zero samples, near quantization floor |
+| 14 | 0.88 s | -25.57 | Substantial level; not globally silent |
+| 18 | 8.48 s | -24.64 | Substantial signal across .10..8.42 s |
+
+For file18, 387/424 nonoverlapping 20-ms windows have normalized RMS >=.005;
+file14 has 32/44. This descriptive threshold is not a speech detector. Their
+negative user observations cannot be explained by global file silence or low
+overall gain, but energy alone establishes neither intelligible speech nor
+the exact failure mechanism. The grouped wording is preserved; a focused
+follow-up question about file18's audible content is open, not a revoked
+failure or a request to reinterpret the user's verdict.
 
 ## Identity and scope
 
@@ -51,7 +103,8 @@ RU-stress original text produced these new anomalous corpus outcomes:
 | 75 | 2 | 0.16 s | 22.155 ms | 57.845 ms |
 | 78 | 3 | 0.24 s | 54.984 ms | 25.016 ms |
 
-These are duration anomalies, not yet listening labels. Baseline forcing was
+The table records duration anomalies; listening for these three subsequently
+failed as described above. Baseline forcing was
 OFF; the observer records sampled/effective EOS token 2150 and natural-EOS
 finish reason, not a convergence-guard stop. The original nonempty text bytes
 are unchanged. Why those seeds selected EOS is not established by a timing
@@ -123,7 +176,8 @@ For the first listening pass, open that root's **`listening-first-pass/`**:
 It contains seed 64 for every text/model and all three corpus anomalies.
 `LISTENING.md` links original files; the folder's manifest maps each copy to
 its source/hash. Assess full text separately from pronunciation, voice,
-artifacts and final tail. All new speech/listening verdicts remain unassessed.
+artifacts and final tail. The subsequent 19-file listening result is recorded
+above; all other new speech/listening verdicts remain unassessed.
 
 The task-local timing driver is not a reusable failure-safe runner: assertions
 or artifact errors could interrupt final bookkeeping. This run completed all
@@ -138,8 +192,11 @@ Canonical research receipts:
 listening. Release remains blocked. Local Release CTest: **11/11 PASS**,
 including the observer and corpus contracts; corpus Python tests: **8/8 PASS**.
 
-Next: label the listening set, then freeze a separate evaluation that includes
-seed 72 and legitimate short answers before choosing an EOS/continuation
-rule. Investigate serial admission/prefill for acceleration. Do not install
+Next: clarify Base file18's audible content, keeping waveform energy distinct
+from text recognizability. Include its duration-proxy miss, seed72
+and legitimate short answers in discovery, then freeze a separate evaluation
+before choosing an EOS/continuation rule. Do not train and evaluate on these
+same listening labels. Investigate serial admission/prefill for acceleration.
+Do not install
 a live selector based only on frame count or these discovery timings. Keep
 frontend/segmentation A/B, actual commit/playback, restart and RTX gates open.
