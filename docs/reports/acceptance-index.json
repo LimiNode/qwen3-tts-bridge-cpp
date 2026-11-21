@@ -3,6 +3,38 @@
   "generated_at": "2026-11-21",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-prefill-ru-stress-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-ru-stress-listening-cmp50hx-20261121.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-base-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-base-listening-cmp50hx-20261121.json",
+      "model_family": "Base",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-customvoice-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-customvoice-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "speech-prefill-customvoice-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/speech-prefill-customvoice-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "other",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-eos-corpus-ru-stress-cmp50hx-20261121",
       "receipt": "docs/reports/native-eos-corpus-ru-stress-cmp50hx-20261121.json",
       "model_family": "RU-stress",

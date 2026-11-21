@@ -99,8 +99,16 @@ records 504 primary and 105 traced CMP outcomes, isolated graph/head/KV/window
 controls, same-checkpoint ICL cost, matched-weight speech.cpp comparison,
 and split/full-source prefix-KV tests. Small variants preserve the observed
 sampled outputs; prefix reuse reduces latency but changes audio, so it is not
-an equivalent optimization or EOS remedy. New WAVs remain unlistened.
-The report's compact research receipt is not a release acceptance receipt;
+an equivalent optimization or EOS remedy. The user subsequently listened to
+all 13 named WAVs: RU-stress/Base ICL baseline and prefix samples01-06 have
+full text, correct stress and no cough, with acceptable delivery differences;
+both identical CustomVoice prefix `Да!` samples contain extraneous
+coughing/throat-clearing before the recognized word. Speaker-only RU-stress
+has wrong `процессОр`, while Base has correct `процЕссор`. Native CustomVoice
+file10 also has correct `процЕссор`; speech.cpp file11 has wrong `процессОр`.
+Four indexed canonical receipts preserve this exact scoped feedback;
+detailed voice matching, instruction adherence and broader quality remain
+unassessed. The report's research summary is not release acceptance;
 R1 gates, engine pin, ABI and sampler defaults remain unchanged.
 
 ## Verified milestones

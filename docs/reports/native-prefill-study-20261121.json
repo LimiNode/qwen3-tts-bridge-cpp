@@ -2756,7 +2756,196 @@
     "bytes": 9959,
     "sha256": "4f7c00b5da71f3a97d19284110e68a0a8dc0e8cc498fff24c97120f4f7b3de90"
   },
-  "listening": "not_run",
+  "listening": {
+    "recorded_at": "2026-11-21",
+    "observer": "user",
+    "status": "scoped_feedback_with_named_failures",
+    "measurement_time_listening": "not_run",
+    "scope": "All 13 unchanged WAV copies in listening-prefill-ab were listened to, including later explicit full-text/stress/no-cough clarification for01-06 and resolved stress attribution for10/11. Historical measurement rows remain unchanged; this object and the indexed canonical receipts record later human feedback, not new inference.",
+    "counts": {
+      "files_listened": 13,
+      "distinct_wav_sha256": 12,
+      "recognized_speech_files": 13,
+      "extraneous_sound_fail_files": 2,
+      "explicit_full_text_confirmed_files": 6,
+      "confirmed_file_specific_stress_failures": 2
+    },
+    "canonical_receipts": [
+      "docs/reports/native-prefill-ru-stress-listening-cmp50hx-20261121.json",
+      "docs/reports/native-prefill-base-listening-cmp50hx-20261121.json",
+      "docs/reports/native-prefill-customvoice-listening-cmp50hx-20261121.json",
+      "docs/reports/speech-prefill-customvoice-listening-cmp50hx-20261121.json"
+    ],
+    "unassessed": [
+      "word-by-word pronunciation audit beyond the scoped stress feedback",
+      "detailed voice matching",
+      "instruction adherence",
+      "final-tail isolation",
+      "sequential contamination",
+      "release and package qualification",
+      "other texts, seeds and artifacts"
+    ],
+    "resolved_stress_attribution": {
+      "native_file_10": "correct процЕссор",
+      "speech_cpp_file_11": "wrong процессОр, stress on the second О",
+      "status": "explicitly_clarified_by_user"
+    },
+    "files": [
+      {
+        "id": "01",
+        "file": "01-ru-stress-original-baseline-seed-64.wav",
+        "bytes": 322604,
+        "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; delivery acceptable."
+      },
+      {
+        "id": "02",
+        "file": "02-ru-stress-original-prefix-split-seed-64.wav",
+        "bytes": 322604,
+        "sha256": "d4de17e705835a352187560e63e1bf0c6f03ada095370f237ab6cfa6a555de3d",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; slightly higher delivery is acceptable."
+      },
+      {
+        "id": "03",
+        "file": "03-ru-stress-original-prefix-full-seed-64.wav",
+        "bytes": 276524,
+        "sha256": "03595705d11fd28337e467aab32d3fac68544771b9048d48eefa08068b7a3235",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; breathier delivery and stretched word endings are acceptable."
+      },
+      {
+        "id": "04",
+        "file": "04-base-original-baseline-seed-64.wav",
+        "bytes": 395564,
+        "sha256": "eca6c089d6cd388a70f110bfb1ef2ef5a9f72fc8cb13b4a3bb3f215b729305ee",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; calm/thoughtful delivery is acceptable."
+      },
+      {
+        "id": "05",
+        "file": "05-base-original-prefix-split-seed-64.wav",
+        "bytes": 368684,
+        "sha256": "4a1b7aba7332b9332357e8f17eadca57dddeb895e84c5f5a4fee75dd821ad83b",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; slower delivery than01 is acceptable."
+      },
+      {
+        "id": "06",
+        "file": "06-base-original-prefix-full-seed-64.wav",
+        "bytes": 341804,
+        "sha256": "a1490754f74bcc053f40fdbe1d41d667febf8f9c783c21cc2bbf372553c62e14",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; calm delivery is acceptable."
+      },
+      {
+        "id": "07",
+        "file": "07-customvoice-yes-baseline-seed-64.wav",
+        "bytes": 34604,
+        "sha256": "f2eb94d5e6655229f7a528ec5916ba78acb06eb9a12f090352a4b91d7572b6ef",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "not_assessed",
+        "notes": "User hears simply Да."
+      },
+      {
+        "id": "08",
+        "file": "08-customvoice-yes-prefix-split-seed-64.wav",
+        "bytes": 142124,
+        "sha256": "c55942ef5030cbd2a68f6195825e98b28d317fb21ccd524a5faf526845a4fbd1",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "fail",
+        "pronunciation": "not_assessed",
+        "notes": "User recognizes Да but hears coughing/throat-clearing BEFORE it."
+      },
+      {
+        "id": "09",
+        "file": "09-customvoice-yes-prefix-full-seed-64.wav",
+        "bytes": 142124,
+        "sha256": "c55942ef5030cbd2a68f6195825e98b28d317fb21ccd524a5faf526845a4fbd1",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "fail",
+        "pronunciation": "not_assessed",
+        "notes": "User recognizes Да but hears coughing/throat-clearing BEFORE it."
+      },
+      {
+        "id": "10",
+        "file": "10-customvoice-original-native-seed-64.wav",
+        "bytes": 403244,
+        "sha256": "701fc11d5376321b1a294ae75016aa5f81046c50302306ade8699ce5c181b638",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "pass_scoped_word",
+        "notes": "User reports normal speech and explicitly correct процЕссор in native file10."
+      },
+      {
+        "id": "11",
+        "file": "11-customvoice-original-speech-seed-64.wav",
+        "bytes": 272684,
+        "sha256": "3b171ebd14d95cba4d1bb985967878797e1fa343bee496da9e9287a1ef4ace3a",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "fail",
+        "notes": "User reports normal speech but explicitly wrong процессОр, stress on the second О, in speech.cpp file11."
+      },
+      {
+        "id": "12",
+        "file": "12-ru-stress-original-speaker-only-seed-64.wav",
+        "bytes": 330284,
+        "sha256": "4f97f92fb4a3751895508e736a00292e282946ac87e18be844923af7ab8b8a31",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "fail",
+        "notes": "Normal speech, but user reports wrong процессОр."
+      },
+      {
+        "id": "13",
+        "file": "13-base-original-speaker-only-seed-64.wav",
+        "bytes": 322604,
+        "sha256": "36489759fd15adb5c554a0591debb85b7c1a7cd44bb00c73b6beda38783388b4",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "pass_for_process_word_only",
+        "notes": "Normal speech; user explicitly reports correct процЕссор."
+      }
+    ],
+    "duplicate_groups": [
+      {
+        "file_ids": [
+          "08",
+          "09"
+        ],
+        "sha256": "c55942ef5030cbd2a68f6195825e98b28d317fb21ccd524a5faf526845a4fbd1",
+        "meaning": "Two listened paths for the same bytes, not two independent generated failures."
+      }
+    ],
+    "release_promoted": false
+  },
   "release_defaults_changed": false,
   "bridge_engine_pin_changed": false,
   "sampler_changed": false,

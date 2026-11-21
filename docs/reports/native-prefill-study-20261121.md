@@ -1,7 +1,7 @@
 # Native prefill latency study
 
-Status: bounded CMP research complete; listening and production qualification
-are not performed. No optimization is enabled by this report.
+Status: bounded CMP research complete; scoped user listening recorded below.
+Production qualification is not performed. No optimization is enabled by this report.
 Date: 2026-11-21. No release/default promotion.
 
 ## Primary matrix: measured results
@@ -115,8 +115,9 @@ Both ending repeats preserve raw PCM/logits/frames on 21/21 pairs. Omitting
 ICL removes approximately119 ms prefill and120 ms first-PCM time relative
 to the ICL controls on these same checkpoints. It changes conditioning and
 generated audio: it is **not** equivalent voice-cloning inference or an
-automatic fidelity-preserving optimization. Speaker-only voice identity,
-prosody and text coverage remain unassessed. First-use latency also differs
+automatic fidelity-preserving optimization. The user recognized normal speech
+in the two retained speaker-only examples, but detailed voice identity,
+prosody and broader text coverage remain unassessed. First-use latency also differs
 because the ICL route initializes reference-codec state; only the warm
 component is isolated in this subtraction.
 
@@ -237,7 +238,10 @@ one implementation choice.
 The English speech repeat gives prefill29.70 ms and firstPCM97.22 ms,
 13/13 mechanically valid/natural EOS. It is a separate workload; native's
 single English shape control is not a matched twelve-repeat English timing
-distribution. All speech WAVs remain unassessed for text and voice quality.
+distribution. The user subsequently recognized normal speech in the retained
+Russian speech.cpp example, with wrong `процессОр` in speech.cpp file11 and
+correct `процЕссор` in native file10. Detailed voice quality and the other
+comparator WAVs remain unassessed.
 
 Native's initial `customvoice-graphs-off-002` plan budget was300 s. Its
 unobserved block completed21/21; the observed block retained20/21 before
@@ -317,8 +321,11 @@ taps or a forced-kernel experiment would be needed to distinguish it.
 Restoring the cached prefix costs about 0.2–0.3 ms. Roughly 46 ms first-PCM
 improvement on Base/RU is therefore a real measured opportunity, but not an
 equivalent replacement. Longer outputs or a changed early-EOS trajectory do
-not prove complete speech. These WAVs require new scoped listening and wider
-quality tests before considering a separately named perceptual-risk profile.
+not prove complete speech. Subsequent scoped listening confirmed full text,
+correct stress and no cough in the retained RU-stress/Base ICL examples,
+with acceptable delivery differences, but found extraneous coughing
+before the expected word in the short CustomVoice prefix output. Wider
+quality tests are still required before considering a separately named perceptual-risk profile.
 Nothing here promotes such a profile.
 
 Language-rejection controls (`prefix-language-reject-ru-001` and
@@ -375,7 +382,7 @@ causal runs used the earlier coherent frozen runtime, retained separately in
 `runtime-initial/`. Future reproduction should use a clean build, not trust
 this machine's localized MSVC incremental header dependency scan.
 
-No new listening verdict is claimed. Prefix caching is single-slot/GPU-only,
+Only the scoped listening verdict below is claimed. Prefix caching is single-slot/GPU-only,
 with one device snapshot, exact prefix-byte validation and rejection until
 reload after a mismatch. Cross-voice cache replacement, post-rejection
 recovery, cancellation/reset, diagnostic-dump transitions and a full
@@ -398,8 +405,9 @@ storage; its tested equivalence is not a general theorem for all seeds/models.
    equivalence even when copied from the original full pass. Before further
    caching machinery, isolate suffix/kernel numerical differences with
    layer/KV taps or forced-history/forced-kernel controls. A perceptual-risk
-   profile would require its own named scope and listening, not a silent
-   default change. No such profile is enabled.
+   profile would require its own named scope and broader listening, not a silent
+   default change. The observed CustomVoice prefix cough is a quality failure,
+   not merely a numerical mismatch. No such profile is enabled.
 5. Further large prefill gains must address the compute/wait-dominated path,
    not introduce a host cache framework to recover tens of milliseconds
    from about1.5 ms of graph setup. A pinned GGML/kernel/backend comparison
@@ -426,7 +434,10 @@ the Bridge engine pin, ABI and sampler policy remain unchanged.
   and subsequent successful validation logs are all preserved.
 - Python prefill evidence tests:13; comparator evidence tests:8, plus existing
   sampler/EOS tests through CTest. Bridge canonical receipt validator:7
-  receipts validated. This research summary is intentionally not a new R1
+  receipts validated at measurement publication; the listening follow-up adds
+  four indexed scoped receipts, and all11 now validate. Separate artifact
+  validation checks all13 listened WAVs through those four receipts. This
+  research summary is intentionally not a new R1
   acceptance gate.
 - [Machine-readable study summary](native-prefill-study-20261121.json)
   retains denominators, warm p50/p95, comparisons, runtime/model identities,
@@ -440,7 +451,48 @@ the Bridge engine pin, ABI and sampler policy remain unchanged.
   04–06 are Base equivalents;07–09 are CustomVoice `Да` baseline/split/full;
   10/11 compare native/speech original CustomVoice;12/13 are RU-stress/Base
   speaker-only, to compare against01/04 for the cost/fidelity trade-off.
-  Every new coverage/voice-quality verdict remains `unassessed`.
+  The later observations below apply only to these exact files; historical
+  measurement rows retain their original unassessed listening status.
+
+## Scoped listening follow-up
+
+The user listened to all 13 numbered files in `listening-prefill-ab/` on
+2026-11-21. Their manifest is 9,959 bytes, SHA-256
+`4f7c00b5da71f3a97d19284110e68a0a8dc0e8cc498fff24c97120f4f7b3de90`.
+All 13 byte counts and SHA-256 values were independently rechecked against
+the unchanged manifest and original source copies. There are 12 distinct
+WAV hashes: files08/09 are byte-identical and are not independent failures.
+No audio was regenerated, edited, or normalized for this follow-up.
+
+| Files / exact scope | User observation |
+| --- | --- |
+| 01-03 RU-stress ICL original, baseline/split/full-prefix | Full text, correct stress, no cough; acceptable delivery differences:02 slightly higher,03 breathier with stretched word endings |
+| 04-06 Base ICL original, baseline/split/full-prefix | Full text, correct stress, no cough; acceptable delivery differences:04 calm/thoughtful,05 slower than01,06 calm |
+| 07 CustomVoice baseline short text | Simply says `Да` |
+| 08/09 CustomVoice split/full-source prefix short text | Coughing/throat-clearing **before** recognizable `Да`; fails no-extraneous-sound criterion |
+| 10 native CustomVoice original | Normal speech, correct `процЕссор` |
+| 11 speech.cpp CustomVoice original | Normal speech, wrong `процессОр` (stress on the second `О`) |
+| 12 RU-stress speaker-only original | Normal speech, wrong `процессОр` |
+| 13 Base speaker-only original | Normal speech, correct `процЕссор` for this word |
+
+Files01-06 and10-13 use the original phrase, "МГУ находится в Москве.
+Инженер проверил USB-порт, GPS и новый процессор." Files07-09 use `Да!`.
+The full-text/stress/no-cough verdict applies to files01-06 only, not every
+generated artifact. Normal/recognizable speech in the other named files is
+scoped positive evidence, not a blanket fidelity PASS. Detailed voice matching,
+instruction adherence, final tail, sequential isolation and broader corpus
+coverage remain unassessed. The user's later clarification resolves the
+10/11 stress attribution explicitly; no ambiguity remains between the backends.
+
+Separate canonical receipts prevent transfer between model families/backends:
+
+- [RU-stress](native-prefill-ru-stress-listening-cmp50hx-20261121.json): partial scoped listening; file12 pronunciation defect recorded.
+- [Base](native-prefill-base-listening-cmp50hx-20261121.json): partial scoped listening; file13 word stress recorded.
+- [Native CustomVoice](native-prefill-customvoice-listening-cmp50hx-20261121.json): failed artifact criterion for prefix files08/09 despite recognizable text.
+- [speech.cpp CustomVoice](speech-prefill-customvoice-listening-cmp50hx-20261121.json): partial scoped listening; file11 wrong `процессОр` recorded.
+
+All four release dispositions remain `blocked`. The positive RU-stress/Base
+examples neither establish broader quality nor repair known early EOS cases.
 
 No PR is merged by this study, no package is rebuilt/promoted, and RTX4090
 is not tested. Numerical equality on the stated cases, human quality and
