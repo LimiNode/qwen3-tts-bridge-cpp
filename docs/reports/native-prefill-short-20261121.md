@@ -1,12 +1,13 @@
 # Short-utterance prefix-KV controls and separate timing
 
-Status: bounded CMP 50HX matrix and timing complete; new audio is not yet listened to.
+Status: bounded CMP 50HX matrix/timing complete; user listening recorded for18 exact WAVs, failed short-answer quality.
 Date: 2026-11-21. No production/default, engine pin, ABI or sampler promotion.
 
 This extends the [differential study](native-prefill-differential-20261121.md).
 The earlier three exact-file user observations remain unchanged: baseline and
 forced-MMQ prefix say `Да`, while ordinary prefix coughs before the word.
-Those observations do not qualify any newly generated WAV.
+Those observations do not qualify new WAVs. The later18-file observations
+below are recorded separately, without changing the earlier scoped receipts.
 
 ## Frozen scope
 
@@ -137,15 +138,88 @@ contains18 numbered unchanged WAV copies and a machine-readable manifest:
 The manifest fixes exact text, seed, source path/hash, duration and terminal
 state. This is a bounded listening selection including failures, not a
 replacement for the full matrix or an inferred success rate. Assess complete
-words separately from cough/extra sounds and voice quality. All new-file
-listening remains `not_run`; previous feedback is not silently transferred.
+words separately from cough/extra sounds and voice quality. The original
+generated manifest retains its historical `not_run` fields; the later exact-file
+user observations and canonical receipts below are the current listening record.
+
+## Eighteen-file user listening
+
+The user listened to all18 named files in the directory above. Their expected
+words are recognizable in16 cases, partially/distorted in04, and uncertain in18.
+Recognizing the target words does not mean the entire utterance is correct:
+several files add laughter, cough, breathing or unrelated speech. Files01/03/
+07/08/11/13/14 are described with only the expected words; explicit absence of
+laughter and similar extras was confirmed for07/08. This does not assess every
+possible artifact or establish voice identity.
+
+| File | Variant | User observation |
+| --- | --- | --- |
+| 01 | MMQ | `Да`. |
+| 02 | MMQ | Laughter, then `Нет`. |
+| 03 | MMQ | `Спасибо`. |
+| 04 | MMQ | `Га га то ва`: repeated/distorted syllables for `Готово`; not labeled laughter. |
+| 05 | MMQ | `Нет`, laughter, then strange extra speech, possibly English; language/transcript unconfirmed. |
+| 06 | MMQ | Laughter, then `Спасибо`. |
+| 07 | Baseline | `Yes`, explicitly without laughter or similar extras. |
+| 08 | MMQ | `Yes`, explicitly without laughter or similar extras. |
+| 09 | Baseline | Laughter, then `No`. |
+| 10 | MMQ | Laughter, then `No`. |
+| 11 | Baseline | `Hi`. |
+| 12 | MMQ | `Hi`, then laughter. |
+| 13 | Baseline | `thank you`. |
+| 14 | MMQ | `thank you`. |
+| 15 | Baseline | Intermittent breathing, `Hi`, more intermittent breathing and `С... с...`; max-token failure. |
+| 16 | MMQ | `Hi`, then `Хо хо`/`Ха ха`/`Хэ хэ`-like extra sounds; natural EOS but not clean speech. |
+| 17 | Ordinary prefix | Throat-clearing/coughing, then `да`. |
+| 18 | Ordinary prefix | A longer phrase ending approximately `сикс тю`; the observer cannot reliably identify the English words. |
+
+File18's match to the requested `Thank you.` stays `not_assessed`; do not
+invent an English transcript or treat the observer's uncertainty as proof of
+missing words. The known cough in17 already makes ordinary-prefix listening
+fail. Do not silently pass04 as normal `Готово` or call its repeated syllables
+laughter. The other90 matrix outcomes remain directly unlistened; no18/108
+quality rate is extrapolated from this deliberately selected set.
+
+Independent read-only checking confirms all18 listening copies match their
+manifest, original WAV and float PCM, including the exact PCM16 mono24kHz
+conversion. There are17 unique WAV payloads because13/14 are identical.
+The manifest is18,567 bytes, SHA-256
+`19acf237a4e60ab46412913a30cf0f64ff18c5799b30d89277f2d694cf5720ec`.
+There is no new generation or audio editing in this listening update.
+
+The distinctions relevant to the candidate are:
+
+- MMQ files02/04/05/06 are byte-identical to baseline WAV/raw PCM. Their
+  laughter, repeated syllables and extra speech are therefore not introduced
+  by that candidate in these cases. Separate unlisted baseline paths are not
+  marked as newly directly listened to.
+- Baseline09 and MMQ10 both contain laughter before `No`, although their PCM
+  differs. Both fail the declared artifact criterion; this is not a repair.
+- The controlled11/12 `Hi!` seed64 pair is a concrete candidate regression:
+  the user reports `Hi` in baseline11 and added laughter in MMQ12.
+- MMQ16 stops naturally much earlier than baseline15, but both contain extra
+  sounds. A shorter natural-EOS output is not automatically a quality rescue.
+
+Three new indexed canonical receipts separate the candidates:
+[baseline,5 files](native-prefill-short-matrix-baseline-listening-cmp50hx-20261121.json),
+[MMQ,11 files](native-prefill-short-matrix-mmq-listening-cmp50hx-20261121.json),
+and [ordinary prefix,2 files](native-prefill-short-matrix-default-listening-cmp50hx-20261121.json).
+All record scoped listening `fail` and release `blocked`. The earlier positive
+one-text MMQ receipt is preserved, not rewritten or superseded: it had a
+different declared scope. The machine-readable research summary appends the
+new exact-file observations; original generated run results remain unchanged.
 
 ## Decision boundary
 
 MMQ remains an experimental numerical-dispatch control, not an early-EOS
 repair or a general equivalence claim. The narrow CustomVoice warm-request
 latency gain is measured; Russian short sampled-PCM equality has expanded
-to16 cases, but English equivalence fails in12/16 cases. New word coverage and
-cough/voice quality require exact-file listening. R1 remains blocked under
+to16 cases, but English equivalence fails in12/16 cases. The new18-file listening
+also fails short-answer quality in all three variants, including a specific
+English MMQ regression. It does not negate the measured latency saving, but
+prevents promoting MMQ-prefix as a general quality/EOS fix. A next causal check
+should use the saved failing pairs02/04/05/06,11/12 and15/16, keeping intrinsic
+baseline artifacts separate from prefix-induced trajectory changes. No new
+GPU run is implied by recording this feedback. R1 remains blocked under
 its existing canonical acceptance records; historical failed prefix receipts
 are preserved, not superseded by this study.

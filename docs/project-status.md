@@ -121,8 +121,14 @@ ordinary-prefix02 says `КхмКхм Да`. Separate indexed receipts retain the
 ordinary-prefix case and partial positive MMQ/baseline scope. Broader
 seed/text/latency checks are extended in the
 [short-utterance follow-up](reports/native-prefill-short-20261121.md);
-new-file listening and broader voice-quality validation remain open. No default
-is promoted, and the earlier failed ordinary-prefix receipts are not superseded.
+the user has now assessed all18 selected WAVs. Baseline, ordinary-prefix and
+MMQ-prefix each have a new indexed failed scoped listening receipt. Several
+Russian MMQ failures are byte-identical to baseline; English `Hi!` seed64 adds
+laughter under MMQ relative to its baseline. Target words are recognized in16
+selected files;04 is distorted and18 remains text-uncertain. The other90 matrix
+outputs and broader voice identity remain unassessed. The measured warm
+CustomVoice first-PCM median60.896 to51.603ms is not a quality/EOS rescue.
+No default is promoted; earlier scoped positive and failed receipts are preserved.
 
 ## Verified milestones
 

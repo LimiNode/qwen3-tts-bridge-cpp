@@ -3,6 +3,30 @@
   "generated_at": "2026-11-21",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-prefill-short-matrix-baseline-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-short-matrix-baseline-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-short-matrix-mmq-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-short-matrix-mmq-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-short-matrix-default-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-short-matrix-default-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-prefill-mmq-short-listening-cmp50hx-20261121",
       "receipt": "docs/reports/native-prefill-mmq-short-listening-cmp50hx-20261121.json",
       "model_family": "CustomVoice",
