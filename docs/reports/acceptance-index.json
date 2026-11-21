@@ -3,6 +3,14 @@
   "generated_at": "2026-11-21",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-short-quality-causal-cmp50hx-20261121",
+      "receipt": "docs/reports/native-short-quality-causal-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-prefill-short-matrix-baseline-listening-cmp50hx-20261121",
       "receipt": "docs/reports/native-prefill-short-matrix-baseline-listening-cmp50hx-20261121.json",
       "model_family": "CustomVoice",

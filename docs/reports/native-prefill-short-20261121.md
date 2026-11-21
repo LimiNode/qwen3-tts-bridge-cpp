@@ -209,6 +209,14 @@ one-text MMQ receipt is preserved, not rewritten or superseded: it had a
 different declared scope. The machine-readable research summary appends the
 new exact-file observations; original generated run results remain unchanged.
 
+## Causal continuation
+
+The [subsequent quality investigation](native-short-quality-causal-20261121.md)
+tests cold processes, trace neutrality, MMQ without prefix and two independent
+sampler controls. It preserves the failed observations above and does not
+promote the measured speedup. New candidate audio has its own unlistened
+canonical receipt; historical listening is not transferred.
+
 ## Decision boundary
 
 MMQ remains an experimental numerical-dispatch control, not an early-EOS

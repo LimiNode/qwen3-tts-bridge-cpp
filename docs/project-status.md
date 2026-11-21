@@ -130,6 +130,20 @@ outputs and broader voice identity remain unassessed. The measured warm
 CustomVoice first-PCM median60.896 to51.603ms is not a quality/EOS rescue.
 No default is promoted; earlier scoped positive and failed receipts are preserved.
 
+The [short-answer causal study](reports/native-short-quality-causal-20261121.md)
+adds122 traced controls and54 independent sampler requests. All14 fresh-process
+controls reproduce the earlier primed baseline; the selected defects do not
+require preceding requests. Full-frame tracing preserves90 original-schedule
+outputs, while MMQ without prefix preserves18/18 English baseline outputs.
+For `Hi!` seed64, prefix-MMQ first changes acoustic `c1` in frame1 despite the
+same first two Talker codes; the exact originating hidden operation remains
+unlocalized. Talker top-1 and predictor greedy each reach natural EOS on the
+14 selected short outcomes, but no new audio quality verdict follows from that.
+All21 repeat pairs match and21 unchanged WAVs are prepared in one directory;
+new listening remains `not_run`. The new indexed canonical receipt preserves
+six failed max-token controls and release `blocked`. No new latency claim,
+Base/Kraftwerk verdict, EOS policy change or production promotion is made.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL
