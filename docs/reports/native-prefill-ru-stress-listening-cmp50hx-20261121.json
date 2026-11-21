@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-prefill-ru-stress-listening-cmp50hx-20261121",
+  "recorded_at": "2026-11-21",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "57bb2b6e28f7eff6a83a5a75e362650559c0f839",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "initial_qwentts_cpp": "116ca5e4b1a987828bf4b1890c6c8d5ecd4abee4",
+    "rebuilt_native_cpp": "b88752d841b1833a6f52d7e7283bef5c5d0cf79c",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "initial_probe_sha256": "f97b143a2958623e9e5650b6d3c3bb457e8d72e9fa00efe17be261b71dd36dfd",
+    "rebuilt_probe_sha256": "198d65522f84a0c698ff87339fe1792917ad70485cd06ba14d79543313924f76",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "linkage": "Retained statically linked direct-engine probes, not an executed Bridge/native-worker/package route",
+    "sampling": "Seed64, baseline Philox; source study and run identities are mapped by the unchanged listening manifest"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/manifest.json maps each unchanged listened WAV to the exact source, seed64 and effective UTF-8 text; original text is in retained per-run inputs, frontend OFF",
+    "corpus_sha256": "4f7c00b5da71f3a97d19284110e68a0a8dc0e8cc498fff24c97120f4f7b3de90"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/prefill-latency-20261121",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/01-ru-stress-original-baseline-seed-64.wav",
+      "kind": "wav",
+      "bytes": 322604,
+      "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/02-ru-stress-original-prefix-split-seed-64.wav",
+      "kind": "wav",
+      "bytes": 322604,
+      "sha256": "d4de17e705835a352187560e63e1bf0c6f03ada095370f237ab6cfa6a555de3d",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/03-ru-stress-original-prefix-full-seed-64.wav",
+      "kind": "wav",
+      "bytes": 276524,
+      "sha256": "03595705d11fd28337e467aab32d3fac68544771b9048d48eefa08068b7a3235",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/12-ru-stress-original-speaker-only-seed-64.wav",
+      "kind": "wav",
+      "bytes": 330284,
+      "sha256": "4f97f92fb4a3751895508e736a00292e282946ac87e18be844923af7ab8b8a31",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "Files01/02/03 are the baseline/split-prefix/full-source-prefix Kraftwerk ICL original phrase; file12 is the same RU-stress checkpoint with speaker-only conditioning. The user listened to all four exact WAVs. For01-03 the user explicitly confirms full text, correct stress and no cough; detailed voice matching and other unassessed criteria are not inferred.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "Files01-03 contain full text with correct stress and no cough. Delivery differences are acceptable to the user:02 is slightly higher,03 is breathier and stretches word endings. File12 has normal speech but wrongly pronounces процессОр instead of процЕссор. Preserve that file-specific defect and do not transfer correct-stress feedback from01-03 to12. Detailed voice fidelity, final tail, instruction adherence and sequential isolation remain unassessed."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Retained model-load, PCM, natural-EOS and persistent-repeat evidence is unchanged. Restart and Bridge/package/physical-playback qualification were not performed by this listening follow-up."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "Files01-03 have user-confirmed full text, correct stress and no cough; file12 has normal speech with wrong процессОр. Broader quality/voice criteria remain unassessed."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Scoped listening only; no production profile, release default, engine pin, independent RTX run, lifecycle or package qualification is promoted."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-prefill-study-20261121.md",
+    "docs/reports/native-prefill-study-20261121.json"
+  ],
+  "notes": "bridge_commit identifies the pre-follow-up evidence baseline, not an executed Bridge client. model_revision is the exact converted GGUF SHA-256. Historical generated measurement rows remain unassessed as originally recorded; this receipt is the later scoped user observation. No inference, audio edit or normalization was performed for this update."
+}

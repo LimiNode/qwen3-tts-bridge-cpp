@@ -94,6 +94,42 @@ not detect seed 72's later early EOS; measured warm N=2 pair decisions also
 miss the first-chunk budget. Canonical research receipts are in the index.
 No engine pin, sampler/default, live selector or release gate is promoted.
 
+The separate [native prefill study](reports/native-prefill-study-20261121.md)
+records 504 primary and 105 traced CMP outcomes, isolated graph/head/KV/window
+controls, same-checkpoint ICL cost, matched-weight speech.cpp comparison,
+and split/full-source prefix-KV tests. Small variants preserve the observed
+sampled outputs; prefix reuse reduces latency but changes audio, so it is not
+an equivalent optimization or EOS remedy. The user subsequently listened to
+all 13 named WAVs: RU-stress/Base ICL baseline and prefix samples01-06 have
+full text, correct stress and no cough, with acceptable delivery differences;
+both identical CustomVoice prefix `Да!` samples contain extraneous
+coughing/throat-clearing before the recognized word. Speaker-only RU-stress
+has wrong `процессОр`, while Base has correct `процЕссор`. Native CustomVoice
+file10 also has correct `процЕссор`; speech.cpp file11 has wrong `процессОр`.
+Four indexed canonical receipts preserve this exact scoped feedback;
+detailed voice matching, instruction adherence and broader quality remain
+unassessed. The report's research summary is not release acceptance;
+R1 gates, engine pin, ABI and sampler defaults remain unchanged.
+
+The [prefill differential follow-up](reports/native-prefill-differential-20261121.md)
+adds208 bounded outcomes and a separate12-request natural-EOS control. KV
+restores are exact; drift begins before attention. A traced MMQ/MMVQ shape
+switch materially changes short CustomVoice output; consistent MMQ restores
+full PCM equality for the one tested short seed64 case. The user listened to
+the three exact short WAVs: baseline01 and MMQ03 say `Да` without coughing;
+ordinary-prefix02 says `КхмКхм Да`. Separate indexed receipts retain the failed
+ordinary-prefix case and partial positive MMQ/baseline scope. Broader
+seed/text/latency checks are extended in the
+[short-utterance follow-up](reports/native-prefill-short-20261121.md);
+the user has now assessed all18 selected WAVs. Baseline, ordinary-prefix and
+MMQ-prefix each have a new indexed failed scoped listening receipt. Several
+Russian MMQ failures are byte-identical to baseline; English `Hi!` seed64 adds
+laughter under MMQ relative to its baseline. Target words are recognized in16
+selected files;04 is distorted and18 remains text-uncertain. The other90 matrix
+outputs and broader voice identity remain unassessed. The measured warm
+CustomVoice first-PCM median60.896 to51.603ms is not a quality/EOS rescue.
+No default is promoted; earlier scoped positive and failed receipts are preserved.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL

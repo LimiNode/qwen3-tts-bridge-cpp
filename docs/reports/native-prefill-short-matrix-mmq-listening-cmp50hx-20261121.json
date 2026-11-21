@@ -1,0 +1,198 @@
+{
+  "schema_version": 2,
+  "recorded_at": "2026-11-21",
+  "model_family": "CustomVoice",
+  "backend": "native",
+  "bridge_commit": "6b480c56d7cb0325a70c131cec8cb4d103fca86e",
+  "model_revision": "cab2cff67a0a557310febe558dc83076b28ed790e491867eb2751759f4cd89fa",
+  "runtime_revision": {
+    "qwentts_cpp": "53ac793c956dfc4d42c66b61402367ec0564cdf7",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+    "ggml_cuda_sha256": "bd54280b060357d21d0345cd1ecbc3f58e220b169561cd44f4c3a42255661b30",
+    "dispatch_patch_sha256_at_run": "d909091801978e763aa25a1c385cecb91415ca2b2ad00939399b7c8b48a908d9",
+    "codec_sha256": "9a0bf7e0d16f04232a852bcd41fd2e485ea546acda1dbf3ce5e59dee76ae8c24",
+    "linkage": "Retained statically linked qwen-core probe with isolated GGML dispatch patch; not Bridge/native worker or packaged qwen.dll execution",
+    "sampling": "Seeds64/65/72/75 matrix; baseline Philox; max_tokens256; frontend OFF; fusion OFF; separate language processes. Quality observer and route log ON, no tensor taps. Not a Bridge/native-worker run or timing receipt.",
+    "quality_harness": "ef66c542bc4c72035003479e22743d0d4b8f85ba"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "quality-002/plan.json records exact UTF-8 inputs and their hashes; the immutable18-file manifest maps selected listening copies to source outcomes. Only the named files are directly assessed.",
+    "corpus_sha256": "19acf237a4e60ab46412913a30cf0f64ff18c5799b30d89277f2d694cf5720ec"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/prefill-short-20261121",
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Scoped short-answer listening fails; numerical equality and the separate warm latency gain do not qualify audio quality. Broader matrix listening, restart/lifecycle, other hardware and release-package acceptance remain open."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-prefill-short-20261121.md",
+    "docs/reports/native-prefill-short-20261121.json",
+    "docs/reports/native-prefill-mmq-short-listening-cmp50hx-20261121.json",
+    "docs/reports/native-prefill-default-short-listening-cmp50hx-20261121.json"
+  ],
+  "notes": "New expanded-matrix observation, not a rewrite of the earlier one-text listening receipt. bridge_commit is the pre-feedback evidence baseline, not an executed Bridge build. Binary build commit/probe/GGML identities are inherited only because the exact frozen runtime is reused; no inference, audio editing or defaults changed for this observation. Other90 matrix outcomes remain directly unlistened.",
+  "acceptance_id": "native-prefill-short-matrix-mmq-listening-cmp50hx-20261121",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/01-ru-yes-prefix-mmq-seed-64.wav",
+      "kind": "wav",
+      "bytes": 34604,
+      "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/02-ru-no-prefix-mmq-seed-64.wav",
+      "kind": "wav",
+      "bytes": 80684,
+      "sha256": "5c6bf36ef4c53f8f3cdc83c5b87d45a83e2b2757d8bf993d050ec2a39676525b",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/03-ru-thanks-prefix-mmq-seed-64.wav",
+      "kind": "wav",
+      "bytes": 53804,
+      "sha256": "dbee762618f2b532a0683e50f6b015927de43a990c204d70630b39db5dedd336",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/04-ru-ready-prefix-mmq-seed-64.wav",
+      "kind": "wav",
+      "bytes": 157484,
+      "sha256": "ed8d469ae32f08fb870d7ad6681130bb9e7e1b52ba9c1a04faa4df9757f3c32b",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/05-ru-no-prefix-mmq-seed-75.wav",
+      "kind": "wav",
+      "bytes": 756524,
+      "sha256": "d87846ad5c16be993d82b8731996b02e60def8a0390c3d8840d56a121cdbefcf",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/06-ru-thanks-prefix-mmq-seed-65.wav",
+      "kind": "wav",
+      "bytes": 295724,
+      "sha256": "a72791e75976c575ded93592e9d6e4eebd049f59ea1a107dbb8b95c5eff47e51",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/08-en-yes-prefix-mmq-seed-64.wav",
+      "kind": "wav",
+      "bytes": 38444,
+      "sha256": "59c95199222f263bce482266b221fb3f03fb531f97e41bc8625ce8fed1d730c4",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/10-en-no-prefix-mmq-seed-64.wav",
+      "kind": "wav",
+      "bytes": 145964,
+      "sha256": "8d6082d8b53f5ff1a08e17d56ce95eb730e3679696a5d874f548852aaac0d798",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/12-en-hi-prefix-mmq-seed-64.wav",
+      "kind": "wav",
+      "bytes": 96044,
+      "sha256": "f311dd84290fd09877f238bb0a9dd05a412cbac83e43d99ede63014ed7c78f6d",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/14-en-thanks-prefix-mmq-seed-64.wav",
+      "kind": "wav",
+      "bytes": 61484,
+      "sha256": "f2b137873abb92c822c46aa365b2c0dfc4d3f3196c1e162d9bc6926f2d84abe5",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/16-en-hi-prefix-mmq-seed-72.wav",
+      "kind": "wav",
+      "bytes": 84524,
+      "sha256": "bffbd7c5c918caef54185f4380b6605283a16355870325c2ce0587adef5162de",
+      "availability": {
+        "status": "local",
+        "reason": "Exact size/SHA-256 and source copy independently checked on2026-11-21; ignored payload retained. Scoped user listening applies to this named file, not to unlisted same-content paths."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-short-20261121/listening-short-first-pass/manifest.json",
+      "kind": "manifest",
+      "bytes": 18567,
+      "sha256": "19acf237a4e60ab46412913a30cf0f64ff18c5799b30d89277f2d694cf5720ec",
+      "availability": {
+        "status": "local",
+        "reason": "Immutable original18-file manifest independently checked; generated historical not_run fields are not rewritten by this later observation."
+      }
+    }
+  ],
+  "human_listening": {
+    "status": "fail",
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "Only 11 named mmq listening files (01,02,03,04,05,06,08,10,12,14,16) from quality-002, frozen CustomVoice ryan/CMP50HX. No full108-case listening or voice-identity acceptance.",
+    "criteria": {
+      "intelligibility": "partial",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "fail",
+      "final_tail": "fail",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "File01 says Да;03 says Спасибо;08 says Yes without laughter or similar extras;14 says thank you. File02 laughs before Нет. File04 says Га га то ва, recorded as repeated/distorted syllables, not laughter. File05 says Нет, laughs, then strange extra speech, possibly English but language/transcript unconfirmed. File06 laughs before Спасибо. File10 laughs before No. File12 says Hi then laughs, unlike baseline11. File16 says Hi then ho-ho/ha-ha/he-he-like extra vocalizations; natural EOS is not a quality fix. Files02/04/05/06 are byte-identical to baseline audio, but those separate baseline paths were not directly listened to. No full voice-identity or cross-request-contamination verdict."
+  },
+  "case_result": {
+    "status": "fail",
+    "reason": "User reports extra vocalizations or distorted syllables in named candidate outputs; recognized words and natural EOS do not meet the no-extra-speech criterion."
+  },
+  "listening_result": {
+    "status": "fail",
+    "reason": "Exact-file user feedback identifies extraneous non-requested vocalizations; unassessed criteria are not silently passed."
+  }
+}

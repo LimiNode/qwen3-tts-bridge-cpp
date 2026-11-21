@@ -1,0 +1,2253 @@
+{
+  "schema_version": 1,
+  "record_type": "prefill_differential_research_not_acceptance",
+  "date": "2026-11-21",
+  "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb",
+  "seed": 64,
+  "max_frames": 4,
+  "timing_eligible": false,
+  "release_disposition": "blocked",
+  "analyzer": {
+    "path": ".worktrees/prefill-engine/tests/analyze_prefill_differential.py",
+    "bytes": 14981,
+    "sha256": "3f51d17cdd5cac061cf195ddf1ecc189f44efbd4586e589932b3ee4580d38ca6"
+  },
+  "runs": {
+    "base-default-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/base-default-001/plan.json",
+        "bytes": 4436,
+        "sha256": "b2c1874c658209476afc5c372633aaa2cad4c45a81efe68668a9309793a45865"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/base-default-001/results.json",
+        "bytes": 66102,
+        "sha256": "43816366151389e105cba178f0ac195078f24007f728474a6cd597591af1ac7f"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/base-default-001/layer-analysis-reviewed.json",
+        "bytes": 88360,
+        "sha256": "ead607d35d0634ca7427d24288fc9187e591fc9b4308b2729a0a5850801d852a"
+      },
+      "probe_sha256": "6f715e84dccb0c6dce7c9a288a4f67bed25943ce6423bff9af382debd2260acd",
+      "runtime_retained_in_run": false,
+      "control": "default",
+      "prefix_rows": 86,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 236,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 1
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55807,
+            "max_abs": 7.152557373046875e-7,
+            "rms": 1.1935796174664111e-8
+          },
+          "unusable_taps": 1
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55807,
+            "max_abs": 7.152557373046875e-7,
+            "rms": 1.1935796174664111e-8
+          },
+          "unusable_taps": 1
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55807,
+            "max_abs": 7.152557373046875e-7,
+            "rms": 1.1935796174664111e-8
+          },
+          "unusable_taps": 1
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.16860008239746094,
+            "rms": 0.04053809841377422,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.13898730278015137,
+            "rms": 0.03563324271147735,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.16860008239746094,
+            "rms": 0.04053809841377422,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "customvoice-default-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-default-001/plan.json",
+        "bytes": 3752,
+        "sha256": "f2d0be088e91072d2944e4dd6556fcf98424199f6856b0e8274af52a18646b9f"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-default-001/results.json",
+        "bytes": 66094,
+        "sha256": "d513787afb37b622bfc29ead8026a86c45f430fc0b52fd27638aff53b5493c75"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-default-001/layer-analysis-reviewed.json",
+        "bytes": 2229311,
+        "sha256": "8884d9b96b2193ce34b5bc0f6d1b6e7ddaf385c677f7fc4373063dc377cea0ac"
+      },
+      "probe_sha256": "6f715e84dccb0c6dce7c9a288a4f67bed25943ce6423bff9af382debd2260acd",
+      "runtime_retained_in_run": false,
+      "control": "default",
+      "prefix_rows": 9,
+      "layers": "all",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 168,
+      "restores_exact": 168,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 28
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 28
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 5,
+          "n_past": 9,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              5,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 10238,
+            "max_abs": 0.0003120899200439453,
+            "rms": 0.000017815616624654706
+          },
+          "unusable_taps": 28
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 28
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.3173532485961914,
+            "rms": 0.0822748068648298,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "customvoice-manual-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-manual-001/plan.json",
+        "bytes": 3799,
+        "sha256": "982c41e15e6fbd24755f774d7447acb411b4ca510bb4a1b3822cdb9aa1b87986"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-manual-001/results.json",
+        "bytes": 66023,
+        "sha256": "ef9f6c04a02e524058802c1424563adeb02c73116fa6a88e2cc956af5140dda0"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-manual-001/layer-analysis-reviewed.json",
+        "bytes": 87962,
+        "sha256": "5e9108848e787e3457e97098ee1cf39f02f77b0c4aaedab85822de950834ddaa"
+      },
+      "probe_sha256": "6f715e84dccb0c6dce7c9a288a4f67bed25943ce6423bff9af382debd2260acd",
+      "runtime_retained_in_run": false,
+      "control": "manual-attention",
+      "prefix_rows": 9,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 1
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 1
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 5,
+          "n_past": 9,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              5,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 10238,
+            "max_abs": 0.0003120899200439453,
+            "rms": 0.000017815616624654706
+          },
+          "unusable_taps": 1
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 1
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.30564188957214355,
+            "rms": 0.08128809285990836,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "customvoice-manual-pinned-002": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-manual-pinned-002/plan.json",
+        "bytes": 3799,
+        "sha256": "8af2b1917adb8d45a3b506f9ad35a0e91a936967aa02c86518b5918ab6505667"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-manual-pinned-002/results.json",
+        "bytes": 66238,
+        "sha256": "7674176078b26c86d9f5ec0fe86b4f14cbafbc95d579380b48bba2a270c15933"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-manual-pinned-002/layer-analysis-reviewed.json",
+        "bytes": 89795,
+        "sha256": "48cef77028fed1f69410ed0eb9da91de7d347cc81c33a30735c79571b8006f44"
+      },
+      "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+      "runtime_retained_in_run": false,
+      "control": "manual-attention",
+      "prefix_rows": 9,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 5,
+          "n_past": 9,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              5,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 10238,
+            "max_abs": 0.0003120899200439453,
+            "rms": 0.000017815616624654706
+          },
+          "unusable_taps": 0
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.30564188957214355,
+            "rms": 0.08128809285990836,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "customvoice-no-fusion-pinned-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-no-fusion-pinned-001/plan.json",
+        "bytes": 4495,
+        "sha256": "20b61199c74bbfad5959cfd7d313c31088c7aac94450ced8380db321ac63fb1d"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-no-fusion-pinned-001/results.json",
+        "bytes": 66278,
+        "sha256": "6fc203468d1801ccad92c4a4d715eec3e95d8a4680c05c9ee8a369f905096614"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-no-fusion-pinned-001/layer-analysis-reviewed.json",
+        "bytes": 90416,
+        "sha256": "2de570bafbab1e60c7ca3b9104c4abc88588a6c7498aaf34af6ebc63d36c1882"
+      },
+      "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+      "runtime_retained_in_run": true,
+      "control": "no-fusion",
+      "prefix_rows": 9,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 5,
+          "n_past": 9,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              5,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 10238,
+            "max_abs": 0.0003120899200439453,
+            "rms": 0.000017815616624654706
+          },
+          "unusable_taps": 0
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.3173532485961914,
+            "rms": 0.0822748068648298,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "customvoice-prefix5-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-prefix5-001/plan.json",
+        "bytes": 3828,
+        "sha256": "239debea0610f44edd49a43d0154cad7067ff0e6315c38549beaa54d96c10a6f"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-prefix5-001/results.json",
+        "bytes": 65931,
+        "sha256": "eb1c54bc910ea0b713fa47807bac01c950ca7245e895aee0312017412c6a59f0"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-prefix5-001/layer-analysis-reviewed.json",
+        "bytes": 87467,
+        "sha256": "d52c90063556a3d1c1e016e357c84000bef9ef705e577a9663e22a5fd7cc42d5"
+      },
+      "probe_sha256": "6f715e84dccb0c6dce7c9a288a4f67bed25943ce6423bff9af382debd2260acd",
+      "runtime_retained_in_run": false,
+      "control": "default",
+      "prefix_rows": 5,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 1
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 28,
+          "n_past": 5,
+          "first_difference": null,
+          "unusable_taps": 1
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 9,
+          "n_past": 5,
+          "first_difference": null,
+          "unusable_taps": 1
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 28,
+          "n_past": 5,
+          "first_difference": null,
+          "unusable_taps": 1
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "customvoice-prefix6-pinned-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-prefix6-pinned-001/plan.json",
+        "bytes": 3790,
+        "sha256": "4836900f63f09c8e9149a944624e0d8b8c76cee0a35d27ec457660d37ffa9ab1"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-prefix6-pinned-001/results.json",
+        "bytes": 66234,
+        "sha256": "dfe19a16445c6bd7e24778ca05386b6af4c653f60dccebe4ee03621b454ee23f"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-prefix6-pinned-001/layer-analysis-reviewed.json",
+        "bytes": 90001,
+        "sha256": "0f29cc8cea100021eccd585c45e9c79852c3ad45e65a05a29ec1566d09702d95"
+      },
+      "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+      "runtime_retained_in_run": false,
+      "control": "default",
+      "prefix_rows": 6,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 27,
+          "n_past": 6,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 8,
+          "n_past": 6,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              8,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 16381,
+            "max_abs": 0.0003120899200439453,
+            "rms": 0.00001797677754030283
+          },
+          "unusable_taps": 0
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 27,
+          "n_past": 6,
+          "first_difference": null,
+          "unusable_taps": 0
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.3621485233306885,
+            "rms": 0.08813671373185364,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "customvoice-route-cublas-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-cublas-001/plan.json",
+        "bytes": 4764,
+        "sha256": "5cf6392feb5306c2e615f586da7126a90a59a95c2b0730cced05b60a5e6ef3ce"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-cublas-001/results.json",
+        "bytes": 67982,
+        "sha256": "2efd91de430df11467bd82d59a5c71f4d00879ecf77a2d63fd516a54acfb170b"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-cublas-001/layer-analysis-reviewed.json",
+        "bytes": 90750,
+        "sha256": "33682da2f0743c24c2ef88ba444c47a8034de78370a1bd1d1b6687ffa879519b"
+      },
+      "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+      "runtime_retained_in_run": true,
+      "control": "forced-cublas",
+      "prefix_rows": 9,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              24,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 40644,
+            "max_abs": 7.152557373046875e-7,
+            "rms": 4.004534894768408e-8
+          },
+          "unusable_taps": 0
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 5,
+          "n_past": 9,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              5,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 8460,
+            "max_abs": 7.152557373046875e-7,
+            "rms": 3.922455395006961e-8
+          },
+          "unusable_taps": 0
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              24,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 40644,
+            "max_abs": 7.152557373046875e-7,
+            "rms": 4.004534894768408e-8
+          },
+          "unusable_taps": 0
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.03644609451293945,
+            "rms": 0.007537664742221335,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.035938262939453125,
+            "rms": 0.0056869243902014565,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.03644609451293945,
+            "rms": 0.007537664742221335,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": [
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=33 route=forced-cublas",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=24 route=forced-cublas",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=5 route=forced-cublas",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=24 route=forced-cublas"
+      ]
+    },
+    "customvoice-route-default-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-default-001/plan.json",
+        "bytes": 4764,
+        "sha256": "587e98deab2f643db18019eb7342f4d16091a5bab08dc82c45ee2d3630605732"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-default-001/results.json",
+        "bytes": 67567,
+        "sha256": "de57b394646bfc242fcd43de40fd054261621e8788a77afb0b7964c887f42199"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-default-001/layer-analysis-reviewed.json",
+        "bytes": 89783,
+        "sha256": "2a33424a96983c01a5161e5d7e5420a3252b89d3a9a2c48925bbeaa8bb4a3b2f"
+      },
+      "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+      "runtime_retained_in_run": true,
+      "control": "default",
+      "prefix_rows": 9,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 5,
+          "n_past": 9,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              5,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 10238,
+            "max_abs": 0.0003120899200439453,
+            "rms": 0.000017815616624654706
+          },
+          "unusable_taps": 0
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.3173532485961914,
+            "rms": 0.0822748068648298,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": [
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=33 route=mmq",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=24 route=mmq",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=5 route=mmvq",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=24 route=mmq"
+      ]
+    },
+    "customvoice-route-mmq-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-mmq-001/plan.json",
+        "bytes": 4743,
+        "sha256": "4697ddf9637ed851668dd2bc7f05a2867dd98637ea914af0578da84837d2b6f4"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-mmq-001/results.json",
+        "bytes": 67564,
+        "sha256": "00bd740e46354fe48e9adba80bdecda6d4b96b5c35a32f0fee78ed4b3624ae60"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-route-mmq-001/layer-analysis-reviewed.json",
+        "bytes": 88197,
+        "sha256": "22f99cb10c79d3c8073a863014764eae56d985ea9d7127eb6bb7cd48ec0f5577"
+      },
+      "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+      "runtime_retained_in_run": true,
+      "control": "forced-mmq",
+      "prefix_rows": 9,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 33,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 5,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 24,
+          "n_past": 9,
+          "first_difference": null,
+          "unusable_taps": 0
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.0016951560974121094,
+            "rms": 0.00041458871953940784,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": [
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=33 route=forced-mmq",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=24 route=forced-mmq",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=5 route=forced-mmq",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=24 route=forced-mmq"
+      ]
+    },
+    "ru-aligned64-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-aligned64-001/plan.json",
+        "bytes": 4497,
+        "sha256": "2efe74f130214599fc412199191438ffbe8102ad070ef0fd7037f76a538348e7"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-aligned64-001/results.json",
+        "bytes": 65915,
+        "sha256": "0a002e5bd11a55d46a9c23a9010de6583dc45d3b699a23bb29289a963e1e56d6"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-aligned64-001/layer-analysis-reviewed.json",
+        "bytes": 88338,
+        "sha256": "7de3241b169367752ff51bd8850b7aceda359814ab56882749596315e8774a20"
+      },
+      "probe_sha256": "6f715e84dccb0c6dce7c9a288a4f67bed25943ce6423bff9af382debd2260acd",
+      "runtime_retained_in_run": false,
+      "control": "default",
+      "prefix_rows": 64,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 236,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 1
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 172,
+          "n_past": 64,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              172,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 47115,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.0164848314061797e-8
+          },
+          "unusable_taps": 1
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 172,
+          "n_past": 64,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              172,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 47115,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.0164848314061797e-8
+          },
+          "unusable_taps": 1
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 172,
+          "n_past": 64,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              172,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 47115,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.0164848314061797e-8
+          },
+          "unusable_taps": 1
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.1738262176513672,
+            "rms": 0.038849290258813576,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": false,
+          "terminal_equal": false,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.18356966972351074,
+            "rms": 0.037659486433247596,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.1738262176513672,
+            "rms": 0.038849290258813576,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "ru-default-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-default-001/plan.json",
+        "bytes": 4457,
+        "sha256": "737803bf88e02577f1d10c84eb5f9cd914daf96d3975c6eb2f6c8e682d11db4a"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-default-001/results.json",
+        "bytes": 66024,
+        "sha256": "cbda5e5c2217d1d93ac002f74c11615bb5a71d95858c67f8d7d44198e801da2d"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-default-001/layer-analysis-reviewed.json",
+        "bytes": 87911,
+        "sha256": "e940d265307587f0c210ad8a6cf9a7e6352f981712608a92c862ffaf41c0614c"
+      },
+      "probe_sha256": "6f715e84dccb0c6dce7c9a288a4f67bed25943ce6423bff9af382debd2260acd",
+      "runtime_retained_in_run": false,
+      "control": "default",
+      "prefix_rows": 86,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 236,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 1
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55903,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.1814747760788932e-8
+          },
+          "unusable_taps": 1
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55903,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.1814747760788932e-8
+          },
+          "unusable_taps": 1
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55903,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.1814747760788932e-8
+          },
+          "unusable_taps": 1
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.15147417783737183,
+            "rms": 0.03418238735682249,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.15136194229125977,
+            "rms": 0.03232332164801131,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.15147417783737183,
+            "rms": 0.03418238735682249,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": []
+    },
+    "ru-route-default-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-route-default-001/plan.json",
+        "bytes": 5417,
+        "sha256": "6baa636009be12ffff7d7cdcff374d6eed0f29e21f760473de031c2fa416cebe"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-route-default-001/results.json",
+        "bytes": 67276,
+        "sha256": "2687de898272a9bbbf1949ddebe7ae2eec2454837a71505c33a747575b6e19e3"
+      },
+      "analysis": {
+        "path": ".tmp/base-acceptance/prefill-differential-20261121/ru-route-default-001/layer-analysis-reviewed.json",
+        "bytes": 89623,
+        "sha256": "8f37b7649833a2acb593e04591cdd8757e82499afca2ecacb96f9da7d09fcc9f"
+      },
+      "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+      "runtime_retained_in_run": true,
+      "control": "default",
+      "prefix_rows": 86,
+      "layers": "0",
+      "outcomes": 16,
+      "instrumentation_pairs": 8,
+      "instrumentation_exact": 8,
+      "restores": 6,
+      "restores_exact": 6,
+      "cases": [
+        {
+          "group": 0,
+          "label": "original",
+          "T": 236,
+          "n_past": 0,
+          "first_difference": null,
+          "unusable_taps": 0
+        },
+        {
+          "group": 1,
+          "label": "original",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55903,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.1814747760788932e-8
+          },
+          "unusable_taps": 0
+        },
+        {
+          "group": 2,
+          "label": "ru-yes",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55903,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.1814747760788932e-8
+          },
+          "unusable_taps": 0
+        },
+        {
+          "group": 3,
+          "label": "original",
+          "T": 150,
+          "n_past": 86,
+          "first_difference": {
+            "layer": 0,
+            "stage": "q-proj",
+            "shape": [
+              150,
+              2048
+            ],
+            "byte_equal": false,
+            "different_values": 55903,
+            "max_abs": 4.76837158203125e-7,
+            "rms": 1.1814747760788932e-8
+          },
+          "unusable_taps": 0
+        }
+      ],
+      "final_comparison": [
+        {
+          "group": 0,
+          "raw_equal": true,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": true,
+            "max_abs": 0,
+            "rms": 0,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 1,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.15147417783737183,
+            "rms": 0.03418238735682249,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 2,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.15136194229125977,
+            "rms": 0.03232332164801131,
+            "argmax_equal": true
+          }
+        },
+        {
+          "group": 3,
+          "raw_equal": false,
+          "frames_equal": true,
+          "terminal_equal": true,
+          "logits": {
+            "shape_equal": true,
+            "byte_equal": false,
+            "max_abs": 0.15147417783737183,
+            "rms": 0.03418238735682249,
+            "argmax_equal": true
+          }
+        }
+      ],
+      "dispatch": [
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=236 route=mmq",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=150 route=mmq",
+        "RESEARCH_MATMUL weight=talker.blk.0.attn_q.weight cols=150 route=mmq"
+      ]
+    }
+  },
+  "outcomes": 208,
+  "instrumentation_pairs": 104,
+  "instrumentation_exact": 104,
+  "restores": 240,
+  "restores_exact": 240,
+  "limitations": [
+    "Four-frame diagnostics do not prove complete speech, natural EOS, latency or no cough.",
+    "Only CustomVoice default captures all 28 layers; other runs capture layer0.",
+    "Old unpinned view taps are excluded, not interpreted as attention arithmetic.",
+    "First six runs recorded initial executable SHA but did not retain that executable; source and data remain.",
+    "The tracked dispatch patch extends the earlier traced patch with an opt-in MMQ branch; earlier plans preserve original patch SHA.",
+    "Dispatcher logs identify host-selected route, not GPU kernel timings or complete CUDA dispatch traces.",
+    "No Bridge worker/package/DLL qualification or RTX4090 run; pin/ABI/defaults unchanged."
+  ],
+  "full_speech_followup": {
+    "outcomes": 12,
+    "max_tokens": 256,
+    "listening": "scoped_user_listening_recorded",
+    "listening_status_note": "Historical row-level unassessed fields remain unchanged. The later exact-file observations and independent candidate receipts are in human_listening_followup; only three of twelve outputs were listened to.",
+    "results_path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-speech-followup-002/results.json",
+    "results_sha256": "28e94b7fef734e607214f876eff8349bd06f10956ed2cf0314b17756017b7248",
+    "variants": [
+      {
+        "variant": "baseline",
+        "returncode": 0,
+        "issues": [],
+        "rows": [
+          {
+            "group": 0,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\baseline\\probe\\group-0-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-0-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 1,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\baseline\\probe\\group-1-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-1-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 2,
+            "label": "ru-yes",
+            "seed": 64,
+            "frames": 9,
+            "seconds": 0.72,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\baseline\\probe\\group-2-lane-0.f32",
+              "bytes": 69120,
+              "sha256": "7a37240f2d14310660f71a97530b240010c01ca611a8a5ae386b12e6808944c7"
+            },
+            "wav": {
+              "wav": "group-2-lane-0.wav",
+              "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+              "samples": 17280,
+              "rms": 0.08105183751106121,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 3,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\baseline\\probe\\group-3-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-3-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          }
+        ],
+        "comparison": null
+      },
+      {
+        "variant": "prefix-default",
+        "returncode": 0,
+        "issues": [],
+        "rows": [
+          {
+            "group": 0,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\prefix-default\\probe\\group-0-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-0-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 1,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\prefix-default\\probe\\group-1-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-1-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 2,
+            "label": "ru-yes",
+            "seed": 64,
+            "frames": 37,
+            "seconds": 2.96,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\prefix-default\\probe\\group-2-lane-0.f32",
+              "bytes": 284160,
+              "sha256": "13804fbef23f87ef6401775ba9cc3ede01cddb9b46e5832cc2fbb7d9c95f2ab6"
+            },
+            "wav": {
+              "wav": "group-2-lane-0.wav",
+              "sha256": "c30574dba774f57be2d5eaada48dd86f4b5b3f8fd8d60172e2c5170d36b78939",
+              "samples": 71040,
+              "rms": 0.0890058120935687,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 3,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\prefix-default\\probe\\group-3-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-3-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          }
+        ],
+        "comparison": {
+          "candidate_observed": 4,
+          "baseline_observed": 4,
+          "paired": 4,
+          "same_observed_denominator": true,
+          "rows": [
+            {
+              "group": 0,
+              "raw_equal": true,
+              "frames_equal": true,
+              "terminal_equal": true,
+              "logits": {
+                "shape_equal": true,
+                "byte_equal": true,
+                "max_abs": 0,
+                "rms": 0,
+                "argmax_equal": true
+              }
+            },
+            {
+              "group": 1,
+              "raw_equal": true,
+              "frames_equal": true,
+              "terminal_equal": true,
+              "logits": {
+                "shape_equal": true,
+                "byte_equal": true,
+                "max_abs": 0,
+                "rms": 0,
+                "argmax_equal": true
+              }
+            },
+            {
+              "group": 2,
+              "raw_equal": false,
+              "frames_equal": false,
+              "terminal_equal": true,
+              "logits": {
+                "shape_equal": true,
+                "byte_equal": false,
+                "max_abs": 0.3173532485961914,
+                "rms": 0.0822748068648298,
+                "argmax_equal": true
+              }
+            },
+            {
+              "group": 3,
+              "raw_equal": true,
+              "frames_equal": true,
+              "terminal_equal": true,
+              "logits": {
+                "shape_equal": true,
+                "byte_equal": true,
+                "max_abs": 0,
+                "rms": 0,
+                "argmax_equal": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "variant": "prefix-mmq",
+        "returncode": 0,
+        "issues": [],
+        "rows": [
+          {
+            "group": 0,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\prefix-mmq\\probe\\group-0-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-0-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 1,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\prefix-mmq\\probe\\group-1-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-1-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 2,
+            "label": "ru-yes",
+            "seed": 64,
+            "frames": 9,
+            "seconds": 0.72,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\prefix-mmq\\probe\\group-2-lane-0.f32",
+              "bytes": 69120,
+              "sha256": "7a37240f2d14310660f71a97530b240010c01ca611a8a5ae386b12e6808944c7"
+            },
+            "wav": {
+              "wav": "group-2-lane-0.wav",
+              "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+              "samples": 17280,
+              "rms": 0.08105183751106121,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          },
+          {
+            "group": 3,
+            "label": "original",
+            "seed": 64,
+            "frames": 105,
+            "seconds": 8.4,
+            "finish_reason": 1,
+            "raw": {
+              "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\prefill-differential-20261121\\customvoice-speech-followup-002\\prefix-mmq\\probe\\group-3-lane-0.f32",
+              "bytes": 806400,
+              "sha256": "41d4719ca84f05b321191867156eb4c7c0daa007eeb15f55f5801658bc439adf"
+            },
+            "wav": {
+              "wav": "group-3-lane-0.wav",
+              "sha256": "30869e64a19df6db32c40003143a2ae53445e14d4af481b504023ab69d631d29",
+              "samples": 201600,
+              "rms": 0.06219759196894954,
+              "coverage": "unassessed",
+              "human_listening": "unassessed"
+            },
+            "listening": "unassessed"
+          }
+        ],
+        "comparison": {
+          "candidate_observed": 4,
+          "baseline_observed": 4,
+          "paired": 4,
+          "same_observed_denominator": true,
+          "rows": [
+            {
+              "group": 0,
+              "raw_equal": true,
+              "frames_equal": true,
+              "terminal_equal": true,
+              "logits": {
+                "shape_equal": true,
+                "byte_equal": true,
+                "max_abs": 0,
+                "rms": 0,
+                "argmax_equal": true
+              }
+            },
+            {
+              "group": 1,
+              "raw_equal": true,
+              "frames_equal": true,
+              "terminal_equal": true,
+              "logits": {
+                "shape_equal": true,
+                "byte_equal": true,
+                "max_abs": 0,
+                "rms": 0,
+                "argmax_equal": true
+              }
+            },
+            {
+              "group": 2,
+              "raw_equal": true,
+              "frames_equal": true,
+              "terminal_equal": true,
+              "logits": {
+                "shape_equal": true,
+                "byte_equal": false,
+                "max_abs": 0.0016951560974121094,
+                "rms": 0.00041458871953940784,
+                "argmax_equal": true
+              }
+            },
+            {
+              "group": 3,
+              "raw_equal": true,
+              "frames_equal": true,
+              "terminal_equal": true,
+              "logits": {
+                "shape_equal": true,
+                "byte_equal": true,
+                "max_abs": 0,
+                "rms": 0,
+                "argmax_equal": true
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "human_listening_followup": {
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "Only the three unchanged short Да! WAVs in listening-customvoice-mmq, seed64; remaining full-speech-followup outputs remain unassessed.",
+    "manifest": {
+      "path": ".tmp/base-acceptance/prefill-differential-20261121/listening-customvoice-mmq/manifest.json",
+      "bytes": 1425,
+      "sha256": "631ff68c0efc9914febddcd3d65b6690fdd02b2c6608dcea4d7543f67358ad5a"
+    },
+    "observations": [
+      {
+        "file": "01-baseline-yes-seed-64.wav",
+        "text": "Да",
+        "extraneous_cough": "not_heard",
+        "bytes": 34604,
+        "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+        "listening": "partial_pass"
+      },
+      {
+        "file": "02-prefix-default-yes-seed-64.wav",
+        "text": "КхмКхм Да",
+        "extraneous_cough": "heard_before_word",
+        "bytes": 142124,
+        "sha256": "c30574dba774f57be2d5eaada48dd86f4b5b3f8fd8d60172e2c5170d36b78939",
+        "listening": "fail"
+      },
+      {
+        "file": "03-prefix-mmq-yes-seed-64.wav",
+        "text": "Да",
+        "extraneous_cough": "not_heard",
+        "bytes": 34604,
+        "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+        "listening": "partial_pass"
+      }
+    ],
+    "canonical_receipts": [
+      "docs/reports/native-prefill-default-short-listening-cmp50hx-20261121.json",
+      "docs/reports/native-prefill-mmq-short-listening-cmp50hx-20261121.json"
+    ],
+    "limitations": "Files01/03 are byte-identical, not independent quality trials. Voice fidelity, final tail, sequential isolation, other texts/seeds and uninstrumented latency remain unassessed. No general early-EOS or release promotion claim.",
+    "release_disposition": "blocked"
+  },
+  "published_engine_head": "f96b1ead9546a47576e182640ee8d32a6eea7292",
+  "incomplete_speech_followup": {
+    "path": ".tmp/base-acceptance/prefill-differential-20261121/customvoice-speech-followup-001",
+    "outcomes_generated": 8,
+    "reason": "Collector used exclusive results writer twice; second block raw/logs retained, third not run. Complete repeat is -002."
+  }
+}
