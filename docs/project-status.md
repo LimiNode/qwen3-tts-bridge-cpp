@@ -171,8 +171,20 @@ The [indexed receipt](reports/native-eos-recovery-cmp50hx-20261122.json)
 retains mixed listening fail, zero committed PCM and no streaming qualification. Buffered codec
 output changes even inside retained code prefixes; synchronous snapshot cost
 is166–515ms, so neither seamless streaming nor cheap recovery is established.
-Standalone retry, true fork, live selector, held-out quality and release gates
-remain unverified. Production defaults/pins are unchanged; all research PRs
+That first matrix did not exercise standalone retry. The subsequent
+[retry/codec comparison](reports/native-eos-retry-codec-20261122.md), with two
+new indexed receipts, passes14controls/21replays/28comparison groups and31
+teacher-forced one-lane codec-state checks. All10 full retries exactly match
+fresh buffered64; repeated rollback1 outputs match earlier bytes. Streaming
+restoration/reconstruction preserves complete PCM/state, including changed
+continuation versus independent fresh decoding and the retained PCM prefix.
+All14 production-ramp originals match retained streaming bytes. The normal
+1then2frame ramp still requires a real chunk-boundary holdback; these tests
+are not an AR+codec live commit-buffer. Seven new WAVs await listening.
+Current diagnostic host snapshots cost more than retry's second prefill;
+different output lengths and buffered spans preclude a streaming speedup claim.
+True fork, live selector, held-out quality and release gates remain unverified.
+Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
 ## Verified milestones

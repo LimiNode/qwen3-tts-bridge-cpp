@@ -152,7 +152,11 @@ completed successfully: Bridge `fa9ff6d9755e50a10f06bda3364823c8ce775ab8`
 7/7 (run44966933885), engine `4eece408a5af083caead6b88c1cf0621e8ec6174`
 2/2 (run44966932966). New listening-documentation HEAD checks are separate.
 
-Next: compare a bounded full retry; then establish codec-state restoration and an irreversible streaming
+The subsequent [full-retry/codec-state comparison](native-eos-retry-codec-20261122.md)
+now executes the next bounded retry and teacher-forced codec checks; it preserves
+this matrix and its exact listening observations. It does not implement live commit.
+
+Next after that comparison: establish an irreversible streaming
 commit buffer before a genuine shared-prefill dual fork. Selection must use
 only information available before commit. Never splice the current buffered
 PCM prefixes into an audible stream. Independent seeds/texts, legitimate
