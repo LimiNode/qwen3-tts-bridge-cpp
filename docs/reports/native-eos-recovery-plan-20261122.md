@@ -120,6 +120,14 @@ risk+conditional-dual and separately top1+rollback. Report live information
 boundaries, failures, intervention/false-positive rates, sample counts and
 confidence intervals. No trained detector is qualified on its tuning data.
 
+Disk-limited preflight smoke, declared before execution: the same five
+known short seeds, two streaming repetitions (10groups), then unchanged
+replay boundaries0/1/2 (15groups), cap8frames and at most600seconds total.
+No alternative seed/policy is evaluated. The cap is a diagnostic variable;
+it must not be used to claim full-speech recovery or healthy long replay.
+Budget40attempts at the8frame PCM cap,8MiB logs plus512MiB free reserve.
+Failure still blocks the full matrix; success qualifies only this smoke.
+
 Measure first PCM, actual audible onset, second/third chunk availability,
 p50/p95, RTF, underruns/gaps, extra GPU work, branch/snapshot cost and peak
 VRAM separately. Instrumented/buffered spans are not streaming timing.

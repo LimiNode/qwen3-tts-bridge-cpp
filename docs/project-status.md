@@ -150,6 +150,18 @@ Held-out coverage, broader voice criteria and prefix-plus-top-1 interaction
 remain unqualified. No new latency claim, Base/Kraftwerk verdict, EOS policy
 change or production promotion is made.
 
+The [2026-11-22 comparative recovery preflight](reports/native-eos-recovery-preflight-20261122.md)
+closes the331stderr-test race (exact-HEAD CI8/8) and extracts the isolated
+N>1Predictor sampler corrective as engine Draft51 (CI2/2). The
+[frozen recovery plan](reports/native-eos-recovery-plan-20261122.md) prioritizes
+unchanged checkpoint replay, rollback1/2, then a genuine one-prefill fork;
+top-k quality qualification stays separate. A buffered/uncommitted research
+checkpoint tool compiles and passes19model-free CTests, but **no new GPU
+inference or WAV** exists: disk preflight refused859MB required versus449MB
+available. Replay, recovery, streaming continuity, held-out quality and
+release gates remain unverified. Production defaults/pins are unchanged;
+all research PRs remain Draft and R1 stays NO-GO.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL
