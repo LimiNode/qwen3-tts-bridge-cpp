@@ -10,6 +10,14 @@ RU-stress Q8_0, original Q8_0 codec, Kraftwerk reference226 and exact original
 prefix reuse, EOS guard, sampler/default/ABI/pin, model or release changes.
 All PRs stay Draft. No merge, tag or cleanup of evidence.
 
+Pre-run build source: clean engine `514b71813ff037cf5ae5fefc9f996668b5fbf8df`.
+Static probes: AR `e8ad82f227ab5213aed928b0e69c8aa18a60f4fddc3d337e1e0d54032674aa38`,
+codec `eb733bce339d92f926e2f0cafad952a7ff89cea045427c18b8aab641a73e4a78`.
+Use `.tmp/base-acceptance/eos-retry-codec-20261122/`, existing original
+`eos-corpus-decision-20261121/runtime-current` DLLs, and the existing
+MSVC14.44/CUDA13.3 SM75 research build. AR/codec runners each have900s,
+so their sum cannot exceed the1800s GPU-stage allocation.
+
 ## Prespecified order and comparisons
 
 1. New probe must pass model-free contracts. Freeze source, binary and runner
