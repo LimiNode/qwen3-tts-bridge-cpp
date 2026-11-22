@@ -156,11 +156,20 @@ N>1Predictor sampler corrective as engine Draft51 (CI2/2). The
 [frozen recovery plan](reports/native-eos-recovery-plan-20261122.md) prioritizes
 unchanged checkpoint replay, rollback1/2, then a genuine one-prefill fork;
 top-k quality qualification stays separate. A buffered/uncommitted research
-checkpoint tool compiles and passes19model-free CTests, but **no new GPU
-inference or WAV** exists: disk preflight refused859MB required versus449MB
-available. Replay, recovery, streaming continuity, held-out quality and
-release gates remain unverified. Production defaults/pins are unchanged;
-all research PRs remain Draft and R1 stays NO-GO.
+checkpoint tool compiles and passes19model-free CTests. Its earlier disk
+refusal remains historical. After user cleanup, the
+[executed CMP matrix](reports/native-eos-recovery-mechanics-20261122.md)
+passes14retained streaming controls,21byte-exact buffered replay pairs and
+21mechanically valid recovery groups. On the five known early terminals,
+rollback1 lengthens5/5, rollback2 lengthens4/5 and EOS resampling lengthens2/5;
+**new speech coverage/listening is unassessed**, not a recovery PASS.
+The [indexed receipt](reports/native-eos-recovery-cmp50hx-20261122.json)
+records zero committed PCM and no streaming qualification. Buffered codec
+output changes even inside retained code prefixes; synchronous snapshot cost
+is166–515ms, so neither seamless streaming nor cheap recovery is established.
+Standalone retry, true fork, live selector, held-out quality and release gates
+remain unverified. Production defaults/pins are unchanged; all research PRs
+remain Draft and R1 stays NO-GO.
 
 ## Verified milestones
 

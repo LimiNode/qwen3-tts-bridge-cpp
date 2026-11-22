@@ -4,6 +4,12 @@ Recorded 2026-11-22. Research-only preparation; **no new model inference or
 listening**. R1 remains **NO-GO**. See the
 [frozen staged plan](native-eos-recovery-plan-20261122.md).
 
+Historical checkpoint: the disk blocker described below was subsequently
+cleared by the user. The new [executed mechanics matrix](native-eos-recovery-mechanics-20261122.md)
+and [canonical receipt](native-eos-recovery-cmp50hx-20261122.json) own current
+status. This report preserves the earlier refused preflight; its `not_run`
+statements are not the current replay result.
+
 ## Completed technical correctives
 
 | PR | Exact HEAD | Verification | Scope / readiness |

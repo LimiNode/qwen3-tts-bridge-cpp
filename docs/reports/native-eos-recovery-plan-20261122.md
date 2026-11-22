@@ -5,6 +5,11 @@ This addendum supersedes the priority, not the historical evidence, of the
 2026-11-21 short-answer study. Recovery correctness comes before sampler
 qualification and further prefix-KV optimization. R1 remains **NO-GO**.
 
+Executed first-stage evidence is now in the
+[buffered mechanics report](native-eos-recovery-mechanics-20261122.md) and
+[canonical receipt](native-eos-recovery-cmp50hx-20261122.json). This frozen
+plan remains the specification for subsequent, still-unqualified stages.
+
 ## Boundaries and stop conditions
 
 Use CMP 50HX UUID `GPU-40361931-6cb5-ac58-a059-5ba3e70986fb` only.

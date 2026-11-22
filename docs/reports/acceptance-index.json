@@ -1,7 +1,15 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-21",
+  "generated_at": "2026-11-22",
   "canonical_receipts": [
+    {
+      "acceptance_id": "native-eos-recovery-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-recovery-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
     {
       "acceptance_id": "native-short-quality-default-listening-cmp50hx-20261121",
       "receipt": "docs/reports/native-short-quality-default-listening-cmp50hx-20261121.json",
