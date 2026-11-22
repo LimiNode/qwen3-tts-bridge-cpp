@@ -77,8 +77,9 @@ lengthens5/5, and rollback2 lengthens4/5. Rollback2 is not monotonically
 better: seed14 instead ends at2frames. Seed42/64 healthy controls remain
 101/84frames with no intervention and identical original/final codes/PCM.
 These are selected discovery examples, not held-out samples or estimated
-general recovery rates. **Longer does not mean complete speech**; every new
-candidate remains unassessed on listening and requested-text coverage.
+general recovery rates. **Longer does not mean complete speech**; initial
+collection left listening unassessed. The subsequent exact-file user
+observations below replace that pending status without changing raw results.
 
 Captured code prefixes before the restored boundary are unchanged. This is
 not enough for audio splicing: in the offline byte comparison, all11
@@ -114,16 +115,49 @@ It contains17 numbered WAVs, the exact expected text in `README.md`, and a
 hash manifest. All15 intervention candidates on the five seeds are included,
 including short failures, plus two controls. The fixed method/seed mapping
 is outside that folder in `listening-key.json`; copies are byte-identical.
-No new WAV is marked listened. Existing positive seed2/14 switch-after1/2
-observations are preserved and do not transfer to these new artifacts.
+The user subsequently assessed all17 files. Existing positive seed2/14
+switch-after1/2 observations remain separate and are not transferred.
 
-Next: record scoped listening for these exact WAVs; compare a bounded full
-retry; then establish codec-state restoration and an irreversible streaming
+## User listening follow-up: 2026-11-22
+
+The tracked [per-file observations](native-eos-recovery-listening-20261122.json)
+retain file numbers, method/seed, source/copy SHA-256 and exact grouped feedback.
+All17 copy/source identities were reverified; no generation or audio changes.
+The user marked files01-03/05-06/08/12-17 OK,04 a strange short sound,07 quiet
+with nothing audible, and09-11 short strange sounds:12 positive,5 failed.
+Among the15 intervention candidates this is11 positive and4 failed; the two
+controls must not be added to policy denominators.
+
+| Policy | User OK on known five cases | Failed original seeds | Receipt |
+| --- | --- | --- | --- |
+| Rollback1 | 5/5 | none | [scoped partial_pass](native-eos-recovery-rollback-1-listening-cmp50hx-20261122.json) |
+| Rollback2 | 4/5 | 14 (file11) | [failed subset retained](native-eos-recovery-rollback-2-listening-cmp50hx-20261122.json) |
+| EOS resample | 2/5 | 2/14/72 (files07/04/09) | [failed subset retained](native-eos-recovery-eos-resample-listening-cmp50hx-20261122.json) |
+
+Buffered-original14 control (file10) fails; healthy streaming64 control
+(file17) is OK. Files04/10 are byte-identical and have consistent failed
+observations. OK answers the requested-text/extraneous-sounds question and
+supports scoped subjective recognizability; detailed stress, voice identity,
+prosody, tail, sequential contamination and all artifact classes were not
+separately graded. No full release-quality pass is inferred. The mixed
+receipt records listening fail; the independent rollback1 receipt preserves
+its positive scope rather than losing it in the mixed result.
+
+This supports rollback1 as the leading **next research candidate**, not a
+production policy: all five known short outcomes now have user-positive
+continuations. It does not establish a general success rate, selector quality,
+unchanged audible prefix, cheap snapshots or faster first PCM. No new GPU
+run was needed to record this observation. Exact prior documentation HEAD CI
+completed successfully: Bridge `fa9ff6d9755e50a10f06bda3364823c8ce775ab8`
+7/7 (run44966933885), engine `4eece408a5af083caead6b88c1cf0621e8ec6174`
+2/2 (run44966932966). New listening-documentation HEAD checks are separate.
+
+Next: compare a bounded full retry; then establish codec-state restoration and an irreversible streaming
 commit buffer before a genuine shared-prefill dual fork. Selection must use
 only information available before commit. Never splice the current buffered
 PCM prefixes into an audible stream. Independent seeds/texts, legitimate
 short replies, held-out quality, risk detector/combinations, physical playback,
-real streaming latency and RTX4090 are **not_run**.
+real streaming latency and RTX4090 remain **not_run**.
 
 All research PRs remain Draft; no merge, pin, ABI, sampler-default, frozen
 package or release change. Production engine pin remains

@@ -162,9 +162,13 @@ refusal remains historical. After user cleanup, the
 passes14retained streaming controls,21byte-exact buffered replay pairs and
 21mechanically valid recovery groups. On the five known early terminals,
 rollback1 lengthens5/5, rollback2 lengthens4/5 and EOS resampling lengthens2/5;
-**new speech coverage/listening is unassessed**, not a recovery PASS.
+the user subsequently listened to all17 blinded WAVs. The
+[per-file observations](reports/native-eos-recovery-listening-20261122.json)
+record5/5 contextual OK for rollback1,4/5 for rollback2 and2/5 for EOS resample.
+Separate indexed receipts preserve rollback1 scoped `partial_pass` and the
+other candidates' failures; voice/stress and broader quality remain unassessed.
 The [indexed receipt](reports/native-eos-recovery-cmp50hx-20261122.json)
-records zero committed PCM and no streaming qualification. Buffered codec
+retains mixed listening fail, zero committed PCM and no streaming qualification. Buffered codec
 output changes even inside retained code prefixes; synchronous snapshot cost
 is166–515ms, so neither seamless streaming nor cheap recovery is established.
 Standalone retry, true fork, live selector, held-out quality and release gates

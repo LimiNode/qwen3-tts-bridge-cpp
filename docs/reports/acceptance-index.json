@@ -3,11 +3,35 @@
   "generated_at": "2026-11-22",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-eos-recovery-rollback-1-listening-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-recovery-rollback-1-listening-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-recovery-rollback-2-listening-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-recovery-rollback-2-listening-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-recovery-eos-resample-listening-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-recovery-eos-resample-listening-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-eos-recovery-cmp50hx-20261122",
       "receipt": "docs/reports/native-eos-recovery-cmp50hx-20261122.json",
       "model_family": "RU-stress",
       "backend": "native",
-      "human_listening": "not_run",
+      "human_listening": "fail",
       "release_status": "blocked"
     },
     {
