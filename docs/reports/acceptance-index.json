@@ -7,7 +7,7 @@
       "receipt": "docs/reports/native-eos-full-retry-cmp50hx-20261122.json",
       "model_family": "RU-stress",
       "backend": "native",
-      "human_listening": "not_run",
+      "human_listening": "partial_pass",
       "release_status": "blocked"
     },
     {
@@ -15,7 +15,7 @@
       "receipt": "docs/reports/native-codec-stream-restore-cmp50hx-20261122.json",
       "model_family": "RU-stress",
       "backend": "native",
-      "human_listening": "not_run",
+      "human_listening": "partial_pass",
       "release_status": "blocked"
     },
     {

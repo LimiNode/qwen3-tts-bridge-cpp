@@ -6,7 +6,8 @@ the [buffered rollback/listening study](native-eos-recovery-mechanics-20261122.m
 The two indexed canonical receipts own the current scoped results:
 [full retry](native-eos-full-retry-cmp50hx-20261122.json) and
 [private streaming codec](native-codec-stream-restore-cmp50hx-20261122.json).
-New artifacts are not yet listened to; previous buffered listening is preserved.
+The user has now listened to the seven exact shortlist WAVs; the scoped
+observations below are separate from previous buffered listening.
 
 ## Exact identity and scope
 
@@ -133,8 +134,41 @@ One folder: `.tmp/base-acceptance/eos-retry-codec-20261122/listening-retry-codec
 Seven numberedWAVs plus expected text inREADME.txt. File01 represents the ten
 byte-identical buffered full retries;02–06 are the five production-ramp restored
 rollback1 histories at boundary1;07 is healthy64. The method/source/hash key is
-outside the folder. All new exact-file assessments remain **not_run**.
+outside the folder. At generation these were unassessed; subsequent exact-file
+observations are recorded below. The raw handoff key and payload inventory
+retain their historical generation-time status and bytes, not current acceptance.
 All unselectedT1/boundary variants and originals remain retained, not hidden.
+
+### Exact-file user listening follow-up
+
+On2026-11-22 the user confirmed full requested text in all seven files, no
+laughter/cough and normal delivery. The tracked
+[per-file record](native-eos-retry-codec-listening-20261122.json) preserves the
+verbatim feedback and exact source/copy byte counts/SHA256, all reverified.
+This comprises one unique full-retry WAV01, five codec-restored candidate
+histories02-06, and healthy64 control07. The latter is not another early-EOS
+recovery; nor are ten byte-identical full retries ten independent listening
+observations. No verdict is transferred to unselected boundary/T1 outputs.
+
+File03 (original seed14, continuation64) has a slower/longer pause between
+the spoken USB abbreviation and port. The user classifies this as pronunciation
+variation, not missing text or a declared recovery defect. Its codec checkpoint
+is boundary1; do not confuse it with the source AR rollback boundary2.
+The user also finds MGU subjectively fast across much of the project's listening
+history, explicitly not a defect of this recovery work. Retain this as a possible
+future abbreviation/text-frontend adaptation note; no text, frontend, sampler or
+audio is changed here, and per-file MGU occurrence was not separately graded.
+
+Both receipts now record `human_listening=partial_pass`, aggregate
+`listening_result=not_assessed`: positive full-text/no-laughter/no-cough and
+normal-delivery scope, not reference-voice matching, instruction adherence,
+every artifact class, stress, tail, sequential isolation or release acceptance.
+Extra speech was not independently graded. R1 remains NO-GO.
+
+The pre-listening published HEADs completed exact-HEAD CI: Bridge
+`891f56a8f470b4293bd2ae4353efb4da0a25c811`7/7 (run44975034759), engine
+`514b71813ff037cf5ae5fefc9f996668b5fbf8df`2/2 (run44974676054).
+New listening-documentation HEAD checks must be assessed separately.
 
 This supports keeping full retry as the simple comparator and proceeding to a
 bounded streaming commit-buffer experiment. It does not yet implement it.

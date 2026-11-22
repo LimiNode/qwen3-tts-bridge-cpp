@@ -122,26 +122,26 @@
     "restart": "not_run"
   },
   "human_listening": {
-    "status": "not_run",
-    "observer": "none; new artifacts not listened to",
+    "status": "partial_pass",
+    "observer": "user",
     "recorded_at": "2026-11-22",
-    "scope": "Full retry representative01.wav is byte-identical across all10 triggered full retries; new buffered64 output has no exact-file listening verdict in this stage.",
+    "scope": "Exact representative01.wav: user confirms full requested text, no laughter/cough and normal delivery. It is byte-identical to all10 triggered full retries, but counts as one listened unique WAV, not ten independent observations. No verdict transferred to another mode or unselected artifact.",
     "criteria": {
-      "intelligibility": "not_assessed",
+      "intelligibility": "pass",
       "voice_or_instruction": "not_assessed",
-      "artifacts": "not_assessed",
+      "artifacts": "partial",
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "Natural EOS, greater duration, exact codes and PCM stability do not establish semantic coverage or voice quality."
+    "notes": "User assessed all seven shortlist files; this receipt covers only01.wav. Positive scope is full text, no laughter/cough and normal subjective delivery. Voice identity/instruction, stress, other artifact classes, final tail and sequential isolation were not separately graded. Fast MGU is a nonblocking abbreviation-adaptation observation, not a declared recovery defect. Per-file feedback is tracked separately."
   },
   "case_result": {
     "status": "not_assessed",
-    "reason": "14/14 controls and21/21 replay gates pass;28/28 comparison groups valid. Both policies trigger10 times and leave4 healthy controls unchanged. Full retry performs second prefill and exactly matches fresh buffered64; repeat bytes stable. Independent restart and semantic qualification remain open."
+    "reason": "14/14 controls and21/21 replay gates pass;28/28 comparison groups valid. Both policies trigger10 times and leave4 healthy controls unchanged. Full retry performs second prefill and exactly matches fresh buffered64; repeat bytes stable. User confirms full text in exact representative01.wav. Independent restart, broader quality and held-out qualification remain open."
   },
   "listening_result": {
-    "status": "not_run",
-    "reason": "New exact artifacts await user listening; no prior verdict transferred."
+    "status": "not_assessed",
+    "reason": "Scoped partial_pass: one unique full-retry WAV has full text, no laughter/cough and normal delivery. Other declared quality criteria remain unassessed; not aggregate listening acceptance."
   },
   "release_disposition": {
     "status": "blocked",
@@ -150,6 +150,7 @@
   "release_status": "blocked",
   "supersedes": null,
   "related_reports": [
+    "docs/reports/native-eos-retry-codec-listening-20261122.json",
     "docs/reports/native-eos-retry-codec-20261122.md",
     "docs/reports/native-eos-retry-codec-plan-20261122.md",
     "docs/reports/native-eos-recovery-mechanics-20261122.md"

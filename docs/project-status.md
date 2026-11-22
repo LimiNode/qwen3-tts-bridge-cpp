@@ -180,7 +180,15 @@ restoration/reconstruction preserves complete PCM/state, including changed
 continuation versus independent fresh decoding and the retained PCM prefix.
 All14 production-ramp originals match retained streaming bytes. The normal
 1then2frame ramp still requires a real chunk-boundary holdback; these tests
-are not an AR+codec live commit-buffer. Seven new WAVs await listening.
+are not an AR+codec live commit-buffer. The user subsequently listened to all
+seven exact WAVs: full text, no laughter/cough and normal delivery. The
+[per-file record](reports/native-eos-retry-codec-listening-20261122.json)
+separates one unique buffered full retry, five restored codec candidates and
+one healthy64 control. Both canonical receipts now retain scoped `partial_pass`,
+not aggregate acceptance. File03's longer USB/port pause is acceptable variation;
+fast MGU is a nonblocking future abbreviation-adaptation observation, with no
+text/frontend change. Voice identity, other artifact classes and broader quality
+remain unassessed.
 Current diagnostic host snapshots cost more than retry's second prefill;
 different output lengths and buffered spans preclude a streaming speedup claim.
 True fork, live selector, held-out quality and release gates remain unverified.
