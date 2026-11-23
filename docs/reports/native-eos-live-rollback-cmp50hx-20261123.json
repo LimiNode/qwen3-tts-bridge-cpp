@@ -1,0 +1,129 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-live-rollback-cmp50hx-20261123",
+  "recorded_at": "2026-11-23",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "50887f5c843addbd81b326bb67e714771ad9eb63",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "8ad3171e561c6340b7648a24ba308dd9b1e094bb",
+    "runner_checkout": "8ad3171e561c6340b7648a24ba308dd9b1e094bb",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "002c969b5822e7f15b9d273e112e06f2bdc5155964e378fc99579ff239315f80",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "linkage": "Opt-in static research probe, not public DLL, QTB worker or package execution. Bridge commit identifies pre-run documentation checkout only.",
+    "build": "MSVC14.44.35207, CUDA13.3 SM75, CUDA graphsON, forceMMQOFF, research FRAME_SEEDS/PREFILL/NVTX ON.",
+    "runtime_assets": "Original runtime-current DLLs reused in place; model/runtime/probe/input hashes and clean source unchanged before/after. Not a loaded-module audit.",
+    "scope": "Single-lane live AR+codec state restoration with owned PCM holdback and irreversible in-memory sink. Not physical playback or production Bridge integration.",
+    "sampling": "Original stochastic Talker/Predictor, min2; frontend/segmentation/prefix/EOS guard/scheduled reseeding OFF. Discovery seeds2/14/72/75/78, healthy42/64; one rollback1 at naturalEOS<=8frames with frozen continuation64,65 for healthy64 (not triggered). Not a calibrated detector."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen plan, original126UTF8 text and unchanged Kraftwerk speaker/226-frame reference/transcript; exact per-file hashes and group schedule in plan.json.",
+    "text_utf8_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+    "corpus_sha256": "8024cd8aab9b2ad4467e5d4a5f29a07cee92d2454e3738c47ff2116e7592b752"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-live-rollback-20261123",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/live-001/plan.json",
+      "bytes": 14574,
+      "sha256": "8024cd8aab9b2ad4467e5d4a5f29a07cee92d2454e3738c47ff2116e7592b752",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Verified repository-local payload on2026-11-23; not transferred or backed up by Git."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/live-001/results.json",
+      "bytes": 210619,
+      "sha256": "835d56fa7a0b1bfe3bded7f7a71f4e9ef384dd4bb8c65c5d34b2d590e6a9e217",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "All41 flushed outcomes and before/after identities verified locally on2026-11-23."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/summary.json",
+      "bytes": 3976,
+      "sha256": "2b2f3319cbe91fc040d1305fb6a29af7f82342d98a047e2a1e7e5761a08391de",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Verified local derived summary; full outcomes retained separately."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/artifact-inventory.json",
+      "bytes": 87450,
+      "sha256": "b71ae657a5863bbf6236d4687d27c62e78eb1fd7ae450083dae0670aadc684f6",
+      "kind": "manifest",
+      "availability": {"status": "local", "reason": "380-file inventory for originals/candidates/negatives/sink/step/raw/WAV/logs and listening copies; not transferred by Git."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-key.json",
+      "bytes": 3995,
+      "sha256": "878d0ff7e74da23cb6c3270c22c5533fd201627ff8eefb204995fd37b6ddb26a",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Seven source/copy WAV identities reverified; new-run listening not_run."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/README.txt",
+      "bytes": 379,
+      "sha256": "b4382d1b0095f3621da9076e3a81d1507681220d27ca06caa7a42b01b2714ac2",
+      "kind": "other",
+      "availability": {"status": "local", "reason": "Expected text and listening criteria in the one numbered folder."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/probe-binary/live-stream-recovery-probe.exe",
+      "bytes": 582144,
+      "sha256": "002c969b5822e7f15b9d273e112e06f2bdc5155964e378fc99579ff239315f80",
+      "kind": "other",
+      "availability": {"status": "local", "reason": "Pinned exact static probe copied before execution; hash unchanged after execution."}
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "not_run",
+    "observer": "not_run",
+    "recorded_at": "2026-11-23",
+    "scope": "Seven new-run exact WAV copies: five live rollback1 candidates, healthy64 and failed original14 control. Candidate PCM/WAV hashes equal earlier codec-only outputs with separately recorded positive user feedback; no acceptance verdict transferred to the new execution.",
+    "criteria": {
+      "intelligibility": "not_assessed",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "Duration, naturalEOS and exact replay establish mechanics, not held-out speech coverage. Earlier listening remains in its original receipt."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Scoped mechanical study passes14retained controls,14unchanged live replays,6negative guards and7rollback groups. Four interventions preserve1920alreadycommitted samples; fifth C0. Actual sink/fresh reconstruction match all positive PCM and all prior five candidate bytes. No production worker restart, held-out/general detector or complete release-matrix qualification."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "No new-run listening assessment; exact candidate identities are linked to earlier positive WAV evidence, not promoted across revisions or to new quality scope."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Research-only single-lane live mechanics. Bridge integration, low-overhead snapshots, held-out/tiny-reply detector, true fork, multi-lane, physical playback/timing, RTX4090 and release quality remain unqualified. R1 NO-GO; production pin/ABI/default/package unchanged."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-live-rollback-20261123.md",
+    "docs/reports/native-eos-live-rollback-plan-20261123.md",
+    "docs/reports/native-eos-retry-codec-20261122.md",
+    "docs/reports/native-codec-stream-restore-cmp50hx-20261122.json"
+  ],
+  "notes": "126.531s sequential stage within1800s; one original60s deadline per logical request. Max current holdback16frames; saved slices/diagnostic sink and two retained checkpoint payload136676608bytes separate. Replacement transiently owns a third checkpoint, so payload count is not peakVRAM. Median diagnostic capture245.673ms/restore39.954ms; not TTFA. Independent verifier rehashed assets, row artifacts, complete codes/finitePCM/sink/replay-step/commit evidence. Newer-admission guard temporarily isolates eligibility fields then restores actual CANCELLED metadata. No merge/tag/release; research PRs Draft."
+}

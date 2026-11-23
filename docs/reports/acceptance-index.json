@@ -1,7 +1,15 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-22",
+  "generated_at": "2026-11-23",
   "canonical_receipts": [
+    {
+      "acceptance_id": "native-eos-live-rollback-cmp50hx-20261123",
+      "receipt": "docs/reports/native-eos-live-rollback-cmp50hx-20261123.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
     {
       "acceptance_id": "native-eos-full-retry-cmp50hx-20261122",
       "receipt": "docs/reports/native-eos-full-retry-cmp50hx-20261122.json",

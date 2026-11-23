@@ -191,7 +191,21 @@ text/frontend change. Voice identity, other artifact classes and broader quality
 remain unassessed.
 Current diagnostic host snapshots cost more than retry's second prefill;
 different output lengths and buffered spans preclude a streaming speedup claim.
-True fork, live selector, held-out quality and release gates remain unverified.
+The subsequent [live rollback study](reports/native-eos-live-rollback-20261123.md)
+and [indexed receipt](reports/native-eos-live-rollback-cmp50hx-20261123.json)
+pass14retained controls,14unchanged live replays,6negative guards and7rollback1
+groups on CMP50HX. Coherent single-lane AR+codec checkpoints restore pending
+rows/ramp and an independently owned codec mirror; a bounded owned PCM holdback
+preserves the irreversible in-memory sink. Four known early-EOS recoveries
+retain1920committed samples, the fifth has zero commit; healthy42/64 are unchanged.
+All positive sink bytes equal full PCM and independent fresh streaming-codec
+reconstruction. All five candidate PCM/WAVs also match the preceding codec-only
+outputs byte-for-byte; earlier positive listening remains scoped to its original
+receipt, and new-run listening is not_run. This is actual live rollback mechanics
+in an opt-in static probe, not Bridge worker integration, physical playback,
+multi-lane, a detector or a latency improvement. Synchronous diagnostic capture
+remains expensive. True fork, live selector, held-out quality and release gates
+remain unverified.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
