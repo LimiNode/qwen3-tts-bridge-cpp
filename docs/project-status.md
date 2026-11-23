@@ -267,10 +267,20 @@ full-ICL has8/12 near-silent primary shorts (plus its repeated control),10/12
 end within3frames; RU-stress/speaker-only and both Base modes have no near-
 silent primary shorts here. These are numerical findings, not speech-success
 rates or a universal EOS remedy. ICL changes both AR and decoder conditioning.
-The original Kraftwerk reference plus16 new outputs are in one listening
-folder; all new listening/voice fidelity remain not_run. The initial storage
-block is preserved; execution followed user cleanup without changing the
-frozen corpus or deleting earlier evidence. No production fallback/promotion.
+Direct user listening to the16 selected outputs now records RU-stress fail:
+06 speaker-only English changes voice around mid-phrase,09 ICL Ладно. is
+empty,13 ICL All right. seems to contain only 'all' (tentative). Positive
+01/02/05/10/14 observations remain scoped. Base records partial_pass:
+all eight selected files contain the intended words;03/04/07/08/15/16 also
+have approximately reference-like maintained voice, with inter-track
+variation.11/12 explicitly confirm Ладно.; no separate precise voice verdict
+is invented. Other quality criteria/unselected cases remain unassessed;
+aggregate Base listening is not_assessed. Source/copy identities are unchanged
+and each listened WAV is identified in its model receipt. ICL removal is
+not a generally qualified RU-stress fallback given06's voice drift.
+The initial storage block is preserved; execution followed user cleanup
+without changing the frozen corpus or deleting earlier evidence. No further
+GPU run, production fallback or model/mode promotion follows this feedback.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 

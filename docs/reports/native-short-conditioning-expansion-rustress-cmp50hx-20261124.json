@@ -98,6 +98,86 @@
         "status": "local",
         "reason": "Shared60-group payload; this receipt scopes only ru-icl and ru-speaker. Exact source/copy WAVs are mapped by selection-manifest and full inventory. Ignored local evidence is not transferred or backed up by Git."
       }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/01-ru-voice-ru-icl-seed-2027.wav",
+      "bytes": 380204,
+      "sha256": "c6e159885ef2b32159ad100929c5e1de56fbfad00fa7d0f72634064f5a1637e6",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "User reports full intended text, maintained voice and approximate similarity to reference00, with inter-track variation."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/02-ru-voice-ru-speaker-seed-2027.wav",
+      "bytes": 330284,
+      "sha256": "39b9d16345d6cb3a45f02c6ab677bd5727a4c94dec564cfc26e1bf06df83d293",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "User reports full intended text, maintained voice and approximate similarity to reference00, with inter-track variation."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/05-en-voice-ru-icl-seed-2027.wav",
+      "bytes": 299564,
+      "sha256": "51e800dd36a039dd7decee6e8572c405febc728bc1da9bd69d2e71f8cbcec693",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "User reports full intended text, maintained voice and approximate similarity to reference00, with inter-track variation."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/06-en-voice-ru-speaker-seed-2027.wav",
+      "bytes": 314924,
+      "sha256": "6751fdbff6fc6f392f18ed0426d0f162df4b0148e48771ea0187ba80243d2be5",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "User reports a voice change around mid-phrase; word coverage not separately confirmed."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/09-ru-ok-ru-icl-seed-2027.wav",
+      "bytes": 7724,
+      "sha256": "1fff98b223b7b681409ebb918c26d3a9612a74179209750f7195bcfec4ffb850",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "User confirms empty/no intended word. This is the retained near-silent control."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/10-ru-ok-ru-speaker-seed-2027.wav",
+      "bytes": 69164,
+      "sha256": "99064fed25e6ef8fee3c374c642053c374b735efbef444509805530a14431672",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "User explicitly confirms Ладно.; a separate precise reference-voice assessment is not invented."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/13-en-all-right-ru-icl-seed-2029.wav",
+      "bytes": 23084,
+      "sha256": "2219583619a352725e525a746fbe7d90f0ba6f865daf330cf81b613aa8caa1f9",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "User tentatively hears only 'all' instead of All right.; uncertain transcription preserved."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/14-en-all-right-ru-speaker-seed-2029.wav",
+      "bytes": 53804,
+      "sha256": "494ceac6b0874bdc8d3cb9352e90a05d61c1d8a29ad2da66763e8f9370d0fd83",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "User reports full intended text, maintained voice and approximate similarity to reference00, with inter-track variation."
+      }
     }
   ],
   "mechanical": {
@@ -108,30 +188,30 @@
     "restart": "not_run"
   },
   "human_listening": {
-    "status": "not_run",
-    "observer": "not_run",
+    "status": "fail",
+    "observer": "user",
     "recorded_at": "2026-11-24",
-    "scope": "New exact RU-stress selection files 01/02,05/06,09/10,13/14 from listening-conditioning-voice;00 is the actual Kraftwerk reference, not new synthesized output. All24 primary short cases plus voice/repeat controls remain preserved. No old listening verdict transfers.",
+    "scope": "Direct user listening to exact RU-stress selections01/02,05/06,09/10,13/14 in listening-conditioning-voice. Selection manifest SHA256605fa3c6f6874c02aae94e042bcf5504cbeca2ed6021a2bd40d117dfba7ca69d; source/copy identities reverified unchanged.00 is the actual Kraftwerk reference. No Base/prior-corpus verdict transfers.",
     "criteria": {
-      "intelligibility": "not_assessed",
-      "voice_or_instruction": "not_assessed",
+      "intelligibility": "fail",
+      "voice_or_instruction": "fail",
       "artifacts": "not_assessed",
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "New files have not been listened to by user or agent. Assess full intended words, extra sounds and reference-voice similarity separately; English accent/intonation is not speaker identity. Near-silence/duration/natural EOS do not establish word coverage. Full-ICL is a comparator, not an assumed quality standard."
+    "notes": "User reports06-en-voice-ru-speaker-seed-2027 changes voice around mid-phrase; its complete text is not independently confirmed.09-ru-ok-ru-icl-seed-2027 is empty/no intended word.13-en-all-right-ru-icl-seed-2029 seems to say only 'all'; retain this tentative wording, not a definite transcript.10 explicitly says Ладно. Remaining01/02/05/14 are described as normal, full text, voice maintained and approximately similar to00 with some inter-track variation. Do not infer a separate precise voice verdict for10 from its word-only observation. Failure follows confirmed09/06, independently of13 uncertainty. Other artifact/tail/sequential criteria and unselected cases are unassessed. The agent did not listen. Frozen payload/initial not_run metadata remain historical."
   },
   "case_result": {
     "status": "not_assessed",
     "reason": "Scoped30-group buffered mechanics pass with two ru-ok2027 repeats, no actual retry/snapshot/commit or changed identities. Restart, production worker and full release matrix not exercised; mechanical success does not establish usable speech."
   },
   "listening_result": {
-    "status": "not_run",
-    "reason": "These exact new outputs have no direct listening assessment. Previous seed64 words and voice observations are not transferred."
+    "status": "fail",
+    "reason": "Exact RU-stress09 is empty, and06 speaker-only changes voice around mid-phrase.13 may contain only 'all', an explicitly tentative observation not needed to establish this failure. Positive01/02/05/10/14 observations are preserved without accepting the whole model/mode."
   },
   "release_disposition": {
     "status": "blocked",
-    "reason": "R1 NO-GO. New corpus listening, voice preservation, short-quality defects, conditioning/native/upstream root cause, detector/recovery, production orchestration, physical streaming/timing, RTX4090 and release gates remain open. No automatic ICL fallback or model/default/pin/ABI/QTB/package change."
+    "reason": "R1 NO-GO. Empty short output09 and intra-phrase speaker-only voice drift06 preclude promoting RU-stress or an automatic ICL-removal fallback.13 partial-word suspicion remains uncertain. Other texts/seeds, general detector/recovery, upstream/native cause, production orchestration, streaming/timing, RTX4090 and release gates remain open. Defaults/pins/ABI/QTB/models/package unchanged."
   },
   "release_status": "blocked",
   "supersedes": null,

@@ -5,7 +5,9 @@ Recorded2026-11-24. Research only; R1 **NO-GO**. Executes the unchanged
 Separate scoped receipts:
 [RU-stress](native-short-conditioning-expansion-rustress-cmp50hx-20261124.json)
 and [Base](native-short-conditioning-expansion-base-cmp50hx-20261124.json).
-New human listening is **not_run**; no earlier verdict transfers.
+Direct user listening is now recorded: **RU-stress fail**, **Base scoped
+partial_pass**. Base aggregate listening remains not_assessed; no earlier
+verdict or assessment of the16 selected outputs transfers to all48 short cases.
 
 ## Result and interpretation boundary
 
@@ -43,8 +45,11 @@ prove correct words, absence of laughter/cough or preserved voice identity.
 The two nonquiet2-frame results remain suspect, not accepted speech.
 
 The four cells' ru-voice/en-voice controls have99/78,86/82,92/86 and104/84
-frames respectively. They have normal numerical signal levels but have not
-been listened to. No voice-fidelity conclusion follows from them yet.
+frames respectively. Subsequent direct listening confirms full text and
+approximately reference-like stable voice in the generally assessed controls,
+but06 (RU-stress/speaker-only English) changes voice around mid-phrase.
+Its word coverage was not separately affirmed. Normal signal levels did not
+detect that voice defect; the detailed listening scope is recorded below.
 
 This strengthens the observed **checkpoint/conditioning-mode dependency**
 beyond the earlier Нет./Hi! seed64 examples. It is not a universal early-EOS
@@ -144,8 +149,41 @@ do not substitute for assessing all48 short cases.
 Assess **complete intended text**, **unwanted sounds** and **similarity to
 reference voice00** separately. English accent/intonation is a separate
 question from speaker identity, and full-ICL is not assumed to be flawless.
-New files remain not_run until direct user observation. Earlier positive
-Base/RU-stress words and earlier failed full-ICL words keep their own receipts.
+Earlier positive Base/RU-stress words and earlier failed full-ICL words keep
+their own receipts. The user subsequently listened to this exact selection;
+all17 source/copy WAV size/hash identities were independently reverified.
+No waveform, manifest, original result or frozen inventory was modified.
+
+## Direct user listening, 2026-11-24
+
+| Exact files | Mode | User observation and scope |
+| --- | --- | --- |
+|01/02/05/14|RU-stress, respective ICL modes|Normal, full text; voice maintained and approximately like00, with some inter-track variation.|
+|06-en-voice-ru-speaker-seed-2027.wav|RU-stress/speaker-only|Voice unexpectedly changes around the middle. Text completeness is not independently affirmed.|
+|09-ru-ok-ru-icl-seed-2027.wav|RU-stress/full-ICL|Empty; intended Ладно. is absent.|
+|10-ru-ok-ru-speaker-seed-2027.wav|RU-stress/speaker-only|Ладно. confirmed; no separately attributed precise voice-similarity verdict.|
+|13-en-all-right-ru-icl-seed-2029.wav|RU-stress/full-ICL|Seems to say only the first word, 'all'. Preserve uncertainty; not a definitive transcription or whole-text pass.|
+|03/04/07/08/15/16|Base, respective ICL modes|Normal, full text; voice maintained and approximately like00, with some inter-track variation.|
+|11/12|Base/full-ICL and speaker-only|Ладно. confirmed; do not invent a separate precise voice verdict from this word-specific statement.|
+
+RU-stress's canonical listening status is **fail**: confirmed empty09 and
+voice drift06 suffice regardless of the tentative13 observation. Its positive
+files remain positive; failures do not transfer to all speaker-only or ICL
+cases. Base's status is **partial_pass**, with intended words confirmed in
+all eight selected Base outputs and scoped approximate voice similarity in
+the generally assessed files. Other artifact/tail/sequential criteria and
+unselected cases remain unassessed; aggregate Base listening is not_assessed.
+Each exact listened WAV now has its own path, byte count and SHA-256 in the
+appropriate model receipt, in addition to the unchanged selection manifest.
+The agent did not listen, and no broader success rate is inferred.
+
+Speaker-only is therefore **not** a generally qualified RU-stress fallback:
+the selected short words are spoken, but06 demonstrates an intra-phrase
+voice-stability limitation. The positive selected Base results in both modes
+make Base a useful comparator, not an automatic model promotion. A minimal
+next causal check would repeat exact06 independently and within a persistent
+session before adding new seeds or changing conditioning; that repeat has
+not been run and no cache/state defect is established by this observation.
 
 No production defaults/pins/models/ABI/QTB/frozen package change, automatic
 ICL fallback, merge, tag or release. This buffered corpus is not a first-PCM
