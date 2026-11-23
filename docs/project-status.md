@@ -209,6 +209,18 @@ in an opt-in static probe, not Bridge worker integration, physical playback,
 multi-lane, a detector or a latency improvement. Synchronous diagnostic capture
 remains expensive. True fork, live selector, held-out quality and release gates
 remain unverified.
+The subsequent [new-corpus/checkpoint study](reports/native-eos-corpus-checkpoint-20261123.md)
+and [indexed receipt](reports/native-eos-corpus-checkpoint-cmp50hx-20261123.json)
+add 284 passing mechanical groups in 831.159 s on CMP 50HX: four 41-group A/B/B/A
+matrices and 120 new-corpus groups. Pitched KV copies preserve complete codes,
+PCM, sink/prefix and replay evidence; paired recovery capture cost falls 17.37%
+at unchanged snapshot bytes/memory. This is checkpoint cost, not prefill/TTFA.
+All 36 new text/seed controls repeat exactly and 12 unchanged replays pass.
+The naive natural-EOS<=8 policy intervenes in 23/27 short-input cells and 0/9
+longer-input cells; it establishes neither 23 rescues nor false-positive rates.
+All 50 newly selected original/candidate/control WAVs await listening; earlier
+positive and failed verdicts are not transferred. Production orchestration,
+detector quality, physical playback, RTX4090 and release gates remain open.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 

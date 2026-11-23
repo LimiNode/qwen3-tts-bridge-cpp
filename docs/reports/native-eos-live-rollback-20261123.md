@@ -119,8 +119,10 @@ AR/codec snapshots are separate allocations, not included in this buffer cap.
 Two retained checkpoints contain136676608bytes of copied payload; constructing
 a replacement transiently retains a third checkpoint. This is not peakVRAM,
 process memory or a cheap device-side ring-buffer measurement. Intervened-group
-median capture245.673ms, restore39.954ms; healthy snapshot capture529-560ms.
-These synchronous diagnostic costs establish no TTFA, audible-onset or speedup.
+median summed capture245.673ms, restore39.954ms; healthy groups sum529-560ms
+of captures. These are group totals across multiple snapshots, not the cost of
+one checkpoint. These synchronous diagnostic costs establish no TTFA,
+audible-onset or speedup.
 
 Local research CTest24/24, new runner tests20/20; ordinary researchOFF CPU/shared
 build, C ABI probe and6sampling/guard CTests pass. Engine exact-HEAD CI2/2 passed
