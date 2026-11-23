@@ -237,8 +237,20 @@ fails both exact short selections:01 has no audible intended word,02 has a
 strange sound rather than Hi!;03 long control remains unassessed. Full retry
 is not a remedy for these two inputs despite correct reset mechanics.
 Cross-decoder PCM differences are not reset failures. No latency gain or
-release acceptance is claimed. The next small model/conditioning study is
-separate; no further matrix has been run yet.
+release acceptance is claimed.
+The subsequent [checkpoint/conditioning comparison](reports/native-short-conditioning-20261123.md)
+adds15 independent buffered64 groups in62.437seconds, with separate
+[RU-stress](reports/native-short-conditioning-rustress-cmp50hx-20261123.json)
+and [Base](reports/native-short-conditioning-base-cmp50hx-20261123.json)
+receipts. All six new short repeat pairs preserve complete codes/PCM and
+all effective samplers match the retained defaults; no fallback triggers.
+RU-stress/speaker-only emits13/14frames for Нет./Hi!, Base/full-ICL11/8 and
+Base/speaker-only8/11; long same-mode controls86/103/84. These are not
+verified words. All9 new unique selections have substantial signal rather
+than the previous near-zero pattern, but listening remains not_run. ICL removal
+also removes decoder reference availability, so this is mode dependency,
+not a transformer-layer root cause or universal EOS remedy. Models/defaults
+remain unchanged; all failures and repeats are retained.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 

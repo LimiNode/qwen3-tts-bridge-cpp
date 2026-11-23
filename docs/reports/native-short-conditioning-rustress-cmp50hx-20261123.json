@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-short-conditioning-rustress-cmp50hx-20261123",
+  "recorded_at": "2026-11-23",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "1c7952df64af7cb827fc3d6e000eaba084d155fb",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "4e47ed266f08cab9e13e277aa460a33bb607e769",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "8bd699d6f12d31198e004ed82ef67a4d6aa515c6a361a52353e203d682abef5f",
+    "runner_sha256": "ea058ecc49db9e37a33a4c597f498355c275d044ece04202ed48b5b2e5253710",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "speaker_sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698",
+    "reference_codes_sha256": "069ac5c280be070c2e5bf006cb9b58a2d248f34e1bdd37aab62310f2ffdd9443",
+    "reference_text_sha256": "e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4",
+    "build": "Existing MSVC14.44.35207 CUDA13.3 SM75 static opt-in probe; no rebuild. CUDA graphs ON, forceMMQ OFF.",
+    "scope": "Only ru-speaker cell:5 independent buffered requests, seed64. Two repeats each of Нет./Hi!, original MGU long control once. Full ICL omitted, same speaker vector. No snapshot/restore, no actual retry/commit. Shared15-group batch62.437seconds including identity preflight/postflight; this is not GPU utilization or latency.",
+    "sampling": "Every effective sampler equals retained stochastic default: temperature0.9, top_k50, top_p1, original repetition settings, min2. Frontend/segmentation/prefix/guard/scheduled reseeding OFF. No text change or seed search.",
+    "provenance": "Models/runtime reused in place, all3 model/codec assets plus conditioning/probe/source/inputs unchanged before/after. Not a loaded-module audit. Each of3 cells has its own sequential process, persistent across5 requests.",
+    "production_baseline": "130cb99af9ae12d554962fd0920e08fb4268af01, ABI6; production QTB/defaults/pins/models/frozen package unchanged. R1 NO-GO."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen hashed plan and ru-speaker-manifest.json record exact Нет./russian, Hi!/english and original126-byte MGU phrase/russian, seed64, two short repeats and original speaker. Speaker-only omits reference text/codes from model and decoder; not a pure AR-layer ablation.",
+    "corpus_sha256": "f90f1e2f5b1f1338fb726e0cdbe294a2fd8822ddfb4f147c9542e76cce218ab1"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX", "compute_capability": "7.5", "driver": "581.94", "cuda": "13.3",
+    "gpu_uuid_status": "recorded", "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/short-conditioning-cmp50hx-20261123",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-cmp50hx-20261123/plan.json",
+      "bytes": 8733, "sha256": "f90f1e2f5b1f1338fb726e0cdbe294a2fd8822ddfb4f147c9542e76cce218ab1", "kind": "json",
+      "availability": {"status": "local", "reason": "Shared frozen batch plan; this receipt scopes only ru-speaker. Ignored evidence is not backed up/transferred by Git."}
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-cmp50hx-20261123/results.json",
+      "bytes": 236548, "sha256": "be2c01b88def6e76522f1f6c9a704c96cdd58b7528024f210b7b2055bcf8ee7f", "kind": "json",
+      "availability": {"status": "local", "reason": "Shared15-group result includes this5-group cell, all outcomes/identities and unassessed semantics. No verdict transfers from Base or prior RU-stress ICL."}
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-cmp50hx-20261123/audio-audit.json",
+      "bytes": 22848, "sha256": "e114d43e0a1f1c3729bacd61439852c6a3adfdf1dce9c765a54779c2d03737ed", "kind": "json",
+      "availability": {"status": "local", "reason": "Actual repeated code/PCM byte comparisons, effective samplers and1547520 exact conversion samples across30 pairs. Not listening."}
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-cmp50hx-20261123/artifact-inventory.json",
+      "bytes": 32132, "sha256": "8a6a142bd3b6f3fa65d838ff2f8bec845fe7d1c03b8adb6d54e8d1c3b260cc0e", "kind": "manifest",
+      "availability": {"status": "local", "reason": "All136 other payload files, including raw attempts/full codes/WAVs/repeats, three manifests, probe and local helper sources."}
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-cmp50hx-20261123/listening-conditioning/selection-manifest.json",
+      "bytes": 7643, "sha256": "fd3327e772883b01c07e26490f6ae159071d4eaceeff6d830fade72b67fdb56e", "kind": "json",
+      "availability": {"status": "local", "reason": "This receipt covers only exact source/copy WAVs01/04/07: RU-stress speaker-only Нет., Hi! and long control. Other numbers belong to Base receipt."}
+    }
+  ],
+  "mechanical": {"model_load": "pass", "pcm": "pass", "natural_eos": "pass", "persistent_repeat": "pass", "restart": "not_run"},
+  "human_listening": {
+    "status": "not_run", "observer": "not_run", "recorded_at": "2026-11-23",
+    "scope": "Only new selected01/04/07 in hashed selection-manifest: RU-stress/speaker-only, expected Нет./Hi!/original MGU phrase.13/14 short frames,86 long. Prior RU-stress/full-ICL failed user listening remains separate, not copied here.",
+    "criteria": {"intelligibility": "not_assessed", "voice_or_instruction": "not_assessed", "artifacts": "not_assessed", "final_tail": "not_assessed", "sequential_contamination": "not_assessed"},
+    "notes": "New audio is not near-silent by saved levels; more signal/frames is not verified words. No agent auditory assessment. Untrimmed and unnormalized PCM16 mono24kHz; all attempts preserved, each short repeat byte-identical."
+  },
+  "case_result": {"status": "not_assessed", "reason": "Scoped5-group mechanics pass with repeated codes/PCM, no threshold1 fallback or changed identities. Production-worker restart and full release case not exercised."},
+  "listening_result": {"status": "not_run", "reason": "Exact new RU-stress speaker-only short words and long control need listening; no rescue inferred from duration."},
+  "release_disposition": {"status": "blocked", "reason": "Research conditioning dependency only, no semantic quality or root-cause proof. General recovery/detector, production orchestration, physical timing, multi-lane, RTX4090 and release gates remain open. R1 NO-GO."},
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": ["docs/reports/native-short-conditioning-plan-20261123.md", "docs/reports/native-short-conditioning-20261123.md", "docs/reports/native-eos-short-reset-20261123.md"]
+}

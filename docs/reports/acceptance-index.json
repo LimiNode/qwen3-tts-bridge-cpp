@@ -3,6 +3,22 @@
   "generated_at": "2026-11-23",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-short-conditioning-rustress-cmp50hx-20261123",
+      "receipt": "docs/reports/native-short-conditioning-rustress-cmp50hx-20261123.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-conditioning-base-cmp50hx-20261123",
+      "receipt": "docs/reports/native-short-conditioning-base-cmp50hx-20261123.json",
+      "model_family": "Base",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-eos-short-reset-cmp50hx-20261123",
       "receipt": "docs/reports/native-eos-short-reset-cmp50hx-20261123.json",
       "model_family": "RU-stress",
