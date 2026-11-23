@@ -244,30 +244,30 @@
     "restart": "not_run"
   },
   "human_listening": {
-    "status": "not_run",
-    "observer": "not_run",
+    "status": "fail",
+    "observer": "user",
     "recorded_at": "2026-11-23",
-    "scope": "50 new numbered WAVs: all23 intervened original/candidate pairs and4 untouched label controls. No prior verdict transfers to these artifacts.",
+    "scope": "Aggregate negative user feedback about the original/candidate pairs01-46 in the exact50-file selection identified by selection-manifest SHA25635124e1784329ef5cff8a5f259374cf61d95ff752246852f8f5990f8c1d704ac. User says usually nothing is audible in either member. Specific listened file numbers and exceptions were not enumerated; do not assign46 individual failures or a rescue rate. Untouched controls47-50 remain unassessed.",
     "criteria": {
-      "intelligibility": "not_assessed",
+      "intelligibility": "fail",
       "voice_or_instruction": "not_assessed",
       "artifacts": "not_assessed",
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "Expected text and exact source/copy identities are in README and selection-manifest. All short/unchanged/failed evidence remains retained. Duration, natural EOS and finite PCM establish no semantic success."
+    "notes": "User feedback2026-11-23: 'ты их сам проверял? там обычно ничего не слышно в обоих случаях.' The agent had checked mechanics, not listened; no agent auditory verdict is claimed. Direct PCM16 analysis confirms30/46 files have absolute peak<=1 integer unit (12 complete pairs have this in both members);37/46 have RMS<-60dBFS. All50 WAV hashes still match the frozen source/copy selection. These signal observations corroborate the reported near-silence but do not classify every other file as intelligible or establish23 rescues. Exact per-file source/copy WAV SHA256 identities remain in the frozen referenced selection-manifest; the frozen payload and initial not_run metadata are unchanged historical evidence."
   },
   "case_result": {
     "status": "not_assessed",
-    "reason": "284/284 scoped mechanical groups pass: four41-group matrices plus72 new baselines,12 unchanged replays and36 conditional rollback groups. No production-worker restart or semantic qualification.23 interventions are all on short inputs; they are not23 rescues."
+    "reason": "284/284 scoped mechanical groups pass: four41-group matrices plus72 new baselines,12 unchanged replays and36 conditional rollback groups. User now reports usually inaudible originals and candidates in pairs01-46; semantic success is not established. No production-worker restart or complete per-file quality assessment.23 interventions are not23 rescues."
   },
   "listening_result": {
-    "status": "not_run",
-    "reason": "No observer has assessed these exact new50 WAVs. Previously accepted healthy01/candidates03-07 remain scoped to the preceding live-run receipt; failed control02 remains failed."
+    "status": "fail",
+    "reason": "User reports that usually nothing is audible in either original or candidate among pairs01-46. This is an aggregate failed-intelligibility observation, not46 enumerated failures; controls47-50 and other quality criteria remain unassessed. Previous live-run listening remains scoped to its original receipt."
   },
   "release_disposition": {
     "status": "blocked",
-    "reason": "Research-only mechanics and checkpoint transfer cost. Live detector/short-answer quality, production Bridge orchestration, true fork, multi-lane, physical playback/streaming timing, RTX4090 and release matrix remain unqualified. R1 NO-GO."
+    "reason": "Failed scoped short-answer listening: user reports usually inaudible originals/candidates. Research checkpoint mechanics/cost do not establish speech recovery. Live detector, production Bridge orchestration, true fork, multi-lane, physical playback/streaming timing, RTX4090 and release matrix remain unqualified. R1 NO-GO."
   },
   "release_status": "blocked",
   "supersedes": null,

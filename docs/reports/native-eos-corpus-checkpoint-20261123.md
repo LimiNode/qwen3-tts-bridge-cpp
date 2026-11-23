@@ -11,7 +11,10 @@ batch, within the shared 1800-second bound. Strided KV transfers preserve the
 observed complete codes and PCM while reducing checkpoint cost. The new corpus
 extends live restoration mechanics, not semantic recovery acceptance: all 23
 interventions occurred on short inputs, none on the nine longer-text cases.
-New listening is **not_run**, and there is no new long-text rescue demonstration.
+Subsequent user listening is **fail** at the reported selection scope: usually
+nothing is audible in either original or candidate among pairs01-46. Specific
+file verdicts were not enumerated; controls47-50 remain unassessed. There is no
+new long-text rescue demonstration.
 
 The preceding user feedback remains scoped to its original artifacts: healthy
 control01 and live rollback candidates03-07 were subjectively OK; failed
@@ -147,10 +150,30 @@ One listening folder:
 Files 01-46 are all 23 consecutive original/candidate pairs; 47-50 are untouched
 `ru-short`, `ru-new`, `ru-two`, `en-new` controls at seed1009. README supplies
 expected text, selection-manifest supplies exact source/copy identities. WAVs
-are untrimmed, unnormalized PCM16 mono 24 kHz copies. New listening remains
-not_run; original short outputs are retained rather than silently rejected as
-failed speech. Assess requested words and extra sounds separately. The full
-corpus is not replaced by this listening selection.
+are untrimmed, unnormalized PCM16 mono 24 kHz copies. Initial listening was
+not_run. On2026-11-23 the user reports that usually nothing is audible in either
+member of pairs01-46. This is a failed aggregate intelligibility observation,
+not46 identified individual failures; controls47-50 and other criteria remain
+unassessed. Original short outputs remain retained. The full corpus is not
+replaced by this listening selection.
+
+Direct analysis of the exact PCM16 WAVs confirms30/46 have absolute peak<=1
+integer unit (peak<=-90.31dBFS): effectively silence, not meaningful recovered
+speech. Twelve complete original/candidate pairs meet this in both members:
+05-06,07-08,13-14,19-20,23-24,29-30,31-32,33-34,35-36,37-38,39-40,41-42.
+Their RMS is approximately -108.3 to -106.1dBFS. Overall37/46 files have
+RMS<-60dBFS; this descriptive threshold is not a qualified detector. All50
+WAV hashes still match the frozen manifest. All712320 samples across the50 WAVs
+exactly match the documented f32-to-PCM16 rounding/clamping, with no clipping
+or copy differences. The native f32 for those30 files is already at about
+-98.75dBFS RMS: no meaningful larger signal was lost in WAV conversion.
+Other files having more signal does not establish correct words or recovery.
+These conspicuous near-silent
+outputs should have been highlighted explicitly before the listening handoff;
+mechanical validity alone was an insufficient summary of their utility.
+The agent did not listen and claims no independent auditory assessment. Frozen
+payload metadata is preserved as pre-feedback history; the canonical receipt
+and index own the current failed listening status.
 
 Local research CTest 26/26, corpus runner 22/22 and live runner 20/20 pass.
 The 18-case CPU stride fixture covers F32/F16, multiple heads, nonzero view
@@ -167,5 +190,6 @@ listening and release layers separately. Engine#50/Bridge#332 remain Draft;
 no merge, tag or release. Still unqualified: short-answer quality and live
 detector, general recovery efficacy, cheaper-memory/device-side snapshots,
 genuine one-prefill dual fork, production Bridge orchestration, multi-lane,
-physical playback/timing, RTX4090 and release quality. Stop GPU work here;
-listening to the new exact artifacts is the next quality decision.
+physical playback/timing, RTX4090 and release quality. GPU work has stopped.
+The failed scoped listening must guide further short-answer recovery research;
+unassessed files and controls must not inherit any positive verdict.

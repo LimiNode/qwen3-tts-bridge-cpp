@@ -218,8 +218,13 @@ at unchanged snapshot bytes/memory. This is checkpoint cost, not prefill/TTFA.
 All 36 new text/seed controls repeat exactly and 12 unchanged replays pass.
 The naive natural-EOS<=8 policy intervenes in 23/27 short-input cells and 0/9
 longer-input cells; it establishes neither 23 rescues nor false-positive rates.
-All 50 newly selected original/candidate/control WAVs await listening; earlier
-positive and failed verdicts are not transferred. Production orchestration,
+The user subsequently reports usually inaudible audio in both members of
+pairs01-46. The indexed receipt now records failed scoped intelligibility,
+without assigning46 per-file failures; controls47-50 remain unassessed.
+Direct PCM16 analysis confirms30/46 files have absolute peak<=1 integer unit,
+including12 complete original/candidate pairs. This is not successful speech
+recovery despite passing mechanics. Earlier positive and failed verdicts
+remain scoped to their original artifacts. Production orchestration,
 detector quality, physical playback, RTX4090 and release gates remain open.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
