@@ -1,0 +1,143 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-short-conditioning-expansion-base-cmp50hx-20261124",
+  "recorded_at": "2026-11-24",
+  "model_family": "Base",
+  "backend": "native",
+  "bridge_commit": "cc3ffc7e9872fc39bb70eab98f64b717a7eaa0ad",
+  "model_revision": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+  "runtime_revision": {
+    "qwentts_cpp_build": "4e47ed266f08cab9e13e277aa460a33bb607e769",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "8bd699d6f12d31198e004ed82ef67a4d6aa515c6a361a52353e203d682abef5f",
+    "runner_sha256": "9b2689a648ecd39f3da7552ff4e3271742d812a407164d933fdc837c93e9e03d",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "speaker_sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698",
+    "reference_codes_sha256": "069ac5c280be070c2e5bf006cb9b58a2d248f34e1bdd37aab62310f2ffdd9443",
+    "reference_text_sha256": "e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4",
+    "build": "Existing MSVC14.44.35207 CUDA13.3 SM75 static opt-in probe; no rebuild. CUDA graphs ON, forceMMQ OFF.",
+    "scope": "Only base-icl and base-speaker:30 independent buffered requests,24 primary short cases (six new texts at seeds2027/2029),four voice texts and two ru-ok2027 repeats. Full226-frame ICL versus speaker-only, same Kraftwerk speaker. Shared60-group run108.875seconds including identity preflight/postflight, under1800-second bound; not TTFA or GPU utilization.",
+    "sampling": "Every effective sampler equals retained stochastic default: temperature0.9, top_k50, top_p1, original repetition settings, min2. Frontend/segmentation/prefix/guard/scheduled reseeding OFF. No text change or seed search.",
+    "provenance": "All selected model/probe/runtime/conditioning/source/input/manifest/runner/reference identities unchanged before/after. Reused in place, no rebuild or model/DLL copy. One process persistent across15 requests per cell; cells sequential. Native logs identify selected checkpoint/codec and CMP50HX; no loaded-module audit.",
+    "production_baseline": "130cb99af9ae12d554962fd0920e08fb4268af01, ABI6; production QTB/defaults/pins/models/frozen package unchanged. R1 NO-GO.",
+    "numerical_result": "Base/full-ICL:0/12 primary short cases meet near-silence diagnostic,7-15frames; speaker-only0/12,9-15frames. Long controls92/86frames versus104/84. These are signal/frame observations, not semantic pass rates.",
+    "actual_reference_sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+    "audit": "Independent native attempt metadata/group/lane/seed count60, original/final and ru-ok2027 repeat actual bytes,120 raw/WAV pairs and4792320 exact conversion samples;427 payload files inventoried,136 prior payload identities unchanged. The saved runner's malformed-JSON metadata failure path is not fully hardened; actual native rows are independently checked and valid. No diagnostic timing/semantic inference."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen plan and both Base manifests identify all exact UTF-8 texts, seeds, ordering, conditioning and model paths. Speaker-only changes both AR reference conditioning and decoder-reference availability. Reserved recovery held-out corpus and previous discovery texts are excluded.",
+    "corpus_sha256": "0019830cb7f1725031cb49a3ac4ac2f9c73ec946da636686b6cca31b04dcb3e3"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/audio-audit.json",
+      "bytes": 114510,
+      "sha256": "a62470c652e60ef11ec86d2f4983d4c58bb6ef9022c95985a9410f5cd235be51",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Shared60-group payload; this receipt scopes only base-icl and base-speaker. Exact source/copy WAVs are mapped by selection-manifest and full inventory. Ignored local evidence is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/listening-conditioning-voice/selection-manifest.json",
+      "bytes": 15971,
+      "sha256": "605fa3c6f6874c02aae94e042bcf5504cbeca2ed6021a2bd40d117dfba7ca69d",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Shared60-group payload; this receipt scopes only base-icl and base-speaker. Exact source/copy WAVs are mapped by selection-manifest and full inventory. Ignored local evidence is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/matrix-summary.json",
+      "bytes": 71382,
+      "sha256": "bd64ee1ce28d867e41c35cd01ebe18c2205c7bedeb262de782caae8c4e512e63",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Shared60-group payload; this receipt scopes only base-icl and base-speaker. Exact source/copy WAVs are mapped by selection-manifest and full inventory. Ignored local evidence is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/plan.json",
+      "bytes": 15486,
+      "sha256": "0019830cb7f1725031cb49a3ac4ac2f9c73ec946da636686b6cca31b04dcb3e3",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Shared60-group payload; this receipt scopes only base-icl and base-speaker. Exact source/copy WAVs are mapped by selection-manifest and full inventory. Ignored local evidence is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/results.json",
+      "bytes": 853699,
+      "sha256": "7d24c3dc2a757f0aa034e6d8513f21850eddf4d8b94a393d766294a7bd24f8a9",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Shared60-group payload; this receipt scopes only base-icl and base-speaker. Exact source/copy WAVs are mapped by selection-manifest and full inventory. Ignored local evidence is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/short-conditioning-expansion-cmp50hx-20261124/run-001/artifact-inventory.json",
+      "bytes": 108859,
+      "sha256": "0db486ef3042908a2d3286e0a6d2fe08a4db5f08f79b70c5ca3d8425820dc118",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Shared60-group payload; this receipt scopes only base-icl and base-speaker. Exact source/copy WAVs are mapped by selection-manifest and full inventory. Ignored local evidence is not transferred or backed up by Git."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "not_run",
+    "observer": "not_run",
+    "recorded_at": "2026-11-24",
+    "scope": "New exact Base selection files 03/04,07/08,11/12,15/16 from listening-conditioning-voice;00 is the actual Kraftwerk reference, not new synthesized output. All24 primary short cases plus voice/repeat controls remain preserved. No old listening verdict transfers.",
+    "criteria": {
+      "intelligibility": "not_assessed",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "New files have not been listened to by user or agent. Assess full intended words, extra sounds and reference-voice similarity separately; English accent/intonation is not speaker identity. Near-silence/duration/natural EOS do not establish word coverage. Full-ICL is a comparator, not an assumed quality standard."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Scoped30-group buffered mechanics pass with two ru-ok2027 repeats, no actual retry/snapshot/commit or changed identities. Restart, production worker and full release matrix not exercised; mechanical success does not establish usable speech."
+  },
+  "listening_result": {
+    "status": "not_run",
+    "reason": "These exact new outputs have no direct listening assessment. Previous seed64 words and voice observations are not transferred."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "R1 NO-GO. New corpus listening, voice preservation, short-quality defects, conditioning/native/upstream root cause, detector/recovery, production orchestration, physical streaming/timing, RTX4090 and release gates remain open. No automatic ICL fallback or model/default/pin/ABI/QTB/package change."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-short-conditioning-expansion-plan-20261124.md",
+    "docs/reports/native-short-conditioning-expansion-20261124.md",
+    "docs/reports/native-short-conditioning-20261123.md"
+  ]
+}

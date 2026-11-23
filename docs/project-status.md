@@ -254,14 +254,23 @@ is a nonblocking pronunciation note with no file attribution. Prior failed
 RU-stress/full-ICL short files remain failed. ICL removal also removes decoder
 reference availability, so this is scoped mode dependency, not a transformer
 root cause or universal EOS remedy. Models/defaults remain unchanged;
-all failures and repeats are retained. No new GPU run followed this feedback.
+all failures and repeats are retained.
 The [prospective expansion plan](reports/native-short-conditioning-expansion-plan-20261124.md)
-prespecifies60 independent intended requests on four checkpoint/conditioning
-cells, six new short texts, seeds2027/2029 and same-text voice comparisons
-against the retained actual Kraftwerk reference. As of2026-11-24 preparation,
-execution/listening remain not_run: E: has approximately270MiB free, below
-the512MiB safety reserve even before output storage. No payload, model or
-old evidence was deleted and no smaller post-hoc corpus substituted.
+now has a [completed CMP50HX execution](reports/native-short-conditioning-expansion-20261124.md),
+with separate [RU-stress](reports/native-short-conditioning-expansion-rustress-cmp50hx-20261124.json)
+and [Base](reports/native-short-conditioning-expansion-base-cmp50hx-20261124.json)
+receipts. Exactly60 independent requests/attempts complete in108.875seconds:
+48 primary short cases at new seeds2027/2029,8 longer voice comparisons and
+4 ru-ok2027 repeats. All mechanics/repeat bytes/identities pass with no actual
+retry; all120 raw/WAV pairs and4792320 conversion samples match. RU-stress/
+full-ICL has8/12 near-silent primary shorts (plus its repeated control),10/12
+end within3frames; RU-stress/speaker-only and both Base modes have no near-
+silent primary shorts here. These are numerical findings, not speech-success
+rates or a universal EOS remedy. ICL changes both AR and decoder conditioning.
+The original Kraftwerk reference plus16 new outputs are in one listening
+folder; all new listening/voice fidelity remain not_run. The initial storage
+block is preserved; execution followed user cleanup without changing the
+frozen corpus or deleting earlier evidence. No production fallback/promotion.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
