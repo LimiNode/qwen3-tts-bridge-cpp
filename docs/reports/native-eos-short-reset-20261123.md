@@ -104,8 +104,9 @@ This stage is complete and both short files fail. Do not extend seed search
 or describe64 as a rescue: the next small
 discriminating study is RU-stress/Base crossed with full Kraftwerk ICL versus
 speaker-only, reusing these RU-stress/full-ICL controls and retaining languages,
-texts, seeds and decoding mode. That study is **not_run**, not silently added
-to these10 groups. No production worker orchestration, live latency, physical
+texts, seeds and decoding mode. Initially not_run, that study subsequently
+completed as a [separate15-group run](native-short-conditioning-20261123.md);
+it is not silently added to these10 groups. No production worker orchestration, live latency, physical
 playback, multi-lane, restart or release qualification is claimed.
 
 No source/ABI/QTB/default/pin/package change, merge, tag or release.
