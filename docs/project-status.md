@@ -281,6 +281,25 @@ not a generally qualified RU-stress fallback given06's voice drift.
 The initial storage block is preserved; execution followed user cleanup
 without changing the frozen corpus or deleting earlier evidence. No further
 GPU run, production fallback or model/mode promotion follows this feedback.
+The subsequently authorized [exact state checks](reports/native-icl-state-repro-20261124.md)
+complete five fresh requests in61.0seconds including identity checks, with
+separate [RU-stress](reports/native-icl-state-repro-rustress-cmp50hx-20261124.json)
+and [Base](reports/native-icl-state-repro-base-cmp50hx-20261124.json) receipts.
+Every complete16-code history, matched buffered PCM, sampled decision and
+EOS matches the retained persistent output: RU-stress/full-ICL Ладно./2027
+and All right./2029 remain2/6frames, Base/full-ICL11/10frames, and RU-stress
+speaker-only English voice82frames. The conditional full queues are not_needed,
+not executed. Preceding requests are not necessary for these exact failures;
+no broader absence of state defects or successful remedy is established.
+All10 raw/WAV conversions are exact; no new listening verdict is inferred.
+Preparation audit finds unchanged correctly transferred226-frame reference,
+2048-value speaker vector and nonempty registry transcript; no confirmed
+preparation defect. Static tokenizer/prompt/mask agreement is not forward or
+extraction parity. Full-ICL remains the target. An important remaining
+confounder is text geometry: native ICL is aligned/streaming-text, whereas
+speaker-only is full-text. Upstream also provides a full-text ICL branch;
+testing that branch while retaining full reference/decoder conditioning is
+the next bounded candidate, not an implemented fix or default change.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
