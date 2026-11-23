@@ -232,11 +232,13 @@ logical groups/14 AR attempts in41.172seconds on CMP50HX. Full retry1009-to64
 matches independently admitted64 in complete codes and matched buffered PCM,
 twice for each of Нет./Hi!; no retry-reset defect is reproduced. Both long64
 streaming controls match retained84frames/PCM. Original1009 is nearly silent;
-fresh/retry64 has more signal but only2/3frames and remains unassessed on
-words. Cross-decoder PCM differences are not reset failures. Only three unique
-WAVs are selected for new listening, currently not_run; this is not a general
-short-answer remedy, latency gain or release acceptance. No further matrix
-has been run.
+fresh/retry64 has more signal but only2/3frames. Direct user listening now
+fails both exact short selections:01 has no audible intended word,02 has a
+strange sound rather than Hi!;03 long control remains unassessed. Full retry
+is not a remedy for these two inputs despite correct reset mechanics.
+Cross-decoder PCM differences are not reset failures. No latency gain or
+release acceptance is claimed. The next small model/conditioning study is
+separate; no further matrix has been run yet.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 

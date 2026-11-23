@@ -102,30 +102,30 @@
     "restart": "not_run"
   },
   "human_listening": {
-    "status": "not_run",
-    "observer": "not_run",
+    "status": "fail",
+    "observer": "user",
     "recorded_at": "2026-11-23",
-    "scope": "Three new exact selected WAVs; two short buffered64 controls each represent two independent originals and two identical full retry results. Long control retained for comparison. Prior failed corpus/older fresh64 listening is not transferred across decoder modes.",
+    "scope": "User assessed selected01 and02, identified by the exact WAV hashes in artifacts and selection-manifest.01: no audible intended word;02: short strange sound rather than Hi!. Both fail intelligibility. Each short file represents two independent64 originals and two full-retry64 outputs with verified identical bytes. Long control03 is not assessed by this feedback. Prior corpus/older listening remains separate.",
     "criteria": {
-      "intelligibility": "not_assessed",
+      "intelligibility": "fail",
       "voice_or_instruction": "not_assessed",
       "artifacts": "not_assessed",
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "All four original1009 attempts are nearly silent (PCM16peak<=1 LSB, nativef32 RMS about-98.61dBFS) and preserved. Short final64 outcomes have more signal but only2/3frames; that is not verified speech. Agent made no auditory assessment. Root conversion audit passes all18 saved raw/WAV pairs; duplicate artifact count is not attempt count."
+    "notes": "User feedback2026-11-23: 'В 01 и 02 слышны лишь короткий странный звук, в 01 даже звук не слышен точнее, а в 02 странный звук.' Record01 as no audible intended word and02 as a strange sound, not correct speech. Other quality criteria and03 remain unassessed. Full retry mechanically matches fresh64 but does not recover these two words. All four original1009 attempts are nearly silent (PCM16peak<=1 LSB, nativef32 RMS about-98.61dBFS) and preserved. Agent made no auditory assessment. Root conversion audit passes all18 saved raw/WAV pairs; initial frozen not_run metadata remains historical evidence."
   },
   "case_result": {
     "status": "not_assessed",
     "reason": "Scoped reset comparisons pass: all10 groups/14 attempts, no fresh64 fallback, four retry64 complete-code and same-decoder PCM equalities, both repeat orders and retained long84frame controls. Reset defect not reproduced. Full acceptance case and production-worker restart are not exercised; this is not semantic recovery acceptance."
   },
   "listening_result": {
-    "status": "not_run",
-    "reason": "New short buffered64 files need exact-word listening. Signal and naturalEOS do not establish full retry efficacy or valid short answers."
+    "status": "fail",
+    "reason": "User hears no intended word in01 and only a short strange sound in02. Both independent64 and identical full-retry64 outcomes fail these two short requests; long control03 remains unassessed. No universal retry/seed64 remedy is established."
   },
   "release_disposition": {
     "status": "blocked",
-    "reason": "Research-only reset controls. Short-answer quality and detector, broader recovery, checkpoint/conditioning causal study, production Bridge orchestration, physical streaming/timing, multi-lane, RTX4090 and release gates remain open. R1 NO-GO."
+    "reason": "Failed listening of both exact short buffered64 controls, shared byte-for-byte by full retry. Research reset mechanics are not speech rescue. Checkpoint/conditioning cause, broader recovery/detector, production Bridge orchestration, physical streaming/timing, multi-lane, RTX4090 and release gates remain open. R1 NO-GO."
   },
   "release_status": "blocked",
   "supersedes": null,

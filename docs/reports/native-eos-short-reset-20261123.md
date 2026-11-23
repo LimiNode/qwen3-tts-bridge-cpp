@@ -32,15 +32,17 @@ original-attempt WAVs have absolute PCM16 peak<=1 integer unit; sourcef32
 RMS is approximately-98.61dBFS. Fresh/retry64 outputs contain more signal:
 `Нет.` is0.16seconds, f32RMS-35.71dBFS, PCM16peak3522;
 `Hi!` is0.24seconds, f32RMS-31.85dBFS, PCM16peak4964.
-Their word coverage is **unassessed**, not inferred from energy or duration.
+Subsequent direct user listening is **fail** for both new short selections:
+01 has no audible intended word;02 has a short strange sound rather than Hi!.
+More signal and naturalEOS therefore did not mean recovered speech.
 Earlier failed fresh64 listening and aggregate failed rollback listening
 remain scoped to their earlier artifacts. In particular, different codec
 modes prevent silently transferring those verdicts to these new WAVs.
 
-This does not establish full retry64 as a short-answer remedy. Short natural
+Full retry64 is **not a remedy for these two tested short inputs**. Short natural
 EOS is not unique to rollback: independent generation itself chooses EOS
-after2/3frames. Whether those new samples contain the intended word needs
-listening; a valid short word could also end quickly. General model
+after2/3frames, and direct listening now rejects their words. A valid short
+word could also end quickly, so duration alone was not the failure criterion. General model
 failure, native-forward failure and conditioning failure are not distinguished.
 
 ## Decoder confound and retained rollback
@@ -92,10 +94,14 @@ control. Each short selection represents two identical independent64 and
 two identical full-retry64 outputs. Exact source/copy hashes are retained;
 all original failures and repeats remain in `probe/`. The four nearly silent
 original1009 outputs are explicitly labeled and need no repeated handoff.
-New listening remains **not_run**. The agent does not claim to have listened.
+On2026-11-23 the user reports01 has no audible intended word and02 has only a
+short strange sound. Both fail intelligibility;03 and the other quality
+criteria remain unassessed. The canonical receipt/index record this failure;
+frozen local initial not_run metadata is preserved. The agent does not claim
+to have listened.
 
-Stop this stage here. If the two short files do not contain the intended
-words, do not extend seed search or describe64 as a rescue: the next small
+This stage is complete and both short files fail. Do not extend seed search
+or describe64 as a rescue: the next small
 discriminating study is RU-stress/Base crossed with full Kraftwerk ICL versus
 speaker-only, reusing these RU-stress/full-ICL controls and retaining languages,
 texts, seeds and decoding mode. That study is **not_run**, not silently added

@@ -7,7 +7,7 @@
       "receipt": "docs/reports/native-eos-short-reset-cmp50hx-20261123.json",
       "model_family": "RU-stress",
       "backend": "native",
-      "human_listening": "not_run",
+      "human_listening": "fail",
       "release_status": "blocked"
     },
     {
