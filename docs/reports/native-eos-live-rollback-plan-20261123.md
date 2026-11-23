@@ -66,7 +66,9 @@ No fresh retry is spliced after a nonzero commit.
 3. Fourteen unchanged live replays: checkpoint1/2 for every seed. Advance one
    complete engine step and restore unchanged RNG before continuing. Compare
    full codes/PCM against controls; frame2 cases exercise a nonzero1920-sample
-   commit and saved pending frame. Mismatch blocks later intervention claims.
+   commit and saved pending frame, except seed75 whose EOS freezes commits
+   at0 before terminal drain (retired-to-active replay). Mismatch blocks later
+   intervention claims.
 4. Explicit GPU negatives for cancellation, expired original deadline, buffer
    capacity, sink refusal, stale checkpoint and newer admission. Verify refusal
    without publishing late held PCM or rewinding committed output. The sink
