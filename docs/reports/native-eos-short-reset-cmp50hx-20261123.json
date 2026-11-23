@@ -1,0 +1,137 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-short-reset-cmp50hx-20261123",
+  "recorded_at": "2026-11-23",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "047080b68bc75aa0281bd54d828ed9b715a6fc47",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "4e47ed266f08cab9e13e277aa460a33bb607e769",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "8bd699d6f12d31198e004ed82ef67a4d6aa515c6a361a52353e203d682abef5f",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "speaker_sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698",
+    "reference_codes_sha256": "069ac5c280be070c2e5bf006cb9b58a2d248f34e1bdd37aab62310f2ffdd9443",
+    "reference_text_sha256": "e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4",
+    "build": "MSVC14.44.35207, CUDA13.3 SM75, CUDA graphs ON, forceMMQ OFF; existing opt-in static research probe, no rebuild.",
+    "runner_sha256": "33ca181626256859ca33842af3b9ca8be909cfb14c2912f943699b17cf690161",
+    "spec_sha256": "65eed3b864f7735aa116c7be308cd341c894b39faf7b20deab2dc804d27976be",
+    "sampling": "Original stochastic Talker/Predictor/min2, exact texts/languages, fixed original1009 and continuation64; no seed search. Frontend/segmentation/prefix/guard/scheduled reseeding OFF.",
+    "decoder": "Short fresh64 and full retry use the same buffered decoder; fresh threshold1 must not trigger. Actual retry threshold8; original1009. Long controls streaming, reference226 and ramp1/2/4/8. Cross-decoder PCM differences are not reset failures.",
+    "scope": "10 logical groups, exactly14 AR attempts, single persistent loaded engine, no public DLL/Bridge worker/physical playback.41.172seconds including preflight/postflight under1800-second shared deadline. All identities unchanged before/after; not a loaded-module audit.",
+    "production_baseline": "130cb99af9ae12d554962fd0920e08fb4268af01, ABI6, QTB/defaults/pins/models/frozen release package unchanged. R1 NO-GO."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Hashed manifest and frozen spec retain exact Нет./russian, Hi!/english, original126-byte MGU phrase/russian, two repeats per cell,64 fresh and1009-to64 retry, full Kraftwerk ICL conditioning. Spoken inputs are nonempty; no text preparation change.",
+    "corpus_sha256": "f3e62a65f3cc5314abff804bbf8a75b5d3fceb8e22b1123553dcb0f81fbfe90d"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123/plan.json",
+      "bytes": 14341,
+      "sha256": "51b77efc85f1bb29364c9a2632e31572a74b886eadf25db58aebf6be24c24600",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Verified local ignored evidence; not transferred or backed up by Git."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123/results.json",
+      "bytes": 111803,
+      "sha256": "7d37a3cafb9555510eb2c704bb5a407fbee44ab9425e4350affc4b05dde6bcc3",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "All10 rows,14 attempts, repeated code/PCM comparisons, original failures and asset identities retained."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123/audio-audit.json",
+      "bytes": 12609,
+      "sha256": "8b73b1a945e778b3748dbc3b888a45bf36da043229900d783f7d8444b5097395",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Root separately checks actual code/PCM bytes and all395520 raw-to-WAV samples. No listening inferred."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123/artifact-inventory.json",
+      "bytes": 17336,
+      "sha256": "d10cff23027dd48476314b4bb423fd6cb8e41a5c4cd0573eda74eafe0e59f6a5",
+      "kind": "manifest",
+      "availability": {"status": "local", "reason": "Inventories all77 other payload files, including scripts/spec/probe, raw outcomes, histories, WAVs and failures. Local-only; Git is not a payload backup."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123/listening-reset-controls/selection-manifest.json",
+      "bytes": 2123,
+      "sha256": "c52f46e9df839b709f81745f24d091ac033336ebffb8a4ea752c8cc72061f3ca",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Exact three-file source/copy identities and expected spoken words. New listening not_run."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123/listening-reset-controls/01-ru-no-fresh-and-retry-seed-64.wav",
+      "bytes": 7724,
+      "sha256": "44fdb54b1d3d27849b646d268cda422df22e62d4260f808adfbfbe7d7b78b9c6",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Untrimmed, unnormalized0.16s PCM16 mono24kHz. Represents identical fresh64/retry64 outputs; expected Нет., unassessed."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123/listening-reset-controls/02-en-hi-fresh-and-retry-seed-64.wav",
+      "bytes": 11564,
+      "sha256": "7c600089c69c75dc806c9dfb9a52c83bbb30e55b51db26d9353a76451803e960",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Untrimmed, unnormalized0.24s PCM16 mono24kHz. Represents identical fresh64/retry64 outputs; expected Hi!, unassessed."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-short-reset-cmp50hx-20261123/listening-reset-controls/03-long-positive-control-seed-64.wav",
+      "bytes": 322604,
+      "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Untrimmed6.72s streaming positive control;84frames, retained rawPCM equality passes. New listening not_run."}
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "not_run",
+    "observer": "not_run",
+    "recorded_at": "2026-11-23",
+    "scope": "Three new exact selected WAVs; two short buffered64 controls each represent two independent originals and two identical full retry results. Long control retained for comparison. Prior failed corpus/older fresh64 listening is not transferred across decoder modes.",
+    "criteria": {
+      "intelligibility": "not_assessed",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "All four original1009 attempts are nearly silent (PCM16peak<=1 LSB, nativef32 RMS about-98.61dBFS) and preserved. Short final64 outcomes have more signal but only2/3frames; that is not verified speech. Agent made no auditory assessment. Root conversion audit passes all18 saved raw/WAV pairs; duplicate artifact count is not attempt count."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Scoped reset comparisons pass: all10 groups/14 attempts, no fresh64 fallback, four retry64 complete-code and same-decoder PCM equalities, both repeat orders and retained long84frame controls. Reset defect not reproduced. Full acceptance case and production-worker restart are not exercised; this is not semantic recovery acceptance."
+  },
+  "listening_result": {
+    "status": "not_run",
+    "reason": "New short buffered64 files need exact-word listening. Signal and naturalEOS do not establish full retry efficacy or valid short answers."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Research-only reset controls. Short-answer quality and detector, broader recovery, checkpoint/conditioning causal study, production Bridge orchestration, physical streaming/timing, multi-lane, RTX4090 and release gates remain open. R1 NO-GO."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-short-reset-plan-20261123.md",
+    "docs/reports/native-eos-short-reset-20261123.md",
+    "docs/reports/native-eos-corpus-checkpoint-20261123.md"
+  ]
+}

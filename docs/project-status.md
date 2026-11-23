@@ -226,6 +226,17 @@ including12 complete original/candidate pairs. This is not successful speech
 recovery despite passing mechanics. Earlier positive and failed verdicts
 remain scoped to their original artifacts. Production orchestration,
 detector quality, physical playback, RTX4090 and release gates remain open.
+The subsequent [short-input reset controls](reports/native-eos-short-reset-20261123.md)
+and [receipt](reports/native-eos-short-reset-cmp50hx-20261123.json) complete10
+logical groups/14 AR attempts in41.172seconds on CMP50HX. Full retry1009-to64
+matches independently admitted64 in complete codes and matched buffered PCM,
+twice for each of Нет./Hi!; no retry-reset defect is reproduced. Both long64
+streaming controls match retained84frames/PCM. Original1009 is nearly silent;
+fresh/retry64 has more signal but only2/3frames and remains unassessed on
+words. Cross-decoder PCM differences are not reset failures. Only three unique
+WAVs are selected for new listening, currently not_run; this is not a general
+short-answer remedy, latency gain or release acceptance. No further matrix
+has been run.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
