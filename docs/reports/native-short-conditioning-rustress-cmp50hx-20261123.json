@@ -40,7 +40,7 @@
     {
       "path": ".tmp/base-acceptance/short-conditioning-cmp50hx-20261123/results.json",
       "bytes": 236548, "sha256": "be2c01b88def6e76522f1f6c9a704c96cdd58b7528024f210b7b2055bcf8ee7f", "kind": "json",
-      "availability": {"status": "local", "reason": "Shared15-group result includes this5-group cell, all outcomes/identities and unassessed semantics. No verdict transfers from Base or prior RU-stress ICL."}
+      "availability": {"status": "local", "reason": "Shared15-group result includes this5-group cell and all outcomes/identities. Frozen initial unassessed semantics are historical; current listening is in this receipt. No Base/prior ICL verdict transfers."}
     },
     {
       "path": ".tmp/base-acceptance/short-conditioning-cmp50hx-20261123/audio-audit.json",
@@ -60,14 +60,14 @@
   ],
   "mechanical": {"model_load": "pass", "pcm": "pass", "natural_eos": "pass", "persistent_repeat": "pass", "restart": "not_run"},
   "human_listening": {
-    "status": "not_run", "observer": "not_run", "recorded_at": "2026-11-23",
-    "scope": "Only new selected01/04/07 in hashed selection-manifest: RU-stress/speaker-only, expected Нет./Hi!/original MGU phrase.13/14 short frames,86 long. Prior RU-stress/full-ICL failed user listening remains separate, not copied here.",
-    "criteria": {"intelligibility": "not_assessed", "voice_or_instruction": "not_assessed", "artifacts": "not_assessed", "final_tail": "not_assessed", "sequential_contamination": "not_assessed"},
-    "notes": "New audio is not near-silent by saved levels; more signal/frames is not verified words. No agent auditory assessment. Untrimmed and unnormalized PCM16 mono24kHz; all attempts preserved, each short repeat byte-identical."
+    "status": "partial_pass", "observer": "user", "recorded_at": "2026-11-23",
+    "scope": "Direct user listening to exact selected01/04/07 in selection-manifest SHA256fd3327e772883b01c07e26490f6ae159071d4eaceeff6d830fade72b67fdb56e.01 says Нет.;04 is recognizable Hi! with rising intonation/less English-like pronunciation than05/06, accepted by the user as Hi!;07 contains the whole MGU phrase without laughter, cough or extra sounds. Only this RU-stress/speaker-only cell is covered. Earlier full-ICL short failures remain failed.",
+    "criteria": {"intelligibility": "pass", "voice_or_instruction": "not_assessed", "artifacts": "not_assessed", "final_tail": "not_assessed", "sequential_contamination": "not_assessed"},
+    "notes": "Scoped positive word coverage, not full quality acceptance. Absence of laughter/cough/extra sounds is explicitly confirmed for long07 (and Base08/09 in their separate receipt); do not extend that claim to every short file. User notes occasional процессор stress on O among07-09 without identifying which files; preserve as a nonblocking pronunciation/model-accent observation, not an EOS failure or established cause.04 intonation difference is recorded, not rejected. Voice identity, complete artifact/tail checks and sequential isolation remain unassessed. The agent did not listen. Exact source/copy identities remain in frozen manifest; initial local not_run metadata is preserved as history."
   },
   "case_result": {"status": "not_assessed", "reason": "Scoped5-group mechanics pass with repeated codes/PCM, no threshold1 fallback or changed identities. Production-worker restart and full release case not exercised."},
-  "listening_result": {"status": "not_run", "reason": "Exact new RU-stress speaker-only short words and long control need listening; no rescue inferred from duration."},
-  "release_disposition": {"status": "blocked", "reason": "Research conditioning dependency only, no semantic quality or root-cause proof. General recovery/detector, production orchestration, physical timing, multi-lane, RTX4090 and release gates remain open. R1 NO-GO."},
+  "listening_result": {"status": "not_assessed", "reason": "Scoped human partial_pass:01 Нет.,04 recognizable Hi!,07 full phrase with no laughter/cough/extra sounds. Other quality criteria remain unassessed; aggregate listening acceptance is not claimed."},
+  "release_disposition": {"status": "blocked", "reason": "Positive scoped words at seed64 and two short texts, not a universal EOS fix or root-cause proof. Broader held-out seeds/texts, short-sound quality, voice fidelity, general detector/recovery, production orchestration, physical timing, multi-lane, RTX4090 and release gates remain open. R1 NO-GO."},
   "release_status": "blocked",
   "supersedes": null,
   "related_reports": ["docs/reports/native-short-conditioning-plan-20261123.md", "docs/reports/native-short-conditioning-20261123.md", "docs/reports/native-eos-short-reset-20261123.md"]

@@ -32,20 +32,24 @@ and `Hi!` / english are unchanged in all cells.
 The reused RU-stress/full-ICL short files remain failed user listening:
 01 has no audible intended word;02 has a strange sound instead of Hi!.
 All77 preceding payload files were rehashed and are unchanged. Those failures
-are not transferred to any new cell. New listening is **not_run** for all9
-selected new unique WAVs, including the three long controls.
+are not transferred to any new cell. The user has subsequently assessed all9
+new unique selections: scoped word coverage is positive in every new cell,
+recorded as **partial_pass** in each model's canonical receipt. Other quality
+and release gates remain open.
 
 New selected short WAVs have f32RMS approximately-31.48 to-25.58dBFS,
 PCM16 peak6960 to13432, duration0.64 to1.12seconds. Long controls are6.88,
 8.24 and6.72seconds. None of the30 saved raw/WAV pairs has peak<=1LSB.
-This rules out the preceding near-zero-output pattern in these files;
-it does **not** establish the intended words, absence of laughter or rescue.
+These signal metrics alone did not establish words or rescue. Subsequent
+direct user listening below independently confirms intended words; no
+semantic conclusion is inferred from signal level.
 
 Generation depends on the checkpoint/conditioning setup under these fixed
 inputs. In particular, removing full ICL from RU-stress changes the complete
 AR histories and avoids the observed2/3-frame outcomes. A model-wide defect
 is not established: both checkpoint and ICL dependence remain scoped to this
-seed/text pair. If new words fail listening, more frames are not improvement.
+seed/text pair. Direct listening now confirms the words in these new cells;
+that is a scoped usable mode, not a guarantee on other seeds/texts or voices.
 
 Speaker-only intentionally removes both reference text/codes for AR and
 reference availability to the decoder, retaining the same speaker vector.
@@ -108,11 +112,38 @@ README gives exact expected text, and selection-manifest gives paths/hashes,
 duration and level before listening. No trimming, normalization or silent
 failure exclusion was performed. All prior failures remain retained.
 
-The next decision needs intended words versus extra sounds, separately from
-delivery/voice quality. If only a particular mode succeeds, that is scoped
-evidence of a usable mode, not a universal EOS fix. If all fail, stop expanding
-this matrix: matched prompt/forward/upstream and codec isolation would be
-separate investigations, not another unreported seed search.
+On2026-11-23 the user reports the following for these exact selections:
+
+| Files | User observation | Scoped result |
+| --- | --- | --- |
+|01-03|Each says Нет.|Intended word confirmed in all three new modes.|
+|04|Recognizable Hi!/Хай, rising intonation, less English-like than05/06.|Word accepted; intonation difference retained, not a rejection.|
+|05-06|Hi!, falling intonation; both described as more English-like than04.|Intended word confirmed in both Base modes.|
+|07-09|Full MGU phrase, without laughter, cough or extra sounds.|Coverage and these named artifact classes confirmed for the long controls.|
+
+Absence of every possible short-file
+artifact, exact voice identity, final-tail quality and sequential isolation
+are not inferred. Aggregate listening_result stays not_assessed because
+partial_pass is scoped, while intelligibility passes in each model receipt.
+The agent did not listen. Frozen payload's initial not_run metadata remains
+historical evidence; tracked receipts/index own the updated verdict.
+
+Occasional stress on O in процессор is reported among07-09 without exact
+file attribution. Keep it as a nonblocking pronunciation/accent-model note,
+not an EOS failure or proof of which layer/model feature caused it. Neither
+text nor accents were changed in this experiment.
+
+Compared with the failed RU-stress/full-ICL controls, removing ICL avoids
+these two missing-word outcomes at seed64, and both tested Base modes also
+speak the requested words. Full retry64 alone did not fix the original
+RU-stress/full-ICL setup. This identifies a useful conditioning/checkpoint
+dependency, not a universal early-EOS detector or production fallback.
+
+Next, if continuing quality qualification, use a bounded held-out set of
+short texts/seeds and evaluate voice fidelity in full-ICL versus speaker-only
+mode. Keep these discovery examples out of that success denominator. No
+further GPU run, production mode selection, automatic ICL fallback or
+new seed search was performed as part of this listening update.
 
 No production defaults/pins/ABI/QTB/models/frozen package change, merge, tag
 or release. Streaming timing, physical playback, production worker recovery,

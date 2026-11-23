@@ -245,12 +245,16 @@ and [Base](reports/native-short-conditioning-base-cmp50hx-20261123.json)
 receipts. All six new short repeat pairs preserve complete codes/PCM and
 all effective samplers match the retained defaults; no fallback triggers.
 RU-stress/speaker-only emits13/14frames for Нет./Hi!, Base/full-ICL11/8 and
-Base/speaker-only8/11; long same-mode controls86/103/84. These are not
-verified words. All9 new unique selections have substantial signal rather
-than the previous near-zero pattern, but listening remains not_run. ICL removal
-also removes decoder reference availability, so this is mode dependency,
-not a transformer-layer root cause or universal EOS remedy. Models/defaults
-remain unchanged; all failures and repeats are retained.
+Base/speaker-only8/11; long same-mode controls86/103/84. Direct user listening
+now confirms Нет. in01-03, recognizable Hi! in04-06, and the full phrase
+without laughter/cough/extra sounds in07-09. Separate model receipts record
+scoped partial_pass, not complete quality/release acceptance.04's rising
+intonation remains acceptable; occasional процессор stress on O among07-09
+is a nonblocking pronunciation note with no file attribution. Prior failed
+RU-stress/full-ICL short files remain failed. ICL removal also removes decoder
+reference availability, so this is scoped mode dependency, not a transformer
+root cause or universal EOS remedy. Models/defaults remain unchanged;
+all failures and repeats are retained. No new GPU run followed this feedback.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
