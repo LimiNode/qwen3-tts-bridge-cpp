@@ -255,6 +255,13 @@ RU-stress/full-ICL short files remain failed. ICL removal also removes decoder
 reference availability, so this is scoped mode dependency, not a transformer
 root cause or universal EOS remedy. Models/defaults remain unchanged;
 all failures and repeats are retained. No new GPU run followed this feedback.
+The [prospective expansion plan](reports/native-short-conditioning-expansion-plan-20261124.md)
+prespecifies60 independent intended requests on four checkpoint/conditioning
+cells, six new short texts, seeds2027/2029 and same-text voice comparisons
+against the retained actual Kraftwerk reference. As of2026-11-24 preparation,
+execution/listening remain not_run: E: has approximately270MiB free, below
+the512MiB safety reserve even before output storage. No payload, model or
+old evidence was deleted and no smaller post-hoc corpus substituted.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
