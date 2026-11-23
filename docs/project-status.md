@@ -201,7 +201,10 @@ retain1920committed samples, the fifth has zero commit; healthy42/64 are unchang
 All positive sink bytes equal full PCM and independent fresh streaming-codec
 reconstruction. All five candidate PCM/WAVs also match the preceding codec-only
 outputs byte-for-byte; earlier positive listening remains scoped to its original
-receipt, and new-run listening is not_run. This is actual live rollback mechanics
+receipt. Direct user listening on2026-11-23 additionally confirms subjective OK
+for healthy01 and five live rollback candidates03-07; the user explicitly
+confirms problems in original control02. The indexed receipt records scoped
+partial_pass, not detailed quality or release acceptance. This is actual live rollback mechanics
 in an opt-in static probe, not Bridge worker integration, physical playback,
 multi-lane, a detector or a latency improvement. Synchronous diagnostic capture
 remains expensive. True fork, live selector, held-out quality and release gates

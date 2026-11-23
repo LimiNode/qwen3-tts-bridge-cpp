@@ -102,7 +102,14 @@ All five candidate PCM/WAVs also equal the prior production-ramp codec-only
 rollback1 outputs byte-for-byte. Those exact earlier WAV hashes have positive
 user listening recorded in the [preceding receipt](native-codec-stream-restore-cmp50hx-20261122.json).
 This is an artifact-identity fact, not a transferred acceptance verdict for the
-new engine execution. New-run human listening remains `not_run`.
+new engine execution. Listening was `not_run` at initial publication. On
+2026-11-23 the user directly listened to the new-run folder and confirmed
+subjective OK for healthy control01 and live rollback candidates03-07. The user
+explicitly clarified that original failed control02 has problems; it is not
+included in the positive scope. The canonical receipt now records scoped
+`partial_pass`, with exact per-WAV identities. This feedback is not a detailed
+voice-fidelity, transcript, tail or sequential-isolation audit and does not
+qualify new texts/seeds or the release. The frozen payload remains unchanged.
 
 ## Cost, checks and disposition
 
