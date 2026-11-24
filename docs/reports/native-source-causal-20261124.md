@@ -1,4 +1,113 @@
-# Native/source causal comparison: verified preflight
+# Native/source causal comparison: executed run002
+
+## Current result and interpretation
+
+Research only,2026-11-24. The newly authorized run002 completed four native
+requests, four matched-history source controls,26 conditional-logit comparisons,
+four exact-native-input forward controls and four bounded free source
+trajectories. No speech/voice/listening or release acceptance follows from this
+numerical result. R1 remains **NO-GO**.
+
+The exact RU-stress merged checkpoint, retained native Q8, source packages,
+full aligned ICL inputs and seeds are unchanged from the plans below. Source
+runs CPU FP32 with eager attention verified on the actual nested Talker and
+Predictor attention module configurations before and after execution. No
+package, model or installed source was replaced. All frozen identities pass
+postflight. Original prepared run001 remains preserved and unexecuted.
+
+| Fixed case | Native retained frames | Free source frames / first EOS | Initial input relative L2 | Initial allowed-logit TV |
+| --- | ---: | ---: | ---: | ---: |
+| `Ладно.` /2027 |2, natural EOS |2 /2 |0.004787 |0.001639 |
+| `All right.` /2029 |6, natural EOS |11 /11 |0.004786 |0.002225 |
+| Long Russian /2027 |8, diagnostic cap |86 /86 |0.004816 |0.010993 |
+| Long English /2027 |8, diagnostic cap |85 /85 |0.004814 |0.009446 |
+
+Do not compare the capped8-frame native controls with full source lengths as
+a quality or EOS-recovery score. Free source codes were not decoded/listened
+to;11,85 or86 frames are not proof of correctly spoken words. Token IDs match
+for all four prompts. Initial embedding cosine is0.9999884–0.9999885, but
+elementwise equality does not hold. Initial raw-logit top1 agrees in all four
+cases. TV is total variation after allowing audio IDs0..2047 plus EOS2150,
+temperature1 and no penalties; it is **not** the sampler's final probability.
+
+For `Ладно.`, the free source produces exactly the same two complete16-code
+frames as native, then EOS. At initial and subsequent matched steps0/1/2,
+native/source allowed-temperature1 EOS probabilities are approximately
+95.349/95.187%,95.776/95.694% and96.523/95.799%. The initial minimum2 suppresses
+EOS eligibility, not the underlying model preference. On this case,
+native-only categorical selection or GGUF conversion is therefore not a
+necessary condition for the two-frame failure. This does **not** establish a
+universal checkpoint defect or isolate conditioning from training/source code.
+
+All forced prefixes preserve the same **complete** native16-code histories:
+2/6/7/7 frames. Across26 matched steps, maximum allowed-logit TV is
+0.007232/0.030005/0.029082/0.034134 for the four cases. Feeding exact native
+input embeddings to source does not remove the remaining drift: corresponding
+maxima are0.007576/0.035240/0.028509/0.033210. Prompt reconstruction alone thus
+does not account for every numerical difference. Source FP32 versus native Q8
+still cannot distinguish quantization, conversion and forward implementation.
+
+In the other three free trajectories, the earliest **discrete** mismatch is
+already in the first frame's Predictor codes, even though initial sampled
+Talker code0 agrees. Zero-based codebook/native/source values are:
+shortEN book2:382/360; longRU book7:1886/1858; longEN book1:1329/1338.
+Later free Talker histories consequently are not matched numerical controls.
+This localizes the first observed code difference, not a demonstrated faulty
+Predictor layer or sampler. The existing Philox helper does not make differing
+FP32/Q8 distributions or execution paths trajectory-equivalent.
+
+**Decision:** prioritize exact-artifact listening of the shorter-reference
+[A/B/C candidates](native-reference-conditioning-20261124.md), retaining full
+ICL and the original speaker-vector arm. The known short Russian failure also
+exists in the exact source; do not add more seed search or integrate rollback
+as an arithmetic fix. If the English native/source difference remains a
+product blocker, the next numerical control is an equal-checkpoint native
+higher-precision build and first-frame Predictor distributions under identical
+inputs/history/random draws. High-precision native was **not run** within the
+safe disk budget, so no quantization-versus-conversion attribution is made.
+
+## Executed scope, evidence and budget
+
+Payload: `.tmp/base-acceptance/native-source-causal-cmp50hx-20261124/run-002/`.
+The local runner is `run_source_causal_v2.py`, SHA256
+`2486eafbf3ec02b85570d03b7bcbd7b38f545a9618c0fad2a4035b8fcb61b362`;
+10 model-free tests pass, including deadline refusal/owned-child termination,
+frozen corpus/test identities and actual eager-attention alignment. The
+[run002 plan](native-source-causal-run002-plan-20261124.md) preserves the
+versioned runner/test and unchanged original plan. There was no retry or seed
+selection after observing outcomes.
+
+Source `source/results.json`:510626 bytes, SHA256
+`64be7f64ffd37e0deef3d49c9c466eb0ee7a0925c3e1918db4d5d982e86a2808`.
+Artifact inventory:498524 bytes, SHA256
+`0f9823fb6cc2c78f296bba8a7d5fc6e4f39ba7a62a8def4ecb84faa9914c3b76`.
+It identifies native tensor/code dumps, matched source hooks, direct-input
+controls, all free codes/traces, attention identities, process logs and
+before/after inputs. These ignored payloads are local-only, not Git backups.
+The final read-only hash audit verifies all1724 inventory entries/121345471
+payload bytes, plus all652 reference inventory entries/95655403 bytes and
+both new canonical reference receipts' declared artifacts. Receipt validation
+passes for42 indexed records; validator regressions pass17 with one optional
+JSON-Schema skip. This checks evidence integrity, not semantic speech quality.
+
+The independent root supervisor journal is
+`.tmp/base-acceptance/reference-source-resumed-20261124/run-001/`.
+It starts2026-11-24T13:26:55Z, uses the single authorized absolute monotonic
+deadline3196090.625, and preserves each exact command and stage result.
+All GPU stages completed by3194576.218,285.593s after the start3194290.625;
+the source-native child used8.375s. CPU source followed the completed timing
+stage and used165.078s under its600s inner watchdog and unchanged shared
+deadline. Complete execution including postflight finished by3194776.156,
+485.531s after start. All five stages exited0, with no timeout/storage stop
+and frozen scripts unchanged. Keep the old expired allocation distinct.
+
+Aggregate `results.json` SHA256:
+`44696e770a05f1f2ab8e51b6ca86d97c8b57f95125194167ba13277015fafd8f`.
+No further GPU execution was scheduled. No production default/pin, ABI6, QTB,
+frozen package, merge, tag or release changed. Base/full-ICL qualification is
+independent; RU-stress remains HOLD.
+
+## Preserved run001 history: verified preflight, no execution
 
 - Status: preparation verified; native and source model execution **not run**.
 - Date: 2026-11-24.

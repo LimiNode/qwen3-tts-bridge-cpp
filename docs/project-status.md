@@ -349,21 +349,33 @@ historical evidence, with a separate corrected analysis. Recommend separate
 Engine51 integration; no merge, readiness change or Bridge pin update occurred.
 
 The [reference-conditioning batch](reports/native-reference-conditioning-20261124.md)
-prepares exact4.00s/8.84s contiguous Kraftwerk excerpts, natural pause boundaries,
-inherited transcripts and original/crop-speaker controls. Twelve model-free
-tests and offline CPU ASR checks pass. Its two indexed model receipts are
-explicitly not_run: the shared1800s deadline expired before extraction or
-synthesis, producing zero new reference latents, AR attempts or generated WAVs.
-This is neither a negative model result nor a measured improvement. Only
-reference-input WAVs exist for this stage; do not request synthesis listening.
-The [native/source preflight](reports/native-source-causal-20261124.md)
-verifies the exact merged RU-stress checkpoint and offline helper/tokenizer
-readiness, with four model-free tests. Native dumps and source forwards remain
-not_run under the same expired deadline; no new numerical parity or earliest
-divergence claim follows. Actual Engine51 child execution occupied about64s,
-not1800s of GPU inference; preparation/coordination consumed the enclosing
-wall-clock window. Continuing the two unexecuted matrices requires a new
-bounded batch and preserved previous payloads, not rewriting this history.
+now includes a separately authorized executed run002:3 reference extractions
+and96 new attempts, with exact original speaker/code regeneration and unchanged
+assets. Short4.00s/medium8.84s full-ICL references have56/116 frames versus226;
+original/crop speaker origins stay separate. Eighteen CPU tests, complete-code
+repeat controls and128 raw/WAV checks pass. For RU-stress `Ладно.`/2027, crop
+variants move frame2 EOS outside top50 and generate11–15 frames versus the
+reused original's2, but no new speech/voice success is inferred. Observed warm
+direct-engine first PCM is about83ms short/110ms medium versus178ms reused A;
+this is changed conditioning, historical A timing and unassessed new quality,
+not an accepted transparent optimization. Two new indexed run002 receipts
+supersede but preserve the old preparation-only receipts;13 WAVs await scoped
+listening in one folder. All failed/short outputs remain available.
+The [native/source comparison](reports/native-source-causal-20261124.md)
+completed four capped native dumps, matched complete16-code histories,
+26 conditional-logit comparisons, direct-input controls and four CPU FP32
+free trajectories. The source reproduces the same two complete short-Russian
+frames then EOS; the failure does not require native-only sampling/conversion.
+Other free first-frame Predictor codes differ, so later free paths are not
+parity controls. Initial allowed-logit TV is0.0016–0.0110; exact native inputs
+do not remove all drift. Native Q8/source FP32 cannot isolate quantization,
+conversion or arithmetic; high-precision native is not_run. Ten runner tests
+and before/after identities pass. No source-code trajectory is claimed to be
+intelligible speech without decode/listening.
+The new shared1800s window began immediately before extraction; all GPU stages
+finished in285.593s and CPU/postflight in485.531s from start, with no reset.
+Historical run001 zero-execution/deadline refusals are retained unchanged.
+Engine51's separate earlier64s smoke is not counted as1800s of GPU inference.
 Full-text geometry remains completed/negative and rollback development frozen.
 Base/full-ICL remains the priority candidate for separate beta qualification;
 RU-stress/full-ICL stays HOLD, not a required first-beta default.

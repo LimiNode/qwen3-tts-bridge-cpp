@@ -5,6 +5,20 @@
 - Full-text geometry is a completed negative experiment; do not repeat it.
 - Freeze further rollback/snapshot development for this batch.
 
+## Resumed allocation
+
+The first allocation expired before reference/source execution; its prepared
+run001 payloads and not_run receipts are preserved. The user then authorized
+one new window of up to30minutes. After CPU-only preparation and runner audit,
+the coordinator started the single shared absolute monotonic deadline
+`3196090.625` immediately before reference extraction. New work uses each
+experiment's exclusive run002, with the aggregate journal under
+`.tmp/base-acceptance/reference-source-resumed-20261124/run-001/`.
+Reference extraction, diagnostics and observer-OFF streaming timings precede
+native dumps; CPU source follows without overlapping timings. Inner watchdogs
+may shorten this allocation, never reset or extend it. Preserve all failures;
+do not infer new listening or release success from completed processes.
+
 ## Prior exact-head CI verified before this batch
 
 | PR | Exact head | Completed successful checks | Disposition |

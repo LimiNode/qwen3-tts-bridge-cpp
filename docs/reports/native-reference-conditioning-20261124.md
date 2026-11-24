@@ -21,7 +21,7 @@ The root supervisor started a new authorized1800s deadline immediately before
 extraction. All GPU children for reference and native/source tracks completed
 in approximately285.6s of that common window; its independent whole-batch
 record belongs to the coordinating source report. This reference payload
-does not seal or modify that other track's still-running CPU outputs. The
+does not seal or modify that other track's separately recorded CPU outputs. The
 old run001 deadline/refusal remains unchanged historical evidence below.
 
 ### Generated trajectories, not a quality verdict

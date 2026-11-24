@@ -7,6 +7,22 @@
   not the later source HEAD; SHA-256
   `6c86e4d69f0c0dbc26e35c360e0b6903dc976b0ad61aa3c34dbbaaa1bbe0f6fa`.
 
+## Resumed execution amendment
+
+The user authorized a new <=1800s window after the original enclosing window
+expired during preparation. Preserve the original run001 preparation and its
+not_run findings. Execute in new reference/source run002 directories, using
+the versioned source runner `run_source_causal_v2.py` (SHA-256
+`2486eafbf3ec02b85570d03b7bcbd7b38f545a9618c0fad2a4035b8fcb61b362`).
+The coordinator starts one absolute monotonic deadline immediately before
+reference extraction, serializes extraction, reference diagnostics/timings,
+native dumps and then CPU source comparison, without resetting that deadline.
+CPU source also has a600s inner watchdog; it does not overlap GPU timings.
+The aggregate execution journal is repository-local
+`.tmp/base-acceptance/reference-source-resumed-20261124/run-001/`.
+Corpus files and the10-test source runner suite are frozen inputs. Verify the
+actual nested/module eager attention path, not just a loader argument.
+
 ## Question and fixed boundary
 
 Where do initial and early conditional Talker distributions diverge between
