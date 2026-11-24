@@ -5,6 +5,20 @@
 - Full-text geometry is a completed negative experiment; do not repeat it.
 - Freeze further rollback/snapshot development for this batch.
 
+## Prior exact-head CI verified before this batch
+
+| PR | Exact head | Completed successful checks | Disposition |
+| --- | --- | --- | --- |
+| Engine51 | `541f1f702e725dc002e0e9ebf6f1460dca8c3100` |2/2 | Separate production-candidate GPU smoke |
+| Engine52 | `1416928594cb6fa9230afca8dd3116125c0d6fe0` |2/2 | Research only |
+| Bridge331 | `09c10a1d6f67a7d3d76d43d0cb5db1d9b39779d1` |8/8 | Segmentation needs its own qualification |
+| Bridge332 | `8ec5466c1f0ce011bc45719a28e96ffab41c9c15` |7/7 | Retain rollback/prefill research |
+| Bridge333 | `8ccdc515399b6c691a57566cad6098ce0b3e9174` |7/7 | Completed negative full-text experiment |
+
+Observed with `gh pr view --json headRefOid,isDraft,statusCheckRollup` on
+2026-11-24. All five PRs remain Draft. CI does not imply hardware or listening
+qualification, authorize merge, or change the production engine pin.
+
 ## Independent tracks and unchanged boundaries
 
 1. Qualify Engine51 `541f1f702e725dc002e0e9ebf6f1460dca8c3100`
@@ -97,3 +111,22 @@ Decide separately whether shorter conditioning improves known failures,
 changes first PCM, or alters voice; whether source enters the same bad
 trajectory; and whether Engine51 can be merged independently. Numerical
 differences between Q8 and FP32 alone are not proof of an inference defect.
+
+## Batch handoff, not completion of the research objective
+
+Engine51 completed its isolated GPU smoke in63.494s; see the separate
+[report](native-engine51-gpu-smoke-20261124.md) and canonical receipt.
+Reference and native/source preparations completed, but their GPU allocations
+were not reached before the absolute batch deadline. No reference extraction,
+new AR case or new source forward is claimed. See the exact
+[reference stopping boundary](native-reference-conditioning-20261124.md)
+and [source preflight](native-source-causal-20261124.md). The enclosing window
+includes coordination time; it is not1800s of actual GPU inference.
+
+Before publication, all40 indexed receipts validate. The validator regression
+suite runs18 tests:17pass and one optional JSON-Schema dependency check skipped.
+The three new receipts also pass local artifact-byte/hash verification using
+the primary checkout payload root, not the evidence worktree's absent `.tmp`.
+`git diff --check` passes. No model/quality conclusion follows from these
+documentation/preparation checks. Remaining GPU matrices need a new explicitly
+bounded batch and new run identity; preserve the expired run as history.

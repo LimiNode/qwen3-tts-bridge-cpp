@@ -336,6 +336,38 @@ exact HEAD 8ec5466c CI is independently confirmed7/7 successful.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
+The [2026-11-24 isolated Engine51 GPU smoke](reports/native-engine51-gpu-smoke-20261124.md)
+qualifies the sampler correction separately from all research engine changes:
+CUDA0 graph21/21 (including N1/2/3), both real-DLL C-ABI probes and ten
+ordinary N1 Base/full-ICL fresh-process calls pass. Four fixed master/candidate
+WAV/PCM comparisons and two fresh Russian repeats are byte-identical;
+source/runtime/input identities stay unchanged. The indexed receipt retains
+aggregate not_assessed, listening not_run and release blocked because
+persistent Bridge/restart, streaming, packaging and RTX4090 were not exercised.
+Raw false-negative log classification and a pre-CUDA PATH refusal remain
+historical evidence, with a separate corrected analysis. Recommend separate
+Engine51 integration; no merge, readiness change or Bridge pin update occurred.
+
+The [reference-conditioning batch](reports/native-reference-conditioning-20261124.md)
+prepares exact4.00s/8.84s contiguous Kraftwerk excerpts, natural pause boundaries,
+inherited transcripts and original/crop-speaker controls. Twelve model-free
+tests and offline CPU ASR checks pass. Its two indexed model receipts are
+explicitly not_run: the shared1800s deadline expired before extraction or
+synthesis, producing zero new reference latents, AR attempts or generated WAVs.
+This is neither a negative model result nor a measured improvement. Only
+reference-input WAVs exist for this stage; do not request synthesis listening.
+The [native/source preflight](reports/native-source-causal-20261124.md)
+verifies the exact merged RU-stress checkpoint and offline helper/tokenizer
+readiness, with four model-free tests. Native dumps and source forwards remain
+not_run under the same expired deadline; no new numerical parity or earliest
+divergence claim follows. Actual Engine51 child execution occupied about64s,
+not1800s of GPU inference; preparation/coordination consumed the enclosing
+wall-clock window. Continuing the two unexecuted matrices requires a new
+bounded batch and preserved previous payloads, not rewriting this history.
+Full-text geometry remains completed/negative and rollback development frozen.
+Base/full-ICL remains the priority candidate for separate beta qualification;
+RU-stress/full-ICL stays HOLD, not a required first-beta default.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL
@@ -474,7 +506,8 @@ The dependency direction is deliberate:
 | --- | --- | --- |
 | Python/Faster worker | Maintained acceptance route and alternative backend | Complete the same frozen dual-GPU/package/listening matrix |
 | Native worker and `qwen.dll` | Priority R1 native route; conditional until accepted | Close promotion gates and record backend selection; in-process adapter is separate |
-| RU-stress + Kraftwerk profile | Intended R1 default, still experimental | Expand dual-GPU, long-run, cancellation, packaging, and listening evidence |
+| Native Base + full ICL | Priority first-beta candidate; not yet promoted | Complete independent CMP50HX/RTX4090, clean-package, lifecycle, playback and listening qualification |
+| RU-stress + Kraftwerk full ICL | HOLD for quality research; not a required first-beta default | Reproducible short-input speech omissions remain; study conditioning and native/source trajectories separately |
 | `tts-front-cpp` pinned corrective `64f73182` (based on v0.2.5) | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims; do not describe the corrective commit as a v0.2.6 release |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |
 | Avatar presentation | Not yet complete | Add a separate VRM/Unity/Godot adapter after playback-locked cues are stable |

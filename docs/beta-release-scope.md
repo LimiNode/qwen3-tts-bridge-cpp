@@ -54,6 +54,16 @@ CustomVoice and VoiceDesign until native support is independently accepted.
 Neither backend is promoted to the default by this document: backend selection
 is the outcome of the dual-GPU acceptance and packaging decision record.
 
+The 2026-11-24 research decision keeps native Base/full-ICL as the priority
+candidate for that separate qualification. RU-stress/full-ICL is HOLD because
+of reproducible short-input speech omissions; solving every RU-stress issue
+is not itself a prerequisite for a narrower, fully qualified Base release.
+Speaker-only is experimental, full-text ICL is not promoted, and automatic
+rollback integration is deferred pending a qualified recovery policy. The
+completed [full-text comparison](reports/native-icl-geometry-20261124.md)
+does not change this contract or qualify Base. No new release/support claim
+is made, and RTX4090/package/lifecycle/playback/listening gates remain open.
+
 ### Experimental availability
 
 The following may remain available behind explicit opt-in switches or profiles,
