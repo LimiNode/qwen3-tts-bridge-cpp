@@ -103,8 +103,9 @@ The CF adapter does not remove the original-reference early-EOS/near-silence
 cases in this corpus. Short full ICL eliminates these numerical flags in
 both stress-model cells, without removing ICL cloning. This is a promising
 conditioning candidate, not a general EOS fix: reference length, phonetic
-content, transcript and decoder context change together, and new word coverage,
-stress and voice have not been listened to.
+content, transcript and decoder context change together. Subsequent scoped
+listening below includes a short-reference voice-continuity failure, despite
+the absence of numerical silence/short-duration flags.
 
 ## Balanced warm latency observations
 
@@ -155,8 +156,11 @@ reference. Each four-file block contains `Ладно.`, `All right.`,
 | 17–20 | Base / original |
 | 21–24 | Base / short |
 
-All new generated WAVs remain **not listened to**. Exact expected text and
-numerical flags are in README.txt; failed controls are deliberately retained.
+At initial handoff, all new generated WAVs were not listened to. The sealed
+README and raw run preserve that historical state; current listening is in
+the canonical receipts and the following section, not rewritten raw payloads.
+Exact expected text and numerical flags are in README.txt; failed controls
+are deliberately retained.
 The full 132-case matrix, including homograph/processor stress pairs and
 English voice stability controls, remains available separately. The small
 selection does not qualify unselected cases or replace whole-matrix review.
@@ -165,12 +169,79 @@ Three separate schema-v2 canonical receipts retain model-specific identities:
 [RU-stress](native-stress-comparison-rustress-cmp50hx-20261124.json),
 [CF](native-stress-comparison-cf-cmp50hx-20261124.json), and
 [Base](native-stress-comparison-base-cmp50hx-20261124.json).
-Semantic completeness, prescribed-stress accuracy, continuous voice identity,
-worker lifecycle, package relocation and RTX 4090 remain unassessed. Next,
-assess the new short-ICL stress-model candidates on their exact audio before
-promoting conditioning or starting a separate EOS-penalty policy experiment.
+Whole-matrix semantic completeness, prescribed-stress accuracy, continuous
+voice identity, worker lifecycle, package relocation and RTX 4090 are not
+qualified. Scoped observations below do not promote conditioning or an
+EOS-penalty policy.
 No production defaults, model/engine pins, Bridge gitlinks, ABI, QTB, frozen
 package, merge, tag or release are changed; R1 remains **NO-GO**.
+
+## User listening follow-up, 2026-11-24
+
+The user assessed generated files 01-24, without a new statement about reference 00.
+Each file's original byte count and SHA256 remain in its separate model receipt;
+no original WAV, complete code, sealed inventory or mechanical result changed.
+
+| Files | Model / reference | User observation |
+| --- | --- | --- |
+| 01 | RU-stress / original | No voice |
+| 02 | RU-stress / original | Strange sound |
+| 03 | RU-stress / original | Only «Он произнёс слово», then sharp cutoff; requested word missing |
+| 04 | RU-stress / original | Normal |
+| 05–07 | RU-stress / short | Normal |
+| 08 | RU-stress / short | Voice changes after the middle |
+| 09–10 | CF / original | Empty |
+| 11 | CF / original | Normal |
+| 12 | CF / original | Normal speech, but voice ends abruptly |
+| 13–16 | CF / short | Normal |
+| 17–24 | Base / both | Normal |
+
+RU-stress and CF retain failed scoped listening because their selected
+original-reference failures are not erased by positive short-reference cases.
+RU-stress 08 additionally fails voice continuity. Base has scoped `partial_pass`,
+not a detailed artifact/tail/voice-fidelity or whole-matrix pass. Short CF 13-16
+is the positive stress-model candidate in this selection, not a proven
+full-ICL stress/voice solution. Do not attribute 08 to session state, model,
+quantization or reference length without a distinguishing repeat.
+
+The user notes that «документы» sometimes sounds strange, possibly because of
+stress. Files 03/07/11/15/19/23 deliberately request **до́кументы**, not the normative
+**докуме́нты**, to test counter-dictionary U+0301 control. No file/vowel-specific
+pronunciation verdict was supplied, so prescribed-stress compliance remains
+unassessed. For 03, the missing word is independently a completeness failure;
+that failure is not explained away by the unusual target stress.
+
+### Abrupt-ending diagnosis and existing terminal shaping
+
+A read-only follow-up inspected files 03/04/08/12/16/20/24. Every WAV contains
+all native samples and matches the exact F32-to-PCM16 conversion and selected
+copy identity. All seven ended at natural EOS, not the generation-frame cap.
+For 03 (18 frames, 1.44 s) and 12 (89 frames, 7.12 s), the last PCM16 sample is
+zero; the final 50 ms RMS is respectively -109.34/-108.80 dBFS. The last 100 ms
+RMS is -31.92/-32.22 dBFS. Thus neither lost samples during saving/copying nor a
+nonzero final-sample discontinuity explains these two observations. This
+does not establish why the generated speech ends abruptly earlier in the
+tail; the user's failures remain unchanged. In particular, no missing-word
+claim is inferred for 12, whereas the requested word is absent in 03.
+
+The exact report and script are separately hashed artifacts in each model
+receipt under `listening-followup-001/`, outside sealed `run-001`. Only 03/04/08
+apply to RU-stress, 12/16 to CF, and 20/24 to Base. Numeric endpoint analysis
+does not infer listening quality or transfer a verdict across models.
+
+Bridge already has
+[`TerminalFadePostProcessor`](../../src/qwen_tts_bridge/audio/terminal_fade_post_processor.hpp):
+defaults are 15 ms fade and 85 ms completion silence (0 ms cancellation silence;
+error audio is released unchanged). The user-facing player enables it by
+default; `qwen_tts_save_wav` requires `--tail`. These direct-probe research
+WAVs bypass that post-processor. A 15 ms terminal fade would act on an already
+almost-silent interval in 03/12; a pause may change perceived completion but
+requires a separate unchanged-versus-shaped A/B. No processed copies were
+generated. Fade/padding cannot restore 03's omitted word or repair 08's
+mid-track voice change and is not an early-EOS fix.
+
+No GPU inference, new generation, listening transfer, production-default change
+or audio modification occurred while recording this feedback.
 
 Handoff validation: all 45 indexed canonical receipts pass the project
 validator; the three new receipts also pass actual local artifact byte/hash

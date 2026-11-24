@@ -404,9 +404,20 @@ RU-stress and CF, while their short full-ICL cells have0; Base has0 in both.
 This does not establish speech quality or a general EOS remedy. Warm ABBA
 fresh-process measurements reproduce approximately179→83ms first PCM and
 153→60ms prefill, not first usable speech or same-session reference switching.
-Three separate indexed schema-v2 receipts retain listening not_run and
-release blocked. One25-WAV selection awaits new exact-artifact listening;
-stress, voice continuity, Bridge lifecycle and release gates remain open.
+The user subsequently listened to generated selection 01-24. RU-stress 01 has
+no voice, 02 has a strange sound, 03 omits the requested word and cuts off,
+and 04-07 are normal; short-reference 08 changes voice after the middle.
+CF 09-10 are empty, 11/12 have normal speech with an abrupt end in 12;
+short-reference 13-16 and Base 17-24 are normal. The separate indexed receipts retain
+failed scoped RU-stress/CF listening and partial_pass Base listening; positive
+short CF feedback does not erase its original-reference failures. The general
+documents-pronunciation caveat has no vowel-specific verdict: these selected
+stress cases intentionally request nonstandard до́кументы. Full matrix/stress,
+voice fidelity, Bridge lifecycle and release gates remain open; release blocked.
+Read-only tail analysis finds all samples conserved and nearly silent final 50 ms
+in 03/12, so WAV sample loss/final-sample discontinuity does not explain those
+endings. Existing 15 ms fade/85 ms pause is bypassed by the raw research WAVs;
+presentation A/B remains separate from EOS, omitted speech and voice drift.
 
 ## Verified milestones
 

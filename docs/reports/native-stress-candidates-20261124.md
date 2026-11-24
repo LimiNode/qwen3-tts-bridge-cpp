@@ -31,6 +31,15 @@ first PCM and153→60ms prefill. It is not same-session reference switching:
 the retained probe fixes conditioning per process. First callback is not
 first audible or intelligible speech.
 
+Subsequent listening to that comparison selection is mixed: RU-stress short
+05-07 are normal but 08 changes voice after the middle; CF short 13-16 and Base
+17-24 are normal in the user's scoped assessment. Original-reference RU-stress
+01-03 and CF 09-10 fail speech, and CF 12 has an abrupt ending. These new
+observations are attached to their exact separate receipts; short full ICL
+is not a general voice-stability fix. Prescribed-stress compliance remains
+unassessed because the general documents-pronunciation caveat does not
+identify the realized vowel; the selected target is deliberately до́кументы.
+
 ## RU-Stress-CF: preparation actually performed
 
 Pinned primary source:
