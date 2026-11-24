@@ -3,6 +3,22 @@
   "generated_at": "2026-11-24",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-icl-geometry-rustress-cmp50hx-20261124",
+      "receipt": "docs/reports/native-icl-geometry-rustress-cmp50hx-20261124.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-icl-geometry-base-cmp50hx-20261124",
+      "receipt": "docs/reports/native-icl-geometry-base-cmp50hx-20261124.json",
+      "model_family": "Base",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-icl-state-repro-rustress-cmp50hx-20261124",
       "receipt": "docs/reports/native-icl-state-repro-rustress-cmp50hx-20261124.json",
       "model_family": "RU-stress",

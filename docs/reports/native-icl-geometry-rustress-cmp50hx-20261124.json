@@ -1,0 +1,238 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-icl-geometry-rustress-cmp50hx-20261124",
+  "recorded_at": "2026-11-24",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "ac53416984bc436cf178791e760d478cd50f3f77",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "afa3df01417c90ff141dd54892eeb518d08580b0",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "6c86e4d69f0c0dbc26e35c360e0b6903dc976b0ad61aa3c34dbbaaa1bbe0f6fa",
+    "runner_sha256": "9d448cc5e942d7bd999db35d2baed5b42717239010492d547d9831fd6e49638b",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "speaker_sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698",
+    "reference_codes_sha256": "069ac5c280be070c2e5bf006cb9b58a2d248f34e1bdd37aab62310f2ffdd9443",
+    "reference_text_sha256": "e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4",
+    "upstream_prompt_source": "25cc5886a753035ac3ed9d4000440b2e842e5e56; generate_icl_prompt(non_streaming_mode=True). Layout correspondence, not measured forward parity.",
+    "build": "Manual MSVC14.44 x64 C++17 Release static research probe, existing GGML CPU/CUDA DLLs, CUDA13.3 SM75. Not a production qwen.dll/worker/package build. Later CI/evidence-only commits do not change the built GPU SHA above.",
+    "scope": "This receipt covers34 fixed RU-stress requests across aligned/full-text:10 buffered diagnostics plus24 ordinary streamed timing controls. Shared run002 has 68 requests; the other checkpoint is outside this model receipt.",
+    "sampling": "Unchanged stochastic Talker/Predictor temperature0.9, top_k50/top_p1, repetition1.05/1, min 2. EOS guard/frontend/segmentation/prefix reuse/forcedMMQ/reseeding OFF. Diagnostics use buffered full-retry capture threshold 1, never triggered; one attempt/prefill, zero snapshots/restores/commits. Timing observers/profile OFF; complete codes copied at retirement.",
+    "conditioning": "Full ICL retained: same 2048-float speaker, all 16x226 reference codes, exact nonempty transcript and decoder reference. Only aligned vs full-text composition/trailing text overlay changes. Source/mask/position contracts pass; generated voice identity needs new listening.",
+    "result": "Aligned frames2/6/99/78; full-text2/2/3/91 for fixed shortRU/shortEN/longRU/longEN. Full-text does not remove near-silent Ладно., adds near-silent All right. and a suspicious3-frame longRU output. Short failures are not explained by transport truncation or forced EOS. Speech/voice quality is not inferred.",
+    "eos_diagnostics": "Corrected run002 separately saves suppressed pre-sampler logits and post-chain exp(logit-max) weights. Normalize weights once. All143 saved categorical selections across both checkpoints reproduce using saved uniform and F32 CDF. Probabilities are post-filter sampler distributions, not raw unfiltered model probabilities.",
+    "historical_diagnostic_error": "run001 files labeled decision-logits actually contain sampler exp weights; its derived second-softmax EOS probabilities are INVALID. Original sampled decisions/codes/PCM remain valid. All68 complete codes and matched-mode PCM pairs in run002 equal run001 exactly. Original inventory preserved and linked; no seed search.",
+    "timing": "First-use aligned/full-text1552.495/1574.9704 ms. Warm same-text n8/layout p50 178.399/231.4984 ms, p95 179.381/255.8301 ms. Small descriptive sample; first PCM is not first audible speech.",
+    "audit": "run002179.453seconds; shared stage 629.140seconds including original run and intervening correction, below 1800seconds.68/68 single attempts, unchanged source/assets/manifests.88 raw/WAV pairs6666240 samples exact. Inventory421 files/50787749 bytes excluding itself. Independent read-only audit confirms all hashes, codes, PCM and143 draws. No new GPU run after sealing.",
+    "production_baseline": "130cb99af9ae12d554962fd0920e08fb4268af01, ABI6 unchanged. Engine51 independently reviewed, not integrated. No defaults, Bridge gitlink, public ABI, QTB, sampler, model or package changes."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen executed plan contains exact UTF-8 inputs, fixed seeds2027/2029, manifests, reference/model/runtime/probe identities and cleared research environment. No seed selection after outcomes.",
+    "corpus_sha256": "7d8085cf5dcfe0c4d845fa744adaa960fc4ed495e438416b3a08fec26f1181c1"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/plan.json",
+      "bytes": 36971,
+      "sha256": "7d8085cf5dcfe0c4d845fa744adaa960fc4ed495e438416b3a08fec26f1181c1",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/results.json",
+      "bytes": 999450,
+      "sha256": "b20e2616dfbd74814a1b2c3a484d8aab67e60281d48afd3528b2c97bbb6f0009",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/independent-audio-logit-audit.json",
+      "bytes": 197151,
+      "sha256": "e8b62cd0ff67065cee0a905545eb0905837f3564a8f20ea89288d455268f9582",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/artifact-inventory.json",
+      "bytes": 121554,
+      "sha256": "e8e5b81f70d52b72525cf8e8908263cdd1463da041e89ebfb543645187e879d8",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/README.txt",
+      "bytes": 2282,
+      "sha256": "fc43d59e0cb2dfe707b2efddca2671fb405626cfeda252bc2801918cbd112f7c",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-001/artifact-inventory.json",
+      "bytes": 115436,
+      "sha256": "6d8d426984500b936eb6bc40d5fb264d53a1314ad748c4a34448e797a270d34e",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Historical sealed run001 inventory; its derived EOS probabilities are invalid, codes/PCM remain valid. Ignored payload is local only, not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/00-reference.wav",
+      "bytes": 844844,
+      "sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/01-ru-aligned-ru-ok-seed-2027.wav",
+      "bytes": 7724,
+      "sha256": "1fff98b223b7b681409ebb918c26d3a9612a74179209750f7195bcfec4ffb850",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/02-ru-aligned-en-all-right-seed-2029.wav",
+      "bytes": 23084,
+      "sha256": "2219583619a352725e525a746fbe7d90f0ba6f865daf330cf81b613aa8caa1f9",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/03-ru-aligned-ru-voice-seed-2027.wav",
+      "bytes": 380204,
+      "sha256": "c6e159885ef2b32159ad100929c5e1de56fbfad00fa7d0f72634064f5a1637e6",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/04-ru-aligned-en-voice-seed-2027.wav",
+      "bytes": 299564,
+      "sha256": "51e800dd36a039dd7decee6e8572c405febc728bc1da9bd69d2e71f8cbcec693",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/05-ru-full-text-ru-ok-seed-2027.wav",
+      "bytes": 7724,
+      "sha256": "b1a70a3300332e1ee06eb4e44237ea4866cf360e8cf2b649efbdea686a2b4a31",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/06-ru-full-text-en-all-right-seed-2029.wav",
+      "bytes": 7724,
+      "sha256": "54eb1d459948dc700b29af8cc6329711b298cf467ef18bc713def8e4fb4186a9",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/07-ru-full-text-ru-voice-seed-2027.wav",
+      "bytes": 11564,
+      "sha256": "9de376186cd7cb259bb3e90868e594211a922ee2d47eb7944664072d7704504b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/08-ru-full-text-en-voice-seed-2027.wav",
+      "bytes": 349484,
+      "sha256": "9c9790f7bc9eaa940011a1fe566d1e8bce8cf379c8ecea13205e800fa057fdce",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Repository-local sealed run002 evidence at original levels; shared plan/audit covers both checkpoints, this receipt scopes only the named model. Ignored payload is not transferred or backed up by Git."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "not_run",
+    "observer": "not_recorded",
+    "recorded_at": "2026-11-24",
+    "scope": "No listening assessment of the new RU-stress aligned/full-text outputs. Reference00 correspondence was previously confirmed by the user; it is not generated-output or voice-fidelity acceptance.",
+    "criteria": {
+      "intelligibility": "not_assessed",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "Complete text, extra sounds, stable voice and similarity to reference require separate listening. Historical user verdicts are not transferred. Near-silence/frame counts are diagnostics only."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Focused prompt-layout mechanics and repeated histories pass; no production-worker/restart/lifecycle/release qualification was performed. Aggregate case pass is not claimed."
+  },
+  "listening_result": {
+    "status": "not_run",
+    "reason": "New numbered WAVs are available in one listening-icl-geometry folder; no observer verdict exists for this candidate."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "R1 NO-GO. Full-text ICL does not remove known RU-stress failures in this matrix, adds another suspicious early output and increases warm first-PCM latency. New quality/voice checks, forward parity and independent package/hardware gates remain open. No promotion."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "notes": "This bounded negative/limited geometry result does not establish upstream forward parity, a model root cause, universal EOS recovery or a production fallback. Earlier failure/listening receipts remain current for their exact artifacts; run001 is preserved with an explicitly invalid probability interpretation.",
+  "related_reports": [
+    "docs/reports/native-icl-geometry-plan-20261124.md",
+    "docs/reports/native-icl-geometry-20261124.md",
+    "docs/reports/native-icl-state-repro-rustress-cmp50hx-20261124.json",
+    "docs/reports/native-engine51-independent-review-20261124.md"
+  ]
+}
