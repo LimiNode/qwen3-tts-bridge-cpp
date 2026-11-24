@@ -14,8 +14,10 @@ QwenTtsClient -> QTB stdin/stdout -> selected persistent worker -> PCM
 
 The Python/Faster worker and the native qwentts.cpp/GGUF worker both keep the
 model loaded between requests, expose the async C++ API, stream PCM, and use
-the same request lifecycle. Native Base Q8_0 is the priority R1 candidate for
-local inference; Python/Faster remains a maintained alternative and the route
+the same request lifecycle. Following the revised2026-11-24 user requirement,
+native RU-stress/full-ICL is the primary model qualification direction: explicit
+Russian stress and full voice cloning must both work. Base Q8_0 is a control,
+not a substitute for that capability. Python/Faster remains an alternative and the route
 for model families not yet covered by native. Backend selection is conditional
 on the dual-GPU, clean-package, quality and listening gates below.
 
@@ -355,12 +357,16 @@ assets. Short4.00s/medium8.84s full-ICL references have56/116 frames versus226;
 original/crop speaker origins stay separate. Eighteen CPU tests, complete-code
 repeat controls and128 raw/WAV checks pass. For RU-stress `Ладно.`/2027, crop
 variants move frame2 EOS outside top50 and generate11–15 frames versus the
-reused original's2, but no new speech/voice success is inferred. Observed warm
+reused original's2, but whole-matrix speech/voice success is not inferred. Observed warm
 direct-engine first PCM is about83ms short/110ms medium versus178ms reused A;
-this is changed conditioning, historical A timing and unassessed new quality,
+this is changed conditioning, historical A timing and unassessed broader quality,
 not an accepted transparent optimization. Two new indexed run002 receipts
-supersede but preserve the old preparation-only receipts;13 WAVs await scoped
-listening in one folder. All failed/short outputs remain available.
+supersede but preserve the old preparation-only receipts. The user listened to
+all13 selected WAVs:04-07 say Ладно. and preserve an acceptable voice;06/07
+sound more alike than04/05. Base08-12 has good complete speech and acceptable
+voice, with11/12 slightly higher than09/10.03 remains a failed voiceless control.
+The separate model receipts now record partial_pass, not whole-matrix quality
+or release acceptance. All failed/short outputs remain available.
 The [native/source comparison](reports/native-source-causal-20261124.md)
 completed four capped native dumps, matched complete16-code histories,
 26 conditional-logit comparisons, direct-input controls and four CPU FP32
@@ -377,8 +383,19 @@ finished in285.593s and CPU/postflight in485.531s from start, with no reset.
 Historical run001 zero-execution/deadline refusals are retained unchanged.
 Engine51's separate earlier64s smoke is not counted as1800s of GPU inference.
 Full-text geometry remains completed/negative and rollback development frozen.
-Base/full-ICL remains the priority candidate for separate beta qualification;
-RU-stress/full-ICL stays HOLD, not a required first-beta default.
+The user has now superseded the Base-first proposal: RU-stress is the primary
+qualification direction because explicit stress and full ICL are required;
+Base remains a control. RU-stress/full-ICL still stays HOLD pending broader
+quality/recovery gates, rather than silently lowering the release requirement.
+The [additional model/recovery plan](reports/native-stress-candidates-20261124.md)
+records pinned RU-Stress-CF adapter compatibility and primary-source checks of
+other candidates. An eight-case CPU FP32 source control completed in306.5s:
+Base shortRU/shortEN/longRU/longEN yields9/10/92/84 frames; in-memory CF yields
+2/2/82/92. CF retains two-frame EOS on both short controls with original full
+ICL. Codes were not decoded/listened to, so this is not speech, stress or
+native/latency acceptance. CF native conversion and the frozen132-attempt
+native comparison remain not_run: approximately15GB free space is needed;
+only about2.25GiB is available. No historical artifacts were deleted.
 
 ## Verified milestones
 
@@ -392,7 +409,8 @@ The canonical acceptance receipt records qwentts revision `130cb99`, ABI 6,
 CUDA graphs enabled, and the exact worker/talker/codec hashes used for the run.
 
 This is a real build and runtime milestone, not a claim that native has already
-been promoted. Native Base is evaluated first for R1, while the native worker
+been promoted. Base was the initial control; the revised requirement now
+prioritizes RU-stress/full-ICL qualification. The native worker
 and the in-process DLL adapter remain separate acceptance surfaces until the
 documented quality, cancellation, lifecycle, packaging, and target-hardware
 promotion gates are closed. See

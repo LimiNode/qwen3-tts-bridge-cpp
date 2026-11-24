@@ -42,22 +42,25 @@ quality, and listening gates pass:
   runtime;
 * the native qwentts.cpp/GGUF worker for the model families it actually
   supports;
-* Qwen3-TTS **Base 1.7B** with a registered `voice_id` profile;
+* a Qwen3-TTS 1.7B-derived Russian-stress candidate with verified explicit
+  U+0301 control and full ICL cloning through a registered `voice_id` profile;
 * UTF-8 text, language, instruction/voice profile, streaming `s16le` mono PCM,
   WAV output, cancellation, restart and deterministic terminal lifecycle;
 * the documented CMP 50HX acceptance profile, with exact model/runtime/voice
   manifests supplied outside the repository.
 
-Native Base Q8_0 is the priority R1 candidate for local inference. Python/Faster
-remains a maintained alternative and reference implementation, especially for
+Native RU-stress/full-ICL is the priority model qualification direction. Base
+Q8_0 remains a control, not a replacement for the stress-control requirement.
+Python/Faster remains a maintained alternative and reference implementation, especially for
 CustomVoice and VoiceDesign until native support is independently accepted.
 Neither backend is promoted to the default by this document: backend selection
 is the outcome of the dual-GPU acceptance and packaging decision record.
 
-The 2026-11-24 research decision keeps native Base/full-ICL as the priority
-candidate for that separate qualification. RU-stress/full-ICL is HOLD because
-of reproducible short-input speech omissions; solving every RU-stress issue
-is not itself a prerequisite for a narrower, fully qualified Base release.
+The revised2026-11-24 user decision supersedes the earlier Base-first proposal:
+explicit stress, full ICL cloning and complete speech are required together.
+RU-stress/full-ICL remains HOLD because of reproducible short-input omissions;
+positive scoped listening with shorter references does not qualify all inputs.
+RU-Stress-CF is a new research candidate; no model is promoted automatically.
 Speaker-only is experimental, full-text ICL is not promoted, and automatic
 rollback integration is deferred pending a qualified recovery policy. The
 completed [full-text comparison](reports/native-icl-geometry-20261124.md)
@@ -69,7 +72,8 @@ is made, and RTX4090/package/lifecycle/playback/listening gates remain open.
 The following may remain available behind explicit opt-in switches or profiles,
 but must not be described as the default production backend:
 
-* the RU-stress profile with profile-owned model identity and combining U+0301;
+* the RU-stress profile with profile-owned model identity and combining U+0301
+  (the required candidate capability, still experimental until qualified);
 * the build-tree speech-animation adapter;
 
 The RU-stress profile already has a successful CMP listening/PCM receipt, but

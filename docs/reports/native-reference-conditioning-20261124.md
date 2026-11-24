@@ -1,4 +1,4 @@
-# Reference conditioning: run002 completed, new speech listening pending
+# Reference conditioning: run002 completed, selected listening recorded
 
 ## Current result: new authorized run002
 
@@ -51,17 +51,18 @@ None of the32 new diagnostic outcomes meets the frozen near-silence threshold
 (RMS<0.0001 and peak<0.001). **This does not prove any new phrase was spoken.**
 All64 timing attempts reproduce their matched diagnostic complete code
 histories; repeated same-mode timing outputs reproduce full codes and PCM.
-New text completeness, unwanted sounds and stable/reference-like voice remain
-unassessed until listening. No old listening verdict transfers to B/C.
+The subsequent user listening covers only04-07 and Base08-12, as detailed
+below; remaining outputs, detailed artifacts/tails and stress compliance are
+unassessed. No old listening verdict transfers to B/C.
 
 For the known RU-stress short failure, the first permitted EOS decision at
 frame2 changes substantially. Retained A puts EOS at rank1 before the sampler,
 then gives it0.9889846 normalized stochastic weight and samples it. With short
 B/C the EOS ranks are419/288; with medium B/C291/280. It is outside the
 unchanged top50, with zero saved post-chain weight at that decision. New
-trajectories terminate at frames11–15 instead. This is a measured change of
-conditioning and generated history, not evidence that an EOS guard repaired
-anything or that the complete speech/voice is correct. Crop versus original
+trajectories terminate at frames11–15 instead. Subsequent user listening
+confirms `Ладно.` and acceptable voice in selected04-07, not a universal EOS
+remedy or an EOS-guard correction. Crop versus original
 also changes phonetic content and decoder context, not reference length alone;
 only B versus C isolates speaker-vector origin.
 
@@ -81,7 +82,7 @@ Values are milliseconds, RU-stress / Base.
 | Medium C |86.15 /86.57 |109.99 /110.65 |
 
 The observed short-reference first-PCM reduction is about95ms, but different
-wall-clock runs, changed prompt/voice conditioning and unassessed new speech
+wall-clock runs, changed conditioning and unassessed broader speech quality
 prevent a production speedup claim. First process callbacks include reference
 decoder startup: reused A1532–1552ms, short585–603ms, medium917–946ms. None of
 these is a QTB/CLI/playback measurement or first audible speech onset. Both
@@ -114,11 +115,18 @@ These13 WAVs retain original levels and exact source bytes; none was removed
 because of duration or energy. README lists the full expected texts. Selection
 is limited to one short failure and one long voice control, not the full
 matrix; other new RU/EN cases remain unlistened. Exact-WAV deduplication found
-no duplicates in this selection. Judge full words, unwanted sounds, voice
-stability/reference likeness and stress separately. Source-crop ASR evidence
+no duplicates in this selection. On2026-11-24 the user listened to all13:
+03 has no voice;04/05 correctly say `Ладно.` with more timbre variation;
+06/07 also say it correctly and sound more alike. All four preserve an
+acceptable voice.08-12 have good full English speech and acceptable voice;
+11/12 sound slightly higher than09/10. Separate model receipts record
+partial_pass for these named outputs, not a successful negative control,
+whole-matrix assessment or explicit-stress test. Detailed artifacts/tails and
+sequential isolation remain unassessed. Source-crop ASR evidence
 is reused from run001 only because source/padding/text bytes match exactly;
-the two ASR word-ending discrepancies and absent crop-specific listening
-remain recorded. No new ASR or human verification is claimed.
+the two ASR word-ending discrepancies remain recorded. The user listened to
+00-02 but did not provide a new word-by-word crop transcript check. No new
+ASR, forced alignment or universal voice-quality verification is claimed.
 
 The synthesis probe is the retained static `afa3df01` research executable,
 SHA256 `6c86e4d69f0c0dbc26e35c360e0b6903dc976b0ad61aa3c34dbbaaa1bbe0f6fa`.
@@ -130,7 +138,8 @@ match A. No model/DLL copy or new download was needed. The successful original
 latent-regeneration gate precedes and validates the new crop extraction.
 
 **Decision:** retain shorter full ICL as a promising conditioning/latency
-candidate and obtain exact-artifact listening. Do not disable ICL, promote a
+candidate with positive selected listening; extend to held-out phrases/seeds
+and explicit-stress/voice tests. Do not disable ICL, automatically promote a
 short reference, claim a universal EOS fix or infer an engine defect from
 changed outputs. Native/source causal work and Engine51 qualification remain
 separate. No production default, engine/model pin, ABI6, QTB, package, merge,

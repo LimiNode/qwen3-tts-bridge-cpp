@@ -56,9 +56,10 @@ This localizes the first observed code difference, not a demonstrated faulty
 Predictor layer or sampler. The existing Philox helper does not make differing
 FP32/Q8 distributions or execution paths trajectory-equivalent.
 
-**Decision:** prioritize exact-artifact listening of the shorter-reference
-[A/B/C candidates](native-reference-conditioning-20261124.md), retaining full
-ICL and the original speaker-vector arm. The known short Russian failure also
+**Decision:** extend exact-artifact listening of the shorter-reference
+[A/B/C candidates](native-reference-conditioning-20261124.md) beyond the now
+confirmed short selection, retaining full ICL and the original speaker-vector
+arm. The known short Russian failure also
 exists in the exact source; do not add more seed search or integrate rollback
 as an arithmetic fix. If the English native/source difference remains a
 product blocker, the next numerical control is an equal-checkpoint native
@@ -104,8 +105,9 @@ and frozen scripts unchanged. Keep the old expired allocation distinct.
 Aggregate `results.json` SHA256:
 `44696e770a05f1f2ab8e51b6ca86d97c8b57f95125194167ba13277015fafd8f`.
 No further GPU execution was scheduled. No production default/pin, ABI6, QTB,
-frozen package, merge, tag or release changed. Base/full-ICL qualification is
-independent; RU-stress remains HOLD.
+frozen package, merge, tag or release changed. The subsequent user amendment
+makes explicit stress/full-ICL a release requirement, with RU-stress primary
+and Base a control; RU-stress remains HOLD, not automatically promoted.
 
 ## Preserved run001 history: verified preflight, no execution
 
