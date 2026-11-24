@@ -44,7 +44,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -54,7 +54,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -64,7 +64,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -74,7 +74,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -84,7 +84,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -94,7 +94,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -104,7 +104,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -114,7 +114,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact unchanged copy of old CF selection 15; retains only the prior exact-artifact О-stress observation, not whole-model acceptance."
+        "reason": "Exact unchanged copy of first-pass CF15. User reaffirms clear requested О stress in paired16 on 2026-11-25; this is an exact-word/seed observation, not whole-model acceptance."
       }
     },
     {
@@ -124,7 +124,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -134,7 +134,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+        "reason": "Exact unchanged matched-pair artifact from the frozen model/full-ICL matrix. User feedback on 2026-11-25 is recorded in human_listening; no new synthesis or audio processing."
       }
     },
     {
@@ -198,8 +198,8 @@
   "human_listening": {
     "status": "partial_pass",
     "observer": "user",
-    "recorded_at": "2026-11-24",
-    "scope": "Only new16 is an exact byte copy of old CF15 with prior normal-speech and requested О-stress feedback on 2026-11-24. Other nine model files in this selection and reference00 have no new listening verdict.",
+    "recorded_at": "2026-11-25",
+    "scope": "User assessed all ten CF files in the paired selection: 03/04/07/08/11/12/15/16/19/20. Feedback confirms several requested stress contrasts, not full reference-voice fidelity, artifact/tail qualification or lifecycle. Reference00 has no new verdict.",
     "criteria": {
       "intelligibility": "partial",
       "voice_or_instruction": "partial",
@@ -207,16 +207,16 @@
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "No new listening occurred during selection. Preserve the exact-file positive observation only for16: до́кументы with О stress, not whole-corpus or voice-fidelity acceptance. New pair15/16 and the remaining pairs require listening. Original-reference failures09/10 and abrupt tail12 in the source comparison remain separate and are not erased."
+    "notes": "2026-11-25 paired-selection feedback: 03/04 and07/08 alternate за́мок/замо́к as requested; 11/12 alternate му́ка/мука́ without surprises. Among13-16 only CF16 has clearly heard О stress, matching prescribed до́кументы; no exact heard vowel is invented for ordinary-stress CF15. 19 has проце́ссор and20 has процессо́р, matching both requests. These are scoped stress observations for the exact words/seeds, not full voice/artifact/tail acceptance or a corpus success rate. Prior16 normal-speech/О-stress feedback is preserved; source original-reference failures09/10 and abrupt tail12 remain separate."
   },
   "release_status": "blocked",
   "case_result": {
     "status": "not_assessed",
-    "reason": "Selection-only artifact verification, not a new synthesis campaign. Nine newly selected model outputs lack listening; model-load/repeat/restart gates were not rerun. No complete case acceptance."
+    "reason": "Selection-only artifact verification plus scoped stress listening for all ten CF outputs, not a new synthesis campaign. Model-load/repeat/restart were not rerun; full voice/artifact/tail qualification remains open."
   },
   "listening_result": {
     "status": "not_assessed",
-    "reason": "Only one byte-identical prior file has scoped positive speech evidence; nine additional selected files remain unassessed. This partial observation does not qualify any new pair or the full selection."
+    "reason": "All ten selected CF files have scoped stress feedback, including requested О in16 and matched zamok/muka/processor contrasts. Full reference-voice fidelity, artifacts and final tails were not separately assessed; partial_pass is not aggregate acceptance."
   },
   "release_disposition": {
     "status": "blocked",

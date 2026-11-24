@@ -51,10 +51,17 @@ stay unassessed.
 The 2026-11-25 follow-up makes a paired listening selection from existing
 short-full-ICL RU-stress/CF outputs: за́мок/замо́к at seeds 64/2027 and
 му́ка/мука́, докуме́нты/до́кументы, проце́ссор/процессо́р at seed 64.
-All 20 generated files are retained without outcome filtering; 18 are newly
-selected/unassessed, and two are exact prior 07/15 copies with unchanged
-scoped observations. This is additional listening material, not a new GPU run
-or an accepted stress-control result.
+All20 generated files are retained without outcome filtering and now have
+user feedback. Zamok/muka/processor contrasts are heard as requested in both
+models. Only paired CF16 clearly has О in до́кументы; paired RU14 remains not
+clearly confirmed, not a definitive wrong-vowel failure. Paired RU06 truncates
+final К and RU17 has a reported «инжинЁр» vowel distortion, independently of
+correct processor stress. The RU selection receipt is fail; CF is scoped
+partial_pass, aggregate not_assessed. This adds nine distinct heard outputs
+per model to the eight first-pass outputs (17 heard /27 unassessed primary
+outputs each), without new GPU work or full model/voice acceptance. The user's
+training-annotation hypothesis is unverified; no training frequency or
+annotation statistics were checked. Earlier source comparison failures remain.
 
 ## RU-Stress-CF: preparation actually performed
 

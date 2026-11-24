@@ -623,7 +623,7 @@
     "status": "fail",
     "observer": "user",
     "recorded_at": "2026-11-25",
-    "scope": "User listened to exact selected files 01-08: RU-stress original-full-ICL 01-04 and short-full-ICL 05-08, then assessed prescribed stress in 07 and revised that assessment after re-listening on 2026-11-25. The other 36 primary matrix outputs and all timing outputs remain unassessed; no new reference 00 verdict was supplied.",
+    "scope": "User assessed first-pass files01-08, then the ten RU-stress files in the separate 2026-11-25 paired selection. Paired14 equals first-pass07; the nine additional source outputs bring coverage to17 unique primary outputs, leaving27 primary and all timing outputs unassessed. Pair numbering is not first-pass numbering; reference00 has no new verdict.",
     "criteria": {
       "intelligibility": "fail",
       "voice_or_instruction": "fail",
@@ -631,16 +631,16 @@
       "final_tail": "fail",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "2026-11-24 initial user feedback: 01 has no voice; 02 is a strange sound; 03 says only 'on proiznyos slovo' (Он произнёс слово), then cuts off sharply, omitting the requested word; 04 is normal; 05-07 were described as normal; 08 changes voice after the middle of the track. A subsequent stress clarification initially classified 07 as ordinary rather than requested О stress in до́кументы. On 2026-11-25 the user re-listened and explicitly revised that assessment: the stress is difficult to determine and may be on О. The earlier stress-failure classification for 07 is withdrawn; prescribed-stress compliance for this exact WAV is now not_assessed, neither pass nor fail. Earlier normal-speech feedback for 07 remains. For 03 the word is missing, not a stress-only defect. The combined voice_or_instruction criterion remains fail because 08 changes voice, independently of uncertain 07 stress. No cause or unselected quality verdict is inferred."
+    "notes": "2026-11-24 initial user feedback: 01 has no voice; 02 is a strange sound; 03 says only 'on proiznyos slovo' (Он произнёс слово), then cuts off sharply, omitting the requested word; 04 is normal; 05-07 were described as normal; 08 changes voice after the middle of the track. A subsequent stress clarification initially classified 07 as ordinary rather than requested О stress in до́кументы. On 2026-11-25 the user re-listened and explicitly revised that assessment: the stress is difficult to determine and may be on О. The earlier stress-failure classification for 07 is withdrawn; prescribed-stress compliance for this exact WAV is now not_assessed, neither pass nor fail. Earlier normal-speech feedback for 07 remains. For 03 the word is missing, not a stress-only defect. The combined voice_or_instruction criterion remains fail because 08 changes voice, independently of uncertain 07 stress. No cause or unselected quality verdict is inferred. 2026-11-25 paired feedback (separate numbering; see native-stress-pairs-rustress-cmp50hx-20261125.json): zamok01/02/05/06, muka09/10 and processor17/18 follow the requested stress contrasts. Paired06 (short ICL, seed2027, source group13) sharply loses the final К of замо́к. Paired17 has проце́ссор but engineer sounds like инжинЁр, a vowel/pronunciation artifact rather than necessarily shifted stress. Paired18 has процессо́р with no engineer surprise. Requested О stress in paired14 remains not clearly confirmed; only CF paired16 was clearly О among paired13-16. No exact heard vowel is assigned to paired13. These observations do not replace earlier source failures or establish a training-data cause."
   },
   "release_status": "blocked",
   "case_result": {
     "status": "fail",
-    "reason": "User confirms failed original-reference speech in 01-03 and voice drift in short-reference 08. Prescribed stress in 07 is now not_assessed after the 2026-11-25 re-listening correction, not a confirmed failure. Mechanical PCM/EOS/repeat checks still pass; the remaining confirmed speech/voice failures prevent acceptance."
+    "reason": "User confirms failed original-reference speech in 01-03 and voice drift in short-reference 08. Prescribed stress in 07 is now not_assessed after the 2026-11-25 re-listening correction, not a confirmed failure. Mechanical PCM/EOS/repeat checks still pass; the remaining confirmed speech/voice failures prevent acceptance. Additional paired06 final-consonant loss and paired17 pronunciation distortion independently fail the narrower paired selection."
   },
   "listening_result": {
     "status": "fail",
-    "reason": "Scoped human listening still fails for 01-03 and voice drift in 08. The earlier stress-failure verdict for 07 is withdrawn after the user's 2026-11-25 re-listening: stress may be on О but cannot be confidently determined. Its normal-speech observation is preserved without accepting prescribed stress."
+    "reason": "Scoped human listening still fails for 01-03 and voice drift in 08. The earlier stress-failure verdict for 07 is withdrawn after the user's 2026-11-25 re-listening: stress may be on О but cannot be confidently determined. Its normal-speech observation is preserved without accepting prescribed stress. New paired06 final-consonant loss and paired17 pronunciation distortion are separate confirmed scoped failures; paired stress successes remain recorded."
   },
   "release_disposition": {
     "status": "blocked",

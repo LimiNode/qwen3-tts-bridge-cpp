@@ -706,8 +706,8 @@
   "human_listening": {
     "status": "fail",
     "observer": "user",
-    "recorded_at": "2026-11-24",
-    "scope": "User listened to exact selected files 09-16: CF original-full-ICL 09-12 and short-full-ICL 13-16, then specifically assessed prescribed stress in 11/15 on the same WAVs. The other 36 primary matrix outputs and all timing outputs remain unassessed; no new reference 00 verdict was supplied.",
+    "recorded_at": "2026-11-25",
+    "scope": "User assessed first-pass files09-16, then the ten CF files in the separate 2026-11-25 paired selection. Paired16 equals first-pass15; the nine additional source outputs bring coverage to17 unique primary outputs, leaving27 primary and all timing outputs unassessed. Pair numbering is not first-pass numbering; reference00 has no new verdict.",
     "criteria": {
       "intelligibility": "fail",
       "voice_or_instruction": "not_assessed",
@@ -715,7 +715,7 @@
       "final_tail": "fail",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "2026-11-24 initial user feedback: 09-10 are empty; 11 and 12 are normal, except 12 ends its voice abruptly; 13-16 are normal as part of the stated 13-24 range. A subsequent same-day clarification confirms stress on О in both 11 and 15, matching the deliberately requested до́кументы rather than ordinary докуме́нты. This is a positive prescribed-stress observation for one word and seed 64, with original and short full ICL; it is not whole-matrix stress or voice-fidelity qualification. The combined voice_or_instruction criterion stays not_assessed because continuous reference-voice fidelity and broader instructions were not separately assessed. Record 12's abrupt ending separately from its positive speech observation; no missing-word claim is inferred. Fade plus pause concerns presentation, not recovery. Original WAVs remain unchanged and short-reference 13-16 do not erase failed original-reference cases."
+    "notes": "2026-11-24 initial user feedback: 09-10 are empty; 11 and 12 are normal, except 12 ends its voice abruptly; 13-16 are normal as part of the stated 13-24 range. A subsequent same-day clarification confirms stress on О in both 11 and 15, matching the deliberately requested до́кументы rather than ordinary докуме́нты. This is a positive prescribed-stress observation for one word and seed 64, with original and short full ICL; it is not whole-matrix stress or voice-fidelity qualification. The combined voice_or_instruction criterion stays not_assessed because continuous reference-voice fidelity and broader instructions were not separately assessed. Record 12's abrupt ending separately from its positive speech observation; no missing-word claim is inferred. Fade plus pause concerns presentation, not recovery. Original WAVs remain unchanged and short-reference 13-16 do not erase failed original-reference cases. 2026-11-25 paired feedback (separate numbering; see native-stress-pairs-cf-cmp50hx-20261125.json): paired03/04/07/08 follow за́мок/замо́к, paired11/12 follow му́ка/мука́, paired19/20 follow проце́ссор/процессо́р. Paired16 clearly follows до́кументы; no exact vowel verdict is invented for ordinary-stress paired15. These scoped positives do not erase first-pass09/10 failures or first-pass12's abrupt tail, and do not establish full voice/artifact/tail acceptance or a training-data cause."
   },
   "release_status": "blocked",
   "case_result": {

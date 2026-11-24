@@ -420,11 +420,18 @@ do not erase original-reference failures or qualify a whole model. Full matrix/s
 voice fidelity, Bridge lifecycle and release gates remain open; release blocked.
 The 2026-11-25 paired listening selection reuses 20 exact existing short-full-ICL
 stress outputs (RU-stress/CF), with matched accent-only pairs and seeds.
-Eighteen are newly selected/unassessed; two are exact copies of prior 07/15.
-This prepares further listening without new GPU inference or production changes.
-Two separate selection receipts retain only the exact already-listened file
-per model as partial_pass, not acceptance of any new pair. They do not supersede
-the source comparison failures.
+The user has now assessed all20: zamok/muka/processor stress contrasts are
+heard as requested in both models. Only paired CF16 has clearly heard О in
+до́кументы; paired RU14 remains not clearly confirmed, not a proven wrong-vowel
+failure. Paired RU06 loses final К and paired RU17 has a vowel distortion
+sounding like «инжинЁр» (not necessarily a stress shift). The separate RU
+selection receipt is fail; CF is scoped partial_pass, aggregate not_assessed,
+without full voice/artifact/tail qualification. Each source model has17 unique
+heard primary outputs and27 primary outputs still unassessed. Source failures,
+Base status and blocked release gates remain unchanged. The suggested training
+annotation explanation is unverified; repeat seeds/contexts could distinguish
+robust stress control from a single realization. No new GPU inference,
+processed audio or production change occurred.
 Read-only tail analysis finds all samples conserved and nearly silent final 50 ms
 in 03/12, so WAV sample loss/final-sample discontinuity does not explain those
 endings. Existing 15 ms fade/85 ms pause is bypassed by the raw research WAVs;

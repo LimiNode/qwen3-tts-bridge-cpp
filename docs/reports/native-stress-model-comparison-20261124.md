@@ -273,20 +273,66 @@ its inventory SHA256 is
 Separate selection-only receipts for
 [RU-stress](native-stress-pairs-rustress-cmp50hx-20261125.json) and
 [CF](native-stress-pairs-cf-cmp50hx-20261125.json) bind their ten exact WAV copies
-and shared reference/README/script/manifest/inventory identities. Each retains
-only the one already-listened byte-identical file as scoped `partial_pass`;
-the other nine model files remain unassessed. Neither selection receipt
-supersedes the failed source comparison or claims new inference. These
-mechanical checks do not assess stress.
+and shared reference/README/script/manifest/inventory identities. At preparation,
+only old RU-stress07/new14 and old CF15/new16 had prior scoped listening.
+That initial state remains in the sealed README/manifest; current observations
+are owned by the tracked receipts. Neither selection receipt supersedes the
+failed source comparison or claims new inference. Mechanical checks alone do
+not assess stress.
 
-Old RU-stress file 07 is identical to new file 14; its speech observation
-remains positive but stress is uncertain. Old CF file 15 is identical to new
-file 16 and retains its exact scoped О-stress observation. The other 18
-generated files are newly selected and not yet assessed by the user; reference
-00 has no new verdict. For each pair, record the heard stressed vowel (or
-uncertain), whether both stress placements differ as requested, and separately
-any missing word, pronunciation artifact or voice change. Neither natural
-EOS nor a numerical audio check supplies these listening results.
+### User assessment of all 20 paired outputs, 2026-11-25
+
+The following numbers refer only to `listening-stress-pairs`, not the earlier
+24-file first-pass selection. All use short full aligned ICL (56 reference
+frames), the original speaker vector and unchanged stochastic sampling.
+
+| Paired files | Model / seed | Requested contrast | User observation |
+| --- | --- | --- | --- |
+| 01/02 | RU-stress / 64 | за́мок / замо́к | Alternates as requested |
+| 03/04 | CF / 64 | за́мок / замо́к | Alternates as requested |
+| 05/06 | RU-stress / 2027 | за́мок / замо́к | Stress alternates; 06 sharply truncates final К, heard as «он произнес слово замо», with К barely starting |
+| 07/08 | CF / 2027 | за́мок / замо́к | Alternates as requested |
+| 09/10 | RU-stress / 64 | му́ка / мука́ | Alternates without surprises |
+| 11/12 | CF / 64 | му́ка / мука́ | Alternates without surprises |
+| 13/14 | RU-stress / 64 | докуме́нты / до́кументы | Clear О stress not confirmed in 14; exact heard vowel in 13/14 not specified |
+| 15/16 | CF / 64 | докуме́нты / до́кументы | Clear О stress only in 16 among 13–16; no exact vowel verdict supplied for ordinary-stress 15 |
+| 17/18 | RU-stress / 64 | проце́ссор / процессо́р | Both requested stresses heard; 17 engineer sounds like «инжинЁр», 18 has no engineer surprise |
+| 19/20 | CF / 64 | проце́ссор / процессо́р | Both requested stresses heard |
+
+The engineer observation in paired17 is a vowel/pronunciation distortion,
+not necessarily a stress-position error: normative «инжене́р» also stresses
+the final syllable. Paired06's incomplete final consonant and paired17's
+pronunciation artifact make the RU-stress selection human/case/listening
+`fail`, independently of its positive target-word stress results. CF retains
+scoped `partial_pass` and aggregate `not_assessed`: the stress observations
+do not separately qualify full voice fidelity, every artifact or final tail.
+Reference00 has no new verdict. Both release dispositions remain blocked.
+
+Paired14 is the unchanged first-pass RU07. The earlier definite stress-failure
+verdict stays withdrawn: the latest user hears clear О only in CF16, but
+does not specify a definite alternative stressed vowel in RU14. Paired16 is
+unchanged first-pass CF15 and confirms its earlier local О-stress observation.
+Each model now has 17 unique heard primary source outputs (eight first-pass
+plus nine additional outputs); 27 primary outputs per model and all timing
+outputs remain unassessed. Base's receipt and all earlier failures remain
+unchanged. No whole-corpus success rate or universal stress support is inferred.
+
+The user's hypothesis that unusual stresses are underrepresented or missing
+from training annotation is plausible but unverified: no training-corpus
+frequency or annotation statistics were inspected. The observations establish
+word/model-dependent controllability, not its training cause. CF16 succeeds
+on the same target word/seed that is not clearly confirmed in RU14, so neither
+an impossible word nor universally ignored stress marks are established.
+A distinguishing follow-up would hold conditioning/sampler fixed and compare
+`докуме́нты/до́кументы` across predefined seeds and neutral carrier contexts,
+with exact input bytes and separate stress/completeness/artifact judgements.
+No new inference or GPU window was used or started while recording feedback.
+
+For paired06, retained source group13 (RU-stress short ICL, seed2027) ends
+naturally after 22 frames / 1.76 s, not the 256-frame cap. The earlier exact
+F32-to-WAV/copy audit conserves all native samples. This excludes sample loss
+in conversion/copying, not a generation/codec end-state defect; the cause of
+the missing К is unresolved. Fade or silence cannot reconstruct that consonant.
 
 ### Abrupt-ending diagnosis and existing terminal shaping
 
