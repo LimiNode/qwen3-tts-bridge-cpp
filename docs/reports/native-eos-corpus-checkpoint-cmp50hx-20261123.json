@@ -1,0 +1,281 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-corpus-checkpoint-cmp50hx-20261123",
+  "recorded_at": "2026-11-23",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "23e2763718ec318633323c994adadf9da100bea8",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "4e47ed266f08cab9e13e277aa460a33bb607e769",
+    "legacy_qwentts_cpp_build": "8ad3171e561c6340b7648a24ba308dd9b1e094bb",
+    "runner_checkout": "4e47ed266f08cab9e13e277aa460a33bb607e769",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "strided_probe_sha256": "c73ffff8ee82ef179f5d9a66e4295c1b2a4cfc8297a4318acf575d08a065c187",
+    "legacy_probe_sha256": "002c969b5822e7f15b9d273e112e06f2bdc5155964e378fc99579ff239315f80",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "build": "MSVC14.44.35207, CUDA13.3 SM75; CUDA graphs ON, forceMMQ OFF, opt-in research seams ON.",
+    "scope": "Static single-lane live AR+codec recovery probe, in-memory irreversible sink; not production Bridge worker, public DLL, physical playback or package acceptance.",
+    "provenance": "Bridge commit identifies documentation checkout before run. All runners use current source; legacy binary build identity is separate from runner source.head. Models/runtime/conditioning reused in place; hashes unchanged before/after, not a loaded-module audit.",
+    "sampling": "Original stochastic Talker/Predictor, min2, production codec ramp1/2/4/8. Frontend/segmentation/prefix/guard/scheduled reseeding OFF. New seeds1009/2003/3001; one rollback1 at natural EOS<=8 frames, continuation64 fixed before execution. No calibrated detector or seed search.",
+    "production_baseline": "130cb99af9ae12d554962fd0920e08fb4268af01, ABI6, QTB/defaults/models/frozen package unchanged."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen plan and hashed corpus/plan.json preserve exact12 UTF-8 text files/languages, 120-group schedule, seeds and original Kraftwerk speaker/226-frame reference/transcript. Short words overlap prior research; not a calibrated held-out evaluation.",
+    "corpus_sha256": "fd60b6bcfd2559a39d6518dc522e641f2a6f2082dbcd8b0c721a6253e9a90d2a"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/batch-summary.json",
+      "bytes": 3219,
+      "sha256": "cf38d19f87eb92c98edc5e5c37fb1f5a3e7ec6a61c98ffbe04a64225551f6cf8",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/summary.json",
+      "bytes": 90977,
+      "sha256": "5bbc4768888eca0af27e4742d23c8fb10b0ed96327f715c6e73b1ffde81bfa6d",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/artifact-inventory.json",
+      "bytes": 556970,
+      "sha256": "7b83cf540e2ddea355797f2382bc8caab1d3ffcc768d43b68bd2b5aa3a15fa71",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/listening-corpus-checkpoint/selection-manifest.json",
+      "bytes": 46848,
+      "sha256": "35124e1784329ef5cff8a5f259374cf61d95ff752246852f8f5990f8c1d704ac",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/listening-corpus-checkpoint/README.txt",
+      "bytes": 5855,
+      "sha256": "989d97ebf6b65ad9dff0dae3f7057ba79165b6d6378c6de19e972db2d68ae505",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/probe-binaries/legacy-live-stream-recovery-probe.exe",
+      "bytes": 582144,
+      "sha256": "002c969b5822e7f15b9d273e112e06f2bdc5155964e378fc99579ff239315f80",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/probe-binaries/strided-live-stream-recovery-probe.exe",
+      "bytes": 581632,
+      "sha256": "c73ffff8ee82ef179f5d9a66e4295c1b2a4cfc8297a4318acf575d08a065c187",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/legacy-a1/plan.json",
+      "bytes": 14644,
+      "sha256": "740c6de434c2e655a71cf6bfe42b65de27d2a244bb49a0eb53b5dff1577e12c4",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/legacy-a1/results.json",
+      "bytes": 211779,
+      "sha256": "ab33f4227e0f59a86725545e0dd89932e78949af7e76215a6d679b3c64b56723",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/strided-b1/plan.json",
+      "bytes": 14649,
+      "sha256": "9d8bc28c1a3795a56f95f8b7bb78652111026000e01a6a11c48205db1ac88b8f",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/strided-b1/results.json",
+      "bytes": 212017,
+      "sha256": "733589e1bf920ad0a83af1a1efe1c8fee7ee5a009b79554f2f249ca32741e687",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/strided-b2/plan.json",
+      "bytes": 14649,
+      "sha256": "b395d53dbb112fa1e6dceb886ed61d5b74a92f6009103b9920f703f6120c8a9e",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/strided-b2/results.json",
+      "bytes": 212021,
+      "sha256": "508a25f986db20df1ebbc12a21f3753f65809b5d43b64868f5db8cd658602893",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/legacy-a2/plan.json",
+      "bytes": 14644,
+      "sha256": "e03378b29c9c8b1a0703a7b87cc48d9aa1eb8326eda7950412c9e92bc9570efd",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/legacy-a2/results.json",
+      "bytes": 211783,
+      "sha256": "cf111e6acc3099b6b2d8b1f7dd2f13b8379649ff99c6c760fac43a17a81102bb",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/corpus/plan.json",
+      "bytes": 35062,
+      "sha256": "fd60b6bcfd2559a39d6518dc522e641f2a6f2082dbcd8b0c721a6253e9a90d2a",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/corpus/results.json",
+      "bytes": 654121,
+      "sha256": "f6150f24a5f9ae2d1a6a65fcd59d5f55fcab25ba57de30c8edcc7e09aba732da",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/evidence-tools/run-batch.ps1",
+      "bytes": 6085,
+      "sha256": "78401fef0ef974a2f04ae0fca79647508b8cb5bb24db400086cb38ec551f6713",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/evidence-tools/summarize-artifacts.py",
+      "bytes": 19703,
+      "sha256": "ded5a42d5bc831988fab8cb0b3e02bccc217c35574b0c5b3b6697e5c2da057f7",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-checkpoint-20261123/evidence-tools/inventory-payload.py",
+      "bytes": 1955,
+      "sha256": "87bb143804d332faa3cf3e71524996611143760ca162a28921b233adf79858ea",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Finalized repository-local evidence verified on2026-11-23; ignored payload is not transferred or backed up by Git."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "fail",
+    "observer": "user",
+    "recorded_at": "2026-11-23",
+    "scope": "Aggregate negative user feedback about the original/candidate pairs01-46 in the exact50-file selection identified by selection-manifest SHA25635124e1784329ef5cff8a5f259374cf61d95ff752246852f8f5990f8c1d704ac. User says usually nothing is audible in either member. Specific listened file numbers and exceptions were not enumerated; do not assign46 individual failures or a rescue rate. Untouched controls47-50 remain unassessed.",
+    "criteria": {
+      "intelligibility": "fail",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User feedback2026-11-23: 'ты их сам проверял? там обычно ничего не слышно в обоих случаях.' The agent had checked mechanics, not listened; no agent auditory verdict is claimed. Direct PCM16 analysis confirms30/46 files have absolute peak<=1 integer unit (12 complete pairs have this in both members);37/46 have RMS<-60dBFS. All50 WAV hashes still match the frozen source/copy selection. These signal observations corroborate the reported near-silence but do not classify every other file as intelligible or establish23 rescues. Exact per-file source/copy WAV SHA256 identities remain in the frozen referenced selection-manifest; the frozen payload and initial not_run metadata are unchanged historical evidence."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "284/284 scoped mechanical groups pass: four41-group matrices plus72 new baselines,12 unchanged replays and36 conditional rollback groups. User now reports usually inaudible originals and candidates in pairs01-46; semantic success is not established. No production-worker restart or complete per-file quality assessment.23 interventions are not23 rescues."
+  },
+  "listening_result": {
+    "status": "fail",
+    "reason": "User reports that usually nothing is audible in either original or candidate among pairs01-46. This is an aggregate failed-intelligibility observation, not46 enumerated failures; controls47-50 and other quality criteria remain unassessed. Previous live-run listening remains scoped to its original receipt."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Failed scoped short-answer listening: user reports usually inaudible originals/candidates. Research checkpoint mechanics/cost do not establish speech recovery. Live detector, production Bridge orchestration, true fork, multi-lane, physical playback/streaming timing, RTX4090 and release matrix remain unqualified. R1 NO-GO."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-corpus-checkpoint-20261123.md",
+    "docs/reports/native-eos-corpus-checkpoint-plan-20261123.md",
+    "docs/reports/native-eos-live-rollback-cmp50hx-20261123.json",
+    "docs/reports/native-eos-live-rollback-20261123.md"
+  ],
+  "notes": "One831.159s GPU batch against1800s bound, original60s request deadlines, max256frames/16-frame holdback. A/B/B/A full codes/PCM/sink/prefix/replay evidence byte-identical. All36 new text/seed controls repeat exactly; all12 unchanged replays match.23/27 short-input cells intervene,0/9 longer cells;20/23 candidates still end at<=8frames, with no quality verdict inferred. Capture sums are per-group, not per-checkpoint: paired recovery total2351.7068 to1943.2548ms across40 captures (-17.37%); payload bytes/memory unchanged. Replay single-capture cell medians58.98605 to48.4318ms, restore38.678225 to29.50505ms. Not prefill/TTFA/audible-onset speedup. Inventory identifies2413 files; no new GPU retries, merge, tag or release."
+}

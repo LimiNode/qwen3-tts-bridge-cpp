@@ -14,6 +14,15 @@ cover the additional deterministic reseeding and true two-slot experiments.
 They do not update the Bridge engine pin or install a live recovery policy.
 Current task scope is CMP 50HX only; do not launch RTX work from this addendum.
 
+The [2026-11-22 staged recovery plan](reports/native-eos-recovery-plan-20261122.md)
+now owns the next experiment order: unchanged state replay, bounded rollback,
+then one-prefill fork and selective risk controls. Its
+[preflight report](reports/native-eos-recovery-preflight-20261122.md) records
+completed technical correctives and the disk-blocked GPU stage. Buffered
+snapshot code is implemented, but replay correctness and live PCM continuity
+are not yet hardware-verified. Earlier failed/positive listening remains
+scoped to the original artifacts below.
+
 ## Current scoped listening checkpoint
 
 The user listened to all eight WAVs in `matrix-final-006/switch-1` and

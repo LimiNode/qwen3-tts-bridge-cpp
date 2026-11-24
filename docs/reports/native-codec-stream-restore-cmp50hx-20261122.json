@@ -1,0 +1,209 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-codec-stream-restore-cmp50hx-20261122",
+  "recorded_at": "2026-11-22",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "5cfc0e53d183d26152dc5482d7dff3f4994db1cc",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "514b71813ff037cf5ae5fefc9f996668b5fbf8df",
+    "runner_checkout": "514b71813ff037cf5ae5fefc9f996668b5fbf8df",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "eb733bce339d92f926e2f0cafad952a7ff89cea045427c18b8aab641a73e4a78",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "linkage": "Static qwen-core opt-in research probe, not public DLL ABI, Bridge worker or package execution. bridge_commit identifies the pre-run documentation checkout only.",
+    "runtime_assets": "Original eos-corpus-decision-20261121/runtime-current DLLs reused in place; exact pre/post hashes and source status in plan/results; assets_unchanged=true. File hashes are not a loaded-module audit.",
+    "execution_scope": "Teacher-forced saved complete code histories; one active codec lane plus staging, full226-frame reference. No new AR generation, live commit/rollback or timing qualification. Exact-file user listening is recorded separately below.",
+    "sampling": "Original stochastic Talker/Predictor, min2, prefix/frontend/segmentation/EOS guard OFF. Discovery seeds2/14/72/75/78; healthy42/64. Alternate64 fixed before run; no data-selected seed."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Saved matrix-001 rollback1 complete16 histories for original seeds2/14/72/75/78 and healthy64; frame-major originals hashed then explicitly transposed. Reference remains codebook-major16x226. Exact code/input identities in codec plan; text hash identifies origin, not a text input consumed by this codec-only process.",
+    "text_utf8_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+    "corpus_sha256": "868f1766e0ca3a59c4958e7fbe4c41376a90c1f6093d674231a29d66b02993c5"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-retry-codec-20261122",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/codec-001/plan.json",
+      "bytes": 11662,
+      "sha256": "868f1766e0ca3a59c4958e7fbe4c41376a90c1f6093d674231a29d66b02993c5",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/codec-001/results.json",
+      "bytes": 1170127,
+      "sha256": "385578b3f98d7a18e606c98cfb536a148323e638846e581485cf0a4f62bd899f",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/summary.json",
+      "bytes": 6710,
+      "sha256": "40da18bae803e499b3f742bad588a34ba9580d0907449b90022051519e29cbc5",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/artifact-inventory.json",
+      "bytes": 155175,
+      "sha256": "a73b29d08122e9c712d17b4348cbd12e3147bf298ecde423991a11ad51ab1935",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified729-file inventory; every original/candidate/raw/WAV retained locally; not transferred by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/listening-key.json",
+      "bytes": 3960,
+      "sha256": "2404d8e0cc9e92d9938df6e70ece7776ecc894968231b5901fe87c91c2c0bcb3",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/listening-retry-codec/README.txt",
+      "bytes": 329,
+      "sha256": "c1e1152f70b986eaf6d15df898ddb68c31f2a95c054b1bc63ed19d3ec13a3258",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/listening-retry-codec/02.wav",
+      "bytes": 334124,
+      "sha256": "b72e0907ecc85b64b74e384ee3e063019144ce0609824016919b1567201086df",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/listening-retry-codec/03.wav",
+      "bytes": 399404,
+      "sha256": "5a18760ed669e2ae0eea46ad9a4082616a0ef248fed4be1301817db0518ec159",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/listening-retry-codec/04.wav",
+      "bytes": 272684,
+      "sha256": "a44e2410553e0223ae51db37410593dd138883a6a80f32c30f408f2c2fb2b323",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/listening-retry-codec/05.wav",
+      "bytes": 326444,
+      "sha256": "d038d1ed356c22cc9d0d19bcf23592fba62fcac91dea78a6e0def541b7ce5e2c",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/listening-retry-codec/06.wav",
+      "bytes": 330284,
+      "sha256": "a490843da3d4715385c0757828d28e525495e9d113c061294f62ed4ca0e5c7d7",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/listening-retry-codec/07.wav",
+      "bytes": 322604,
+      "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-retry-codec-20261122/probe-binary/codec-stream-replay-probe.exe",
+      "bytes": 175616,
+      "sha256": "eb733bce339d92f926e2f0cafad952a7ff89cea045427c18b8aab641a73e4a78",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Verified repository-local payload on 2026-11-22; not transferred or backed up by Git."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "not_run",
+    "persistent_repeat": "not_run",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-22",
+    "scope": "Exact production-ramp codec WAVs02-07: user confirms full requested text, no laughter/cough and normal delivery in all six. Files02-06 are five rollback1 candidate histories for original seeds2/14/72/75/78;07 is healthy64 control, not a sixth recovery. No prior buffered verdict transferred and no other boundary/T1 variant graded.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "partial",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "All six exact codec WAVs have positive scoped feedback. In03.wav (original14, continuation64, codec boundary1), the user hears a longer USB/port pause and classifies it as pronunciation variation, not missing text or a declared recovery defect. Fast MGU is a nonblocking future abbreviation-adaptation observation. Normal subjective delivery does not establish reference-voice fidelity or instruction adherence; other artifact classes, stress, tail and sequential isolation remain unassessed."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "31/31 teacher-forced restoration/reconstruction cases pass complete PCM/private snapshot-state checks. All14 production-ramp original comparisons match retained streaming bytes. User confirms full text, no laughter/cough and normal delivery in five exact rollback1 WAVs plus healthy64 control. No live AR/commit, independent restart, general quality, held-out or multi-lane qualification."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "Scoped partial_pass for six exact codec WAVs: five candidate histories and one separate healthy control. Other declared quality criteria remain unassessed; not aggregate listening acceptance."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "One-lane teacher forcing only. Safe orchestration still needs pending-code/chunk state, owned uncommitted PCM, commit watermark and coherent AR+codec checkpoint. No true fork, held-out detector, physical playback, streaming latency or RTX4090 qualification. R1 remains NO-GO."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-retry-codec-listening-20261122.json",
+    "docs/reports/native-eos-retry-codec-20261122.md",
+    "docs/reports/native-eos-retry-codec-plan-20261122.md",
+    "docs/reports/native-eos-recovery-mechanics-20261122.md"
+  ],
+  "notes": "Existing private device snapshot walkers reused without engine runtime changes. FixedT1 and production-ramp are separate schedules; frame2 is not a production-ramp boundary. Original buffered-versus-streaming mismatch is not evidence of broken streaming snapshots."
+}

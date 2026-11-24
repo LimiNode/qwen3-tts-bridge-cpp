@@ -1,0 +1,350 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-recovery-cmp50hx-20261122",
+  "recorded_at": "2026-11-22",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "f3d76de86c36e7ba6269555cd532562a8d158f7e",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "382e20a3fd52d341820d35f6ea5a2d5c23d42447",
+    "runner_checkout": "b16d8af6c365e9deb0fd503df9a695c1092ad4f4",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "ef53929578325efba9c74028997adbb8ee486c3470ef108ba462505deaf94435",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "probe_linkage": "Static qwen-core research probe, not qwen.dll C ABI, Bridge worker or package execution; bridge_commit identifies the pre-run documentation checkout only.",
+    "runtime_assets": "Existing eos-corpus-decision-20261121/runtime-current backend DLLs; exact pre/post hashes in matrix-001/plan.json and results.json; assets_unchanged=true.",
+    "execution_scope": "Single buffered-uncommitted slot, one prefill, zero committed samples, no codec snapshot; streaming_qualified=false. Separate baseline controls are streaming.",
+    "sampling": "Baseline stochastic Talker and Predictor, initial min2, EOS guard OFF, prefix/segmentation/frontend OFF; recovery continuation64, no intervention on healthy42/64."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Exact 126-byte original UTF-8 plus pinned Kraftwerk speaker/reference/transcript (226 frames); actual byte hashes, frozen order, seeds and manifests in matrix-001/plan.json. No reconstructed text or frontend.",
+    "text_utf8_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+    "corpus_sha256": "56b43b54d740e04c10d74dfca4a21c72d44412667f82c49ff8bae3820f1c93dd"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-recovery-20261122",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/matrix-001/plan.json",
+      "bytes": 12532,
+      "sha256": "56b43b54d740e04c10d74dfca4a21c72d44412667f82c49ff8bae3820f1c93dd",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/matrix-001/results.json",
+      "bytes": 870134,
+      "sha256": "f1907d3ab0b9261d6b7724de1cd876cf79e8c8cc020600687701f7d804c0a4cf",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/matrix-001/controls-manifest.json",
+      "bytes": 3874,
+      "sha256": "f35cb9bc4231656660c908487cc1053f7407facb107ac61a7a453d0b671fb34d",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/matrix-001/replay-manifest.json",
+      "bytes": 7282,
+      "sha256": "7595a34311bae95376482f57508467e479a7978bc08c847830c87e073bb1adb5",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/matrix-001/recovery-manifest.json",
+      "bytes": 8178,
+      "sha256": "549ee06e291126477ee6db74c11015149680e817d364e1fd7bb0f262f10334be",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/comparison.json",
+      "bytes": 44206,
+      "sha256": "af94f929bb14487abf2045927cb7ef10595b28d2112207e28d87d9ac8acb1da1",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/sha256-inventory.json",
+      "bytes": 77512,
+      "sha256": "4fafb5e1ddae23ed50db144576e0b9d9c084806c9f534cdec8fc4492264dcb44",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-key.json",
+      "bytes": 8346,
+      "sha256": "73c57914c9d91f0ad62e57e320d5da99bacbaf4ea7ada97ba793e5ebab1a9b58",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/manifest.json",
+      "bytes": 6628,
+      "sha256": "4463ccab755bafc6bdb19202cf0ea16145a7a936aded2bf33a517b2c5491bf18",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/README.md",
+      "bytes": 1942,
+      "sha256": "be2f5869b59efac9c5493ce6d931a2bcd94f81fb0b9d1561aa669e72b326a16d",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/01.wav",
+      "bytes": 272684,
+      "sha256": "320b27549d629176810313471ed04cee1d95c2d3c4c1a2db960b0f55a9fa4e1b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/02.wav",
+      "bytes": 361004,
+      "sha256": "134507ced794ea5d16804c838d51bfb73b2e13ed3637afd92b0db7938545accb",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/03.wav",
+      "bytes": 330284,
+      "sha256": "11cb42d312b50ffd83929b23c2a82def55f824c99323ebe77175314617632278",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/04.wav",
+      "bytes": 11564,
+      "sha256": "7b7fe7046aa48a280ae2ec40b92330ff80143e2d80b4a09989bcffa3aa4ae6cb",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/05.wav",
+      "bytes": 322604,
+      "sha256": "b951dc5f1958c71b4693fb04e119c38f4cd7de72dc392a754cb63c6e37b23edf",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/06.wav",
+      "bytes": 326444,
+      "sha256": "78f2993a2ab5c1da2023f6b1a0d13d3416b91d969500f6002eb67eb6a77ed18d",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/07.wav",
+      "bytes": 11564,
+      "sha256": "b7c9b07c94dece426da9cfd12a2be6f0318c9dbc61cea3e3ba7d6c7e6e585eb2",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/08.wav",
+      "bytes": 334124,
+      "sha256": "9ee9816aaf3a7d1698caa7b5c35da6a95e22328abfd5261270edff289c8e2139",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/09.wav",
+      "bytes": 23084,
+      "sha256": "bfe51a73646951dca001c85132d0d98835baf1a25f352d724421fec6a8ee5946",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/10.wav",
+      "bytes": 11564,
+      "sha256": "7b7fe7046aa48a280ae2ec40b92330ff80143e2d80b4a09989bcffa3aa4ae6cb",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/11.wav",
+      "bytes": 7724,
+      "sha256": "46f7ec618b718fcd0f360bfcf3e8d6dac9d29f8b7704f9ebd8106bcffb30b145",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/12.wav",
+      "bytes": 334124,
+      "sha256": "dd380f5c07e30f7a809194948f49be577dce963c4246018f00061a4b71d2d040",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/13.wav",
+      "bytes": 399404,
+      "sha256": "f77fa4e1e390c0b0bbae94de71a3d26411c18acab130ae7dbb8c51185dc6302d",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/14.wav",
+      "bytes": 322604,
+      "sha256": "16014ad2435768738511c8aeb37292a8a74e95303ab029628d01c347ce48af9c",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/15.wav",
+      "bytes": 326444,
+      "sha256": "08e2a3ca3e666a5ecc1ca776221c41e351b8ffe0b55f228a99c95fede3fa98ae",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/16.wav",
+      "bytes": 372524,
+      "sha256": "50f3eb19365a35c1a82124a99a59bb33a952b5197b433ca5f0ec0c992631440c",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/17.wav",
+      "bytes": 322604,
+      "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "fail",
+    "observer": "user",
+    "recorded_at": "2026-11-22",
+    "scope": "All17 blinded WAV copies, mapped by SHA-256 to exact matrix-001 outputs. Twelve OK responses; five requested-speech failures. Candidate/control separation in per-file report.",
+    "criteria": {
+      "intelligibility": "fail",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User:01-03,05-06,08,12-17 OK;04 strange short sound;07 quiet/nothing;09-11 short strange sound. Rollback1 has5/5 scoped OK, rollback2 has4/5 and EOS resample2/5. Buffered-original14 control fails; healthy streaming64 control is OK. OK is contextual subjective recognizability, not full stress/voice/quality acceptance."
+  },
+  "case_result": {
+    "status": "fail",
+    "reason": "Mechanical controls/replay remain passed, but four intervention candidates and one original control fail requested-speech recognizability. Separate candidate receipts preserve rollback1 positive scope. Restart, live codec continuity, held-out quality and production acceptance remain unqualified."
+  },
+  "listening_result": {
+    "status": "fail",
+    "reason": "User assessed all17 exact blinded WAVs:12 OK and5 requested-speech failures. Mixed result must not hide method-specific positive listening."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Buffered research only. Recomputed codec PCM changes inside retained prefixes; no committed audio, live suffix buffer, true fork, physical playback or RTX4090 qualification. Synchronous snapshot cost166-515ms is not a cheap production policy. R1 remains NO-GO."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-recovery-mechanics-20261122.md",
+    "docs/reports/native-eos-recovery-plan-20261122.md",
+    "docs/reports/native-eos-recovery-preflight-20261122.md",
+    "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json",
+    "docs/reports/native-eos-recovery-listening-20261122.json"
+  ],
+  "notes": "Historical preflight refusal and previous listening evidence retained. Probe/runtime/models unchanged before/after, interrupted=false, no missing groups. Discovery-only seeds2/14/72/75/78 and healthy42/64. No automatic merge, ABI/default/pin/package/release change. Production engine pin remains130cb99af9ae12d554962fd0920e08fb4268af01. Inventory covers matrix, blind WAVs/manifest, key and comparison at generation; README is separately hashed here."
+}

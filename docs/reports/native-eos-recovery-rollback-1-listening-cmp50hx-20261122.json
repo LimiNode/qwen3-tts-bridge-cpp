@@ -1,0 +1,169 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-recovery-rollback-1-listening-cmp50hx-20261122",
+  "recorded_at": "2026-11-22",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "f3d76de86c36e7ba6269555cd532562a8d158f7e",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "382e20a3fd52d341820d35f6ea5a2d5c23d42447",
+    "runner_checkout": "b16d8af6c365e9deb0fd503df9a695c1092ad4f4",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "ef53929578325efba9c74028997adbb8ee486c3470ef108ba462505deaf94435",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "probe_linkage": "Static qwen-core research probe, not qwen.dll C ABI, Bridge worker or package execution; bridge_commit identifies the pre-run documentation checkout only.",
+    "runtime_assets": "Existing eos-corpus-decision-20261121/runtime-current backend DLLs; exact pre/post hashes in matrix-001/plan.json and results.json; assets_unchanged=true.",
+    "execution_scope": "Single buffered-uncommitted slot, one prefill, zero committed samples, no codec snapshot; streaming_qualified=false. Separate baseline controls are streaming.",
+    "sampling": "Baseline stochastic Talker and Predictor, initial min2, EOS guard OFF, prefix/segmentation/frontend OFF; recovery continuation64, no intervention on healthy42/64."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Exact 126-byte original UTF-8 plus pinned Kraftwerk speaker/reference/transcript (226 frames); actual byte hashes, frozen order, seeds and manifests in matrix-001/plan.json. No reconstructed text or frontend.",
+    "text_utf8_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+    "corpus_sha256": "56b43b54d740e04c10d74dfca4a21c72d44412667f82c49ff8bae3820f1c93dd"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-recovery-20261122",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/matrix-001/plan.json",
+      "bytes": 12532,
+      "sha256": "56b43b54d740e04c10d74dfca4a21c72d44412667f82c49ff8bae3820f1c93dd",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/matrix-001/results.json",
+      "bytes": 870134,
+      "sha256": "f1907d3ab0b9261d6b7724de1cd876cf79e8c8cc020600687701f7d804c0a4cf",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-key.json",
+      "bytes": 8346,
+      "sha256": "73c57914c9d91f0ad62e57e320d5da99bacbaf4ea7ada97ba793e5ebab1a9b58",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/manifest.json",
+      "bytes": 6628,
+      "sha256": "4463ccab755bafc6bdb19202cf0ea16145a7a936aded2bf33a517b2c5491bf18",
+      "kind": "manifest",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/01.wav",
+      "bytes": 272684,
+      "sha256": "320b27549d629176810313471ed04cee1d95c2d3c4c1a2db960b0f55a9fa4e1b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/03.wav",
+      "bytes": 330284,
+      "sha256": "11cb42d312b50ffd83929b23c2a82def55f824c99323ebe77175314617632278",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/12.wav",
+      "bytes": 334124,
+      "sha256": "dd380f5c07e30f7a809194948f49be577dce963c4246018f00061a4b71d2d040",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/13.wav",
+      "bytes": 399404,
+      "sha256": "f77fa4e1e390c0b0bbae94de71a3d26411c18acab130ae7dbb8c51185dc6302d",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-recovery-20261122/listening-recovery/15.wav",
+      "bytes": 326444,
+      "sha256": "08e2a3ca3e666a5ecc1ca776221c41e351b8ffe0b55f228a99c95fede3fa98ae",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Verified local payload on 2026-11-22; preserved under the repository. Not transferred or backed up by Git."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "not_run",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-22",
+    "scope": "Only rollback-1: five exact candidate WAVs (01.wav, 03.wav, 12.wav, 13.wav, 15.wav), original seeds2/14/72/75/78, continuation64. 5/5 contextual OK;0/5 requested-speech failures. No controls/other policies pooled.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User marked all five recordings OK in response to requested-text/extraneous-sounds check. Supports positive subjective recognizability on these known cases; no separate stress, voice-fidelity, prosody, tail or release verdict invented."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Five known failures now have scoped positive user listening under rollback1. General quality, independent repeat/restart, held-out texts/seeds and live codec continuity remain unqualified; not aggregate acceptance."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "Scoped partial_pass only: five OK observations, not separate assessment of every declared voice/artifact/tail criterion."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Buffered research only. Recomputed codec PCM changes inside retained prefixes; no committed audio, live suffix buffer, true fork, physical playback or RTX4090 qualification. Synchronous snapshot cost166-515ms is not a cheap production policy. R1 remains NO-GO."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-recovery-mechanics-20261122.md",
+    "docs/reports/native-eos-recovery-listening-20261122.json",
+    "docs/reports/native-eos-recovery-cmp50hx-20261122.json",
+    "docs/reports/native-eos-recovery-plan-20261122.md"
+  ],
+  "notes": "rollback-1 candidate only; same pinned run, no new inference. Repeat/restart are not_run for these single intervention outputs; baseline repetition is not inherited. No live selector, unchanged audible prefix, production overhead or universal EOS fix established."
+}

@@ -1,0 +1,108 @@
+{
+  "schema_version": 2,
+  "recorded_at": "2026-11-21",
+  "model_family": "CustomVoice",
+  "backend": "native",
+  "bridge_commit": "bfe4052094b2c711c3e3eda27d821dffe28055a7",
+  "model_revision": "cab2cff67a0a557310febe558dc83076b28ed790e491867eb2751759f4cd89fa",
+  "runtime_revision": {
+    "qwentts_cpp": "53ac793c956dfc4d42c66b61402367ec0564cdf7",
+    "published_reproducer": "f96b1ead9546a47576e182640ee8d32a6eea7292",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "7e9ff122761e48b435272609980ae23692ed84f9794d7caa7feddc7ac0558443",
+    "ggml_cuda_sha256": "bd54280b060357d21d0345cd1ecbc3f58e220b169561cd44f4c3a42255661b30",
+    "dispatch_patch_sha256_at_run": "d909091801978e763aa25a1c385cecb91415ca2b2ad00939399b7c8b48a908d9",
+    "codec_sha256": "9a0bf7e0d16f04232a852bcd41fd2e485ea546acda1dbf3ce5e59dee76ae8c24",
+    "linkage": "Retained statically linked qwen-core probe with isolated GGML dispatch patch; not Bridge/native worker or packaged qwen.dll execution",
+    "sampling": "Seed64, baseline Philox; max_tokens256; frontend OFF; fusion OFF and matmul route logging ON, no tensor taps; not a latency benchmark"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/prefill-differential-20261121/listening-customvoice-mmq/manifest.json maps unchanged copies to customvoice-speech-followup-002 outputs; frozen input is Да!, seed64, source ru-yes.txt",
+    "text_utf8_sha256": "27b3333fedf5a4f3c6bfb0546b04e760080752b4a36a79fa743eb1e9ab16179d",
+    "corpus_sha256": "631ff68c0efc9914febddcd3d65b6690fdd02b2c6608dcea4d7543f67358ad5a"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/prefill-differential-20261121",
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Scoped one-text/seed CMP listening; broader text/seed quality, uninstrumented latency, restart/lifecycle, independent hardware and package qualification remain open. No default/pin/ABI/sampler promotion."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-prefill-differential-20261121.md",
+    "docs/reports/native-prefill-differential-20261121.json",
+    "docs/reports/native-prefill-customvoice-listening-cmp50hx-20261121.json"
+  ],
+  "notes": "Separate follow-up candidate; historical prefix failure receipt is preserved, not superseded. bridge_commit is the pre-listening evidence baseline, not an executed Bridge client. Original generated manifests/results retain historical unassessed fields; this later canonical observation applies only to the named unchanged WAV hashes. No inference or audio editing performed for this update.",
+  "acceptance_id": "native-prefill-mmq-short-listening-cmp50hx-20261121",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/prefill-differential-20261121/listening-customvoice-mmq/01-baseline-yes-seed-64.wav",
+      "kind": "wav",
+      "bytes": 34604,
+      "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+      "availability": {
+        "status": "local",
+        "reason": "Size and SHA-256 independently verified against listening manifest and original source copy on2026-11-21; ignored local payload retained."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-differential-20261121/listening-customvoice-mmq/03-prefix-mmq-yes-seed-64.wav",
+      "kind": "wav",
+      "bytes": 34604,
+      "sha256": "b9ec1db3f43ef8e653a69e48061328c8c78fb1536d4310403f56190aa6b74d91",
+      "availability": {
+        "status": "local",
+        "reason": "Size and SHA-256 independently verified against listening manifest and original source copy on2026-11-21; ignored local payload retained."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-differential-20261121/listening-customvoice-mmq/manifest.json",
+      "kind": "manifest",
+      "bytes": 1425,
+      "sha256": "631ff68c0efc9914febddcd3d65b6690fdd02b2c6608dcea4d7543f67358ad5a",
+      "availability": {
+        "status": "local",
+        "reason": "Size and SHA-256 independently verified against listening manifest and original source copy on2026-11-21; ignored local payload retained."
+      }
+    }
+  ],
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "File03 is the full-source prefix9 candidate with forced MMQ for Q8_0 Talker prefill; file01 is the same-run no-prefix baseline control. Only these exact short Да! WAVs, seed64, CMP 50HX.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "partial",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User says file01 pronounces Да, file02 coughs КхмКхм Да, and file03 pronounces Да. Thus no coughing is heard in01/03 in the stated comparison. Files01/03 are byte-identical (0.72s,9 frames), not independent quality trials. Absence of all other possible artifacts, voice fidelity, final tail and sequential isolation were not separately assessed."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Scoped intelligibility and no-cough observation is positive, but restart and broader candidate qualification are not performed."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "User confirms Да without the ordinary-prefix cough for this seed64 candidate; this partial scope does not assess every canonical listening criterion."
+  }
+}

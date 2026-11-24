@@ -1,0 +1,84 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "speech-prefill-customvoice-listening-cmp50hx-20261121",
+  "recorded_at": "2026-11-21",
+  "model_family": "CustomVoice",
+  "backend": "other",
+  "bridge_commit": "57bb2b6e28f7eff6a83a5a75e362650559c0f839",
+  "model_revision": "c1d5352f57bca5b8035f011305dc7bd4a1cb18ca3f93660e9e7a9a4120713fa8",
+  "runtime_revision": {
+    "engine": "nyosegawa/speech.cpp CUDA comparator, not the Bridge native worker",
+    "speech_cpp": "fd747c11e50543f59f2bbe233a9c7228dc479a71",
+    "ggml": "79b50d239d0b88852814c873db0d85d43ed66d9b",
+    "probe_sha256": "f06d945364226ece8d89794a73c578ef33a6251bb1cdb16015bd4cc70b792556",
+    "checkpoint": "0c0e3051f131929182e2c023b9537f8b1c68adfe",
+    "sampling": "Seed64; MT19937-64; CUDA graphs OFF; same integer seed is not matched Philox random draws"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/manifest.json maps each unchanged listened WAV to the exact source, seed64 and effective UTF-8 text; original text is in retained per-run inputs, frontend OFF",
+    "corpus_sha256": "4f7c00b5da71f3a97d19284110e68a0a8dc0e8cc498fff24c97120f4f7b3de90",
+    "text_utf8_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/prefill-latency-20261121",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/11-customvoice-original-speech-seed-64.wav",
+      "kind": "wav",
+      "bytes": 272684,
+      "sha256": "3b171ebd14d95cba4d1bb985967878797e1fa343bee496da9e9287a1ef4ace3a",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "File11 is the speech.cpp CUDA comparator original Russian phrase with preset ryan, paired with native file10 only for informal listening. This is a separate backend receipt, not native prefix-KV evidence.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "The user recognizes normal speech in11 and explicitly attributes wrong процессОр (stress on the second О) to this speech.cpp file. Native comparator file10 instead has correct процЕссор. This records a scoped pronunciation defect, not a text omission or general backend-quality ranking. Detailed voice matching, pronunciation beyond the named word, final tail, instruction adherence and sequential isolation remain unassessed."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Retained model-load, PCM, natural-EOS and persistent-repeat evidence is unchanged. Restart and Bridge/package/physical-playback qualification were not performed by this listening follow-up."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "The user recognizes normal speech in11 but confirms wrong процессОр. This scoped pronunciation defect is recorded; broader quality criteria were not assessed."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Scoped listening only; no production profile, release default, engine pin, independent RTX run, lifecycle or package qualification is promoted."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-prefill-study-20261121.md",
+    "docs/reports/native-prefill-study-20261121.json"
+  ],
+  "notes": "bridge_commit identifies the pre-follow-up evidence baseline, not an executed Bridge client. model_revision is the exact converted GGUF SHA-256. Historical generated measurement rows remain unassessed as originally recorded; this receipt is the later scoped user observation. No inference, audio edit or normalization was performed for this update."
+}

@@ -1,0 +1,3000 @@
+{
+  "schema_version": 1,
+  "record_type": "research_summary_not_release_acceptance",
+  "date": "2026-11-21",
+  "hardware": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb, NVIDIA CMP 50HX, 581.94, 20480 MiB, 20162 MiB",
+  "toolchain": "Windows x64, MSVC 19.44, CUDA 13.3, sm75, driver 581.94",
+  "models": {
+    "ru-stress": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\ru-stress\\qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+      "bytes": 2079448256,
+      "sha256": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427"
+    },
+    "base": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\qwen-talker-1.7b-base-Q8_0.gguf",
+      "bytes": 2079448256,
+      "sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda"
+    },
+    "customvoice": {
+      "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\prefill-customvoice-native-0c0e3051\\qwen-talker-1.7b-customvoice-Q8_0.gguf",
+      "bytes": 2042834304,
+      "sha256": "cab2cff67a0a557310febe558dc83076b28ed790e491867eb2751759f4cd89fa"
+    }
+  },
+  "native_codec": {
+    "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\common\\qwen-tokenizer-12hz-Q8_0.gguf",
+    "bytes": 291150624,
+    "sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94"
+  },
+  "customvoice_codec": {
+    "path": "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\prefill-customvoice-native-0c0e3051\\qwen-tokenizer-12hz-F16-comparator.gguf",
+    "bytes": 359008960,
+    "sha256": "9a0bf7e0d16f04232a852bcd41fd2e485ea546acda1dbf3ce5e59dee76ae8c24"
+  },
+  "native_ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+  "comparator_source": "fd747c11e50543f59f2bbe233a9c7228dc479a71",
+  "comparator_ggml": "79b50d239d0b88852814c873db0d85d43ed66d9b",
+  "initial_runtime": {
+    "path": ".tmp/base-acceptance/prefill-latency-20261121/runtime-initial/eos-research-probe.exe",
+    "bytes": 530432,
+    "sha256": "f97b143a2958623e9e5650b6d3c3bb457e8d72e9fa00efe17be261b71dd36dfd"
+  },
+  "rebuilt_runtime": {
+    "path": ".tmp/base-acceptance/prefill-latency-20261121/runtime-rebuilt/eos-research-probe.exe",
+    "bytes": 534016,
+    "sha256": "198d65522f84a0c698ff87339fe1792917ad70485cd06ba14d79543313924f76"
+  },
+  "final_speech_runtime": {
+    "path": ".tmp/base-acceptance/prefill-latency-20261121/runtime-speech-final/speech_direct_probe.exe",
+    "bytes": 56803840,
+    "sha256": "f06d945364226ece8d89794a73c578ef33a6251bb1cdb16015bd4cc70b792556"
+  },
+  "receipt_builder": {
+    "path": ".tmp/base-acceptance/prefill-latency-20261121/build-study-receipt.py",
+    "bytes": 12273,
+    "sha256": "b5c684e801079d7f548812d31e9ed1512403ae090f906bc6c0b2fa505c510e6b"
+  },
+  "comparator_probe_source": {
+    "path": ".worktrees/prefill-engine/tests/speech_comparison/speech_direct_probe.cpp",
+    "bytes": 8656,
+    "sha256": "cbdfe9c5b0bb8c73edeac63924a664e5922f1eaa26fa240a1916f14e4fae705d"
+  },
+  "binary_source": {
+    "initial": "116ca5e4",
+    "rebuilt_native_cpp": "b88752d841b1833a6f52d7e7283bef5c5d0cf79c",
+    "note": "Per-run plans retain script HEAD/status; later changes are harness/docs/CI only."
+  },
+  "native_studies": {
+    "matrix-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/matrix-001/plan.json",
+        "bytes": 8068,
+        "sha256": "64d0e5215e37fb8db1acee4438b9877fd3ee617bcf223be8bd364e0722ff066a"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/matrix-001/results.json",
+        "bytes": 7651058,
+        "sha256": "da576df7ce3cceea5637461091fc6ba5126fe7be6e19478ff63287dd162cf9c3"
+      },
+      "blocks": {
+        "ru-stress": {
+          "unobserved": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.5663,
+              "p95": 162.2313
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 179.83485000000002,
+              "p95": 188.3458
+            },
+            "first_record_pcm_ms": 1525.5265,
+            "prompt_rows": null,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.76245,
+              "p95": 163.5234
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.4719,
+              "p95": 189.6441
+            },
+            "first_record_pcm_ms": 1524.0871,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "last-only": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 152.95999999999998,
+              "p95": 162.3271
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 179.3223,
+              "p95": 189.6381
+            },
+            "first_record_pcm_ms": 1536.5951,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0013561248779296875,
+            "complete_codes_exact": 0
+          },
+          "kv-f16": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.0591,
+              "p95": 161.7214
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 179.6044,
+              "p95": 188.0412
+            },
+            "first_record_pcm_ms": 1525.9548,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "window64": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.51435,
+              "p95": 163.0025
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.3831,
+              "p95": 189.0817
+            },
+            "first_record_pcm_ms": 1655.4169,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "retained": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 152.15855,
+              "p95": 161.2041
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 178.42084999999997,
+              "p95": 188.0252
+            },
+            "first_record_pcm_ms": 1547.8914,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 151.14884999999998,
+              "p95": 161.1154
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 177.23005,
+              "p95": 187.1799
+            },
+            "first_record_pcm_ms": 1535.1626,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0013561248779296875,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.6515,
+              "p95": 163.0447
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.73125,
+              "p95": 189.7627
+            },
+            "first_record_pcm_ms": 1549.9408,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        },
+        "base": {
+          "unobserved": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.381,
+              "p95": 162.2781
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 179.60885000000002,
+              "p95": 188.1849
+            },
+            "first_record_pcm_ms": 1557.1512,
+            "prompt_rows": null,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 154.7782,
+              "p95": 165.7911
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 183.87015,
+              "p95": 195.2314
+            },
+            "first_record_pcm_ms": 1528.5723,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "last-only": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.15120000000002,
+              "p95": 162.3949
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 178.92005,
+              "p95": 188.8552
+            },
+            "first_record_pcm_ms": 1525.6315,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0015268325805664062,
+            "complete_codes_exact": 0
+          },
+          "kv-f16": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.13135,
+              "p95": 161.6278
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 179.2357,
+              "p95": 188.4976
+            },
+            "first_record_pcm_ms": 1525.0176,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "window64": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.6838,
+              "p95": 171.2905
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.30865,
+              "p95": 199.2895
+            },
+            "first_record_pcm_ms": 1529.7968,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "retained": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 152.1484,
+              "p95": 161.6408
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 178.11464999999998,
+              "p95": 194.7103
+            },
+            "first_record_pcm_ms": 1530.8783,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 151.19875000000002,
+              "p95": 179.4032
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 177.42430000000002,
+              "p95": 218.2918
+            },
+            "first_record_pcm_ms": 1545.8871,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0015268325805664062,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 154.04930000000002,
+              "p95": 163.7694
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.81865,
+              "p95": 189.9984
+            },
+            "first_record_pcm_ms": 1545.8501,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        },
+        "customvoice": {
+          "unobserved": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.53165,
+              "p95": 46.2993
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 58.8022,
+              "p95": 77.1152
+            },
+            "first_record_pcm_ms": 276.3619,
+            "prompt_rows": null,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.53145,
+              "p95": 45.0771
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 58.78175,
+              "p95": 76.1972
+            },
+            "first_record_pcm_ms": 293.1108,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "last-only": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.45715,
+              "p95": 43.7812
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 58.8508,
+              "p95": 73.8391
+            },
+            "first_record_pcm_ms": 288.1504,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0024652481079101562,
+            "complete_codes_exact": 0
+          },
+          "kv-f16": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.3294,
+              "p95": 43.5506
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 58.63475,
+              "p95": 73.6831
+            },
+            "first_record_pcm_ms": 288.8448,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "window64": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 33.73585,
+              "p95": 42.8803
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 57.80515,
+              "p95": 73.549
+            },
+            "first_record_pcm_ms": 260.0476,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "retained": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 33.15915,
+              "p95": 43.0825
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 57.30075,
+              "p95": 72.9329
+            },
+            "first_record_pcm_ms": 266.1884,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 32.16755,
+              "p95": 41.0625
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 56.534400000000005,
+              "p95": 72.3509
+            },
+            "first_record_pcm_ms": 276.9542,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0024652481079101562,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 35.0047,
+              "p95": 44.0796
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 59.14675,
+              "p95": 74.5589
+            },
+            "first_record_pcm_ms": 268.7518,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        }
+      }
+    },
+    "causal-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/causal-001/plan.json",
+        "bytes": 6522,
+        "sha256": "12b152cf3e6e397a2efd026a3d2caafe03e18ecf2474bacc58f8e2d29188cbca"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/causal-001/results.json",
+        "bytes": 3974634,
+        "sha256": "9c69d3b364993c9c2dbc3882e910b7fe6c37e50588ff0ce4f889484fc2d1b26d"
+      },
+      "blocks": {
+        "ru-stress": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1520.4378,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "last-only": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1512.81,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0013561248779296875,
+            "complete_codes_exact": 5
+          },
+          "kv-f16": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1512.5441,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "window64": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1515.0726,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "retained": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1507.0921,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1502.0604,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0013561248779296875,
+            "complete_codes_exact": 5
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1513.6173,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          }
+        },
+        "base": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1496.6807,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "last-only": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1503.9927,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0013835430145263672,
+            "complete_codes_exact": 5
+          },
+          "kv-f16": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1505.4838,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "window64": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1499.4229,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "retained": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1508.8418,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1508.7623,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0013835430145263672,
+            "complete_codes_exact": 5
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 1514.8869,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          }
+        },
+        "customvoice": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 274.9234,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "last-only": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 253.7017,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0020551681518554688,
+            "complete_codes_exact": 5
+          },
+          "kv-f16": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 257.1168,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "window64": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 255.9383,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "retained": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 275.8954,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          },
+          "combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 258.6895,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.0020551681518554688,
+            "complete_codes_exact": 5
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 5,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 5,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "warm_first_pcm_ms": {
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "first_record_pcm_ms": 253.7733,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 5,
+            "pair_denominator_complete": true,
+            "raw_exact": 5,
+            "frames_exact": 5,
+            "terminal_exact": 5,
+            "logits_exact": 5,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 5
+          }
+        }
+      }
+    },
+    "prefix-base-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-base-001/plan.json",
+        "bytes": 7458,
+        "sha256": "1e2b56ad16eb9d8a6a329eaad393a981f69d510a1f6bd8836759e431e7856f04"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-base-001/results.json",
+        "bytes": 2399296,
+        "sha256": "76dbc17cf5c61dd782cbc110fd2a4679096312317157a8d69353d1699939ddd1"
+      },
+      "blocks": {
+        "ru-stress": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 152.3555,
+              "p95": 162.2703
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 177.97005000000001,
+              "p95": 189.2104
+            },
+            "first_record_pcm_ms": 1531.8417,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "prefix": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 106.9387,
+              "p95": 116.5076
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 133.21935000000002,
+              "p95": 144.3945
+            },
+            "first_record_pcm_ms": 1566.6592,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 0,
+            "frames_exact": 16,
+            "terminal_exact": 20,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.23787784576416016,
+            "complete_codes_exact": 0
+          },
+          "prefix-combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 104.6269,
+              "p95": 115.963
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 131.15245,
+              "p95": 144.2502
+            },
+            "first_record_pcm_ms": 1565.1526,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 20,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.17183980345726013,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 154.12105,
+              "p95": 163.1826
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.5337,
+              "p95": 189.6465
+            },
+            "first_record_pcm_ms": 1513.9168,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 20,
+            "frames_exact": 20,
+            "terminal_exact": 20,
+            "logits_exact": 20,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        },
+        "base": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 154.05075,
+              "p95": 163.0269
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.02665000000002,
+              "p95": 190.3086
+            },
+            "first_record_pcm_ms": 1538.5818,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "prefix": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 106.9445,
+              "p95": 118.5757
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 132.91495,
+              "p95": 145.8498
+            },
+            "first_record_pcm_ms": 1545.3014,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 0,
+            "frames_exact": 1,
+            "terminal_exact": 20,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.17497682571411133,
+            "complete_codes_exact": 0
+          },
+          "prefix-combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 104.5824,
+              "p95": 114.3193
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 130.35805,
+              "p95": 140.3436
+            },
+            "first_record_pcm_ms": 1568.2808,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 20,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.16953063011169434,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.82405,
+              "p95": 163.2233
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.01945,
+              "p95": 191.9576
+            },
+            "first_record_pcm_ms": 1515.5896,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 20,
+            "frames_exact": 20,
+            "terminal_exact": 20,
+            "logits_exact": 20,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        }
+      }
+    },
+    "prefix-customvoice-001": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-customvoice-001/plan.json",
+        "bytes": 7617,
+        "sha256": "2bbc95f302877ccbb928c2744d2b93f35b43d680b9401a96d481fc2a6d2f6885"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-customvoice-001/results.json",
+        "bytes": 1332605,
+        "sha256": "04b0a2bb91bebf81afd9a0b8fdf3a6a216cfc41b113a9c6c9e6950ed21c42da5"
+      },
+      "blocks": {
+        "customvoice": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.772099999999995,
+              "p95": 44.5582
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 59.5059,
+              "p95": 75.0907
+            },
+            "first_record_pcm_ms": 268.5211,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "prefix": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 25.1691,
+              "p95": 35.8535
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 49.6883,
+              "p95": 66.314
+            },
+            "first_record_pcm_ms": 290.7342,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 19,
+            "frames_exact": 19,
+            "terminal_exact": 20,
+            "logits_exact": 19,
+            "max_abs_logit_delta": 0.3173532485961914,
+            "complete_codes_exact": 0
+          },
+          "prefix-combined": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 22.617350000000002,
+              "p95": 32.9459
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 47.13835,
+              "p95": 63.4931
+            },
+            "first_record_pcm_ms": 279.4475,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 19,
+            "frames_exact": 19,
+            "terminal_exact": 20,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0.28211402893066406,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 35.035650000000004,
+              "p95": 44.3635
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 59.37765,
+              "p95": 74.9731
+            },
+            "first_record_pcm_ms": 273.8446,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 20,
+            "frames_exact": 20,
+            "terminal_exact": 20,
+            "logits_exact": 20,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        }
+      }
+    },
+    "prefix-full-base-002": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-full-base-002/plan.json",
+        "bytes": 7936,
+        "sha256": "ad3d5240e7d4194dc43b3fc9a1b684a94b780ef37515a1fc5c24a6f0551aa6ae"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-full-base-002/results.json",
+        "bytes": 1742539,
+        "sha256": "30d065570abc60fe9b85f6c9b7d6a5e4b678aaf13380eb30efec27898c1df320"
+      },
+      "blocks": {
+        "ru-stress": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 152.57690000000002,
+              "p95": 162.0474
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 178.4296,
+              "p95": 188.2671
+            },
+            "first_record_pcm_ms": 1507.1291,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "prefix-full": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 106.73230000000001,
+              "p95": 115.1601
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 132.50504999999998,
+              "p95": 140.8073
+            },
+            "first_record_pcm_ms": 1514.4371,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 1,
+            "frames_exact": 1,
+            "terminal_exact": 20,
+            "logits_exact": 1,
+            "max_abs_logit_delta": 0.15147417783737183,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.498,
+              "p95": 161.8919
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 179.40145,
+              "p95": 188.7631
+            },
+            "first_record_pcm_ms": 1507.422,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 20,
+            "frames_exact": 20,
+            "terminal_exact": 20,
+            "logits_exact": 20,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        },
+        "base": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 153.7086,
+              "p95": 163.9273
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 179.8615,
+              "p95": 190.7347
+            },
+            "first_record_pcm_ms": 1509.9646,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "prefix-full": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 107.22695,
+              "p95": 115.7982
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 133.37040000000002,
+              "p95": 141.9239
+            },
+            "first_record_pcm_ms": 1508.9493,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 1,
+            "frames_exact": 1,
+            "terminal_exact": 20,
+            "logits_exact": 1,
+            "max_abs_logit_delta": 0.16860008239746094,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 154.0417,
+              "p95": 163.423
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 180.2256,
+              "p95": 190.0808
+            },
+            "first_record_pcm_ms": 1515.2337,
+            "prompt_rows": 236,
+            "effective_conditioning": [
+              "base_icl"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 20,
+            "frames_exact": 20,
+            "terminal_exact": 20,
+            "logits_exact": 20,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        }
+      }
+    },
+    "prefix-full-customvoice-002": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-full-customvoice-002/plan.json",
+        "bytes": 7602,
+        "sha256": "d893f5e612f5893089f2365bdce127ee9a81883d8660e69e770a9309b8a8d03d"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-full-customvoice-002/results.json",
+        "bytes": 1001186,
+        "sha256": "af08ff23ec36397fe0eb10042765efdf0f0c9733da851a5066a53517d3c3a09c"
+      },
+      "blocks": {
+        "customvoice": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.6738,
+              "p95": 43.472
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 58.8548,
+              "p95": 73.6514
+            },
+            "first_record_pcm_ms": 262.1598,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "prefix-full": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 25.4269,
+              "p95": 35.4577
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 49.580299999999994,
+              "p95": 59.6109
+            },
+            "first_record_pcm_ms": 253.2117,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 19,
+            "frames_exact": 19,
+            "terminal_exact": 20,
+            "logits_exact": 19,
+            "max_abs_logit_delta": 0.3173532485961914,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.5148,
+              "p95": 43.8513
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 58.88635,
+              "p95": 74.7595
+            },
+            "first_record_pcm_ms": 259.0936,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": true,
+            "raw_exact": 20,
+            "frames_exact": 20,
+            "terminal_exact": 20,
+            "logits_exact": 20,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        }
+      }
+    },
+    "customvoice-graphs-off-002": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/customvoice-graphs-off-002/plan.json",
+        "bytes": 7702,
+        "sha256": "859fda6258ca82ead511162f2a8e72cd68d8f9dcf46c5c8b9ef4bd408c8aa994"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/customvoice-graphs-off-002/results.json",
+        "bytes": 639216,
+        "sha256": "fd1a0fd76d011fe9fae7d5d45e1eb5a58ebb731f37c2620a1e3ac7839ce76673"
+      },
+      "blocks": {
+        "customvoice": {
+          "unobserved": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 35.391850000000005,
+              "p95": 35.6916
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 107.14070000000001,
+              "p95": 110.2333
+            },
+            "first_record_pcm_ms": 250.9643,
+            "prompt_rows": null,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 20,
+            "pair_denominator_complete": false,
+            "raw_exact": 20,
+            "frames_exact": 20,
+            "terminal_exact": 20,
+            "logits_exact": 0,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          },
+          "baseline": {
+            "process_state": "timeout",
+            "returncode": null,
+            "timing_qualified": false,
+            "observed": 20,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 20,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 35.72895,
+              "p95": 36.4492
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 107.10974999999999,
+              "p95": 113.0182
+            },
+            "first_record_pcm_ms": 260.2317,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "not_run",
+            "returncode": null,
+            "observed": 0,
+            "reason": "overall deadline",
+            "issues": [],
+            "timing_qualified": false
+          }
+        }
+      }
+    },
+    "customvoice-graphs-off-ending-003": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/customvoice-graphs-off-ending-003/plan.json",
+        "bytes": 7711,
+        "sha256": "2c88699f312b8acfe8758a7bdea34ed5fe840e6b7a552f0a7a72a64e1dbc6923"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/customvoice-graphs-off-ending-003/results.json",
+        "bytes": 342077,
+        "sha256": "7ea47034b9a54546f8abee22fca88feb30011038f9cc5bc8850d467edc626024"
+      },
+      "blocks": {
+        "customvoice": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 35.3775,
+              "p95": 36.0798
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 106.7826,
+              "p95": 112.1573
+            },
+            "first_record_pcm_ms": 254.7069,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "custom_voice"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          }
+        }
+      }
+    },
+    "speaker-only-002": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/speaker-only-002/plan.json",
+        "bytes": 7566,
+        "sha256": "6c14042c6cefdfea1a009e7b06bfba8649945e4c1460ae5200dbb4a93f3fa47b"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/speaker-only-002/results.json",
+        "bytes": 1214531,
+        "sha256": "89ce8026a5c6ba4a92c20ce340313814b72fda8ba1ce125bfcb5393d90640809"
+      },
+      "blocks": {
+        "ru-stress": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.8832,
+              "p95": 44.8503
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 59.40345,
+              "p95": 69.2313
+            },
+            "first_record_pcm_ms": 254.7438,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "base_speaker_only"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.4837,
+              "p95": 43.8254
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 59.1263,
+              "p95": 68.3853
+            },
+            "first_record_pcm_ms": 248.8832,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "base_speaker_only"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        },
+        "base": {
+          "baseline": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.8908,
+              "p95": 43.2806
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 59.4941,
+              "p95": 68.0855
+            },
+            "first_record_pcm_ms": 251.113,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "base_speaker_only"
+            ],
+            "paired": 0,
+            "pair_denominator_complete": null,
+            "raw_exact": 0,
+            "frames_exact": 0,
+            "terminal_exact": 0,
+            "logits_exact": 0,
+            "max_abs_logit_delta": null,
+            "complete_codes_exact": 0
+          },
+          "baseline-end": {
+            "process_state": "completed",
+            "returncode": 0,
+            "timing_qualified": true,
+            "observed": 21,
+            "issues": [],
+            "errors": 0,
+            "natural_eos": 21,
+            "max_tokens": 0,
+            "warm_prefill_ms": {
+              "n": 12,
+              "p50": 34.844899999999996,
+              "p95": 43.4325
+            },
+            "warm_first_pcm_ms": {
+              "n": 12,
+              "p50": 59.30475,
+              "p95": 67.574
+            },
+            "first_record_pcm_ms": 249.5655,
+            "prompt_rows": 33,
+            "effective_conditioning": [
+              "base_speaker_only"
+            ],
+            "paired": 21,
+            "pair_denominator_complete": true,
+            "raw_exact": 21,
+            "frames_exact": 21,
+            "terminal_exact": 21,
+            "logits_exact": 21,
+            "max_abs_logit_delta": 0,
+            "complete_codes_exact": 0
+          }
+        }
+      }
+    }
+  },
+  "speech_studies": {
+    "speech-ru-002": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/speech-ru-002/plan.json",
+        "bytes": 2621,
+        "sha256": "2a1f85f0e496c289e8dfd948800c592e6475c759ce214cc758047cf48b0ee957"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/speech-ru-002/collected.json",
+        "bytes": 36981,
+        "sha256": "f32462b558b5ab4dac1471473a8218b61bfb6d96a1cba28d8d8cc008c0b383b7"
+      },
+      "observed": 13,
+      "valid_rows": 13,
+      "natural_eos": 13,
+      "warm_first_pcm_ms": {
+        "n": 12,
+        "p50": 102.39150000000001,
+        "p95": 104.4566
+      },
+      "warm_prefill_ms": {
+        "n": 12,
+        "p50": 33.9999,
+        "p95": 34.6808
+      }
+    },
+    "speech-en-002": {
+      "plan": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/speech-en-002/plan.json",
+        "bytes": 2623,
+        "sha256": "6da15ff2cdaf44535ac5a239c08cb5a54aa18005c6081c0e770bcf2b3e9f633c"
+      },
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/speech-en-002/collected.json",
+        "bytes": 36797,
+        "sha256": "86e4f2c3184028405c2086c966cbf281079e279831a47df42ceafdd397b16b6c"
+      },
+      "observed": 13,
+      "valid_rows": 13,
+      "natural_eos": 13,
+      "warm_first_pcm_ms": {
+        "n": 12,
+        "p50": 97.21525,
+        "p95": 99.4436
+      },
+      "warm_prefill_ms": {
+        "n": 12,
+        "p50": 29.695300000000003,
+        "p95": 30.1635
+      }
+    }
+  },
+  "language_rejections": {
+    "prefix-language-reject-ru-001": {
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-language-reject-ru-001/collected.json",
+        "bytes": 6922,
+        "sha256": "b29508db7cf58821429bf150ff881a684dca867e109a5857dbc923f6585e771d"
+      },
+      "expected_rejection_pass": true,
+      "post_rejection_handle_recovery": "not_tested"
+    },
+    "prefix-language-reject-customvoice-001": {
+      "results": {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/prefix-language-reject-customvoice-001/collected.json",
+        "bytes": 6926,
+        "sha256": "3ef54942e2b1c9a4d20a7d85d751612f29f12f25a5551fb6d75d56d90e70be0c"
+      },
+      "expected_rejection_pass": true,
+      "post_rejection_handle_recovery": "not_tested"
+    }
+  },
+  "cross_run_pairs": {
+    "customvoice-graphs-off-002": {
+      "baseline": "matrix-001/customvoice-unobserved",
+      "paired": 21,
+      "raw_exact": 21,
+      "frames_exact": 21,
+      "terminal_exact": 21
+    },
+    "customvoice-graphs-off-ending-003": {
+      "baseline": "matrix-001/customvoice-baseline",
+      "paired": 21,
+      "raw_exact": 21,
+      "frames_exact": 21,
+      "terminal_exact": 21
+    }
+  },
+  "tensor_parity": {
+    "talker_cp_f32_exact": 404,
+    "talker_cp_q8_exact": 404,
+    "codec_decoder_canonical_exact": 253,
+    "receipts": [
+      {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/competitor-setup/f32-talker-cp-parity.json",
+        "bytes": 162429,
+        "sha256": "9098fd4f9c9a6e04ab65fe4a130beb92dbfc441088b556cc907f5b4d8c3f5d24"
+      },
+      {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/competitor-setup/q8-talker-cp-parity.json",
+        "bytes": 162897,
+        "sha256": "daf74afacd81d67547abb1fca7ce79e83df72f1671d759a59eeed2bc9a068f80"
+      },
+      {
+        "path": ".tmp/base-acceptance/prefill-latency-20261121/competitor-setup/f16-codec-vs-speech-q8-parity.json",
+        "bytes": 110903,
+        "sha256": "a03b4c9365b82a7e0461627eae55c0e9059353c1813d654ddafbc1da60423f90"
+      }
+    ]
+  },
+  "listening_manifest": {
+    "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/manifest.json",
+    "bytes": 9959,
+    "sha256": "4f7c00b5da71f3a97d19284110e68a0a8dc0e8cc498fff24c97120f4f7b3de90"
+  },
+  "listening": {
+    "recorded_at": "2026-11-21",
+    "observer": "user",
+    "status": "scoped_feedback_with_named_failures",
+    "measurement_time_listening": "not_run",
+    "scope": "All 13 unchanged WAV copies in listening-prefill-ab were listened to, including later explicit full-text/stress/no-cough clarification for01-06 and resolved stress attribution for10/11. Historical measurement rows remain unchanged; this object and the indexed canonical receipts record later human feedback, not new inference.",
+    "counts": {
+      "files_listened": 13,
+      "distinct_wav_sha256": 12,
+      "recognized_speech_files": 13,
+      "extraneous_sound_fail_files": 2,
+      "explicit_full_text_confirmed_files": 6,
+      "confirmed_file_specific_stress_failures": 2
+    },
+    "canonical_receipts": [
+      "docs/reports/native-prefill-ru-stress-listening-cmp50hx-20261121.json",
+      "docs/reports/native-prefill-base-listening-cmp50hx-20261121.json",
+      "docs/reports/native-prefill-customvoice-listening-cmp50hx-20261121.json",
+      "docs/reports/speech-prefill-customvoice-listening-cmp50hx-20261121.json"
+    ],
+    "unassessed": [
+      "word-by-word pronunciation audit beyond the scoped stress feedback",
+      "detailed voice matching",
+      "instruction adherence",
+      "final-tail isolation",
+      "sequential contamination",
+      "release and package qualification",
+      "other texts, seeds and artifacts"
+    ],
+    "resolved_stress_attribution": {
+      "native_file_10": "correct процЕссор",
+      "speech_cpp_file_11": "wrong процессОр, stress on the second О",
+      "status": "explicitly_clarified_by_user"
+    },
+    "files": [
+      {
+        "id": "01",
+        "file": "01-ru-stress-original-baseline-seed-64.wav",
+        "bytes": 322604,
+        "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; delivery acceptable."
+      },
+      {
+        "id": "02",
+        "file": "02-ru-stress-original-prefix-split-seed-64.wav",
+        "bytes": 322604,
+        "sha256": "d4de17e705835a352187560e63e1bf0c6f03ada095370f237ab6cfa6a555de3d",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; slightly higher delivery is acceptable."
+      },
+      {
+        "id": "03",
+        "file": "03-ru-stress-original-prefix-full-seed-64.wav",
+        "bytes": 276524,
+        "sha256": "03595705d11fd28337e467aab32d3fac68544771b9048d48eefa08068b7a3235",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; breathier delivery and stretched word endings are acceptable."
+      },
+      {
+        "id": "04",
+        "file": "04-base-original-baseline-seed-64.wav",
+        "bytes": 395564,
+        "sha256": "eca6c089d6cd388a70f110bfb1ef2ef5a9f72fc8cb13b4a3bb3f215b729305ee",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; calm/thoughtful delivery is acceptable."
+      },
+      {
+        "id": "05",
+        "file": "05-base-original-prefix-split-seed-64.wav",
+        "bytes": 368684,
+        "sha256": "4a1b7aba7332b9332357e8f17eadca57dddeb895e84c5f5a4fee75dd821ad83b",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; slower delivery than01 is acceptable."
+      },
+      {
+        "id": "06",
+        "file": "06-base-original-prefix-full-seed-64.wav",
+        "bytes": 341804,
+        "sha256": "a1490754f74bcc053f40fdbe1d41d667febf8f9c783c21cc2bbf372553c62e14",
+        "recognizable_speech": "pass",
+        "full_text": "pass",
+        "cough": "absent",
+        "extraneous_sound": "not_assessed_beyond_no_cough",
+        "pronunciation": "pass_scoped_stress",
+        "notes": "User confirms full text, correct stress and no cough; calm delivery is acceptable."
+      },
+      {
+        "id": "07",
+        "file": "07-customvoice-yes-baseline-seed-64.wav",
+        "bytes": 34604,
+        "sha256": "f2eb94d5e6655229f7a528ec5916ba78acb06eb9a12f090352a4b91d7572b6ef",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "not_assessed",
+        "notes": "User hears simply Да."
+      },
+      {
+        "id": "08",
+        "file": "08-customvoice-yes-prefix-split-seed-64.wav",
+        "bytes": 142124,
+        "sha256": "c55942ef5030cbd2a68f6195825e98b28d317fb21ccd524a5faf526845a4fbd1",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "fail",
+        "pronunciation": "not_assessed",
+        "notes": "User recognizes Да but hears coughing/throat-clearing BEFORE it."
+      },
+      {
+        "id": "09",
+        "file": "09-customvoice-yes-prefix-full-seed-64.wav",
+        "bytes": 142124,
+        "sha256": "c55942ef5030cbd2a68f6195825e98b28d317fb21ccd524a5faf526845a4fbd1",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "fail",
+        "pronunciation": "not_assessed",
+        "notes": "User recognizes Да but hears coughing/throat-clearing BEFORE it."
+      },
+      {
+        "id": "10",
+        "file": "10-customvoice-original-native-seed-64.wav",
+        "bytes": 403244,
+        "sha256": "701fc11d5376321b1a294ae75016aa5f81046c50302306ade8699ce5c181b638",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "pass_scoped_word",
+        "notes": "User reports normal speech and explicitly correct процЕссор in native file10."
+      },
+      {
+        "id": "11",
+        "file": "11-customvoice-original-speech-seed-64.wav",
+        "bytes": 272684,
+        "sha256": "3b171ebd14d95cba4d1bb985967878797e1fa343bee496da9e9287a1ef4ace3a",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "fail",
+        "notes": "User reports normal speech but explicitly wrong процессОр, stress on the second О, in speech.cpp file11."
+      },
+      {
+        "id": "12",
+        "file": "12-ru-stress-original-speaker-only-seed-64.wav",
+        "bytes": 330284,
+        "sha256": "4f97f92fb4a3751895508e736a00292e282946ac87e18be844923af7ab8b8a31",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "fail",
+        "notes": "Normal speech, but user reports wrong процессОр."
+      },
+      {
+        "id": "13",
+        "file": "13-base-original-speaker-only-seed-64.wav",
+        "bytes": 322604,
+        "sha256": "36489759fd15adb5c554a0591debb85b7c1a7cd44bb00c73b6beda38783388b4",
+        "recognizable_speech": "pass",
+        "extraneous_sound": "not_assessed",
+        "pronunciation": "pass_for_process_word_only",
+        "notes": "Normal speech; user explicitly reports correct процЕссор."
+      }
+    ],
+    "duplicate_groups": [
+      {
+        "file_ids": [
+          "08",
+          "09"
+        ],
+        "sha256": "c55942ef5030cbd2a68f6195825e98b28d317fb21ccd524a5faf526845a4fbd1",
+        "meaning": "Two listened paths for the same bytes, not two independent generated failures."
+      }
+    ],
+    "release_promoted": false
+  },
+  "release_defaults_changed": false,
+  "bridge_engine_pin_changed": false,
+  "sampler_changed": false,
+  "rtx4090": "not_run",
+  "profiling": {
+    "cuda_tracing": "unsupported_on_CMP_ERR_NVCMPGPU",
+    "host_nvtx_events": 82,
+    "sqlite": {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/nsight-ru-stress-001/trace.sqlite",
+      "bytes": 196608,
+      "sha256": "96bc1f8223609a290869c6e64b145c3f4867985b9f51adad300a726f70ea89ab"
+    }
+  },
+  "invalid_attempts": {
+    "speaker-only-001": "old binary ignored icl_reference=false; effective base_icl",
+    "prefix-full-base-001": "stale static pipeline/new probe observation layout mismatch",
+    "prefix-full-customvoice-001": "same invalid incremental build",
+    "customvoice-graphs-off-001": "same build, stopped partial control"
+  },
+  "bounded_incomplete_controls": "graphs-off-002: unobserved 21 complete, observed 20/21 timeout, baseline-end not_run. Independent ending-003 completed 21/21. Partial blocks are not qualified timings.",
+  "limitations": [
+    "twelve warm repetitions of one text and seed, fixed block order",
+    "host wall compute/wait is not CUDA kernel execution time",
+    "prefix numerical/PCM equivalence fails; no quality or EOS fix claim",
+    "same checkpoint and weights do not imply equal RNG or GGML execution",
+    "direct engine probes are not Bridge/package/physical playback acceptance"
+  ],
+  "published_engine": {
+    "pr": "https://github.com/LimiNode/qwentts.cpp/pull/50",
+    "head": "eb21b592fdce35d4803bc5dce0ebb2497d73a462",
+    "ci_run": "https://github.com/LimiNode/qwentts.cpp/actions/runs/44865077787",
+    "ci_jobs_success": 2
+  },
+  "validation": {
+    "local_research_off": {
+      "ctest_passed": 13,
+      "abi_probe": "passed",
+      "log": ".tmp/base-acceptance/prefill-latency-20261121/default-off-validation.log",
+      "abi_log": ".tmp/base-acceptance/prefill-latency-20261121/default-off-abi.log"
+    },
+    "local_research_on": {
+      "ctest_passed": 14,
+      "abi_probe": "passed",
+      "log": ".tmp/base-acceptance/prefill-latency-20261121/research-on-validation.log"
+    },
+    "bridge_canonical_receipts_validated": 7
+  },
+  "local_full_receipt": {
+    "path": ".tmp/base-acceptance/prefill-latency-20261121/study-receipt.json",
+    "sha256": "ca4de63698b980bcdd3022626f8e92ad4f6ef1e6a9e3c0ff6c1569b23395ec78"
+  }
+}

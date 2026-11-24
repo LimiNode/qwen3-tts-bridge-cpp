@@ -94,6 +94,220 @@ not detect seed 72's later early EOS; measured warm N=2 pair decisions also
 miss the first-chunk budget. Canonical research receipts are in the index.
 No engine pin, sampler/default, live selector or release gate is promoted.
 
+The separate [native prefill study](reports/native-prefill-study-20261121.md)
+records 504 primary and 105 traced CMP outcomes, isolated graph/head/KV/window
+controls, same-checkpoint ICL cost, matched-weight speech.cpp comparison,
+and split/full-source prefix-KV tests. Small variants preserve the observed
+sampled outputs; prefix reuse reduces latency but changes audio, so it is not
+an equivalent optimization or EOS remedy. The user subsequently listened to
+all 13 named WAVs: RU-stress/Base ICL baseline and prefix samples01-06 have
+full text, correct stress and no cough, with acceptable delivery differences;
+both identical CustomVoice prefix `Да!` samples contain extraneous
+coughing/throat-clearing before the recognized word. Speaker-only RU-stress
+has wrong `процессОр`, while Base has correct `процЕссор`. Native CustomVoice
+file10 also has correct `процЕссор`; speech.cpp file11 has wrong `процессОр`.
+Four indexed canonical receipts preserve this exact scoped feedback;
+detailed voice matching, instruction adherence and broader quality remain
+unassessed. The report's research summary is not release acceptance;
+R1 gates, engine pin, ABI and sampler defaults remain unchanged.
+
+The [prefill differential follow-up](reports/native-prefill-differential-20261121.md)
+adds208 bounded outcomes and a separate12-request natural-EOS control. KV
+restores are exact; drift begins before attention. A traced MMQ/MMVQ shape
+switch materially changes short CustomVoice output; consistent MMQ restores
+full PCM equality for the one tested short seed64 case. The user listened to
+the three exact short WAVs: baseline01 and MMQ03 say `Да` without coughing;
+ordinary-prefix02 says `КхмКхм Да`. Separate indexed receipts retain the failed
+ordinary-prefix case and partial positive MMQ/baseline scope. Broader
+seed/text/latency checks are extended in the
+[short-utterance follow-up](reports/native-prefill-short-20261121.md);
+the user has now assessed all18 selected WAVs. Baseline, ordinary-prefix and
+MMQ-prefix each have a new indexed failed scoped listening receipt. Several
+Russian MMQ failures are byte-identical to baseline; English `Hi!` seed64 adds
+laughter under MMQ relative to its baseline. Target words are recognized in16
+selected files;04 is distorted and18 remains text-uncertain. The other90 matrix
+outputs and broader voice identity remain unassessed. The measured warm
+CustomVoice first-PCM median60.896 to51.603ms is not a quality/EOS rescue.
+No default is promoted; earlier scoped positive and failed receipts are preserved.
+
+The [short-answer causal study](reports/native-short-quality-causal-20261121.md)
+adds122 traced controls and54 independent sampler requests. All14 fresh-process
+controls reproduce the earlier primed baseline; the selected defects do not
+require preceding requests. Full-frame tracing preserves90 original-schedule
+outputs, while MMQ without prefix preserves18/18 English baseline outputs.
+For `Hi!` seed64, prefix-MMQ first changes acoustic `c1` in frame1 despite the
+same first two Talker codes; the exact originating hidden operation remains
+unlocalized. Talker top-1 and predictor greedy each reach natural EOS on the
+14 selected short outcomes, but no new audio quality verdict follows from that.
+All21 repeat pairs match. The user has now listened to all21 selected WAVs:
+baseline and predictor greedy fail; Talker top-1 has scoped `partial_pass`
+with no reported laughter/cough/extra speech, but `Hi!` seed64 sounds like
+`Хау` and remains a pronunciation concern. Sad affect and slightly syllabic
+`Готово` are recorded without inventing an instruction-adherence failure.
+Separate indexed receipts preserve each candidate's scope; the mixed receipt
+keeps six failed max-token controls, failed listening and release `blocked`.
+Held-out coverage, broader voice criteria and prefix-plus-top-1 interaction
+remain unqualified. No new latency claim, Base/Kraftwerk verdict, EOS policy
+change or production promotion is made.
+
+The [2026-11-22 comparative recovery preflight](reports/native-eos-recovery-preflight-20261122.md)
+closes the331stderr-test race (exact-HEAD CI8/8) and extracts the isolated
+N>1Predictor sampler corrective as engine Draft51 (CI2/2). The
+[frozen recovery plan](reports/native-eos-recovery-plan-20261122.md) prioritizes
+unchanged checkpoint replay, rollback1/2, then a genuine one-prefill fork;
+top-k quality qualification stays separate. A buffered/uncommitted research
+checkpoint tool compiles and passes19model-free CTests. Its earlier disk
+refusal remains historical. After user cleanup, the
+[executed CMP matrix](reports/native-eos-recovery-mechanics-20261122.md)
+passes14retained streaming controls,21byte-exact buffered replay pairs and
+21mechanically valid recovery groups. On the five known early terminals,
+rollback1 lengthens5/5, rollback2 lengthens4/5 and EOS resampling lengthens2/5;
+the user subsequently listened to all17 blinded WAVs. The
+[per-file observations](reports/native-eos-recovery-listening-20261122.json)
+record5/5 contextual OK for rollback1,4/5 for rollback2 and2/5 for EOS resample.
+Separate indexed receipts preserve rollback1 scoped `partial_pass` and the
+other candidates' failures; voice/stress and broader quality remain unassessed.
+The [indexed receipt](reports/native-eos-recovery-cmp50hx-20261122.json)
+retains mixed listening fail, zero committed PCM and no streaming qualification. Buffered codec
+output changes even inside retained code prefixes; synchronous snapshot cost
+is166–515ms, so neither seamless streaming nor cheap recovery is established.
+That first matrix did not exercise standalone retry. The subsequent
+[retry/codec comparison](reports/native-eos-retry-codec-20261122.md), with two
+new indexed receipts, passes14controls/21replays/28comparison groups and31
+teacher-forced one-lane codec-state checks. All10 full retries exactly match
+fresh buffered64; repeated rollback1 outputs match earlier bytes. Streaming
+restoration/reconstruction preserves complete PCM/state, including changed
+continuation versus independent fresh decoding and the retained PCM prefix.
+All14 production-ramp originals match retained streaming bytes. The normal
+1then2frame ramp still requires a real chunk-boundary holdback; these tests
+are not an AR+codec live commit-buffer. The user subsequently listened to all
+seven exact WAVs: full text, no laughter/cough and normal delivery. The
+[per-file record](reports/native-eos-retry-codec-listening-20261122.json)
+separates one unique buffered full retry, five restored codec candidates and
+one healthy64 control. Both canonical receipts now retain scoped `partial_pass`,
+not aggregate acceptance. File03's longer USB/port pause is acceptable variation;
+fast MGU is a nonblocking future abbreviation-adaptation observation, with no
+text/frontend change. Voice identity, other artifact classes and broader quality
+remain unassessed.
+Current diagnostic host snapshots cost more than retry's second prefill;
+different output lengths and buffered spans preclude a streaming speedup claim.
+The subsequent [live rollback study](reports/native-eos-live-rollback-20261123.md)
+and [indexed receipt](reports/native-eos-live-rollback-cmp50hx-20261123.json)
+pass14retained controls,14unchanged live replays,6negative guards and7rollback1
+groups on CMP50HX. Coherent single-lane AR+codec checkpoints restore pending
+rows/ramp and an independently owned codec mirror; a bounded owned PCM holdback
+preserves the irreversible in-memory sink. Four known early-EOS recoveries
+retain1920committed samples, the fifth has zero commit; healthy42/64 are unchanged.
+All positive sink bytes equal full PCM and independent fresh streaming-codec
+reconstruction. All five candidate PCM/WAVs also match the preceding codec-only
+outputs byte-for-byte; earlier positive listening remains scoped to its original
+receipt. Direct user listening on2026-11-23 additionally confirms subjective OK
+for healthy01 and five live rollback candidates03-07; the user explicitly
+confirms problems in original control02. The indexed receipt records scoped
+partial_pass, not detailed quality or release acceptance. This is actual live rollback mechanics
+in an opt-in static probe, not Bridge worker integration, physical playback,
+multi-lane, a detector or a latency improvement. Synchronous diagnostic capture
+remains expensive. True fork, live selector, held-out quality and release gates
+remain unverified.
+The subsequent [new-corpus/checkpoint study](reports/native-eos-corpus-checkpoint-20261123.md)
+and [indexed receipt](reports/native-eos-corpus-checkpoint-cmp50hx-20261123.json)
+add 284 passing mechanical groups in 831.159 s on CMP 50HX: four 41-group A/B/B/A
+matrices and 120 new-corpus groups. Pitched KV copies preserve complete codes,
+PCM, sink/prefix and replay evidence; paired recovery capture cost falls 17.37%
+at unchanged snapshot bytes/memory. This is checkpoint cost, not prefill/TTFA.
+All 36 new text/seed controls repeat exactly and 12 unchanged replays pass.
+The naive natural-EOS<=8 policy intervenes in 23/27 short-input cells and 0/9
+longer-input cells; it establishes neither 23 rescues nor false-positive rates.
+The user subsequently reports usually inaudible audio in both members of
+pairs01-46. The indexed receipt now records failed scoped intelligibility,
+without assigning46 per-file failures; controls47-50 remain unassessed.
+Direct PCM16 analysis confirms30/46 files have absolute peak<=1 integer unit,
+including12 complete original/candidate pairs. This is not successful speech
+recovery despite passing mechanics. Earlier positive and failed verdicts
+remain scoped to their original artifacts. Production orchestration,
+detector quality, physical playback, RTX4090 and release gates remain open.
+The subsequent [short-input reset controls](reports/native-eos-short-reset-20261123.md)
+and [receipt](reports/native-eos-short-reset-cmp50hx-20261123.json) complete10
+logical groups/14 AR attempts in41.172seconds on CMP50HX. Full retry1009-to64
+matches independently admitted64 in complete codes and matched buffered PCM,
+twice for each of Нет./Hi!; no retry-reset defect is reproduced. Both long64
+streaming controls match retained84frames/PCM. Original1009 is nearly silent;
+fresh/retry64 has more signal but only2/3frames. Direct user listening now
+fails both exact short selections:01 has no audible intended word,02 has a
+strange sound rather than Hi!;03 long control remains unassessed. Full retry
+is not a remedy for these two inputs despite correct reset mechanics.
+Cross-decoder PCM differences are not reset failures. No latency gain or
+release acceptance is claimed.
+The subsequent [checkpoint/conditioning comparison](reports/native-short-conditioning-20261123.md)
+adds15 independent buffered64 groups in62.437seconds, with separate
+[RU-stress](reports/native-short-conditioning-rustress-cmp50hx-20261123.json)
+and [Base](reports/native-short-conditioning-base-cmp50hx-20261123.json)
+receipts. All six new short repeat pairs preserve complete codes/PCM and
+all effective samplers match the retained defaults; no fallback triggers.
+RU-stress/speaker-only emits13/14frames for Нет./Hi!, Base/full-ICL11/8 and
+Base/speaker-only8/11; long same-mode controls86/103/84. Direct user listening
+now confirms Нет. in01-03, recognizable Hi! in04-06, and the full phrase
+without laughter/cough/extra sounds in07-09. Separate model receipts record
+scoped partial_pass, not complete quality/release acceptance.04's rising
+intonation remains acceptable; occasional процессор stress on O among07-09
+is a nonblocking pronunciation note with no file attribution. Prior failed
+RU-stress/full-ICL short files remain failed. ICL removal also removes decoder
+reference availability, so this is scoped mode dependency, not a transformer
+root cause or universal EOS remedy. Models/defaults remain unchanged;
+all failures and repeats are retained.
+The [prospective expansion plan](reports/native-short-conditioning-expansion-plan-20261124.md)
+now has a [completed CMP50HX execution](reports/native-short-conditioning-expansion-20261124.md),
+with separate [RU-stress](reports/native-short-conditioning-expansion-rustress-cmp50hx-20261124.json)
+and [Base](reports/native-short-conditioning-expansion-base-cmp50hx-20261124.json)
+receipts. Exactly60 independent requests/attempts complete in108.875seconds:
+48 primary short cases at new seeds2027/2029,8 longer voice comparisons and
+4 ru-ok2027 repeats. All mechanics/repeat bytes/identities pass with no actual
+retry; all120 raw/WAV pairs and4792320 conversion samples match. RU-stress/
+full-ICL has8/12 near-silent primary shorts (plus its repeated control),10/12
+end within3frames; RU-stress/speaker-only and both Base modes have no near-
+silent primary shorts here. These are numerical findings, not speech-success
+rates or a universal EOS remedy. ICL changes both AR and decoder conditioning.
+Direct user listening to the16 selected outputs now records RU-stress fail:
+06 speaker-only English changes voice around mid-phrase,09 ICL Ладно. is
+empty,13 ICL All right. seems to contain only 'all' (tentative). Positive
+01/02/05/10/14 observations remain scoped. Base records partial_pass:
+all eight selected files contain the intended words;03/04/07/08/15/16 also
+have approximately reference-like maintained voice, with inter-track
+variation.11/12 explicitly confirm Ладно.; no separate precise voice verdict
+is invented. Other quality criteria/unselected cases remain unassessed;
+aggregate Base listening is not_assessed. Source/copy identities are unchanged
+and each listened WAV is identified in its model receipt. ICL removal is
+not a generally qualified RU-stress fallback given06's voice drift.
+The initial storage block is preserved; execution followed user cleanup
+without changing the frozen corpus or deleting earlier evidence. No further
+GPU run, production fallback or model/mode promotion follows this feedback.
+The subsequently authorized [exact state checks](reports/native-icl-state-repro-20261124.md)
+complete five fresh requests in61.0seconds including identity checks, with
+separate [RU-stress](reports/native-icl-state-repro-rustress-cmp50hx-20261124.json)
+and [Base](reports/native-icl-state-repro-base-cmp50hx-20261124.json) receipts.
+Every complete16-code history, matched buffered PCM, sampled decision and
+EOS matches the retained persistent output: RU-stress/full-ICL Ладно./2027
+and All right./2029 remain2/6frames, Base/full-ICL11/10frames, and RU-stress
+speaker-only English voice82frames. The conditional full queues are not_needed,
+not executed. Preceding requests are not necessary for these exact failures;
+no broader absence of state defects or successful remedy is established.
+All10 raw/WAV conversions are exact; no new listening verdict is inferred.
+Preparation audit finds unchanged correctly transferred226-frame reference,
+2048-value speaker vector and nonempty registry transcript; no confirmed
+preparation defect. Static tokenizer/prompt/mask agreement is not forward or
+extraction parity. Full-ICL remains the target. An important remaining
+confounder is text geometry: native ICL is aligned/streaming-text, whereas
+speaker-only is full-text. Upstream also provides a full-text ICL branch;
+testing that branch while retaining full reference/decoder conditioning is
+the next bounded candidate, not an implemented fix or default change.
+The user subsequently confirms the exact Kraftwerk reference's spoken text
+matches its registry/ICL transcript; both state-check receipts now record the
+reference-only observation and exact WAV identity. Generated-output listening,
+extraction parity, EOS failures and release status are unchanged; no new GPU
+run follows this confirmation.
+Production defaults/pins are unchanged; all research PRs
+remain Draft and R1 stays NO-GO.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL

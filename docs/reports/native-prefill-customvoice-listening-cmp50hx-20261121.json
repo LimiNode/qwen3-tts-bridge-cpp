@@ -1,0 +1,115 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-prefill-customvoice-listening-cmp50hx-20261121",
+  "recorded_at": "2026-11-21",
+  "model_family": "CustomVoice",
+  "backend": "native",
+  "bridge_commit": "57bb2b6e28f7eff6a83a5a75e362650559c0f839",
+  "model_revision": "cab2cff67a0a557310febe558dc83076b28ed790e491867eb2751759f4cd89fa",
+  "runtime_revision": {
+    "initial_qwentts_cpp": "116ca5e4b1a987828bf4b1890c6c8d5ecd4abee4",
+    "rebuilt_native_cpp": "b88752d841b1833a6f52d7e7283bef5c5d0cf79c",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "initial_probe_sha256": "f97b143a2958623e9e5650b6d3c3bb457e8d72e9fa00efe17be261b71dd36dfd",
+    "rebuilt_probe_sha256": "198d65522f84a0c698ff87339fe1792917ad70485cd06ba14d79543313924f76",
+    "codec_sha256": "9a0bf7e0d16f04232a852bcd41fd2e485ea546acda1dbf3ce5e59dee76ae8c24",
+    "linkage": "Retained statically linked direct-engine probes, not an executed Bridge/native-worker/package route",
+    "sampling": "Seed64, baseline Philox; source study and run identities are mapped by the unchanged listening manifest"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/manifest.json maps each unchanged listened WAV to the exact source, seed64 and effective UTF-8 text; original text is in retained per-run inputs, frontend OFF",
+    "corpus_sha256": "4f7c00b5da71f3a97d19284110e68a0a8dc0e8cc498fff24c97120f4f7b3de90"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/prefill-latency-20261121",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/07-customvoice-yes-baseline-seed-64.wav",
+      "kind": "wav",
+      "bytes": 34604,
+      "sha256": "f2eb94d5e6655229f7a528ec5916ba78acb06eb9a12f090352a4b91d7572b6ef",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/08-customvoice-yes-prefix-split-seed-64.wav",
+      "kind": "wav",
+      "bytes": 142124,
+      "sha256": "c55942ef5030cbd2a68f6195825e98b28d317fb21ccd524a5faf526845a4fbd1",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/09-customvoice-yes-prefix-full-seed-64.wav",
+      "kind": "wav",
+      "bytes": 142124,
+      "sha256": "c55942ef5030cbd2a68f6195825e98b28d317fb21ccd524a5faf526845a4fbd1",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/prefill-latency-20261121/listening-prefill-ab/10-customvoice-original-native-seed-64.wav",
+      "kind": "wav",
+      "bytes": 403244,
+      "sha256": "701fc11d5376321b1a294ae75016aa5f81046c50302306ade8699ce5c181b638",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified against the retained source and listening manifest on2026-11-21; unchanged user-listened copy, local ignored payload only."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "fail",
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "File07 is native CustomVoice baseline Да!;08/09 are actual split/full-source cache hits for that text. File10 is the ordinary native CustomVoice original phrase, not a prefix candidate. The user listened to all four exact WAVs.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "fail",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "File07 says simply Да. In08 and09, the user hears coughing/throat-clearing BEFORE the recognized Да: both fail the scoped no-extraneous-sound criterion.08 and09 are identical bytes, not two independent failures. File10 has normal speech and user-confirmed correct stress in процЕссор. The user clarified that the wrong процессОр belongs to speech.cpp file11, not native file10."
+  },
+  "case_result": {
+    "status": "fail",
+    "reason": "Both prefix Да! WAVs contain user-reported extraneous coughing/throat-clearing before the expected word, although Да remains recognizable."
+  },
+  "listening_result": {
+    "status": "fail",
+    "reason": "Both prefix Да! WAVs contain user-reported extraneous coughing/throat-clearing before the expected word, although Да remains recognizable."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Scoped listening only; no production profile, release default, engine pin, independent RTX run, lifecycle or package qualification is promoted."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-prefill-study-20261121.md",
+    "docs/reports/native-prefill-study-20261121.json"
+  ],
+  "notes": "bridge_commit identifies the pre-follow-up evidence baseline, not an executed Bridge client. model_revision is the exact converted GGUF SHA-256. Historical generated measurement rows remain unassessed as originally recorded; this receipt is the later scoped user observation. No inference, audio edit or normalization was performed for this update."
+}

@@ -1,7 +1,231 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-21",
+  "generated_at": "2026-11-24",
   "canonical_receipts": [
+    {
+      "acceptance_id": "native-icl-state-repro-rustress-cmp50hx-20261124",
+      "receipt": "docs/reports/native-icl-state-repro-rustress-cmp50hx-20261124.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-icl-state-repro-base-cmp50hx-20261124",
+      "receipt": "docs/reports/native-icl-state-repro-base-cmp50hx-20261124.json",
+      "model_family": "Base",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-conditioning-expansion-rustress-cmp50hx-20261124",
+      "receipt": "docs/reports/native-short-conditioning-expansion-rustress-cmp50hx-20261124.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-conditioning-expansion-base-cmp50hx-20261124",
+      "receipt": "docs/reports/native-short-conditioning-expansion-base-cmp50hx-20261124.json",
+      "model_family": "Base",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-conditioning-rustress-cmp50hx-20261123",
+      "receipt": "docs/reports/native-short-conditioning-rustress-cmp50hx-20261123.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-conditioning-base-cmp50hx-20261123",
+      "receipt": "docs/reports/native-short-conditioning-base-cmp50hx-20261123.json",
+      "model_family": "Base",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-short-reset-cmp50hx-20261123",
+      "receipt": "docs/reports/native-eos-short-reset-cmp50hx-20261123.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-corpus-checkpoint-cmp50hx-20261123",
+      "receipt": "docs/reports/native-eos-corpus-checkpoint-cmp50hx-20261123.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-live-rollback-cmp50hx-20261123",
+      "receipt": "docs/reports/native-eos-live-rollback-cmp50hx-20261123.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-full-retry-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-full-retry-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-codec-stream-restore-cmp50hx-20261122",
+      "receipt": "docs/reports/native-codec-stream-restore-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-recovery-rollback-1-listening-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-recovery-rollback-1-listening-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-recovery-rollback-2-listening-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-recovery-rollback-2-listening-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-recovery-eos-resample-listening-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-recovery-eos-resample-listening-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-recovery-cmp50hx-20261122",
+      "receipt": "docs/reports/native-eos-recovery-cmp50hx-20261122.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-quality-default-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-short-quality-default-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-quality-talker-top1-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-short-quality-talker-top1-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-quality-predictor-greedy-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-short-quality-predictor-greedy-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-short-quality-causal-cmp50hx-20261121",
+      "receipt": "docs/reports/native-short-quality-causal-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-short-matrix-baseline-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-short-matrix-baseline-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-short-matrix-mmq-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-short-matrix-mmq-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-short-matrix-default-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-short-matrix-default-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-mmq-short-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-mmq-short-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-default-short-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-default-short-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-ru-stress-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-ru-stress-listening-cmp50hx-20261121.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-base-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-base-listening-cmp50hx-20261121.json",
+      "model_family": "Base",
+      "backend": "native",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-prefill-customvoice-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/native-prefill-customvoice-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "speech-prefill-customvoice-listening-cmp50hx-20261121",
+      "receipt": "docs/reports/speech-prefill-customvoice-listening-cmp50hx-20261121.json",
+      "model_family": "CustomVoice",
+      "backend": "other",
+      "human_listening": "partial_pass",
+      "release_status": "blocked"
+    },
     {
       "acceptance_id": "native-eos-corpus-ru-stress-cmp50hx-20261121",
       "receipt": "docs/reports/native-eos-corpus-ru-stress-cmp50hx-20261121.json",

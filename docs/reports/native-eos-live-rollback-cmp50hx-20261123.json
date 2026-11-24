@@ -1,0 +1,178 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-live-rollback-cmp50hx-20261123",
+  "recorded_at": "2026-11-23",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "50887f5c843addbd81b326bb67e714771ad9eb63",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp_build": "8ad3171e561c6340b7648a24ba308dd9b1e094bb",
+    "runner_checkout": "8ad3171e561c6340b7648a24ba308dd9b1e094bb",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "002c969b5822e7f15b9d273e112e06f2bdc5155964e378fc99579ff239315f80",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "linkage": "Opt-in static research probe, not public DLL, QTB worker or package execution. Bridge commit identifies pre-run documentation checkout only.",
+    "build": "MSVC14.44.35207, CUDA13.3 SM75, CUDA graphsON, forceMMQOFF, research FRAME_SEEDS/PREFILL/NVTX ON.",
+    "runtime_assets": "Original runtime-current DLLs reused in place; model/runtime/probe/input hashes and clean source unchanged before/after. Not a loaded-module audit.",
+    "scope": "Single-lane live AR+codec state restoration with owned PCM holdback and irreversible in-memory sink. Not physical playback or production Bridge integration.",
+    "sampling": "Original stochastic Talker/Predictor, min2; frontend/segmentation/prefix/EOS guard/scheduled reseeding OFF. Discovery seeds2/14/72/75/78, healthy42/64; one rollback1 at naturalEOS<=8frames with frozen continuation64,65 for healthy64 (not triggered). Not a calibrated detector."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen plan, original126UTF8 text and unchanged Kraftwerk speaker/226-frame reference/transcript; exact per-file hashes and group schedule in plan.json.",
+    "text_utf8_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+    "corpus_sha256": "8024cd8aab9b2ad4467e5d4a5f29a07cee92d2454e3738c47ff2116e7592b752"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-live-rollback-20261123",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/live-001/plan.json",
+      "bytes": 14574,
+      "sha256": "8024cd8aab9b2ad4467e5d4a5f29a07cee92d2454e3738c47ff2116e7592b752",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Verified repository-local payload on2026-11-23; not transferred or backed up by Git."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/live-001/results.json",
+      "bytes": 210619,
+      "sha256": "835d56fa7a0b1bfe3bded7f7a71f4e9ef384dd4bb8c65c5d34b2d590e6a9e217",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "All41 flushed outcomes and before/after identities verified locally on2026-11-23."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/summary.json",
+      "bytes": 3976,
+      "sha256": "2b2f3319cbe91fc040d1305fb6a29af7f82342d98a047e2a1e7e5761a08391de",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Verified local derived summary; full outcomes retained separately."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/artifact-inventory.json",
+      "bytes": 87450,
+      "sha256": "b71ae657a5863bbf6236d4687d27c62e78eb1fd7ae450083dae0670aadc684f6",
+      "kind": "manifest",
+      "availability": {"status": "local", "reason": "380-file inventory for originals/candidates/negatives/sink/step/raw/WAV/logs and listening copies; not transferred by Git."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-key.json",
+      "bytes": 3995,
+      "sha256": "878d0ff7e74da23cb6c3270c22c5533fd201627ff8eefb204995fd37b6ddb26a",
+      "kind": "json",
+      "availability": {"status": "local", "reason": "Frozen pre-listening key identifies seven exact source/copy WAVs. Subsequent user feedback is recorded in this canonical receipt, not written into the frozen payload."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/01.wav",
+      "bytes": 322604,
+      "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Healthy seed64 control; user confirms subjective OK on 2026-11-23."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/02.wav",
+      "bytes": 11564,
+      "sha256": "117b9952043ca268927a39952783005d4e48993cc61a365050d216efdccc53df",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Original failed seed14 control; user explicitly confirms problems, excluded from positive listening scope."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/03.wav",
+      "bytes": 334124,
+      "sha256": "b72e0907ecc85b64b74e384ee3e063019144ce0609824016919b1567201086df",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Live rollback1 original2/continuation64; user confirms subjective OK on 2026-11-23."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/04.wav",
+      "bytes": 399404,
+      "sha256": "5a18760ed669e2ae0eea46ad9a4082616a0ef248fed4be1301817db0518ec159",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Live rollback1 original14/continuation64; user confirms subjective OK on 2026-11-23."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/05.wav",
+      "bytes": 272684,
+      "sha256": "a44e2410553e0223ae51db37410593dd138883a6a80f32c30f408f2c2fb2b323",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Live rollback1 original72/continuation64; user confirms subjective OK on 2026-11-23."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/06.wav",
+      "bytes": 326444,
+      "sha256": "d038d1ed356c22cc9d0d19bcf23592fba62fcac91dea78a6e0def541b7ce5e2c",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Live rollback1 original75/continuation64; user confirms subjective OK on 2026-11-23."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/07.wav",
+      "bytes": 330284,
+      "sha256": "a490843da3d4715385c0757828d28e525495e9d113c061294f62ed4ca0e5c7d7",
+      "kind": "wav",
+      "availability": {"status": "local", "reason": "Live rollback1 original78/continuation64; user confirms subjective OK on 2026-11-23."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/listening-live-rollback/README.txt",
+      "bytes": 379,
+      "sha256": "b4382d1b0095f3621da9076e3a81d1507681220d27ca06caa7a42b01b2714ac2",
+      "kind": "other",
+      "availability": {"status": "local", "reason": "Expected text and listening criteria in the one numbered folder."}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-live-rollback-20261123/probe-binary/live-stream-recovery-probe.exe",
+      "bytes": 582144,
+      "sha256": "002c969b5822e7f15b9d273e112e06f2bdc5155964e378fc99579ff239315f80",
+      "kind": "other",
+      "availability": {"status": "local", "reason": "Pinned exact static probe copied before execution; hash unchanged after execution."}
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-23",
+    "scope": "Direct user listening to exact new-run WAVs: healthy64 control01 and five live rollback1 candidates03-07 receive subjective OK. The user explicitly excludes original failed seed14 control02 and confirms that it has problems. Positive scope is six WAVs, not seven successful cases or six recoveries.",
+    "criteria": {
+      "intelligibility": "partial",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "partial",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User feedback: 'Просушал. Всё окей.' Clarification: '«всё окей» относится к исправному 01 и восстановленным 03–07. Трек 02 имеет проблемы'. This is a subjective scoped smoke assessment, not a criterion-by-criterion transcript, voice-fidelity, tail or sequential-isolation audit. Control02 remains failed; its exact audible defect was not described. Direct feedback is new-run evidence; prior listening and the frozen pre-listening key remain unchanged."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Scoped mechanical study passes14retained controls,14unchanged live replays,6negative guards and7rollback groups. Four interventions preserve1920alreadycommitted samples; fifth C0. Actual sink/fresh reconstruction match all positive PCM and all prior five candidate bytes. Direct user listening is positive for healthy01 and candidates03-07; original02 remains failed. No production worker restart, held-out/general detector or complete release-matrix qualification."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "Direct user feedback supports scoped partial_pass for exact healthy01 and live rollback candidates03-07, with original failed control02 explicitly excluded. Detailed quality criteria remain unassessed; no aggregate listening or held-out acceptance."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Research-only single-lane live mechanics. Bridge integration, low-overhead snapshots, held-out/tiny-reply detector, true fork, multi-lane, physical playback/timing, RTX4090 and release quality remain unqualified. R1 NO-GO; production pin/ABI/default/package unchanged."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-live-rollback-20261123.md",
+    "docs/reports/native-eos-live-rollback-plan-20261123.md",
+    "docs/reports/native-eos-retry-codec-20261122.md",
+    "docs/reports/native-codec-stream-restore-cmp50hx-20261122.json"
+  ],
+  "notes": "126.531s sequential stage within1800s; one original60s deadline per logical request. Max current holdback16frames; saved slices/diagnostic sink and two retained checkpoint payload136676608bytes separate. Replacement transiently owns a third checkpoint, so payload count is not peakVRAM. Median diagnostic capture245.673ms/restore39.954ms; not TTFA. Independent verifier rehashed assets, row artifacts, complete codes/finitePCM/sink/replay-step/commit evidence. Newer-admission guard temporarily isolates eligibility fields then restores actual CANCELLED metadata. No merge/tag/release; research PRs Draft."
+}
