@@ -622,8 +622,8 @@
   "human_listening": {
     "status": "fail",
     "observer": "user",
-    "recorded_at": "2026-11-24",
-    "scope": "User listened to exact selected files 01-08: RU-stress original-full-ICL 01-04 and short-full-ICL 05-08, then specifically assessed prescribed stress in 07 on the same WAV. The other 36 primary matrix outputs and all timing outputs remain unassessed; no new reference 00 verdict was supplied.",
+    "recorded_at": "2026-11-25",
+    "scope": "User listened to exact selected files 01-08: RU-stress original-full-ICL 01-04 and short-full-ICL 05-08, then assessed prescribed stress in 07 and revised that assessment after re-listening on 2026-11-25. The other 36 primary matrix outputs and all timing outputs remain unassessed; no new reference 00 verdict was supplied.",
     "criteria": {
       "intelligibility": "fail",
       "voice_or_instruction": "fail",
@@ -631,16 +631,16 @@
       "final_tail": "fail",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "2026-11-24 initial user feedback: 01 has no voice; 02 is a strange sound; 03 says only 'on proiznyos slovo' (Он произнёс слово), then cuts off sharply, omitting the requested word; 04 is normal; 05-07 were described as normal; 08 changes voice after the middle of the track. A subsequent same-day stress clarification refines 07: stress is ordinary, not on the requested О in до́кументы. The explicit counter-dictionary stress request therefore fails in this short-full-ICL case, despite its earlier scoped positive speech observation. For 03 the word is missing, not a stress-only defect. Voice continuity still fails in 08 despite no near-silence flag. No cause is assigned and no unselected stress, artifact, tail or isolation pass is inferred."
+    "notes": "2026-11-24 initial user feedback: 01 has no voice; 02 is a strange sound; 03 says only 'on proiznyos slovo' (Он произнёс слово), then cuts off sharply, omitting the requested word; 04 is normal; 05-07 were described as normal; 08 changes voice after the middle of the track. A subsequent stress clarification initially classified 07 as ordinary rather than requested О stress in до́кументы. On 2026-11-25 the user re-listened and explicitly revised that assessment: the stress is difficult to determine and may be on О. The earlier stress-failure classification for 07 is withdrawn; prescribed-stress compliance for this exact WAV is now not_assessed, neither pass nor fail. Earlier normal-speech feedback for 07 remains. For 03 the word is missing, not a stress-only defect. The combined voice_or_instruction criterion remains fail because 08 changes voice, independently of uncertain 07 stress. No cause or unselected quality verdict is inferred."
   },
   "release_status": "blocked",
   "case_result": {
     "status": "fail",
-    "reason": "User confirms failed original-reference speech in 01-03, failure to follow the requested counter-dictionary stress in short-reference 07, and voice drift in short-reference 08. Mechanical PCM/EOS/repeat checks still pass; these explicit speech/stress/voice failures prevent acceptance."
+    "reason": "User confirms failed original-reference speech in 01-03 and voice drift in short-reference 08. Prescribed stress in 07 is now not_assessed after the 2026-11-25 re-listening correction, not a confirmed failure. Mechanical PCM/EOS/repeat checks still pass; the remaining confirmed speech/voice failures prevent acceptance."
   },
   "listening_result": {
     "status": "fail",
-    "reason": "Scoped human listening fails: 01 is voiceless, 02 is an irrelevant sound, 03 omits the requested word with abrupt cutoff, 07 has ordinary rather than requested О stress, and 08 changes voice after the middle. Earlier normal-speech feedback for 07 is refined by this stress-specific failure, not discarded."
+    "reason": "Scoped human listening still fails for 01-03 and voice drift in 08. The earlier stress-failure verdict for 07 is withdrawn after the user's 2026-11-25 re-listening: stress may be on О but cannot be confidently determined. Its normal-speech observation is preserved without accepting prescribed stress."
   },
   "release_disposition": {
     "status": "blocked",

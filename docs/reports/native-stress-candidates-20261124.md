@@ -37,14 +37,24 @@ Subsequent listening to that comparison selection is mixed: RU-stress short
 01-03 and CF 09-10 fail speech, and CF 12 has an abrupt ending. These new
 observations are attached to their exact separate receipts; short full ICL
 is not a general voice-stability fix. The subsequent stress clarification
-confirms requested О stress in CF 11/15 but ordinary stress in RU-stress 07,
-which fails that explicit request. Base 19/23 distort the target word as
+confirms requested О stress in CF 11/15. The user revised RU-stress 07 after
+re-listening on 2026-11-25: the stress is uncertain and may be on О, so the
+earlier stress-failure classification is withdrawn to not_assessed.
+Base 19/23 distort the target word as
 «доикументы»; stress on И is tentative, not confirmed. Base's current scoped
 listening is therefore fail for that pronunciation artifact, refining the
 earlier partial_pass. CF's positive stress result is limited to one word and
 seed 64 under the two references, not whole-corpus or voice/release acceptance.
 The deliberately nonstandard target is до́кументы; remaining stress cases
 stay unassessed.
+
+The 2026-11-25 follow-up makes a paired listening selection from existing
+short-full-ICL RU-stress/CF outputs: за́мок/замо́к at seeds 64/2027 and
+му́ка/мука́, докуме́нты/до́кументы, проце́ссор/процессо́р at seed 64.
+All 20 generated files are retained without outcome filtering; 18 are newly
+selected/unassessed, and two are exact prior 07/15 copies with unchanged
+scoped observations. This is additional listening material, not a new GPU run
+or an accepted stress-control result.
 
 ## RU-Stress-CF: preparation actually performed
 

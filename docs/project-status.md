@@ -409,14 +409,22 @@ no voice, 02 has a strange sound, 03 omits the requested word and cuts off,
 and 04-07 initially sounded normal; short-reference 08 changes voice after the middle.
 CF 09-10 are empty, 11/12 have normal speech with an abrupt end in 12;
 short-reference 13-16 and Base 17-24 initially sounded normal. The user's
-stress-specific follow-up refines 07 to ordinary stress rather than requested О,
-confirms requested О stress in CF 11/15, and identifies «доикументы» distortion
+stress-specific follow-up confirms requested О stress in CF 11/15 and identifies «доикументы» distortion
 in Base 19/23 (stress on И is tentative). These selected cases intentionally
-request nonstandard до́кументы. All three indexed receipts now have failed
+request nonstandard до́кументы. The user revised RU-stress 07 on 2026-11-25:
+stress is difficult to determine and may be on О, so its earlier stress-failure
+verdict is withdrawn to not_assessed. All three comparison receipts retain failed
 scoped listening; Base's earlier partial_pass is preserved as historical
 general feedback, not its current result. Positive CF speech/stress observations
 do not erase original-reference failures or qualify a whole model. Full matrix/stress,
 voice fidelity, Bridge lifecycle and release gates remain open; release blocked.
+The 2026-11-25 paired listening selection reuses 20 exact existing short-full-ICL
+stress outputs (RU-stress/CF), with matched accent-only pairs and seeds.
+Eighteen are newly selected/unassessed; two are exact copies of prior 07/15.
+This prepares further listening without new GPU inference or production changes.
+Two separate selection receipts retain only the exact already-listened file
+per model as partial_pass, not acceptance of any new pair. They do not supersede
+the source comparison failures.
 Read-only tail analysis finds all samples conserved and nearly silent final 50 ms
 in 03/12, so WAV sample loss/final-sample discontinuity does not explain those
 endings. Existing 15 ms fade/85 ms pause is bypassed by the raw research WAVs;

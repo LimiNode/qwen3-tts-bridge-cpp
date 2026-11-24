@@ -1,0 +1,231 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-stress-pairs-rustress-cmp50hx-20261125",
+  "recorded_at": "2026-11-25",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "512ff5ce23137a18671a7f3ef0cae8e97068190d",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_probe_build": "afa3df01417c90ff141dd54892eeb518d08580b0",
+    "probe_sha256": "6c86e4d69f0c0dbc26e35c360e0b6903dc976b0ad61aa3c34dbbaaa1bbe0f6fa",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "speaker_sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698",
+    "model_path": "models/ru-stress/qwen-talker-1.7b-ru-stress-Q8_0.gguf",
+    "sampling": "Unchanged default stochastic Talker/Predictor, temperature0.9/top_k50/top_p1, Talker repetition1.05, min_new_tokens2, EOS guard OFF. Single streaming attempt; no retry, rollback, reseed, prefix reuse, Talker top-1 or Predictor greedy.",
+    "variant": "Original converted RU-stress Q8_0; primary qualification direction.",
+    "source_receipt": "docs/reports/native-stress-comparison-rustress-cmp50hx-20261124.json",
+    "source_generation": "Generated on 2026-11-24 in the frozen native matrix; selected and byte-exactly copied on 2026-11-25. No new model execution, GPU allocation, audio processing or timing measurement.",
+    "conditioning": "Full aligned ICL, 56 short reference code frames with matching transcript/decoder context and unchanged original Kraftwerk speaker vector. No speaker-only fallback.",
+    "scope": "Ten fixed stress text/seed outputs for this model: five matched accent-position pairs. Four pairs use seed64; zamok additionally uses seed2027. No outcome filtering.",
+    "selection_script_sha256": "b70eea6c5a83fa059fbfb9e7b6bb4b8c8128d097cdb6802b380862e262c77fbd",
+    "verification": "Exact source WAV/F32/codes and PCM conservation audited; all863 sealed source files unchanged. PCM/natural-EOS pass below is retrospective artifact verification, not new inference. Model load, persistent repeat and restart not rerun for this selection.",
+    "boundaries": "No transparent speedup, universal stress/voice support, ABI/package/default/pin promotion, Bridge restart qualification or RTX4090 claim."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Ten exact request text/seed bindings from the frozen source corpus, reused without modification. Selection manifest pins their UTF-8 hashes and complete original model/reference/code/PCM identities; this is not a new generated corpus.",
+    "corpus_sha256": "0ad6e4660f4f38140ee1d81cf8a06ea81303ba0ff2eb6f4b5db7b62085871a60"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/stress-pairs-listening-20261125",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/01-ru-short-stress-zamok-first-seed-64.wav",
+      "bytes": 99884,
+      "sha256": "d51dfd39bfc8827d4ab1bea3a07ce69d0e64b5fc8d31382c557fea0146fa8115",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/02-ru-short-stress-zamok-last-seed-64.wav",
+      "bytes": 111404,
+      "sha256": "dc1cef199989dda02a0841d0c65456f563eabdb4888f11fee4154f7530a41431",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/05-ru-short-stress-zamok-first-seed-2027.wav",
+      "bytes": 96044,
+      "sha256": "2cc5fe116f58af99f6c71e5a5898874ab4a59367e85f58faf50fb93ffe3e441f",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/06-ru-short-stress-zamok-last-seed-2027.wav",
+      "bytes": 84524,
+      "sha256": "3432435e96ea0146b9d5f56d74cf01184279d2df175cf1ea713c47401c0ab2ba",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/09-ru-short-stress-muka-first-seed-64.wav",
+      "bytes": 107564,
+      "sha256": "a6f86e138f9340a93c5827cb777ecc66a85915bdfd75eb8bbcc2f8f620bdb451",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/10-ru-short-stress-muka-last-seed-64.wav",
+      "bytes": 103724,
+      "sha256": "bdef9ae66942a4b0658f04e9b144c1ebc578b35837803271a657464155fdd4fe",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/13-ru-short-stress-documents-normal-seed-64.wav",
+      "bytes": 103724,
+      "sha256": "ef78aacea791f2a044fa6a105e7427992059fc9462c6156240bef228b0b004d6",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/14-ru-short-stress-documents-counterfactual-seed-64.wav",
+      "bytes": 111404,
+      "sha256": "c64820ac1bd48ee19227d942ce2fe88747c9bcfdcfa378cabe4b81d00df26778",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact unchanged copy of old RU-stress selection 07. The user's 2026-11-25 correction makes prescribed stress uncertain, possibly О; no pass/fail is inferred."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/17-ru-short-stress-processor-normal-seed-64.wav",
+      "bytes": 253484,
+      "sha256": "0ac3df5f6d792247258f06fb4cc3d167d24e0243c9ade209eb6c1b98050dea8b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/18-ru-short-stress-processor-counterfactual-seed-64.wav",
+      "bytes": 230444,
+      "sha256": "41274fc2c939c8da19a316ae1e6c74316f4c20250777d2055682e7823d62a1c7",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Additional matched stress-pair selection from the same frozen model/full-ICL matrix. No new synthesis or audio processing; exact artifact awaiting human listening."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/evidence-tools/prepare_stress_pairs.py",
+      "bytes": 13645,
+      "sha256": "b70eea6c5a83fa059fbfb9e7b6bb4b8c8128d097cdb6802b380862e262c77fbd",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Shared paired-listening provenance/reference material, prepared on 2026-11-25 from unchanged sealed outputs; model observations remain separate. No new listening verdict is created by selection."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/00-reference.wav",
+      "bytes": 844844,
+      "sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Shared paired-listening provenance/reference material, prepared on 2026-11-25 from unchanged sealed outputs; model observations remain separate. No new listening verdict is created by selection."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/README.txt",
+      "bytes": 7118,
+      "sha256": "696be6d82ff67c1e5e0f908a55a1386d9caf5738468cecf8df21084f3f49bc7c",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Shared paired-listening provenance/reference material, prepared on 2026-11-25 from unchanged sealed outputs; model observations remain separate. No new listening verdict is created by selection."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/selection-manifest.json",
+      "bytes": 106649,
+      "sha256": "8deead5d031dd2bf52dd212a4e732c0c364ef65b255432ec7e4c48bb4000ded1",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Shared paired-listening provenance/reference material, prepared on 2026-11-25 from unchanged sealed outputs; model observations remain separate. No new listening verdict is created by selection."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-pairs-listening-20261125/artifact-inventory.json",
+      "bytes": 7147,
+      "sha256": "f4dafdd0c53b7165f83bf4a6fb407ed6c5b8a6c8b5e994d3421210886b8ab694",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Shared paired-listening provenance/reference material, prepared on 2026-11-25 from unchanged sealed outputs; model observations remain separate. No new listening verdict is created by selection."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "not_run",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "not_run",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-25",
+    "scope": "Only new14 is an exact byte copy of old RU-stress07 with prior normal-speech feedback. The 2026-11-25 re-listening makes its stress uncertain, possibly О. Other nine model files in this selection and reference00 have no new listening verdict.",
+    "criteria": {
+      "intelligibility": "partial",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "No new listening occurred during selection. Preserve normal speech only for this exact duplicated file14; withdraw the earlier definite stress-fail and leave stress not_assessed. No success or failure is inferred for the newly selected pairs. The source comparison still fails for old01-03 and voice drift in old08, none of which is erased by this narrower selection."
+  },
+  "release_status": "blocked",
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Selection-only artifact verification, not a new synthesis campaign. Nine newly selected model outputs lack listening; model-load/repeat/restart gates were not rerun. No complete case acceptance."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "Only one byte-identical prior file has scoped positive speech evidence; nine additional selected files remain unassessed. This partial observation does not qualify any new pair or the full selection."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "R1 remains NO-GO. This additional listening selection does not supersede source comparison failures or promote a model, conditioning profile, backend, package or hardware support."
+  },
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-stress-comparison-rustress-cmp50hx-20261124.json",
+    "docs/reports/native-stress-model-comparison-20261124.md"
+  ],
+  "notes": "A separate receipt is required because this follow-up payload has its own artifact root. It is a narrower listening selection, not a replacement for the source-run receipt. Prior failed/invalid/superseded observations remain historical evidence. Source hardware/runtime identity above describes original generation, not GPU work performed during copying."
+}

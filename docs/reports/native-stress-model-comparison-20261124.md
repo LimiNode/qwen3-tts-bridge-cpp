@@ -213,7 +213,7 @@ general pronunciation caveat, the user supplied exact same-artifact feedback:
 
 | File | Model / full-ICL reference | Refined user observation |
 | --- | --- | --- |
-| 07 | RU-stress / short | Ordinary stress, not the requested О: prescribed-stress failure |
+| 07 | RU-stress / short | Initially reported ordinary stress; 2026-11-25 re-listening makes stress uncertain, possibly О (not_assessed) |
 | 11 | CF / original | Stress on О: matches the requested word stress |
 | 15 | CF / short | Stress on О: matches the requested word stress |
 | 19 | Base / original | Sounds like «доикументы», with «доик» instead of «док»; stress on И is tentative |
@@ -225,8 +225,11 @@ respective receipts. CF has a local positive prescribed-stress result with
 both references, not a success rate or acceptance of the whole stress corpus.
 The combined voice/instruction criterion remains unassessed for CF because
 reference-voice fidelity and broader instructions were not separately assessed.
-RU-stress 07's earlier normal-speech observation is refined by the explicit
-stress failure; its voice-drift failure in 08 is independent.
+RU-stress 07's initially reported stress failure was withdrawn after the user's
+2026-11-25 re-listening: stress is difficult to determine and may be on О.
+Its earlier normal-speech observation remains, but prescribed-stress compliance
+is now `not_assessed`, not pass or fail. The confirmed voice drift in 08 is
+independent and unchanged.
 
 Base 19/23 now fail the scoped pronunciation-artifact criterion. This changes
 its aggregate listening/case results to `fail`, preserving the earlier
@@ -236,6 +239,54 @@ unintelligible or missing, nor that these two cases end early. Exact stress
 on И remains uncertain; no phonetic cause is assigned. For 03 the requested
 word is absent, independently of the unusual target stress. Remaining stress
 pairs, seeds and voice/lifecycle/release gates are still unassessed.
+
+### Paired listening selection and re-listening correction, 2026-11-25
+
+The user's re-listening correction for old selection 07 is recorded above:
+its prescribed stress is uncertain, possibly О, so the previous definite
+failure is withdrawn without turning uncertainty into a pass. Other confirmed
+RU-stress speech/voice failures and the independent CF/Base observations remain.
+
+To make stress placement easier to compare, a separate selection uses all ten
+stress text/seed cases from each existing short-full-ICL RU-stress and CF cell:
+20 generated WAVs plus reference 00. The pairs are за́мок/замо́к (seeds 64 and
+2027), му́ка/мука́, докуме́нты/до́кументы and проце́ссор/процессо́р (seed 64).
+Adjacent odd/even files are a matched pair within one model and seed; the
+following pair uses the other model on the same text/seed. No outcome or
+duration filtering is used.
+
+Payload folder:
+`.tmp/base-acceptance/stress-pairs-listening-20261125/listening-stress-pairs/`.
+README.txt supplies exact expected text, target stress and pair numbering;
+the parent selection-manifest.json binds each copy to its original WAV, model, seed, full-ICL
+conditioning, UTF-8 request and source-row identity. The copies are not
+normalized, spliced, faded or regenerated. This adds examples for listening,
+not new inference or new seeds beyond the frozen matrix. No new GPU allocation,
+engine/model setting, sampler policy or acceptance claim is involved.
+
+Preparation and independent source review verify exact WAV/F32/code identities
+and sample conservation. All 863 sealed source artifacts are unchanged before
+and after selection. The new selection manifest SHA256 is
+`8deead5d031dd2bf52dd212a4e732c0c364ef65b255432ec7e4c48bb4000ded1`;
+its inventory SHA256 is
+`f4dafdd0c53b7165f83bf4a6fb407ed6c5b8a6c8b5e994d3421210886b8ab694`.
+Separate selection-only receipts for
+[RU-stress](native-stress-pairs-rustress-cmp50hx-20261125.json) and
+[CF](native-stress-pairs-cf-cmp50hx-20261125.json) bind their ten exact WAV copies
+and shared reference/README/script/manifest/inventory identities. Each retains
+only the one already-listened byte-identical file as scoped `partial_pass`;
+the other nine model files remain unassessed. Neither selection receipt
+supersedes the failed source comparison or claims new inference. These
+mechanical checks do not assess stress.
+
+Old RU-stress file 07 is identical to new file 14; its speech observation
+remains positive but stress is uncertain. Old CF file 15 is identical to new
+file 16 and retains its exact scoped О-stress observation. The other 18
+generated files are newly selected and not yet assessed by the user; reference
+00 has no new verdict. For each pair, record the heard stressed vowel (or
+uncertain), whether both stress placements differ as requested, and separately
+any missing word, pronunciation artifact or voice change. Neither natural
+EOS nor a numerical audio check supplies these listening results.
 
 ### Abrupt-ending diagnosis and existing terminal shaping
 
@@ -269,8 +320,8 @@ mid-track voice change and is not an early-EOS fix.
 No GPU inference, new generation, listening transfer, production-default change
 or audio modification occurred while recording this feedback.
 
-Handoff validation: all 45 indexed canonical receipts pass the project
-validator; the three new receipts also pass actual local artifact byte/hash
+Handoff validation: all 47 indexed canonical receipts pass the project
+validator; the three comparison and two selection receipts also pass actual local artifact byte/hash
 verification, including CF preparation and the root-owned GPU-window journals.
 The 18-test receipt regression suite has 17 passes and one optional
 `jsonschema`-dependency skip; no dependency was installed. Eleven new runner
