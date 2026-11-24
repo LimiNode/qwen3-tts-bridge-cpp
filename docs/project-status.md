@@ -14,8 +14,10 @@ QwenTtsClient -> QTB stdin/stdout -> selected persistent worker -> PCM
 
 The Python/Faster worker and the native qwentts.cpp/GGUF worker both keep the
 model loaded between requests, expose the async C++ API, stream PCM, and use
-the same request lifecycle. Native Base Q8_0 is the priority R1 candidate for
-local inference; Python/Faster remains a maintained alternative and the route
+the same request lifecycle. Following the revised2026-11-24 user requirement,
+native RU-stress/full-ICL is the primary model qualification direction: explicit
+Russian stress and full voice cloning must both work. Base Q8_0 is a control,
+not a substitute for that capability. Python/Faster remains an alternative and the route
 for model families not yet covered by native. Backend selection is conditional
 on the dual-GPU, clean-package, quality and listening gates below.
 
@@ -336,6 +338,105 @@ exact HEAD 8ec5466c CI is independently confirmed7/7 successful.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
+The [2026-11-24 isolated Engine51 GPU smoke](reports/native-engine51-gpu-smoke-20261124.md)
+qualifies the sampler correction separately from all research engine changes:
+CUDA0 graph21/21 (including N1/2/3), both real-DLL C-ABI probes and ten
+ordinary N1 Base/full-ICL fresh-process calls pass. Four fixed master/candidate
+WAV/PCM comparisons and two fresh Russian repeats are byte-identical;
+source/runtime/input identities stay unchanged. The indexed receipt retains
+aggregate not_assessed, listening not_run and release blocked because
+persistent Bridge/restart, streaming, packaging and RTX4090 were not exercised.
+Raw false-negative log classification and a pre-CUDA PATH refusal remain
+historical evidence, with a separate corrected analysis. Recommend separate
+Engine51 integration; no merge, readiness change or Bridge pin update occurred.
+
+The [reference-conditioning batch](reports/native-reference-conditioning-20261124.md)
+now includes a separately authorized executed run002:3 reference extractions
+and96 new attempts, with exact original speaker/code regeneration and unchanged
+assets. Short4.00s/medium8.84s full-ICL references have56/116 frames versus226;
+original/crop speaker origins stay separate. Eighteen CPU tests, complete-code
+repeat controls and128 raw/WAV checks pass. For RU-stress `Ладно.`/2027, crop
+variants move frame2 EOS outside top50 and generate11–15 frames versus the
+reused original's2, but whole-matrix speech/voice success is not inferred. Observed warm
+direct-engine first PCM is about83ms short/110ms medium versus178ms reused A;
+this is changed conditioning, historical A timing and unassessed broader quality,
+not an accepted transparent optimization. Two new indexed run002 receipts
+supersede but preserve the old preparation-only receipts. The user listened to
+all13 selected WAVs:04-07 say Ладно. and preserve an acceptable voice;06/07
+sound more alike than04/05. Base08-12 has good complete speech and acceptable
+voice, with11/12 slightly higher than09/10.03 remains a failed voiceless control.
+The separate model receipts now record partial_pass, not whole-matrix quality
+or release acceptance. All failed/short outputs remain available.
+The [native/source comparison](reports/native-source-causal-20261124.md)
+completed four capped native dumps, matched complete16-code histories,
+26 conditional-logit comparisons, direct-input controls and four CPU FP32
+free trajectories. The source reproduces the same two complete short-Russian
+frames then EOS; the failure does not require native-only sampling/conversion.
+Other free first-frame Predictor codes differ, so later free paths are not
+parity controls. Initial allowed-logit TV is0.0016–0.0110; exact native inputs
+do not remove all drift. Native Q8/source FP32 cannot isolate quantization,
+conversion or arithmetic; high-precision native is not_run. Ten runner tests
+and before/after identities pass. No source-code trajectory is claimed to be
+intelligible speech without decode/listening.
+The new shared1800s window began immediately before extraction; all GPU stages
+finished in285.593s and CPU/postflight in485.531s from start, with no reset.
+Historical run001 zero-execution/deadline refusals are retained unchanged.
+Engine51's separate earlier64s smoke is not counted as1800s of GPU inference.
+Full-text geometry remains completed/negative and rollback development frozen.
+The user has now superseded the Base-first proposal: RU-stress is the primary
+qualification direction because explicit stress and full ICL are required;
+Base remains a control. RU-stress/full-ICL still stays HOLD pending broader
+quality/recovery gates, rather than silently lowering the release requirement.
+The [additional model/recovery plan](reports/native-stress-candidates-20261124.md)
+records pinned RU-Stress-CF adapter compatibility and primary-source checks of
+other candidates. An eight-case CPU FP32 source control completed in306.5s:
+Base shortRU/shortEN/longRU/longEN yields9/10/92/84 frames; in-memory CF yields
+2/2/82/92. CF retains two-frame EOS on both short controls with original full
+ICL. Codes were not decoded/listened to, so this is not speech, stress or
+native/latency acceptance for those undecoded source trajectories.
+After authorized cleanup, the separate
+[native model comparison](reports/native-stress-model-comparison-20261124.md)
+completed CPU-only CF merge/F32/Q8 preparation,132 frozen streaming attempts
+and96 balanced timing controls. All228 exact code/PCM/WAV outputs and96 repeat
+pairs pass independent mechanical verification; shared GPU-stage wall time
+is351.422s. Original full ICL retains6 near-silent outcomes per22 for both
+RU-stress and CF, while their short full-ICL cells have0; Base has0 in both.
+This does not establish speech quality or a general EOS remedy. Warm ABBA
+fresh-process measurements reproduce approximately179→83ms first PCM and
+153→60ms prefill, not first usable speech or same-session reference switching.
+The user subsequently listened to generated selection 01-24. RU-stress 01 has
+no voice, 02 has a strange sound, 03 omits the requested word and cuts off,
+and 04-07 initially sounded normal; short-reference 08 changes voice after the middle.
+CF 09-10 are empty, 11/12 have normal speech with an abrupt end in 12;
+short-reference 13-16 and Base 17-24 initially sounded normal. The user's
+stress-specific follow-up confirms requested О stress in CF 11/15 and identifies «доикументы» distortion
+in Base 19/23 (stress on И is tentative). These selected cases intentionally
+request nonstandard до́кументы. The user revised RU-stress 07 on 2026-11-25:
+stress is difficult to determine and may be on О, so its earlier stress-failure
+verdict is withdrawn to not_assessed. All three comparison receipts retain failed
+scoped listening; Base's earlier partial_pass is preserved as historical
+general feedback, not its current result. Positive CF speech/stress observations
+do not erase original-reference failures or qualify a whole model. Full matrix/stress,
+voice fidelity, Bridge lifecycle and release gates remain open; release blocked.
+The 2026-11-25 paired listening selection reuses 20 exact existing short-full-ICL
+stress outputs (RU-stress/CF), with matched accent-only pairs and seeds.
+The user has now assessed all20: zamok/muka/processor stress contrasts are
+heard as requested in both models. Only paired CF16 has clearly heard О in
+до́кументы; paired RU14 remains not clearly confirmed, not a proven wrong-vowel
+failure. Paired RU06 loses final К and paired RU17 has a vowel distortion
+sounding like «инжинЁр» (not necessarily a stress shift). The separate RU
+selection receipt is fail; CF is scoped partial_pass, aggregate not_assessed,
+without full voice/artifact/tail qualification. Each source model has17 unique
+heard primary outputs and27 primary outputs still unassessed. Source failures,
+Base status and blocked release gates remain unchanged. The suggested training
+annotation explanation is unverified; repeat seeds/contexts could distinguish
+robust stress control from a single realization. No new GPU inference,
+processed audio or production change occurred.
+Read-only tail analysis finds all samples conserved and nearly silent final 50 ms
+in 03/12, so WAV sample loss/final-sample discontinuity does not explain those
+endings. Existing 15 ms fade/85 ms pause is bypassed by the raw research WAVs;
+presentation A/B remains separate from EOS, omitted speech and voice drift.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL
@@ -348,7 +449,8 @@ The canonical acceptance receipt records qwentts revision `130cb99`, ABI 6,
 CUDA graphs enabled, and the exact worker/talker/codec hashes used for the run.
 
 This is a real build and runtime milestone, not a claim that native has already
-been promoted. Native Base is evaluated first for R1, while the native worker
+been promoted. Base was the initial control; the revised requirement now
+prioritizes RU-stress/full-ICL qualification. The native worker
 and the in-process DLL adapter remain separate acceptance surfaces until the
 documented quality, cancellation, lifecycle, packaging, and target-hardware
 promotion gates are closed. See
@@ -474,7 +576,8 @@ The dependency direction is deliberate:
 | --- | --- | --- |
 | Python/Faster worker | Maintained acceptance route and alternative backend | Complete the same frozen dual-GPU/package/listening matrix |
 | Native worker and `qwen.dll` | Priority R1 native route; conditional until accepted | Close promotion gates and record backend selection; in-process adapter is separate |
-| RU-stress + Kraftwerk profile | Intended R1 default, still experimental | Expand dual-GPU, long-run, cancellation, packaging, and listening evidence |
+| Native Base + full ICL | Priority first-beta candidate; not yet promoted | Complete independent CMP50HX/RTX4090, clean-package, lifecycle, playback and listening qualification |
+| RU-stress + Kraftwerk full ICL | HOLD for quality research; not a required first-beta default | Reproducible short-input speech omissions remain; study conditioning and native/source trajectories separately |
 | `tts-front-cpp` pinned corrective `64f73182` (based on v0.2.5) | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims; do not describe the corrective commit as a v0.2.6 release |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |
 | Avatar presentation | Not yet complete | Add a separate VRM/Unity/Godot adapter after playback-locked cues are stable |

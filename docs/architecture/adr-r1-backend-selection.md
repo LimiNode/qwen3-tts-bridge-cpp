@@ -32,6 +32,18 @@ composition remain R2 work and are not introduced by this decision.
 
 ## Required decision record
 
+### 2026-11-24 model-priority amendment
+
+The user revised the candidate release requirement: explicit Russian stress
+control and full ICL voice cloning are required capabilities, not optional
+research features to bypass by substituting ordinary Base. RU-stress is the
+primary model qualification direction; Base remains an unchanged control.
+This supersedes the earlier Base-first **model** recommendation above, not
+the native-process boundary or either backend's acceptance gates. A shorter
+full-ICL reference is a conditioning candidate, not speaker-only cloning.
+RU-Stress-CF is an additional unqualified candidate, not an automatic model
+or pin replacement. No default, package or support level changes here.
+
 After the CMP 50HX and RTX 4090 campaign, record correctness and natural EOS,
 RU/EN listening quality and voice identity, first PCM/playback latency, RTF and
 chunk continuity, resource usage, cancellation/restart stability, packaging

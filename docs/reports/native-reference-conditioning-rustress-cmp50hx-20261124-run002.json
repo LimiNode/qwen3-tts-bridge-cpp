@@ -1,0 +1,264 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-reference-conditioning-rustress-cmp50hx-20261124-run002",
+  "recorded_at": "2026-11-24",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "65e61296a492ec7a7d0db501eb51f5ec232d5cd4",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "execution": "Completed3 native reference extractions and96 new AR attempts:32 diagnostic and64 observer-OFF streaming.48 attempts belong to this receipt's model; original A is exact-artifact reuse, not a new request.",
+    "qwentts_probe_build": "afa3df01417c90ff141dd54892eeb518d08580b0; static research probe, ABI6 unchanged, full aligned ICL.",
+    "probe_sha256": "6c86e4d69f0c0dbc26e35c360e0b6903dc976b0ad61aa3c34dbbaaa1bbe0f6fa",
+    "runner_sha256": "d6bb50acc51ff81f703dee3eb976e3f05f6e35b074d0aa27fb1aa6fc3aee14db",
+    "extractor": "Existing qwen-codec.exe build4e47ed266f08cab9e13e277aa460a33bb607e769; executable isolated without DLLs, runtime-current prepended and used as CWD. SHA256=0fd8434ef20bd4c921ce89ea473c1d43ec6d2f410d0e722563ddaf234b7a6170",
+    "runtime": "Retained eos-corpus-decision-20261121/runtime-current GGML DLL identities exactly match sealed geometry A; full list in extraction.json and matrix-plan.json. qwen.dll is included in that identity list but the synthesis research probe is statically linked.",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "reference_preparation": "Exact unnormalized PCM16 mono24kHz crops from user-confirmed original17.6s Kraftwerk WAV: short0.00-4.00s, medium4.04-12.88s;12000 trailing zeros before codec and speaker extraction. Original regenerated226 frames and2048-value speaker match retained bytes exactly; crops56/116 frames. Full ICL and decoder reference remain enabled.",
+    "scope": "A reused original; B each crop with original speaker; C each crop with crop-derived speaker. Four fixed texts/seeds, default stochastic Talker/Predictor, min_new_tokens2, EOS guard OFF, no retry/reseed/snapshot. Crop changes both duration and phonetic content, not length alone.",
+    "integrity": "Assets/inputs/manifests and70 retained A identities unchanged; all96 complete-code histories valid. Timing histories equal matched diagnostics; same-mode timing repeats reproduce full codes and PCM.128 raw/WAV pairs independently checked. Corrected sampler exp weights normalized once; saved F32 draws reproduce sampled tokens exactly.",
+    "timing": "Observers/profile OFF in ordinary streaming timings. Direct-engine first PCM callback, not QTB/playback/audible speech. First process request excluded from mixed-text warm medians; original A reused from a different run time, not a randomized paired benchmark.",
+    "budget": "New explicitly authorized serialized<=1800s GPU batch; extraction and matrix share absolute monotonic deadline=3196090.625. Supervising root owns whole-batch UTC/start/elapsed evidence; old run001 expired lease is preserved and was not reset.",
+    "production_baseline": "130cb99af9ae12d554962fd0920e08fb4268af01, ABI6. No production defaults, Bridge engine gitlink, model pin, public ABI, QTB, frozen release package, merge, tag or release changed."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Sealed matrix plan identifies all exact UTF-8 request/reference bytes, native cropped speaker/codes, fixed2027/2029 seeds, default sampler, executed B/C cells and reused A identities. CPU acoustic/ASR crop evidence reused only after exact source-byte checks; not human listening.",
+    "corpus_sha256": "4aff1e365a610c63ba4d958118655ff158b76f3a43330575eff83706cc8252c2"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/extraction.json",
+      "bytes": 9941,
+      "sha256": "ed04a1a48f6c99a2e47e64aff065452568d3eff2857e1a1255d777e87b0ebced",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/matrix-plan.json",
+      "bytes": 63199,
+      "sha256": "4aff1e365a610c63ba4d958118655ff158b76f3a43330575eff83706cc8252c2",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/matrix-results.json",
+      "bytes": 1613791,
+      "sha256": "cc7ed52d5af6e26a9801351ac222bae08af7d3b91d76ffeb75f0cd7084074b58",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/independent-audio-logit-audit.json",
+      "bytes": 473751,
+      "sha256": "8b221b983925247e7d5f69f9de523e8bfabbe23308d68a50847a7eaf5b647ca3",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/artifact-inventory.json",
+      "bytes": 197053,
+      "sha256": "6a7e8b0797f72f9b2f1fc5a51d728d6d785eeede88fdc4440a0d4f32e584075e",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/model-free-tests.log",
+      "bytes": 2394,
+      "sha256": "4f7fdf0d82835eb8986f2c1d1939fb7e9fe2c7df92757bf1aba2ea3fbd1de4d8",
+      "kind": "log",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/reused-cpu-boundary-evidence.json",
+      "bytes": 726,
+      "sha256": "3a1e3a16ea8bf6377eb874eb81936eb43facd510a369cb1af9bc2ec45874d54c",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/README.txt",
+      "bytes": 2279,
+      "sha256": "3aef0ed76d2fa2cabb19f3dbb106aec06c9dd5db2047e738b7b35a451b6efc58",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/selection-manifest.json",
+      "bytes": 13492,
+      "sha256": "3553746751f77eb86415b4f2b89bb9b96a8044998a6f21318d72389318113ad7",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/00-reference-original.wav",
+      "bytes": 844844,
+      "sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/01-reference-short.wav",
+      "bytes": 192044,
+      "sha256": "00c0b3920690e5737cb8d45e7f1d3c39e9845c649a9877787be82d2a5fd0cf4e",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/02-reference-medium.wav",
+      "bytes": 424364,
+      "sha256": "effe9852c7455672df2a36fae8c9774123102ddba6da32cca90faa1a0580fb22",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/03-ru-ru-ok-original-A-seed-2027.wav",
+      "bytes": 7724,
+      "sha256": "1fff98b223b7b681409ebb918c26d3a9612a74179209750f7195bcfec4ffb850",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/04-ru-ru-ok-short-original-seed-2027.wav",
+      "bytes": 57644,
+      "sha256": "253f70612299b5a16b2a44ae5acd26929e04df1c6026a602355bd47fe00c1843",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/05-ru-ru-ok-short-crop-seed-2027.wav",
+      "bytes": 42284,
+      "sha256": "daa578dea4d01ce51c3c91911bc5599a1ad87f31d569a5de02313dd196184e92",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/06-ru-ru-ok-medium-original-seed-2027.wav",
+      "bytes": 49964,
+      "sha256": "3eec8e4c7447e3dab077f75906fae4054cf4d845c219a4801be8df46bdb60858",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-002/listening-reference-conditioning/07-ru-ru-ok-medium-crop-seed-2027.wav",
+      "bytes": 49964,
+      "sha256": "d78e768ad9ef35a08ca46e4af860859134598cbbb57eb3e14e8981ca5f8e3424",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/reference-conditioning-cmp50hx-20261124/run-001/artifact-inventory.json",
+      "bytes": 11434,
+      "sha256": "13b5d577307da2fc4066a271bfb4be1a01e98bf63edac9dfb4b3d0dd4e5a6825",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payload is not transferred or backed up by Git. Only the named selection has scoped user listening; remaining outputs are unassessed; historical run001 remains a preserved prelaunch deadline refusal."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-24",
+    "scope": "User listened to all13 exact first-selection WAVs. This RU-stress verdict covers only new ru-ok short/medium B/C files04-07, expected word Ладно., and the retained failed negative control03. Base08-12 has a separate receipt. Other new RU-stress texts/seeds remain unassessed.",
+    "criteria": {
+      "intelligibility": "pass",
+      "voice_or_instruction": "pass",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "2026-11-24 user feedback:03 has no voice, confirming the known failed original-A control, not a successful output.04/05 pronounce Ладно. normally;06/07 also do and sound more alike.04/05 have more timbre/delivery variation, but all04-07 preserve the voice within the user's acceptable range. The user describes all selected short and long speech as good quality. This is scoped positive candidate listening, not a pass for03 or the whole96-attempt matrix; no separate stress, detailed artifact, final-tail or sequential-isolation verdict is inferred. Source references00-02 were also listened to, without a new word-by-word crop-transcript confirmation."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Experiment mechanics/repeats pass and user confirms the word and acceptable voice in new RU-stress files04-07. Restart, broader texts/seeds, ordinary worker/package lifecycle and release qualification remain unassessed. Negative control03 still fails; no aggregate case pass."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "Scoped partial_pass:04-07 have the expected word and acceptable voice, but detailed artifacts/tails/isolation and remaining model outputs were not assessed;03 remains an explicit failed negative control."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "R1 remains NO-GO. Four short B/C candidates now have positive scoped word/voice listening, not broad EOS recovery, stress compliance, lifecycle, dual-GPU or release qualification. No automatic reference/default/model promotion."
+  },
+  "release_status": "blocked",
+  "supersedes": [
+    "docs/reports/native-reference-conditioning-rustress-cmp50hx-20261124.json"
+  ],
+  "notes": "This is a new authorized run002, not continuation/reset of the expired run001. Preserve the old zero-native-attempt receipt. Only the reference-length/speaker-origin matrix is covered here; native/source forward causality and Engine51 qualification remain independent. Cropping changes length, content and decoder context together; B versus C isolates only the speaker-vector origin. Numerical changes are expected and do not prove an inference bug.",
+  "related_reports": [
+    "docs/reports/native-reference-source-plan-20261124.md",
+    "docs/reports/native-reference-conditioning-20261124.md",
+    "docs/reports/native-icl-geometry-rustress-cmp50hx-20261124.json",
+    "docs/reports/native-reference-conditioning-rustress-cmp50hx-20261124.json"
+  ]
+}

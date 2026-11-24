@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "status": "frozen_before_native_model_comparison",
+  "models": ["RU-stress-Q8_0", "RU-Stress-CF-Q8_0", "Base-Q8_0-control"],
+  "conditioning": ["original-full-ICL-original-speaker", "short-full-ICL-original-speaker"],
+  "reference": "Reuse exact original/short reference and original speaker identities from reference-conditioning run002; no speaker-only fallback.",
+  "sampler": "unchanged default stochastic Talker/Predictor; no EOS penalty, retry, top-1, prefix reuse or seed selection in this comparison",
+  "cases": [
+    {"id":"ru-ok","language":"russian","seeds":[2027],"text":"Ладно."},
+    {"id":"en-all-right","language":"english","seeds":[2029],"text":"All right."},
+    {"id":"ru-original","language":"russian","seeds":[72,75,78],"text":"МГУ находится в Москве. Инженер проверил USB-порт, GPS и новый процессор."},
+    {"id":"ru-no","language":"russian","seeds":[64,75],"text":"Нет."},
+    {"id":"ru-thanks","language":"russian","seeds":[65],"text":"Спасибо."},
+    {"id":"en-hi","language":"english","seeds":[64,72],"text":"Hi!"},
+    {"id":"stress-zamok-first","language":"russian","seeds":[64,2027],"text":"Он произнёс слово «за́мок»."},
+    {"id":"stress-zamok-last","language":"russian","seeds":[64,2027],"text":"Он произнёс слово «замо́к»."},
+    {"id":"stress-muka-first","language":"russian","seeds":[64],"text":"Он произнёс слово «му́ка»."},
+    {"id":"stress-muka-last","language":"russian","seeds":[64],"text":"Он произнёс слово «мука́»."},
+    {"id":"stress-documents-normal","language":"russian","seeds":[64],"text":"Он произнёс слово «докуме́нты»."},
+    {"id":"stress-documents-counterfactual","language":"russian","seeds":[64],"text":"Он произнёс слово «до́кументы»."},
+    {"id":"stress-processor-normal","language":"russian","seeds":[64],"text":"Инженер проверил USB-порт, GPS и новый проце́ссор."},
+    {"id":"stress-processor-counterfactual","language":"russian","seeds":[64],"text":"Инженер проверил USB-порт, GPS и новый процессо́р."},
+    {"id":"ru-voice","language":"russian","seeds":[2027],"text":"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу."},
+    {"id":"en-voice","language":"english","seeds":[2027],"text":"The equipment passed every check this morning. We can now finish the report and close the workshop."}
+  ],
+  "scope": "22 text/seed cases x3 models x2 full-ICL references =132 synthesis attempts before separate timing repetitions; all not_run at freeze. Keep failures, exact codes, PCM and first usable speech distinct from first callback. Stress and voice require exact-artifact listening."
+}
