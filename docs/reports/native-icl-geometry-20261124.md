@@ -1,6 +1,7 @@
 # Full-ICL text geometry: CMP 50HX comparison
 
-- Status: completed bounded research; new listening **not_run**; no promotion.
+- Status: completed bounded research; user listening recorded on 2026-11-24:
+  RU-stress **fail**, Base **partial_pass**; no promotion.
 - Date: 2026-11-24.
 - Frozen [plan](native-icl-geometry-plan-20261124.md).
 - Canonical receipts: [RU-stress](native-icl-geometry-rustress-cmp50hx-20261124.json)
@@ -18,8 +19,9 @@ automatic retry policy from this result. Keep the opt-in experiment for review.
 This rules against the specific claim that changing only this text layout
 removes these failures. It does not identify the checkpoint/native-forward
 root cause or prove that full-text ICL is universally unsuitable. Base is a
-scoped comparator, not a qualified replacement. Actual words, extra sounds
-and voice identity in new outputs remain unassessed until listening.
+scoped comparator, not a qualified replacement. Subsequent user listening
+confirms the RU-stress omissions and expected text in seven named Base files;
+Base file11 and explicit voice-fidelity/stability criteria remain unassessed.
 
 ## Implementation and identities
 
@@ -229,11 +231,41 @@ Use only
 `.tmp/base-acceptance/icl-geometry-cmp50hx-20261124/run-002/listening-icl-geometry/`.
 It contains00 reference and16 numbered outputs, with expected text in README.txt.
 Aligned/full-text pairs:01/05,02/06,03/07,04/08 and09/13,10/14,11/15,12/16.
-01/05/06 are measured near-silent;07 is the suspicious0.24 s longRU result.
-Do not normalize or count length/energy as success. Assess full words, extra
-sounds, stable voice and similarity to00 independently; all new verdicts are
-currently **not_run**. Earlier positive/negative listening stays attached to
-its own historical artifacts.
+01/05/06 are measured near-silent;07 is the 0.24 s longRU result. Subsequent
+user listening explicitly confirms no voice in all four. Duration/energy is
+not substituted for that observation; original levels remain unchanged.
+
+### User listening, 2026-11-24
+
+The user reports the following exact numbered files. Their full paths,
+byte counts and SHA-256 are recorded in the model-specific canonical receipts;
+an independent read-only check reverified all16 WAV identities/copies before
+recording this feedback. Short words below match the expected text in README.
+
+| Checkpoint/layout | Short RU: `Ладно.` | Short EN: `All right.` | Long RU | Long EN |
+| --- | --- | --- | --- | --- |
+| RU-stress/aligned | 01: no voice | 02: strange sound | 03: normal voice, complete text | 04: normal voice, complete text |
+| RU-stress/full-text | 05: no voice | 06: no voice | 07: no voice | 08: English voice, complete text |
+| Base/aligned | 09: says `ладно` | 10: says `all right` | 11: not reported | 12: normal voice, complete English text |
+| Base/full-text | 13: says `ладно` | 14: says `all right` | 15: normal voice, complete text | 16: normal voice, complete text |
+
+RU-stress listening is **fail**: expected words are missing in01/02/05/06/07;
+02 also has a reported unwanted sound. Positive03/04/08 apply only to their
+own text observations. Thus both aligned short failures persist, and full-text
+does not recover them; its longRU failure is now confirmed by listening.
+
+Base listening is **partial_pass**, restricted to expected words/full text in
+09/10/12/13/14/15/16. The user did not mention
+`11-base-aligned-ru-voice-seed-2027.wav`; it remains unassessed, not failed or
+passed. Aggregate listening stays `not_assessed`, not a full Base acceptance.
+
+The user also says they already assessed the voice. The detailed statements
+confirm voice presence/normal speech, but do not explicitly rate similarity to
+00 or timbre stability. Leave those criteria unassessed, along with blanket
+absence of artifacts, final-tail quality and sequential isolation. No new
+question or inference broadens this scope. Earlier listening remains attached
+to its own historical artifacts. Frozen as-run results/audit still contain
+their pre-listening `not_run`; the canonical receipts own the current verdict.
 
 Engine51 was [independently reviewed](native-engine51-independent-review-20261124.md)
 at 541f1f70: exact-head CI 2/2 and21/21 focused CPU graph regressions pass;

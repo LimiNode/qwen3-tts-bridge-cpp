@@ -313,8 +313,15 @@ frames and decoder conditioning. RU-stress/aligned yields2/6/99/78 frames
 versus full-text2/2/3/91 for fixed shortRU/shortEN/longRU/longEN. Full-text
 retains the silent Ладно., adds near-silent All right. and a suspicious0.24 s
 longRU output; this layout is not a remedy for the tested failures. Base
-controls are mechanically valid, not newly listened/qualified. Warm repeated
-first-PCM p50 rises from about 178 ms to231 ms. New listening remains not_run.
+controls are mechanically valid; they are not a qualified replacement. Warm
+repeated first-PCM p50 rises from about 178 ms to 231 ms. Subsequent user
+listening confirms no voice in RU-stress01/05/06/07, a strange sound in02,
+and complete text in03/04/08: RU-stress listening is fail. Base09/10/12/13/14/
+15/16 contain the expected words/full text: scoped partial_pass, with11 not
+reported and aggregate listening not_assessed. Voice similarity/stability,
+blanket absence of artifacts and tail/isolation criteria are not inferred.
+Current verdicts are in the canonical receipts; sealed machine payloads keep
+their historical pre-listening state. No new synthesis or default change.
 Run001's derived EOS probabilities are invalid: its observer captured sampler
 exp weights as logits and the finalizer applied softmax again. It is preserved
 as historical evidence. Corrected run002 separates pre-sampler logits/weights;

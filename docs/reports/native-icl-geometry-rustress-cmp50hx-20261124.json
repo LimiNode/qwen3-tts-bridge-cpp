@@ -20,7 +20,7 @@
     "scope": "This receipt covers34 fixed RU-stress requests across aligned/full-text:10 buffered diagnostics plus24 ordinary streamed timing controls. Shared run002 has 68 requests; the other checkpoint is outside this model receipt.",
     "sampling": "Unchanged stochastic Talker/Predictor temperature0.9, top_k50/top_p1, repetition1.05/1, min 2. EOS guard/frontend/segmentation/prefix reuse/forcedMMQ/reseeding OFF. Diagnostics use buffered full-retry capture threshold 1, never triggered; one attempt/prefill, zero snapshots/restores/commits. Timing observers/profile OFF; complete codes copied at retirement.",
     "conditioning": "Full ICL retained: same 2048-float speaker, all 16x226 reference codes, exact nonempty transcript and decoder reference. Only aligned vs full-text composition/trailing text overlay changes. Source/mask/position contracts pass; generated voice identity needs new listening.",
-    "result": "Aligned frames2/6/99/78; full-text2/2/3/91 for fixed shortRU/shortEN/longRU/longEN. Full-text does not remove near-silent Ладно., adds near-silent All right. and a suspicious3-frame longRU output. Short failures are not explained by transport truncation or forced EOS. Speech/voice quality is not inferred.",
+    "result": "Aligned frames2/6/99/78; full-text2/2/3/91 for fixed shortRU/shortEN/longRU/longEN. Full-text does not remove near-silent Ладно., adds near-silent All right. and a suspicious3-frame longRU output. Short failures are not explained by transport truncation or forced EOS. Speech/voice quality is not inferred. Subsequent exact-file user listening confirms no voice in01/05/06/07, strange sound in02 and complete text in03/04/08.",
     "eos_diagnostics": "Corrected run002 separately saves suppressed pre-sampler logits and post-chain exp(logit-max) weights. Normalize weights once. All143 saved categorical selections across both checkpoints reproduce using saved uniform and F32 CDF. Probabilities are post-filter sampler distributions, not raw unfiltered model probabilities.",
     "historical_diagnostic_error": "run001 files labeled decision-logits actually contain sampler exp weights; its derived second-softmax EOS probabilities are INVALID. Original sampled decisions/codes/PCM remain valid. All68 complete codes and matched-mode PCM pairs in run002 equal run001 exactly. Original inventory preserved and linked; no seed search.",
     "timing": "First-use aligned/full-text1552.495/1574.9704 ms. Warm same-text n8/layout p50 178.399/231.4984 ms, p95 179.381/255.8301 ms. Small descriptive sample; first PCM is not first audible speech.",
@@ -201,30 +201,30 @@
     "restart": "not_run"
   },
   "human_listening": {
-    "status": "not_run",
-    "observer": "not_recorded",
+    "status": "fail",
+    "observer": "user",
     "recorded_at": "2026-11-24",
-    "scope": "No listening assessment of the new RU-stress aligned/full-text outputs. Reference00 correspondence was previously confirmed by the user; it is not generated-output or voice-fidelity acceptance.",
+    "scope": "Exact run002 RU-stress files01-08 in listening-icl-geometry, at the paths/sizes/SHA-256 below. User explicitly reports complete words in03/04/08, no voice in01/05/06/07 and a strange sound in02. All eight named RU-stress files are covered; no transfer to repeats/timing files or other candidates.",
     "criteria": {
-      "intelligibility": "not_assessed",
+      "intelligibility": "fail",
       "voice_or_instruction": "not_assessed",
-      "artifacts": "not_assessed",
+      "artifacts": "fail",
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "Complete text, extra sounds, stable voice and similarity to reference require separate listening. Historical user verdicts are not transferred. Near-silence/frame counts are diagnostics only."
+    "notes": "User observations by number:01 'нет голоса';02 'страрнный звук';03 and04 'нормально, голос есть, полный текст';05 'нет голоса';06 and07 'нет голоса';08 'есть голос, английский, весь текст целиком'. Thus aligned01/02 and full-text05/06/07 fail spoken-text coverage;02 also has a reported unwanted sound. Positive03/04/08 cover text only. User says they already assessed the voice, but presence of voice/complete text does not explicitly rate similarity to reference00 or timbre stability; leave those unassessed. No blanket absence-of-artifacts or final-tail claim."
   },
   "case_result": {
     "status": "not_assessed",
     "reason": "Focused prompt-layout mechanics and repeated histories pass; no production-worker/restart/lifecycle/release qualification was performed. Aggregate case pass is not claimed."
   },
   "listening_result": {
-    "status": "not_run",
-    "reason": "New numbered WAVs are available in one listening-icl-geometry folder; no observer verdict exists for this candidate."
+    "status": "fail",
+    "reason": "User confirms no voice in01/05/06/07 and only a strange sound in02; expected words are absent. Full text is confirmed in03/04/08. This is a scoped failed RU-stress listening result, not a mechanical PCM failure."
   },
   "release_disposition": {
     "status": "blocked",
-    "reason": "R1 NO-GO. Full-text ICL does not remove known RU-stress failures in this matrix, adds another suspicious early output and increases warm first-PCM latency. New quality/voice checks, forward parity and independent package/hardware gates remain open. No promotion."
+    "reason": "R1 NO-GO. Exact-file listening confirms RU-stress aligned and full-text speech omissions; full-text retains the short failures and adds an inaudible longRU result. It also increases warm first-PCM latency. Voice fidelity, forward parity and independent package/hardware gates remain open; no promotion."
   },
   "release_status": "blocked",
   "supersedes": null,
