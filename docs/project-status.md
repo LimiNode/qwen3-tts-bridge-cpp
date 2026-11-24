@@ -296,15 +296,43 @@ Preparation audit finds unchanged correctly transferred226-frame reference,
 2048-value speaker vector and nonempty registry transcript; no confirmed
 preparation defect. Static tokenizer/prompt/mask agreement is not forward or
 extraction parity. Full-ICL remains the target. An important remaining
-confounder is text geometry: native ICL is aligned/streaming-text, whereas
-speaker-only is full-text. Upstream also provides a full-text ICL branch;
-testing that branch while retaining full reference/decoder conditioning is
-the next bounded candidate, not an implemented fix or default change.
+confounder was text geometry: native ICL is aligned/streaming-text, whereas
+speaker-only is full-text. The subsequent bounded comparison below tests the
+upstream full-text ICL layout without removing reference/decoder conditioning.
 The user subsequently confirms the exact Kraftwerk reference's spoken text
 matches its registry/ICL transcript; both state-check receipts now record the
 reference-only observation and exact WAV identity. Generated-output listening,
 extraction parity, EOS failures and release status are unchanged; no new GPU
 run follows this confirmation.
+The [full-ICL geometry comparison](reports/native-icl-geometry-20261124.md)
+now completes68 fixed attempts on CMP50HX, with separate
+[RU-stress](reports/native-icl-geometry-rustress-cmp50hx-20261124.json) and
+[Base](reports/native-icl-geometry-base-cmp50hx-20261124.json) receipts.
+The research-only opt-in retains the full speaker, transcript,226 reference
+frames and decoder conditioning. RU-stress/aligned yields2/6/99/78 frames
+versus full-text2/2/3/91 for fixed shortRU/shortEN/longRU/longEN. Full-text
+retains the silent Ладно., adds near-silent All right. and a suspicious0.24 s
+longRU output; this layout is not a remedy for the tested failures. Base
+controls are mechanically valid; they are not a qualified replacement. Warm
+repeated first-PCM p50 rises from about 178 ms to 231 ms. Subsequent user
+listening confirms no voice in RU-stress01/05/06/07, a strange sound in02,
+and complete text in03/04/08: RU-stress listening is fail. Base09/10/12/13/14/
+15/16 contain the expected words/full text: scoped partial_pass, with11 not
+reported and aggregate listening not_assessed. Voice similarity/stability,
+blanket absence of artifacts and tail/isolation criteria are not inferred.
+Current verdicts are in the canonical receipts; sealed machine payloads keep
+their historical pre-listening state. No new synthesis or default change.
+Run001's derived EOS probabilities are invalid: its observer captured sampler
+exp weights as logits and the finalizer applied softmax again. It is preserved
+as historical evidence. Corrected run002 separates pre-sampler logits/weights;
+all 143 saved categorical choices replay exactly, all 68 code/PCM pairs equal
+run001 and88 raw/WAV conversions are exact. Combined stage 629.14 s is within
+the1800 s limit. Model-free geometry/settings/observer contracts and11 driver
+tests pass; no production worker/restart/package qualification is inferred.
+Engine51 has a separate [independent review](reports/native-engine51-independent-review-20261124.md):
+CI 2/2 and21/21 focused CPU graph cases pass at 541f1f70, with no blocking
+changed-code finding; no integration or speech/GPU acceptance. Bridge332
+exact HEAD 8ec5466c CI is independently confirmed7/7 successful.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 
