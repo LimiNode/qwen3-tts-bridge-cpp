@@ -182,7 +182,7 @@ The user assessed generated files 01-24, without a new statement about reference
 Each file's original byte count and SHA256 remain in its separate model receipt;
 no original WAV, complete code, sealed inventory or mechanical result changed.
 
-| Files | Model / reference | User observation |
+| Files | Model / reference | Initial user observation (refined below) |
 | --- | --- | --- |
 | 01 | RU-stress / original | No voice |
 | 02 | RU-stress / original | Strange sound |
@@ -198,18 +198,44 @@ no original WAV, complete code, sealed inventory or mechanical result changed.
 
 RU-stress and CF retain failed scoped listening because their selected
 original-reference failures are not erased by positive short-reference cases.
-RU-stress 08 additionally fails voice continuity. Base has scoped `partial_pass`,
-not a detailed artifact/tail/voice-fidelity or whole-matrix pass. Short CF 13-16
+RU-stress 08 additionally fails voice continuity. Base initially had scoped
+`partial_pass`; the stress-specific clarification below changes it to `fail`
+for a localized pronunciation artifact. Short CF 13-16
 is the positive stress-model candidate in this selection, not a proven
 full-ICL stress/voice solution. Do not attribute 08 to session state, model,
 quantization or reference length without a distinguishing repeat.
 
-The user notes that «документы» sometimes sounds strange, possibly because of
-stress. Files 03/07/11/15/19/23 deliberately request **до́кументы**, not the normative
-**докуме́нты**, to test counter-dictionary U+0301 control. No file/vowel-specific
-pronunciation verdict was supplied, so prescribed-stress compliance remains
-unassessed. For 03, the missing word is independently a completeness failure;
-that failure is not explained away by the unusual target stress.
+### Prescribed-stress clarification, 2026-11-24
+
+Files 03/07/11/15/19/23 deliberately request **до́кументы**, not the normative
+**докуме́нты**, to test counter-dictionary U+0301 control. After the initial
+general pronunciation caveat, the user supplied exact same-artifact feedback:
+
+| File | Model / full-ICL reference | Refined user observation |
+| --- | --- | --- |
+| 07 | RU-stress / short | Ordinary stress, not the requested О: prescribed-stress failure |
+| 11 | CF / original | Stress on О: matches the requested word stress |
+| 15 | CF / short | Stress on О: matches the requested word stress |
+| 19 | Base / original | Sounds like «доикументы», with «доик» instead of «док»; stress on И is tentative |
+| 23 | Base / short | Same reported «доик» distortion; stress on И is tentative |
+
+These five files share the exact text, seed 64 and group 17; the model and
+full-ICL reference arm differ. Their original WAV hashes remain in the
+respective receipts. CF has a local positive prescribed-stress result with
+both references, not a success rate or acceptance of the whole stress corpus.
+The combined voice/instruction criterion remains unassessed for CF because
+reference-voice fidelity and broader instructions were not separately assessed.
+RU-stress 07's earlier normal-speech observation is refined by the explicit
+stress failure; its voice-drift failure in 08 is independent.
+
+Base 19/23 now fail the scoped pronunciation-artifact criterion. This changes
+its aggregate listening/case results to `fail`, preserving the earlier
+`partial_pass` as historical general feedback and the positive observations
+for 17/18/20/21/22/24. The user did not claim that the whole sentence is
+unintelligible or missing, nor that these two cases end early. Exact stress
+on И remains uncertain; no phonetic cause is assigned. For 03 the requested
+word is absent, independently of the unusual target stress. Remaining stress
+pairs, seeds and voice/lifecycle/release gates are still unassessed.
 
 ### Abrupt-ending diagnosis and existing terminal shaping
 

@@ -32,13 +32,19 @@ the retained probe fixes conditioning per process. First callback is not
 first audible or intelligible speech.
 
 Subsequent listening to that comparison selection is mixed: RU-stress short
-05-07 are normal but 08 changes voice after the middle; CF short 13-16 and Base
-17-24 are normal in the user's scoped assessment. Original-reference RU-stress
+05-07 initially sounded normal but 08 changes voice after the middle; CF short
+13-16 and Base 17-24 initially sounded normal. Original-reference RU-stress
 01-03 and CF 09-10 fail speech, and CF 12 has an abrupt ending. These new
 observations are attached to their exact separate receipts; short full ICL
-is not a general voice-stability fix. Prescribed-stress compliance remains
-unassessed because the general documents-pronunciation caveat does not
-identify the realized vowel; the selected target is deliberately до́кументы.
+is not a general voice-stability fix. The subsequent stress clarification
+confirms requested О stress in CF 11/15 but ordinary stress in RU-stress 07,
+which fails that explicit request. Base 19/23 distort the target word as
+«доикументы»; stress on И is tentative, not confirmed. Base's current scoped
+listening is therefore fail for that pronunciation artifact, refining the
+earlier partial_pass. CF's positive stress result is limited to one word and
+seed 64 under the two references, not whole-corpus or voice/release acceptance.
+The deliberately nonstandard target is до́кументы; remaining stress cases
+stay unassessed.
 
 ## RU-Stress-CF: preparation actually performed
 

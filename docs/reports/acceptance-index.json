@@ -23,7 +23,7 @@
       "receipt": "docs/reports/native-stress-comparison-base-cmp50hx-20261124.json",
       "model_family": "Base",
       "backend": "native",
-      "human_listening": "partial_pass",
+      "human_listening": "fail",
       "release_status": "blocked"
     },
     {

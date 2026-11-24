@@ -406,13 +406,16 @@ fresh-process measurements reproduce approximately179→83ms first PCM and
 153→60ms prefill, not first usable speech or same-session reference switching.
 The user subsequently listened to generated selection 01-24. RU-stress 01 has
 no voice, 02 has a strange sound, 03 omits the requested word and cuts off,
-and 04-07 are normal; short-reference 08 changes voice after the middle.
+and 04-07 initially sounded normal; short-reference 08 changes voice after the middle.
 CF 09-10 are empty, 11/12 have normal speech with an abrupt end in 12;
-short-reference 13-16 and Base 17-24 are normal. The separate indexed receipts retain
-failed scoped RU-stress/CF listening and partial_pass Base listening; positive
-short CF feedback does not erase its original-reference failures. The general
-documents-pronunciation caveat has no vowel-specific verdict: these selected
-stress cases intentionally request nonstandard до́кументы. Full matrix/stress,
+short-reference 13-16 and Base 17-24 initially sounded normal. The user's
+stress-specific follow-up refines 07 to ordinary stress rather than requested О,
+confirms requested О stress in CF 11/15, and identifies «доикументы» distortion
+in Base 19/23 (stress on И is tentative). These selected cases intentionally
+request nonstandard до́кументы. All three indexed receipts now have failed
+scoped listening; Base's earlier partial_pass is preserved as historical
+general feedback, not its current result. Positive CF speech/stress observations
+do not erase original-reference failures or qualify a whole model. Full matrix/stress,
 voice fidelity, Bridge lifecycle and release gates remain open; release blocked.
 Read-only tail analysis finds all samples conserved and nearly silent final 50 ms
 in 03/12, so WAV sample loss/final-sample discontinuity does not explain those

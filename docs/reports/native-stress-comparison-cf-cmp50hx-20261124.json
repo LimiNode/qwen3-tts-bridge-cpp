@@ -707,7 +707,7 @@
     "status": "fail",
     "observer": "user",
     "recorded_at": "2026-11-24",
-    "scope": "User listened to exact selected files09-16: CF original-full-ICL09-12 and short-full-ICL13-16. The other36 primary matrix outputs and all timing outputs remain unassessed; no new reference00 verdict was supplied.",
+    "scope": "User listened to exact selected files 09-16: CF original-full-ICL 09-12 and short-full-ICL 13-16, then specifically assessed prescribed stress in 11/15 on the same WAVs. The other 36 primary matrix outputs and all timing outputs remain unassessed; no new reference 00 verdict was supplied.",
     "criteria": {
       "intelligibility": "fail",
       "voice_or_instruction": "not_assessed",
@@ -715,16 +715,16 @@
       "final_tail": "fail",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "2026-11-24 user:09-10 are empty;11 and12 are normal, except12 ends its voice abruptly;13-16 are normal as part of the stated13-24 range. Record abrupt ending in12 separately from its positive speech observation; no missing-word claim is inferred for12. The suggestion of smooth fade plus a pause concerns presentation, not recovery of omitted speech; original WAVs remain unchanged. The general 'documents' pronunciation caveat is unlocalized;11/15 intentionally request до́кументы rather than ordinary докуме́нты, so vowel-specific stress compliance and detailed voice/reference similarity remain unassessed. Short-reference13-16 have scoped positive listening, not whole-model or release acceptance."
+    "notes": "2026-11-24 initial user feedback: 09-10 are empty; 11 and 12 are normal, except 12 ends its voice abruptly; 13-16 are normal as part of the stated 13-24 range. A subsequent same-day clarification confirms stress on О in both 11 and 15, matching the deliberately requested до́кументы rather than ordinary докуме́нты. This is a positive prescribed-stress observation for one word and seed 64, with original and short full ICL; it is not whole-matrix stress or voice-fidelity qualification. The combined voice_or_instruction criterion stays not_assessed because continuous reference-voice fidelity and broader instructions were not separately assessed. Record 12's abrupt ending separately from its positive speech observation; no missing-word claim is inferred. Fade plus pause concerns presentation, not recovery. Original WAVs remain unchanged and short-reference 13-16 do not erase failed original-reference cases."
   },
   "release_status": "blocked",
   "case_result": {
     "status": "fail",
-    "reason": "User confirms voiceless original-reference09-10 and an abrupt tail in12. Short-reference13-16 have scoped normal-speech feedback, but cannot override those failed cases or qualify unassessed stress, voice, lifecycle and matrix gates."
+    "reason": "User confirms voiceless original-reference 09-10 and an abrupt tail in 12. Short-reference 13-16 have scoped normal-speech feedback; 11/15 also follow requested О stress for the exact word/seed. These positives cannot override failed cases or qualify remaining stress, voice, lifecycle and matrix gates."
   },
   "listening_result": {
     "status": "fail",
-    "reason": "Scoped human listening fails for original-reference09-10 and12's abrupt tail. User reports normal short-reference13-16 and normal speech in11/12 apart from12's tail; these positives remain separate from the failures."
+    "reason": "Scoped human listening fails for original-reference 09-10 and 12's abrupt tail. Positive short-reference 13-16, normal speech in 11/12 apart from 12's tail, and confirmed requested О stress in 11/15 remain separate from those failures."
   },
   "release_disposition": {
     "status": "blocked",
