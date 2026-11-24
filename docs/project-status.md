@@ -300,6 +300,11 @@ confounder is text geometry: native ICL is aligned/streaming-text, whereas
 speaker-only is full-text. Upstream also provides a full-text ICL branch;
 testing that branch while retaining full reference/decoder conditioning is
 the next bounded candidate, not an implemented fix or default change.
+The user subsequently confirms the exact Kraftwerk reference's spoken text
+matches its registry/ICL transcript; both state-check receipts now record the
+reference-only observation and exact WAV identity. Generated-output listening,
+extraction parity, EOS failures and release status are unchanged; no new GPU
+run follows this confirmation.
 Production defaults/pins are unchanged; all research PRs
 remain Draft and R1 stays NO-GO.
 

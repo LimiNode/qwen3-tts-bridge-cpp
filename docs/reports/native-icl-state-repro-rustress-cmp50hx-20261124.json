@@ -40,6 +40,16 @@
   "artifact_root": ".tmp/base-acceptance/icl-state-repro-cmp50hx-20261124",
   "artifacts": [
     {
+      "path": ".tmp/base-acceptance/icl-state-repro-cmp50hx-20261124/run-001/comparison-exact/00-reference.wav",
+      "bytes": 844844,
+      "sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Byte-identical copy of the original reference.wav whose spoken text the user confirmed matches the registry transcript on2026-11-24. This is an input-reference observation, not listening acceptance of synthesized speech."
+      }
+    },
+    {
       "path": ".tmp/base-acceptance/icl-state-repro-cmp50hx-20261124/run-001/plan.json",
       "bytes": 70968,
       "sha256": "1779de1384435b4578f0faf1ffc914eb21ba2482ba8a555939803a122d574a70",
@@ -141,7 +151,7 @@
     "status": "not_run",
     "observer": "not_recorded",
     "recorded_at": "2026-11-24",
-    "scope": "No new human listening. New PCM/WAV is byte-identical to historical artifacts already assessed in the expansion receipt; historical verdicts stay attached to those exact artifacts, without a new or broader acceptance claim.",
+    "scope": "No new human listening of synthesized outputs. New PCM/WAV is byte-identical to historical artifacts already assessed in the expansion receipt; historical verdicts stay attached to those exact artifacts, without a new or broader acceptance claim. The separate reference-only transcript confirmation is recorded in top-level notes.",
     "criteria": {
       "intelligibility": "not_assessed",
       "voice_or_instruction": "not_assessed",
@@ -165,6 +175,7 @@
   },
   "release_status": "blocked",
   "supersedes": null,
+  "notes": "Reference-only observation, observer=user, 2026-11-24: user answered 'Да, текст совпадает' for the complete quoted Kraftwerk registry transcript in source .tmp/base-acceptance/native-r1-aa2770ec-20261120/voice/reference.wav, 844844bytes, SHA256 90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1. Prepared reference.txt SHA256 e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4 equals that transcript. Source and comparison-exact/00-reference.wav size/hash were reverified identical. Spoken-text/transcript correspondence is confirmed by the user; punctuation/accent precision, forced alignment, extraction numerics, generated speech and voice fidelity are not assessed by this answer. No GPU inference or payload change; synthesized-output human_listening remains not_run.",
   "related_reports": [
     "docs/reports/native-icl-state-repro-plan-20261124.md",
     "docs/reports/native-icl-state-repro-20261124.md",

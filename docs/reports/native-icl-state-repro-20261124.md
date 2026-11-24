@@ -90,8 +90,9 @@ the exact current evidence without replacing earlier listening judgments.
 Independent read-only source/data audit and `preparation-audit.json` establish:
 
 * `reference.txt` is nonempty and exactly equals the registry transcript,
-  171 Unicode characters. Its semantic alignment with the actual WAV has
-  **not** been independently assessed in this stage.
+  171 Unicode characters. At execution, its correspondence to the spoken
+  reference was unassessed; the user subsequently confirmed the spoken
+  text matches, as recorded in the reference-only observation below.
 * The prepared codebook-major `[16,226]` int32 reference is exactly the
   integer conversion of the original retained `ref-codes.bin`; all values
   are integer codes in0..2046. The2048-value f32 speaker vector is exactly
@@ -111,6 +112,29 @@ Independent read-only source/data audit and `preparation-audit.json` establish:
 
 No confirmed preparation defect was found. This is **not** a declaration
 that preparation/extraction/forward computation is fully correct.
+
+### Subsequent reference-only user observation, 2026-11-24
+
+The user answered `Да, текст совпадает` when asked whether the source WAV
+speaks the complete quoted registry transcript. This closes the **spoken
+text versus reference transcript** check for this exact input:
+
+* Source: `.tmp/base-acceptance/native-r1-aa2770ec-20261120/voice/reference.wav`,
+  844844bytes, SHA256
+  `90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1`.
+* The prepared `reference.txt` has SHA256
+  `e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4`
+  and already matches that complete registry transcript exactly.
+* The source and `comparison-exact/00-reference.wav` copy have been
+  rechecked for identical size/SHA. Both model receipts record the
+  reference-only observer/date/scope and identify the local exact copy.
+
+This answer does not grade punctuation, individual stress marks, forced
+phoneme alignment, extraction numerics, generated speech or voice fidelity.
+Synthesized-output listening remains not_run and earlier failed outputs
+remain failed. Frozen preparation-audit/plan/results/inventories are unchanged
+historical evidence; this tracked update supersedes only the prior
+unassessed reference-transcript correspondence. No new GPU run was performed.
 
 ### Source boundaries checked
 
@@ -157,15 +181,16 @@ not a requirement to buffer all generated PCM; audio delivery must still be
 qualified separately for streaming.
 
 This is an investigation target, **not a tested fix**. Exact merged-checkpoint
-runtime parity, extraction parity, transcript alignment and a training-specific
-short-ICL contract remain unknown. Q8 native versus unquantized PyTorch is
+runtime parity, extraction parity and a training-specific short-ICL contract
+remain unknown. The user has confirmed the reference's spoken words match
+its transcript; numerical/forced alignment is not inferred. Q8 native versus unquantized PyTorch is
 not automatically arithmetic equivalence. Do not change production defaults
 or remove ICL based on this audit.
 
 ## Listening and handoff
 
 `comparison-exact/` contains the actual reference and all five new WAVs with
-source/copy hashes in its selection manifest. New listening remains not_run;
+source/copy hashes in its selection manifest. New synthesized-output listening remains not_run;
 the user has already assessed the byte-identical historical outputs in the
 expansion receipt. There is no need to solicit a redundant listening pass to
 establish a new improvement: **no new audio candidate was produced**.
