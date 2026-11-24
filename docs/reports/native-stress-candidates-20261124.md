@@ -24,8 +24,11 @@ warm prefill153->60ms accounts for about93ms of the observed95ms first-PCM
 change178->83ms. Short B retains the original17.6s speaker vector and full
 ICL/decoder context from the crop. No kernel/prefix cache changed and the
 rounded KV window remains256. Medium116 frames/126 rows gives about110ms
-first PCM. A was historical, not interleaved; exact causal latency magnitude
-still needs a balanced same-session timing repeat. First callback is not
+first PCM. Those initial A values were historical, not interleaved. The later
+[native comparison](native-stress-model-comparison-20261124.md) repeats both
+arms in balanced ABBA fresh-process blocks and reproduces approximately179→83ms
+first PCM and153→60ms prefill. It is not same-session reference switching:
+the retained probe fixes conditioning per process. First callback is not
 first audible or intelligible speech.
 
 ## RU-Stress-CF: preparation actually performed
@@ -57,11 +60,15 @@ The existing trusted merge script already accepts an explicitly pinned new
 adapter hash and verifies target/provenance. Reuse it, then the unchanged
 converter and quantizer; do not patch production weights or weaken guards.
 Do not execute downloaded training scripts or `trust_remote_code`.
-The native converter emits F32: reserve approximately3.86GB for the merged
-checkpoint,7.72GB F32 GGUF and2.08GB Q8 plus512MiB/results. Only2.29GB was
-free before the small download. Full conversion/native comparison is
-**not_run: storage bound**; the user has been asked to free about15GB.
-Do not delete historical weights, WAVs or builds to make it fit.
+The native converter emits F32: preparation needs approximately3.86GB for
+the merged checkpoint,7.72GB F32 GGUF and2.08GB Q8 plus reserve/results.
+The initial2.29GB storage refusal is preserved as history. After separately
+authorized cleanup of verified duplicates and compiler intermediates, the
+[native comparison](native-stress-model-comparison-20261124.md) completed
+CPU-only merge/conversion/quantization and independent tensor checks. The
+new CF Q8 hash is `de5ab0b516de7f6f6d04e9375e3a59a7b4e4ff714c5a898f89269588d2223596`.
+Unique historical WAVs, logs, models and provenance were retained. These
+preparation checks alone do not establish speech or prescribed-stress quality.
 
 Local CPU/network preparation payload:
 `.tmp/base-acceptance/model-candidates-20261124/run-001/`.
@@ -128,7 +135,9 @@ a complete independent before/after freeze by this new runner. No dedicated
 new model-free runner test suite was run; the reused source helper has its
 previous10 passing contract tests and the new script/merge/inventory received
 independent read-only review. Native CF, audio, stress, latency and broader
-reliability remain **not_run/not_assessed**, not qualified by this control.
+reliability are not qualified by this control. Subsequent native execution is
+recorded separately in the [native comparison](native-stress-model-comparison-20261124.md);
+it does not retroactively decode or qualify these CPU-source trajectories.
 
 ## Other candidates: primary-source checks, not inference results
 
@@ -166,8 +175,9 @@ homographs, counter-dictionary marks, technical vocabulary and long voice
 controls. Compare current RU-stress, CF and Base at the same Q8 quantization,
 engine, codec, sampler, chunk schedule and original/short full ICL with the
 same original speaker vector:132 synthesis attempts before separate timing
-repetitions. All are not_run until conversion/storage gates pass. No after-
-the-fact seed selection. Freeze corpus/model/runtime manifests before GPU use;
+repetitions. The corpus was frozen before conversion/storage gates passed;
+execution now has its separate [report](native-stress-model-comparison-20261124.md).
+No after-the-fact seed selection. Freeze corpus/model/runtime manifests before GPU use;
 one bounded CMP-only window, preserved failures and exact listening identities.
 
 Measure code/terminal outcomes, missing/extra speech, prescribed stress and

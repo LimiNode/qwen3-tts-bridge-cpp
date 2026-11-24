@@ -1,0 +1,635 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-stress-comparison-base-cmp50hx-20261124",
+  "recorded_at": "2026-11-24",
+  "model_family": "Base",
+  "backend": "native",
+  "bridge_commit": "512ff5ce23137a18671a7f3ef0cae8e97068190d",
+  "model_revision": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+  "runtime_revision": {
+    "variant": "Official Base Q8_0 control; not a substitute for the required explicit-stress capability.",
+    "model_path": "models/qwen-talker-1.7b-base-Q8_0.gguf",
+    "talker_sha256": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+    "qwentts_probe_build": "afa3df01417c90ff141dd54892eeb518d08580b0",
+    "probe_sha256": "6c86e4d69f0c0dbc26e35c360e0b6903dc976b0ad61aa3c34dbbaaa1bbe0f6fa",
+    "runner_sha256": "891585e77a2599b6c91a3837bb28e21eaf005d506261e84e8d5bbe4df4faf339",
+    "runtime": "The private probe statically links the research qwen engine. The retained runtime-current inventory pins GGML backend DLLs; its qwen.dll entry is provenance only, not the engine used by this static probe. No DLL, ABI or production engine pin changed.",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "speaker_sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698",
+    "scope": "This model only: 44/44 frozen matrix outputs, 32/32 observer-OFF timing attempts. Global228-attempt results include the other models as separate controls, not inherited verdicts.",
+    "sampling": "Unchanged default stochastic Talker/Predictor, temperature0.9/top_k50/top_p1, Talker repetition1.05, min_new_tokens2, EOS guard OFF. Single streaming attempt; no retry, rollback, reseed, prefix reuse, Talker top-1 or Predictor greedy.",
+    "conditioning": "Full aligned ICL in both arms, including decoder reference context. Original226 and short56 code frames; the original2048-value Kraftwerk speaker vector is reused unchanged. Short reference is the exact4s source slice and matching transcript, not speaker-only cloning.",
+    "matrix_outcomes": "{\"matrix-base-original\": {\"at_most_three_frames\": 0, \"human_listening\": \"not_run\", \"natural_eos\": 22, \"near_silence\": 0, \"observed\": 22, \"word_coverage\": \"not_assessed\"}, \"matrix-base-short\": {\"at_most_three_frames\": 0, \"human_listening\": \"not_run\", \"natural_eos\": 22, \"near_silence\": 0, \"observed\": 22, \"word_coverage\": \"not_assessed\"}}",
+    "integrity": "Whole-run frozen identities unchanged=True; this model's16 within-process warm repeat comparisons pass=True. Complete codes and matched streaming PCM, raw f32 and exact PCM16 WAVs retained. Neither length, finite signal nor natural EOS establishes words/stress/voice.",
+    "timing": "Observer-OFF direct-engine callbacks; ABBA fresh-process blocks, four warmup requests followed by four measured requests. Not same-process conditioning switches, not usable-speech onset.",
+    "warm_timing_observations": "{\"base/original/en-all-right\": {\"first_pcm_ms\": {\"n\": 2, \"p50\": 178.67305000000002, \"p95\": 178.87390000000002}, \"prefill_ms\": {\"n\": 2, \"p50\": 153.22359999999998, \"p95\": 153.2839}, \"rtf\": {\"n\": 2, \"p50\": 0.49718825, \"p95\": 0.49874362499999997}}, \"base/original/en-voice\": {\"first_pcm_ms\": {\"n\": 2, \"p50\": 178.8419, \"p95\": 178.9441}, \"prefill_ms\": {\"n\": 2, \"p50\": 153.42415, \"p95\": 153.4939}, \"rtf\": {\"n\": 2, \"p50\": 0.2976658502906977, \"p95\": 0.298277863372093}}, \"base/original/ru-ok\": {\"first_pcm_ms\": {\"n\": 2, \"p50\": 179.24555, \"p95\": 179.2584}, \"prefill_ms\": {\"n\": 2, \"p50\": 153.4946, \"p95\": 153.5691}, \"rtf\": {\"n\": 2, \"p50\": 0.4697836363636364, \"p95\": 0.47112}}, \"base/original/ru-voice\": {\"first_pcm_ms\": {\"n\": 2, \"p50\": 180.00415, \"p95\": 180.125}, \"prefill_ms\": {\"n\": 2, \"p50\": 153.2052, \"p95\": 153.2646}, \"rtf\": {\"n\": 2, \"p50\": 0.2955071331521739, \"p95\": 0.2956260326086957}}, \"base/short/en-all-right\": {\"first_pcm_ms\": {\"n\": 2, \"p50\": 82.95949999999999, \"p95\": 83.3352}, \"prefill_ms\": {\"n\": 2, \"p50\": 60.571349999999995, \"p95\": 60.6748}, \"rtf\": {\"n\": 2, \"p50\": 0.37997918750000004, \"p95\": 0.38019887500000005}}, \"base/short/en-voice\": {\"first_pcm_ms\": {\"n\": 2, \"p50\": 83.17335, \"p95\": 83.674}, \"prefill_ms\": {\"n\": 2, \"p50\": 60.5156, \"p95\": 60.538}, \"rtf\": {\"n\": 2, \"p50\": 0.27973645331325303, \"p95\": 0.27997368975903614}}, \"base/short/ru-ok\": {\"first_pcm_ms\": {\"n\": 2, \"p50\": 83.3655, \"p95\": 83.5367}, \"prefill_ms\": {\"n\": 2, \"p50\": 60.6457, \"p95\": 60.7076}, \"rtf\": {\"n\": 2, \"p50\": 0.33711329166666665, \"p95\": 0.33814075}}, \"base/short/ru-voice\": {\"first_pcm_ms\": {\"n\": 2, \"p50\": 83.98519999999999, \"p95\": 84.6477}, \"prefill_ms\": {\"n\": 2, \"p50\": 60.634299999999996, \"p95\": 60.69}, \"rtf\": {\"n\": 2, \"p50\": 0.2785792216981132, \"p95\": 0.278881391509434}}}",
+    "budget": "One root-authorized1800s CMP-only allocation, shared monotonic deadline=3216619.968. Run GPU-stage elapsed=351.422s including non-kernel coordination; within shared deadline=True. No independent per-arm reset or new GPU allocation.",
+    "unsupported_claims": "Not Bridge/QTB worker supervision, installed CLI, physical playback, packaged/relocated runtime, production ABI qualification or RTX4090. Direct-engine warm callbacks are not first audible or intelligible speech."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen corpus.json preserves16 exact UTF-8 texts and22 text/seed cases. Per-job manifests pin languages, seeds, model/reference paths and unchanged streaming/sampler controls; exact request/reference/code bytes are identified by plan and sealed inventory.",
+    "corpus_sha256": "0ad6e4660f4f38140ee1d81cf8a06ea81303ba0ff2eb6f4b5db7b62085871a60"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/supervise_gpu.py",
+      "bytes": 2437,
+      "sha256": "181c64d7e6a210c5ccfcc4620fa31073c9d9658f34d962e18b9602b519f8482f",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Root-owned shared GPU-window supervisor and exact start/finish journals; no per-arm deadline reset."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/gpu-window-start.json",
+      "bytes": 316,
+      "sha256": "94c2a6ec1e5e74d474641f690ea13a622cf4f151b581236a4a5ace99c7c8de8c",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Root-owned shared GPU-window supervisor and exact start/finish journals; no per-arm deadline reset."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/gpu-window-finish.json",
+      "bytes": 190,
+      "sha256": "783d375c2e712883715407674c2d41dad165c91019eb83d0a244798c6abd1f21",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Root-owned shared GPU-window supervisor and exact start/finish journals; no per-arm deadline reset."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/plan.json",
+      "bytes": 83619,
+      "sha256": "2062033636dd7cc039456283602dad818666288e0ad27542d8a36708fc3ef66f",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/results.json",
+      "bytes": 2574913,
+      "sha256": "61ee38626c399935dffbc4c85e7df55ac9e47937de0c27499142163d6c223106",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/execution.json",
+      "bytes": 471,
+      "sha256": "eb2bf6f4764c6b3b25d655ef3ea8838cd727a40a7d3a5afc47510b2134b43daa",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/artifact-inventory.json",
+      "bytes": 253896,
+      "sha256": "57081d75454d4eb1635f804a0c8b6f2754fe3d336b93c0db62da5532e100b32d",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/corpus.json",
+      "bytes": 2986,
+      "sha256": "0ad6e4660f4f38140ee1d81cf8a06ea81303ba0ff2eb6f4b5db7b62085871a60",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/model-free-tests.log",
+      "bytes": 3362,
+      "sha256": "b4a0c43fb48047bfc66d738ddee87b648601762f5ccac1427e53ca24e2d6683c",
+      "kind": "log",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/matrix-base-original-manifest.json",
+      "bytes": 6323,
+      "sha256": "fcb114cac241b3cadcefd8e231a46b018dc6cd1cad641ed76d920fd99c0b3a77",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/matrix-base-original-collected.json",
+      "bytes": 212546,
+      "sha256": "f6ef4fdc9f38979ab9aaf7e81a459f33ad82f5a60da8ff1bf2a956ac65bd7847",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/matrix-base-short-manifest.json",
+      "bytes": 6316,
+      "sha256": "f8864a1200a36617cfa7f5385235ad210922514067af20adf7b189778e68aa3d",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/matrix-base-short-collected.json",
+      "bytes": 223719,
+      "sha256": "a208e70c6f2e903f83bc8a6a6eb7fc251cad305167d58b7139ebe0717f81c3e5",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/timing-base-0-original-manifest.json",
+      "bytes": 2895,
+      "sha256": "43613e3c2ca522b4d1f42e007454fe9811e19cf4695b8c356d015bd429b862fa",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/timing-base-0-original-collected.json",
+      "bytes": 85474,
+      "sha256": "4d7459b55625453849edec4313e7e143e566c8ff9eee7e62efe16995386b8fa7",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/timing-base-1-short-manifest.json",
+      "bytes": 2888,
+      "sha256": "9fd7db709aab88f4b0118872bbdb3971254fcb5a4d54bd45f7315d2d3e5101ed",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/timing-base-1-short-collected.json",
+      "bytes": 89051,
+      "sha256": "7e9491710a460c132579eeb700bbb865e7ae5f820d04e1bc3ba6074abe30a43c",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/timing-base-2-short-manifest.json",
+      "bytes": 2888,
+      "sha256": "00b688b2b52e9ef60f692d13661c9ebb1b3cb510beb81bcaf0a3a1becd31603d",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/timing-base-2-short-collected.json",
+      "bytes": 89012,
+      "sha256": "4a91f06ac354d9a85612dbdc9b27afcd9e96e1ee0b27a86e2aab4759fd585ee8",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/timing-base-3-original-manifest.json",
+      "bytes": 2895,
+      "sha256": "9decbe438e6cc62b8148801e30b479a722c42075ea401e60ef959859b54dccde",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/timing-base-3-original-collected.json",
+      "bytes": 85466,
+      "sha256": "13cbcd335a895b3bcbd17629f9660434a2397df268cfeada98c64f0208df2aae",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/en-all-right.txt",
+      "bytes": 10,
+      "sha256": "6cdbc2f5a8795c92e6c74cd59104e753aacc7fa54ddd6b1e62d2fe630929e6ee",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/en-hi.txt",
+      "bytes": 3,
+      "sha256": "ca51ce1fb15acc6d69b8a5700256172fcc507e02073e6f19592e341bd6508ab8",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/en-voice.txt",
+      "bytes": 99,
+      "sha256": "2577736a49fcbab470eb2a219e79965d86c1118df262050abca41c96a30a4b18",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/ru-no.txt",
+      "bytes": 7,
+      "sha256": "ab3be5c500dddf8142266bbb28eb1b3fac6735768d98f7a892d55f20d6645374",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/ru-ok.txt",
+      "bytes": 11,
+      "sha256": "11c08668cf7a8e70084b19ae73d2756917ae29e7913539d41fff29c70426adbd",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/ru-original.txt",
+      "bytes": 126,
+      "sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/ru-thanks.txt",
+      "bytes": 15,
+      "sha256": "d34921bc56be01bba3a15fae2d5bc8d5a5e717c50b6682d2b25a52b704f3968b",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/ru-voice.txt",
+      "bytes": 179,
+      "sha256": "944329c79902761e95fd0276605d90c6ed49f7f3d22206ec5b536a8f325d3b96",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/stress-documents-counterfactual.txt",
+      "bytes": 58,
+      "sha256": "0e7c3d39575cf5ba225c353bb776b1e69d83816687d00153b4caef56bbb200b2",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/stress-documents-normal.txt",
+      "bytes": 58,
+      "sha256": "063deaf2df74fa8fd1661035f84a0e554ed1e8a96e2461ad4d1ca9b58da76b5f",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/stress-muka-first.txt",
+      "bytes": 48,
+      "sha256": "27cc0984a7dd4bb4fe80a5b8454e57d687367dbba6819f2e3c1efdc9c096a7fb",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/stress-muka-last.txt",
+      "bytes": 48,
+      "sha256": "75a38ff290705bee68985fe742a2ebcf2feb4ab57bb8a2861f067a9854ff50c2",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/stress-processor-counterfactual.txt",
+      "bytes": 85,
+      "sha256": "9a963f2ba608256c2e811d28634dca273d8371207e5702533f2b302703a47c54",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/stress-processor-normal.txt",
+      "bytes": 85,
+      "sha256": "da0dd8c5e2ae84f0e6d4486f1843d73ae1e1dae730544d8bed4a988ca6b711ae",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/stress-zamok-first.txt",
+      "bytes": 50,
+      "sha256": "082bd1999c4e5ba714ba4c64a3c1d1f1ce083b9490122c10a34e5011c3cf197b",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/inputs/stress-zamok-last.txt",
+      "bytes": 50,
+      "sha256": "5c1e4c697c06ff229e8ca9d68bc50427dca02c86afe9700e6dab673cf169ed5b",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/references/original/reference.i32",
+      "bytes": 14464,
+      "sha256": "069ac5c280be070c2e5bf006cb9b58a2d248f34e1bdd37aab62310f2ffdd9443",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/references/original/reference.txt",
+      "bytes": 308,
+      "sha256": "e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/references/original/source.wav",
+      "bytes": 844844,
+      "sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/references/original/speaker.f32",
+      "bytes": 8192,
+      "sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/references/short/reference.i32",
+      "bytes": 3584,
+      "sha256": "c12f01d4fe3654243bc0efa6aed901bf90adf01fea49f0a595c09b2e867cb7de",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/references/short/reference.txt",
+      "bytes": 53,
+      "sha256": "8c088cd03fd41ee4164682ab7afefb56f85c3adf16c805e9069fb2faad2ccb97",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/references/short/source.wav",
+      "bytes": 192044,
+      "sha256": "00c0b3920690e5737cb8d45e7f1d3c39e9845c649a9877787be82d2a5fd0cf4e",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/00-reference.wav",
+      "bytes": 844844,
+      "sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/17-base-original-ru-ok-seed-2027.wav",
+      "bytes": 42284,
+      "sha256": "e8d13719907eb3c42876366fbc7d2ef6d3093229695233e870fb93bd7ffa37c9",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/18-base-original-en-all-right-seed-2029.wav",
+      "bytes": 38444,
+      "sha256": "f513bc8f0019167822c9f562864a99cf006d2b8c0c65a8e2bd0d74694f1d3c1f",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/19-base-original-stress-documents-counterfactual-seed-64.wav",
+      "bytes": 126764,
+      "sha256": "f48e421d0ae334cd03a750caacfdc4004022a9090435e7d5f05b6d8817559ade",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/20-base-original-ru-voice-seed-2027.wav",
+      "bytes": 353324,
+      "sha256": "85a2b57fc7d396333dce60cb0cb4567d60233e7bcb3c67ef4d13dae043fa74b1",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/21-base-short-ru-ok-seed-2027.wav",
+      "bytes": 57644,
+      "sha256": "df0ace8bd2576f22a3d422df8d65a03541e1915d330195f5e5b80d1640c734d9",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/22-base-short-en-all-right-seed-2029.wav",
+      "bytes": 38444,
+      "sha256": "3d1b66ab402bbda901fc59852928e20d1139c02fb8d1b5f729870f12bf0957b8",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/23-base-short-stress-documents-counterfactual-seed-64.wav",
+      "bytes": 169004,
+      "sha256": "33ebf3ef4e260ff344d9bbfaf1c9832b1e52f9b33cd336bf467fa9c0722d13ba",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/24-base-short-ru-voice-seed-2027.wav",
+      "bytes": 407084,
+      "sha256": "7d1d4ccc553b11b4fcac804ee3093b4e8841d5425e4319e7dd1c9bd5709db31f",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/manifest.json",
+      "bytes": 23125,
+      "sha256": "87733e7a0d6fed61860b437d69604f39590ebbd1190f31969c493ee01de84b3f",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/stress-model-comparison-cmp50hx-20261124/run-001/listening-stress-comparison/README.txt",
+      "bytes": 4691,
+      "sha256": "9d58de4f853ce5a04f64dc1e60bf7e3d6d8b91dc42340cd3fb3950bc42e97dc8",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact repository-local research evidence; ignored payloads are not transferred or backed up by Git. New WAVs have no human-listening verdict."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "not_run",
+    "observer": "not_assessed",
+    "recorded_at": "2026-11-24",
+    "scope": "No listening observation exists for these exact new model/reference outputs. Eight model-specific selected WAVs and the shared source reference are identified; the full44-case matrix remains available and unassessed.",
+    "criteria": {
+      "intelligibility": "not_assessed",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "Assess missing/extra words, prescribed U+0301 stress, coughs/laughter, voice stability and reference similarity separately. Prior user listening applies only to its earlier exact artifacts. Very short or near-silent controls remain retained failures/candidates, never inferred rescues."
+  },
+  "release_status": "blocked",
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Scoped direct-engine model/PCM/EOS/repeat checks are separate from semantic completeness and public-worker restart. Bridge restart, whole-matrix listening/stress/voice and package/hardware qualification remain unassessed; no aggregate case acceptance."
+  },
+  "listening_result": {
+    "status": "not_run",
+    "reason": "No new exact-artifact human listening; duration, energy, complete codes or natural EOS are not speech-quality evidence."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "R1 remains NO-GO. Experimental model/reference comparison does not promote defaults, engine/model pins, ABI/QTB, frozen package or hardware support."
+  },
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-stress-candidates-20261124.md",
+    "docs/reports/native-stress-model-comparison-20261124.md"
+  ],
+  "notes": "Three independent model receipts share a frozen experimental corpus, engine and source voice. Persistent-repeat pass is limited to16 same-process direct-engine timing repeats; ordinary Bridge/worker restart was not tested. All failures remain in the sealed inventory."
+}

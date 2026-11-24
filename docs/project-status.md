@@ -393,9 +393,20 @@ other candidates. An eight-case CPU FP32 source control completed in306.5s:
 Base shortRU/shortEN/longRU/longEN yields9/10/92/84 frames; in-memory CF yields
 2/2/82/92. CF retains two-frame EOS on both short controls with original full
 ICL. Codes were not decoded/listened to, so this is not speech, stress or
-native/latency acceptance. CF native conversion and the frozen132-attempt
-native comparison remain not_run: approximately15GB free space is needed;
-only about2.25GiB is available. No historical artifacts were deleted.
+native/latency acceptance for those undecoded source trajectories.
+After authorized cleanup, the separate
+[native model comparison](reports/native-stress-model-comparison-20261124.md)
+completed CPU-only CF merge/F32/Q8 preparation,132 frozen streaming attempts
+and96 balanced timing controls. All228 exact code/PCM/WAV outputs and96 repeat
+pairs pass independent mechanical verification; shared GPU-stage wall time
+is351.422s. Original full ICL retains6 near-silent outcomes per22 for both
+RU-stress and CF, while their short full-ICL cells have0; Base has0 in both.
+This does not establish speech quality or a general EOS remedy. Warm ABBA
+fresh-process measurements reproduce approximately179→83ms first PCM and
+153→60ms prefill, not first usable speech or same-session reference switching.
+Three separate indexed schema-v2 receipts retain listening not_run and
+release blocked. One25-WAV selection awaits new exact-artifact listening;
+stress, voice continuity, Bridge lifecycle and release gates remain open.
 
 ## Verified milestones
 
