@@ -46,12 +46,15 @@ Engine50 `4e47ed266f08cab9e13e277aa460a33bb607e769`. The source/plan Bridge
 HEAD is `ac53416984bc436cf178791e760d478cd50f3f77`, stacked on Bridge332
 `8ec5466c1f0ce011bc45719a28e96ffab41c9c15`. Probe SHA-256:
 `6c86e4d69f0c0dbc26e35c360e0b6903dc976b0ad61aa3c34dbbaaa1bbe0f6fa`.
-Later CI/evidence-only edits must not be described as the built GPU revision.
-Engine [PR52](https://github.com/LimiNode/qwentts.cpp/pull/52), HEAD
-`a4b74bdbacc9b1c9f65cce99efc21641fdcc022e`, subsequently adds the geometry test to both CI jobs and
+Later follow-ups must not be described as the built GPU revision.
+Engine [PR52](https://github.com/LimiNode/qwentts.cpp/pull/52) subsequently
+adds the geometry test to both CI jobs and
 preserves original-attempt logit/weight files before a possible full retry.
 The latter has a model-free overwrite/bounds regression and a separately
-rebuilt probe self-test; no new hardware run is claimed for that HEAD.
+rebuilt probe self-test. Review HEAD
+`1416928594cb6fa9230afca8dd3116125c0d6fe0` also replaces row memcpy-plus-add
+with the direct equivalent per-element addition after the GCC failure below.
+No new hardware run is claimed for these follow-ups.
 
 The isolated static probe was rebuilt with MSVC14.44, C++17, Release,
 existing GGML `c044c6f03892f9d5e98213b05f8afea1f8b0d3c9` import libraries and
@@ -196,6 +199,14 @@ speech, a detector decision, physical playback or an end-to-end worker metric.
   totaling6,666,240 samples. All16 listening copies retain original levels.
 - The new geometry target/test is added to both Linux/CPU and Windows research
   CI jobs. Local manual builds are not a full CMake/CTest qualification.
+- First published engine HEADa4b74bd: Windows CI passed, Linux/CPU failed
+  building the new geometry test under GCC15 with `-Werror=stringop-overflow`
+  on row memcpy. The same failure was reproduced locally on GCC15.2/MinGW
+  at `-O3 -Wall -Wextra -Werror -pedantic`. The smallest follow-up expresses
+  the same row sum directly, removing the redundant copy; geometry/settings
+  then pass GCC15.2 and the rebuilt geometry contract passes MSVC `/W4 /WX`.
+  No warning is suppressed. New exact-head CI is separate from this local
+  verification; original failed Actions run45307386021 remains historical.
 - Bridge332 exact HEAD 8ec5466c has 7/7 successful CI checks, independently
   rechecked on2026-11-24. That success is not the new branch's CI status.
 - All37 canonical receipts pass validation; the validator suite runs18 tests,
