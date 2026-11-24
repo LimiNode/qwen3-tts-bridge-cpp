@@ -94,6 +94,27 @@ or failed, never an invented one-attempt pass.
 
 ## Decision and non-goals
 
+### Diagnostic correction before the identical repeat
+
+First execution `run-001` completed all68 attempts, but post-run source
+inspection found that the sampler overwrites its input with unnormalized
+`exp(logit-max)` weights. That run's file named decision-logits therefore
+contains weights, and its finalizer incorrectly applied softmax again.
+Its derived EOS probabilities are **invalid**, not evidence about the model.
+The actual initial prefill logits, sampled decisions, codes, PCM, timings,
+repeat checks and historical control matches remain valid and preserved.
+
+Repeat the identical frozen68-request matrix in `run-002`, engine
+`afa3df01417c90ff141dd54892eeb518d08580b0`. The observer now separately copies
+suppressed pre-sampler logits and post-sampler exponential weights, and records
+the original uniform draw/subsequence. No sampler calculation changes.
+The extra host copies affect diagnostic runs only; timing observers remain
+OFF. Correct EOS probability is `weight[EOS] / sum(weights)`, not a second
+softmax. The first run used179seconds including hashes; the identical repeat
+must also keep the combined stage below the approved1800-second budget.
+Do not reuse old listening verdicts, search seeds, overwrite `run-001`, or
+claim that the instrumentation correction repaired generated speech.
+
 One numbered folder contains source reference00 and16 A/B outputs at original
 levels, with exact expected texts. New listening remains **not_run** until
 the user assesses complete words, extra sounds and voice stability/similarity
