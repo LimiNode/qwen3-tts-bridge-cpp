@@ -3,6 +3,22 @@
   "generated_at": "2026-11-25",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-eos-control-rustress-cmp50hx-20261125",
+      "receipt": "docs/reports/native-eos-control-rustress-cmp50hx-20261125.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
+      "acceptance_id": "native-eos-control-cf-cmp50hx-20261125",
+      "receipt": "docs/reports/native-eos-control-cf-cmp50hx-20261125.json",
+      "model_family": "RU-stress",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-stress-pairs-rustress-cmp50hx-20261125",
       "receipt": "docs/reports/native-stress-pairs-rustress-cmp50hx-20261125.json",
       "model_family": "RU-stress",

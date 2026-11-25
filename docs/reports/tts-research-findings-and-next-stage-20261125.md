@@ -7,6 +7,12 @@
 - Review trigger: new exact-artifact listening, completed A–E experiments,
   changed model/runtime, or a separate integration decision.
 
+Current execution update: the first approved A/D window completed all 200
+requests on CMP 50HX in 336.766 s. See
+[EOS control and manual accent-policy results](native-eos-control-and-manual-accents-20261125.md)
+and its separate model receipts. New semantic/listening verdicts remain
+unassessed; B/C/E are not completed by that allocation.
+
 This record preserves observations, competing explanations and recommendations.
 Canonical JSON receipts still own acceptance statuses. A proposed test is not
 an executed result. Earlier failures and sealed payloads must not be rewritten.
@@ -218,11 +224,13 @@ neither is performed by this plan. Do not absorb other research engine patches.
 ## Resource gates and result ownership
 
 Preflight on 2026-11-25 sees CMP 50HX 20,480 MiB (11 MiB used) and approximately
-11.32 GiB free on E:. GTX1060 is out of scope. Requested first A/D allocation:
+11.32 GiB free on E:. GTX1060 is out of scope. The user approved the first A/D allocation:
 at most 30 minutes, one model process, 18 GiB peak VRAM, 1 GiB new payload and
-2 GiB free reserve. **Awaiting user budget confirmation; no GPU launch yet.**
-One monotonic deadline starts at execution, not during preparation, and cannot
-be renewed by child stages/retries. Recheck space/VRAM immediately before use.
+2 GiB free reserve. **That window is completed and closed, not awaiting approval.**
+Execution rechecked 6.52 GiB free and an idle CMP. One monotonic deadline covered
+all 200 requests; actual elapsed 336.766 s, sampled device peak 3544 MiB, final
+indexed payload approximately 100.2 MiB and minimum free 6.43 GiB. Exact journals
+and bounds are in the linked A/D report; no extension or additional GPU run.
 Alternative-model downloads/environments need a separate sized disk decision.
 
 Each task report must state executed/not-run/blocked scope, exact revisions,
@@ -232,7 +240,7 @@ receipts are not overwritten to make a larger experiment look accepted.
 No production default, ABI, QTB, model/engine pin, frozen package, merge or
 release changes are authorized by this research record.
 
-## Preparation completed in this continuation
+## Preparation completed in this continuation (historical pre-run state)
 
 - A: a separate engine worktree/branch `research/eos-logit-control` implements
   the OFF-by-default `QWEN_RESEARCH_EOS_CONTROL` compile option and strict
@@ -260,7 +268,9 @@ release changes are authorized by this research record.
   reuses prior checks and identifies the exact N=2/3 whole-model evidence gap.
   No merge, pin update or duplicate smoke was performed.
 
-No new model output or listening gate is claimed from these preparation checks.
+No model output or listening gate was claimed from these preparation checks.
+The later 200-output run is documented separately above; it does not turn
+preparation or output integrity into semantic acceptance.
 
 Local reproduction tools are
 `.tmp/pr-metadata/eos-control-20261125/build-probe.ps1` (SHA-256
@@ -290,3 +300,29 @@ external check, not assumed from this preparation.
 The final comparison will contain quality/voice/stress/EOS, cold/warm and
 first-usable-speech latency, RTF, VRAM/disk and streaming granularity. Missing
 measurements remain explicitly not run; no synthetic cross-model ranking.
+
+## Findings added by the first A/D execution
+
+**Confirmed mechanics, not confirmed speech recovery:** raw penalties 2/4/6
+produce exactly the intended EOS subtraction at the first eligible decision
+in 60 checks; 18 exact historical controls and 40 observer/repeat comparisons
+retain full codes and PCM. One-shot intervention is per request, uses the
+same draw/subsequence and fires at most once.
+
+**Observed limitation:** «Ладно.» seed 2027 finishes after 2/2/4/4/3 frames in
+baseline/penalty 2/4/6/one-shot for both models. In RU-stress its frame 2 final
+sampler EOS probability falls from 98.90% to 10.25% under penalty 6, but EOS
+returns at frame 4. Therefore a one-time alternative or this constant grid
+does not universally remove repeated EOS preference.
+
+**New listening candidates:** the MGU sentence at seed 75 changes from 2 frames
+to 86–90 in both models; RU-stress seed 72 changes from 6 to 113 under penalty 6.
+Their complete words, voice, extra sounds and usable-speech onset remain
+unassessed. D also retains two-frame failures in both models; no input-policy
+winner or training-frequency explanation is established.
+
+**Recommendation:** listen to the exact long candidates and manual accent
+contrasts next. Qualify correct short controls before claiming false-intervention
+rates. Only a positive semantic result warrants adaptive-decay tuning and a
+later frozen held-out test. Preserve the shorter failures and unchanged full
+ICL; no blanket EOS ban, raised minimum or production promotion.

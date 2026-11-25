@@ -13,7 +13,14 @@ Talker EOS control is first priority; reference stability, alternative models,
 frontend accent policies and Engine #51 integration have independent outcomes.
 Normative stress/full ICL remain required; deliberately wrong stress is an
 extra capability, not by itself a release blocker. Existing failures stand.
-New GPU work awaits a separately confirmed resource window. R1 remains NO-GO.
+The first approved A/D allocation is completed: 200/200 requests on CMP 50HX
+in 336.766 s, within the 30-minute/18 GiB/1 GiB/2 GiB-reserve limits. The
+[EOS/manual-accent results](reports/native-eos-control-and-manual-accents-20261125.md)
+and two new indexed receipts preserve all failures. Penalties/one-shot change
+some known long failures into longer candidates, but repeated EOS remains in
+short cases; no new speech or stress verdict is inferred. Exact-artifact
+listening, correct-short false-intervention controls and held-out qualification
+remain open. B/C/E and other GPU work are separate. R1 remains NO-GO.
 
 ## R1 backend direction
 
