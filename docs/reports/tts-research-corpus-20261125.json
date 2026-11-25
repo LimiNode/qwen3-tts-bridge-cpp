@@ -1,0 +1,30 @@
+{
+  "status": "frozen_preparation_not_executed",
+  "purpose": "Discovery corpus for tasks A/D; not held-out or model acceptance",
+  "conditioning_a": "Original full aligned ICL, original Kraftwerk vector/transcript/codes; no prefix reuse, reseed, guard or rollback",
+  "models_a_d": ["RU-stress Q8_0", "RU-Stress-CF Q8_0"],
+  "a_policies": ["baseline", "penalty:2", "penalty:4", "penalty:6", "alternative-once:8"],
+  "a_cases": [
+    {"id": "ru-ladno", "text": "Ладно.", "language": "Russian", "seed": 2027, "prior": "Two-frame failure in RU-stress original ICL; inspect CF independently"},
+    {"id": "en-all-right", "text": "All right.", "language": "English", "seed": 2029, "prior": "Original-reference short-output candidate; no transferred new-output verdict"},
+    {"id": "ru-no", "text": "Нет.", "language": "Russian", "seed": 64, "prior": "Short-answer control candidate, not predeclared successful speech"},
+    {"id": "en-hi", "text": "Hi!", "language": "English", "seed": 64, "prior": "Short-answer control candidate, not predeclared successful speech"},
+    {"id": "ru-yes", "text": "Да.", "language": "Russian", "seed": 64, "prior": "Candidate legitimate short answer; baseline listening required"},
+    {"id": "ru-thanks", "text": "Спасибо.", "language": "Russian", "seed": 65, "prior": "Candidate legitimate short answer; baseline listening required"},
+    {"id": "ru-original-72", "text": "МГУ находится в Москве. Инженер проверил USB-порт, GPS и новый процессор.", "language": "Russian", "seed": 72, "prior": "Historical early-EOS seed; new exact baseline must be checked"},
+    {"id": "ru-original-75", "text": "МГУ находится в Москве. Инженер проверил USB-порт, GPS и новый процессор.", "language": "Russian", "seed": 75, "prior": "Historical early-EOS seed; new exact baseline must be checked"},
+    {"id": "ru-long", "text": "Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.", "language": "Russian", "seed": 2027, "prior": "Long control; previous results do not transfer without exact identity"},
+    {"id": "en-long", "text": "The equipment passed every check this morning. We can now finish the report and close the workshop.", "language": "English", "seed": 2027, "prior": "Long voice/coverage control"}
+  ],
+  "a_control_requirement": "Before intervention scoring, qualify correct short baseline controls in the same setup. If none speak correctly, add a separately declared Base control arm or report missing false-intervention evidence; do not call duration success.",
+  "d_seeds": [64, 2027, 2029],
+  "d_text_variants": [
+    {"id": "documents-normal", "raw": "Он произнёс слово документы.", "selective": "Он произнёс слово докуме́нты.", "full_available": "Он произнёс сло́во докуме́нты.", "requirement": "normative"},
+    {"id": "documents-counterfactual", "raw": "Он произнёс слово документы.", "selective": "Он произнёс слово до́кументы.", "full_available": "Он произнёс сло́во до́кументы.", "requirement": "extra_nonblocking_counterfactual"},
+    {"id": "documents-context-normal", "raw": "Сегодня документы лежат на столе.", "selective": "Сегодня докуме́нты лежат на столе.", "full_available": "Сего́дня докуме́нты лежа́т на столе́.", "requirement": "normative"},
+    {"id": "documents-context-counterfactual", "raw": "Сегодня документы лежат на столе.", "selective": "Сегодня до́кументы лежат на столе.", "full_available": "Сего́дня до́кументы лежа́т на столе́.", "requirement": "extra_nonblocking_counterfactual"}
+  ],
+  "d_input_boundary": "Manually enumerated U+0301 variants, not an executed tts-front-cpp output. End-to-end frontend modes require exact frontend/settings/effective-byte capture before execution. Raw duplicates across target intentions are intentional and must be deduplicated for listening, not counted as independent evidence.",
+  "evaluation": ["complete_text", "normative_stress", "counterfactual_stress", "phoneme_distortion", "extra_sounds", "voice_start_middle_end", "final_tail"],
+  "timing_boundary": "No timing, speech-onset or quality verdict exists for this prepared corpus. Traced and observer-OFF runs must be separate."
+}

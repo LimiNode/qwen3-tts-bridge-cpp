@@ -1,5 +1,8 @@
 # Native stress-model and full-ICL comparison
 
+2026-11-25 continuation: [retained observations, hypotheses and recommendations](tts-research-findings-and-next-stage-20261125.md).
+This comparison is complete at PR #334 / `ce6b0f30`; new work is separate.
+
 - Date: 2026-11-24. Research only; R1 remains **NO-GO**.
 - Bridge input: `512ff5ce23137a18671a7f3ef0cae8e97068190d`.
 - Scope: current RU-stress, RU-Stress-CF and Base control at Q8_0,

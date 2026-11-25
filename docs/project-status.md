@@ -4,6 +4,17 @@ This document is the short, evidence-backed status summary for
 `qwen3-tts-bridge-cpp`. It records what has actually been built and exercised,
 while keeping experimental paths separate from the production baseline.
 
+## Current research continuation, 2026-11-25
+
+PR #334 at `ce6b0f30` is the completed comparative evidence stage. The
+[retained findings and A–E work packages](reports/tts-research-findings-and-next-stage-20261125.md)
+separate observations, unverified hypotheses, recommendations and next checks.
+Talker EOS control is first priority; reference stability, alternative models,
+frontend accent policies and Engine #51 integration have independent outcomes.
+Normative stress/full ICL remain required; deliberately wrong stress is an
+extra capability, not by itself a release blocker. Existing failures stand.
+New GPU work awaits a separately confirmed resource window. R1 remains NO-GO.
+
 ## R1 backend direction
 
 R1 evaluates two local backend routes behind the same bridge contract:

@@ -1,5 +1,9 @@
 # Native/source causal comparison: executed run002
 
+2026-11-25 follow-up: the [retained findings and next-stage record](tts-research-findings-and-next-stage-20261125.md)
+uses this exact evidence to prioritize controlled EOS experiments. The
+original numerical results and historical decisions below remain unchanged.
+
 ## Current result and interpretation
 
 Research only,2026-11-24. The newly authorized run002 completed four native
