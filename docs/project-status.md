@@ -18,9 +18,12 @@ in 336.766 s, within the 30-minute/18 GiB/1 GiB/2 GiB-reserve limits. The
 [EOS/manual-accent results](reports/native-eos-control-and-manual-accents-20261125.md)
 and two new indexed receipts preserve all failures. Penalties/one-shot change
 some known long failures into longer candidates, but repeated EOS remains in
-short cases; no new speech or stress verdict is inferred. Exact-artifact
-listening, correct-short false-intervention controls and held-out qualification
-remain open. B/C/E and other GPU work are separate. R1 remains NO-GO.
+short cases. User listening on2026-11-26 confirms normal pronunciation in12–15
+and17; CF one-shot18 cuts «процессор» at «проце», while RU20 has unclear «МГУ»
+and a normal remainder. RU listening is partial_pass, CF listening fails in
+this scope. Other candidates, accent/voice criteria, correct-short controls
+and held-out qualification remain open. B/C/E and new GPU allocations are
+separate. R1 remains NO-GO.
 
 ## R1 backend direction
 

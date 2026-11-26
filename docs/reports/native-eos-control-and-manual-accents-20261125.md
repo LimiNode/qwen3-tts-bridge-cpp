@@ -1,7 +1,8 @@
 # Original full-ICL EOS control and manual accent-policy discovery
 
 - Date: 2026-11-25.
-- Status: mechanically completed; new listening and semantic recovery unassessed.
+- Status: mechanically completed; scoped user listening recorded 2026-11-26,
+  including a CF final-word failure and an RU-stress intelligibility caveat.
 - Bridge preparation: `a133c595406fe80b8d5ee0c87be23e3fd6cbca1f`.
 - Static research engine: `3a896743ada11cba6bfa7e6fd69c06ec39a10283`,
   [Engine #53](https://github.com/LimiNode/qwentts.cpp/pull/53).
@@ -14,14 +15,17 @@
 The intervention changes EOS selection as intended, but it is **not a general
 early-EOS fix**. One-shot exclusion usually buys one additional frame and then
 EOS returns. Some known long failures instead continue for many frames under
-one-shot or a constant penalty. Those are listening candidates, not rescued
-speech until their exact recordings are assessed. No production policy changes.
+one-shot or a constant penalty. User listening now confirms normal pronunciation
+in files 12–15 and 17, while CF one-shot file 18 loses the end of the final word
+and RU-stress file 20 has unclear «МГУ». This establishes limited exact-case
+benefit, not general recovery or a production policy change.
 
 The fixed A/D discovery corpus was executed completely: 100 traced A requests,
 60 deduplicated manual D requests and 40 separate observer-OFF cost controls.
 All 200 terminate naturally, preserve their complete audio codes/PCM, and remain
 available, including near-silent and extremely short results. Natural EOS does
-not establish complete words. No held-out corpus or adaptive penalty was run.
+not establish complete words; the heard CF18 failure is a direct counterexample.
+No held-out corpus or adaptive penalty was run.
 
 ## Frozen setup and resource window
 
@@ -168,16 +172,52 @@ One directory: `.tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listen
 
 For the first EOS listening pass, prioritize 12–15, 17–18 and 20; expected text
 is the MGU sentence above. Assess full text, extra speech/sounds, final phonemes
-and stable voice independently. For D use 21–30 and the exact README text.
+and stable voice independently. The first-pass observations below now cover
+those seven files. For D use 21–30 and the exact README text; D is still unheard.
 Selection was made after measurement to compare candidates and failures; it is
-not held-out scoring and does not replace all 200 attempts. No new listening
-verdict is currently recorded.
+not held-out scoring and does not replace all 200 attempts. Frozen local
+manifests retain the pre-listening snapshot; current canonical receipts own
+the updated listening scope and exact artifact hashes.
+
+## User listening update, 2026-11-26
+
+All seven selected WAV sizes/hashes were rechecked against the frozen listening
+manifest. Observer: user. Expected text remains the complete MGU sentence.
+
+| File | Model / policy / seed | User observation |
+| --- | --- | --- |
+| 12 | RU-stress / penalty 2 / 75 | Pronounces normally. |
+| 13 | RU-stress / penalty 4 / 75 | Pronounces normally. |
+| 14 | RU-stress / penalty 6 / 75 | Pronounces normally. |
+| 15 | RU-stress / one-shot / 75 | Pronounces normally. |
+| 17 | CF / penalty 2 / 75 | Pronounces normally. |
+| 18 | CF / one-shot / 75 | Final «процессор» stops at «проце»; incomplete text and abrupt word ending. |
+| 20 | RU-stress / penalty 6 / 72 | «МГУ» not very intelligible; remainder normal. |
+
+RU-stress listening is `partial_pass`: positive scoped observations do not
+cancel file 20's caveat or qualify unheard artifacts. CF listening is `fail`
+because file 18 does not complete the expected final word; file 17's positive
+observation is preserved independently. Detailed voice similarity/stability,
+absence of every extra sound, and sequential contamination are not separately
+assessed by this feedback. Other texts/seeds and all D contrasts remain
+unassessed. No denominator-based success rate is inferred from this selection.
+
+CF18 contains 86 complete frames / 165120 samples, reports status 0 and natural
+EOS, and passed exact raw-to-WAV conservation before listening. Therefore the
+heard missing ending is not explained by dropping samples during WAV saving.
+Its generation-versus-codec cause remains unresolved: do not equate natural
+EOS with spoken-word completion or claim that a terminal fade can reconstruct
+the missing «ссор». No new inference or GPU allocation was used for this update.
 
 ## Next decision
 
-First assess the long continuations and accent contrasts. If genuine recovery
-is confirmed, compare that limited benefit with the repeated-EOS short failures
-and qualify correct short controls before adaptive decay or held-out scoring.
+Retain the positive long-case results and the CF one-shot failure separately.
+Penalty 2 is a candidate for the next comparison because it has a normal spoken
+result at seed 75 in both models; this is not a selected universal threshold.
+Before adaptive decay or held-out scoring, qualify correct short controls and
+compare broader text/seed coverage and final-word preservation. Accent contrasts
+still need listening. Any new GPU run needs a fresh resource allocation; the
+previous window remains closed.
 Do not promote a blanket minimum, permanent EOS ban or an energy-only detector.
 Reference stability B, alternative models C and Engine #51 integration E remain
 separate pending work, not implied completed by this A/D allocation.

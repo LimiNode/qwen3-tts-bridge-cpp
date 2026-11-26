@@ -10,8 +10,9 @@
 Current execution update: the first approved A/D window completed all 200
 requests on CMP 50HX in 336.766 s. See
 [EOS control and manual accent-policy results](native-eos-control-and-manual-accents-20261125.md)
-and its separate model receipts. New semantic/listening verdicts remain
-unassessed; B/C/E are not completed by that allocation.
+and its separate model receipts. On 2026-11-26 the user reports normal speech
+in12–15 and17, truncated final «процессор» in CF18, and unclear «МГУ» in RU20.
+These are scoped observations, not general acceptance; D/B/C/E remain open.
 
 This record preserves observations, competing explanations and recommendations.
 Canonical JSON receipts still own acceptance statuses. A proposed test is not
@@ -317,12 +318,18 @@ does not universally remove repeated EOS preference.
 
 **New listening candidates:** the MGU sentence at seed 75 changes from 2 frames
 to 86–90 in both models; RU-stress seed 72 changes from 6 to 113 under penalty 6.
-Their complete words, voice, extra sounds and usable-speech onset remain
-unassessed. D also retains two-frame failures in both models; no input-policy
-winner or training-frequency explanation is established.
+Listening update2026-11-26:12–15 (RU-stress seed75, penalties2/4/6 and one-shot)
+and17 (CF seed75, penalty2) pronounce normally. CF18 one-shot stops at «проце»
+instead of completing «процессор»; RU20 penalty6 seed72 has unclear «МГУ» with
+the remainder normal. Detailed voice, other cases and usable-speech onset
+remain unassessed. D also retains two-frame failures in both models; no
+input-policy winner or training-frequency explanation is established.
 
-**Recommendation:** listen to the exact long candidates and manual accent
-contrasts next. Qualify correct short controls before claiming false-intervention
-rates. Only a positive semantic result warrants adaptive-decay tuning and a
-later frozen held-out test. Preserve the shorter failures and unchanged full
-ICL; no blanket EOS ban, raised minimum or production promotion.
+**Recommendation:** preserve the limited positive semantic evidence without
+promoting CF one-shot or dismissing its missing word ending. Penalty2 is a
+next-comparison candidate, not an accepted threshold: seed75 is positive in
+both models, whereas short controls still fail or are unqualified. Assess
+broader coverage/final words and correct short controls before adaptive tuning,
+false-intervention claims or later frozen held-out scoring. Manual accent
+contrasts remain unheard. Preserve failures and unchanged full ICL; no blanket
+EOS ban, raised minimum or production promotion. No new GPU run is implied.

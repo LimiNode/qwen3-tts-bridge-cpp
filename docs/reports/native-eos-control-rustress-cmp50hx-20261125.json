@@ -24,7 +24,7 @@
     "timing_boundary": "Two warmups then two measured requests per fresh process per policy;1 warm measurement per text/policy/model, no ABBA or isolated sampler microbenchmark. Observer OFF but bounded policy debug logs remain. Not physical playback, usable speech or statistically robust p95; do not pool unrelated short/long texts.",
     "measured_warm_cost_controls": "{\"timing-ru-baseline\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":162.6899,\"first_pcm_from_request_ms\":188.44559999999998,\"total_ms\":219.1969,\"rtf\":1.369980625,\"frames\":2},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":153.2867,\"first_pcm_from_request_ms\":179.0715,\"total_ms\":2322.4538,\"rtf\":0.29323911616161613,\"frames\":99}],\"timing-ru-penalty-2\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":161.7006,\"first_pcm_from_request_ms\":186.7773,\"total_ms\":216.9488,\"rtf\":1.35593,\"frames\":2},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":153.0555,\"first_pcm_from_request_ms\":178.8435,\"total_ms\":2312.9062,\"rtf\":0.2920336111111111,\"frames\":99}],\"timing-ru-penalty-4\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":161.5393,\"first_pcm_from_request_ms\":187.39149999999998,\"total_ms\":268.4623,\"rtf\":0.8389446875000001,\"frames\":4},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":152.0057,\"first_pcm_from_request_ms\":177.9264,\"total_ms\":2318.3344,\"rtf\":0.2927189898989899,\"frames\":99}],\"timing-ru-penalty-6\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":163.4515,\"first_pcm_from_request_ms\":189.5043,\"total_ms\":269.2811,\"rtf\":0.8415034374999999,\"frames\":4},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":152.0896,\"first_pcm_from_request_ms\":178.2707,\"total_ms\":2403.4726,\"rtf\":0.2945432107843137,\"frames\":102}],\"timing-ru-alternative-once-8\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":162.3247,\"first_pcm_from_request_ms\":187.5437,\"total_ms\":242.5869,\"rtf\":1.01077875,\"frames\":3},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":152.3477,\"first_pcm_from_request_ms\":177.5634,\"total_ms\":2308.726,\"rtf\":0.2915058080808081,\"frames\":99}]}",
     "budget": "Single authorized1800s aggregate CMP-only window completed in336.766s; no extension. Sampled device peak3544MiB; minimum free6902841344 bytes. Final indexed payload105031140 bytes plus final inventory, below1GiB. Device memory sampled about1s, not allocator instrumentation.",
-    "quality_boundary": "All new semantic/stress/voice/tail judgments and usable-speech onset remain not_assessed. No qualified correct-short baseline yet: false-intervention rate is unassessed. Longer output, natural EOS or finite PCM does not establish rescued words.",
+    "quality_boundary": "User listening2026-11-26: files12-15 (MGU seed75; penalties2/4/6 and one-shot) pronounce the phrase normally. File20 (penalty6 seed72) has unclear MGU, remainder normal; complete intelligibility is not passed for that file. These are exact-artifact subjective observations, not model acceptance. Detailed voice, other cases, D stress, usable-speech onset and false-intervention rate remain unassessed.",
     "listening_selection": "One post-measurement33-file folder including reference; model-specific artifacts below. Selected discovery contrasts, not held-out scoring or a substitute for all200 outputs.",
     "unsupported_claims": "Not Bridge/QTB worker restart, installed/relocated package, production support, other voice, RTX4090 or universal EOS detector. Existing failed observations are preserved; no defaults, ABI, gitlinks, frozen package or release changed."
   },
@@ -50,7 +50,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -60,7 +60,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -70,7 +70,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -80,7 +80,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -90,7 +90,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -100,7 +100,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -110,7 +110,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -120,7 +120,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -130,7 +130,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -140,7 +140,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -150,7 +150,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -160,7 +160,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -170,7 +170,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -180,7 +180,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -190,7 +190,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -200,7 +200,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -210,7 +210,7 @@
       "kind": "json",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -220,7 +220,7 @@
       "kind": "other",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -230,7 +230,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -240,7 +240,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -250,7 +250,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -260,7 +260,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -270,7 +270,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -280,7 +280,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -290,7 +290,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -300,7 +300,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -310,7 +310,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -320,7 +320,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -330,7 +330,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -340,7 +340,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -350,7 +350,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -360,7 +360,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -370,7 +370,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -380,7 +380,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -390,7 +390,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -400,7 +400,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     },
     {
@@ -410,7 +410,7 @@
       "kind": "wav",
       "availability": {
         "status": "local",
-        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. All new listening verdicts remain not_run."
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
       }
     }
   ],
@@ -422,18 +422,18 @@
     "restart": "not_run"
   },
   "human_listening": {
-    "status": "not_run",
-    "observer": "not_assessed",
-    "recorded_at": "2026-11-25",
-    "scope": "Only these new exact candidate WAVs. Prior listening of other model/build/reference artifacts does not transfer.",
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-26",
+    "scope": "The positive intelligibility criterion applies only to exact numbered WAVs12-15 (seed75). File20 (seed72) is separately recorded with unclear MGU and no complete-intelligibility pass. No verdict transfers to other seeds, models, D inputs, or the rest of the200 attempts.",
     "criteria": {
-      "intelligibility": "not_assessed",
+      "intelligibility": "pass",
       "voice_or_instruction": "not_assessed",
       "artifacts": "not_assessed",
       "final_tail": "not_assessed",
       "sequential_contamination": "not_assessed"
     },
-    "notes": "Please assess complete expected text, extra sounds, start/middle/end voice and final phonemes independently. D distinguishes normative from deliberately nonstandard stress. Constant penalties and one-shot are not production fixes."
+    "notes": "{\"observations\":[{\"number\":12,\"seed\":75,\"policy\":\"penalty-2\",\"sha256\":\"b4f1d0160cf8fa1a27ce72af5a1ba2ce3a2a569ed031cde9ca33605d4a8a1da8\",\"observation\":\"User reports normal pronunciation of the expected phrase; scoped subjective speech observation, not detailed voice/phonetic acceptance.\"},{\"number\":13,\"seed\":75,\"policy\":\"penalty-4\",\"sha256\":\"0686f7c0fc537d439fab05afb712cd2e633211a9659df05d8a92c2ab673b9f6a\",\"observation\":\"User reports normal pronunciation of the expected phrase; scoped subjective speech observation, not detailed voice/phonetic acceptance.\"},{\"number\":14,\"seed\":75,\"policy\":\"penalty-6\",\"sha256\":\"ad98289e3a2e66168a00ca6902477df703ab62e8197b0ee2346ff523ad09e9ca\",\"observation\":\"User reports normal pronunciation of the expected phrase; scoped subjective speech observation, not detailed voice/phonetic acceptance.\"},{\"number\":15,\"seed\":75,\"policy\":\"alternative-once-8\",\"sha256\":\"ee84c361a4f03a33919f94ec2e00c1e0e21d56e652068bce9bcfdb67be684555\",\"observation\":\"User reports normal pronunciation of the expected phrase; scoped subjective speech observation, not detailed voice/phonetic acceptance.\"},{\"number\":20,\"seed\":72,\"policy\":\"penalty-6\",\"sha256\":\"3cabeb6f456236d0d29fc1a62fe6364b944b66421d59d0fda09284ed1fa63f89\",\"observation\":\"User reports MGU is not very intelligible; rest normal. No invented omission or complete-intelligibility pass.\"}],\"scope_limit\":\"Normal pronunciation supports a scoped positive speech observation, not independent verification of every voice/artifact/tail criterion. Unmentioned criteria remain not_assessed; frozen payload manifests retain their pre-listening snapshot.\"}"
   },
   "release_status": "blocked",
   "case_result": {
@@ -442,11 +442,11 @@
   },
   "listening_result": {
     "status": "not_assessed",
-    "reason": "No human observation exists for these exact new artifacts. Duration, energy, EOS and identity comparisons are not semantic quality evidence."
+    "reason": "Scoped positive user observations for12-15;20 has an MGU intelligibility caveat. Other exact outputs and detailed criteria remain unassessed; partial_pass is not aggregate acceptance."
   },
   "release_disposition": {
     "status": "blocked",
-    "reason": "R1 remains NO-GO. Discovery-only sampler interventions and manually accented inputs are not qualified release policies; listening, correct-short false-intervention controls, held-out and hardware/package gates remain open."
+    "reason": "R1 remains NO-GO. Positive seed75 full-ICL recovery evidence does not qualify short controls, other seeds, accent policy, voice stability, held-out or hardware/package gates; file20 retains an intelligibility caveat."
   },
   "supersedes": null,
   "related_reports": [
