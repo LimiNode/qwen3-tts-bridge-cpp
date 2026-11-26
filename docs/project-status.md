@@ -4,7 +4,15 @@ This document is the short, evidence-backed status summary for
 `qwen3-tts-bridge-cpp`. It records what has actually been built and exercised,
 while keeping experimental paths separate from the production baseline.
 
-## Current research continuation, 2026-11-25
+## Current research continuation, 2026-11-26
+
+The [2026-11-26 phase2 continuation](reports/tts-eos-control-phase2-20261126.md)
+separates bounded EOS decay/window and first-frame trajectory changes,
+fixed-code terminal decoding, exact voice-drift reproduction, actual
+alternative-model dependency/storage checks, saved accent listening and
+isolated Engine51 N=2/3 qualification. Preparation is not a new GPU run:
+the prior allocation remains closed. No new speech or speedup result is
+claimed; original full ICL and the production/package boundaries remain.
 
 PR #334 at `ce6b0f30` is the completed comparative evidence stage. The
 [retained findings and A–E work packages](reports/tts-research-findings-and-next-stage-20261125.md)
@@ -597,8 +605,8 @@ The dependency direction is deliberate:
 | --- | --- | --- |
 | Python/Faster worker | Maintained acceptance route and alternative backend | Complete the same frozen dual-GPU/package/listening matrix |
 | Native worker and `qwen.dll` | Priority R1 native route; conditional until accepted | Close promotion gates and record backend selection; in-process adapter is separate |
-| Native Base + full ICL | Priority first-beta candidate; not yet promoted | Complete independent CMP50HX/RTX4090, clean-package, lifecycle, playback and listening qualification |
-| RU-stress + Kraftwerk full ICL | HOLD for quality research; not a required first-beta default | Reproducible short-input speech omissions remain; study conditioning and native/source trajectories separately |
+| Native Base + full ICL | Control model, not a substitute for required stress/cloning capability | Preserve its scoped evidence; no automatic backend/model promotion |
+| RU-stress + Kraftwerk full ICL | Priority qualification direction under the revised2026-11-24 requirement; blocked for quality | Complete speech, normative stress and stable full-ICL cloning remain required; phase2 studies EOS/conditioning without promoting a default |
 | `tts-front-cpp` pinned corrective `64f73182` (based on v0.2.5) | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims; do not describe the corrective commit as a v0.2.6 release |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |
 | Avatar presentation | Not yet complete | Add a separate VRM/Unity/Godot adapter after playback-locked cues are stable |

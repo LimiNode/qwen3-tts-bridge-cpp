@@ -7,6 +7,10 @@
 - Review trigger: new exact-artifact listening, completed A–E experiments,
   changed model/runtime, or a separate integration decision.
 
+Continuation2026-11-26: [EOS control phase2](tts-eos-control-phase2-20261126.md)
+owns the new A–F task mapping. It preserves the original completed phase1
+results and closed allocation below; new preparation does not imply execution.
+
 Current execution update: the first approved A/D window completed all 200
 requests on CMP 50HX in 336.766 s. See
 [EOS control and manual accent-policy results](native-eos-control-and-manual-accents-20261125.md)
