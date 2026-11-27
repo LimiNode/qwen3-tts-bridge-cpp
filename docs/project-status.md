@@ -11,8 +11,9 @@ separates bounded EOS decay/window and first-frame trajectory changes,
 fixed-code terminal decoding, exact voice-drift reproduction, actual
 alternative-model dependency/storage checks, saved accent listening and
 isolated Engine51 N=2/3 qualification. Preparation is not a new GPU run:
-the prior allocation remains closed. No new speech or speedup result is
-claimed; original full ICL and the production/package boundaries remain.
+the prior allocation remains closed. The approved 2026-11-27 CMP window has
+now completed A/B/C/F mechanically; speech quality and listening remain
+separate gates. Original full ICL and production/package boundaries remain.
 
 PR #334 at `ce6b0f30` is the completed comparative evidence stage. The
 [retained findings and A–E work packages](reports/tts-research-findings-and-next-stage-20261125.md)

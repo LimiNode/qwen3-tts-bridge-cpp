@@ -3,6 +3,14 @@
   "generated_at": "2026-11-27",
   "canonical_receipts": [
     {
+      "acceptance_id": "native-eos-phase2-cmp50hx-20261127",
+      "receipt": "docs/reports/native-eos-phase2-cmp50hx-20261127.json",
+      "model_family": "other",
+      "backend": "native",
+      "human_listening": "not_run",
+      "release_status": "blocked"
+    },
+    {
       "acceptance_id": "native-eos-control-rustress-cmp50hx-20261125",
       "receipt": "docs/reports/native-eos-control-rustress-cmp50hx-20261125.json",
       "model_family": "RU-stress",

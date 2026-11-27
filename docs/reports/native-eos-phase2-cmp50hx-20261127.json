@@ -1,0 +1,64 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-phase2-cmp50hx-20261127",
+  "recorded_at": "2026-11-27",
+  "model_family": "other",
+  "backend": "native",
+  "bridge_commit": "225a3eeddeb60e6949a25f710cb413cd1f4d5248",
+  "model_revision": "RU-stress/CF/Base Engine53 and isolated Engine51 research candidates",
+  "runtime_revision": {
+    "scope": "CMP 50HX A/B/C/F research window; no production promotion",
+    "window_utc": "2026-11-27T01:09:57Z/2026-11-27T01:17:50Z",
+    "engine53": "3a896743ada11cba6bfa7e6fd69c06ec39a10283",
+    "engine51": "541f1f702e725dc002e0e9ebf6f1460dca8c3100",
+    "supervisor": "472.984s; no forced stop; sampled peak 5786 MiB"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen phase-2 A/B/C/F plans and original full aligned ICL manifests",
+    "corpus_sha256": "5ca3e0cee18f1ca7becdda5299d6bea0809d4d89b05a2f1b26f5a70ab3c02d92"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "SM75",
+    "driver": "NVIDIA-SMI 581.94",
+    "cuda": "CUDA toolkit 13.3.73 / runtime provenance frozen per plan",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb",
+    "gpu_uuid_status": "recorded"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-phase2-window-20261127",
+  "artifacts": [
+    {"path": ".tmp/base-acceptance/eos-phase2-window-20261127/analysis.json", "kind": "json", "bytes": 255816, "sha256": "f5e9fb3488c54753b2de47f2f447279c0072978321cd21d3ce8bf8f2e30eb70a", "availability": {"status": "local", "reason": "Retained in the repository-local ignored payload"}},
+    {"path": ".tmp/base-acceptance/eos-phase2-window-20261127/gpu-window-finish.json", "kind": "json", "bytes": 5794, "sha256": "9ac59140fc09c912193c7bc4b4da960e49c18b3ce7ea91b3d30fad0a529a7de3", "availability": {"status": "local", "reason": "Retained in the repository-local ignored payload"}},
+    {"path": ".tmp/base-acceptance/eos-phase2-window-20261127/A-stdout.log", "kind": "log", "bytes": 2206, "sha256": "f27dfa20996f03a3760fad16d1d89815e1221b3e63eb0cca902cf808294877fe", "availability": {"status": "local", "reason": "Retained in the repository-local ignored payload"}},
+    {"path": ".tmp/base-acceptance/eos-phase2-window-20261127/resource-observations.jsonl", "kind": "log", "bytes": 47268, "sha256": "eb445a4b1e788c36acfb560cad284f01648908c469cc4fbb6a85f251167a6fb6", "availability": {"status": "local", "reason": "Retained in the repository-local ignored payload"}}
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "pass"
+  },
+  "human_listening": {
+    "status": "not_run",
+    "observer": "not yet assigned",
+    "recorded_at": "2026-11-27",
+    "scope": "Nine A, six B, seven C and seven F exact WAV selections prepared; no new selection has been listened to",
+    "criteria": {
+      "intelligibility": "not_assessed",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "Mechanical completion, duration, energy and natural EOS are not semantic speech acceptance. Existing historical listening verdicts are not transferred."
+  },
+  "release_status": "blocked",
+  "case_result": {"status": "pass", "reason": "The declared mechanical A/B/C/F research checks passed within one nonrenewable CMP 50HX window; N=3 natural-EOS variation and batch/solo equivalence remain separate quality questions."},
+  "listening_result": {"status": "not_run", "reason": "Exact new WAV selections are prepared but not yet assessed by the user."},
+  "release_disposition": {"status": "blocked", "reason": "Research-only result; no production default, engine pin, ABI, QTB or R1 release change is authorized."},
+  "supersedes": null,
+  "related_reports": ["docs/reports/tts-eos-control-phase2-20261126.md"],
+  "notes": "A:112, B:2, C:35, F:14 requests. ESpeech/MOSS excluded. The instrumented Engine51 DLL is isolated and not a production candidate."
+}

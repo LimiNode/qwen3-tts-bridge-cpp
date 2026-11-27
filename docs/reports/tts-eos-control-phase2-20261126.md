@@ -295,6 +295,89 @@ actually be observed; correct queued solo work cannot qualify N=2/3.
 Guarded-merge recommendation and a later Bridge pin update remain separate
 maintainer decisions. Neither is authorized by preparing or running this test.
 
+## 2026-11-27 supervised CMP 50HX execution
+
+The separately approved aggregate window started at `2026-11-27T01:09:57Z`
+(04:09:57 MSK) and ended normally after 472.984 seconds, without renewal,
+forced termination or resource violation. The supervisor checked 231 unique
+frozen assets before execution. It observed a sampled peak of 5,786 MiB device
+memory, a minimum free disk of 61,203,529,728 bytes and a peak payload of
+98,118,060 bytes. These are device-total samples, not allocator telemetry.
+The exact supervisor log and postprocessing manifest are retained under
+`.tmp/base-acceptance/eos-phase2-window-20261127/`.
+
+### A — 112 requests
+
+All 112 mechanical collections passed and all frozen identities remained
+unchanged. The ten fresh baselines (RU-stress, CF and Base) were byte-identical
+to their retained controls. The 32 observer-OFF cost controls also matched the
+corresponding traced code/PCM outputs, so the bounded observation did not alter
+this matrix.
+
+The short «Ладно.» control remained near-silent: RU-stress and CF produced
+2 frames with `penalty:2`, 4 with `window:4:8`, and 2 with `decay:4:8`.
+None is a speech-success result. On the long MGU seed75, window and decay
+produced 86 frames in both models; the CF outputs are byte-identical to the
+historical one-shot/penalty4/6 artifact whose listening result is the truncated
+«проце». The longer waveform therefore does not establish recovery. Window and
+decay first-PCM cost for the long control stayed around 178 ms; the apparent
+short-case RTF improvement is only a longer near-silent buffer.
+
+Changing the first Talker/Predictor keys changes selected codebooks in some
+cases and restores the base key at the declared boundary, but does not repair
+«Ладно.»: EOS remains at 2 frames for the relevant RU/CF arms. Base short
+controls remain mechanically valid; `penalty:2` lengthens some Base controls,
+while window/decay match baseline. No semantic success is inferred.
+
+### B — two retained-code terminal diagnostics
+
+CF18 (86 frames) and RU06 (22 frames) completed successfully. Production-ramp
+streaming reproduced the retained PCM **bit-for-bit** in both cases, with zero
+pending real frames after finish. Fixed-T=1 streaming and independent full
+decode differ numerically from retained production PCM; full decode is not
+bit-identical either. The diagnostic reports `terminal_flush_extra_samples:0`.
+Thus the current terminal drain is not dropping a hidden queued tail, and
+full decode is not a drop-in replacement. The generated codes themselves and
+the missing phoneme remain an AR/conditioning/decoder interaction target;
+the WAVs are prepared for separate listening, not declared semantically fixed.
+
+### C — 35 reference-stability requests
+
+All 35 collections passed mechanically. The short-reference fresh and
+persistent RU target requests are byte-identical to the historical first-pass
+RU-stress08 (codes and PCM). Medium and original references produce distinct
+codes/PCM (92 frames in the fresh RU controls versus 90 for short), so the
+earlier drift is reproducible only with the short reference and its historical
+session sequence in this setup. Voice continuity remains a listening gate.
+No alternate equal-length natural fragment was run.
+
+### F — Engine #51 whole-model qualification
+
+Solo, N=2 and N=3 groups all passed the mechanical routing, conservation and
+terminal-event checks. N=2 observed width2, both compactions and 40 frames
+from the same compacted survivor. N=3 observed width3, three slot/codec moves
+and 173 post-compaction survivor frames. The analyzer's false-positive fixture
+is now rejected by the refrozen `plan-v2.json` criterion. N=3 includes natural
+EOS variation, so semantic speech coverage remains unassessed; batch/solo
+code/PCM comparison is recorded separately and is not assumed equal. The
+instrumented DLL remains isolated and no merge or pin change is authorized.
+
+### Listening handoff
+
+The postprocessor created exact, unnormalized selections:
+
+- `.tmp/base-acceptance/eos-phase2-cmp50hx-20261126/run-001/listening-phase2-a`
+  — nine A controls/candidates;
+- `.tmp/base-acceptance/codec-tail-phase2-cmp50hx-20261126/run-001/listening-terminal`
+  — six retained/full/T=1 WAVs for B;
+- `.tmp/base-acceptance/reference-stability-phase2-cmp50hx-20261126/run-001/listening-voice-phase2`
+  — seven C artifacts plus the original reference;
+- `.tmp/base-acceptance/engine51-batch-phase2-cmp50hx-20261126/run-001/listening-batch-phase2`
+  — seven F batch artifacts.
+
+All remain `not_run` for listening. Duration, RMS, natural EOS and mechanical
+completion are not semantic speech success.
+
 ## Current stopping boundary and quality review
 
 No new GPU/model output is claimed. Requested shared bounds are30minutes,
