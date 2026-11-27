@@ -44,6 +44,17 @@ full-ICL reference is a conditioning candidate, not speaker-only cloning.
 RU-Stress-CF is an additional unqualified candidate, not an automatic model
 or pin replacement. No default, package or support level changes here.
 
+### 2026-11-25 stress-criterion clarification
+
+Distinguish ordinary unmarked pronunciation, normative accent control (including
+homograph disambiguation), and intentionally nonstandard stress. The first two
+are required quality/capability checks; inability to pronounce a deliberately
+wrong accent alone is not a release blocker. Phoneme distortion, omitted
+speech and unstable cloned voice remain defects. This clarification does not
+accept any candidate or rewrite historical failed research receipts. The
+[research findings record](../reports/tts-research-findings-and-next-stage-20261125.md)
+owns the supporting observations, hypotheses and planned distinguishing tests.
+
 After the CMP 50HX and RTX 4090 campaign, record correctness and natural EOS,
 RU/EN listening quality and voice identity, first PCM/playback latency, RTF and
 chunk continuity, resource usage, cancellation/restart stability, packaging

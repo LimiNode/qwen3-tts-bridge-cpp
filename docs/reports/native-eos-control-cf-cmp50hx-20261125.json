@@ -1,0 +1,417 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-control-cf-cmp50hx-20261125",
+  "recorded_at": "2026-11-25",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "a133c595406fe80b8d5ee0c87be23e3fd6cbca1f",
+  "model_revision": "de5ab0b516de7f6f6d04e9375e3a59a7b4e4ff714c5a898f89269588d2223596",
+  "runtime_revision": {
+    "variant": "RU-Stress-CF Q8_0, unchanged original full aligned Kraftwerk ICL; not original RU-stress.",
+    "engine_commit": "3a896743ada11cba6bfa7e6fd69c06ec39a10283",
+    "probe_sha256": "bc6da9a2b11a58f9ed26c138e61545e98c03662b06e7420231da5961dea7a434",
+    "engine_scope": "Static research probe, stacked Engine53 on prior ICL/prefill research. Not isolated Engine51 or production qwen.dll. Retained runtime DLL identities are frozen in plan; its qwen.dll is provenance only, not the statically linked engine.",
+    "cuda_provenance": "Retained GGML build cache records toolkit13.3.73; NVIDIA-SMI581.94 reports driver CUDA API ceiling13.0. Exact reused runtime DLL hashes are pinned in plan; no GGML/CUDA rebuild occurred in this window.",
+    "corpus_scope": "This model only:50 traced A requests (10 cases x5 policies),30 unique manual D requests,20 observer-OFF cost controls (10 warm measured). Global200 includes the other model, with separate receipt and no transferred verdict.",
+    "sampling": "Default stochastic Talker/Predictor:0.9/top_k50/top_p1, Talker repetition1.05, min_new_tokens2; EOS guard OFF, N=1. No recovery, rollback, reseed, prefix reuse, top1 or Predictor greedy.",
+    "policies": "baseline, penalty:2/4/6, alternative-once:8. Raw EOS subtraction after reserved/minimum masks, before repetition/temperature/top-k/top-p. One-shot masks a sampled EOS once at frames2-7 and reuses the original draw/subsequence; next EOS remains eligible.",
+    "conditioning": "Original2048-f32 Kraftwerk speaker vector plus original226x16 reference codes, matched transcript and codec reference context. No shortening, speaker-only substitution or full-text geometry.",
+    "speaker_sha256": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "input_policy_D": "Manually enumerated U+0301 variants, not tts-front-cpp execution. Seeds64/2027/2029 and two carrier contexts. Raw duplicate intentions deduplicated:36 planned aliases correspond to30 unique requests per model.",
+    "mechanical_observations": "{\"a-cf-baseline\":{\"state\":\"pass\",\"rows\":10,\"frames\":[2,2,2,2,2,2,109,2,89,86],\"near_silence\":5,\"capped_or_non_eos\":0,\"interventions\":0},\"a-cf-penalty-2\":{\"state\":\"pass\",\"rows\":10,\"frames\":[2,2,3,4,2,3,110,90,89,86],\"near_silence\":4,\"capped_or_non_eos\":0,\"interventions\":0},\"a-cf-penalty-4\":{\"state\":\"pass\",\"rows\":10,\"frames\":[4,6,3,8,2,6,110,86,89,86],\"near_silence\":3,\"capped_or_non_eos\":0,\"interventions\":0},\"a-cf-penalty-6\":{\"state\":\"pass\",\"rows\":10,\"frames\":[4,9,3,8,2,13,110,86,89,86],\"near_silence\":1,\"capped_or_non_eos\":0,\"interventions\":0},\"a-cf-alternative-once-8\":{\"state\":\"pass\",\"rows\":10,\"frames\":[3,3,3,3,4,3,109,86,89,86],\"near_silence\":4,\"capped_or_non_eos\":0,\"interventions\":7},\"d-cf-manual-accents\":{\"state\":\"pass\",\"rows\":30,\"frames\":[26,31,31,27,28,25,28,30,30,29,28,2,27,2,2,29,2,2,31,34,2,34,35,30,10,31,2,31,26,5],\"near_silence\":7,\"capped_or_non_eos\":0,\"interventions\":0}}",
+    "integrity": "All100 outputs for this model preserve complete16-code frames and streamed sample totals; exact F32-to-PCM16 and listening-copy audit passes. Global40 same-policy observer-on/off and within-process repeat pairs,18 exact historical baseline controls and60 first-eligible-step raw-EOS-subtraction checks pass. Full results/audit identify each model separately.",
+    "timing_boundary": "Two warmups then two measured requests per fresh process per policy;1 warm measurement per text/policy/model, no ABBA or isolated sampler microbenchmark. Observer OFF but bounded policy debug logs remain. Not physical playback, usable speech or statistically robust p95; do not pool unrelated short/long texts.",
+    "measured_warm_cost_controls": "{\"timing-cf-baseline\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":161.8451,\"first_pcm_from_request_ms\":186.44060000000002,\"total_ms\":216.6708,\"rtf\":1.3541925000000001,\"frames\":2},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":152.3816,\"first_pcm_from_request_ms\":177.7037,\"total_ms\":2100.449,\"rtf\":0.29500688202247194,\"frames\":89}],\"timing-cf-penalty-2\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":161.7835,\"first_pcm_from_request_ms\":187.1395,\"total_ms\":217.9337,\"rtf\":1.362085625,\"frames\":2},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":152.0079,\"first_pcm_from_request_ms\":178.0815,\"total_ms\":2103.5229,\"rtf\":0.2954386095505618,\"frames\":89}],\"timing-cf-penalty-4\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":162.1313,\"first_pcm_from_request_ms\":187.4185,\"total_ms\":267.7316,\"rtf\":0.83666125,\"frames\":4},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":152.5454,\"first_pcm_from_request_ms\":178.0972,\"total_ms\":2108.4843,\"rtf\":0.29613543539325843,\"frames\":89}],\"timing-cf-penalty-6\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":161.553,\"first_pcm_from_request_ms\":186.4873,\"total_ms\":267.0675,\"rtf\":0.8345859375,\"frames\":4},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":152.2041,\"first_pcm_from_request_ms\":177.62959999999998,\"total_ms\":2114.7956,\"rtf\":0.29702185393258423,\"frames\":89}],\"timing-cf-alternative-once-8\":[{\"case\":{\"id\":\"ru-ladno\",\"text\":\"Ладно.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Two-frame failure in RU-stress original ICL; inspect CF independently\",\"text_label\":\"ru-ladno\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":161.5486,\"first_pcm_from_request_ms\":187.3453,\"total_ms\":243.5127,\"rtf\":1.01463625,\"frames\":3},{\"case\":{\"id\":\"ru-long\",\"text\":\"Сегодня мы проверили оборудование и записали результаты. Теперь можно спокойно завершить работу.\",\"language\":\"Russian\",\"seed\":2027,\"prior\":\"Long control; previous results do not transfer without exact identity\",\"text_label\":\"ru-long\",\"repeat\":1,\"warm_measured\":true},\"prefill_ms\":151.9722,\"first_pcm_from_request_ms\":177.0455,\"total_ms\":2114.8141,\"rtf\":0.29702445224719104,\"frames\":89}]}",
+    "budget": "Single authorized1800s aggregate CMP-only window completed in336.766s; no extension. Sampled device peak3544MiB; minimum free6902841344 bytes. Final indexed payload105031140 bytes plus final inventory, below1GiB. Device memory sampled about1s, not allocator instrumentation.",
+    "quality_boundary": "User listening2026-11-26 retains positive MGU17 and truncated final word18. New D listening2026-11-27:26-28 and32 complete normative докуме́нты;26-27 lose reference voice identity and26 ends abruptly without omitted text.29-30 complete до́кументы;30 is higher-timbred with slight terminal breath/rushed manner but overall normal to the user, not an inferred new failure. Unmentioned artifact absence, naturalness preference, other contexts/seeds and onset remain unassessed.",
+    "listening_selection": "One post-measurement33-file folder including reference; model-specific artifacts below. Selected discovery contrasts, not held-out scoring or a substitute for all200 outputs.",
+    "unsupported_claims": "Not Bridge/QTB worker restart, installed/relocated package, production support, other voice, RTX4090 or universal EOS detector. Existing failed observations are preserved; no defaults, ABI, gitlinks, frozen package or release changed."
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen discovery corpus and per-job manifests preserve exact UTF-8 requests, languages, seeds, manual accent aliases and original full-ICL inputs. Plan freezes probe/model/codec/runtime/reference and script identities before GPU execution.",
+    "corpus_sha256": "782a85496c55c547988b4527c21a0ae473483bf8c7e89df404f071f4852a3948"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3.73 retained toolkit; driver CUDA API ceiling13.0",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-control-cmp50hx-20261125",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/plan.json",
+      "bytes": 112032,
+      "sha256": "33b0b05ef60dedc6aa31781db5ac2811c3a34e3dc2faf851ae0f452465dbeb35",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/execution.json",
+      "bytes": 426,
+      "sha256": "a12cab98812e5404789f998d79f139c09c7b3d3c1ceccd3e9e4a4aa62972a088",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/results.json",
+      "bytes": 2448909,
+      "sha256": "9702e192c67a630ded7cebcdac3ded5da62f3fc798037cba500ab99819b0d0fc",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/causal-analysis.json",
+      "bytes": 436951,
+      "sha256": "e9a199a7b28980c2051f6977fbea92968c95d0dc9417a73a719df3a989fa2a1b",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/artifact-audit.json",
+      "bytes": 120202,
+      "sha256": "67a7c5b0e356b26135076ddb8f54aee907e54f516d3ea1fae8ee781847636de4",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/final-artifact-inventory.json",
+      "bytes": 285881,
+      "sha256": "1e648edcb778a58ba3f96b02f784719debbfb059929dfd6f52af1ce01f067bc2",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/gpu-window-start.json",
+      "bytes": 680,
+      "sha256": "768a04487530c911130c2a829efbdd4f55efd49523a04ffa0e455bc4ad1ad43f",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/gpu-window-finish.json",
+      "bytes": 395,
+      "sha256": "53f01cdc28bc5aa8ff02ca0fc48073a483e4db8fa5eea0a4a0c71011859c8201",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/resource-observations.jsonl",
+      "bytes": 37563,
+      "sha256": "6846f367cc87c7498806645c77de54c8ad99c34dd2b8c475f8e44e349b4cb173",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/corpus.json",
+      "bytes": 4674,
+      "sha256": "782a85496c55c547988b4527c21a0ae473483bf8c7e89df404f071f4852a3948",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/evidence-tools/run_eos_control.py",
+      "bytes": 17479,
+      "sha256": "30a5d53893d0a05ca147d8d853210ff1c6f3ebb6a7a3c5c36a9051134912fc9d",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/evidence-tools/supervise_eos_control.py",
+      "bytes": 5142,
+      "sha256": "4a857eda625c250ed3fa6b9c57dc3a4871632e78af9f3489128521cd4211189a",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/evidence-tools/test_eos_control_runner.py",
+      "bytes": 3262,
+      "sha256": "ad97b631270c681497387515c74152c87fb592042a0d739e2437c61d244a0d61",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/postprocess_eos_control.py",
+      "bytes": 9375,
+      "sha256": "b82b08bd47ad2abd0756afdbb8c46b60dc8319d108e7b14fa980ddc17e0693ea",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/audit_eos_control.py",
+      "bytes": 6906,
+      "sha256": "61df27a88e20aed841ceb1849d457e2b9de287eb3bd9b644d80a88ca95f0341b",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/seal_evidence.py",
+      "bytes": 818,
+      "sha256": "3262831afb7a542280fa77dbdc9bc6d0d6c5179e606a8c3f63a0f70feb3d5b35",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/manifest.json",
+      "bytes": 29985,
+      "sha256": "84163a11c14d0b8f9986eb850290af2c411c7738354c3660a4f584154bfda92d",
+      "kind": "json",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/README.txt",
+      "bytes": 6608,
+      "sha256": "e21aeb4479d183eefd952a1c47ee4a02c8b1399f6ff4aaab2c5c94c6af198046",
+      "kind": "other",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/00-reference.wav",
+      "bytes": 844844,
+      "sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/06-a-cf-baseline-ru-ladno-seed-2027.wav",
+      "bytes": 7724,
+      "sha256": "bd48b7f8f587b1c442888034c87a5a5d8ed712ca83e14ab909e9a904a9c1240c",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/07-a-cf-penalty-2-ru-ladno-seed-2027.wav",
+      "bytes": 7724,
+      "sha256": "bd48b7f8f587b1c442888034c87a5a5d8ed712ca83e14ab909e9a904a9c1240c",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/08-a-cf-penalty-4-ru-ladno-seed-2027.wav",
+      "bytes": 15404,
+      "sha256": "47aab9ddd870ecc984a95bc6c878e5e298b11792b27a03117aa9a86e74aac8dc",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/09-a-cf-penalty-6-ru-ladno-seed-2027.wav",
+      "bytes": 15404,
+      "sha256": "47aab9ddd870ecc984a95bc6c878e5e298b11792b27a03117aa9a86e74aac8dc",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/10-a-cf-alternative-once-8-ru-ladno-seed-2027.wav",
+      "bytes": 11564,
+      "sha256": "781c7e80847d6d95c2354ea1a2c9a57cd24bad16c775cd3d334b6dfa0dd5140a",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/16-a-cf-baseline-ru-original-75-seed-75.wav",
+      "bytes": 7724,
+      "sha256": "ea82dc7fc2ba9660b898abdff621e037f95b8fb9e3efae32a277ef526266051e",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/17-a-cf-penalty-2-ru-original-75-seed-75.wav",
+      "bytes": 345644,
+      "sha256": "6a4aeca70f91147a21f7f1f373f404dae74984b37b7e55b79e9fac4ab0f8ad0e",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/18-a-cf-alternative-once-8-ru-original-75-seed-75.wav",
+      "bytes": 330284,
+      "sha256": "d10e64d91e9c13c848ef8c91f1e74dd670271471cea31ffc98733dc664c2535e",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/26-d-cf-manual-accents-documents-normal-raw-seed-64.wav",
+      "bytes": 99884,
+      "sha256": "697df280d4656ed9d2dd46049070865ace515547010bde64b5ca6bb18aeaeaaf",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/27-d-cf-manual-accents-documents-normal-selective-seed-64.wav",
+      "bytes": 103724,
+      "sha256": "751d9fd728b4226dd1125a042aced333228a0137f174b337fdde0951c83703c5",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/28-d-cf-manual-accents-documents-normal-full_available-seed-64.wav",
+      "bytes": 107564,
+      "sha256": "56e40f4c6deb7dbb7d202f339f4c6c86782d534a0ae0d96be4bb2d456775101e",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/29-d-cf-manual-accents-documents-counterfactual-selective-seed-64.wav",
+      "bytes": 111404,
+      "sha256": "a3bed34e4046e03922b6a4b881be2444414aa8e91ba3c2ec464f6c0f5737c953",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/30-d-cf-manual-accents-documents-counterfactual-full_available-seed-64.wav",
+      "bytes": 103724,
+      "sha256": "0dce002b7e51f4633bc962864d21333e94b3225bdb2c6184a9c9047d23674289",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/32-d-cf-manual-accents-documents-normal-raw-seed-2027.wav",
+      "bytes": 119084,
+      "sha256": "41f250206400f91307562b4e4ec37ae1438bb49717c3a5e1570788b64f8d0a6e",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Exact completed repository-local research evidence; ignored payloads are not transferred or backed up by Git. Listening verdicts are scoped in human_listening; unassessed artifacts are not promoted."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "fail",
+    "observer": "user",
+    "recorded_at": "2026-11-27",
+    "scope": "Exact CF WAVs17-18 retain the2026-11-26 EOS observations. New D listening covers26-30 seed64 and32 seed2027 only:all complete;26-27 lose reference voice identity and26 has an abrupt ending without a missing-word claim. No transfer to other models/policies/seeds.",
+    "criteria": {
+      "intelligibility": "fail",
+      "voice_or_instruction": "fail",
+      "artifacts": "not_assessed",
+      "final_tail": "fail",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "{\"observations\":[{\"number\":17,\"seed\":75,\"policy\":\"penalty-2\",\"sha256\":\"6a4aeca70f91147a21f7f1f373f404dae74984b37b7e55b79e9fac4ab0f8ad0e\",\"observation\":\"User reports normal pronunciation of the expected phrase; scoped subjective speech observation, not detailed voice/phonetic acceptance.\"},{\"number\":18,\"seed\":75,\"policy\":\"alternative-once-8\",\"sha256\":\"d10e64d91e9c13c848ef8c91f1e74dd670271471cea31ffc98733dc664c2535e\",\"observation\":\"User hears only 'проце' at the final word 'процессор'; incomplete text and abrupt word ending.\"}],\"scope_limit\":\"Prior EOS observations are retained independently. D target-word stress, text completion, explicit voice failures and explicit tail observations apply only to the exact numbered artifacts; unmentioned artifact absence, other carrier-word stress, naturalness preference, other seeds/contexts and sequential isolation remain not_assessed. Sealed manifests/README preserve their historical pre-listening state. Deliberately nonstandard stress alone is not a release gate.\",\"previous_listening_status\":{\"recorded_at\":\"2026-11-26\",\"status\":\"fail\",\"scope\":\"Exact numbered CF WAVs17 and18, both MGU seed75, from listening-eos-and-accents only. File17 is positive; file18 fails completion. No verdict transfers to other policies/models/inputs.\",\"criteria\":{\"intelligibility\":\"fail\",\"voice_or_instruction\":\"not_assessed\",\"artifacts\":\"not_assessed\",\"final_tail\":\"fail\",\"sequential_contamination\":\"not_assessed\"}},\"manual_accent_observations\":[{\"number\":26,\"recorded_at\":\"2026-11-27\",\"observer\":\"user\",\"path\":\".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/26-d-cf-manual-accents-documents-normal-raw-seed-64.wav\",\"bytes\":99884,\"sha256\":\"697df280d4656ed9d2dd46049070865ace515547010bde64b5ca6bb18aeaeaaf\",\"seed\":64,\"input_policy\":\"raw\",\"target_stress\":\"normative\",\"speech_completeness\":\"pass\",\"heard_word_stress\":\"докуме́нты\",\"target_word_stress_compliance\":\"pass\",\"voice_identity\":\"fail\",\"final_tail\":\"fail\",\"artifacts_absence\":\"not_assessed\",\"ordinary_text_naturalness_preference\":\"not_assessed\",\"observation\":\"Full text with normative stress, but reference voice identity is lost and the ending is abrupt; no missing-word claim.\"},{\"number\":27,\"recorded_at\":\"2026-11-27\",\"observer\":\"user\",\"path\":\".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/27-d-cf-manual-accents-documents-normal-selective-seed-64.wav\",\"bytes\":103724,\"sha256\":\"751d9fd728b4226dd1125a042aced333228a0137f174b337fdde0951c83703c5\",\"seed\":64,\"input_policy\":\"selective\",\"target_stress\":\"normative\",\"speech_completeness\":\"pass\",\"heard_word_stress\":\"докуме́нты\",\"target_word_stress_compliance\":\"pass\",\"voice_identity\":\"fail\",\"final_tail\":\"not_assessed\",\"artifacts_absence\":\"not_assessed\",\"ordinary_text_naturalness_preference\":\"not_assessed\",\"observation\":\"Full text with normative stress, but reference voice identity is lost.\"},{\"number\":28,\"recorded_at\":\"2026-11-27\",\"observer\":\"user\",\"path\":\".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/28-d-cf-manual-accents-documents-normal-full_available-seed-64.wav\",\"bytes\":107564,\"sha256\":\"56e40f4c6deb7dbb7d202f339f4c6c86782d534a0ae0d96be4bb2d456775101e\",\"seed\":64,\"input_policy\":\"full_available\",\"target_stress\":\"normative\",\"speech_completeness\":\"pass\",\"heard_word_stress\":\"докуме́нты\",\"target_word_stress_compliance\":\"pass\",\"voice_identity\":\"not_assessed\",\"final_tail\":\"not_assessed\",\"artifacts_absence\":\"not_assessed\",\"ordinary_text_naturalness_preference\":\"not_assessed\",\"observation\":\"Full expected text and normative stress heard.\"},{\"number\":29,\"recorded_at\":\"2026-11-27\",\"observer\":\"user\",\"path\":\".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/29-d-cf-manual-accents-documents-counterfactual-selective-seed-64.wav\",\"bytes\":111404,\"sha256\":\"a3bed34e4046e03922b6a4b881be2444414aa8e91ba3c2ec464f6c0f5737c953\",\"seed\":64,\"input_policy\":\"selective\",\"target_stress\":\"counterfactual\",\"speech_completeness\":\"pass\",\"heard_word_stress\":\"до́кументы\",\"target_word_stress_compliance\":\"pass\",\"voice_identity\":\"not_assessed\",\"final_tail\":\"not_assessed\",\"artifacts_absence\":\"not_assessed\",\"ordinary_text_naturalness_preference\":\"not_assessed\",\"observation\":\"Full text; requested nonstandard stress heard.\"},{\"number\":30,\"recorded_at\":\"2026-11-27\",\"observer\":\"user\",\"path\":\".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/30-d-cf-manual-accents-documents-counterfactual-full_available-seed-64.wav\",\"bytes\":103724,\"sha256\":\"0dce002b7e51f4633bc962864d21333e94b3225bdb2c6184a9c9047d23674289\",\"seed\":64,\"input_policy\":\"full_available\",\"target_stress\":\"counterfactual\",\"speech_completeness\":\"pass\",\"heard_word_stress\":\"до́кументы\",\"target_word_stress_compliance\":\"pass\",\"voice_identity\":\"not_assessed\",\"final_tail\":\"not_assessed\",\"artifacts_absence\":\"not_assessed\",\"ordinary_text_naturalness_preference\":\"not_assessed\",\"observation\":\"Full text; requested nonstandard stress heard. Higher timbre, slight terminal breath and rushed manner; user nevertheless describes the result as overall normal. These observations are not automatically defects or a voice-identity failure.\"},{\"number\":32,\"recorded_at\":\"2026-11-27\",\"observer\":\"user\",\"path\":\".tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listening-eos-and-accents/32-d-cf-manual-accents-documents-normal-raw-seed-2027.wav\",\"bytes\":119084,\"sha256\":\"41f250206400f91307562b4e4ec37ae1438bb49717c3a5e1570788b64f8d0a6e\",\"seed\":2027,\"input_policy\":\"raw\",\"target_stress\":\"normative\",\"speech_completeness\":\"pass\",\"heard_word_stress\":\"докуме́нты\",\"target_word_stress_compliance\":\"pass\",\"voice_identity\":\"not_assessed\",\"final_tail\":\"not_assessed\",\"artifacts_absence\":\"not_assessed\",\"ordinary_text_naturalness_preference\":\"not_assessed\",\"observation\":\"Full expected text and normative stress heard.\"}]}"
+  },
+  "release_status": "blocked",
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Direct-engine research mechanics pass in declared scope; Bridge worker restart and broader acceptance are not tested. No semantic EOS-recovery or stress-policy acceptance is inferred."
+  },
+  "listening_result": {
+    "status": "fail",
+    "reason": "Prior CF18 final-word failure remains. New exact D files26-27 lose reference voice identity;26 is complete but ends abruptly. All six new CF D files complete the text with reported word stress; these positives do not cancel voice/tail failures or imply absence of unmentioned artifacts."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "R1 remains NO-GO. Prior CF18 incomplete speech and new D26-27 reference-voice failures remain;D26 also has an abrupt but complete ending. Positive word-stress/completeness observations are not qualification of selective/full accent policies, other seeds, held-out or hardware/package gates."
+  },
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-control-and-manual-accents-20261125.md",
+    "docs/reports/tts-research-findings-and-next-stage-20261125.md"
+  ],
+  "notes": "Preserves every failed, short, near-silent and successful-looking output without classifying duration as speech. This receipt supplements, not overwrites, historical model-comparison and paired-stress evidence."
+}

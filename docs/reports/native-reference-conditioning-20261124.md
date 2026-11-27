@@ -1,5 +1,10 @@
 # Reference conditioning: run002 completed, selected listening recorded
 
+2026-11-25 follow-up: see the [findings and next-stage record](tts-research-findings-and-next-stage-20261125.md)
+for the later voice-drift observation, the length/content confound and the
+proposed intermediate-reference controls. Earlier positive listening remains
+limited to its exact artifacts; it is not general voice-stability acceptance.
+
 ## Current result: new authorized run002
 
 Research only,2026-11-24. R1 remains **NO-GO**. The new canonical receipts are

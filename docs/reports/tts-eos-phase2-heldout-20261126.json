@@ -1,0 +1,21 @@
+{
+  "status": "frozen_not_executed",
+  "purpose": "Later qualification only, not policy selection, tuning, or discovery",
+  "frozen_date": "2026-11-26",
+  "conditioning": "Original full aligned Kraftwerk ICL; original speaker vector, transcript, all226 reference frames; no fallback",
+  "models": ["RU-stress Q8_0", "RU-Stress-CF Q8_0"],
+  "seeds": [31415, 27182],
+  "cases": [
+    {"id": "ru-understood", "language": "Russian", "text": "Понятно."},
+    {"id": "ru-good", "language": "Russian", "text": "Хорошо."},
+    {"id": "en-understood", "language": "English", "text": "Understood."},
+    {"id": "en-not-yet", "language": "English", "text": "Not yet."},
+    {"id": "ru-report", "language": "Russian", "text": "После обеда техник заменил повреждённый кабель. Повторная проверка завершилась успешно, и оборудование снова готово к работе."},
+    {"id": "en-report", "language": "English", "text": "The technician replaced the damaged cable after lunch. The second test passed, and the equipment is ready for work again."}
+  ],
+  "execution_gate": "Only after a policy is selected from discovery and a separately bounded resource window is approved",
+  "required_comparison": "Unchanged baseline against the preselected policy; preserve all failed, capped, silent and incomplete outputs",
+  "criteria": ["complete_text", "no_extra_speech", "short_answer_false_intervention", "final_phonemes", "voice_start_middle_end", "usable_speech_onset", "warm_first_pcm", "rtf", "vram"],
+  "quality_gate": "Duration, PCM energy and natural EOS do not establish intelligible speech or text coverage",
+  "production_mutations": false
+}

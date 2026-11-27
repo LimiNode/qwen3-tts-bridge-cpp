@@ -4,6 +4,36 @@ This document is the short, evidence-backed status summary for
 `qwen3-tts-bridge-cpp`. It records what has actually been built and exercised,
 while keeping experimental paths separate from the production baseline.
 
+## Current research continuation, 2026-11-26
+
+The [2026-11-26 phase2 continuation](reports/tts-eos-control-phase2-20261126.md)
+separates bounded EOS decay/window and first-frame trajectory changes,
+fixed-code terminal decoding, exact voice-drift reproduction, actual
+alternative-model dependency/storage checks, saved accent listening and
+isolated Engine51 N=2/3 qualification. Preparation is not a new GPU run:
+the prior allocation remains closed. The approved 2026-11-27 CMP window has
+now completed A/B/C/F mechanically; speech quality and listening remain
+separate gates. Original full ICL and production/package boundaries remain.
+
+PR #334 at `ce6b0f30` is the completed comparative evidence stage. The
+[retained findings and A–E work packages](reports/tts-research-findings-and-next-stage-20261125.md)
+separate observations, unverified hypotheses, recommendations and next checks.
+Talker EOS control is first priority; reference stability, alternative models,
+frontend accent policies and Engine #51 integration have independent outcomes.
+Normative stress/full ICL remain required; deliberately wrong stress is an
+extra capability, not by itself a release blocker. Existing failures stand.
+The first approved A/D allocation is completed: 200/200 requests on CMP 50HX
+in 336.766 s, within the 30-minute/18 GiB/1 GiB/2 GiB-reserve limits. The
+[EOS/manual-accent results](reports/native-eos-control-and-manual-accents-20261125.md)
+and two new indexed receipts preserve all failures. Penalties/one-shot change
+some known long failures into longer candidates, but repeated EOS remains in
+short cases. User listening on2026-11-26 confirms normal pronunciation in12–15
+and17; CF one-shot18 cuts «процессор» at «проце», while RU20 has unclear «МГУ»
+and a normal remainder. RU listening is partial_pass, CF listening fails in
+this scope. Other candidates, accent/voice criteria, correct-short controls
+and held-out qualification remain open. B/C/E and new GPU allocations are
+separate. R1 remains NO-GO.
+
 ## R1 backend direction
 
 R1 evaluates two local backend routes behind the same bridge contract:
@@ -576,8 +606,8 @@ The dependency direction is deliberate:
 | --- | --- | --- |
 | Python/Faster worker | Maintained acceptance route and alternative backend | Complete the same frozen dual-GPU/package/listening matrix |
 | Native worker and `qwen.dll` | Priority R1 native route; conditional until accepted | Close promotion gates and record backend selection; in-process adapter is separate |
-| Native Base + full ICL | Priority first-beta candidate; not yet promoted | Complete independent CMP50HX/RTX4090, clean-package, lifecycle, playback and listening qualification |
-| RU-stress + Kraftwerk full ICL | HOLD for quality research; not a required first-beta default | Reproducible short-input speech omissions remain; study conditioning and native/source trajectories separately |
+| Native Base + full ICL | Control model, not a substitute for required stress/cloning capability | Preserve its scoped evidence; no automatic backend/model promotion |
+| RU-stress + Kraftwerk full ICL | Priority qualification direction under the revised2026-11-24 requirement; blocked for quality | Complete speech, normative stress and stable full-ICL cloning remain required; phase2 studies EOS/conditioning without promoting a default |
 | `tts-front-cpp` pinned corrective `64f73182` (based on v0.2.5) | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims; do not describe the corrective commit as a v0.2.6 release |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |
 | Avatar presentation | Not yet complete | Add a separate VRM/Unity/Godot adapter after playback-locked cues are stable |
