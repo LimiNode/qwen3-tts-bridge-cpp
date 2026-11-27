@@ -1,8 +1,9 @@
 # Original full-ICL EOS control and manual accent-policy discovery
 
 - Date: 2026-11-25.
-- Status: mechanically completed; scoped user listening recorded 2026-11-26,
-  including a CF final-word failure and an RU-stress intelligibility caveat.
+- Status: mechanically completed; scoped user listening recorded 2026-11-26
+  and 2026-11-27, including CF final-word/voice failures and an unintelligible
+  RU-stress D control. Earlier positive observations remain scoped.
 - Bridge preparation: `a133c595406fe80b8d5ee0c87be23e3fd6cbca1f`.
 - Static research engine: `3a896743ada11cba6bfa7e6fd69c06ec39a10283`,
   [Engine #53](https://github.com/LimiNode/qwentts.cpp/pull/53).
@@ -127,9 +128,11 @@ its second carrier generally continues longer. For CF the counterfactual and
 context outcomes differ again. These observations demonstrate setup/input/seed
 dependence, not the correctness or naturalness of any accent policy.
 
-Accent placement, phoneme integrity, voice and complete words remain unassessed
-for these exact outputs. The listening selection uses seed 64 contrasts and
-retains both models' raw seed 2027 controls. Deliberately wrong stress remains
+At initial handoff, accent placement, phoneme integrity, voice and complete
+words were unassessed for these exact outputs. The 2026-11-27 update below
+records scoped listening of selected D files, not all 60 requests. The
+selection uses seed 64 contrasts and retains both models' raw seed 2027
+controls. Deliberately wrong stress remains
 supplementary, not a standalone release blocker. No training-frequency audit
 was performed; the [retained annotation hypotheses](tts-research-findings-and-next-stage-20261125.md)
 remain hypotheses.
@@ -173,7 +176,8 @@ One directory: `.tmp/base-acceptance/eos-control-cmp50hx-20261125/run-001/listen
 For the first EOS listening pass, prioritize 12–15, 17–18 and 20; expected text
 is the MGU sentence above. Assess full text, extra speech/sounds, final phonemes
 and stable voice independently. The first-pass observations below now cover
-those seven files. For D use 21–30 and the exact README text; D is still unheard.
+those seven files. D files21–32 now have separate scoped observations below;
+other D outputs remain unassessed.
 Selection was made after measurement to compare candidates and failures; it is
 not held-out scoring and does not replace all 200 attempts. Frozen local
 manifests retain the pre-listening snapshot; current canonical receipts own
@@ -194,13 +198,14 @@ manifest. Observer: user. Expected text remains the complete MGU sentence.
 | 18 | CF / one-shot / 75 | Final «процессор» stops at «проце»; incomplete text and abrupt word ending. |
 | 20 | RU-stress / penalty 6 / 72 | «МГУ» not very intelligible; remainder normal. |
 
-RU-stress listening is `partial_pass`: positive scoped observations do not
+At this first update RU-stress listening was `partial_pass`: positive scoped observations do not
 cancel file 20's caveat or qualify unheard artifacts. CF listening is `fail`
 because file 18 does not complete the expected final word; file 17's positive
 observation is preserved independently. Detailed voice similarity/stability,
 absence of every extra sound, and sequential contamination are not separately
-assessed by this feedback. Other texts/seeds and all D contrasts remain
-unassessed. No denominator-based success rate is inferred from this selection.
+assessed by this feedback. Other texts/seeds and all D contrasts were then
+unassessed; the next update adds D listening without replacing these findings.
+No denominator-based success rate is inferred from this selection.
 
 CF18 contains 86 complete frames / 165120 samples, reports status 0 and natural
 EOS, and passed exact raw-to-WAV conservation before listening. Therefore the
@@ -209,14 +214,54 @@ Its generation-versus-codec cause remains unresolved: do not equate natural
 EOS with spoken-word completion or claim that a terminal fade can reconstruct
 the missing «ссор». No new inference or GPU allocation was used for this update.
 
+## Manual accent listening update, 2026-11-27
+
+Observer: user. All12 exact existing WAVs21–32 were verified against their
+tracked byte counts and SHA-256 before updating the canonical receipts. No
+WAV, complete code, sealed manifest, README or prior observation was changed;
+this adds listening evidence, not inference. Numbers refer only to the same
+`listening-eos-and-accents` directory. Every expected phrase is the README's
+«Он произнёс [сло́во/слово] [документы/докуме́нты/до́кументы]» as applicable.
+The word-stress observations below do not independently assess carrier-word
+stress such as «сло́во».
+
+| Files | Model / input policy / seed | User observation |
+| --- | --- | --- |
+| 21–23 | RU-stress / raw, selective, full_available /64 | Full text; normative «докуме́нты» heard in all three. |
+| 24 | RU-stress / counterfactual selective /64 | Full text, but «докуме́нты» instead of deliberately requested «до́кументы». |
+| 25 | RU-stress / counterfactual full_available /64 | Full text and requested «до́кументы». |
+| 26–28 | CF / raw, selective, full_available /64 | Full text; normative «докуме́нты» in all three.26 and27 lose reference voice identity;26 also ends abruptly, without a missing-word claim. |
+| 29–30 | CF / counterfactual selective, full_available /64 | Full text and requested «до́кументы».30 has higher timbre, slight terminal breath and rushed manner, but is overall normal to the user. |
+| 31 | RU-stress / raw /2027 | Strange sound, not an intelligible expected phrase. |
+| 32 | CF / raw /2027 | Full text and normative «докуме́нты». |
+
+Both canonical listening results are now `fail`. RU-stress changes from the
+earlier scoped `partial_pass` because31 is not intelligible speech; this does
+not retract the complete positive EOS12–15 or accent21–25 observations, and
+file20 retains its prior MGU caveat. Ignoring deliberately nonstandard stress
+in24 is a supplementary controllability limitation, not by itself the release
+failure. CF retains incomplete EOS18 and adds voice-identity failures26/27 and
+the complete-but-abrupt tail26. Its normative and nonstandard word-stress
+successes are preserved independently.30's described manner/timbre is not
+automatically classified as an artifact or identity failure.
+
+These observations do not establish absence of every extra sound, preferred
+naturalness of raw/selective/full inputs, voice stability in unmentioned files,
+sequential isolation, other carrier contexts or seeds. In particular, the user
+did not select a generally best accent policy. Selective stress remains a
+candidate, not a default; the complete D corpus and a later held-out policy
+qualification remain open. This manual U+0301 comparison is not executed
+`tts-front-cpp` acceptance. No training-data cause is inferred. R1 stays NO-GO.
+
 ## Next decision
 
 Retain the positive long-case results and the CF one-shot failure separately.
 Penalty 2 is a candidate for the next comparison because it has a normal spoken
 result at seed 75 in both models; this is not a selected universal threshold.
 Before adaptive decay or held-out scoring, qualify correct short controls and
-compare broader text/seed coverage and final-word preservation. Accent contrasts
-still need listening. Any new GPU run needs a fresh resource allocation; the
+compare broader text/seed coverage and final-word preservation. Selected accent
+contrasts21–32 now have scoped listening, including failures; whole-corpus
+accent/naturalness/voice qualification remains open. Any new GPU run needs a fresh resource allocation; the
 previous window remains closed.
 Do not promote a blanket minimum, permanent EOS ban or an energy-only detector.
 Reference stability B, alternative models C and Engine #51 integration E remain

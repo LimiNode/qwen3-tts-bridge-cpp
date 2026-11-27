@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-26",
+  "generated_at": "2026-11-27",
   "canonical_receipts": [
     {
       "acceptance_id": "native-eos-control-rustress-cmp50hx-20261125",
       "receipt": "docs/reports/native-eos-control-rustress-cmp50hx-20261125.json",
       "model_family": "RU-stress",
       "backend": "native",
-      "human_listening": "partial_pass",
+      "human_listening": "fail",
       "release_status": "blocked"
     },
     {
