@@ -58,6 +58,8 @@ not the historical experiment branches, define current runtime policy.
 - [Base F32 predictor parity probe](../reports/cmp50hx-base-f32-predictor-parity-20260914.md)
 - [Stochastic same-conditioning parity](../reports/cmp50hx-stochastic-same-conditioning-parity-20260914.md)
 - [Qwen3-TTS research ledger (conditioning, EOS, voice quality)](../reports/qwen3-tts-research-ledger-20261128.md)
+- [Qwen3-TTS research consolidation and phase-2 listening correction](../reports/qwen3-tts-research-consolidation-20261128.md)
+- [Native EOS phase-2 receipt (mechanical and human-listening layers)](../reports/native-eos-phase2-cmp50hx-20261127.json)
 - [Native engine boundary ADR](../architecture/adr-native-engine-boundaries.md)
 
 The final production measurements are in

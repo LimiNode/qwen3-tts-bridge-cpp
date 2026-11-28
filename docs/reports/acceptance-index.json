@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-13",
+  "generated_at": "2026-11-28",
   "canonical_receipts": [
     {
       "acceptance_id": "base-portable-cmp50hx-20261030",
@@ -17,6 +17,14 @@
       "backend": "faster",
       "human_listening": "partial_pass",
       "release_status": "conditional"
+    },
+    {
+      "acceptance_id": "native-eos-phase2-cmp50hx-20261127",
+      "receipt": "docs/reports/native-eos-phase2-cmp50hx-20261127.json",
+      "model_family": "other",
+      "backend": "native",
+      "human_listening": "fail",
+      "release_status": "blocked"
     }
   ],
   "legacy_reference_reports": [

@@ -1,0 +1,92 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-phase2-cmp50hx-20261127",
+  "recorded_at": "2026-11-28",
+  "model_family": "other",
+  "backend": "native",
+  "bridge_commit": "225a3eeddeb60e6949a25f710cb413cd1f4d5248",
+  "model_revision": "RU-stress/CF/Base Engine53 and isolated Engine51 research candidates",
+  "runtime_revision": {
+    "scope": "CMP 50HX A/B/C/F research window; no production promotion",
+    "engine53": "3a896743ada11cba6bfa7e6fd69c06ec39a10283",
+    "engine51": "541f1f702e725dc002e0e9ebf6f1460dca8c3100",
+    "supervisor": "472.984s; no forced stop; sampled peak 5786 MiB"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Frozen phase-2 A/B/C/F plans and original full aligned ICL manifests",
+    "corpus_sha256": "5ca3e0cee18f1ca7becdda5299d6bea0809d4d89b05a2f1b26f5a70ab3c02d92"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "SM75",
+    "driver": "NVIDIA-SMI 581.94",
+    "cuda": "CUDA toolkit 13.3.73 / runtime provenance frozen per plan",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb",
+    "gpu_uuid_status": "recorded"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-phase2-window-20261127",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-phase2-window-20261127/analysis.json",
+      "kind": "json",
+      "bytes": 255816,
+      "sha256": "f5e9fb3488c54753b2de47f2f447279c0072978321cd21d3ce8bf8f2e30eb70a",
+      "availability": {"status": "local", "reason": "Retained in ignored repository-local payload"}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-phase2-window-20261127/gpu-window-finish.json",
+      "kind": "json",
+      "bytes": 5794,
+      "sha256": "9ac59140fc09c912193c7bc4b4da960e49c18b3ce7ea91b3d30fad0a529a7de3",
+      "availability": {"status": "local", "reason": "Retained in ignored repository-local payload"}
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-phase2-window-20261127/A-stdout.log",
+      "kind": "log",
+      "bytes": 2206,
+      "sha256": "f27dfa20996f03a3760fad16d1d89815e1221b3e63eb0cca902cf808294877fe",
+      "availability": {"status": "local", "reason": "Retained in ignored repository-local payload"}
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "pass"
+  },
+  "human_listening": {
+    "status": "fail",
+    "observer": "user",
+    "recorded_at": "2026-11-28",
+    "scope": "Exact A/B/C/F selections from .tmp/listening-pending-20261128 plus the separately assessed ESpeech smoke set",
+    "criteria": {
+      "intelligibility": "fail",
+      "voice_or_instruction": "fail",
+      "artifacts": "partial",
+      "final_tail": "partial",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "A02 has the wrong voice, A03 and all CF18 terminal variants end at проце, C02 changes voice, and F07 has no audible voice. Base controls and RU06 terminal controls are positive within their named scope. Mechanical completion, duration, energy and natural EOS are not semantic speech acceptance."
+  },
+  "release_status": "blocked",
+  "case_result": {
+    "status": "pass",
+    "reason": "All declared mechanical A/B/C/F checks passed in the bounded CMP 50HX window."
+  },
+  "listening_result": {
+    "status": "fail",
+    "reason": "Human listening found semantic failures in A, B, C and F; see the consolidation report."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Research-only receipt; no production default, engine pin, ABI, QTB or R1 release change is authorized."
+  },
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/tts-eos-control-phase2-20261126.md",
+    "docs/reports/qwen3-tts-research-consolidation-20261128.md"
+  ],
+  "notes": "The instrumented Engine51 DLL is isolated. ESpeech is reported in the consolidation note and is not an alternative release candidate. MOSS-TTS remains not_run."
+}
