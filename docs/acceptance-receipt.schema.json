@@ -120,7 +120,8 @@
             "voice_or_instruction": {"$ref": "#/$defs/listening_status"},
             "artifacts": {"$ref": "#/$defs/listening_status"},
             "final_tail": {"$ref": "#/$defs/listening_status"},
-            "sequential_contamination": {"$ref": "#/$defs/listening_status"}
+            "sequential_contamination": {"$ref": "#/$defs/listening_status"},
+            "pronunciation_stress": {"$ref": "#/$defs/listening_status"}
           }
         },
         "notes": {"type": "string", "minLength": 1}

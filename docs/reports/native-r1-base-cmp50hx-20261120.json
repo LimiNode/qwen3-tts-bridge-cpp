@@ -1,0 +1,546 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-r1-base-cmp50hx-20261120",
+  "recorded_at": "2026-11-20",
+  "model_family": "Base",
+  "backend": "native",
+  "bridge_commit": "aa2770ec8aeb45d59f42c96c3a1f4f2dc52390d8",
+  "model_revision": "4b9a33a236908dd9435a42f7a396e38038329d053b704342a6413c08544c4fda",
+  "runtime_revision": {
+    "qwentts.cpp": "130cb99af9ae12d554962fd0920e08fb4268af01",
+    "qt_abi_version": "6",
+    "tts-front-cpp": "64f73182d26de60af6c082724b1b199eb7310620",
+    "package_zip_sha256": "f9f810092efb5683d7f7a52648989efa82d84f30b4f5d3e7647205acd2f80175",
+    "qwen_dll_sha256": "b426dada07c2747c35df634f4c0782ea2b5cbba1cbe2001a8ca57a8afa590901",
+    "native_worker_sha256": "e8b5077aabbae72e6f54d654dbf542e6767558364c05479fbf4c6e1d8b81d539",
+    "codec_model_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "qualification_driver_sha256": "57093572263483c390aaeeeacb842ad546ad5ab008a42f50e5f51e9307111437",
+    "qualification_driver_scope": "Separately built nonshipping C++ benchmark, not an asset in the frozen ZIP"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": "Exact UTF-8 corpus.json in payload root; identical tracked docs/acceptance/native-r1-aa2770ec-corpus.json. Raw lifecycle requests.jsonl is separately hashed below.",
+    "corpus_sha256": "dd8ede87f57bb12645dc05d1b4c44b7e7f89798d30a1a9a7829c05e26b806f58"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX (20480 MiB)",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3 build; architecture 75; unchanged verified native runtime",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/native-r1-aa2770ec-20261120",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/index.json",
+      "kind": "json",
+      "bytes": 209458,
+      "sha256": "dc072f9c781a9094e1380c09ec0345cfcf20a063e92d3c23f306b2c4bc24d0c7",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/provenance.json",
+      "kind": "manifest",
+      "bytes": 6889,
+      "sha256": "07616b99cd99223bf357b42efaa1f0ac79e48f4597a1c231003ded1fe792b4a4",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/corpus.json",
+      "kind": "manifest",
+      "bytes": 6636,
+      "sha256": "dd8ede87f57bb12645dc05d1b4c44b7e7f89798d30a1a9a7829c05e26b806f58",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/package-build-provenance.json",
+      "kind": "manifest",
+      "bytes": 13566,
+      "sha256": "cc9e2688cbb59a6b81c87d8ad1ba3e0059469843288f001d8a8f6e0e241adc58",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/voice/registry.json",
+      "kind": "manifest",
+      "bytes": 578,
+      "sha256": "1906bae1c02857e5bb716be3be6e103c4c7a6c6c86dec237a1a09b49a0770977",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/voice/reference.wav",
+      "kind": "wav",
+      "bytes": 844844,
+      "sha256": "90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/ru-ordinary/speech.wav",
+      "kind": "wav",
+      "bytes": 341804,
+      "sha256": "dbd4684e2e3c332d6c5f4bae9c6b0ecd1558a7a5c36895a392efb1eef83e0d0f",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/en-ordinary/speech.wav",
+      "kind": "wav",
+      "bytes": 395564,
+      "sha256": "74f24cb213b5dd3ffb90b02e03da684383af8f94abb7e1b9efb7463419a0e7f9",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/ru-numbers-dates/speech.wav",
+      "kind": "wav",
+      "bytes": 683564,
+      "sha256": "f78972553da1f6597147d1f22a9ee1cc813389fe727ed1ae66a4887fffff0a89",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/ru-abbreviations/speech.wav",
+      "kind": "wav",
+      "bytes": 345644,
+      "sha256": "c04fe13ef3a810bd97a57ddbfdcf90fdd3129a39516a804c38347e99310a85b7",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/en-abbreviations/speech.wav",
+      "kind": "wav",
+      "bytes": 422444,
+      "sha256": "2ef210752ae559a62acf985c4a65613abca39735eed8cf012575886a8ebded47",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/ru-homographs/speech.wav",
+      "kind": "wav",
+      "bytes": 353324,
+      "sha256": "28dd6aeefdd4bd018e90c946d78a20ab16f55cc24b53ed9b249c43df7a71fe57",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/en-homographs/speech.wav",
+      "kind": "wav",
+      "bytes": 353324,
+      "sha256": "8b9912b199ae8d6f5f4ebbb8e499c986f5a303f6d063f1c02869aa9c2409e75c",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/ru-long/speech.wav",
+      "kind": "wav",
+      "bytes": 1647404,
+      "sha256": "616b30d62ed10203cd3fa9821821ed9797be41da2138bb443f9976bf9ec07507",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/en-long/speech.wav",
+      "kind": "wav",
+      "bytes": 1428524,
+      "sha256": "4cfbaa63652da2f3a400e799f52e2ab86a83aafd05dc4578eaf2daa989d94580",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/ru-endings/speech.wav",
+      "kind": "wav",
+      "bytes": 357164,
+      "sha256": "d9f2bfe9037fe9c3a6c8d65302d247d28a0358648b3cb95f9658bc7e40af751d",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/en-endings/speech.wav",
+      "kind": "wav",
+      "bytes": 372524,
+      "sha256": "62f81aafe1ca3abed722ac9bbcf80c8ea03bf4e2975cf4a1fc1c61bf2b25a5f6",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/ru-ordinary/speech.wav",
+      "kind": "wav",
+      "bytes": 357164,
+      "sha256": "60673878a6dee8645195cfe6afc68be5b181b2c1d5d593f392e32df9d8471c3a",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/en-ordinary/speech.wav",
+      "kind": "wav",
+      "bytes": 357164,
+      "sha256": "840f27bedbc041310d8cc9df7a3a7965b233008218abe1674a2a707fd7b0d22b",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/ru-numbers-dates/speech.wav",
+      "kind": "wav",
+      "bytes": 556844,
+      "sha256": "4f30bbf628ab9f92f43d8fa25fb078a71bba71f1b39884f099588d464f0e5d09",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/en-numbers-dates/speech.wav",
+      "kind": "wav",
+      "bytes": 625964,
+      "sha256": "1b0c019cb05eb61a11797644d192870672484d22b096771bc678b61cb83fab7e",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/ru-abbreviations/speech.wav",
+      "kind": "wav",
+      "bytes": 337964,
+      "sha256": "f84dbf62b8fee6ca9e8ebe7ed8adda5b50f8f7696f5733eca8da26a99954b5eb",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/en-abbreviations/speech.wav",
+      "kind": "wav",
+      "bytes": 376364,
+      "sha256": "12c5fd0bccca0f90cdb7a07a4676b412df59a7e9b5854fe8c9554fdd12c1d3b4",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/ru-homographs/speech.wav",
+      "kind": "wav",
+      "bytes": 330284,
+      "sha256": "fad697eb2f50c2038c7035008765ca6edae85a40a2d099bfefc6e09ecdf0213b",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/en-homographs/speech.wav",
+      "kind": "wav",
+      "bytes": 341804,
+      "sha256": "bae5c4f96eba2061f4ade395c25363053160ad5841be897cfde699fc6735ee4a",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/ru-long/speech.wav",
+      "kind": "wav",
+      "bytes": 1585964,
+      "sha256": "b2bdbc8aea0f4dc6911a0e4802720eea26d290114623d25d05ac67db85470dac",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/en-long/speech.wav",
+      "kind": "wav",
+      "bytes": 1436204,
+      "sha256": "ab15852bf095d0b9606bb92d1f58f200d97922f405752db25218e715a99dd3e4",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/ru-endings/speech.wav",
+      "kind": "wav",
+      "bytes": 372524,
+      "sha256": "1637e1b83723490489e7d720efc5616a2e844ed5c912a0e9f40d017bd16aeb90",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/raw/en-endings/speech.wav",
+      "kind": "wav",
+      "bytes": 349484,
+      "sha256": "73e4e80b672265cee79cac92e9514804ffae9865558939c7caa139dbe9fc68ef",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/base-front-en-numbers-dates-failure-analysis.json",
+      "kind": "json",
+      "bytes": 1485,
+      "sha256": "a692240bd2618b9325a688e1dd43b21c63423ceb8cb23d53cb93e670bf4a8242",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/en-numbers-dates/stderr.log",
+      "kind": "log",
+      "bytes": 21118,
+      "sha256": "e124fc15692ba1a50ea0e6c463694f002703ab706da1048e888c863b5a9a6230",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/CMP50HX/cmp50hx-matrix-001/base/front/en-numbers-dates/case-receipt.json",
+      "kind": "json",
+      "bytes": 1449,
+      "sha256": "721213c558ce3048656c7b4c230523177d0254e2d16cfa3782f0755c6856dfb3",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in the primary checkout payload directory on 2026-11-20; ignored files require private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/index.json",
+      "kind": "json",
+      "bytes": 7365,
+      "sha256": "e1d88f4e14cbb22a64f824cb2574b38a31189b3ad254a75514fb0d6f40a13389",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/provenance.json",
+      "kind": "manifest",
+      "bytes": 6291,
+      "sha256": "7779a1fb18ecbca23a28d80505dc2012c192ab7085ee38957a58da5466e4f41d",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/requests.jsonl",
+      "kind": "manifest",
+      "bytes": 923,
+      "sha256": "20c72d9cfce3ffc40c0ba58802ea37f5cd484f0974a575f869508f6787e2e9f4",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/persistent/receipt.json",
+      "kind": "json",
+      "bytes": 1168,
+      "sha256": "750a90ee1f4d7a427d6d345176076148bd34b60cc85f46a3787b646521f72568",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/persistent/benchmark.json",
+      "kind": "json",
+      "bytes": 91077,
+      "sha256": "ba96788ff8c78ed180c73a74ac5b82f3d8de69bc8ff558a547d1d347a0c8fe23",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/persistent/memory-samples.jsonl",
+      "kind": "json",
+      "bytes": 18809,
+      "sha256": "2f63edff47e99cb4a1422feac9eb91fd714b3713ed9bd29901b2b8463d966bac",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/persistent/module-paths.jsonl",
+      "kind": "json",
+      "bytes": 7453,
+      "sha256": "134a0f3884038ee909c6a640fe92d83cc77318d5c4808fc7a518dd3ca1674908",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/persistent/stderr.log",
+      "kind": "log",
+      "bytes": 81652,
+      "sha256": "9aadcccd86318d8aebd3862e10fef3f5623a4bf00636e8fd7e727ff9b6290b34",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/restart/receipt.json",
+      "kind": "json",
+      "bytes": 1170,
+      "sha256": "cabddede9532f128e5564a6a90e925bdf5b9863ea118b7e82a8597ea0bc7fe09",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/restart/benchmark.json",
+      "kind": "json",
+      "bytes": 10122,
+      "sha256": "a32d7c9d07826345853a37e8d028471c919029cc196e7472ba48b22effcae714",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/restart/memory-samples.jsonl",
+      "kind": "json",
+      "bytes": 4864,
+      "sha256": "148fe5c9ead42499b30ee3070471e3f7d655987ca3e1f07e5169959d61ae48f0",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/restart/module-paths.jsonl",
+      "kind": "json",
+      "bytes": 7453,
+      "sha256": "d2c9975b93d1cd27caa9ec324e474cf4bceee52f3fd9b6631628c85ae94120a2",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/lifecycle/CMP50HX-qualification-01/base/restart/stderr.log",
+      "kind": "log",
+      "bytes": 11589,
+      "sha256": "4819023263a72bb3d7fb8d1b5641d1c7221545a5261300e6b40bc240ac74b316",
+      "availability": {
+        "status": "local",
+        "reason": "Verified completed lifecycle evidence in primary checkout on 2026-11-20; requires private transfer/backup."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/listening/REVIEW-FIRST.md",
+      "kind": "other",
+      "bytes": 3071,
+      "sha256": "5caddb7a1dbd2eb71d1c6ecfd40c39eea588a198fb21f83a5de07c2251925bda",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in primary checkout on 2026-11-20; private transfer required."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/native-r1-aa2770ec-20261120/run-native-ab.ps1",
+      "kind": "other",
+      "bytes": 21196,
+      "sha256": "b7e7adc5bec9d73f4cde7ef4abd4d7b6a89a05c8e991f9c83fb9767ac1aa698f",
+      "availability": {
+        "status": "local",
+        "reason": "Verified in primary checkout on 2026-11-20; private transfer required."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "fail",
+    "natural_eos": "fail",
+    "persistent_repeat": "pass",
+    "restart": "pass"
+  },
+  "human_listening": {
+    "status": "not_run",
+    "observer": "none; no listening observation for these candidate outputs",
+    "recorded_at": "2026-11-20",
+    "scope": "Exact Base native candidate WAVs in cmp50hx-matrix-001 only. The input reference WAV is not a new synthesized or listened-to artifact.",
+    "criteria": {
+      "intelligibility": "not_assessed",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "No human verdict is inferred from nonzero PCM, natural EOS, historical receipts, or successful lifecycle tests. Private transfer must preserve the named bytes/hashes."
+  },
+  "case_result": {
+    "status": "fail",
+    "reason": "25/26 routing/PCM/EOS checks passed (including two expected accent rejections). Base/frontend English numbers-dates reached max_tokens at 2048 frames; strict saver correctly refused WAV/terminal publication, leaving only 23/24 positive cases with qualified WAV. Separate raw persistent/cancel/restart tests passed."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "No named human has assessed these exact output WAVs; all listening criteria remain unassessed."
+  },
+  "release_status": "blocked",
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Actual natural-EOS corpus failure; independent RTX4090, exact-artifact listening, clean-host/outside-checkout and redistribution checks remain open."
+  },
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-r1-postmerge-20261120.md",
+    "docs/reports/native-r1-aa2770ec-rtx4090-handoff.md"
+  ],
+  "notes": "One-shot matrix: 25/26 mechanical passes, 23 qualified output WAVs. Reference voice kraftwerk_robot_ru_bootstrap_fidelity; reference WAV SHA-256 90e5f7576991ea5b9f0a85e9109f7bd31ff667c4a12d58783a06c650796c3ca1 is input only. New worker per A/B case, no warmup/seed/sampling override exposed by packaged launcher. Frontend '2 книги' becomes 'две книги' but 'за 1250 рублей' becomes incorrect 'за одна тысяча ...'. Raw lifecycle benchmark: 3 warmups then30 measured requests,24 natural EOS +6 cancellations, same-worker post-cancel recovery, then distinct fresh worker with3 natural EOS requests/no warmup. Client timings start at submission after ready; one-shot worker timings are not client TTFA. Memory is sampled lifecycle worker private/working set and system-wide GPU use, not per-WAV true-peak/exclusive VRAM or a leak proof. Forced-crash recovery, physical playback, RTX4090 and literal outside-checkout/clean-host checks remain not_run. No Python/PyTorch required; loaded qwen/GGML/CUDA/vcomp paths point into relocated bundle. ZIP remains local/unpublished; exact vcomp14.50 legal distribution scope not_assessed. Older listening judgments are not transferred."
+}
