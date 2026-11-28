@@ -69,6 +69,7 @@ void print_usage(std::ostream& out, const std::string& executable_name) {
         << "  --auto-fast-max-chars <n>      Backward-compatible alias for --auto-fast-max-bytes.\n"
         << "  --cwd <path>                   Worker working directory.\n"
         << "  --text <utf8>                  One-shot playback instead of interactive mode.\n"
+        << "  --segment-text                 Experimental complete-sentence one-shot streaming.\n"
         << "  --language <name>              Request language, default: auto.\n"
         << "  --tts-front                    Apply tts-front-cpp once before synthesis (default).\n"
         << "  --no-tts-front                 Send raw text without frontend preparation.\n"
@@ -179,6 +180,9 @@ ProgramOptions parse_options(int argc, wchar_t** argv) {
         }
         else if (arg == "--text" || arg.rfind("--text=", 0) == 0) {
             options.text = require_value(index, argc, argv, "--text");
+        }
+        else if (arg == "--segment-text") {
+            options.segment_text = true;
         }
         else if (arg == "--language" || arg.rfind("--language=", 0) == 0) {
             options.language = require_value(index, argc, argv, "--language");
@@ -400,6 +404,14 @@ void validate_options(const ProgramOptions& options) {
     }
     if (options.auto_profile && options.auto_fast_max_bytes == 0) {
         throw std::runtime_error("--auto-fast-max-bytes must be greater than zero");
+    }
+    if (options.segment_text && options.text.empty()) {
+        throw std::runtime_error("--segment-text requires one-shot --text");
+    }
+    if (options.segment_text && (!options.playback_animation_receipts_file.empty() ||
+        !options.playback_metrics_file.empty())) {
+        throw std::runtime_error(
+            "--segment-text does not yet support per-request playback/animation receipts");
     }
     if (options.sample_rate == 0 || options.channels == 0 ||
         options.channels > (std::numeric_limits<WORD>::max)()) {

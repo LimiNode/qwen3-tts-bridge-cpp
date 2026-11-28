@@ -1,0 +1,430 @@
+{
+  "schema_version": 1,
+  "kind": "scoped_user_listening_not_general_acceptance",
+  "recorded_at": "2026-11-21",
+  "observer": "user",
+  "bridge_report_before_feedback": "53829ec79a490af14c6f8a60e8b48c7ccbb2f44a",
+  "measured_engine_commit": "0de7ec5c7467bc5a1cbf5b82e42d2f270016fbd3",
+  "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb",
+  "scope": "19 named convenience copies from 284 baseline WAVs; prior generation and 36 controls remain unchanged. All other cases retain unassessed coverage.",
+  "user_feedback_verbatim": "Нормальный текст имеют 01-ru-stress-original-seed-64.wav, 09-ru-stress-ru-unseen-seed-64.wav, 10-ru-stress-ru-two-sentences-seed-64.wav, 11-ru-stress-en-unseen-seed-64.wav, 12-base-original-seed-64.wav, 13-base-ru-yes-seed-64.wav (произносит да), 15-base-en-hi-seed-64.wav (произносит хай), 16-base-en-thanks-seed-64.wav, 17-base-ru-unseen-seed-64.wav, 19-base-en-unseen-seed-64.wav. У файла 02-ru-stress-original-seed-72.wav есть странный звук похожий на \"але\" или \"мг\". Файл 05-ru-stress-ru-yes-seed-64.wav содержит звук похожий на \"да\". Остальные файлы или не имеют звука на слух, или он очень короткий и бесмысленый.",
+  "counts": {
+    "all": {
+      "heard": 19,
+      "user_confirmed_text": 11,
+      "uncertain": 1,
+      "failed_recognizability": 7
+    },
+    "ru_stress": {
+      "heard": 11,
+      "user_confirmed_text": 4,
+      "uncertain": 1,
+      "failed_recognizability": 6
+    },
+    "base": {
+      "heard": 8,
+      "user_confirmed_text": 7,
+      "uncertain": 0,
+      "failed_recognizability": 1
+    }
+  },
+  "cases": [
+    {
+      "number": 1,
+      "listening_copy": "01-ru-stress-original-seed-64.wav",
+      "family": "RU-stress",
+      "text_label": "original",
+      "seed": 64,
+      "frames": 84,
+      "seconds": 6.72,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-6-lane-0.wav",
+        "bytes": 322604,
+        "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User lists this file as having normal text.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 2,
+      "listening_copy": "02-ru-stress-original-seed-72.wav",
+      "family": "RU-stress",
+      "text_label": "original",
+      "seed": 72,
+      "frames": 6,
+      "seconds": 0.48,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-14-lane-0.wav",
+        "bytes": 23084,
+        "sha256": "954e5e0fc2abcccae6265e902aae587f487e8c0f2db49c034a9e048fd5fe06fd"
+      },
+      "text_coverage": "failed_recognizability",
+      "observation": "User describes a strange sound resembling \"але\" or \"мг\", not the requested original phrase.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 3,
+      "listening_copy": "03-ru-stress-original-seed-75.wav",
+      "family": "RU-stress",
+      "text_label": "original",
+      "seed": 75,
+      "frames": 2,
+      "seconds": 0.16,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-17-lane-0.wav",
+        "bytes": 7724,
+        "sha256": "6d9e7f60a7c955554f54db358cf12d1826ae0ca8560ff406eb6eb723ff128e23"
+      },
+      "text_coverage": "failed_recognizability",
+      "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 4,
+      "listening_copy": "04-ru-stress-original-seed-78.wav",
+      "family": "RU-stress",
+      "text_label": "original",
+      "seed": 78,
+      "frames": 3,
+      "seconds": 0.24,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-20-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "1c677648775a9af9178bf617b549467e4a437ce8a8c1e3f7923bd77e4e0ff834"
+      },
+      "text_coverage": "failed_recognizability",
+      "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 5,
+      "listening_copy": "05-ru-stress-ru-yes-seed-64.wav",
+      "family": "RU-stress",
+      "text_label": "ru-yes",
+      "seed": 64,
+      "frames": 4,
+      "seconds": 0.32,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-23-lane-0.wav",
+        "bytes": 15404,
+        "sha256": "845daa1e5f6f794bb2306ae9f1b2017e9754c87ac7b9cb457d5ec2d78975e701"
+      },
+      "text_coverage": "uncertain",
+      "observation": "User reports a sound resembling \"да\"; preserve uncertainty, not a confirmed full-text pass.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 6,
+      "listening_copy": "06-ru-stress-ru-no-seed-64.wav",
+      "family": "RU-stress",
+      "text_label": "ru-no",
+      "seed": 64,
+      "frames": 2,
+      "seconds": 0.16,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-40-lane-0.wav",
+        "bytes": 7724,
+        "sha256": "16adb74a2ced9e015e364d31f1512ced96a18428bc67c4c33f54c3b3e8976a36"
+      },
+      "text_coverage": "failed_recognizability",
+      "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 7,
+      "listening_copy": "07-ru-stress-en-hi-seed-64.wav",
+      "family": "RU-stress",
+      "text_label": "en-hi",
+      "seed": 64,
+      "frames": 3,
+      "seconds": 0.24,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-57-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "ff9bde2acf4d5e423a823f5cc718b1089f223a057d0d3967f07532b29abc63ad"
+      },
+      "text_coverage": "failed_recognizability",
+      "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 8,
+      "listening_copy": "08-ru-stress-en-thanks-seed-64.wav",
+      "family": "RU-stress",
+      "text_label": "en-thanks",
+      "seed": 64,
+      "frames": 3,
+      "seconds": 0.24,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-74-lane-0.wav",
+        "bytes": 11564,
+        "sha256": "58851dc2beae83a262e3eb4333e4d598499b47863abe35b17ea572376e4a5eee"
+      },
+      "text_coverage": "failed_recognizability",
+      "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 9,
+      "listening_copy": "09-ru-stress-ru-unseen-seed-64.wav",
+      "family": "RU-stress",
+      "text_label": "ru-unseen",
+      "seed": 64,
+      "frames": 71,
+      "seconds": 5.68,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-91-lane-0.wav",
+        "bytes": 272684,
+        "sha256": "c6824eae1dc1b95dab698c31231eed0e15dbb1efc3223e9c1a80e78204743e22"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User lists this file as having normal text.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 10,
+      "listening_copy": "10-ru-stress-ru-two-sentences-seed-64.wav",
+      "family": "RU-stress",
+      "text_label": "ru-two-sentences",
+      "seed": 64,
+      "frames": 92,
+      "seconds": 7.36,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-108-lane-0.wav",
+        "bytes": 353324,
+        "sha256": "fada01bc05bc7067ed42bddeffd85f2969d212888306e72d248d696ef19ea590"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User lists this file as having normal text.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 11,
+      "listening_copy": "11-ru-stress-en-unseen-seed-64.wav",
+      "family": "RU-stress",
+      "text_label": "en-unseen",
+      "seed": 64,
+      "frames": 76,
+      "seconds": 6.08,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-125-lane-0.wav",
+        "bytes": 291884,
+        "sha256": "96a9522c6a1a5000f49cb0199de86b7bd839b5b22fea641411f3207f1379cc13"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User lists this file as having normal text.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 12,
+      "listening_copy": "12-base-original-seed-64.wav",
+      "family": "Base",
+      "text_label": "original",
+      "seed": 64,
+      "frames": 103,
+      "seconds": 8.24,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-6-lane-0.wav",
+        "bytes": 395564,
+        "sha256": "eca6c089d6cd388a70f110bfb1ef2ef5a9f72fc8cb13b4a3bb3f215b729305ee"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User lists this file as having normal text.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 13,
+      "listening_copy": "13-base-ru-yes-seed-64.wav",
+      "family": "Base",
+      "text_label": "ru-yes",
+      "seed": 64,
+      "frames": 10,
+      "seconds": 0.8,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-23-lane-0.wav",
+        "bytes": 38444,
+        "sha256": "c4c1b088aab8f37f8caf0b72ca7ced2be0775c8289aabd72e478a9f34b4ef49c"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User explicitly recognizes \"да\".",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 14,
+      "listening_copy": "14-base-ru-no-seed-64.wav",
+      "family": "Base",
+      "text_label": "ru-no",
+      "seed": 64,
+      "frames": 11,
+      "seconds": 0.88,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-40-lane-0.wav",
+        "bytes": 42284,
+        "sha256": "1031ccf5014778f88587128637db43013eb28c1a4788cf3af581ac24dab355af"
+      },
+      "text_coverage": "failed_recognizability",
+      "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 15,
+      "listening_copy": "15-base-en-hi-seed-64.wav",
+      "family": "Base",
+      "text_label": "en-hi",
+      "seed": 64,
+      "frames": 8,
+      "seconds": 0.64,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-57-lane-0.wav",
+        "bytes": 30764,
+        "sha256": "b9953572d2521fb280899662e6fbf0888804f89db77aeb4562dbf663a4b16369"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User explicitly recognizes \"хай\" (Hi).",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 16,
+      "listening_copy": "16-base-en-thanks-seed-64.wav",
+      "family": "Base",
+      "text_label": "en-thanks",
+      "seed": 64,
+      "frames": 12,
+      "seconds": 0.96,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-74-lane-0.wav",
+        "bytes": 46124,
+        "sha256": "acd0c8a2dc68379584047b023a5374257054ea7b7fede5a98bd6adbd52e35011"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User lists this file as having normal text.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 17,
+      "listening_copy": "17-base-ru-unseen-seed-64.wav",
+      "family": "Base",
+      "text_label": "ru-unseen",
+      "seed": 64,
+      "frames": 74,
+      "seconds": 5.92,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-91-lane-0.wav",
+        "bytes": 284204,
+        "sha256": "8dc1ef0da6305d4cb6f8e58889eb8a20e96c8b090ce1d48bcb700fb337f6c827"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User lists this file as having normal text.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    },
+    {
+      "number": 18,
+      "listening_copy": "18-base-ru-two-sentences-seed-64.wav",
+      "family": "Base",
+      "text_label": "ru-two-sentences",
+      "seed": 64,
+      "frames": 106,
+      "seconds": 8.48,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-108-lane-0.wav",
+        "bytes": 407084,
+        "sha256": "7a3c46e201f0d44d24fe23329d22fbbbd83e49929181794ca2948121b3838546"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "In a file-specific follow-up, the user explicitly confirms normal speech containing the entire expected two-sentence phrase.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established",
+      "assessment_history": [
+        {
+          "recorded_at": "2026-11-21",
+          "text_coverage": "failed_recognizability",
+          "observation": "Included in the user’s remaining-files group: inaudible to the user OR very short and meaningless. Exact alternative is not assigned per file.",
+          "status": "superseded_by_file_specific_clarification"
+        }
+      ]
+    },
+    {
+      "number": 19,
+      "listening_copy": "19-base-en-unseen-seed-64.wav",
+      "family": "Base",
+      "text_label": "en-unseen",
+      "seed": 64,
+      "frames": 93,
+      "seconds": 7.44,
+      "artifact": {
+        "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/base-corpus-001/corpus/group-125-lane-0.wav",
+        "bytes": 357164,
+        "sha256": "e626a20962256dd8b7377d59387dad98340528073236e7ad48a4390762ffddd2"
+      },
+      "text_coverage": "user_confirmed_text",
+      "observation": "User lists this file as having normal text.",
+      "voice_quality": "not_separately_assessed",
+      "final_tail": "not_separately_assessed",
+      "root_cause": "not_established"
+    }
+  ],
+  "implications": [
+    "RU-stress seeds72/75/78 are now listening failures for the requested original phrase, not only duration anomalies.",
+    "Base file18 (106 frames / 8.48 s) has explicitly confirmed full normal text. Withdraw its initial failed-recognizability and duration-proxy false-negative classification; it is not evidence of a long-output speech failure.",
+    "Base file14 (Нет.) also fails in the grouped feedback; short-valid texts are excluded only from the long-text duration proxy, not exempt from speech validation.",
+    "Do not turn the grouped inaudible-or-short-meaningless report into an individually established physical silence, truncation mechanism or EOS root cause.",
+    "The enriched 19-file subset is not a random held-out evaluation; do not extrapolate its rates to the complete corpus or tune and evaluate a detector on these same labels."
+  ],
+  "release_status": "blocked",
+  "new_inference": "not_run",
+  "runtime_changes": "none",
+  "related_reports": [
+    "docs/reports/native-eos-corpus-and-decision-20261121.md",
+    "docs/reports/native-eos-corpus-evidence-20261121.json"
+  ],
+  "initial_feedback_scope": "The initial verbatim grouped remainder is preserved as history. Its inferred file18 failure is superseded by the explicit file-specific clarification; other observations are unchanged.",
+  "clarifications": [
+    {
+      "recorded_at": "2026-11-21",
+      "observer": "user",
+      "file_number": 18,
+      "listening_copy": "18-base-ru-two-sentences-seed-64.wav",
+      "artifact_sha256": "7a3c46e201f0d44d24fe23329d22fbbbd83e49929181794ca2948121b3838546",
+      "user_feedback_verbatim": "Там слышна нормальная речь \"В мастерско́й завершили проверку. Теперь можно закрыть дверь и отправить подробный отчёт о выполненной работе\"",
+      "supersedes": "Only file18's initial inferred failed_recognizability label and dependent 10/1/8 totals and duration-proxy-miss interpretation.",
+      "current_text_coverage": "user_confirmed_text",
+      "voice_quality_scope": "Normal speech and the full stated phrase confirmed; no calibrated voice-fidelity or universal artifact-free claim."
+    }
+  ]
+}

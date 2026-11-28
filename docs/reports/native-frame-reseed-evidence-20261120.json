@@ -1,0 +1,244 @@
+{
+  "kind": "research_evidence_not_acceptance",
+  "date": "2026-11-20",
+  "scope": "CMP 50HX / RU-stress Q8_0 / Kraftwerk / frontend OFF; no production EOS policy",
+  "release_status": "blocked",
+  "human_listening": "partial_pass",
+  "speech_coverage": "partial",
+  "listening_receipt": "docs/reports/native-eos-switch-listening-cmp50hx-20261120.json",
+  "shared_prefix_listening_receipt": "docs/reports/native-eos-prefix-listening-cmp50hx-20261120.json",
+  "offline_fade_diagnostic": "docs/reports/native-eos-fade-comparison-20261120.json",
+  "seed65_follow_up_listening_receipt": "docs/reports/native-eos-seed65-listening-cmp50hx-20261121.json",
+  "listening_scope": "User confirms complete text in eight switch-1/switch-2 WAVs and three selected single/dual one-frame-prefix continuations. MGU is sometimes too fast in the switch set. After the initial batch seed-65 fade observation, the 2026-11-21 single-seed-65 feedback describes little or effectively absent fading, less noticeable at medium/high volume, and no noticeable difference from the earlier track. Single-seed-65 text coverage was not reassessed; other candidates, general audio quality and live switching remain unassessed.",
+  "physical_playback": "not_run",
+  "rtx4090": "not_run",
+  "engine_runtime_source": {
+    "head": "5b03c53ee8bb2f7f4f102005ab7f6ba148ffd92c",
+    "status": "",
+    "submodules": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9 ggml (c044c6f0)"
+  },
+  "probe_sha256": "04e2d865153731ee2c83c59bad9c66bf8e50f36765be060b360546e7166bbfde",
+  "runtime_sha256": {
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\ggml-base.dll": "b208a454ab89a5df8bef822e8c2d5979e6050f7320f8566db13a8423415664fc",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\ggml-cpu.dll": "ce396925c7e87cbe6d84185c3b71d08b6a1d34f242e77cacbe440738aea6fc40",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\ggml-cuda.dll": "cb752006fe96e3b7031c69b53819d2507bb116612631c6a30f005f8eb908743e",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\ggml.dll": "9d442d446d2f7f15fcaeb017f202dd2f89841e2d5e0f2272ce875fa23273da09",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\qwen.dll": "70f3f92f8a6fa122b5d7593c8506bc6e98ef3447d166f368051910e1983833a8",
+    "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.3\\bin\\x64\\cublas64_13.dll": "8c6bac24474af29627ec96500025a5d410a1b7e8ffa00e1fe13b1781fc6b3ddc",
+    "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.3\\bin\\x64\\cublasLt64_13.dll": "e323abd89e0f03c1db91a09d7aeb1928de08e1f86192cc713b335fefe3e368a9",
+    "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.3\\bin\\x64\\cudart64_13.dll": "b00ca6f53699120da815bf3e06e2e4285fae2f201235b883dcbb50eec51e2a2a"
+  },
+  "source_inputs_sha256": {
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.build\\eos-reseed-engine\\eos-research-probe.exe": "04e2d865153731ee2c83c59bad9c66bf8e50f36765be060b360546e7166bbfde",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\ru-stress\\qwen-talker-1.7b-ru-stress-Q8_0.gguf": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\models\\common\\qwen-tokenizer-12hz-Q8_0.gguf": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\native-r1-aa2770ec-20261120\\voice\\registry.json": "1906bae1c02857e5bb716be3be6e103c4c7a6c6c86dec237a1a09b49a0770977",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\streaming-eos-research-20261120\\detector-replay\\analysis-v3.json": "4b847f052f8a899621d051458c90da96634ab750b6c163b33acae99e074c46a6",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\native-r1-aa2770ec-20261120\\diagnosis\\short-eos-seed-sweep-001\\replay-seed2-dump\\dump\\spk-emb.bin": "0238cb1ac8d19c69ecb3d1f4168a91e0af14d45acba274a0cb1b283dfb391959",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.tmp\\base-acceptance\\native-r1-aa2770ec-20261120\\diagnosis\\short-eos-seed-sweep-001\\replay-seed2-dump\\dump\\ref-codes.bin": "7ffb5c6bec116d9bd3b728230a35d047c5f3cda48c85bfadf204937662641457",
+    "E:\\_repoz\\qwen3-tts-bridge-cpp\\.worktrees\\eos-reseed-engine\\tests\\run_eos_research.py": "3e9685944044ee28f357195a8ae9f948d63dadfc0f46d6377a705e6fae6b5722"
+  },
+  "prepared_inputs_sha256": {
+    "en-unseen.txt": "ae9f3549a374efd65ce6097383a6471b4c04e6cabadc948ec3ebfaa62f9387ee",
+    "original.txt": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+    "reference.i32": "069ac5c280be070c2e5bf006cb9b58a2d248f34e1bdd37aab62310f2ffdd9443",
+    "reference.txt": "e1e6fe3cd4561d3c895e23834b44737e4bdc3b9fd92bf2f1f703bef8272e43f4",
+    "ru-short.txt": "27b3333fedf5a4f3c6bfb0546b04e760080752b4a36a79fa743eb1e9ab16179d",
+    "ru-unseen.txt": "080c6a34b342079da88a2f9cee494e81a92fceaf55c3349ac6e2e9826aed9070",
+    "seed-14-frames-1.txt": "3a7d5b4bca09c7896dd0d35a256d5c1b7217562eb1ef994f03fe8fc62efa5133",
+    "seed-14-frames-2.txt": "43036e055e2cefd079b3522ab9c44f23c3efb4a483ef31e9d94dcbe59091f94a",
+    "seed-2-frames-1.txt": "7d7ac6c8df63a4190b4ecf96f9dd9f3e778099933e3fe81bf2083268f0ac723f",
+    "seed-2-frames-2.txt": "e2923e18e21995a53777b65b3f117396cda0e2e5576f5d5536881fa1214bbd3b",
+    "speaker.f32": "4119368fc3a673c29187bbef0c48d3c789e6f05390bae61f3303c4f10ea38698"
+  },
+  "payload_identities": {
+    ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/plan.json": {
+      "bytes": 35292,
+      "sha256": "9d8c1d180d547400216545781a245b14c740592c5fec646e98c6db2cbecf17b9"
+    },
+    ".tmp/base-acceptance/eos-reseed-branching-20261120/analysis-final-006.json": {
+      "bytes": 425390,
+      "sha256": "7e129cd937703a49d1f7d8a8b4a2da6b22deda7061aede9df32b477dbbaa7eb3"
+    },
+    ".tmp/base-acceptance/eos-reseed-branching-20261120/dual-smoke-005/plan.json": {
+      "bytes": 8034,
+      "sha256": "84ba39f07821d03c0da25b59bce7eb187b44b4bad17aa6c1c77f19ffedb098d2"
+    },
+    ".tmp/base-acceptance/eos-reseed-branching-20261120/analysis-dual-smoke-005.json": {
+      "bytes": 40654,
+      "sha256": "35111fbb4100585f48a8d8057ecf05d66c7585fd6cc2b835ad4b586ae3e8efa7"
+    },
+    ".tmp/base-acceptance/eos-reseed-branching-20261120/dual-smoke-005/sha256-inventory.json": {
+      "bytes": 13840,
+      "sha256": "a2b6333b7ac47d72c441374bc126218c5e760e127d4f82f97eb8c444c2d3a8f3"
+    },
+    ".tmp/base-acceptance/eos-reseed-branching-20261120/post-load-recheck-007/plan.json": {
+      "bytes": 6900,
+      "sha256": "ce5ca118eb5c50ca348b8e7f177b07652a3b6f0011df48928486c386701fbc17"
+    },
+    ".tmp/base-acceptance/eos-reseed-branching-20261120/analysis-recheck-007.json": {
+      "bytes": 37691,
+      "sha256": "937996ee622e9b65918a9879d8493092b4f4479167110d3f1bce6d2dfb5396e5"
+    },
+    ".tmp/base-acceptance/eos-reseed-branching-20261120/post-load-recheck-007/sha256-inventory.json": {
+      "bytes": 12182,
+      "sha256": "1499a7beb6b6fd16da829c64ba9280d7e0fa2bccb3a3cb1c4e25feca27be3a50"
+    }
+  },
+  "main_matrix": {
+    "planned_lanes": 288,
+    "analyzed_lanes": 274,
+    "normal_terminal_lanes": 272,
+    "cancelled_lanes": 2,
+    "last_run": "dual-independent",
+    "last_run_status": "watchdog_timeout_unscored",
+    "termination_observed_within_15s": false,
+    "probe_absence_later_confirmed": true
+  },
+  "supplementary_preflight": {
+    "dataset": "dual-smoke-005",
+    "baseline_lanes": 18,
+    "independent_pair_lanes": 14
+  },
+  "supplementary_post_load_recheck": {
+    "dataset": "post-load-recheck-007",
+    "runner_source_head": "0141bd2b96d3133db3186eb56b8c2ccbf17bc3e6",
+    "runner_sha256": "9b70fd904bbe977eb2f3478e85b585438298da41a87fcc15ac0ddb617f497117",
+    "same_probe_and_runtime_hashes_as_main_matrix": true,
+    "analyzed_lanes": 26,
+    "natural_eos_lanes": 26,
+    "error_lanes": 0,
+    "cancelled_lanes": 0,
+    "max_token_lanes": 0,
+    "watchdog_timeouts": 0,
+    "seed14_two_frame_prefix_lanes": 12,
+    "independent_pair_lanes": 14,
+    "known_three_frame_controls": [2, 14],
+    "prefix_pair_first_pcm_identical_groups": 6,
+    "independent_pair_full_pcm_matches_preflight": 14,
+    "earlier_timeout_cause": "unresolved; observed host saturation is a confounder, not an isolated cause",
+    "batch_stability": "not_qualified; retains all main-matrix failures",
+    "speech_coverage": "unassessed",
+    "human_listening": "not_run"
+  },
+  "listening_candidates": [
+    {
+      "label": "Original bad seed 2",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/causal-baseline/group-0-lane-0.wav",
+      "bytes": 11564,
+      "sha256": "5fe59b66c57d857e8927aae0dc54400c3aee3b44aa8df91f7315687ab1b69b51",
+      "seed": 2,
+      "policy": "baseline",
+      "prefix": null,
+      "frames": 3,
+      "duration_seconds": 0.24,
+      "coverage": "unassessed",
+      "human_listening": "unassessed"
+    },
+    {
+      "label": "Seed 2, switch after one frame",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/switch-1/group-0-lane-0.wav",
+      "bytes": 326444,
+      "sha256": "1baa612cac853e71bab7dee2cd5f8d86c4ec2ed2564dcbd5762412e30c918681",
+      "seed": 2,
+      "policy": "switch-after:1",
+      "prefix": null,
+      "frames": 85,
+      "duration_seconds": 6.8,
+      "coverage": "pass",
+      "human_listening": "partial_pass"
+    },
+    {
+      "label": "Seed 2, switch after two frames",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/switch-2/group-0-lane-0.wav",
+      "bytes": 326444,
+      "sha256": "d204c60ed29d335003e3dda957ddc796d7b2bc4b3aceceb3f15a22fa2aa7c9c1",
+      "seed": 2,
+      "policy": "switch-after:2",
+      "prefix": null,
+      "frames": 85,
+      "duration_seconds": 6.8,
+      "coverage": "pass",
+      "human_listening": "partial_pass"
+    },
+    {
+      "label": "Original text seed 68, baseline",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/independent-baseline/group-4-lane-0.wav",
+      "bytes": 299564,
+      "sha256": "83f537218ef597dc2114d21e88805a96da91d02123de37f567d6f907c81dad78",
+      "seed": 68,
+      "policy": "baseline",
+      "prefix": null,
+      "frames": 78,
+      "duration_seconds": 6.24,
+      "coverage": "unassessed",
+      "human_listening": "unassessed"
+    },
+    {
+      "label": "Original text seed 68, per-frame short result",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/independent-per-frame/group-4-lane-0.wav",
+      "bytes": 19244,
+      "sha256": "2672f1eddd16367871935239ddf961e67b14ae414d58122032182fb2c5c8cd2b",
+      "seed": 68,
+      "policy": "per-frame",
+      "prefix": null,
+      "frames": 5,
+      "duration_seconds": 0.4,
+      "coverage": "unassessed",
+      "human_listening": "unassessed"
+    },
+    {
+      "label": "Seed-2 first frame, continuation 64",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/single-seed-2-frames-1/group-2-lane-0.wav",
+      "bytes": 334124,
+      "sha256": "dff2cc78ff57d00fb5957b0056c6fddbd27254b1ea8ae7a37fe11dd6be8697dd",
+      "seed": 64,
+      "policy": "baseline",
+      "prefix": "seed-2-frames-1",
+      "frames": 87,
+      "duration_seconds": 6.96,
+      "coverage": "pass",
+      "human_listening": "partial_pass"
+    },
+    {
+      "label": "Shared seed-2 first frame, batched continuation 64",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/dual-seed-2-frames-1/group-1-lane-0.wav",
+      "bytes": 334124,
+      "sha256": "f33d96566518e50d4e034e757bf3815fa62727ca152af146ea537273e7aab745",
+      "seed": 64,
+      "policy": "baseline",
+      "prefix": "seed-2-frames-1",
+      "frames": 87,
+      "duration_seconds": 6.96,
+      "coverage": "pass",
+      "human_listening": "partial_pass"
+    },
+    {
+      "label": "Shared seed-2 first frame, batched continuation 65",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/dual-seed-2-frames-1/group-1-lane-1.wav",
+      "bytes": 345644,
+      "sha256": "52e56573fda2a33e100fea904a28c58a44c6b7436f1fab56f800cb0f4152f304",
+      "seed": 65,
+      "policy": "baseline",
+      "prefix": "seed-2-frames-1",
+      "frames": 90,
+      "duration_seconds": 7.2,
+      "coverage": "pass",
+      "human_listening": "partial_pass",
+      "audible_observation": "Initial 2026-11-20 observation: gradual fading while confirming the full correct phrase. The offline diagnostic measures a similar quieter late portion in single seed 65. The linked 2026-11-21 single-seed-65 feedback finds no noticeable difference from the earlier track and describes the effect as slight or effectively absent; no actionable batch-specific fade defect is established."
+    },
+    {
+      "label": "Legitimate short Da, seed 65",
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/independent-baseline/group-10-lane-0.wav",
+      "bytes": 7724,
+      "sha256": "db8bde6e6c58fb3d058e69edbcd6c0c241b8974c98e3ce535d5e9dbeaf98ac03",
+      "seed": 65,
+      "policy": "baseline",
+      "prefix": null,
+      "frames": 2,
+      "duration_seconds": 0.16,
+      "coverage": "unassessed",
+      "human_listening": "unassessed"
+    }
+  ]
+}

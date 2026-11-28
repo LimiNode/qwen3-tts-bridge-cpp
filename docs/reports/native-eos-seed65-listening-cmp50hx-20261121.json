@@ -1,0 +1,87 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-seed65-listening-cmp50hx-20261121",
+  "recorded_at": "2026-11-21",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "2d50100728d8c9227b644f661d6372b80e0bba3a",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp": "5b03c53ee8bb2f7f4f102005ab7f6ba148ffd92c",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "04e2d865153731ee2c83c59bad9c66bf8e50f36765be060b360546e7166bbfde",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "voice_registry_sha256": "1906bae1c02857e5bb716be3be6e103c4c7a6c6c86dec237a1a09b49a0770977",
+    "seed_schedule": "Fixed baseline continuation seed 65 with one complete seed-2 frame teacher-forced; retained research probe output",
+    "forced_prefix_sha256": "7d7ac6c8df63a4190b4ecf96f9dd9f3e778099933e3fe81bf2083268f0ac723f"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/inputs/original.txt; exact UTF-8 source, frontend OFF; single-seed-2-frames-1/group-3-lane-0 is continuation seed 65",
+    "text_utf8_sha256": "d917e809733280d0fcc4603828e8253593839a22e29161216868f18ef4ba8a5e",
+    "corpus_sha256": "9d8c1d180d547400216545781a245b14c740592c5fec646e98c6db2cbecf17b9"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-reseed-branching-20261120",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-reseed-branching-20261120/matrix-final-006/single-seed-2-frames-1/group-3-lane-0.wav",
+      "kind": "wav",
+      "bytes": 345644,
+      "sha256": "ce8c99ab6ffadb8bb6ed20c2d371674f90b3b924f19a9eb8ef1c05ab458f4c7a",
+      "availability": {
+        "status": "local",
+        "reason": "Byte count and SHA-256 reverified on 2026-11-21; retained PCM16 mono 24-kHz WAV inspected in the linked offline diagnostic, unchanged since generation."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "not_run",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "partial_pass",
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "New listening feedback for the specifically linked retained single-slot seed-65 WAV, informally compared with an earlier track. Only the perceived end-level concern and noticeable difference were discussed, not a full quality or text-coverage reassessment. No live fork or PCM switching ran.",
+    "criteria": {
+      "intelligibility": "not_assessed",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "partial",
+      "final_tail": "partial",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User: \"Затухание немного есть. Но при сраврении со старым треком я не нашел заметных на слух изменений, разницы. В целом возможно что затухание в пределах нормы. На средней и большой громкости оно не так заметно.\" Follow-up: \"Эффект скорее отсутствует.\" Preserve this tentative assessment and volume dependence: no objectionable batch-specific fade is established by this feedback, but neither calibrated loudness equivalence nor universal inaudibility is claimed. The earlier comparison context was batch seed 65 in the related prefix receipt; the user did not restate the old filename or calibrated player settings. No audio was regenerated or normalized. Full-text coverage for single seed 65 was not separately confirmed by this exchange."
+  },
+  "case_result": {
+    "status": "not_assessed",
+    "reason": "Reuses the retained direct-engine model-load, valid PCM and natural-EOS evidence; this is listening feedback, not a new inference, persistent-repeat/restart, Bridge or physical-streaming qualification."
+  },
+  "listening_result": {
+    "status": "not_assessed",
+    "reason": "The user found little or effectively absent fading and no noticeable difference from the earlier track; full intelligibility, voice fidelity, all artifacts and live transitions were not reassessed."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "No actionable fade defect is established by this narrow feedback. Broader corpus, actual streaming decision/commit deadlines, physical playback and independent hardware qualification remain open; R1 remains NO-GO."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-prefix-listening-cmp50hx-20261120.json",
+    "docs/reports/native-eos-fade-comparison-20261120.md",
+    "docs/reports/native-eos-fade-comparison-20261120.json",
+    "docs/reports/native-frame-reseed-evidence-20261120.json"
+  ],
+  "notes": "bridge_commit identifies the offline report, not an executed Bridge client. Hardware/runtime identity is inherited from the exact retained generation; no GPU run occurred on 2026-11-21. The probe statically linked qwen-core, not qwen.dll. The model_revision field is the exact RU-stress Q8_0 Talker SHA-256. This receipt supplements, not replaces, the 2026-11-20 three-file prefix listening receipt and preserves its earlier full-text coverage scope."
+}

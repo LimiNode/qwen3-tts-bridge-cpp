@@ -1,0 +1,235 @@
+{
+  "schema_version": 2,
+  "acceptance_id": "native-eos-corpus-ru-stress-cmp50hx-20261121",
+  "recorded_at": "2026-11-21",
+  "model_family": "RU-stress",
+  "backend": "native",
+  "bridge_commit": "59d8fc04e6f86b1423635e4549b2d8f6b2944e27",
+  "model_revision": "f4672741608d145fae169075cb0ec775a5382cbe9183eccb59c7ab9cc4797427",
+  "runtime_revision": {
+    "qwentts_cpp": "0de7ec5c7467bc5a1cbf5b82e42d2f270016fbd3",
+    "ggml": "c044c6f03892f9d5e98213b05f8afea1f8b0d3c9",
+    "probe_sha256": "c9ab5a3d9d26bf1d53030b66c4afc32e90e2567d7bf3ed0ea80fc48c09270578",
+    "codec_sha256": "1883beeed99348fc35e23dd225e9082f93f6f8c109330a33d935baa8acdbfd94",
+    "probe_linkage": "Static qwen-core in research probe; not Bridge/native worker or packaged qwen.dll execution",
+    "seed_schedule": "N=1 baseline; original seeds 2/14/42 twice; eight texts seeds 64..79 plus repeat64; no forced prefix"
+  },
+  "input_identity": {
+    "status": "recorded",
+    "source": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/inputs and corpus-manifest.json; exact raw UTF-8, frontend OFF, segmentation OFF; retained Kraftwerk speaker/reference tensors; per-file hashes in plan.json",
+    "corpus_sha256": "17c40c9064b6e63f8acf7ccdf26a4570f86bc332a43ce7f85d08c37c2cb7be0e"
+  },
+  "hardware": {
+    "gpu": "NVIDIA CMP 50HX",
+    "compute_capability": "7.5",
+    "driver": "581.94",
+    "cuda": "13.3",
+    "gpu_uuid_status": "recorded",
+    "gpu_uuid": "GPU-40361931-6cb5-ac58-a059-5ba3e70986fb"
+  },
+  "artifact_root": ".tmp/base-acceptance/eos-corpus-decision-20261121",
+  "artifacts": [
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/plan.json",
+      "kind": "json",
+      "bytes": 38227,
+      "sha256": "6f4936e9b706f447b19611e5a57857e439a988a41de10f4466bb73f72ecf8846",
+      "availability": {
+        "status": "local",
+        "reason": "Retained run payload; byte count and SHA-256 verified after execution on 2026-11-21. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus-manifest.json",
+      "kind": "manifest",
+      "bytes": 33535,
+      "sha256": "17c40c9064b6e63f8acf7ccdf26a4570f86bc332a43ce7f85d08c37c2cb7be0e",
+      "availability": {
+        "status": "local",
+        "reason": "Retained run payload; byte count and SHA-256 verified after execution on 2026-11-21. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/all-observations.json",
+      "kind": "json",
+      "bytes": 1031999,
+      "sha256": "f0d627f7d47b326d0ef951056bb1230f9b8935738a6f14e2c18e426319354cc4",
+      "availability": {
+        "status": "local",
+        "reason": "Retained run payload; byte count and SHA-256 verified after execution on 2026-11-21. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/sha256-inventory.json",
+      "kind": "json",
+      "bytes": 88867,
+      "sha256": "761035307de3953ebbbfd21ce344231e4092355c698acc48f6963aa5ad819d1b",
+      "availability": {
+        "status": "local",
+        "reason": "Retained run payload; byte count and SHA-256 verified after execution on 2026-11-21. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/listening-first-pass/manifest.json",
+      "kind": "manifest",
+      "bytes": 9528,
+      "sha256": "b978b629c9525fb18f5cfab4aa8d203422543403f9cd06253e1901a591b2d325",
+      "availability": {
+        "status": "local",
+        "reason": "Retained run payload; byte count and SHA-256 verified after execution on 2026-11-21. Not transferred or backed up by Git."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-6-lane-0.wav",
+      "bytes": 322604,
+      "sha256": "353b1925fea9fd70b8df183e46c0613106218946de1d4a979bbfc4db96b0403b",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-14-lane-0.wav",
+      "bytes": 23084,
+      "sha256": "954e5e0fc2abcccae6265e902aae587f487e8c0f2db49c034a9e048fd5fe06fd",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-17-lane-0.wav",
+      "bytes": 7724,
+      "sha256": "6d9e7f60a7c955554f54db358cf12d1826ae0ca8560ff406eb6eb723ff128e23",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-20-lane-0.wav",
+      "bytes": 11564,
+      "sha256": "1c677648775a9af9178bf617b549467e4a437ce8a8c1e3f7923bd77e4e0ff834",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-23-lane-0.wav",
+      "bytes": 15404,
+      "sha256": "845daa1e5f6f794bb2306ae9f1b2017e9754c87ac7b9cb457d5ec2d78975e701",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-40-lane-0.wav",
+      "bytes": 7724,
+      "sha256": "16adb74a2ced9e015e364d31f1512ced96a18428bc67c4c33f54c3b3e8976a36",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-57-lane-0.wav",
+      "bytes": 11564,
+      "sha256": "ff9bde2acf4d5e423a823f5cc718b1089f223a057d0d3967f07532b29abc63ad",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-74-lane-0.wav",
+      "bytes": 11564,
+      "sha256": "58851dc2beae83a262e3eb4333e4d598499b47863abe35b17ea572376e4a5eee",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-91-lane-0.wav",
+      "bytes": 272684,
+      "sha256": "c6824eae1dc1b95dab698c31231eed0e15dbb1efc3223e9c1a80e78204743e22",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-108-lane-0.wav",
+      "bytes": 353324,
+      "sha256": "fada01bc05bc7067ed42bddeffd85f2969d212888306e72d248d696ef19ea590",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    },
+    {
+      "path": ".tmp/base-acceptance/eos-corpus-decision-20261121/ru-corpus-001/corpus/group-125-lane-0.wav",
+      "bytes": 291884,
+      "sha256": "96a9522c6a1a5000f49cb0199de86b7bd839b5b22fea641411f3207f1379cc13",
+      "kind": "wav",
+      "availability": {
+        "status": "local",
+        "reason": "Retained original WAV mapped to the user-listened convenience copy by byte count and SHA-256; no audio changes."
+      }
+    }
+  ],
+  "mechanical": {
+    "model_load": "pass",
+    "pcm": "pass",
+    "natural_eos": "pass",
+    "persistent_repeat": "pass",
+    "restart": "not_run"
+  },
+  "human_listening": {
+    "status": "fail",
+    "observer": "user",
+    "recorded_at": "2026-11-21",
+    "scope": "Eleven named RU-stress WAV copies in listening-first-pass, mapped by SHA-256 to originals in the linked per-file listening report. Not all 142 baseline WAVs or any 36 timing controls were listened to.",
+    "criteria": {
+      "intelligibility": "fail",
+      "voice_or_instruction": "not_assessed",
+      "artifacts": "not_assessed",
+      "final_tail": "not_assessed",
+      "sequential_contamination": "not_assessed"
+    },
+    "notes": "User recognizes normal text in files01/09/10/11. File02 has a strange sound resembling але or мг; files03/04/06/07/08 belong to the inaudible-or-short-meaningless remainder. File05 only resembles да and remains uncertain, not a confirmed pass. Voice fidelity, artifacts and tail were not separately assessed."
+  },
+  "case_result": {
+    "status": "fail",
+    "reason": "Mechanical PCM/natural-EOS checks remain passed, but six listened cases fail requested-text recognizability; another short Да! case is uncertain. Seeds72/75/78 are now confirmed listening failures for the original phrase. Remaining corpus coverage, restart and integration are unassessed."
+  },
+  "listening_result": {
+    "status": "fail",
+    "reason": "Scoped requested-text recognizability failed in the linked per-file user observation; positive cases remain recorded separately, not erased or generalized."
+  },
+  "release_disposition": {
+    "status": "blocked",
+    "reason": "Scoped listening failures exist. A duration-only or natural-EOS success criterion is insufficient; detector/recovery, integration, playback, restart and independent hardware gates remain open. R1 remains NO-GO."
+  },
+  "release_status": "blocked",
+  "supersedes": null,
+  "related_reports": [
+    "docs/reports/native-eos-corpus-and-decision-20261121.md",
+    "docs/reports/native-eos-corpus-evidence-20261121.json",
+    "docs/reports/native-eos-corpus-plan-20261121.md",
+    "docs/reports/native-eos-corpus-listening-20261121.json"
+  ],
+  "notes": "bridge_commit identifies the pre-run Bridge plan, not an executed Bridge client. Mechanical pass is limited to this direct-engine run and its 11 deterministic repeats, not restart or contamination/voice fidelity. 32/128 corpus text/seed pairs were already observed on RU-stress; all32 reproduce old full raw PCM. No sampler/default/ABI/model/pin/package change, live selector, normalization, merge or release. Local runtime-current preserves measured tooling; runtime-before is historical. Listening follow-up updates only named 2026-11-21 artifacts; all original PCM, generated summaries and initial inventories remain immutable. A failed listening verdict is independent of the passed mechanical checks."
+}

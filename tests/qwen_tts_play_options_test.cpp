@@ -45,6 +45,15 @@ int main() {
         require(options.top_k == 12 && options.seed == 42, "numeric options changed");
         require(options.auto_fast_max_bytes == 100, "legacy option alias changed");
         require(options.tts_front_enabled, "tts-front must be enabled by default");
+        require(!options.segment_text, "segmentation must remain opt-in");
+        auto segmented = parse({L"play", L"--mock", L"--text", L"One. Two.",
+            L"--segment-text"});
+        validate_options(segmented);
+        require(segmented.segment_text, "segmentation option not parsed");
+        rejects([] { validate_options(parse({L"play", L"--mock", L"--segment-text"})); },
+            "requires one-shot --text");
+        segmented.playback_metrics_file = "metrics.json";
+        rejects([&] { validate_options(segmented); }, "per-request playback/animation");
         auto raw_options = parse({L"play", L"--mock", L"--no-tts-front"});
         require(!raw_options.tts_front_enabled &&
             !raw_options.tts_front_explicit_stress,
