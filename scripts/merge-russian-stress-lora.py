@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import shutil
 from pathlib import Path
@@ -121,7 +122,10 @@ def merge_checkpoint(
     expected_base_sha256: str = EXPECTED_BASE_SHA256,
     expected_adapter_sha256: str = EXPECTED_ADAPTER_SHA256,
     expected_pair_count: int = EXPECTED_LORA_PAIRS,
+    adapter_strength: float = 1.0,
 ) -> dict[str, Any]:
+    if not math.isfinite(adapter_strength) or not 0.0 <= adapter_strength <= 1.0:
+        raise ValueError("adapter_strength must be finite and between 0 and 1")
     if output_dir.resolve() in (base_dir.resolve(), adapter_dir.resolve()):
         raise ValueError("output directory must be separate from Base and adapter inputs")
     base_model = base_dir / "model.safetensors"
@@ -157,6 +161,7 @@ def merge_checkpoint(
     rank, alpha = _validate_provenance(metadata, expected_base_revision)
     pairs = _pair_lora_tensors(adapter_model, expected_pair_count)
     scale = alpha / rank
+    effective_scale = scale * adapter_strength
 
     merged: dict[str, torch.Tensor] = {}
     target_stats: list[dict[str, Any]] = []
@@ -188,7 +193,7 @@ def merge_checkpoint(
                     f"LoRA shape mismatch for {key}: base={tuple(tensor.shape)} "
                     f"A={tuple(a.shape)} B={tuple(b.shape)}"
                 )
-            delta = torch.matmul(b, a) * scale
+            delta = torch.matmul(b, a) * effective_scale
             merged_tensor = (tensor.float() + delta).to(dtype=tensor.dtype)
             merged[key] = merged_tensor
             target_stats.append(
@@ -239,6 +244,8 @@ def merge_checkpoint(
         "rank": rank,
         "alpha": alpha,
         "scale": scale,
+        "adapter_strength": adapter_strength,
+        "effective_scale": effective_scale,
         "base_sha256": base_sha256,
         "expected_base_sha256": expected_base_sha256,
         "adapter_sha256": adapter_sha256,
@@ -268,6 +275,12 @@ def main() -> int:
     parser.add_argument("--expected-base-sha256", default=EXPECTED_BASE_SHA256)
     parser.add_argument("--expected-adapter-sha256", default=EXPECTED_ADAPTER_SHA256)
     parser.add_argument("--expected-lora-pairs", type=int, default=EXPECTED_LORA_PAIRS)
+    parser.add_argument(
+        "--adapter-strength",
+        type=float,
+        default=1.0,
+        help="research-only LoRA multiplier in [0, 1]; default preserves the qualified merge",
+    )
     parser.add_argument("--receipt", type=Path, required=True)
     args = parser.parse_args()
     receipt = merge_checkpoint(
@@ -279,6 +292,7 @@ def main() -> int:
         args.expected_base_sha256,
         args.expected_adapter_sha256,
         args.expected_lora_pairs,
+        args.adapter_strength,
     )
     print(json.dumps({key: value for key, value in receipt.items() if key != "target_stats"}, indent=2))
     return 0

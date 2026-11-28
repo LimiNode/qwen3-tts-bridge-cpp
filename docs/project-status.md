@@ -59,6 +59,15 @@ These are scoped `partial_pass` listening verdicts, not a universal release
 acceptance. The exact payloads remain local under `.tmp/base-acceptance/` and
 are identified in the tracked receipts by SHA-256.
 
+The later native EOS/voice research is tracked separately in the
+[research consolidation](reports/qwen3-tts-research-consolidation-20261128.md).
+It found semantic failures in the phase-2 A/B/C/F listening set, including one
+voice drift, one truncated `проце` ending and one silent batch output. These
+findings keep R1 quality promotion conditional. Base's better behaviour on the
+tested short controls does not replace the requirement to support the declared
+RU-stress model and controlled Russian stress; the model families have separate
+acceptance obligations.
+
 ## Verified milestones
 
 ### Native qwentts.cpp runtime and DLL
@@ -197,7 +206,7 @@ The dependency direction is deliberate:
 | --- | --- | --- |
 | Python/Faster worker | Maintained acceptance route and alternative backend | Complete the same frozen dual-GPU/package/listening matrix |
 | Native worker and `qwen.dll` | Priority R1 native route; conditional until accepted | Close promotion gates and record backend selection; in-process adapter is separate |
-| RU-stress + Kraftwerk profile | Intended R1 default, still experimental | Expand dual-GPU, long-run, cancellation, packaging, and listening evidence |
+| RU-stress + Kraftwerk profile | Intended R1 model/profile, still experimental | Preserve controlled-stress acceptance separately from Base; expand dual-GPU, long-run, cancellation, packaging, and listening evidence |
 | `tts-front-cpp` pinned corrective `64f73182` (based on v0.2.5) | Integrated preparation contract; 17-case oracle (13 unchanged cases) has no regressions | Keep frontend model-neutral; listen to the three changed surfaces before release claims; do not describe the corrective commit as a v0.2.6 release |
 | PCM/sample-addressed animation | Audio-reactive v0 baseline validated | Predictive visemes and presentation remain downstream work |
 | Avatar presentation | Not yet complete | Add a separate VRM/Unity/Godot adapter after playback-locked cues are stable |

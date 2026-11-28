@@ -72,6 +72,14 @@ script copies and hashes `config.json`, `generation_config.json`, `merges.txt`,
 It writes no files under the repository's `models/` directory and does not
 alter a bridge profile.
 
+For the model-level EOS investigation the same merger accepts the explicit
+research-only option `--adapter-strength` in the closed interval `[0, 1]`.
+The default `1.0` preserves the qualified merge; values such as `0`, `0.25`,
+`0.5` and `0.75` materialize the planned LoRA-strength candidates and record
+both the nominal and effective scales in the merge receipt. No candidate is a
+production profile until its source-level logits, complete codes, speech,
+stress behaviour and voice identity have been independently qualified.
+
 The published package itself remains **not directly split-GGUF-compatible**:
 
 ```text
